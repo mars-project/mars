@@ -49,6 +49,9 @@ class Router:
         self._mapping = mapping
         self._cache: Dict[Tuple[str, Any], Client] = dict()
 
+    def set_mapping(self, mapping: Dict[str, str]):
+        self._mapping = mapping
+
     @property
     def external_address(self):
         if self._curr_external_addresses:
@@ -83,4 +86,4 @@ class Router:
         return client
 
 
-_empty_router = Router(list(), dict())
+_empty_router = Router(list())

@@ -110,9 +110,9 @@ class IdleLabel(AllocateStrategy):
         return hash((type(self), self.label, self.mark))
 
     def __eq__(self, other):
-        if not isinstance(other, IdleLabel):
-            return False
-        return self.label == other.label and self.mark == other.mark
+        return isinstance(other, IdleLabel) and \
+               self.label == other.label and \
+               self.mark == other.mark
 
     @implements(AllocateStrategy.get_allocated_address)
     def get_allocated_address(self,

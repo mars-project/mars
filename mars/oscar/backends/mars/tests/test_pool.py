@@ -23,9 +23,11 @@ from mars.oscar.backends.mars.allocate_strategy import \
 from mars.oscar.backends.mars.config import ActorPoolConfig
 from mars.oscar.backends.mars.message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
-    ActorRefMessage, SendMessage, TellMessage, ControlMessage, ControlMessageType
+    ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
+    ControlMessageType, MessageType
 from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
-from mars.oscar.errors import NoIdleSlot
+from mars.oscar.backends.mars.router import Router
+from mars.oscar.errors import NoIdleSlot, ActorNotExist
 from mars.oscar.utils import create_actor_ref
 from mars.tests.core import mock
 
@@ -74,6 +76,7 @@ async def test_sub_actor_pool(notify_main_pool):
         TestActor, b'test', tuple(), dict(),
         AddressSpecified(pool.external_address))
     message = await pool.create_actor(create_actor_message)
+    assert message.message_type == MessageType.result
     actor_ref = message.result
     assert actor_ref.address == pool.external_address
     assert actor_ref.uid == b'test'
@@ -101,7 +104,14 @@ async def test_sub_actor_pool(notify_main_pool):
     send_message = SendMessage(
         new_message_id(), actor_ref, ('add', '3', dict()))
     result = await pool.send(send_message)
+    assert result.message_type == MessageType.error
     assert isinstance(result.error, TypeError)
+
+    send_message = SendMessage(
+        new_message_id(), create_actor_ref(actor_ref.address, 'non_exist'),
+        ('add', 3, dict()))
+    result = await pool.send(send_message)
+    assert isinstance(result.error, ActorNotExist)
 
     # test processing message on background
     async with await pool.router.get_client(pool.external_address) as client:
@@ -122,14 +132,36 @@ async def test_sub_actor_pool(notify_main_pool):
     message = await pool.destroy_actor(destroy_actor_message)
     assert message.result == actor_ref.uid
 
+    # send destroy failed
+    message = await pool.destroy_actor(destroy_actor_message)
+    assert isinstance(message.error, ActorNotExist)
+
     message = await pool.has_actor(has_actor_message)
     assert not message.result
+
+    # test sync config
+    config.add_pool_conf(1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
+    sync_config_message = ControlMessage(
+        new_message_id(), ControlMessageType.sync_config, config)
+    message = await pool.handle_control_command(sync_config_message)
+    assert message.result is True
+
+    # test get config
+    get_config_message = ControlMessage(
+        new_message_id(), ControlMessageType.get_config, None)
+    message = await pool.handle_control_command(get_config_message)
+    config2 = message.result
+    assert config.as_dict() == config2.as_dict()
 
     stop_message = ControlMessage(
         new_message_id(), ControlMessageType.stop, None)
     message = await pool.handle_control_command(stop_message)
     assert message.result is True
 
+    assert pool.router is Router.get_instance()
+    assert pool.external_address == pool.router.external_address
+
+    await pool.join(.05)
     assert pool.stopped
 
 
@@ -139,7 +171,8 @@ async def test_main_actor_pool():
     my_label = 'computation'
     main_address = f'127.0.0.1:{get_next_port()}'
     config.add_pool_conf(0, 'main', 'unixsocket:///0', main_address)
-    config.add_pool_conf(1, my_label, 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
+    config.add_pool_conf(1, my_label, 'unixsocket:///1', f'127.0.0.1:{get_next_port()}',
+                         env={'my_env': '1'})
     config.add_pool_conf(2, my_label, 'unixsocket:///2', f'127.0.0.1:{get_next_port()}')
 
     strategy = IdleLabel(my_label, 'my_test')
@@ -253,3 +286,17 @@ async def test_create_actor_pool():
         assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
         await ctx.destroy_actor(actor_ref2)
         assert (await ctx.has_actor(actor_ref2)) is False
+
+
+@pytest.mark.asyncio
+async def test_errors():
+    with pytest.raises(ValueError):
+        _ = await create_actor_pool('127.0.0.1', n_process=1, labels=['a'])
+
+    with pytest.raises(ValueError):
+        _ = await create_actor_pool(f'127.0.0.1:{get_next_port()}', n_process=1,
+                                    ports=[get_next_port(), get_next_port()])
+
+    with pytest.raises(ValueError):
+        _ = await create_actor_pool('127.0.0.1', n_process=1,
+                                    ports=[get_next_port()])

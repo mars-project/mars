@@ -20,7 +20,6 @@ import json
 import logging
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 import unittest
@@ -52,9 +51,9 @@ except ImportError:
             return x
         return ident
 
-if sys.version_info < (3, 8):
+try:
     import mock
-else:
+except ImportError:
     from unittest import mock
 _mock = mock
 

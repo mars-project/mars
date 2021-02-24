@@ -222,16 +222,21 @@ class AbstractActorPool(ABC):
         """
         with _ErrorProcessor(message.message_id,
                              protocol=message.protocol) as processor:
+            content = True
             if message.control_message_type == ControlMessageType.stop:
                 await self.stop()
             elif message.control_message_type == ControlMessageType.sync_config:
                 actor_pool_config: ActorPoolConfig = message.content
                 self._config = actor_pool_config
+                self._router.set_mapping(
+                    actor_pool_config.external_to_internal_address_map)
+            elif message.control_message_type == ControlMessageType.get_config:
+                content = self._config
             else:  # pragma: no cover
                 raise TypeError(f'Unable to handle control message '
                                 f'with type {message.control_message_type}')
             processor.result = ResultMessage(
-                message.message_id, True,
+                message.message_id, content,
                 protocol=message.protocol)
 
         return processor.result
@@ -504,15 +509,17 @@ async def _create_sub_pool(
         actor_config: ActorPoolConfig,
         process_index: int,
         started: multiprocessing.Event):
-    env = actor_config.get_pool_config(process_index)['env']
-    if env:
-        os.environ.update(env)
-    pool = await SubActorPool.create({
-        'actor_pool_config': actor_config,
-        'process_index': process_index
-    })
-    await pool.start()
-    started.set()
+    try:
+        env = actor_config.get_pool_config(process_index)['env']
+        if env:
+            os.environ.update(env)
+        pool = await SubActorPool.create({
+            'actor_pool_config': actor_config,
+            'process_index': process_index
+        })
+        await pool.start()
+    finally:
+        started.set()
     await pool.join()
 
 
@@ -732,7 +739,7 @@ class MainActorPool(ActorPoolBase):
         tasks.append(create_task)
 
         # wait for all pools
-        await asyncio.wait(tasks)
+        await asyncio.gather(*tasks)
         pool: MainActorPool = await create_task
         addresses = actor_pool_config.get_external_addresses()[1:]
         processes = [await t for t in tasks[:-1]]
@@ -777,8 +784,7 @@ async def create_actor_pool(address: str,
                             ports: List[int] = None,
                             envs: List[Dict] = None,
                             subprocess_start_method: str = None) -> MainActorPool:
-    if n_process is None:
-        n_process = multiprocessing.cpu_count()
+    n_process = n_process or multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(f'`labels` should be of size {n_process + 1}, '
                          f'got {len(labels)}')

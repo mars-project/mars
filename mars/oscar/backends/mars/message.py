@@ -20,7 +20,7 @@ from typing import Any, Type, Tuple, Dict, List
 import numpy as np
 
 from ....lib.tblib import pickling_support
-from ....serialization.core import Serializer, pickle_buffers, unpickle_buffers
+from ....serialization.core import Serializer, pickle, pickle_buffers, unpickle_buffers
 from ....utils import classproperty, implements
 from ...core import ActorRef
 
@@ -48,6 +48,7 @@ class ControlMessageType(Enum):
     stop = 0
     restart = 1
     sync_config = 2
+    get_config = 3
 
 
 class _MessageBase(ABC):
@@ -261,18 +262,31 @@ class TellMessage(SendMessage):
         return MessageType.tell
 
 
+class DesrializeMessageFailed(Exception):
+    def __init__(self, message_id):
+        self.message_id = message_id
+
+    def __str__(self):
+        return f'Deserialize {self.message_id} failed'
+
+
 class MessageSerializer(Serializer):
     serializer_name = 'actor_message'
 
     def serialize(self, obj: _MessageBase):
         assert obj.protocol == 0, 'only support protocol 0 for now'
         # use pickle for protocol 0
-        return {'protocol': 0}, pickle_buffers(obj)
+        return {'protocol': 0, 'message_id': obj.message_id}, \
+               pickle_buffers(obj)
 
     def deserialize(self, header: Dict, buffers: List):
         protocol = header['protocol']
         assert protocol == 0, 'only support protocol 0 for now'
-        return unpickle_buffers(buffers)
+        message_id = header['message_id']
+        try:
+            return unpickle_buffers(buffers)
+        except pickle.UnpicklingError as e:  # pragma: no cover
+            raise DesrializeMessageFailed(message_id) from e
 
 
 # register message serializer

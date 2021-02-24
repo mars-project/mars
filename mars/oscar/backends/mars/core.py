@@ -16,7 +16,8 @@ import asyncio
 from typing import Dict, Union
 
 from .communication import Client
-from .message import _MessageBase, ResultMessage, ErrorMessage
+from .message import _MessageBase, ResultMessage, ErrorMessage, \
+    DesrializeMessageFailed
 from .router import Router
 
 
@@ -48,7 +49,12 @@ class ActorCaller:
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
             except EOFError:
+                # server closed
                 break
+            except DesrializeMessageFailed as e:  # pragma: no cover
+                message_id = e.message_id
+                future = self._client_to_message_futures[client].pop(message_id)
+                future.set_exception(e)
             except Exception as e:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
                 message_futures = self._client_to_message_futures.get(client)
                 self._client_to_message_futures[client] = dict()
