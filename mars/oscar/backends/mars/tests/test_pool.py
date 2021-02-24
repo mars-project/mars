@@ -32,6 +32,14 @@ from mars.tests.core import mock
 
 # test create actor
 
+class _CannotBeUnpickled:
+    def __getstate__(self):
+        return ()
+
+    def __setstate__(self, state):
+        raise RuntimeError("cannot unpickle")
+
+
 class TestActor(Actor):
     __test__ = False
 
@@ -41,6 +49,9 @@ class TestActor(Actor):
     def add(self, val):
         self.value += val
         return self.value
+
+    def return_cannot_unpickle(self):
+        return _CannotBeUnpickled()
 
 
 @pytest.mark.asyncio
@@ -229,13 +240,15 @@ async def test_create_actor_pool():
         await ctx.destroy_actor(actor_ref)
         assert (await ctx.has_actor(actor_ref)) is False
 
-        # actor on main pool
+        # actor on sub pool
         actor_ref2 = await ctx.create_actor(TestActor, uid='test-2',
                                             address=pool.external_address,
                                             allocate_strategy=RandomSubPool())
         assert actor_ref2.address != actor_ref.address
         assert await actor_ref2.add(3) == 3
         assert await actor_ref2.add(1) == 4
+        with pytest.raises(RuntimeError):
+            await actor_ref2.return_cannot_unpickle()
         assert (await ctx.has_actor(actor_ref2)) is True
         assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
         await ctx.destroy_actor(actor_ref2)

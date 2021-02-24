@@ -361,6 +361,7 @@ def require_ray(func):
     if pytest:
         func = pytest.mark.ray(func)
     func = unittest.skipIf(ray is None, reason='ray not installed')(func)
+    func = pytest.mark.skipif(ray is None, reason="ray not installed")(func)
     return func
 
 

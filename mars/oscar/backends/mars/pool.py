@@ -17,7 +17,7 @@ import concurrent.futures as futures
 import os
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Dict, List, Union, Type
+from typing import Dict, List, Type
 
 from ....utils import implements, get_next_port
 from ...api import Actor
@@ -25,17 +25,15 @@ from ...core import ActorRef
 from ...errors import ActorAlreadyExist, ActorNotExist
 from ...utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
-from .communication import Channel, Client, Server, \
+from .communication import Channel, Server, \
     get_server_type, gen_internal_address
+from .core import result_message_type, ActorCaller
 from .config import ActorPoolConfig
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
     ResultMessage, ErrorMessage, CreateActorMessage, HasActorMessage, \
     DestroyActorMessage, ActorRefMessage, SendMessage, TellMessage, \
     ControlMessage, ControlMessageType
 from .router import Router, LOCAL_ADDRESS
-
-
-result_message_type = Union[ResultMessage, ErrorMessage]
 
 
 class _ErrorProcessor:
@@ -65,8 +63,6 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
         (MessageType.actor_ref, pool_type.actor_ref),
         (MessageType.send, pool_type.send),
         (MessageType.tell, pool_type.tell),
-        (MessageType.result, pool_type.result_or_error),
-        (MessageType.error, pool_type.result_or_error),
         (MessageType.control, pool_type.handle_control_command)
     ]:
         pool_type._message_handler[message_type] = handler
@@ -75,8 +71,7 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
 
 class AbstractActorPool(ABC):
     __slots__ = 'process_index', 'label', 'external_address', 'internal_address', 'env', \
-                '_servers', '_router', '_config', '_stopped', '_actors', \
-                '_message_futures', '_clients'
+                '_servers', '_router', '_config', '_stopped', '_actors', '_caller'
 
     def __init__(self,
                  process_index: int,
@@ -100,10 +95,9 @@ class AbstractActorPool(ABC):
 
         # actor id -> actor
         self._actors: Dict[bytes, Actor] = dict()
-        # client -> {message id -> future}
-        self._message_futures: Dict[Client, Dict[bytes, futures.Future]] = dict()
-        # clients and its listening task
-        self._clients: Dict[Client, asyncio.Task] = dict()
+
+        # manage async actor callers
+        self._caller = ActorCaller()
 
     @property
     def router(self):
@@ -242,18 +236,6 @@ class AbstractActorPool(ABC):
 
         return processor.result
 
-    async def result_or_error(self, message: result_message_type):
-        """
-        Process result message.
-
-        Parameters
-        ----------
-        message: ResultMessage or ErrorMessage
-            result message.
-        """
-        future = self._message_futures.pop(message.message_id)
-        future.set_result(message)
-
     async def process_message(self,
                               message: _MessageBase,
                               channel: Channel):
@@ -261,27 +243,10 @@ class AbstractActorPool(ABC):
         result = await handler(self, message)
         await channel.send(result)
 
-    async def _listen(self, client: Client):
-        while not self._stopped.is_set():
-            message = await client.recv()
-            await self.result_or_error(message)
-
-    async def _get_client(self, dest_address) -> Client:
-        client = await self._router.get_client(dest_address,
-                                               from_who=self)
-        if client not in self._clients:
-            self._clients[client] = asyncio.create_task(self._listen(client))
-        return client
-
     async def call(self,
                    dest_address: str,
                    message: _MessageBase) -> result_message_type:
-        client: Client = await self._get_client(dest_address)
-        loop = asyncio.get_running_loop()
-        self._message_futures[message.message_id] = \
-            wait_response = loop.create_future()
-        await client.send(message)
-        return await wait_response
+        return await self._caller.call(self._router, dest_address, message)
 
     @staticmethod
     def _parse_config(config: Dict) -> Dict:
@@ -339,10 +304,8 @@ class AbstractActorPool(ABC):
             # stop all servers
             stop_tasks.extend([server.stop() for server in self._servers])
             # stop all clients
-            stop_tasks.extend([client.close() for client in self._clients])
-            await asyncio.wait(stop_tasks)
-            # cancel listening for all clients
-            [task.cancel() for task in self._clients.values()]
+            stop_tasks.append(self._caller.stop())
+            await asyncio.gather(*stop_tasks)
         finally:
             self._stopped.set()
 

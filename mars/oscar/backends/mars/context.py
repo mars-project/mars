@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Dict, Tuple, Union, Type
+from typing import Tuple, Union, Type
 
 from ....utils import to_binary
 from ...api import Actor
@@ -21,7 +21,7 @@ from ...core import ActorRef
 from ...context import BaseActorContext
 from ...utils import create_actor_ref
 from .allocate_strategy import AllocateStrategy, AddressSpecified
-from .communication import Client
+from .core import ActorCaller
 from .message import DEFAULT_PROTOCOL, new_message_id, _MessageBase, \
     ResultMessage, ErrorMessage, CreateActorMessage, HasActorMessage, \
     DestroyActorMessage, ActorRefMessage, SendMessage
@@ -29,40 +29,18 @@ from .router import Router
 
 
 class MarsActorContext(BaseActorContext):
-    __slots__ = '_message_id_to_futures', '_client_to_task', \
-                '_address', '_stopped'
+    __slots__ = '_address', '_caller'
 
     def __init__(self, address: str = None):
-        self._message_id_to_futures: Dict[bytes, asyncio.Future] = dict()
-        self._client_to_task: Dict[Client, asyncio.Task] = dict()
         self._address = address
-
-        self._stopped = asyncio.Event()
+        self._caller = ActorCaller()
 
     def __del__(self):
-        self._stopped.set()
-        # cancel all listening tasks for all clients
-        [task.cancel() for task in self._client_to_task.values()]
-
-    async def _listen(self, client):
-        while not self._stopped.is_set():
-            message = await client.recv()
-            self._message_id_to_futures.pop(message.message_id).set_result(message)
-
-    async def _new_client(self, address: str) -> Client:
-        router = Router.get_instance_or_empty()
-        client = await router.get_client(address, from_who=self)
-        if client not in self._client_to_task:
-            self._client_to_task[client] = asyncio.create_task(self._listen(client))
-        return client
+        self._caller.cancel_tasks()
 
     async def _call(self, address: str, message: _MessageBase):
-        client = await self._new_client(address)
-        loop = asyncio.get_running_loop()
-        future = self._message_id_to_futures[message.message_id] = \
-            loop.create_future()
-        await client.send(message)
-        return await future
+        return await self._caller.call(Router.get_instance_or_empty(),
+                                       address, message)
 
     @staticmethod
     def _process_result_message(message: Union[ResultMessage, ErrorMessage]):
