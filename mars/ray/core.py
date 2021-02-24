@@ -77,13 +77,18 @@ def _register_ray_serializer(op):
             type(op), serializer=operand_serializer,
             deserializer=operand_deserializer)
     except AttributeError:  # ray >= 1.0
-        from ray.worker import global_worker
+        try:
+            from ray.worker import global_worker
 
-        global_worker.check_connected()
-        context = global_worker.get_serialization_context()
-        context.register_custom_serializer(
-            type(op), serializer=operand_serializer,
-            deserializer=operand_deserializer)
+            global_worker.check_connected()
+            context = global_worker.get_serialization_context()
+            context.register_custom_serializer(
+                type(op), serializer=operand_serializer,
+                deserializer=operand_deserializer)
+        except AttributeError:  # ray >= 1.2.0
+            ray.util.register_serializer(
+                type(op), serializer=operand_serializer,
+                deserializer=operand_deserializer)
 
 
 class GraphExecutionForRay(GraphExecution):
