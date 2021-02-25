@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,17 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
 
-from .file import AioFileObject, AioFilesystem
-from .parallelism import AioEvent
+class ActorPoolNotStarted(Exception):
+    pass
 
 
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
+class ActorNotExist(Exception):
+    pass
 
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
+
+class ActorAlreadyExist(Exception):
+    pass
+
+
+class NoIdleSlot(Exception):
+    pass

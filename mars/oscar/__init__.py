@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
+# import aio to ensure patch enabled for Python 3.6
+from ..lib import aio
+del aio
 
-from .file import AioFileObject, AioFilesystem
-from .parallelism import AioEvent
+from .api import actor_ref, create_actor, has_actor, destroy_actor, \
+    Actor, create_actor_pool
+from .errors import ActorNotExist, ActorAlreadyExist
+from .utils import create_actor_ref
 
-
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
-
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
+# make sure methods are registered
+from .backends import mars, ray
+del mars, ray

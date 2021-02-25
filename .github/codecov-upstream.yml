@@ -10,6 +10,9 @@ codecov:
 
 comment: off
 
+github_checks:
+  annotations: false
+
 coverage:
   status:
     project:

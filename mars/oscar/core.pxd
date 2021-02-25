@@ -12,17 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
 
-from .file import AioFileObject, AioFilesystem
-from .parallelism import AioEvent
+cdef class ActorRef:
+    cdef object __weakref__
+    cdef public str address
+    cdef public object uid
+    cdef dict _methods
+    cdef __send__(self, object message)
+    cdef __tell__(self, object message, object delay=*)
 
 
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
+cdef class _Actor:
+    cdef object __weakref__
+    cdef str _address
+    cdef object _lock
+    cdef object _uid
 
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
+    cpdef ActorRef ref(self)
+
+
+cdef class ActorEnvironment:
+    cdef public dict actor_locks
+    cdef public object address

@@ -12,17 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
-
-from .file import AioFileObject, AioFilesystem
-from .parallelism import AioEvent
+from ...backend import BaseActorBackend, register_backend
+from .driver import RayActorDriver
+from .context import RayActorContext
 
 
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
+__all__ = ['RayActorBackend']
 
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
+
+@register_backend
+class RayActorBackend(BaseActorBackend):
+    @staticmethod
+    def name():
+        return "ray"
+
+    @staticmethod
+    def get_context_cls():
+        return RayActorContext
+
+    @staticmethod
+    def get_driver_cls():
+        return RayActorDriver

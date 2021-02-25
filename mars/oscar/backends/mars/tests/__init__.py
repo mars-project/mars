@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import sys
 
-from .file import AioFileObject, AioFilesystem
-from .parallelism import AioEvent
+import pytest
 
-
-if sys.version_info[:2] < (3, 7):
-    # patch run and get_running_loop etc for python 3.6
-    from ._runners import get_running_loop, run
-
-    asyncio.run = run
-    asyncio.get_running_loop = get_running_loop
-    asyncio.create_task = asyncio.ensure_future
+if sys.version_info < (3, 7):
+    pytest.skip("skipping tests for python 3.6", allow_module_level=True)
