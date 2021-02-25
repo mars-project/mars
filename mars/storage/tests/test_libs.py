@@ -33,6 +33,7 @@ from mars.storage.plasma import PlasmaStorage
 from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
+from mars.tests.core import require_ray
 try:
     import vineyard
 except ImportError:
@@ -49,17 +50,18 @@ except ImportError:
     ray = None
 
 
+require_lib = lambda x: x
 params = ['filesystem', 'plasma']
 if vineyard:
     params.append('vineyard')
 if ray:
     params.append('ray')
+    require_lib = require_ray
 if sys.version_info[:2] >= (3, 8):
     params.append('shared_memory')
 
 
 @pytest.fixture(params=params)
-@pytest.mark.asyncio
 async def storage_context(request):
     if request.param == 'filesystem':
         tempdir = tempfile.mkdtemp()
@@ -121,6 +123,7 @@ async def storage_context(request):
 
 
 @pytest.mark.asyncio
+@require_lib
 async def test_base_operations(storage_context):
     storage = storage_context
 

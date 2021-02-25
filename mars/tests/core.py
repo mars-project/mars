@@ -346,6 +346,7 @@ def require_cupy(func):
     if pytest:
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cupy is None, reason='cupy not installed')(func)
+    func = pytest.mark.skipif(cupy is None, reason='cupy not installed')(func)
     return func
 
 
@@ -353,6 +354,7 @@ def require_cudf(func):
     if pytest:
         func = pytest.mark.cuda(func)
     func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
+    func = pytest.mark.skipif(cudf is None, reason='cudf not installed')(func)
     return func
 
 
@@ -360,7 +362,7 @@ def require_ray(func):
     if pytest:
         func = pytest.mark.ray(func)
     func = unittest.skipIf(ray is None, reason='ray not installed')(func)
-    func = pytest.mark.skipif(ray is None, reason="ray not installed")(func)
+    func = pytest.mark.skipif(ray is None, reason='ray not installed')(func)
     return func
 
 
