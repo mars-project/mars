@@ -33,9 +33,9 @@ async def destroy_actor(actor_ref):
     return await ctx.destroy_actor(actor_ref)
 
 
-def actor_ref(*args, **kwargs):
+async def actor_ref(*args, **kwargs):
     ctx = get_context()
-    return ctx.actor_ref(*args, **kwargs)
+    return await ctx.actor_ref(*args, **kwargs)
 
 
 class Actor(_Actor):

@@ -26,11 +26,11 @@ from urllib.parse import urlparse
 from .....utils import implements, to_binary, classproperty
 from .....serialization import AioSerializer, AioDeserializer
 from .base import Channel, ChannelType, Server, Client
-from .core import register_client
+from .core import register_client, register_server
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer', '_lock', '_channel_type'
+    __slots__ = 'reader', 'writer', '_channel_type'
 
     name = 'socket'
 
@@ -46,7 +46,6 @@ class SocketChannel(Channel):
                          compression=compression)
         self.reader = reader
         self.writer = writer
-        self._lock = asyncio.Lock()
         self._channel_type = channel_type
 
     @property
@@ -61,18 +60,16 @@ class SocketChannel(Channel):
         serializer = AioSerializer(message, compress=compress)
         buffers = await serializer.run()
 
-        async with self._lock:
-            # write buffers
-            for buffer in buffers:
-                self.writer.write(buffer)
+        # write buffers
+        for buffer in buffers:
+            self.writer.write(buffer)
 
         await self.writer.drain()
 
     @implements(Channel.recv)
     async def recv(self):
-        async with self._lock:
-            deserializer = AioDeserializer(self.reader)
-            return await deserializer.run()
+        deserializer = AioDeserializer(self.reader)
+        return await deserializer.run()
 
     @implements(Channel.close)
     async def close(self):
@@ -115,10 +112,14 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
         reader, writer = args
+        local_address = kwargs.pop('local_address', None)
+        dest_address = kwargs.pop('dest_address', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
         channel = SocketChannel(reader, writer,
+                                local_address=local_address,
+                                dest_address=dest_address,
                                 channel_type=self.channel_type)
         # handle over channel to some handlers
         await self.channel_handler(channel)
@@ -134,6 +135,7 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         return not self._aio_server.is_serving()
 
 
+@register_server
 class SocketServer(_BaseSocketServer):
     __slots__ = 'host', 'port'
 
@@ -164,15 +166,21 @@ class SocketServer(_BaseSocketServer):
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
         config = config.copy()
-        host = config.pop('host')
-        port = int(config.pop('port'))
+        if 'address' in config:
+            address = config.pop('address')
+            host, port = address.split(':', 1)
+            port = int(port)
+        else:
+            host = config.pop('host')
+            port = int(config.pop('port'))
         handle_channel = config.pop('handle_channel')
         if 'start_serving' not in config:
             config['start_serving'] = False
 
         async def handle_connection(reader, writer):
             # create a channel when client connected
-            return await server.on_connected(reader, writer)
+            return await server.on_connected(reader, writer,
+                                             local_address=server.address)
 
         aio_server = await asyncio.start_server(
             handle_connection, host=host, port=port, **config)
@@ -195,7 +203,7 @@ class SocketClient(Client):
         host, port = dest_address.split(':', 1)
         port = int(port)
         (reader, writer) = await asyncio.open_connection(
-            host=host, port=port, local_addr=local_address, **kwargs)
+            host=host, port=port, **kwargs)
         channel = SocketChannel(reader, writer,
                                 local_address=local_address,
                                 dest_address=dest_address)
@@ -208,6 +216,7 @@ def _gen_unix_socket_default_path(process_index):
            f'{md5(to_binary(str(process_index))).hexdigest()}'
 
 
+@register_server
 class UnixSocketServer(_BaseSocketServer):
     __slots__ = 'process_index', 'path'
 
@@ -238,7 +247,10 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.create)
     async def create(config: Dict) -> "Server":
         config = config.copy()
-        process_index = config.pop('process_index')
+        if 'address' in config:
+            process_index = int(urlparse(config.pop('address')).path.lstrip('/'))
+        else:
+            process_index = config.pop('process_index')
         handle_channel = config.pop('handle_channel')
         path = config.pop('path', _gen_unix_socket_default_path(process_index))
 
@@ -251,7 +263,8 @@ class UnixSocketServer(_BaseSocketServer):
 
         async def handle_connection(reader, writer):
             # create a channel when client connected
-            return await server.on_connected(reader, writer)
+            return await server.on_connected(reader, writer,
+                                             local_address=server.address)
 
         aio_server = await asyncio.start_unix_server(
             handle_connection, path=path, **config)

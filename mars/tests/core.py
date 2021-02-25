@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import functools
 import itertools
 import os
@@ -52,7 +51,10 @@ except ImportError:
             return x
         return ident
 
-from unittest import mock
+try:
+    import mock
+except ImportError:
+    from unittest import mock
 _mock = mock
 
 cupy = lazy_import('cupy', globals=globals())
@@ -358,51 +360,8 @@ def require_ray(func):
     if pytest:
         func = pytest.mark.ray(func)
     func = unittest.skipIf(ray is None, reason='ray not installed')(func)
+    func = pytest.mark.skipif(ray is None, reason="ray not installed")(func)
     return func
-
-
-_aio_pid = os.getpid()
-
-
-def aio_case(obj):
-    if isinstance(obj, type):
-        for name, val in obj.__dict__.items():
-            if callable(val) and (name.startswith('test') or name == 'setUp'):
-                setattr(obj, name, aio_case(val))
-        return obj
-    elif callable(obj):
-        try:
-            patchings = obj.patchings
-            obj.patchings = []
-        except AttributeError:
-            patchings = []
-
-        @functools.wraps(obj)
-        def func_wrapper(*args, **kwargs):
-            global _aio_pid
-            try:
-                if _aio_pid != os.getpid():
-                    _aio_pid = os.getpid()
-                    raise RuntimeError('no current event loop')
-                else:
-                    loop = asyncio.get_event_loop()
-            except RuntimeError as ex:
-                if 'no current event loop' in str(ex):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.set_debug(True)
-                else:
-                    raise
-
-            ret = obj(*args, **kwargs)
-            if asyncio.iscoroutine(ret):
-                loop.run_until_complete(ret)
-
-        if patchings:
-            for patching in patchings:
-                func_wrapper = patching.decorate_callable(func_wrapper)
-
-        return func_wrapper
 
 
 def require_hadoop(func):

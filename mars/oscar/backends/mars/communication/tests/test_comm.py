@@ -42,8 +42,6 @@ local_params = params.copy()
 local_params.append((DummyServer, dict(), 'dummy://'))
 
 
-@pytest.mark.skipif(sys.version_info < (3, 7),
-                    reason="requires Python3.7 or higher")
 @pytest.mark.parametrize(
     'server_type, config, con',
     local_params
@@ -107,8 +105,6 @@ def _wrap_test(server_started_event, conf, tp):
     asyncio.run(_test())
 
 
-@pytest.mark.skipif(sys.version_info < (3, 7),
-                    reason="requires Python3.7 or higher")
 @pytest.mark.parametrize(
     'server_type, config, con',
     params

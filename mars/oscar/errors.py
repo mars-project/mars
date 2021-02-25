@@ -25,3 +25,7 @@ class ActorNotExist(Exception):
 
 class ActorAlreadyExist(Exception):
     pass
+
+
+class NoIdleSlot(Exception):
+    pass

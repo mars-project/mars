@@ -15,10 +15,11 @@
 from urllib.parse import urlparse
 from typing import Dict, Type
 
-from .base import Client
+from .base import Client, Server
 
 
 _scheme_to_client_types: Dict[str, Type[Client]] = dict()
+_scheme_to_server_types: Dict[str, Type[Server]] = dict()
 
 
 def register_client(client_type: Type[Client]):
@@ -26,13 +27,39 @@ def register_client(client_type: Type[Client]):
     return client_type
 
 
-def get_client_type(address: str):
-    scheme = urlparse(address).scheme
+def register_server(server_type: Type[Server]):
+    _scheme_to_server_types[server_type.scheme] = server_type
+    return server_type
+
+
+def _check_scheme(scheme: str, types: Dict):
     if scheme == '':
         scheme = None
-    if scheme not in _scheme_to_client_types:  # pragma: no cover
+    if scheme not in types:  # pragma: no cover
         raise ValueError(f'address illegal, address scheme '
                          f'should be one of '
-                         f'{", ".join(_scheme_to_client_types)}, '
+                         f'{", ".join(types)}, '
                          f'got {scheme}')
+    return scheme
+
+
+def get_client_type(address: str) -> Type[Client]:
+    if '://' not in address:
+        scheme = None
+    else:
+        scheme = urlparse(address).scheme
+    scheme = _check_scheme(scheme, _scheme_to_client_types)
     return _scheme_to_client_types[scheme]
+
+
+def get_server_type(address: str) -> Type[Server]:
+    if '://' not in address:
+        scheme = None
+    else:
+        scheme = urlparse(address).scheme
+    scheme = _check_scheme(scheme, _scheme_to_server_types)
+    return _scheme_to_server_types[scheme]
+
+
+def gen_internal_address(process_index: int) -> str:
+    return f'unixsocket:///{process_index}'

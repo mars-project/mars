@@ -100,7 +100,7 @@ cdef class BaseActorContext:
         """
         raise NotImplementedError
 
-    def actor_ref(self, *args, **kwargs):
+    async def actor_ref(self, *args, **kwargs):
         """
         Create a reference to an actor
 
@@ -108,8 +108,7 @@ cdef class BaseActorContext:
         -------
         ActorRef
         """
-        from .utils import create_actor_ref
-        return create_actor_ref(*args, **kwargs)
+        raise NotImplementedError
 
 
 cdef class ClientActorContext(BaseActorContext):
@@ -123,7 +122,12 @@ cdef class ClientActorContext(BaseActorContext):
         self._backend_contexts = dict()
 
     cdef inline object _get_backend_context(self, object address):
-        scheme = urlparse(address).scheme or None
+        if address is None:
+            raise ValueError('address has to be provided')
+        if '://' not in address:
+            scheme = None
+        else:
+            scheme = urlparse(address).scheme or None
         try:
             return self._backend_contexts[scheme]
         except KeyError:
@@ -143,6 +147,12 @@ cdef class ClientActorContext(BaseActorContext):
     def destroy_actor(self, ActorRef actor_ref):
         context = self._get_backend_context(actor_ref.address)
         return context.destroy_actor(actor_ref)
+
+    def actor_ref(self, *args, **kwargs):
+        from .utils import create_actor_ref
+        actor_ref = create_actor_ref(*args, **kwargs)
+        context = self._get_backend_context(actor_ref.address)
+        return context.actor_ref(actor_ref)
 
     def send(self, ActorRef actor_ref, object message, bint wait_response=True):
         context = self._get_backend_context(actor_ref.address)

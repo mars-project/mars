@@ -18,7 +18,7 @@ from typing import Any, Callable, Coroutine, Dict, Type
 
 from .....utils import implements, classproperty
 from .base import Channel, ChannelType, Server, Client
-from .core import register_client
+from .core import register_client, register_server
 from .errors import ChannelClosed
 
 DUMMY_ADDRESS = 'dummy://'
@@ -77,6 +77,7 @@ class DummyChannel(Channel):
         return self._closed.is_set()
 
 
+@register_server
 class DummyServer(Server):
     __slots__ = '_closed',
 
@@ -107,11 +108,20 @@ class DummyServer(Server):
     @implements(Server.create)
     async def create(config: Dict) -> "DummyServer":
         config = config.copy()
+        address = config.pop('address', DUMMY_ADDRESS)
+        handle_channel = config.pop('handle_channel')
+        if address != DUMMY_ADDRESS:  # pragma: no cover
+            raise ValueError(f'Address for DummyServer '
+                             f'should be {DUMMY_ADDRESS}, '
+                             f'got {address}')
+        if config:  # pragma: no cover
+            raise TypeError(f'Creating DummyServer got unexpected '
+                            f'arguments: {",".join(config)}')
+
         # DummyServer is singleton
         if DummyServer._instance is not None:
             return DummyServer._instance
 
-        handle_channel = config.pop('handle_channel')
         server = DummyServer(DUMMY_ADDRESS, handle_channel)
         DummyServer._instance = server
         return server
@@ -153,7 +163,6 @@ class DummyServer(Server):
 class DummyClient(Client):
     __slots__ = '_task',
 
-    _instance = None
     scheme = DummyServer.scheme
 
     def __init__(self,
@@ -170,10 +179,6 @@ class DummyClient(Client):
     async def connect(dest_address: str,
                       local_address: str = None,
                       **kwargs) -> "Client":
-        if DummyClient._instance is not None:  # pragma: no cover
-            # DummyClient is singleton
-            return DummyClient._instance
-
         if dest_address != DUMMY_ADDRESS:  # pragma: no cover
             raise ValueError(f'Destination address has to be "dummy://" '
                              f'for DummyClient, got {dest_address}')
@@ -190,7 +195,6 @@ class DummyClient(Client):
         task = asyncio.create_task(conn_coro)
         client = DummyClient(local_address, dest_address, client_channel)
         client._task = task
-        DummyClient._instance = client
         return client
 
     @implements(Client.close)

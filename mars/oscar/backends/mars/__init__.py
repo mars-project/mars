@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .backend import MarsActorBackend
+from .pool import create_actor_pool

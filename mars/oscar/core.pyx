@@ -17,6 +17,7 @@ cimport cython
 import sys
 
 from .utils cimport is_async_generator
+from .utils import create_actor_ref
 
 
 cdef class ActorRef:
@@ -61,6 +62,14 @@ cdef class ActorRef:
         except KeyError:
             method = self._methods[item] = ActorRefMethod(self, item)
             return method
+
+    def __hash__(self):
+        return hash((type(self), self.address, self.uid))
+
+    def __eq__(self, other):
+        return isinstance(other, ActorRef) and \
+               other.address == self.address and \
+               other.uid == self.uid
 
 
 cdef class ActorRefMethod:
@@ -124,8 +133,7 @@ cdef class _Actor:
         self._address = addr
 
     cpdef ActorRef ref(self):
-        from .context import get_context
-        return get_context().actor_ref(self._address, self._uid)
+        return create_actor_ref(self._address, self._uid)
 
     async def _handle_actor_result(self, result):
         cdef int result_pos
