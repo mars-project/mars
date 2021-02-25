@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 from numbers import Number
-from typing import Dict
+from typing import Dict, Type
 
 
 class BaseActorDriver(ABC):
@@ -32,9 +32,9 @@ class BaseActorDriver(ABC):
         pass
 
 
-_backend_driver_cls: Dict = dict()
+_backend_driver_cls: Dict[str, Type[BaseActorDriver]] = dict()
 
 
-def register_backend_driver(scheme, cls):
+def register_backend_driver(scheme: str, cls: Type[BaseActorDriver]):
     assert issubclass(cls, BaseActorDriver)
     _backend_driver_cls[scheme] = cls

@@ -13,19 +13,16 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Dict, Type
 
 from .context import register_backend_context
 from .driver import register_backend_driver
 
 
-__all__ = ["BaseActorBackend", "register_backend"]
+__all__ = ["BaseActorBackend", "register_backend", "get_backend"]
 
 
 class BaseActorBackend(ABC):
-    # allocate strategy is for Mars backend only
-    support_allocate_strategy = False
-
     @staticmethod
     @abstractmethod
     def name():
@@ -37,12 +34,28 @@ class BaseActorBackend(ABC):
         pass
 
     @staticmethod
+    async def create_actor_pool(
+        address: str,
+        n_process: int = None,
+        **kwargs
+    ):
+        pass
+
+    @staticmethod
     @abstractmethod
     def get_driver_cls():
         pass
 
 
+_scheme_to_backend_cls: Dict[str, Type[BaseActorBackend]] = dict()
+
+
 def register_backend(backend_cls: Type[BaseActorBackend]):
+    _scheme_to_backend_cls[backend_cls.name()] = backend_cls
     register_backend_context(backend_cls.name(), backend_cls.get_context_cls())
     register_backend_driver(backend_cls.name(), backend_cls.get_driver_cls())
     return backend_cls
+
+
+def get_backend(name):
+    return _scheme_to_backend_cls[name]

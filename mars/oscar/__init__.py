@@ -16,15 +16,10 @@
 from ..lib import aio
 del aio
 
-from .api import actor_ref, create_actor, has_actor, destroy_actor, Actor
-from .core import ActorRef
-from .context import get_context
+from .api import actor_ref, create_actor, has_actor, destroy_actor, \
+    Actor, create_actor_pool
 from .errors import ActorNotExist, ActorAlreadyExist
 from .utils import create_actor_ref
-
-# make sure aio methods are patched
-from ..lib import aio
-del aio
 
 # make sure methods are registered
 from .backends import mars, ray

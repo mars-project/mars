@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from urllib.parse import urlparse
 from typing import Any, Dict, Type, Tuple
 
+from .backend import get_backend
 from .context import get_context
 from .core import _Actor
 
@@ -36,6 +38,20 @@ async def destroy_actor(actor_ref):
 async def actor_ref(*args, **kwargs):
     ctx = get_context()
     return await ctx.actor_ref(*args, **kwargs)
+
+
+async def create_actor_pool(address: str,
+                            n_process: int = None,
+                            **kwargs):
+    if address is None:
+        raise ValueError('address has to be provided')
+    if '://' not in address:
+        scheme = None
+    else:
+        scheme = urlparse(address).scheme or None
+
+    return await get_backend(scheme).create_actor_pool(
+        address, n_process=n_process, **kwargs)
 
 
 class Actor(_Actor):

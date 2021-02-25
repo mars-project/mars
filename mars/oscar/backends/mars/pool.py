@@ -779,7 +779,7 @@ class MainActorPool(ActorPoolBase):
 
 
 async def create_actor_pool(address: str,
-                            n_process=None,
+                            n_process: int = None,
                             labels: List[str] = None,
                             ports: List[int] = None,
                             envs: List[Dict] = None,

@@ -22,8 +22,6 @@ __all__ = ['MarsActorBackend']
 
 @register_backend
 class MarsActorBackend(BaseActorBackend):
-    support_allocate_strategy = True
-
     @staticmethod
     def name():
         # return None because Mars is default scheme
@@ -36,3 +34,12 @@ class MarsActorBackend(BaseActorBackend):
     @staticmethod
     def get_driver_cls():
         return MarsActorDriver
+
+    @staticmethod
+    async def create_actor_pool(
+            address: str,
+            n_process: int = None,
+            **kwargs):
+        from .pool import create_actor_pool
+        return await create_actor_pool(
+            address, n_process=n_process, **kwargs)

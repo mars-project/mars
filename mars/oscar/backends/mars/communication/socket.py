@@ -213,7 +213,7 @@ class SocketClient(Client):
 @lru_cache(100)
 def _gen_unix_socket_default_path(process_index):
     return f'{tempfile.gettempdir()}/mars/' \
-           f'{md5(to_binary(str(process_index))).hexdigest()}'
+           f'{md5(to_binary(str(process_index))).hexdigest()}'  # nosec
 
 
 @register_server

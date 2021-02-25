@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.oscar.backends.mars import create_actor_pool
 from mars.utils import get_next_port
 
 
@@ -176,7 +175,8 @@ class PromiseTestActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool_context():
-    pool = await create_actor_pool(f'127.0.0.1:{get_next_port()}', n_process=2)
+    pool = await mo.create_actor_pool(
+        f'127.0.0.1:{get_next_port()}', n_process=2)
     await pool.start()
     yield pool
     await pool.stop()

@@ -23,6 +23,9 @@ cdef object _context = None
 
 
 cdef class BaseActorContext:
+    # allocate strategy is for Mars backend only
+    support_allocate_strategy = False
+
     """
     Base class for actor context. Every backend need to implement
     actor context for their own.

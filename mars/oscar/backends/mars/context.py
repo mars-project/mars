@@ -31,6 +31,8 @@ from .router import Router
 class MarsActorContext(BaseActorContext):
     __slots__ = '_address', '_caller'
 
+    support_allocate_strategy = True
+
     def __init__(self, address: str = None):
         self._address = address
         self._caller = ActorCaller()

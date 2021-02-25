@@ -113,7 +113,7 @@ else:
 
 def _discover_pyx():
     exts = dict()
-    for root, dirs, files in os.walk(os.path.join(repo_root, 'mars')):
+    for root, _, files in os.walk(os.path.join(repo_root, 'mars')):
         for fn in files:
             if not fn.endswith('.pyx'):
                 continue
