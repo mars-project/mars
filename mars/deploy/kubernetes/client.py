@@ -277,6 +277,7 @@ class KubernetesCluster:
             'mars/service-type=' + MarsWorkersConfig.rc_name,
             'mars/service-type=' + MarsWebsConfig.rc_name,
             ]
+        logger.debug('Start waiting pods to be ready')
         wait_services_ready(selectors, limits,
                             lambda sel: self._get_ready_pod_count(sel),
                             timeout=self._timeout)
