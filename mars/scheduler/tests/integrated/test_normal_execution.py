@@ -216,6 +216,28 @@ class Test(SchedulerIntegratedTest):
         result = r2.fetch(session=sess)
         pd.testing.assert_frame_equal(result.reset_index(drop=True), expected.reset_index(drop=True))
 
+        # test groupby with sample
+        src_data_list = []
+        sample_count = 10
+        for b in range(5):
+            data_count = int(np.random.randint(40, 100))
+            src_data_list.append(pd.DataFrame({
+                'a': np.random.randint(0, 100, size=data_count),
+                'b': np.array([b] * data_count),
+                'c': np.random.randint(0, 100, size=data_count),
+                'd': np.random.randint(0, 100, size=data_count),
+            }))
+        data = pd.concat(src_data_list)
+        shuffle_idx = np.arange(len(data))
+        np.random.shuffle(shuffle_idx)
+        data = data.iloc[shuffle_idx].reset_index(drop=True)
+
+        df7 = md.DataFrame(data, chunk_size=40)
+        sampled = df7.groupby('b').sample(10)
+        r = sampled.execute(session=sess, timeout=self.timeout)
+        result = r.fetch(session=sess)
+        self.assertFalse((result.groupby('b').count() - sample_count).any()[0])
+
     def testIterativeTilingWithoutEtcd(self):
         self.start_processes(etcd=False)
         sess = new_session(self.session_manager_ref.address)

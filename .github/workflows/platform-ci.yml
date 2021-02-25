@@ -49,7 +49,7 @@ jobs:
           if [[ $UNAME == "windows" ]]; then
             pip install virtualenv flake8
           else
-            pip install virtualenv flaky flake8 etcd-gevent ray\<1.2.0
+            pip install virtualenv flaky flake8 etcd-gevent ray
             if [ -n "$WITH_KUBERNETES" ]; then
               ./.github/workflows/install-minikube.sh
               pip install kubernetes
@@ -155,7 +155,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/ray mars/storage
             coverage report
           fi
           coverage xml

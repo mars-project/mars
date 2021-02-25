@@ -37,6 +37,7 @@ ignore:
   - "mars/learn/cluster/_k_means_lloyd.pyx"
   - "mars/learn/utils/_cython_blas.*"
   - "mars/tensor/einsum/einsumfunc.py"
+  - "mars/storage/cuda.py"
   - "**/*.html"
   - "**/*.pxd"
   - "**/tests"

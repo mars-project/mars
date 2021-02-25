@@ -25,6 +25,7 @@ def _install():
     from .getitem import df_groupby_getitem
     from .head import head
     from .transform import groupby_transform
+    from .sample import groupby_sample
 
     for cls in DATAFRAME_TYPE:
         setattr(cls, 'groupby', groupby)
@@ -62,6 +63,8 @@ def _install():
         setattr(cls, 'cumsum', cumsum)
 
         setattr(cls, 'head', head)
+
+        setattr(cls, 'sample', groupby_sample)
 
     for cls in DATAFRAME_GROUPBY_TYPE:
         setattr(cls, '__getitem__', df_groupby_getitem)

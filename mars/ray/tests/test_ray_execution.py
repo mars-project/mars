@@ -88,8 +88,18 @@ class Test(unittest.TestCase):
 
     @flaky(max_runs=3)
     def testRayClusterMode(self):
-        with new_session(backend='ray', _load_code_from_local=True).as_default():
+        def _test():
             t = mt.random.RandomState(0).rand(100, 4, chunk_size=30)
             df = md.DataFrame(t, columns=list('abcd'))
             r = df.describe().execute()
             self.assertEqual(r.shape, (8, 4))
+
+        try:
+            with new_session(backend='ray', _load_code_from_local=True).as_default():
+                _test()
+        except TypeError:  # ray >= 1.2.0
+            import ray
+
+            job_config = ray.job_config.JobConfig(code_search_path=['.'])
+            with new_session(backend='ray', job_config=job_config).as_default():
+                _test()
