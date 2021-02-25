@@ -98,6 +98,10 @@ class GroupByWrapper:
             shape[1] = len(self.selection)
         return tuple(shape)
 
+    @property
+    def _selected_obj(self):
+        return getattr(self.groupby_obj, '_selected_obj')
+
     def to_tuple(self, truncate=False, pickle_function=False):
         if self.selection and truncate:
             if isinstance(self.selection, Iterable) and not isinstance(self.selection, str):
