@@ -49,13 +49,14 @@ def _sample_groupby_iter(groupby, obj_index, n, frac, replace, weights,
         weights = pd.Series(weights, index=obj_index)
         ws = [weights.iloc[idx] for idx in groupby.indices.values()]
 
+    group_iterator = groupby.grouper.get_iterator(groupby._selected_obj)
     if not replace and errors == 'ignore':
-        for (_, obj), w in zip(groupby, ws):
+        for (_, obj), w in zip(group_iterator, ws):
             yield obj.sample(
                 n=n, frac=frac, replace=replace, weights=w, random_state=random_state
             ) if len(obj) > n else obj
     else:
-        for (_, obj), w in zip(groupby, ws):
+        for (_, obj), w in zip(group_iterator, ws):
             yield obj.sample(
                 n=n, frac=frac, replace=replace, weights=w, random_state=random_state
             )
@@ -506,9 +507,6 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
                     weights=weights, random_state=op.random_state, errors=op.errors,
                 )
             ])
-            if selection and out_df.ndim > 1 and len(result.columns) != len(out_df.dtypes):
-                # pandas-dev/pandas#39928
-                result = result[selection]
             ctx[out_df.key] = result
 
 
@@ -606,6 +604,7 @@ def groupby_sample(groupby, n=None, frac=None, replace=False, weights=None,
     if weights is not None and not isinstance(weights, (Base, Entity)):
         weights = asseries(weights)
 
+    n = 1 if n is None and frac is None else n
     rs = copy.deepcopy(
         random_state.to_numpy() if hasattr(random_state, 'to_numpy') else random_state)
     op = GroupBySample(size=n, frac=frac, replace=replace, weights=weights,
