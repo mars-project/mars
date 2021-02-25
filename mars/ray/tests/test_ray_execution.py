@@ -32,7 +32,8 @@ ray = lazy_import('ray', globals=globals())
 
 @require_ray
 class Test(unittest.TestCase):
-    def tearDown(self) -> None:
+    @classmethod
+    def tearDownClass(cls) -> None:
         ray.shutdown()
 
     def testRayTask(self):
