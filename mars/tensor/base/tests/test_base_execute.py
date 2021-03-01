@@ -284,6 +284,13 @@ class Test(TestBase):
         self.assertTrue(np.array_equal(res.toarray(),
                                        np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray())))
 
+        # GH 2009
+        raw_x = np.arange(9.).reshape(3, 3)
+        x = arange(9.).reshape(3, 3)
+        arr = where(x < 5, 2, -1)
+        res = self.executor.execute_tensor(arr, concat=True)[0]
+        np.testing.assert_array_equal(res, np.where(raw_x < 5, 2, -1))
+
     def testReshapeExecution(self):
         raw_data = np.random.rand(10, 20, 30)
         x = tensor(raw_data, chunk_size=6)
