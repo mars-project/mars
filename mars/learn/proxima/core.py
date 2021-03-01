@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tempfile
-
 import numpy as np
 
 try:
@@ -21,13 +19,9 @@ try:
 except ImportError:  # pragma: no cover
     proxima = None
 
-from ... import opcodes
 from ... import tensor as mt
-from ...operands import OutputType
-from ...serialize import BoolField, TupleField, DataTypeField, Int64Field, \
-    SliceField, StringField
+from ...tensor.merge import TensorConcatenate
 from ...tensor.indexing import TensorSlice
-from ..operands import LearnOperand, LearnOperandMixin
 
 
 available_numpy_dtypes = [
@@ -51,66 +45,8 @@ if proxima:
                      in zip(available_numpy_dtypes, _proxima_types)}
 
 
-class ProximaArrayMmap(LearnOperand, LearnOperandMixin):
-    _op_type_ = opcodes.PROXIMA_ARRAY_MMAP
-
-    _prefix = StringField('prefix')
-    _create_mmap_file = BoolField('create_mmap_file')
-    _array_shape = TupleField('array_shape')
-    _array_dtype = DataTypeField('array_dtype')
-    _offset = Int64Field('offset')
-    _partition_slice = SliceField('partition_slice')
-
-    def __init__(self, create_mmap_file=None, array_shape=None, array_dtype=None,
-                 prefix=None, offset=None, partition_slice=None, output_types=None, **kw):
-        super().__init__(_create_mmap_file=create_mmap_file,
-                         _array_shape=array_shape,
-                         _array_dtype=array_dtype,
-                         _prefix=prefix, _offset=offset,
-                         _partition_slice=partition_slice,
-                         _output_types=output_types, **kw)
-        if self._output_types is None:
-            self._output_types = [OutputType.object]
-
-    @property
-    def create_mmap_file(self):
-        return self._create_mmap_file
-
-    @property
-    def array_shape(self):
-        return self._array_shape
-
-    @property
-    def array_dtype(self):
-        return self._array_dtype
-
-    @property
-    def prefix(self):
-        return self._prefix
-
-    @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def partition_slice(self):
-        return self._partition_slice
-
-    @classmethod
-    def execute(cls, ctx, op):
-        if op.create_mmap_file:
-            path = tempfile.mkstemp(prefix=op.prefix, suffix='.dat')[1]
-            np.memmap(path, dtype=op.array_dtype, mode='w+', shape=op.array_shape)
-            ctx[op.outputs[0].key] = path
-        else:
-            path = ctx[op.inputs[0].key]
-            array = ctx[op.inputs[1].key]
-            fp = np.memmap(path, dtype=op.array_dtype, mode='r+', shape=op.array_shape)
-            fp[op.partition_slice] = array
-            ctx[op.outputs[0].key] = path
-
-
 def rechunk_tensor(tensor, chunk_size):
+    # TODO(hks): Provide a unify rechunk logic with mmap.
     cur_chunks = []
 
     out_nchunks = tensor.shape[0] // chunk_size
@@ -162,16 +98,14 @@ def rechunk_tensor(tensor, chunk_size):
     return out_groups
 
 
-def build_mmap_chunks(chunks, worker, file_prefix, offset=0):
+def build_mmap_chunks(chunks, worker, file_prefix):
     write_mmap_chunks = []
     nrows = sum(c.shape[0] for c in chunks)
     array_shape = (nrows, chunks[0].shape[1])
     array_dtype = chunks[0].dtype
-    create_mmap_op = ProximaArrayMmap(create_mmap_file=True,
-                                      array_shape=array_shape,
-                                      array_dtype=array_dtype,
-                                      prefix=file_prefix,
-                                      offset=offset)
+    create_mmap_op = TensorConcatenate(mmap=True, create_mmap_file=True,
+                                       total_shape=array_shape,
+                                       file_prefix=file_prefix)
     create_mmap_op._expect_worker = worker
     create_mmap_chunk = create_mmap_op.new_chunk(
         None, index=(0,), shape=(), dtype=array_dtype)
@@ -179,11 +113,9 @@ def build_mmap_chunks(chunks, worker, file_prefix, offset=0):
     for j, chk in enumerate(chunks):
         s = slice(start_index, start_index + chk.shape[0])
         start_index += chk.shape[0]
-        write_mmap_op = ProximaArrayMmap(create_mmap_file=False,
-                                         array_shape=array_shape,
-                                         array_dtype=array_dtype,
-                                         offset=offset,
-                                         partition_slice=s)
+        write_mmap_op = TensorConcatenate(mmap=True, create_mmap_file=False,
+                                          total_shape=array_shape,
+                                          partition_slice=s)
         write_mmap_op._expect_worker = worker
         write_mmap_chunk = write_mmap_op.new_chunk([create_mmap_chunk, chk],
                                                    index=(j + 1, 0), shape=(),

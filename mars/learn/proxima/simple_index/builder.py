@@ -203,11 +203,13 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         worker_iter = iter(itertools.cycle(ctx.get_worker_addresses() or [None]))
         chunk_groups = rechunk_tensor(tensor, index_chunk_size)
         out_chunks = []
+        offsets = []
         offset = 0
         for chunk_group in chunk_groups:
+            offsets.append(offset)
             file_prefix = f'proxima-build-{str(uuid.uuid4())}'
             out_chunks.append(build_mmap_chunks(chunk_group, next(worker_iter),
-                                                offset=offset, file_prefix=file_prefix))
+                                                file_prefix=file_prefix))
             offset += sum(c.shape[0] for c in chunk_group)
 
         final_out_chunks = []
@@ -217,7 +219,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
             chunk_op._expect_worker = chunks[0].op.expect_worker
             chunk_op._array_shape = chunks[0].op.array_shape
             chunk_op._array_dtype = chunks[0].op.array_dtype
-            chunk_op._offset = chunks[0].op.offset
+            chunk_op._offset = offsets[0]
             out_chunk = chunk_op.new_chunk(chunks, index=(j,))
             final_out_chunks.append(out_chunk)
 
@@ -234,7 +236,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         mmap_path = ctx[op.inputs[0].key]
         out = op.outputs[0]
 
-        data = np.load(mmap_path)
+        data = np.memmap(mmap_path, dtype=op.array_dtype, mode='r',
+                         shape=op.array_shape)
 
         proxima_type = get_proxima_type(op.array_dtype)
         offset = op.offset
