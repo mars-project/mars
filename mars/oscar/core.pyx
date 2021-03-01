@@ -15,9 +15,17 @@
 import asyncio
 cimport cython
 import sys
+import weakref
 
 from .utils cimport is_async_generator
 from .utils import create_actor_ref
+
+
+CALL_METHOD_DEFAULT = 0
+CALL_METHOD_BATCH = 1
+
+
+_coro_to_arg = weakref.WeakKeyDictionary()
 
 
 cdef class ActorRef:
@@ -43,6 +51,27 @@ cdef class ActorRef:
         from .context import get_context
         ctx = get_context()
         return ctx.destroy_actor(self)
+
+    def batch(self, *calls):
+        cdef list args_list = []
+        cdef list kwargs_list = []
+
+        last_call_type = last_method = None
+        for ref_call in calls:
+            call_type, (method, _call_method, args, kwargs) = _coro_to_arg.pop(ref_call)
+            if (last_call_type is not None and call_type != last_call_type) \
+                    or (last_method is not None and method != last_method):
+                raise ValueError('Does not support calling multiple methods in batch')
+            last_call_type = call_type
+            last_method = method
+
+            args_list.append(args)
+            kwargs_list.append(kwargs)
+
+        if last_call_type == 'send':
+            return self.__send__((last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {}))
+        else:
+            return self.__tell__((last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {}))
 
     def __getstate__(self):
         return self.address, self.uid
@@ -87,15 +116,21 @@ cdef class ActorRefMethod:
         return self.send(*args, **kwargs)
 
     def send(self, *args, **kwargs):
-        return self.ref.__send__((self.method_name,) + args + (kwargs,))
+        arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
+        coro = self.ref.__send__(arg_tuple)
+        _coro_to_arg[coro] = ('send', arg_tuple)
+        return coro
 
     def tell(self, *args, **kwargs):
-        return self.ref.__tell__((self.method_name,) + args + (kwargs,))
+        arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
+        coro = self.ref.__tell__(arg_tuple)
+        _coro_to_arg[coro] = ('tell', arg_tuple)
+        return coro
 
     def tell_delay(self, *args, delay=None, **kwargs):
         async def delay_fun():
             await asyncio.sleep(delay)
-            await self.ref.__tell__((self.method_name,) + args + (kwargs,))
+            await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
 
         asyncio.create_task(delay_fun())
 
@@ -215,11 +250,16 @@ cdef class _Actor:
         message : tuple
             Message shall be (method_name,) + args + (kwargs,)
         """
-        method = message[0]
-        args = message[1:-1]
-        kwargs = message[-1]
+        method, call_method, args, kwargs = message
+        if call_method == CALL_METHOD_DEFAULT:
+            func = getattr(self, method)
+        elif call_method == CALL_METHOD_BATCH:
+            func = getattr(self, method).batch
+        else:  # pragma: no cover
+            raise ValueError(f'call_method {call_method} not valid')
+
         async with self._lock:
-            result = getattr(self, method)(*args, **kwargs)
+            result = func(*args, **kwargs)
             if asyncio.iscoroutine(result):
                 result = await result
         return await self._handle_actor_result(result)
