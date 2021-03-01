@@ -59,7 +59,7 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         self._y = self._inputs[2]
 
     def __call__(self, condition, x, y, shape=None):
-        shape = shape or broadcast_shape(x.shape, y.shape)
+        shape = shape or broadcast_shape(condition.shape, x.shape, y.shape)
         return self.new_tensor([condition, x, y], shape)
 
     @classmethod
@@ -72,12 +72,12 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
         output = op.outputs[0]
 
         out_chunks = []
-        nsplits = [[None] * shape for shape in out_chunk_shape]
+        nsplits = [[np.nan] * shape for shape in out_chunk_shape]
         get_index = lambda idx, t: tuple(0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx))
         for out_index in itertools.product(*(map(range, out_chunk_shape))):
             in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
                          for t in inputs]
-            chunk_shape = broadcast_shape(*(c.shape for c in in_chunks[1:]))
+            chunk_shape = broadcast_shape(*(c.shape for c in in_chunks))
             out_chunk = op.copy().reset_key().new_chunk(in_chunks, shape=chunk_shape,
                                                         index=out_index, order=output.order)
             out_chunks.append(out_chunk)
