@@ -174,7 +174,8 @@ class ReadinessActor(FunctionActor):
     Dummy actor indicating service start
     """
     def post_create(self):
-        logger.debug('ReadinessActor created as %s, pod should be ready by now.', self.uid)
+        logger.debug('ReadinessActor created as %s, pod %s should be ready by now.',
+                     self.uid, os.environ['MARS_K8S_POD_NAME'])
 
     @classmethod
     def default_uid(cls):

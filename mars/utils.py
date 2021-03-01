@@ -719,9 +719,9 @@ def check_chunks_unknown_shape(tileables, error_cls):
 def has_unknown_shape(tiled):
     if getattr(tiled, 'shape', None) is None:
         return False
-    if any(np.isnan(s) for s in tiled.shape):
+    if any(pd.isnull(s) for s in tiled.shape):
         return True
-    if any(np.isnan(s) for s in itertools.chain(*tiled.nsplits)):
+    if any(pd.isnull(s) for s in itertools.chain(*tiled.nsplits)):
         return True
     return False
 

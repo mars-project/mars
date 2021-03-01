@@ -465,7 +465,7 @@ class MarsSchedulersConfig(MarsReplicationControllerConfig):
         readiness_cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('probe'),
         ]
-        return ExecProbeConfig(readiness_cmd, timeout=5, failure_thresh=3)
+        return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=10)
 
     def build_container_command(self):
         cmd = [
@@ -515,7 +515,7 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         readiness_cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('probe'),
         ]
-        return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=3)
+        return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=10)
 
     def build_container_command(self):
         cmd = [
@@ -534,7 +534,7 @@ class MarsWebsConfig(MarsReplicationControllerConfig):
 
     def config_readiness_probe(self):
         if self._service_port:
-            return TcpProbeConfig(self._service_port, timeout=60, failure_thresh=3)
+            return TcpProbeConfig(self._service_port, timeout=60, failure_thresh=10)
 
     def build_container_command(self):
         cmd = [

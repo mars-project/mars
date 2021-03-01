@@ -42,7 +42,7 @@ class TensorElementWise(TensorOperandMixin):
         out_chunk_shape = broadcast_shape(*chunk_shapes)
 
         out_chunks = [list() for _ in op.outputs]
-        nsplits = [[None] * shape for shape in out_chunk_shape]
+        nsplits = [[np.nan] * shape for shape in out_chunk_shape]
         get_index = lambda idx, t: tuple(0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx))
         for out_index in itertools.product(*(map(range, out_chunk_shape))):
             in_chunks = [t.cix[get_index(out_index[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
