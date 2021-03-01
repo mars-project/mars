@@ -1239,7 +1239,7 @@ class AsyncMethodWrapper:
     async def batch(self, args_list, kwargs_list):
         if self._batch_func is not None:
             return await self._batch_func(args_list, kwargs_list)
-        return asyncio.gather(*[
+        return await asyncio.gather(*[
             self.func(*args, **kwargs) for args, kwargs in zip(args_list, kwargs_list)]
         )
 

@@ -90,39 +90,39 @@ async def test_sub_actor_pool(notify_main_pool):
     assert (await pool.actor_ref(actor_ref_message)).result == actor_ref
 
     tell_message = TellMessage(
-        new_message_id(), actor_ref, ('add', 1, dict()))
+        new_message_id(), actor_ref, ('add', 0, (1,), dict()))
     message = await pool.tell(tell_message)
     assert message.result is None
 
     send_message = SendMessage(
-        new_message_id(), actor_ref, ('add', 3, dict()))
+        new_message_id(), actor_ref, ('add', 0, (3,), dict()))
     message = await pool.send(send_message)
     assert message.result == 4
 
     # test error message
     # type mismatch
     send_message = SendMessage(
-        new_message_id(), actor_ref, ('add', '3', dict()))
+        new_message_id(), actor_ref, ('add', 0, ('3',), dict()))
     result = await pool.send(send_message)
     assert result.message_type == MessageType.error
     assert isinstance(result.error, TypeError)
 
     send_message = SendMessage(
         new_message_id(), create_actor_ref(actor_ref.address, 'non_exist'),
-        ('add', 3, dict()))
+        ('add', 0, (3,), dict()))
     result = await pool.send(send_message)
     assert isinstance(result.error, ActorNotExist)
 
     # test processing message on background
     async with await pool.router.get_client(pool.external_address) as client:
         send_message = SendMessage(
-            new_message_id(), actor_ref, ('add', 5, dict()))
+            new_message_id(), actor_ref, ('add', 0, (5,), dict()))
         await client.send(send_message)
         result = await client.recv()
         assert result.result == 9
 
         send_message = SendMessage(
-            new_message_id(), actor_ref, ('add', '5', dict()))
+            new_message_id(), actor_ref, ('add', 0, ('5',), dict()))
         await client.send(send_message)
         result = await client.recv()
         assert isinstance(result.error, TypeError)
@@ -213,29 +213,29 @@ async def test_main_actor_pool():
 
         # tell
         tell_message = TellMessage(
-            new_message_id(), actor_ref1, ('add', 2, dict()))
+            new_message_id(), actor_ref1, ('add', 0, (2,), dict()))
         message = await pool.tell(tell_message)
         assert message.result is None
 
         # send
         send_message = SendMessage(
-            new_message_id(), actor_ref1, ('add', 4, dict()))
+            new_message_id(), actor_ref1, ('add', 0, (4,), dict()))
         assert (await pool.send(send_message)).result == 6
 
         # test error message
         # type mismatch
         send_message = SendMessage(
-            new_message_id(), actor_ref1, ('add', '3', dict()))
+            new_message_id(), actor_ref1, ('add', 0, ('3',), dict()))
         result = await pool.send(send_message)
         assert isinstance(result.error, TypeError)
 
         # send and tell to main process
         tell_message = TellMessage(
-            new_message_id(), actor_ref, ('add', 2, dict()))
+            new_message_id(), actor_ref, ('add', 0, (2,), dict()))
         message = await pool.tell(tell_message)
         assert message.result is None
         send_message = SendMessage(
-            new_message_id(), actor_ref, ('add', 4, dict()))
+            new_message_id(), actor_ref, ('add', 0, (4,), dict()))
         assert (await pool.send(send_message)).result == 6
 
         # destroy
