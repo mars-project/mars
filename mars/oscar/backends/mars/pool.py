@@ -19,7 +19,7 @@ import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type
 
-from ....utils import implements, get_next_port
+from ....utils import implements, get_next_port, to_binary
 from ...api import Actor
 from ...core import ActorRef
 from ...errors import ActorAlreadyExist, ActorNotExist
@@ -687,6 +687,7 @@ class MainActorPool(ActorPoolBase):
     async def actor_ref(self,
                         message: ActorRefMessage) -> result_message_type:
         actor_ref = message.actor_ref
+        actor_ref.uid = to_binary(actor_ref.uid)
         if actor_ref.address == self.external_address and \
                 actor_ref.uid in self._actors:
             return ResultMessage(
@@ -703,7 +704,7 @@ class MainActorPool(ActorPoolBase):
 
         with _ErrorProcessor(message.message_id,
                              protocol=message.protocol) as processor:
-            raise ActorNotExist(f'Actor {actor_ref.uid} does not exist')
+            raise ActorNotExist(f'Actor {actor_ref.uid} does not exist in {actor_ref.address}')
 
         return processor.result
 
