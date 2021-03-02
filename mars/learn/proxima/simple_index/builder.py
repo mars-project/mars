@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
 import os
 import pickle  # nosec  # pylint: disable=import_pickle
 import tempfile
+import uuid
 
 import numpy as np
 
@@ -24,15 +26,15 @@ from .... import tensor as mt
 from ....context import get_context, RunningMode
 from ....lib.filesystem import get_fs, LocalFileSystem
 from ....operands import OutputType, OperandStage
-from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
-    DictField, BytesField
+from ....serialize import StringField, Int32Field, Int64Field, \
+    DictField, BytesField, TupleField, DataTypeField
 from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, get_proxima_type, validate_tensor, available_numpy_dtypes
+from ..core import proxima, get_proxima_type, validate_tensor, \
+    available_numpy_dtypes, rechunk_tensor, build_mmap_chunks
 
 logger = logging.getLogger(__name__)
-
 
 DEFAULT_INDEX_SIZE = 5 * 10 ** 6
 
@@ -40,8 +42,6 @@ DEFAULT_INDEX_SIZE = 5 * 10 ** 6
 class ProximaBuilder(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.PROXIMA_SIMPLE_BUILDER
 
-    _tensor = KeyField('tensor')  # doc
-    _pk = KeyField('pk')
     _distance_metric = StringField('distance_metric')
     _dimension = Int32Field('dimension')
     _column_number = Int64Field('column_number')
@@ -55,27 +55,26 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                                   on_serialize=pickle.dumps,
                                   on_deserialize=pickle.loads)
 
-    def __init__(self, tensor=None, pk=None, distance_metric=None,
-                 index_path=None, dimension=None, column_number=None,
+    # only for chunk
+    _array_shape = TupleField('array_shape')
+    _array_dtype = DataTypeField('array_dtype')
+    _offset = Int64Field('offset')
+
+    def __init__(self, distance_metric=None, index_path=None,
+                 dimension=None, column_number=None,
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
+                 array_shape=None, array_dtype=None, offset=None,
                  topk=None, storage_options=None, output_types=None, stage=None, **kw):
-        super().__init__(_tensor=tensor, _pk=pk, _distance_metric=distance_metric, _index_path=index_path,
+        super().__init__(_distance_metric=distance_metric, _index_path=index_path,
                          _dimension=dimension, _column_number=column_number, _index_builder=index_builder,
                          _index_builder_params=index_builder_params,
+                         _array_shape=array_shape, _array_dtype=array_dtype, _offset=offset,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
                          _topk=topk, _storage_options=storage_options,
                          _output_types=output_types, _stage=stage, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
-
-    @property
-    def tensor(self):
-        return self._tensor
-
-    @property
-    def pk(self):
-        return self._pk
 
     @property
     def distance_metric(self):
@@ -117,11 +116,17 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
     def storage_options(self):
         return self._storage_options
 
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        self._tensor = self._inputs[0]
-        if len(self._inputs) == 2:
-            self._pk = self._inputs[-1]
+    @property
+    def array_shape(self):
+        return self._array_shape
+
+    @property
+    def array_dtype(self):
+        return self._array_dtype
+
+    @property
+    def offset(self):
+        return self._offset
 
     def __call__(self, tensor):
         return self.new_tileable([tensor])
@@ -153,7 +158,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        tensor = op.tensor
+        tensor = op.inputs[0]
         out = op.outputs[0]
         index_path = op.index_path
         ctx = get_context()
@@ -194,44 +199,54 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         if op.topk is not None:
             index_chunk_size = cls._get_atleast_topk_nsplit(index_chunk_size, op.topk)
 
-        if tensor.chunk_shape[1] > 1:
-            tensor = tensor.rechunk({0: index_chunk_size, 1: tensor.shape[1]})._inplace_tile()
-        else:
-            tensor = tensor.rechunk({0: index_chunk_size})._inplace_tile()
-        pk = mt.arange(len(tensor), dtype=np.uint64,
-                       chunk_size=(tensor.nsplits[0],))._inplace_tile()
-
+        # build chunks for writing tensors to mmap files.
+        worker_iter = iter(itertools.cycle(ctx.get_worker_addresses() or [None]))
+        chunk_groups = rechunk_tensor(tensor, index_chunk_size)
         out_chunks = []
-        for chunk, pk_col_chunk in zip(tensor.chunks, pk.chunks):
+        offsets = []
+        offset = 0
+        for chunk_group in chunk_groups:
+            offsets.append(offset)
+            file_prefix = f'proxima-build-{str(uuid.uuid4())}'
+            out_chunks.append(build_mmap_chunks(chunk_group, next(worker_iter),
+                                                file_prefix=file_prefix))
+            offset += sum(c.shape[0] for c in chunk_group)
+
+        final_out_chunks = []
+        for j, chunks in enumerate(out_chunks):
             chunk_op = op.copy().reset_key()
             chunk_op._stage = OperandStage.map
-            out_chunk = chunk_op.new_chunk([chunk, pk_col_chunk],
-                                           index=pk_col_chunk.index)
-            out_chunks.append(out_chunk)
+            chunk_op._expect_worker = chunks[0].op.expect_worker
+            chunk_op._array_shape = chunks[0].op.total_shape
+            chunk_op._array_dtype = chunks[0].dtype
+            chunk_op._offset = offsets[j]
+            out_chunk = chunk_op.new_chunk(chunks, index=(j,))
+            final_out_chunks.append(out_chunk)
 
-        logger.warning(f"index chunks count: {len(out_chunks)} ")
+        logger.warning(f"index chunks count: {len(final_out_chunks)} ")
 
         params = out.params
-        params['chunks'] = out_chunks
-        params['nsplits'] = ((1,) * len(out_chunks),)
+        params['chunks'] = final_out_chunks
+        params['nsplits'] = ((1,) * len(final_out_chunks),)
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
     def _execute_map(cls, ctx, op: "ProximaBuilder"):
-        inp = np.ascontiguousarray(ctx[op.tensor.key])
+        mmap_path = ctx[op.inputs[0].key]
         out = op.outputs[0]
-        pks = ctx[op.pk.key]
-        proxima_type = get_proxima_type(inp.dtype)
+
+        data = np.memmap(mmap_path, dtype=op.array_dtype, mode='r',
+                         shape=op.array_shape)
+
+        proxima_type = get_proxima_type(op.array_dtype)
+        offset = op.offset
 
         # holder
         with Timer() as timer:
             holder = proxima.IndexHolder(type=proxima_type,
-                                         dimension=op.dimension,
-                                         shallow=False)
-            for pk, record in zip(pks, inp):
-                pk = pk.item() if hasattr(pk, 'item') else pk
-                holder.emplace(pk, record)
+                                         dimension=op.dimension, shallow=True)
+            holder.mount(data, key_base=offset)
 
         logger.warning(f'Holder({op.key}) costs {timer.duration} seconds')
 
@@ -257,6 +272,9 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
 
         logger.warning(f'Builder({op.key}) costs {timer.duration} seconds')
 
+        # remove mmap file
+        os.remove(mmap_path)
+
         # dumper
         with Timer() as timer:
             path = tempfile.mkstemp(prefix='proxima-', suffix='.index')[1]
@@ -274,16 +292,27 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                 fs = get_fs(op.index_path, op.storage_options)
                 filename = f'proxima_{out.index[0]}_index'
                 out_path = f'{op.index_path.rstrip("/")}/{filename}'
-                with fs.open(out_path, 'wb') as out_f:
-                    with open(path, 'rb') as in_f:
-                        # 32M
-                        chunk_bytes = 32 * 1024 ** 2
-                        while True:
-                            data = in_f.read(chunk_bytes)
-                            if data:
-                                out_f.write(data)
-                            else:
-                                break
+
+                def write_index():
+                    with fs.open(out_path, 'wb') as out_f:
+                        with open(path, 'rb') as in_f:
+                            # 128M
+                            chunk_bytes = 128 * 1024 ** 2
+                            while True:
+                                data = in_f.read(chunk_bytes)
+                                if data:
+                                    out_f.write(data)
+                                else:
+                                    break
+
+                # retry 3 times
+                for _ in range(3):
+                    try:
+                        write_index()
+                        break
+                    except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                        fs.delete(out_path)
+                        continue
 
             logger.warning(f'WritingToVolume({op.key}), out path: {out_path}, '
                            f'size {os.path.getsize(path)}, '
@@ -334,7 +363,7 @@ def build_index(tensor, dimension=None, index_path=None, column_number=None,
     if need_shuffle:
         tensor = mt.random.permutation(tensor)
 
-    op = ProximaBuilder(tensor=tensor, distance_metric=distance_metric,
+    op = ProximaBuilder(distance_metric=distance_metric,
                         index_path=index_path, dimension=dimension,
                         column_number=column_number,
                         index_builder=index_builder,

@@ -377,7 +377,7 @@ class ExecutionActor(WorkerActor):
             ).then(_finish_fetch)
 
         return promise.finished() \
-            .then(lambda *_: remote_disp_ref.acquire_free_slot('sender', _promise=True, _timeout=timeout)) \
+            .then(lambda *_: remote_disp_ref.acquire_free_slot('sender', _promise=True)) \
             .then(_fetch_step) \
             .catch(_handle_network_error)
 

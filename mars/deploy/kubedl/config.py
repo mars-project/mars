@@ -111,8 +111,8 @@ class MarsReplicaSpecConfig(ReplicaSpecConfig):
     service_name = None
     service_label = None
 
-    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=2,
-                 memory_limit_ratio=None, modules=None, node_selectors=None):
+    def __init__(self, image, replicas, cpu=None, memory=None, limit_resources_ratio=1.2,
+                 memory_limit_ratio=2, modules=None, node_selectors=None):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -161,7 +161,7 @@ class MarsWorkerSpecConfig(MarsReplicaSpecConfig):
         cache_mem = kwargs.pop('cache_mem', None)
         self._spill_dirs = kwargs.pop('spill_dirs', None) or ()
         # set limits as 2*requests for worker replica defaulted.
-        kwargs['limit_resources_ratio'] = kwargs.get('limit_resources_ratio', 2)
+        kwargs['limit_resources_ratio'] = kwargs.get('limit_resources_ratio', 1.2)
         super().__init__(*args, **kwargs)
         self._cache_mem = calc_size_by_str(cache_mem, self._memory)
         self.add_env('MARS_CACHE_MEM_SIZE', self._cache_mem)
