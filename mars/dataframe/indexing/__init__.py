@@ -22,12 +22,12 @@ def _install():
     from .iloc import iloc, head, tail, index_getitem, index_setitem
     from .insert import df_insert
     from .loc import loc
+    from .reindex import reindex, reindex_like
     from .rename import df_rename, series_rename, index_rename, index_set_names
     from .rename_axis import rename_axis
     from .reset_index import df_reset_index, series_reset_index
     from .set_index import set_index
     from .setitem import dataframe_setitem
-    from .reindex import reindex
     from .where import mask, where
     from .set_axis import df_set_axis, series_set_axis
     from .sample import sample
@@ -37,8 +37,9 @@ def _install():
         setattr(cls, 'loc', cache_readonly(loc))
         setattr(cls, 'iat', cache_readonly(iat))
         setattr(cls, 'at', cache_readonly(at))
-        setattr(cls, 'reindex', reindex)
         setattr(cls, 'head', head)
+        setattr(cls, 'reindex', reindex)
+        setattr(cls, 'reindex_like', reindex_like)
         setattr(cls, 'rename_axis', rename_axis)
         setattr(cls, 'tail', tail)
         setattr(cls, 'mask', mask)

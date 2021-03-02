@@ -451,3 +451,61 @@ def series_duplicated(series, keep='first', method='auto'):
                          "'auto', 'tree', 'shuffle' or None")
     op = DataFrameDuplicated(keep=keep, method=method)
     return op(series)
+
+
+def index_duplicated(index, keep='first'):
+    """
+    Indicate duplicate index values.
+
+    Duplicated values are indicated as ``True`` values in the resulting
+    array. Either all duplicates, all except the first, or all except the
+    last occurrence of duplicates can be indicated.
+
+    Parameters
+    ----------
+    keep : {'first', 'last', False}, default 'first'
+        The value or values in a set of duplicates to mark as missing.
+        - 'first' : Mark duplicates as ``True`` except for the first
+          occurrence.
+        - 'last' : Mark duplicates as ``True`` except for the last
+          occurrence.
+        - ``False`` : Mark all duplicates as ``True``.
+
+    Returns
+    -------
+    Tensor
+
+    See Also
+    --------
+    Series.duplicated : Equivalent method on pandas.Series.
+    DataFrame.duplicated : Equivalent method on pandas.DataFrame.
+    Index.drop_duplicates : Remove duplicate values from Index.
+
+    Examples
+    --------
+    By default, for each set of duplicated values, the first occurrence is
+    set to False and all others to True:
+
+    >>> import mars.dataframe as md
+
+    >>> idx = md.Index(['lama', 'cow', 'lama', 'beetle', 'lama'])
+    >>> idx.duplicated().execute()
+    array([False, False,  True, False,  True])
+
+    which is equivalent to
+
+    >>> idx.duplicated(keep='first').execute()
+    array([False, False,  True, False,  True])
+
+    By using 'last', the last occurrence of each set of duplicated values
+    is set on False and all others on True:
+
+    >>> idx.duplicated(keep='last').execute()
+    array([ True, False,  True, False, False])
+
+    By setting keep on ``False``, all duplicates are True:
+
+    >>> idx.duplicated(keep=False).execute()
+    array([ True, False,  True, False,  True])
+    """
+    return index.to_series().duplicated(keep=keep).to_tensor()

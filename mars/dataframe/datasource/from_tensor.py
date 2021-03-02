@@ -405,8 +405,9 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        # check all inputs to make sure no unknown chunk shape
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if op.index is None:
+            # check all inputs to make sure no unknown chunk shape
+            check_chunks_unknown_shape(op.inputs, TilesError)
 
         out_series = op.outputs[0]
         in_tensor = op.inputs[0]

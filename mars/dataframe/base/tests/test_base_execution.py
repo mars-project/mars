@@ -1804,3 +1804,29 @@ class Test(TestBase):
             ser_mixed.check_monotonic(decreasing=False), concat=True)[0])
         self.assertFalse(self.executor.execute_dataframe(
             ser_mixed.check_monotonic(decreasing=False, strict=True), concat=True)[0])
+
+    def testPctChangeExecution(self):
+        # test dataframe
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
+                           columns=['col' + str(i + 1) for i in range(8)],
+                           index=pd.date_range('2021-1-1', periods=10))
+
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.pct_change()
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.pct_change()
+        pd.testing.assert_frame_equal(expected, result)
+
+        df = from_pandas_df(raw, chunk_size=5)
+        r = df.pct_change(fill_method=None)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = raw.pct_change(fill_method=None)
+        pd.testing.assert_frame_equal(expected, result)
+
+        with self.ctx:
+            df = from_pandas_df(raw, chunk_size=5)
+            r = df.pct_change(freq='D')
+            result = self.executor.execute_dataframes([r])[0]
+            expected = raw.pct_change(freq='D')
+            pd.testing.assert_frame_equal(expected, result)

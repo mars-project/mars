@@ -257,7 +257,10 @@ def compute_rechunk_slices(tileable, chunk_size):
         slices = []
         for rest in new_chunk_size:
             dim_slices = []
-            while rest > 0:
+            # in case that rest == 0, pass it into while loop
+            raw_rest = rest
+            while raw_rest >= 0 or rest > 0:
+                raw_rest = -1  # set to -1 to fail raw_rest >= 0
                 old_idx, old_start = truncated[dim]
                 old_size = old_chunk_size[old_idx] - (old_start or 0)
                 if old_size < rest:
