@@ -851,6 +851,25 @@ class Test(TestBase):
 
         self.assertIsInstance(df2.op, type(df.op))
 
+    def testShift(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
+                           columns=['col' + str(i + 1) for i in range(8)],
+                           index=pd.date_range('2021-1-1', periods=10))
+        df = from_pandas_df(raw, chunk_size=5)
+
+        df2 = df.shift(1)
+        df2 = df2.tiles()
+
+        for c in df2.chunks:
+            pd.testing.assert_index_equal(c.dtypes.index, c.columns_value.to_pandas())
+
+        df2 = df.shift(1, freq='D')
+        df2 = df2.tiles()
+
+        for c in df2.chunks:
+            pd.testing.assert_index_equal(c.dtypes.index, c.columns_value.to_pandas())
+
     def testEvalQuery(self):
         rs = np.random.RandomState(0)
         raw = pd.DataFrame({'a': rs.rand(100),

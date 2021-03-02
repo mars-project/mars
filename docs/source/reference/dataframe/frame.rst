@@ -128,6 +128,7 @@ Computations / descriptive stats
    DataFrame.mean
    DataFrame.min
    DataFrame.nunique
+   DataFrame.pct_change
    DataFrame.prod
    DataFrame.product
    DataFrame.quantile
@@ -148,6 +149,7 @@ Reindexing / selection / label manipulation
    DataFrame.duplicated
    DataFrame.head
    DataFrame.reindex
+   DataFrame.reindex_like
    DataFrame.rename
    DataFrame.rename_axis
    DataFrame.reset_index

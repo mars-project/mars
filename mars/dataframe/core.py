@@ -693,12 +693,9 @@ class Index(HasShapeTileableEnity, _ToPandasMixin):
         Series
             The dtype will be based on the type of the Index values.
         """
-        from ..tensor import tensor as astensor
-        from . import series_from_tensor
+        from . import series_from_index
 
-        name = name or self.name or 0
-        index_ = index if index is not None else self
-        return series_from_tensor(astensor(self), index=index_, name=name)
+        return series_from_index(self, index=index, name=name)
 
 
 class RangeIndex(Index):
