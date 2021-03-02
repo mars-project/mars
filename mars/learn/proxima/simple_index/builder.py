@@ -310,7 +310,7 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                     try:
                         write_index()
                         break
-                    except:
+                    except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                         fs.delete(out_path)
                         continue
 
