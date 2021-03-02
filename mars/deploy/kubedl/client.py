@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import time
 import warnings
 
@@ -28,6 +29,9 @@ except ImportError:  # pragma: no cover
 
 KUBEDL_API_VERSION = 'kubedl.io/v1alpha1'
 KUBEDL_MARS_PLURAL = 'marsjobs'
+
+
+logger = logging.getLogger(__name__)
 
 
 class KubeDLClusterClient:
@@ -161,7 +165,7 @@ class KubeDLCluster:
 
     def _wait_service_ready(self):
         self._mars_endpoint = f'{self._slb_endpoint}/mars/{self._namespace}/{self._job_name}-webservice-0'
-        print(f'Kubedl job name: {self._job_name}')
+        logger.warning(f'Kubedl job name: {self._job_name}')
         check_start_time = time.time()
         worker_count_url = self._mars_endpoint + '/api/worker?action=count'
         while True:
@@ -188,7 +192,7 @@ class KubeDLCluster:
                     resp = requests.get(worker_count_url, timeout=1, verify=self._verify_ssl)
 
                 if int(resp.text) >= self._min_worker_num:
-                    print(f'Web endpoint started at {self._mars_endpoint}')
+                    logger.warning(f'Web endpoint started at {self._mars_endpoint}')
                     break
             except (requests.Timeout, ValueError) as ex:
                 if not isinstance(ex, requests.Timeout):
