@@ -146,6 +146,7 @@ Reindexing / selection / label manipulation
    Series.head
    Series.isin
    Series.reindex
+   Series.reindex_like
    Series.rename
    Series.rename_axis
    Series.reset_index

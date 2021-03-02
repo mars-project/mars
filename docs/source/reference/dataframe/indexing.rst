@@ -35,6 +35,7 @@ Modifying and computations
    Index.any
    Index.drop
    Index.drop_duplicates
+   Index.duplicated
    Index.max
    Index.min
    Index.rename
