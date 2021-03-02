@@ -197,6 +197,7 @@ def _install():
         setattr(cls, '__neg__', negative)
         setattr(cls, '__pos__', positive)
         setattr(cls, '__abs__', abs)
+        setattr(cls, '__invert__', invert)
 
     setattr(Tensor, 'round', round_)
     setattr(Tensor, 'conj', conj)

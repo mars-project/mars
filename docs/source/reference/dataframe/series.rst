@@ -122,6 +122,7 @@ Computations / descriptive stats
    Series.max
    Series.mean
    Series.min
+   Series.pct_change
    Series.prod
    Series.product
    Series.quantile

@@ -128,6 +128,7 @@ Computations / descriptive stats
    DataFrame.mean
    DataFrame.min
    DataFrame.nunique
+   DataFrame.pct_change
    DataFrame.prod
    DataFrame.product
    DataFrame.quantile
