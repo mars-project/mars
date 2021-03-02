@@ -716,35 +716,35 @@ def reindex_like(df_or_series, other, method=None, copy=True,
         Its row and column indices are used to define the new indices
         of this object.
     method : {None, 'backfill'/'bfill', 'pad'/'ffill', 'nearest'}
-    Method to use for filling holes in reindexed DataFrame.
-    Please note: this is only applicable to DataFrames/Series with a
+        Method to use for filling holes in reindexed DataFrame.
+        Please note: this is only applicable to DataFrames/Series with a
         monotonically increasing/decreasing index.
 
-    * None (default): don't fill gaps
-    * pad / ffill: propagate last valid observation forward to next
-    valid
-    * backfill / bfill: use next valid observation to fill gap
-    * nearest: use nearest valid observations to fill gap.
+        * None (default): don't fill gaps
+        * pad / ffill: propagate last valid observation forward to next
+          valid
+        * backfill / bfill: use next valid observation to fill gap
+        * nearest: use nearest valid observations to fill gap.
 
     copy : bool, default True
-    Return a new object, even if the passed indexes are the same.
+        Return a new object, even if the passed indexes are the same.
     limit : int, default None
-    Maximum number of consecutive labels to fill for inexact matches.
+        Maximum number of consecutive labels to fill for inexact matches.
     tolerance : optional
-    Maximum distance between original and new labels for inexact
+        Maximum distance between original and new labels for inexact
         matches. The values of the index at the matching locations must
-    satisfy the equation ``abs(index[indexer] - target) <= tolerance``.
+        satisfy the equation ``abs(index[indexer] - target) <= tolerance``.
 
-    Tolerance may be a scalar value, which applies the same tolerance
-    to all values, or list-like, which applies variable tolerance per
-    element. List-like includes list, tuple, array, Series, and must be
-    the same size as the index and its dtype must exactly match the
-    index's type.
+        Tolerance may be a scalar value, which applies the same tolerance
+        to all values, or list-like, which applies variable tolerance per
+        element. List-like includes list, tuple, array, Series, and must be
+        the same size as the index and its dtype must exactly match the
+        index's type.
 
     Returns
     -------
     Series or DataFrame
-    Same type as caller, but with changed indices on each axis.
+        Same type as caller, but with changed indices on each axis.
 
     See Also
     --------
