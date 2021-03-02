@@ -497,7 +497,7 @@ async def test_async_batch_decorator():
             self.arg_list = []
             self.kwarg_list = []
 
-        @utils.async_method(False)
+        @utils.extensible(False)
         async def method1(self, *args, **kwargs):
             pass
 
@@ -507,13 +507,13 @@ async def test_async_batch_decorator():
             self.kwarg_list.extend(kwargs_list)
             return [len(self.kwarg_list)] * len(args_list)
 
-        @utils.async_method
+        @utils.extensible
         async def method2(self, *args, **kwargs):
             self.arg_list.append(tuple(a - 1 for a in args))
             self.kwarg_list.append({k: v - 1 for k, v in kwargs.items()})
             return len(self.kwarg_list)
 
-        @utils.async_method
+        @utils.extensible
         async def method3(self, *args, **kwargs):
             self.arg_list.append(tuple(a * 2 for a in args))
             self.kwarg_list.append({k: v * 2 for k, v in kwargs.items()})

@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.utils import get_next_port, async_method
+from mars.utils import get_next_port, extensible
 
 
 class DummyActor(mo.Actor):
@@ -31,7 +31,7 @@ class DummyActor(mo.Actor):
             raise ValueError('value < 0')
         self.value = value
 
-    @async_method
+    @extensible
     async def add(self, value):
         if not isinstance(value, int):
             raise TypeError('add number must be int')
@@ -43,7 +43,7 @@ class DummyActor(mo.Actor):
         self.value += sum(v[0] for v in args_list)
         return self.value
 
-    @async_method
+    @extensible
     async def add_ret(self, value):
         return self.value + value
 

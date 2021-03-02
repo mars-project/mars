@@ -1224,7 +1224,7 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         raise TypeError("not a path-like object")
 
 
-class AsyncMethodWrapper:
+class ExtensibleWrapper:
     def __init__(self, instance, func, batch_func=None):
         self.instance = instance
         self.func = func
@@ -1244,7 +1244,7 @@ class AsyncMethodWrapper:
         )
 
 
-class AsyncMethodAccessor:
+class ExtensibleAccessor:
     def __init__(self, func, implemented=True):
         self.func = func
         self.batch_func = None
@@ -1261,14 +1261,14 @@ class AsyncMethodAccessor:
             if self.implemented else None
         batch_func = self.batch_func.__get__(instance, owner) \
             if self.batch_func is not None else None
-        return AsyncMethodWrapper(instance, func, batch_func)
+        return ExtensibleWrapper(instance, func, batch_func)
 
 
-def async_method(implemented):
+def extensible(implemented):
     if callable(implemented):
-        return AsyncMethodAccessor(implemented)
+        return ExtensibleAccessor(implemented)
 
     def deco_fun(func):
-        return AsyncMethodAccessor(func, implemented)
+        return ExtensibleAccessor(func, implemented)
 
     return deco_fun
