@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import importlib
 import inspect
@@ -1221,3 +1222,53 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         return path.__fspath__()
     except AttributeError:
         raise TypeError("not a path-like object")
+
+
+class ExtensibleWrapper:
+    def __init__(self, instance, func, batch_func=None):
+        self.instance = instance
+        self.func = func
+        self._batch_func = batch_func
+
+    async def __call__(self, *args, **kwargs):
+        if self.func is not None:
+            return await self.func(*args, **kwargs)
+        else:
+            return (await self._batch_func([args], [kwargs]))[0]
+
+    async def batch(self, args_list, kwargs_list):
+        if self._batch_func is not None:
+            return await self._batch_func(args_list, kwargs_list)
+        return await asyncio.gather(*[
+            self.func(*args, **kwargs) for args, kwargs in zip(args_list, kwargs_list)]
+        )
+
+
+class ExtensibleAccessor:
+    def __init__(self, func, implemented=True):
+        self.func = func
+        self.batch_func = None
+        self.implemented = implemented
+
+    def batch(self, func):
+        self.batch_func = func
+        return self
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self.func
+        func = self.func.__get__(instance, owner) \
+            if self.implemented else None
+        batch_func = self.batch_func.__get__(instance, owner) \
+            if self.batch_func is not None else None
+        return ExtensibleWrapper(instance, func, batch_func)
+
+
+def extensible(implemented):
+    if callable(implemented):
+        return ExtensibleAccessor(implemented)
+
+    def deco_fun(func):
+        return ExtensibleAccessor(func, implemented)
+
+    return deco_fun

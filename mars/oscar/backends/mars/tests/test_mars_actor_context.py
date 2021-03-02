@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.utils import get_next_port
+from mars.utils import get_next_port, extensible
 
 
 class DummyActor(mo.Actor):
@@ -31,14 +31,26 @@ class DummyActor(mo.Actor):
             raise ValueError('value < 0')
         self.value = value
 
-    def add(self, value):
+    @extensible
+    async def add(self, value):
         if not isinstance(value, int):
             raise TypeError('add number must be int')
         self.value += value
         return self.value
 
-    def add_ret(self, value):
+    @add.batch
+    async def add(self, args_list, _kwargs_list):
+        self.value += sum(v[0] for v in args_list)
+        return self.value
+
+    @extensible
+    async def add_ret(self, value):
         return self.value + value
+
+    @add_ret.batch
+    async def add_ret(self, args_list, _kwargs_list):
+        sum_val = sum(v[0] for v in args_list)
+        return [self.value + sum_val for _ in args_list]
 
     async def create(self, actor_cls, *args, **kw):
         kw['address'] = self.address
@@ -273,6 +285,25 @@ async def test_mars_tell(actor_pool_context):
     # error needed when illegal uids are passed
     with pytest.raises(ValueError):
         await ref1.tell(await mo.actor_ref(set()), 'add', 3)
+
+
+@pytest.mark.asyncio
+async def test_mars_batch_method(actor_pool_context):
+    pool = actor_pool_context
+    ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    batch_result = await ref1.batch(
+        ref1.add_ret(1), ref1.add_ret(2), ref1.add_ret(3)
+    )
+    assert len(batch_result) == 3
+    assert all(r == 7 for r in batch_result)
+
+    await ref1.batch(
+        ref1.add.tell(1), ref1.add.tell(2), ref1.add.tell(3)
+    )
+    assert await ref1.get_value() == 7
+
+    with pytest.raises(ValueError):
+        await ref1.batch(ref1.add_ret(1), ref1.add(2))
 
 
 @pytest.mark.asyncio
