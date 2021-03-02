@@ -360,7 +360,7 @@ cpdef tuple insert_reversed_tuple(tuple a, object x):
 
 @cython.nonecheck(False)
 @cython.cdivision(True)
-cpdef int ceildiv(int x, int y) nogil:
+cpdef long long ceildiv(long long x, long long y) nogil:
     return x // y + (x % y != 0)
 
 

@@ -14,12 +14,13 @@
 
 import itertools
 import operator
+import tempfile
 from collections.abc import Iterable
 
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialize import AnyField, BoolField, StringField, TupleField, SliceField
 from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
@@ -54,12 +55,45 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
 
     _axis = AnyField('axis')
 
-    def __init__(self, axis=None, dtype=None, sparse=False, gpu=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+    # for mmap
+    _mmap = BoolField('mmap')
+    _file_prefix = StringField('file_prefix')
+    _create_mmap_file = BoolField('create_mmap_file')
+    _partition_slice = SliceField('partition_slice')
+    _total_shape = TupleField('total_shape')
+
+    def __init__(self, axis=None, dtype=None, mmap=None, file_prefix=None, create_mmap_file=None,
+                 partition_slice=None, total_shape=None, sparse=False, gpu=None, **kw):
+        super().__init__(_axis=axis, _dtype=dtype, _mmap=mmap,
+                         _file_prefix=file_prefix,
+                         _create_mmap_file=create_mmap_file,
+                         _partition_slice=partition_slice,
+                         _total_shape=total_shape,
+                         _gpu=gpu, _sparse=sparse, **kw)
 
     @property
     def axis(self):
         return getattr(self, '_axis', None)
+
+    @property
+    def mmap(self):
+        return self._mmap
+
+    @property
+    def file_prefix(self):
+        return self._file_prefix
+
+    @property
+    def create_mmap_file(self):
+        return self._create_mmap_file
+
+    @property
+    def partition_slice(self):
+        return self._partition_slice
+
+    @property
+    def total_shape(self):
+        return self._total_shape
 
     def __call__(self, tensors):
         if len(set(t.ndim for t in tensors)) != 1:
@@ -129,6 +163,13 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
+        if op.mmap:  # pragma: no cover
+            cls._execute_with_mmap(ctx, op)
+        else:
+            cls._execute(ctx, op)
+
+    @classmethod
+    def _execute(cls, ctx, op):
         def _base_concatenate(chunk, inputs):
             inputs, device_id, xp = as_same_device(inputs, device=chunk.op.device, ret_extra=True)
 
@@ -158,6 +199,19 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                       for i in range(len(inputs[0])))
         else:
             ctx[chunk.key] = cls._ensure_order(_base_concatenate(chunk, inputs), chunk.order)
+
+    @classmethod
+    def _execute_with_mmap(cls, ctx, op):  # pragma: no cover
+        if op.create_mmap_file:
+            path = tempfile.mkstemp(prefix=op.file_prefix, suffix='.dat')[1]
+            np.memmap(path, dtype=op.dtype, mode='w+', shape=op.total_shape)
+            ctx[op.outputs[0].key] = path
+        else:
+            path = ctx[op.inputs[0].key]
+            array = ctx[op.inputs[1].key]
+            fp = np.memmap(path, dtype=op.dtype, mode='r+', shape=op.total_shape)
+            fp[op.partition_slice] = array
+            ctx[op.outputs[0].key] = path
 
 
 def concatenate(tensors, axis=0):
