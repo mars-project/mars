@@ -32,7 +32,6 @@ from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
     DictField, AnyField, BytesField, BoolField
 from ....tensor.core import TensorOrder
-from ....tensor.merge.concatenate import TensorConcatenate
 from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, Timer, ceildiv
 from ...operands import LearnOperand, LearnOperandMixin

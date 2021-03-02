@@ -105,7 +105,8 @@ def build_mmap_chunks(chunks, worker, file_prefix):
     array_dtype = chunks[0].dtype
     create_mmap_op = TensorConcatenate(mmap=True, create_mmap_file=True,
                                        total_shape=array_shape,
-                                       file_prefix=file_prefix)
+                                       file_prefix=file_prefix,
+                                       dtype=array_dtype)
     create_mmap_op._expect_worker = worker
     create_mmap_chunk = create_mmap_op.new_chunk(
         None, index=(0,), shape=(), dtype=array_dtype)
@@ -115,7 +116,8 @@ def build_mmap_chunks(chunks, worker, file_prefix):
         start_index += chk.shape[0]
         write_mmap_op = TensorConcatenate(mmap=True, create_mmap_file=False,
                                           total_shape=array_shape,
-                                          partition_slice=s)
+                                          partition_slice=s,
+                                          dtype=array_dtype)
         write_mmap_op._expect_worker = worker
         write_mmap_chunk = write_mmap_op.new_chunk([create_mmap_chunk, chk],
                                                    index=(j + 1, 0), shape=(),

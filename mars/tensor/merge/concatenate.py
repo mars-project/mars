@@ -163,7 +163,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.mmap:
+        if op.mmap:  # pragma: no cover
             cls._execute_with_mmap(ctx, op)
         else:
             cls._execute(ctx, op)
@@ -201,7 +201,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
             ctx[chunk.key] = cls._ensure_order(_base_concatenate(chunk, inputs), chunk.order)
 
     @classmethod
-    def _execute_with_mmap(cls, ctx, op):
+    def _execute_with_mmap(cls, ctx, op):  # pragma: no cover
         if op.create_mmap_file:
             path = tempfile.mkstemp(prefix=op.file_prefix, suffix='.dat')[1]
             np.memmap(path, dtype=op.dtype, mode='w+', shape=op.total_shape)
