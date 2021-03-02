@@ -1236,6 +1236,38 @@ class Test(TestBase):
             expected = s_data.reindex(['c2', 'c11', 'c4'], copy=False)
             pd.testing.assert_series_equal(result, expected)
 
+    def testReindexLikeExecution(self):
+        data = pd.DataFrame(np.random.rand(10, 5),
+                            columns=['c1', 'c2', 'c3', 'c4', 'c5'],
+                            index=pd.date_range('2021-1-1', periods=10))
+        data2 = pd.DataFrame(np.random.rand(4, 2), columns=['c2', 'c4'],
+                             index=pd.date_range('2020-1-2', periods=4))
+        df = md.DataFrame(data, chunk_size=4)
+        df2 = md.DataFrame(data2, chunk_size=3)
+
+        r = df.reindex_like(df2)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data.reindex_like(data2)
+        pd.testing.assert_frame_equal(result, expected)
+
+        r = df.reindex_like(df, copy=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data.reindex_like(data)
+        pd.testing.assert_frame_equal(result, expected)
+
+        s = md.Series(data['c2'], chunk_size=4)
+        s2 = md.Series(data2['c2'], chunk_size=3)
+
+        r = s.reindex_like(s2)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data['c2'].reindex_like(data2['c2'])
+        pd.testing.assert_series_equal(result, expected)
+
+        r = s.reindex_like(s, copy=False)
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        expected = data['c2'].reindex_like(data['c2'])
+        pd.testing.assert_series_equal(result, expected)
+
     def testWhereExecution(self):
         dates = pd.date_range('1/1/2000', periods=20)
 

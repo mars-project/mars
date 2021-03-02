@@ -150,12 +150,12 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             dtypes = df_or_series.dtypes
 
         if self._index is not None:
-            shape[0] = len(self._index)
+            shape[0] = self._index.shape[0]
             index_value = asindex(self._index).index_value
             if isinstance(self._index, (Base, Entity)):
                 inputs.append(self._index)
         if self._columns is not None:
-            shape[1] = len(self._columns)
+            shape[1] = self._columns.shape[0]
             dtypes = df_or_series.dtypes.reindex(index=self._columns).fillna(
                 np.dtype(np.float64))
             columns_value = parse_index(dtypes.index, store_data=True)
@@ -224,13 +224,22 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                         i_to_columns[i] = inp[col]
                     else:
                         indexer = inp.index.reindex(index)[1]
-                        spmatrix = sps.lil_matrix((index_shape, 1), dtype=inp[col].dtype)
                         cond = indexer >= 0
                         available_indexer = indexer[cond]
                         del indexer
-                        spmatrix[cond, 0] = inp[col].iloc[available_indexer].to_numpy()
-                        i_to_columns[i] = pd.DataFrame.sparse.from_spmatrix(
-                            spmatrix, index=index).iloc[:, 0]
+                        data = inp[col].iloc[available_indexer].to_numpy()
+                        ind = cond.nonzero()[0]
+                        spmatrix = sps.csc_matrix((data, (ind, np.zeros_like(ind))),
+                                                  shape=(index_shape, 1), dtype=inp[col].dtype)
+                        sparse_array = pd.arrays.SparseArray.from_spmatrix(spmatrix)
+                        # convert to SparseDtype(xxx, np.nan)
+                        # to ensure 0 in sparse_array not converted to np.nan
+                        sparse_array = pd.arrays.SparseArray(
+                            sparse_array.sp_values, sparse_index=sparse_array.sp_index,
+                            fill_value=np.nan, dtype=pd.SparseDtype(sparse_array.dtype, np.nan))
+                        series = pd.Series(sparse_array, index=index)
+
+                        i_to_columns[i] = series
                 else:
                     ind = index if index is not None else inp.index
                     i_to_columns[i] = pd.DataFrame.sparse.from_spmatrix(
@@ -689,3 +698,117 @@ def reindex(df_or_series, *args, **kwargs):
     if copy:
         return ret.copy()
     return ret
+
+
+def reindex_like(df_or_series, other, method=None, copy=True,
+                 limit=None, tolerance=None):
+    """
+    Return an object with matching indices as other object.
+
+    Conform the object to the same index on all axes. Optional
+    filling logic, placing NaN in locations having no value
+    in the previous index. A new object is produced unless the
+    new index is equivalent to the current one and copy=False.
+
+    Parameters
+    ----------
+    other : Object of the same data type
+        Its row and column indices are used to define the new indices
+        of this object.
+    method : {None, 'backfill'/'bfill', 'pad'/'ffill', 'nearest'}
+        Method to use for filling holes in reindexed DataFrame.
+        Please note: this is only applicable to DataFrames/Series with a
+        monotonically increasing/decreasing index.
+
+        * None (default): don't fill gaps
+        * pad / ffill: propagate last valid observation forward to next
+          valid
+        * backfill / bfill: use next valid observation to fill gap
+        * nearest: use nearest valid observations to fill gap.
+
+    copy : bool, default True
+        Return a new object, even if the passed indexes are the same.
+    limit : int, default None
+        Maximum number of consecutive labels to fill for inexact matches.
+    tolerance : optional
+        Maximum distance between original and new labels for inexact
+        matches. The values of the index at the matching locations must
+        satisfy the equation ``abs(index[indexer] - target) <= tolerance``.
+
+        Tolerance may be a scalar value, which applies the same tolerance
+        to all values, or list-like, which applies variable tolerance per
+        element. List-like includes list, tuple, array, Series, and must be
+        the same size as the index and its dtype must exactly match the
+        index's type.
+
+    Returns
+    -------
+    Series or DataFrame
+        Same type as caller, but with changed indices on each axis.
+
+    See Also
+    --------
+    DataFrame.set_index : Set row labels.
+    DataFrame.reset_index : Remove row labels or move them to new columns.
+    DataFrame.reindex : Change to new indices or expand indices.
+
+    Notes
+    -----
+    Same as calling
+    ``.reindex(index=other.index, columns=other.columns,...)``.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import mars.dataframe as md
+    >>> df1 = md.DataFrame([[24.3, 75.7, 'high'],
+    ...                     [31, 87.8, 'high'],
+    ...                     [22, 71.6, 'medium'],
+    ...                     [35, 95, 'medium']],
+    ...                    columns=['temp_celsius', 'temp_fahrenheit',
+    ...                             'windspeed'],
+    ...                    index=md.date_range(start='2014-02-12',
+    ...                                        end='2014-02-15', freq='D'))
+
+    >>> df1.execute()
+               temp_celsius temp_fahrenheit windspeed
+    2014-02-12         24.3            75.7      high
+    2014-02-13           31            87.8      high
+    2014-02-14           22            71.6    medium
+    2014-02-15           35              95    medium
+
+    >>> df2 = md.DataFrame([[28, 'low'],
+    ...                     [30, 'low'],
+    ...                     [35.1, 'medium']],
+    ...                    columns=['temp_celsius', 'windspeed'],
+    ...                    index=pd.DatetimeIndex(['2014-02-12', '2014-02-13',
+    ...                                            '2014-02-15']))
+
+    >>> df2.execute()
+                temp_celsius windspeed
+    2014-02-12          28.0       low
+    2014-02-13          30.0       low
+    2014-02-15          35.1    medium
+
+    >>> df2.reindex_like(df1).execute()
+                temp_celsius  temp_fahrenheit windspeed
+    2014-02-12          28.0              NaN       low
+    2014-02-13          30.0              NaN       low
+    2014-02-14           NaN              NaN       NaN
+    2014-02-15          35.1              NaN    medium
+    """
+    cond = df_or_series.index_value.key == other.index_value.key
+    if df_or_series.ndim == 2:
+        cond &= df_or_series.columns_value.key == other.columns_value.key
+    if cond and not copy:
+        return df_or_series
+
+    kw = {
+        'index': other.index,
+        'method': method,
+        'limit': limit,
+        'tolerance': tolerance
+    }
+    if df_or_series.ndim == 2:
+        kw['columns'] = other.dtypes.index
+    return reindex(df_or_series, **kw)

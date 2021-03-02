@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-
 from .map import series_map, index_map
 from .to_gpu import to_gpu
 from .to_cpu import to_cpu
@@ -31,7 +29,7 @@ from .astype import astype, index_astype
 from .drop import df_drop, df_pop, series_drop, index_drop
 from .drop_duplicates import df_drop_duplicates, \
     series_drop_duplicates, index_drop_duplicates
-from .duplicated import df_duplicated, series_duplicated
+from .duplicated import df_duplicated, series_duplicated, index_duplicated
 from .melt import melt
 from .memory_usage import df_memory_usage, series_memory_usage, \
     index_memory_usage
@@ -44,6 +42,7 @@ from .explode import df_explode, series_explode
 from .eval import df_eval, df_query
 from .check_monotonic import check_monotonic, is_monotonic, \
     is_monotonic_increasing, is_monotonic_decreasing
+from .pct_change import pct_change
 
 
 def _install():
@@ -80,6 +79,7 @@ def _install():
         setattr(t, 'explode', df_explode)
         setattr(t, 'eval', df_eval)
         setattr(t, 'query', df_query)
+        setattr(t, 'pct_change', pct_change)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)
@@ -107,6 +107,7 @@ def _install():
         setattr(t, 'is_monotonic', property(fget=is_monotonic))
         setattr(t, 'is_monotonic_increasing', property(fget=is_monotonic_increasing))
         setattr(t, 'is_monotonic_decreasing', property(fget=is_monotonic_decreasing))
+        setattr(t, 'pct_change', pct_change)
 
     for t in INDEX_TYPE:
         setattr(t, 'map', index_map)
@@ -114,6 +115,7 @@ def _install():
         setattr(t, 'rebalance', rebalance)
         setattr(t, 'drop', index_drop)
         setattr(t, 'drop_duplicates', index_drop_duplicates)
+        setattr(t, 'duplicated', index_duplicated)
         setattr(t, 'memory_usage', index_memory_usage)
         setattr(t, 'astype', index_astype)
         setattr(t, 'value_counts', value_counts)

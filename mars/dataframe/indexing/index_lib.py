@@ -999,8 +999,12 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
                 params['index_value'] = \
                     parse_index(out.index_value.to_pandas()[slc],
                                 slice_chunks, store_data=False)
-                params['columns_value'] = select_chunks[0].columns_value
-                params['dtypes'] = select_chunks[0].dtypes
+                if select_chunks[0].ndim == 2:
+                    params['columns_value'] = select_chunks[0].columns_value
+                    params['dtypes'] = select_chunks[0].dtypes
+                else:
+                    params['dtype'] = select_chunks[0].dtype
+                    params['name'] = select_chunks[0].name
                 params['shape'] = slice_chunks[0].shape
                 out_chunk = chunk_op.new_chunk(slice_chunks, kws=[params])
                 new_out_chunks.append(out_chunk)
