@@ -279,7 +279,7 @@ async def test_mars_tell(actor_pool_context):
 
     await ref1.tell_delay(ref2, 'add', 4, delay=.5)  # delay 0.5 secs
     assert await ref2.get_value() == 5
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.45)
     assert await ref2.get_value() == 5
 
     # error needed when illegal uids are passed
