@@ -483,6 +483,21 @@ class Test(SchedulerIntegratedTest):
             self.assertIn('df func', repr(log))
             self.assertEqual(len(str(df.fetch_log(session=sess))), 0)
 
+            def f7(rndf):
+                rm = spawn(f8, rndf)
+                rm.execute()
+                print(rm.fetch_log())
+
+            def f8(_rndf):
+                print('log_content')
+
+            ds = [spawn(f7, n, retry_when_fail=False)
+                  for n in np.random.rand(4)]
+            xtp = ExecutableTuple(ds)
+            xtp.execute(session=sess)
+            for log in xtp.fetch_log(session=sess):
+                self.assertEqual(str(log).strip(), 'log_content')
+
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)
 
