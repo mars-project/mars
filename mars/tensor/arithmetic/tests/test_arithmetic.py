@@ -17,11 +17,14 @@
 import unittest
 
 import numpy as np
+import scipy.sparse as sps
 
 from mars.tensor.datasource import array, ones, tensor, empty
 from mars.tensor.fetch import TensorFetch
-from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, around, \
-    isclose, isfinite, negative, cos, TensorAdd, TensorSubtract, TensorLog, TensorIsclose, TensorGreaterThan
+from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, \
+    around, isclose, isfinite, negative, cos, tree_add, tree_multiply, \
+    TensorAdd, TensorTreeAdd, TensorTreeMultiply, TensorSubtract, \
+    TensorLog, TensorIsclose, TensorGreaterThan
 from mars.tensor.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
 from mars.tiles import get_tiled
@@ -526,6 +529,41 @@ class Test(unittest.TestCase):
         self.assertEqual(tv.shape, (100, 100))
         tv = tv.tiles()
         self.assertEqual(tv.shape, tuple(sum(s) for s in tv.nsplits))
+
+    def testTreeArithmetic(self):
+        raws = [np.random.rand(10, 10) for _ in range(10)]
+        tensors = [tensor(a, chunk_size=3) for a in raws]
+
+        t = tree_add(*tensors, combine_size=4)
+        self.assertIsInstance(t.op, TensorTreeAdd)
+        self.assertFalse(t.issparse())
+        self.assertEqual(len(t.inputs), 3)
+        self.assertEqual(len(t.inputs[0].inputs), 4)
+        self.assertEqual(len(t.inputs[-1].inputs), 2)
+
+        t = tree_multiply(*tensors, combine_size=4)
+        self.assertIsInstance(t.op, TensorTreeMultiply)
+        self.assertFalse(t.issparse())
+        self.assertEqual(len(t.inputs), 3)
+        self.assertEqual(len(t.inputs[0].inputs), 4)
+        self.assertEqual(len(t.inputs[-1].inputs), 2)
+
+        raws = [sps.random(5, 9, density=.1) for _ in range(10)]
+        tensors = [tensor(a, chunk_size=3) for a in raws]
+
+        t = tree_add(*tensors, combine_size=4)
+        self.assertIsInstance(t.op, TensorTreeAdd)
+        self.assertTrue(t.issparse())
+        self.assertEqual(len(t.inputs), 3)
+        self.assertEqual(len(t.inputs[0].inputs), 4)
+        self.assertEqual(len(t.inputs[-1].inputs), 2)
+
+        t = tree_multiply(*tensors, combine_size=4)
+        self.assertIsInstance(t.op, TensorTreeMultiply)
+        self.assertTrue(t.issparse())
+        self.assertEqual(len(t.inputs), 3)
+        self.assertEqual(len(t.inputs[0].inputs), 4)
+        self.assertEqual(len(t.inputs[-1].inputs), 2)
 
     def testGetSetReal(self):
         a_data = np.array([1+2j, 3+4j, 5+6j])

@@ -19,6 +19,7 @@ from functools import reduce
 
 from ... import opcodes as OperandDef
 from ..array_utils import device, as_same_device
+from ..datasource import scalar
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorMultiOp
 from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
@@ -93,9 +94,7 @@ class TensorTreeAdd(TensorMultiOp):
 
     @classmethod
     def _is_sparse(cls, *args):
-        if all(np.isscalar(x) for x in args):
-            return False
-        if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse()) for x in args):
+        if all(hasattr(x, 'issparse') and x.issparse() for x in args):
             return True
         return False
 
@@ -119,4 +118,5 @@ def tree_add(*args, combine_size=None, **kwargs):
             op = TensorTreeAdd(args=inputs, **kwargs)
             return op(*inputs)
 
+    args = [scalar(a) if np.isscalar(a) else a for a in args]
     return MultiplyBuilder(combine_size).build(args)

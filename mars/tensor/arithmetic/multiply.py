@@ -18,8 +18,8 @@ import numpy as np
 from functools import reduce
 
 from ... import opcodes as OperandDef
-from ...config import options
 from ..array_utils import device, as_same_device
+from ..datasource import scalar
 from ..utils import infer_dtype
 from .core import TensorBinOp, TensorMultiOp
 from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
@@ -119,4 +119,5 @@ def tree_multiply(*args, combine_size=None, **kwargs):
             op = TensorTreeMultiply(args=inputs, **kwargs)
             return op(*inputs)
 
+    args = [scalar(a) if np.isscalar(a) else a for a in args]
     return MultiplyBuilder(combine_size).build(args)
