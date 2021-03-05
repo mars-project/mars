@@ -119,9 +119,13 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 tileables.append(tileable)
 
         if index is not None:
-            if tileables[0].shape[0] != len(index):
+            tileable_size = tileables[0].shape[0]
+            index_size = index.shape[0]
+            if not pd.isna(tileable_size) and not pd.isna(index_size) and \
+                    tileable_size != index_size:
                 raise ValueError(
-                    f'index {index} should have the same shape with tensor: {input_1d_tileables[0].shape[0]}')
+                    f'index {index} should have the same shape '
+                    f'with tensor: {tileable_size}')
             index_value = self._process_index(index, tileables)
         else:
             index_value = parse_index(pd.RangeIndex(0, tileables[0].shape[0]))
