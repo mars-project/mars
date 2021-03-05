@@ -58,6 +58,19 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(r, concat=True)[0]
         pd.testing.assert_frame_equal(result, pd.DataFrame(raw_dict, columns=list('ABC')))
 
+        # from tileable list
+        raw_list = [
+            np.random.choice(['u', 'v', 'w'], size=(3,)),
+            pd.Series(np.random.rand(3)),
+            np.random.randint(0, 10, size=(3,))
+        ]
+        m_list = raw_list.copy()
+        m_list[1] = md.Series(m_list[1])
+        m_list[2] = mt.tensor(m_list[2])
+        r = md.DataFrame(m_list, columns=list('ABC'))
+        result = self.executor.execute_dataframe(r, concat=True)[0]
+        pd.testing.assert_frame_equal(result, pd.DataFrame(raw_list, columns=list('ABC')))
+
         # from raw pandas initializer
         raw = pd.DataFrame(np.random.rand(100, 10), columns=list('ABCDEFGHIJ'))
         r = md.DataFrame(raw, num_partitions=10)

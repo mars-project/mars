@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ..core import Base, Entity, OutputType
-from ..tensor import tensor as astensor
+from ..tensor import tensor as astensor, stack
 from ..tensor.core import TENSOR_TYPE
 from ..utils import ceildiv
 from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
@@ -61,6 +61,12 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
             # data is a dict and some value is tensor
             df = dataframe_from_1d_tileables(
                 data, index=index, columns=columns, gpu=gpu, sparse=sparse)
+            need_repart = num_partitions is not None
+        elif isinstance(data, list) and any(isinstance(v, (Base, Entity)) for v in data):
+            # stack data together
+            data = stack(data)
+            df = dataframe_from_tensor(data, index=index, columns=columns,
+                                       gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
         elif isinstance(index, (INDEX_TYPE, SERIES_TYPE)):
             if isinstance(data, dict):
