@@ -26,7 +26,7 @@ from ...tiles import TilesError
 from ..utils import unify_chunks
 from ..array_utils import as_same_device, device, is_sparse_module
 from ..operands import TensorOperand, TensorOperandMixin
-from ..arithmetic.utils import tree_add
+from ..arithmetic.utils import chunk_tree_add
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
 
@@ -131,7 +131,7 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
                 chunk_op = c.op.copy()
                 chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx, order=out.order)
             else:
-                chunk = tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
+                chunk = chunk_tree_add(op.dtype, tensordot_chunks, out_idx, tensor_shape, sparse=op.sparse)
             out_chunks.append(chunk)
 
         get_nsplits = lambda t_idx, i: (a, b)[t_idx].nsplits[i]

@@ -26,7 +26,7 @@ from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
-from ..arithmetic.utils import tree_add
+from ..arithmetic.utils import chunk_tree_add
 from ..utils import is_asc_sorted
 from ..array_utils import as_same_device, device
 
@@ -856,7 +856,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
             out_chunks.append(out_chunk)
 
         # merge chunks together
-        chunk = tree_add(out.dtype, out_chunks, (0,), shape)
+        chunk = chunk_tree_add(out.dtype, out_chunks, (0,), shape)
         new_op = op.copy()
         n = new_op.new_tensor(op.inputs, shape=shape, order=out.order,
                               chunks=[chunk], nsplits=((shape[0],),))

@@ -495,7 +495,7 @@ class TensorCumReductionMixin(TensorReductionMixin):
                 to_cum_chunks.append(sliced_chunk)
             to_cum_chunks.append(chunk)
 
-            bin_op = bin_op_type(dtype=chunk.dtype)
+            bin_op = bin_op_type(args=to_cum_chunks, dtype=chunk.dtype)
             output_chunk = bin_op.new_chunk(to_cum_chunks, shape=chunk.shape,
                                             index=chunk.index, order=out_tensor.order)
             output_chunks.append(output_chunk)

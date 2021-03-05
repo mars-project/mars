@@ -18,11 +18,11 @@ import numpy as np
 from functools import reduce
 
 from ... import opcodes as OperandDef
+from ...config import options
 from ..array_utils import device, as_same_device
 from ..utils import infer_dtype
-from .core import TensorOperand
-from .core import TensorBinOp, TensorElementWise
-from .utils import arithmetic_operand, tree_op_estimate_size
+from .core import TensorBinOp, TensorMultiOp
+from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
 
 
 @arithmetic_operand(sparse_mode='binary_or')
@@ -84,11 +84,20 @@ def rmultiply(x1, x2, **kwargs):
     return op.rcall(x1, x2)
 
 
-class TensorTreeMultiply(TensorOperand, TensorElementWise):
+class TensorTreeMultiply(TensorMultiOp):
     _op_type_ = OperandDef.TREE_MULTIPLY
+    _func_name = 'multiply'
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, sparse=False, **kw):
+        super().__init__(_sparse=sparse, **kw)
+
+    @classmethod
+    def _is_sparse(cls, *args):
+        if all(np.isscalar(x) for x in args):
+            return False
+        if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse()) for x in args):
+            return True
+        return False
 
     @classmethod
     def execute(cls, ctx, op):
@@ -101,3 +110,13 @@ class TensorTreeMultiply(TensorOperand, TensorElementWise):
     @classmethod
     def estimate_size(cls, ctx, op):
         tree_op_estimate_size(ctx, op)
+
+
+@infer_dtype(lambda *args: reduce(np.multiply, args))
+def tree_multiply(*args, combine_size=None, **kwargs):
+    class MultiplyBuilder(TreeReductionBuilder):
+        def _build_reduction(self, inputs, final=False):
+            op = TensorTreeMultiply(args=inputs, **kwargs)
+            return op(*inputs)
+
+    return MultiplyBuilder(combine_size).build(args)

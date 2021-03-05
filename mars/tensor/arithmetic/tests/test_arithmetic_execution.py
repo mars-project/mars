@@ -167,7 +167,7 @@ class Test(unittest.TestCase):
         return x
 
     @ignore_warning
-    def testSparseUfuncExexution(self):
+    def testSparseUfuncExecution(self):
         from mars.tensor.arithmetic import UNARY_UFUNC, BIN_UFUNC, arccosh, \
             invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
 

@@ -66,7 +66,7 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         from ..arithmetic.subtract import TensorSubtract
-        from ..arithmetic.utils import tree_add
+        from ..arithmetic.utils import chunk_tree_add
         from .dot import TensorDot
 
         check_chunks_unknown_shape(op.inputs, TilesError)
@@ -110,8 +110,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
                     if len(prev_chunks) == 1:
                         s = prev_chunks[0]
                     else:
-                        s = tree_add(prev_chunks[0].dtype, prev_chunks,
-                                     None, prev_chunks[0].shape, sparse=op.sparse)
+                        s = chunk_tree_add(prev_chunks[0].dtype, prev_chunks,
+                                           None, prev_chunks[0].shape, sparse=op.sparse)
                     target_b = TensorSubtract(dtype=op.dtype, lhs=target_b, rhs=s).new_chunk(
                         [target_b, s], shape=target_b.shape)
                 out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(

@@ -70,9 +70,9 @@ class Test(unittest.TestCase):
         n2 = TensorRandint(state=np.random.RandomState(1),
                            dtype=np.float32()).new_chunk(None, shape=(10, 10))
 
-        n3 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10))
+        n3 = TensorTreeAdd(args=[], dtype=np.float32()).new_chunk(None, shape=(10, 10))
         n3.op._inputs = [n1, n2]
-        n4 = TensorTreeAdd(dtype=np.float32()).new_chunk(None, shape=(10, 10))
+        n4 = TensorTreeAdd(args=[], dtype=np.float32()).new_chunk(None, shape=(10, 10))
         n4.op._inputs = [n3]
 
         graph = DAG()
@@ -103,7 +103,7 @@ class Test(unittest.TestCase):
         str_to_chunk = dict()
         for s in char_dag.topological_iter():
             if char_dag.count_predecessors(s):
-                c = TensorTreeAdd(_key=s, dtype=np.float32()).new_chunk(None, shape=(10, 10))
+                c = TensorTreeAdd(args=[], _key=s, dtype=np.float32()).new_chunk(None, shape=(10, 10))
                 inputs = c.op._inputs = [str_to_chunk[ps] for ps in char_dag.predecessors(s)]
             else:
                 c = TensorRandint(_key=s, dtype=np.float32()).new_chunk(None, shape=(10, 10))
