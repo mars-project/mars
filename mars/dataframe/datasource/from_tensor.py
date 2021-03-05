@@ -120,7 +120,10 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         if index is not None:
             tileable_size = tileables[0].shape[0]
-            index_size = index.shape[0]
+            if hasattr(index, 'shape'):
+                index_size = index.shape[0]
+            else:
+                index_size = len(index)
             if not pd.isna(tileable_size) and not pd.isna(index_size) and \
                     tileable_size != index_size:
                 raise ValueError(
