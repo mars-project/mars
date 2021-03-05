@@ -534,18 +534,19 @@ async def test_async_batch_decorator():
     assert test_inst.arg_list == [(12,)]
     assert test_inst.kwarg_list == [{'kwarg': 34}]
 
-    test_inst = TestClass()
-    ret = await test_inst.method2.batch([(12,), (10,)],
-                                        [{'kwarg': 34}, {'kwarg': 33}])
-    assert ret == [1, 2]
-    assert test_inst.arg_list == [(11,), (9,)]
-    assert test_inst.kwarg_list == [{'kwarg': 33}, {'kwarg': 32}]
+    if sys.version_info[:2] > (3, 6):
+        test_inst = TestClass()
+        ret = await test_inst.method2.batch([(12,), (10,)],
+                                            [{'kwarg': 34}, {'kwarg': 33}])
+        assert ret == [1, 2]
+        assert test_inst.arg_list == [(11,), (9,)]
+        assert test_inst.kwarg_list == [{'kwarg': 33}, {'kwarg': 32}]
 
-    test_inst = TestClass()
-    ret = await test_inst.method3(15, kwarg=56)
-    assert ret == 1
-    ret = await test_inst.method3.batch([(16,), (17,)],
-                                        [{'kwarg': 57}, {'kwarg': 58}])
-    assert ret == [3, 3]
-    assert test_inst.arg_list == [(30,), (33,), (35,)]
-    assert test_inst.kwarg_list == [{'kwarg': 112}, {'kwarg': 115}, {'kwarg': 117}]
+        test_inst = TestClass()
+        ret = await test_inst.method3(15, kwarg=56)
+        assert ret == 1
+        ret = await test_inst.method3.batch([(16,), (17,)],
+                                            [{'kwarg': 57}, {'kwarg': 58}])
+        assert ret == [3, 3]
+        assert test_inst.arg_list == [(30,), (33,), (35,)]
+        assert test_inst.kwarg_list == [{'kwarg': 112}, {'kwarg': 115}, {'kwarg': 117}]
