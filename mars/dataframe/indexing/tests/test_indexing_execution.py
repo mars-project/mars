@@ -676,6 +676,23 @@ class Test(TestBase):
         expected['d1'] = data['c4'].mean()
         pd.testing.assert_frame_equal(result, expected)
 
+        # test setitem into empty DataFrame
+        df = md.DataFrame()
+        df['a'] = md.Series(np.arange(1, 11), chunk_size=3)
+        pd.testing.assert_index_equal(df.index_value.to_pandas(),
+                                      pd.RangeIndex(10))
+
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected = pd.DataFrame()
+        expected['a'] = pd.Series(np.arange(1, 11))
+        pd.testing.assert_frame_equal(result, expected)
+
+        df['b'] = md.Series(np.arange(2, 12), index=pd.RangeIndex(1, 11),
+                            chunk_size=3)
+        result = self.executor.execute_dataframe(df, concat=True)[0]
+        expected['b'] = pd.Series(np.arange(2, 12), index=pd.RangeIndex(1, 11))
+        pd.testing.assert_frame_equal(result, expected)
+
     def testResetIndexExecution(self):
         data = pd.DataFrame([('bird',    389.0),
                              ('bird',     24.0),
