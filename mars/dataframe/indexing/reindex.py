@@ -25,7 +25,7 @@ from ...operands import OperandStage
 from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
 from ...utils import lazy_import, recursive_tile
-from ..core import Index as DataFrameIndexType
+from ..core import Index as DataFrameIndexType, INDEX_TYPE
 from ..initializer import Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import validate_axis_style_args, parse_index
@@ -152,6 +152,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
         if self._index is not None:
             shape[0] = self._index.shape[0]
             index_value = asindex(self._index).index_value
+            self._index = astensor(self._index)
             if isinstance(self._index, (Base, Entity)):
                 inputs.append(self._index)
         if self._columns is not None:
@@ -672,7 +673,8 @@ def reindex(df_or_series, *args, **kwargs):
     if isinstance(index, (Base, Entity)):
         if isinstance(index, DataFrameIndexType):
             index_freq = getattr(index.index_value.value, 'freq', None)
-        index = astensor(index)
+        if not isinstance(index, INDEX_TYPE):
+            index = astensor(index)
     elif index is not None:
         index = np.asarray(index)
         index_freq = getattr(index, 'freq', None)
