@@ -173,6 +173,23 @@ class Test(TestBase):
         result = self.executor.execute_dataframe(index, concat=True)[0]
         pd.testing.assert_index_equal(pi, result)
 
+    def testIndexOnly(self):
+        df = md.DataFrame(index=[1, 2, 3])
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      pd.DataFrame(index=[1, 2, 3]))
+
+        s = md.Series(index=[1, 2, 3])
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(s, concat=True)[0],
+                                       pd.Series(index=[1, 2, 3]))
+
+        df = md.DataFrame(index=md.Index([1, 2, 3]))
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(df, concat=True)[0],
+                                      pd.DataFrame(index=[1, 2, 3]))
+
+        s = md.Series(index=md.Index([1, 2, 3]), dtype=object)
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(s, concat=True)[0],
+                                       pd.Series(index=[1, 2, 3], dtype=object))
+
     def testSeriesFromTensor(self):
         data = np.random.rand(10)
         series = md.Series(mt.tensor(data), name='a')

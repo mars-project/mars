@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pandas as pd
 
 from ..core import Base, Entity, OutputType
@@ -67,7 +68,9 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
                 df = dataframe_from_1d_tileables(data, index=index, columns=columns,
                                                  gpu=gpu, sparse=sparse)
             else:
-                df = dataframe_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
+                if data is not None:
+                    data = astensor(data, chunk_size=chunk_size)
+                df = dataframe_from_tensor(data, index=index,
                                            columns=columns, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
         else:
@@ -87,6 +90,9 @@ class Series(_Series, metaclass=InitializerMeta):
         # make sure __getattr__ does not result in stack overflow
         self._data = None
 
+        if dtype is not None:
+            dtype = np.dtype(dtype)
+
         need_repart = False
         if isinstance(data, (TENSOR_TYPE, INDEX_TYPE)):
             if chunk_size is not None:
@@ -95,8 +101,10 @@ class Series(_Series, metaclass=InitializerMeta):
             series = series_from_tensor(data, index=index, name=name, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
         elif isinstance(index, INDEX_TYPE):
-            series = series_from_tensor(astensor(data, chunk_size=chunk_size), index=index,
-                                        name=name, gpu=gpu, sparse=sparse)
+            if data is not None:
+                data = astensor(data, chunk_size=chunk_size)
+            series = series_from_tensor(data, index=index, name=name,
+                                        dtype=dtype, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
         elif isinstance(data, SERIES_TYPE):
             if not hasattr(data, 'data'):

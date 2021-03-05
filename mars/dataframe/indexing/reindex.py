@@ -164,10 +164,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             inputs.append(self._fill_value)
 
         if df_or_series.ndim == 1:
-            return self.new_series(inputs, shape=shape, dtype=df_or_series.dtype,
+            return self.new_series(inputs, shape=tuple(shape), dtype=df_or_series.dtype,
                                    index_value=index_value, name=df_or_series.name)
         else:
-            return self.new_dataframe(inputs, shape=shape, dtypes=dtypes,
+            return self.new_dataframe(inputs, shape=tuple(shape), dtypes=dtypes,
                                       index_value=index_value,
                                       columns_value=columns_value)
 
