@@ -252,13 +252,20 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             return df
         else:
             indexer = inp.index.reindex(index)[1]
-            spmatrix = sps.lil_matrix((len(index), 1), dtype=inp.dtype)
             cond = indexer >= 0
             available_indexer = indexer[cond]
             del indexer
-            spmatrix[cond, 0] = inp.iloc[available_indexer].to_numpy()
-            series = pd.DataFrame.sparse.from_spmatrix(spmatrix, index=index).iloc[:, 0]
-            series.name = inp.name
+            data = inp.iloc[available_indexer].to_numpy()
+            ind = cond.nonzero()[0]
+            spmatrix = sps.csc_matrix((data, (ind, np.zeros_like(ind))),
+                                      shape=(len(index), 1), dtype=inp.dtype)
+            sparse_array = pd.arrays.SparseArray.from_spmatrix(spmatrix)
+            # convert to SparseDtype(xxx, np.nan)
+            # to ensure 0 in sparse_array not converted to np.nan
+            sparse_array = pd.arrays.SparseArray(
+                sparse_array.sp_values, sparse_index=sparse_array.sp_index,
+                fill_value=np.nan, dtype=pd.SparseDtype(sparse_array.dtype, np.nan))
+            series = pd.Series(sparse_array, index=index, name=inp.name)
             return series
 
     @classmethod
