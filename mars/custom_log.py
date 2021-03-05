@@ -49,10 +49,11 @@ def _get_custom_log_dir():
 
 class _LogWrapper:
     def __init__(self, ctx: DistributedContext, op,
-                 log_path: str):
+                 log_path: str, custom_log_meta):
         self.ctx = ctx
         self.op = op
         self.log_path = log_path
+        self.custom_log_meta = custom_log_meta
 
         self.file = open(log_path, 'w')
         self.stdout = sys.stdout
@@ -84,9 +85,7 @@ class _LogWrapper:
         chunk_op_key = self.op.key
         worker_addr = self.ctx.get_local_address()
         log_path = self.log_path
-
-        custom_log_meta = self.ctx.get_custom_log_meta_ref()
-        custom_log_meta.record_custom_log_path(
+        self.custom_log_meta.record_custom_log_path(
             session_id, tileable_op_key, chunk_op_key,
             worker_addr, log_path)
 
@@ -127,9 +126,10 @@ def redirect_custom_log(func):
             # do nothing for local scheduler
             return func(cls, ctx, op)
 
+        custom_log_meta = ctx.get_custom_log_meta_ref()
         log_path = gen_log_path(ctx.session_id, op.key)
 
-        with _LogWrapper(ctx, op, log_path):
+        with _LogWrapper(ctx, op, log_path, custom_log_meta):
             return func(cls, ctx, op)
 
     return wrap
