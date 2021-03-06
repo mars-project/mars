@@ -101,7 +101,7 @@ class Test(unittest.TestCase):
             inp_chunk = fetch_op.new_chunk(None, shape=(100, 100)).data
             input_chunks.append(inp_chunk)
 
-        add_op = TensorTreeAdd(dtype=np.dtype('int64'))
+        add_op = TensorTreeAdd(args=input_chunks, dtype=np.dtype('int64'))
         add_chunk = add_op.new_chunk(input_chunks, shape=(100, 100), dtype=np.dtype('int64')).data
         graph_add.add_node(add_chunk)
         for inp_chunk in input_chunks:
@@ -114,7 +114,7 @@ class Test(unittest.TestCase):
         self.assertEqual(executor.mock_max_memory, 80000)
 
         for _ in range(3):
-            new_add_op = TensorTreeAdd(dtype=np.dtype('int64'))
+            new_add_op = TensorTreeAdd(args=[add_chunk], dtype=np.dtype('int64'))
             new_add_chunk = new_add_op.new_chunk([add_chunk], shape=(100, 100), dtype=np.dtype('int64')).data
             graph_add.add_node(new_add_chunk)
             graph_add.add_edge(add_chunk, new_add_chunk)

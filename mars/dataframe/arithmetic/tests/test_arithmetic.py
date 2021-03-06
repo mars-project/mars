@@ -71,11 +71,11 @@ binary_functions = dict(
     less_equal=dict(func=comp_func('le', 'ge'), op=DataFrameLessEqual,
                     func_name='le', rfunc_name='ge'),
     logical_and=dict(func=operator.and_, op=DataFrameAnd,
-                    func_name='__and__', rfunc_name='and'),
+                     func_name='__and__', rfunc_name='and'),
     logical_or=dict(func=operator.or_, op=DataFrameOr,
                     func_name='__or__', rfunc_name='__ror__'),
     logical_xor=dict(func=operator.xor, op=DataFrameXor,
-                    func_name='__xor__', rfunc_name='__rxor__'),
+                     func_name='__xor__', rfunc_name='__rxor__'),
 )
 
 

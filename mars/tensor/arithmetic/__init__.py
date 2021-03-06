@@ -15,9 +15,9 @@
 # limitations under the License.
 
 from ...utils import is_build_mode
-from .add import add, TensorAdd, TensorTreeAdd
+from .add import add, tree_add, TensorAdd, TensorTreeAdd
 from .subtract import subtract, TensorSubtract
-from .multiply import multiply, TensorMultiply, TensorTreeMultiply
+from .multiply import multiply, tree_multiply, TensorMultiply, TensorTreeMultiply
 from .divide import divide, TensorDivide
 from .truediv import truediv, TensorTrueDiv
 from .floordiv import floordiv, TensorFloorDiv

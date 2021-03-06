@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 
 from ...core import ExecutableTuple
-from ...serialize import ValueType, AnyField, DictField, KeyField, StringField
+from ...serialize import ValueType, AnyField, DictField, KeyField, StringField, ListField
 from ...utils import check_chunks_unknown_shape
 from ...tiles import TilesError
 from ..core import Tensor, TensorOrder
@@ -614,3 +614,106 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
 
     def __call__(self, x, out1=None, out2=None, out=None, where=None):
         return self._call(x, out1=out1, out2=out2, out=out, where=where)
+
+
+class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
+    _args = ListField('args')
+    _out = KeyField('out')
+    _where = KeyField('where')
+    _casting = StringField('casting')
+    _order = StringField('order')
+    _err = DictField('err', ValueType.string, ValueType.string)
+
+    def __init__(self, args=None, out=None, where=None, dtype=None, casting=None,
+                 order=None, err=None, **kwargs):
+        super().__init__(_args=args, _out=out, _where=where, _order=order,
+                         _dtype=dtype, _casting=casting, _er=err, **kwargs)
+        if self._casting is None:
+            self._casting = 'same_kind'
+        if self._order is None:
+            self._order = 'K'
+        check_order(self._order)
+
+    @property
+    def args(self):
+        return getattr(self, '_args', None)
+
+    @property
+    def out(self):
+        return getattr(self, '_out', None)
+
+    @property
+    def order(self):
+        return getattr(self, '_order', None)
+
+    @property
+    def casting(self):
+        return getattr(self, '_casting', None)
+
+    @property
+    def err(self):
+        return getattr(self, '_err', dict())
+
+    @classmethod
+    def _is_sparse(cls, *args):
+        return False
+
+    def _set_sparse(self, inputs):
+        inputs_iter = iter(inputs or ())
+        args = list(self._args)
+        for idx in range(len(self._args)):
+            if not np.isscalar(self._args[idx]):
+                args[idx] = next(inputs_iter)
+        setattr(self, '_sparse', self._is_sparse(*args))
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        inputs_iter = iter(inputs or ())
+
+        args = list(self._args)
+        for idx in range(len(args)):
+            if not np.isscalar(args[idx]):
+                args[idx] = next(inputs_iter)
+        self._args = args
+
+        if getattr(self, '_out', None) is not None:
+            self._out = next(inputs_iter)
+        if getattr(self, '_where', None) is not None:
+            self._where = next(inputs_iter)
+
+    def _process_inputs(self, *args, out=None):
+        self._args = [a if np.isscalar(a) else astensor(a) for a in args]
+
+        if out is not None:
+            if isinstance(out, Tensor):
+                self._out = out
+            else:
+                raise TypeError(f'out should be Tensor object, got {type(out)} instead')
+
+        return args + (out,)
+
+    def __call__(self, *args, out=None):
+        proc_inputs_results = self._process_inputs(*args, out=out)
+        args = proc_inputs_results[:-1]
+        out, = proc_inputs_results[-1:]
+        # check broadcast
+        shapes = [() if np.isscalar(a) else a.shape for a in self._args]
+        shape = broadcast_shape(*shapes)
+        order = out.order if out is not None else None
+
+        inputs = filter_inputs(list(args) + [out])
+        t = self.new_tensor(inputs, shape, order=order)
+
+        if out is None:
+            return t
+
+        check_out_param(out, t, getattr(self, '_casting'))
+        out_shape, out_dtype = out.shape, out.dtype
+
+        # if `out` is specified, use out's dtype and shape
+        if t.shape != out_shape:
+            t = self.new_tensor(inputs, out_shape, order=order)
+        setattr(self, '_dtype', out_dtype)
+
+        out.data = t.data
+        return out

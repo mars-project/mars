@@ -19,10 +19,10 @@ from functools import reduce
 
 from ... import opcodes as OperandDef
 from ..array_utils import device, as_same_device
+from ..datasource import scalar
 from ..utils import infer_dtype
-from ..operands import TensorOperand
-from .core import TensorBinOp, TensorElementWise
-from .utils import arithmetic_operand, tree_op_estimate_size
+from .core import TensorBinOp, TensorMultiOp
+from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
 
 
 @arithmetic_operand(sparse_mode='binary_and')
@@ -85,11 +85,18 @@ def radd(x1, x2, **kwargs):
     return op.rcall(x1, x2)
 
 
-class TensorTreeAdd(TensorOperand, TensorElementWise):
+class TensorTreeAdd(TensorMultiOp):
     _op_type_ = OperandDef.TREE_ADD
+    _func_name = 'add'
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, sparse=False, **kw):
+        super().__init__(_sparse=sparse, **kw)
+
+    @classmethod
+    def _is_sparse(cls, *args):
+        if args and all(hasattr(x, 'issparse') and x.issparse() for x in args):
+            return True
+        return False
 
     @classmethod
     def execute(cls, ctx, op):
@@ -102,3 +109,14 @@ class TensorTreeAdd(TensorOperand, TensorElementWise):
     @classmethod
     def estimate_size(cls, ctx, op):
         tree_op_estimate_size(ctx, op)
+
+
+@infer_dtype(lambda *args: reduce(np.add, args))
+def tree_add(*args, combine_size=None, **kwargs):
+    class MultiplyBuilder(TreeReductionBuilder):
+        def _build_reduction(self, inputs, final=False):
+            op = TensorTreeAdd(args=inputs, **kwargs)
+            return op(*inputs)
+
+    args = [scalar(a) if np.isscalar(a) else a for a in args]
+    return MultiplyBuilder(combine_size).build(args)
