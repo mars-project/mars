@@ -93,7 +93,7 @@ class TensorTreeMultiply(TensorMultiOp):
 
     @classmethod
     def _is_sparse(cls, *args):
-        if all(np.isscalar(x) for x in args):
+        if not args or all(np.isscalar(x) for x in args):
             return False
         if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse()) for x in args):
             return True

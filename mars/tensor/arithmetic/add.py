@@ -94,7 +94,7 @@ class TensorTreeAdd(TensorMultiOp):
 
     @classmethod
     def _is_sparse(cls, *args):
-        if all(hasattr(x, 'issparse') and x.issparse() for x in args):
+        if args and all(hasattr(x, 'issparse') and x.issparse() for x in args):
             return True
         return False
 
