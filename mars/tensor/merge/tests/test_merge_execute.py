@@ -14,19 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
 
 from mars.tensor.datasource import tensor, empty
 from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d
-from mars.tests.core import ExecutorForTest
+from mars.tests.core import TestBase
 
 
-class Test(unittest.TestCase):
+class Test(TestBase):
     def setUp(self):
-        self.executor = ExecutorForTest('numpy')
+        self.ctx, self.executor = self._create_test_context()
 
     def testConcatenateExecution(self):
         a_data = np.random.rand(10, 20, 30)
@@ -87,6 +85,19 @@ class Test(unittest.TestCase):
         np.testing.assert_array_equal(res, expected)
         self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
         self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+
+        # test stack with unknown shapes
+        t = tensor(raw[0], chunk_size=3)
+        t2 = t[t[:, 0] > 0.0]
+        t3 = t2 + 1
+
+        with self.ctx:
+            arr8 = stack([t2, t3])
+            result = self.executor.execute_tensors([arr8])[0]
+            e = raw[0]
+            e2 = e[e[:, 0] > 0.0]
+            e3 = e2 + 1
+            np.testing.assert_array_equal(result, np.stack([e2, e3]))
 
     def testHStackExecution(self):
         a_data = np.random.rand(10)

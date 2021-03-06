@@ -63,6 +63,8 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         return isinstance(t, TENSOR_TYPE) and t.ndim == 0
 
     def __call__(self, target: DataFrame, value):
+        raw_target = target
+
         inputs = [target]
         if np.isscalar(value):
             value_dtype = np.array(value).dtype
@@ -72,18 +74,21 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         else:
             if isinstance(value, (pd.Series, SERIES_TYPE)):
                 value = asseries(value)
-                inputs.append(value)
                 value_dtype = value.dtype
             elif is_list_like(value) or isinstance(value, TENSOR_TYPE):
                 value = asseries(value, index=target.index)
-                inputs.append(value)
                 value_dtype = value.dtype
             else:  # pragma: no cover
                 raise TypeError('Wrong value type, could be one of scalar, Series or tensor')
 
-            if value.index_value.key != target.index_value.key:  # pragma: no cover
-                raise NotImplementedError('Does not support setting value '
-                                          'with different index for now')
+            if target.shape[0] == 0:
+                # target empty, reindex target first
+                target = target.reindex(value.index)
+                inputs[0] = target
+            elif value.index_value.key != target.index_value.key:
+                # need reindex when target df is not empty and index different
+                value = value.reindex(target.index)
+            inputs.append(value)
 
         index_value = target.index_value
         dtypes = target.dtypes.copy(deep=True)
@@ -92,7 +97,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         ret = self.new_dataframe(inputs, shape=(target.shape[0], len(dtypes)),
                                  dtypes=dtypes, index_value=index_value,
                                  columns_value=columns_value)
-        target.data = ret.data
+        raw_target.data = ret.data
 
     @classmethod
     def tile(cls, op):
