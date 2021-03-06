@@ -483,6 +483,47 @@ class Test(SchedulerIntegratedTest):
             self.assertIn('df func', repr(log))
             self.assertEqual(len(str(df.fetch_log(session=sess))), 0)
 
+            def test_host(rndf):
+                rm = spawn(nested, rndf)
+                rm.execute()
+                print(rm.fetch_log())
+
+            def nested(_rndf):
+                print('log_content')
+
+            ds = [spawn(test_host, n, retry_when_fail=False)
+                  for n in np.random.rand(4)]
+            xtp = ExecutableTuple(ds)
+            xtp.execute(session=sess)
+            for log in xtp.fetch_log(session=sess):
+                self.assertEqual(str(log).strip(), 'log_content')
+
+            def test_threaded():
+                import threading
+
+                exc_info = None
+
+                def print_fun():
+                    nonlocal exc_info
+                    try:
+                        print('inner')
+                    except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                        exc_info = sys.exc_info()
+
+                print_thread = threading.Thread(target=print_fun)
+                print_thread.start()
+                print_thread.join()
+
+                if exc_info is not None:
+                    raise exc_info[1].with_traceback(exc_info[-1])
+
+                print('after')
+
+            rm = spawn(test_threaded)
+            rm.execute(session=sess)
+            logs = str(rm.fetch_log(session=sess)).strip()
+            self.assertEqual(logs, 'inner\nafter')
+
     def testNoWorkerException(self):
         self.start_processes(etcd=False, n_workers=0)
 

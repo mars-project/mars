@@ -49,14 +49,18 @@ def _get_custom_log_dir():
 
 class _LogWrapper:
     def __init__(self, ctx: DistributedContext, op,
-                 log_path: str, custom_log_meta):
+                 log_path: str):
         self.ctx = ctx
         self.op = op
         self.log_path = log_path
-        self.custom_log_meta = custom_log_meta
 
         self.file = open(log_path, 'w')
         self.stdout = sys.stdout
+
+        self.raw_stdout = self.stdout
+        while isinstance(self.raw_stdout, _LogWrapper):
+            self.raw_stdout = self.raw_stdout.stdout
+
         # flag about registering log path
         self.is_log_path_registered = False
 
@@ -80,7 +84,9 @@ class _LogWrapper:
         chunk_op_key = self.op.key
         worker_addr = self.ctx.get_local_address()
         log_path = self.log_path
-        self.custom_log_meta.record_custom_log_path(
+
+        custom_log_meta = self.ctx.get_custom_log_meta_ref()
+        custom_log_meta.record_custom_log_path(
             session_id, tileable_op_key, chunk_op_key,
             worker_addr, log_path)
 
@@ -94,10 +100,10 @@ class _LogWrapper:
         # force flush to make sure `fetch_log` can get stdout in time
         self.file.flush()
         # write into previous stdout
-        self.stdout.write(data)
+        self.raw_stdout.write(data)
 
     def flush(self):
-        self.stdout.flush()
+        self.raw_stdout.flush()
 
 
 def gen_log_path(session_id, op_key):
@@ -121,10 +127,9 @@ def redirect_custom_log(func):
             # do nothing for local scheduler
             return func(cls, ctx, op)
 
-        custom_log_meta = ctx.get_custom_log_meta_ref()
         log_path = gen_log_path(ctx.session_id, op.key)
 
-        with _LogWrapper(ctx, op, log_path, custom_log_meta):
+        with _LogWrapper(ctx, op, log_path):
             return func(cls, ctx, op)
 
     return wrap
