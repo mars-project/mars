@@ -176,8 +176,6 @@ class SocketServer(_BaseSocketServer):
         handle_channel = config.pop('handle_channel')
         if 'start_serving' not in config:
             config['start_serving'] = False
-        if 'reuse_port' not in config:
-            config['reuse_port'] = True
 
         async def handle_connection(reader, writer):
             # create a channel when client connected

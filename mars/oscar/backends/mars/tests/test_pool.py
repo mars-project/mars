@@ -382,9 +382,7 @@ async def test_errors():
 @pytest.mark.asyncio
 async def test_server_closed():
     start_method = 'fork' if sys.platform != 'win32' else None
-    ports = [get_next_port() for _ in range(3)]
     pool = await create_actor_pool('127.0.0.1', n_process=2,
-                                   ports=ports,
                                    subprocess_start_method=start_method,
                                    auto_recover=False)
 
@@ -412,14 +410,6 @@ async def test_server_closed():
 
     with pytest.raises(RuntimeError):
         await pool.start()
-
-    # create a new pool with same address
-    pool = await create_actor_pool('127.0.0.1', n_process=2,
-                                   ports=ports,
-                                   subprocess_start_method=start_method)
-    async with pool:
-        # test client that is new
-        assert await ctx.has_actor(actor_ref) is False
 
     # test server unreachable
     with pytest.raises(ConnectionError):
