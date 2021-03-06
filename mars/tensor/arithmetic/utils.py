@@ -27,16 +27,11 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
             super(cls, self).__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
 
         def _is_sparse_binary_and_const(x1, x2):
-            if hasattr(x1, 'issparse') and x1.issparse():
-                if np.isscalar(x2) or hasattr(x2, 'issparse') and x2.issparse():
-                    return True
-                else:
-                    return False
-            if hasattr(x2, 'issparse') and x2.issparse():
-                if np.isscalar(x1) or hasattr(x1, 'issparse') and x1.issparse():
-                    return True
-                else:
-                    return False
+            if all(np.isscalar(x) for x in [x1, x2]):
+                return False
+            if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse())
+                   for x in [x1, x2]):
+                return True
             return False
 
         def _is_sparse_binary_or_const(x1, x2):
@@ -70,7 +65,32 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
         return _decorator
 
 
-def tree_add(dtype, chunks, idx, shape, sparse=False):
+class TreeReductionBuilder:
+    def __init__(self, combine_size=None):
+        self._combine_size = combine_size or options.combine_size
+
+    def _build_reduction(self, inputs, final=False):
+        raise NotImplementedError
+
+    def build(self, inputs):
+        combine_size = self._combine_size
+        while len(inputs) > self._combine_size:
+            new_inputs = []
+            for i in range(0, len(inputs), combine_size):
+                objs = inputs[i: i + combine_size]
+                if len(objs) == 1:
+                    obj = objs[0]
+                else:
+                    obj = self._build_reduction(objs, final=False)
+                new_inputs.append(obj)
+            inputs = new_inputs
+
+        if len(inputs) == 1:
+            return inputs[0]
+        return self._build_reduction(inputs, final=True)
+
+
+def chunk_tree_add(dtype, chunks, idx, shape, sparse=False, combine_size=None):
     """
     Generate tree add plan.
 
@@ -90,36 +110,30 @@ def tree_add(dtype, chunks, idx, shape, sparse=False):
     :param idx: index of result chunk
     :param shape: shape of result chunk
     :param sparse: return value is sparse or dense
+    :param combine_size: combine size
     :return: result chunk
     """
-    from .add import TensorTreeAdd
-
-    combine_size = options.combine_size
-
-    while len(chunks) > combine_size:
-        new_chunks = []
-        for i in range(0, len(chunks), combine_size):
-            chks = chunks[i: i + combine_size]
-            if len(chks) == 1:
-                chk = chks[0]
+    class ChunkAddBuilder(TreeReductionBuilder):
+        def _build_reduction(self, inputs, final=False):
+            from .add import TensorTreeAdd
+            op = TensorTreeAdd(args=inputs, dtype=dtype, sparse=sparse)
+            if not final:
+                return op.new_chunk(inputs, shape=shape)
             else:
-                chk_op = TensorTreeAdd(dtype=dtype, sparse=sparse)
-                chk = chk_op.new_chunk(chks, shape=shape)
-            new_chunks.append(chk)
-        chunks = new_chunks
+                return op.new_chunk(inputs, shape=shape, index=idx, order=chunks[0].order)
 
-    op = TensorTreeAdd(dtype=dtype, sparse=sparse)
-    return op.new_chunk(chunks, shape=shape, index=idx, order=chunks[0].order)
+    return ChunkAddBuilder(combine_size).build(chunks)
 
 
 def tree_op_estimate_size(ctx, op):
     chunk = op.outputs[0]
-    sum_inputs = sum(ctx[inp.key][0] for inp in op.inputs)
     if not chunk.is_sparse():
+        max_inputs = max(ctx[inp.key][0] for inp in op.inputs)
         calc_size = chunk_size = chunk.nbytes
         if np.isnan(calc_size):
-            chunk_size = calc_size = sum_inputs
+            chunk_size = calc_size = max_inputs
     else:
+        sum_inputs = sum(ctx[inp.key][0] for inp in op.inputs)
         calc_size = sum_inputs
         chunk_size = min(sum_inputs, chunk.nbytes + np.dtype(np.int64).itemsize * np.prod(chunk.shape) * chunk.ndim)
         if np.isnan(chunk_size):
