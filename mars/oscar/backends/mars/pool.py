@@ -101,7 +101,7 @@ class AbstractActorPool(ABC):
         # actor id -> actor
         self._actors: Dict[bytes, Actor] = dict()
         # message id -> future
-        self._process_messages: Dict[bytes: asyncio.Future] = dict()
+        self._process_messages: Dict[bytes, asyncio.Future] = dict()
 
         # manage async actor callers
         self._caller = ActorCaller()
@@ -964,7 +964,7 @@ class MainActorPool(ActorPoolBase):
     async def _monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for i, address in enumerate(self._sub_processes):
+                for address in self._sub_processes:
                     process = self._sub_processes[address]
                     if not process.is_alive():
                         self._recovered.clear()
