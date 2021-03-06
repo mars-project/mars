@@ -16,14 +16,13 @@ from typing import Dict, List, Tuple, Type, Any, Optional
 
 from .communication import get_client_type, Client
 
-LOCAL_ADDRESS = 'dummy://'
-
 
 class Router:
     """
     Router provides mapping from external address to internal address.
     """
-    __slots__ = '_curr_external_addresses', '_mapping', '_cache'
+    __slots__ = '_curr_external_addresses', '_local_mapping', \
+                '_mapping', '_cache'
 
     _instance: "Router" = None
 
@@ -42,8 +41,12 @@ class Router:
 
     def __init__(self,
                  external_addresses: List[str],
+                 local_address: Optional[str],
                  mapping: Dict[str, str] = None):
         self._curr_external_addresses = external_addresses
+        self._local_mapping = dict()
+        for addr in self._curr_external_addresses:
+            self._local_mapping[addr] = local_address
         if mapping is None:
             mapping = dict()
         self._mapping = mapping
@@ -51,6 +54,19 @@ class Router:
 
     def set_mapping(self, mapping: Dict[str, str]):
         self._mapping = mapping
+
+    def add_router(self, router: "Router"):
+        self._curr_external_addresses.extend(router._curr_external_addresses)
+        self._local_mapping.update(router._local_mapping)
+        self._mapping.update(router._mapping)
+
+    def remove_router(self, router: "Router"):
+        for external_address in router._curr_external_addresses:
+            self._curr_external_addresses.remove(external_address)
+        for addr in router._local_mapping:
+            self._local_mapping.pop(addr, None)
+        for addr in router._mapping:
+            self._mapping.pop(addr, None)
 
     @property
     def external_address(self):
@@ -60,7 +76,7 @@ class Router:
     def get_internal_address(self, external_address: str) -> str:
         if external_address in self._curr_external_addresses:
             # local address, use dummy address
-            return LOCAL_ADDRESS
+            return self._local_mapping.get(external_address)
         # try to lookup inner address from address mapping
         return self._mapping.get(external_address)
 
@@ -70,7 +86,12 @@ class Router:
                          cached: bool = True,
                          **kw) -> Client:
         if cached and (external_address, from_who) in self._cache:
-            return self._cache[external_address, from_who]
+            cached_client = self._cache[external_address, from_who]
+            if cached_client.closed:
+                # closed before, ignore it
+                del self._cache[external_address, from_who]
+            else:
+                return cached_client
 
         address = self.get_internal_address(external_address)
         if address is None:
@@ -86,4 +107,4 @@ class Router:
         return client
 
 
-_empty_router = Router(list())
+_empty_router = Router(list(), None)

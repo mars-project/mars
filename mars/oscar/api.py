@@ -40,6 +40,11 @@ async def actor_ref(*args, **kwargs):
     return await ctx.actor_ref(*args, **kwargs)
 
 
+async def kill_actor(actor_ref):
+    ctx = get_context()
+    return await ctx.kill_actor(actor_ref)
+
+
 async def create_actor_pool(address: str,
                             n_process: int = None,
                             **kwargs):

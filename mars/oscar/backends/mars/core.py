@@ -15,6 +15,7 @@
 import asyncio
 from typing import Dict, Union
 
+from ...errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, \
     DesrializeMessageFailed
@@ -45,17 +46,19 @@ class ActorCaller:
     async def _listen(self, client: Client):
         while not client.closed:
             try:
-                message: _MessageBase = await client.recv()
+                try:
+                    message: _MessageBase = await client.recv()
+                except EOFError:
+                    # remote server closed, close client and raise ServerClosed
+                    await client.close()
+                    raise ServerClosed(f'Remote server {client.dest_address} closed')
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
-            except EOFError:
-                # server closed
-                break
             except DesrializeMessageFailed as e:  # pragma: no cover
                 message_id = e.message_id
                 future = self._client_to_message_futures[client].pop(message_id)
                 future.set_exception(e)
-            except Exception as e:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
+            except Exception as e:  # noqa: E722  # pylint: disable=bare-except
                 message_futures = self._client_to_message_futures.get(client)
                 self._client_to_message_futures[client] = dict()
                 for future in message_futures.values():
@@ -64,13 +67,18 @@ class ActorCaller:
     async def call(self,
                    router: Router,
                    dest_address: str,
-                   message: _MessageBase) -> result_message_type:
+                   message: _MessageBase,
+                   wait: bool = True) \
+            -> Union[ResultMessage, ErrorMessage, asyncio.Future]:
         client = await self.get_client(router, dest_address)
         loop = asyncio.get_running_loop()
         wait_response = loop.create_future()
         self._client_to_message_futures[client][message.message_id] = wait_response
         await client.send(message)
-        return await wait_response
+        if not wait:
+            return wait_response
+        else:
+            return await wait_response
 
     async def stop(self):
         await asyncio.gather(*[client.close() for client in self._clients])

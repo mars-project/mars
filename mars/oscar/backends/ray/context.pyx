@@ -58,6 +58,10 @@ cdef class RayActorContext(BaseActorContext):
         ray.kill(actor_handle)
         return actor_ref.uid
 
+    async def kill_actor(self, ActorRef actor_ref):
+        # for Ray, kill == destroy.
+        return await self.destroy_actor(actor_ref)
+
     async def send(self, ActorRef actor_ref, object message, bint wait_response=True):
         try:
             actor_handle = ray.get_actor(actor_ref.uid)

@@ -15,7 +15,7 @@
 import asyncio
 import sys
 import multiprocessing
-from typing import Union
+from typing import Union, List, Tuple, Type, Dict
 
 import numpy as np
 import pytest
@@ -24,7 +24,7 @@ from mars.lib.aio import AioEvent
 from mars.oscar.backends.mars.communication import \
     SocketChannel, SocketServer, UnixSocketServer, \
     DummyChannel, DummyServer, get_client_type, \
-    SocketClient, UnixSocketClient, DummyClient
+    SocketClient, UnixSocketClient, DummyClient, Server
 from mars.utils import get_next_port
 
 
@@ -33,13 +33,13 @@ port = get_next_port()
 
 
 # server_type, config, con
-params = [
+params: List[Tuple[Type[Server], Dict, str]] = [
     (SocketServer, dict(host='127.0.0.1', port=port), f'127.0.0.1:{port}'),
 ]
 if sys.platform != 'win32':
     params.append((UnixSocketServer, dict(process_index='0'), f'unixsocket:///0'))
 local_params = params.copy()
-local_params.append((DummyServer, dict(), 'dummy://'))
+local_params.append((DummyServer, dict(), 'dummy://0'))
 
 
 @pytest.mark.parametrize(

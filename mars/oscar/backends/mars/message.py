@@ -42,6 +42,7 @@ class MessageType(Enum):
     actor_ref = 6
     send = 7
     tell = 8
+    cancel = 9
 
 
 class ControlMessageType(Enum):
@@ -86,10 +87,11 @@ class _MessageBase(ABC):
 
 
 class ControlMessage(_MessageBase):
-    __slots__ = 'control_message_type', 'content'
+    __slots__ = 'address', 'control_message_type', 'content'
 
     def __init__(self,
                  message_id: bytes,
+                 address: str,
                  control_message_type: ControlMessageType,
                  content: Any,
                  scoped_message_ids: List[bytes] = None,
@@ -97,6 +99,7 @@ class ControlMessage(_MessageBase):
         super().__init__(message_id,
                          scoped_message_ids=scoped_message_ids,
                          protocol=protocol)
+        self.address = address
         self.control_message_type = control_message_type
         self.content = content
 
@@ -256,10 +259,33 @@ class SendMessage(_MessageBase):
 
 
 class TellMessage(SendMessage):
+    __slots__ = ()
+
     @classproperty
     @implements(_MessageBase.message_type)
     def message_type(self) -> MessageType:
         return MessageType.tell
+
+
+class CancelMessage(_MessageBase):
+    __slots__ = 'address', 'cancel_message_id',
+
+    def __init__(self,
+                 message_id: bytes,
+                 address: str,
+                 cancel_message_id: bytes,
+                 scoped_message_ids: List[bytes] = None,
+                 protocol: int = None):
+        super().__init__(message_id,
+                         scoped_message_ids=scoped_message_ids,
+                         protocol=protocol)
+        self.address = address
+        self.cancel_message_id = cancel_message_id
+
+    @classproperty
+    @implements(_MessageBase.message_type)
+    def message_type(self) -> MessageType:
+        return MessageType.cancel
 
 
 class DesrializeMessageFailed(Exception):

@@ -176,6 +176,8 @@ class SocketServer(_BaseSocketServer):
         handle_channel = config.pop('handle_channel')
         if 'start_serving' not in config:
             config['start_serving'] = False
+        if 'reuse_port' not in config:
+            config['reuse_port'] = True
 
         async def handle_connection(reader, writer):
             # create a channel when client connected
@@ -210,9 +212,12 @@ class SocketClient(Client):
         return SocketClient(local_address, dest_address, channel)
 
 
+TEMPDIR = tempfile.gettempdir()
+
+
 @lru_cache(100)
 def _gen_unix_socket_default_path(process_index):
-    return f'{tempfile.gettempdir()}/mars/' \
+    return f'{TEMPDIR}/mars/' \
            f'{md5(to_binary(str(process_index))).hexdigest()}'  # nosec
 
 

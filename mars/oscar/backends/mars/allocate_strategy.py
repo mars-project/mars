@@ -73,7 +73,8 @@ class MainPool(AllocateStrategy):
                               config: ActorPoolConfig,
                               allocated: allocated_type) -> str:
         # allocate to main process
-        return config.get_external_address(0)
+        main_process_index = config.get_process_indexes()[0]
+        return config.get_external_address(main_process_index)
 
 
 class RandomSubPool(AllocateStrategy):
@@ -84,6 +85,20 @@ class RandomSubPool(AllocateStrategy):
                               config: ActorPoolConfig,
                               allocated: allocated_type) -> str:
         return choice(config.get_external_addresses()[1:])
+
+
+class ProcessIndex(AllocateStrategy):
+    __slots__ = 'process_index',
+
+    def __init__(self, process_index: int):
+        self.process_index = process_index
+
+    @implements(AllocateStrategy.get_allocated_address)
+    def get_allocated_address(self,
+                              config: ActorPoolConfig,
+                              allocated: allocated_type) -> str:
+        actual_process_index = config.get_process_indexes()[self.process_index]
+        return config.get_pool_config(actual_process_index)['external_address'][0]
 
 
 class RandomLabel(AllocateStrategy):

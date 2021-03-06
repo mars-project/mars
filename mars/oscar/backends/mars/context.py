@@ -24,8 +24,33 @@ from .allocate_strategy import AllocateStrategy, AddressSpecified
 from .core import ActorCaller
 from .message import DEFAULT_PROTOCOL, new_message_id, _MessageBase, \
     ResultMessage, ErrorMessage, CreateActorMessage, HasActorMessage, \
-    DestroyActorMessage, ActorRefMessage, SendMessage
+    DestroyActorMessage, ActorRefMessage, SendMessage, CancelMessage, \
+    ControlMessage, ControlMessageType
 from .router import Router
+
+
+class CancelableContext:
+    __slots__ = '_ctx', '_address', '_future', '_current_message'
+
+    def __init__(self,
+                 ctx: "MarsActorContext",
+                 address: str,
+                 future: asyncio.Future,
+                 current_message: _MessageBase):
+        self._ctx = ctx
+        self._address = address
+        self._future = future
+        self._current_message = current_message
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            return True
+        if not self._future.done() and issubclass(exc_type, asyncio.CancelledError):
+            await self._ctx.cancel(self._address, self._current_message.message_id)
+            return True
 
 
 class MarsActorContext(BaseActorContext):
@@ -40,9 +65,13 @@ class MarsActorContext(BaseActorContext):
     def __del__(self):
         self._caller.cancel_tasks()
 
-    async def _call(self, address: str, message: _MessageBase):
+    async def _call(self,
+                    address: str,
+                    message: _MessageBase,
+                    wait: bool = True) \
+            -> Union[ResultMessage, ErrorMessage, asyncio.Future]:
         return await self._caller.call(Router.get_instance_or_empty(),
-                                       address, message)
+                                       address, message, wait=wait)
 
     @staticmethod
     def _process_result_message(message: Union[ResultMessage, ErrorMessage]):
@@ -65,21 +94,52 @@ class MarsActorContext(BaseActorContext):
             args, kwargs, allocate_strategy,
             protocol=DEFAULT_PROTOCOL
         )
-        result = await self._call(address, create_actor_message)
-        return self._process_result_message(result)
+        future = await self._call(
+            address, create_actor_message, wait=False)
+        async with CancelableContext(self, address,
+                                     future, create_actor_message):
+            result = await future
+            return self._process_result_message(result)
 
     async def has_actor(self, actor_ref: ActorRef) -> bool:
         message = HasActorMessage(
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
-        result = await self._call(actor_ref.address, message)
-        return self._process_result_message(result)
+        future = await self._call(actor_ref.address, message, wait=False)
+        async with CancelableContext(self, actor_ref.address,
+                                     future, message):
+            result = await future
+            return self._process_result_message(result)
 
     async def destroy_actor(self, actor_ref: ActorRef):
         message = DestroyActorMessage(
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
-        result = await self._call(actor_ref.address, message)
+        future = await self._call(actor_ref.address, message, wait=False)
+        async with CancelableContext(self, actor_ref.address,
+                                     future, message):
+            result = await future
+            return self._process_result_message(result)
+
+    async def kill_actor(self, actor_ref: ActorRef):
+        # get main_pool_address
+        control_message = ControlMessage(
+            new_message_id(), actor_ref.address,
+            ControlMessageType.get_config,
+            'main_pool_address',
+            protocol=DEFAULT_PROTOCOL)
+        main_address = self._process_result_message(
+            await self._call(actor_ref.address, control_message))
+        real_actor_ref = await self.actor_ref(actor_ref)
+        if real_actor_ref.address == main_address:
+            raise ValueError('Cannot kill actor on main pool')
+        stop_message = ControlMessage(
+            new_message_id(), real_actor_ref.address,
+            ControlMessageType.stop,
+            # wait for 3 sec at most
+            3., protocol=DEFAULT_PROTOCOL)
+        # stop server
+        result = await self._call(main_address, stop_message)
         return self._process_result_message(result)
 
     async def actor_ref(self, *args, **kwargs):
@@ -87,8 +147,11 @@ class MarsActorContext(BaseActorContext):
         message = ActorRefMessage(
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
-        result = await self._call(actor_ref.address, message)
-        return self._process_result_message(result)
+        future = await self._call(actor_ref.address, message, wait=False)
+        async with CancelableContext(self, actor_ref.address,
+                                     future, message):
+            result = await future
+            return self._process_result_message(result)
 
     async def send(self,
                    actor_ref: ActorRef,
@@ -97,10 +160,20 @@ class MarsActorContext(BaseActorContext):
         message = SendMessage(
             new_message_id(), actor_ref,
             message, protocol=DEFAULT_PROTOCOL)
-        call = self._call(actor_ref.address, message)
+        future = await self._call(actor_ref.address, message, wait=False)
         if wait_response:
-            return self._process_result_message(await call)
+            async with CancelableContext(self, actor_ref.address,
+                                         future, message):
+                result = await future
+                return self._process_result_message(result)
         else:
-            future = asyncio.create_task(call)
-            await asyncio.sleep(0)
             return future
+
+    async def cancel(self,
+                     address: str,
+                     cancel_message_id: bytes):
+        message = CancelMessage(
+            new_message_id(), address, cancel_message_id,
+            protocol=DEFAULT_PROTOCOL)
+        result = await self._call(address, message)
+        return self._process_result_message(result)
