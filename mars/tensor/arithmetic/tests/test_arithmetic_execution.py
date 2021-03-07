@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import operator
 import unittest
 
 import numpy as np
@@ -23,7 +25,7 @@ from mars.config import option_context
 from mars.utils import ignore_warning
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
-    modf, clip, isclose, arctan2
+    modf, clip, isclose, arctan2, tree_add, tree_multiply
 from mars.tests.core import require_cupy, ExecutorForTest
 
 
@@ -167,7 +169,7 @@ class Test(unittest.TestCase):
         return x
 
     @ignore_warning
-    def testSparseUfuncExexution(self):
+    def testSparseUfuncExecution(self):
         from mars.tensor.arithmetic import UNARY_UFUNC, BIN_UFUNC, arccosh, \
             invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
 
@@ -702,6 +704,28 @@ class Test(unittest.TestCase):
         expected.imag = np.array([9, 8, 7])
 
         np.testing.assert_equal(res, expected)
+
+    def testTreeArithmeticExecution(self):
+        raws = [np.random.rand(10, 10) for _ in range(10)]
+        tensors = [tensor(a, chunk_size=3) for a in raws]
+
+        res = self.executor.execute_tensor(tree_add(*tensors, 1.0), concat=True)[0]
+        np.testing.assert_array_almost_equal(
+            res, 1.0 + functools.reduce(operator.add, raws)
+        )
+
+        res = self.executor.execute_tensor(tree_multiply(*tensors, 2.0), concat=True)[0]
+        np.testing.assert_array_almost_equal(
+            res, 2.0 * functools.reduce(operator.mul, raws)
+        )
+
+        raws = [sps.random(5, 9, density=.1) for _ in range(10)]
+        tensors = [tensor(a, chunk_size=3) for a in raws]
+
+        res = self.executor.execute_tensor(tree_add(*tensors), concat=True)[0]
+        np.testing.assert_array_almost_equal(
+            res.toarray(), functools.reduce(operator.add, raws).toarray()
+        )
 
     @require_cupy
     def testCupyExecution(self):

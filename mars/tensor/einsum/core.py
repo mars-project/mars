@@ -22,7 +22,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import AnyField, StringField
 from ..array_utils import as_same_device, device
-from ..arithmetic.utils import tree_add
+from ..arithmetic.utils import chunk_tree_add
 from ..core import TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..utils import decide_unify_split
@@ -131,7 +131,7 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
                 chunk_op = c.op.copy()
                 chunk = chunk_op.new_chunk(c.inputs, shape=c.shape, index=out_idx, order=out_tensor.order)
             else:
-                chunk = tree_add(op.dtype, einsum_chunks, out_idx, tensor_shape, sparse=op.sparse)
+                chunk = chunk_tree_add(op.dtype, einsum_chunks, out_idx, tensor_shape, sparse=op.sparse)
             out_chunks.append(chunk)
 
         nsplits = [axes_splits[ax] for ax in output_scripts]

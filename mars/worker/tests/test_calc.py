@@ -74,7 +74,8 @@ class Test(WorkerCase):
             fetch_chunk = TensorFetch(to_fetch_key=chunk_key, dtype=d.dtype) \
                 .new_chunk([], shape=d.shape, _key=chunk_key)
             inputs.append(fetch_chunk)
-        add_chunk = TensorTreeAdd(data_list[0].dtype).new_chunk(inputs, shape=data_list[0].shape)
+        add_chunk = TensorTreeAdd(args=inputs, dtype=data_list[0].dtype) \
+            .new_chunk(inputs, shape=data_list[0].shape)
 
         exec_graph = DAG()
         exec_graph.add_node(add_chunk)

@@ -26,7 +26,7 @@ from ..core import Tensor, TensorOrder
 from ..utils import broadcast_shape, check_out_param, unify_chunks, check_order
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorOperand, TensorOperandMixin
-from ..arithmetic.utils import tree_add
+from ..arithmetic.utils import chunk_tree_add
 from ..datasource import tensor as astensor
 
 
@@ -164,7 +164,7 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
                 out_chunk = out_chunk_op.new_chunk(out_chunk_op.inputs, shape=c.shape,
                                                    index=out_idx, order=tensor.order)
             else:
-                out_chunk = tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
+                out_chunk = chunk_tree_add(tensor.op.dtype, chunks, out_idx, shape, sparse=tensor.op.sparse)
 
             out_chunks.append(out_chunk)
 

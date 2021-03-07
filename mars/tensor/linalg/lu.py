@@ -164,7 +164,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks_u) == 1:
                             s = prev_chunks_u[0]
                         else:
-                            tree_add_op = TensorTreeAdd(dtype=prev_chunks_u[0].dtype, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(args=prev_chunks_u, dtype=prev_chunks_u[0].dtype,
+                                                        sparse=op.sparse)
                             s = tree_add_op.new_chunk(prev_chunks_u, shape=prev_chunks_u[0].shape)
                         target = TensorSubtract(dtype=U.dtype, lhs=target, rhs=s,
                                                 order=out_tensor.order.value).new_chunk(
@@ -186,7 +187,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks) == 1:
                             s = prev_chunks[0]
                         else:
-                            tree_add_op = TensorTreeAdd(dtype=prev_chunks[0].dtype, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(args=prev_chunks, dtype=prev_chunks[0].dtype,
+                                                        sparse=op.sparse)
                             s = tree_add_op.new_chunk(prev_chunks, shape=prev_chunks[0].shape)
                         target = TensorSubtract(dtype=L.dtype, lhs=target, rhs=s,
                                                 order=out_tensor.order.value).new_chunk(
@@ -237,7 +239,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                         if len(prev_chunks_l) == 1:
                             s = prev_chunks_l[0]
                         else:
-                            tree_add_op = TensorTreeAdd(dtype=prev_chunks_l[0].dtype, sparse=op.sparse)
+                            tree_add_op = TensorTreeAdd(args=prev_chunks_l, dtype=prev_chunks_l[0].dtype,
+                                                        sparse=op.sparse)
                             s = tree_add_op.new_chunk(prev_chunks_l, shape=prev_chunks_l[0].shape)
                         target_l = TensorSubtract(dtype=L.dtype, lhs=target_l, rhs=s,
                                                   order=out_tensor.order.value).new_chunk(

@@ -37,7 +37,8 @@ class Test(unittest.TestCase):
 
         @ --> @ --> @   ========>    #
         """
-        chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(3)]
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+                  for n in range(3)]
         graph = DAG()
         list(map(graph.add_node, chunks[:3]))
         graph.add_edge(chunks[0], chunks[1])
@@ -59,7 +60,8 @@ class Test(unittest.TestCase):
           /         \                  /   \
         @             @              @       @
         """
-        chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+                  for n in range(6)]
         graph = DAG()
         list(map(graph.add_node, chunks[:6]))
 
@@ -107,7 +109,8 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(6)]
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+                  for n in range(6)]
         chunk_slice = TensorSlice().new_chunk([None], None)
         graph = DAG()
         list(map(graph.add_node, chunks[:6]))
@@ -129,7 +132,8 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+                  for n in range(4)]
         graph = DAG()
         list(map(graph.add_node, chunks[:3]))
         graph.add_node(chunk_slice)
@@ -148,7 +152,8 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(_key=str(n)).new_chunk(None, None) for n in range(4)]
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+                  for n in range(4)]
         graph = DAG()
         list(map(graph.add_node, chunks[:4]))
         graph.add_node(chunk_slice)
