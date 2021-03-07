@@ -19,7 +19,7 @@ import itertools
 import os
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Dict, List, Type, Coroutine, Union, Optional
+from typing import Dict, List, Type, Coroutine, Callable, Union, Optional
 
 from ....utils import implements, get_next_port, to_binary
 from ...api import Actor
@@ -637,7 +637,7 @@ def _start_sub_pool_in_process(
 class MainActorPool(ActorPoolBase):
     __slots__ = '_allocated_actors', '_sub_processes', \
                 '_subprocess_start_method', '_auto_recover', \
-                '_monitor_task', '_recovered'
+                '_monitor_task', '_on_process_down', '_on_process_recover'
 
     def __init__(self,
                  process_index: int,
@@ -649,7 +649,9 @@ class MainActorPool(ActorPoolBase):
                  config: ActorPoolConfig,
                  servers: List[Server],
                  subprocess_start_method: str = None,
-                 auto_recover: Union[str, bool] = 'actor'):
+                 auto_recover: Union[str, bool] = 'actor',
+                 on_process_down: Callable[["MainActorPool", str], None] = None,
+                 on_process_recover: Callable[["MainActorPool", str], None] = None):
         super().__init__(process_index, label, external_address,
                          internal_address, env, router, config, servers)
         self._subprocess_start_method = subprocess_start_method
@@ -657,8 +659,8 @@ class MainActorPool(ActorPoolBase):
         # auto recovering
         self._auto_recover = auto_recover
         self._monitor_task: Optional[asyncio.Task] = None
-        self._recovered: asyncio.Event = asyncio.Event()
-        self._recovered.set()
+        self._on_process_down = on_process_down
+        self._on_process_recover = on_process_recover
 
         # states
         self._allocated_actors: allocated_type = \
@@ -856,6 +858,8 @@ class MainActorPool(ActorPoolBase):
     def _parse_config(config: Dict, kw: Dict) -> Dict:
         kw['subprocess_start_method'] = config.pop('start_method', None)
         kw['auto_recover'] = config.pop('auto_recover', 'actor')
+        kw['on_process_down'] = config.pop('on_process_down', None)
+        kw['on_process_recover'] = config.pop('on_process_recover', None)
         kw = AbstractActorPool._parse_config(config, kw)
         return kw
 
@@ -967,11 +971,13 @@ class MainActorPool(ActorPoolBase):
                 for address in self._sub_processes:
                     process = self._sub_processes[address]
                     if not process.is_alive():
-                        self._recovered.clear()
+                        if self._on_process_down is not None:
+                            self._on_process_down(self, address)
                         self._process_sub_pool_lost(address)
                         if self._auto_recover:
                             await self._recover_sub_pool(address)
-                        self._recovered.set()
+                            if self._on_process_recover is not None:
+                                self._on_process_recover(self, address)
 
                 # check every half second
                 await asyncio.sleep(.5)
@@ -1001,7 +1007,10 @@ async def create_actor_pool(address: str,
                             ports: List[int] = None,
                             envs: List[Dict] = None,
                             subprocess_start_method: str = None,
-                            auto_recover: Union[str, bool] = 'actor') -> MainActorPool:
+                            auto_recover: Union[str, bool] = 'actor',
+                            on_process_down: Callable[["MainActorPool", str], None] = None,
+                            on_process_recover: Callable[["MainActorPool", str], None] = None) \
+        -> MainActorPool:
     n_process = n_process or multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(f'`labels` should be of size {n_process + 1}, '
@@ -1063,6 +1072,8 @@ async def create_actor_pool(address: str,
         'process_index': main_process_index,
         'start_method': subprocess_start_method,
         'auto_recover': auto_recover,
+        'on_process_down': on_process_down,
+        'on_process_recover': on_process_recover
     })
     await pool.start()
     return pool

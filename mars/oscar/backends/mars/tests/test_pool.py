@@ -378,6 +378,10 @@ async def test_errors():
         _ = await create_actor_pool('127.0.0.1', n_process=1,
                                     ports=[get_next_port()])
 
+    with pytest.raises(ValueError):
+        _ = await create_actor_pool('127.0.0.1', n_process=1,
+                                    auto_recover='illegal')
+
 
 @pytest.mark.asyncio
 async def test_server_closed():
@@ -423,10 +427,15 @@ async def test_server_closed():
 )
 async def test_auto_recover(auto_rover):
     start_method = 'fork' if sys.platform != 'win32' else None
+    recovered = asyncio.Event()
+
+    def on_process_recover(*_):
+        recovered.set()
 
     pool = await create_actor_pool('127.0.0.1', n_process=2,
                                    subprocess_start_method=start_method,
-                                   auto_recover=auto_rover)
+                                   auto_recover=auto_rover,
+                                   on_process_recover=on_process_recover)
 
     async with pool:
         ctx = get_context()
@@ -449,10 +458,7 @@ async def test_auto_recover(auto_rover):
 
         if auto_rover:
             # process must have been killed
-            await asyncio.sleep(.5)
-
-            assert not pool._recovered.is_set()
-            await pool._recovered.wait()
+            await recovered.wait()
 
             expect_has_actor = True if auto_rover in ['actor', True] else False
             assert await ctx.has_actor(actor_ref) is expect_has_actor
