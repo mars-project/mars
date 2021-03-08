@@ -12,27 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import sys
+import time
+try:
+    import mock
+except ImportError:
+    from unittest import mock
+
 import pytest
 
 from mars.utils import get_next_port
-from mars.oscar import Actor
+from mars.oscar import Actor, kill_actor
 from mars.oscar.context import get_context
 from mars.oscar.backends.mars import create_actor_pool
 from mars.oscar.backends.mars.allocate_strategy import \
-    AddressSpecified, IdleLabel, MainPool, RandomSubPool
+    AddressSpecified, IdleLabel, MainPool, RandomSubPool, ProcessIndex
 from mars.oscar.backends.mars.config import ActorPoolConfig
 from mars.oscar.backends.mars.message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
     ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
-    ControlMessageType, MessageType
+    CancelMessage, ControlMessageType, MessageType
 from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
 from mars.oscar.backends.mars.router import Router
-from mars.oscar.errors import NoIdleSlot, ActorNotExist
+from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
 from mars.oscar.utils import create_actor_ref
-from mars.tests.core import mock
 
-
-# test create actor
 
 class _CannotBeUnpickled:
     def __getstate__(self):
@@ -50,6 +55,10 @@ class TestActor(Actor):
 
     def add(self, val):
         self.value += val
+        return self.value
+
+    async def sleep(self, second):
+        await asyncio.sleep(second)
         return self.value
 
     def return_cannot_unpickle(self):
@@ -113,6 +122,24 @@ async def test_sub_actor_pool(notify_main_pool):
     result = await pool.send(send_message)
     assert isinstance(result.error, ActorNotExist)
 
+    # test send message and cancel it
+    send_message = SendMessage(
+        new_message_id(), actor_ref, ('sleep', 0, (20,), dict()))
+    result_task = asyncio.create_task(pool.send(send_message))
+    await asyncio.sleep(0)
+    start = time.time()
+    cancel_message = CancelMessage(
+        new_message_id(), actor_ref.address, send_message.message_id)
+    cancel_task = asyncio.create_task(pool.cancel(cancel_message))
+    result = await asyncio.wait_for(cancel_task, 3)
+    assert result.message_type == MessageType.result
+    assert result.result is True
+    result = await result_task
+    # test time
+    assert time.time() - start < 3
+    assert result.message_type == MessageType.error
+    assert isinstance(result.error, asyncio.CancelledError)
+
     # test processing message on background
     async with await pool.router.get_client(pool.external_address) as client:
         send_message = SendMessage(
@@ -142,24 +169,25 @@ async def test_sub_actor_pool(notify_main_pool):
     # test sync config
     config.add_pool_conf(1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
     sync_config_message = ControlMessage(
-        new_message_id(), ControlMessageType.sync_config, config)
+        new_message_id(), '', ControlMessageType.sync_config, config)
     message = await pool.handle_control_command(sync_config_message)
     assert message.result is True
 
     # test get config
     get_config_message = ControlMessage(
-        new_message_id(), ControlMessageType.get_config, None)
+        new_message_id(), '', ControlMessageType.get_config, None)
     message = await pool.handle_control_command(get_config_message)
     config2 = message.result
     assert config.as_dict() == config2.as_dict()
 
+    assert pool.router._mapping == Router.get_instance()._mapping
+    assert pool.router._curr_external_addresses == \
+           Router.get_instance()._curr_external_addresses
+
     stop_message = ControlMessage(
-        new_message_id(), ControlMessageType.stop, None)
+        new_message_id(), '', ControlMessageType.stop, None)
     message = await pool.handle_control_command(stop_message)
     assert message.result is True
-
-    assert pool.router is Router.get_instance()
-    assert pool.external_address == pool.router.external_address
 
     await pool.join(.05)
     assert pool.stopped
@@ -238,6 +266,22 @@ async def test_main_actor_pool():
             new_message_id(), actor_ref, ('add', 0, (4,), dict()))
         assert (await pool.send(send_message)).result == 6
 
+        # send and cancel
+        send_message = SendMessage(
+            new_message_id(), actor_ref1, ('sleep', 0, (20,), dict()))
+        result_task = asyncio.create_task(pool.send(send_message))
+        start = time.time()
+        cancel_message = CancelMessage(
+            new_message_id(), actor_ref1.address, send_message.message_id)
+        cancel_task = asyncio.create_task(pool.cancel(cancel_message))
+        result = await asyncio.wait_for(cancel_task, 3)
+        assert result.message_type == MessageType.result
+        assert result.result is True
+        result = await result_task
+        assert time.time() - start < 3
+        assert result.message_type == MessageType.error
+        assert isinstance(result.error, asyncio.CancelledError)
+
         # destroy
         destroy_actor_message = DestroyActorMessage(
             new_message_id(), actor_ref1)
@@ -253,6 +297,21 @@ async def test_main_actor_pool():
             result = await client.recv()
             assert result.result == actor_ref2.uid
 
+        # test sync config
+        config.add_pool_conf(3, 'sub', 'unixsocket:///3', f'127.0.0.1:{get_next_port()}')
+        sync_config_message = ControlMessage(
+            new_message_id(), pool.external_address, ControlMessageType.sync_config, config)
+        message = await pool.handle_control_command(sync_config_message)
+        assert message.result is True
+
+        # test get config
+        get_config_message = ControlMessage(
+            new_message_id(), config.get_external_addresses()[1],
+            ControlMessageType.get_config, None)
+        message = await pool.handle_control_command(get_config_message)
+        config2 = message.result
+        assert config.as_dict() == config2.as_dict()
+
     assert pool.stopped
 
 
@@ -261,6 +320,13 @@ async def test_create_actor_pool():
     pool = await create_actor_pool('127.0.0.1', n_process=2)
 
     async with pool:
+        # test global router
+        global_router = Router.get_instance()
+        # global router should not be the identical one with pool's router
+        assert global_router is not pool.router
+        assert pool.external_address in global_router._curr_external_addresses
+        assert pool.external_address in global_router._mapping
+
         ctx = get_context()
 
         # actor on main pool
@@ -270,6 +336,12 @@ async def test_create_actor_pool():
         assert await actor_ref.add(1) == 4
         assert (await ctx.has_actor(actor_ref)) is True
         assert (await ctx.actor_ref(actor_ref)) == actor_ref
+        # test cancel
+        task = asyncio.create_task(actor_ref.sleep(20))
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            print(await task)
         await ctx.destroy_actor(actor_ref)
         assert (await ctx.has_actor(actor_ref)) is False
 
@@ -284,8 +356,21 @@ async def test_create_actor_pool():
             await actor_ref2.return_cannot_unpickle()
         assert (await ctx.has_actor(actor_ref2)) is True
         assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
+        # test cancel
+        task = asyncio.create_task(actor_ref2.sleep(20))
+        start = time.time()
+        await asyncio.sleep(0)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert time.time() - start < 3
         await ctx.destroy_actor(actor_ref2)
         assert (await ctx.has_actor(actor_ref2)) is False
+
+    # after pool shutdown, global router must has been cleaned
+    global_router = Router.get_instance()
+    assert len(global_router._curr_external_addresses) == 0
+    assert len(global_router._mapping) == 0
 
 
 @pytest.mark.asyncio
@@ -300,3 +385,139 @@ async def test_errors():
     with pytest.raises(ValueError):
         _ = await create_actor_pool('127.0.0.1', n_process=1,
                                     ports=[get_next_port()])
+
+    with pytest.raises(ValueError):
+        _ = await create_actor_pool('127.0.0.1', n_process=1,
+                                    auto_recover='illegal')
+
+
+@pytest.mark.asyncio
+async def test_server_closed():
+    start_method = 'fork' if sys.platform != 'win32' else None
+    pool = await create_actor_pool('127.0.0.1', n_process=2,
+                                   subprocess_start_method=start_method,
+                                   auto_recover=False)
+
+    ctx = get_context()
+
+    async with pool:
+        actor_ref = await ctx.create_actor(
+            TestActor, address=pool.external_address,
+            allocate_strategy=ProcessIndex(1))
+
+        # check if error raised normally when subprocess killed
+        task = asyncio.create_task(actor_ref.sleep(10))
+        await asyncio.sleep(0)
+
+        # kill subprocess 1
+        process = list(pool._sub_processes.values())[0]
+        process.kill()
+
+        with pytest.raises(ServerClosed):
+            # process already been killed,
+            # ServerClosed will be raised
+            await task
+
+        assert not process.is_alive()
+
+    with pytest.raises(RuntimeError):
+        await pool.start()
+
+    # test server unreachable
+    with pytest.raises(ConnectionError):
+        await ctx.has_actor(actor_ref)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'auto_recover',
+    [False, True, 'actor', 'process']
+)
+async def test_auto_recover(auto_recover):
+    start_method = 'fork' if sys.platform != 'win32' else None
+    recovered = asyncio.Event()
+
+    def on_process_recover(*_):
+        recovered.set()
+
+    pool = await create_actor_pool('127.0.0.1', n_process=2,
+                                   subprocess_start_method=start_method,
+                                   auto_recover=auto_recover,
+                                   on_process_recover=on_process_recover)
+
+    async with pool:
+        ctx = get_context()
+
+        # create actor on main
+        actor_ref = await ctx.create_actor(
+            TestActor, address=pool.external_address,
+            allocate_strategy=MainPool())
+
+        with pytest.raises(ValueError):
+            # cannot kill actors on main pool
+            await kill_actor(actor_ref)
+
+        # create actor
+        actor_ref = await ctx.create_actor(
+            TestActor, address=pool.external_address,
+            allocate_strategy=ProcessIndex(1))
+        # kill_actor will cause kill corresponding process
+        await ctx.kill_actor(actor_ref)
+
+        if auto_recover:
+            # process must have been killed
+            await recovered.wait()
+
+            expect_has_actor = True if auto_recover in ['actor', True] else False
+            assert await ctx.has_actor(actor_ref) is expect_has_actor
+        else:
+            with pytest.raises(ServerClosed):
+                await ctx.has_actor(actor_ref)
+
+
+@pytest.mark.asyncio
+async def test_two_pools():
+    start_method = 'fork' if sys.platform != 'win32' else None
+
+    ctx = get_context()
+
+    pool1 = await create_actor_pool('127.0.0.1', n_process=2,
+                                    subprocess_start_method=start_method)
+    pool2 = await create_actor_pool('127.0.0.1', n_process=2,
+                                    subprocess_start_method=start_method)
+
+    try:
+        actor_ref1 = await ctx.create_actor(
+            TestActor, address=pool1.external_address,
+            allocate_strategy=MainPool())
+        assert actor_ref1.address == pool1.external_address
+        assert await actor_ref1.add(1) == 1
+        assert Router.get_instance().get_internal_address(
+            actor_ref1.address).startswith('dummy://')
+
+        actor_ref2 = await ctx.create_actor(
+            TestActor, address=pool1.external_address,
+            allocate_strategy=RandomSubPool())
+        assert actor_ref2.address in pool1._config.get_external_addresses()[1:]
+        assert await actor_ref2.add(3) == 3
+        assert Router.get_instance().get_internal_address(
+            actor_ref2.address).startswith('unixsocket://')
+
+        actor_ref3 = await ctx.create_actor(
+            TestActor, address=pool2.external_address,
+            allocate_strategy=MainPool())
+        assert actor_ref3.address == pool2.external_address
+        assert await actor_ref3.add(5) == 5
+        assert Router.get_instance().get_internal_address(
+            actor_ref3.address).startswith('dummy://')
+
+        actor_ref4 = await ctx.create_actor(
+            TestActor, address=pool2.external_address,
+            allocate_strategy=RandomSubPool())
+        assert actor_ref4.address in pool2._config.get_external_addresses()[1:]
+        assert await actor_ref4.add(7) == 7
+        assert Router.get_instance().get_internal_address(
+            actor_ref4.address).startswith('unixsocket://')
+    finally:
+        await pool1.stop()
+        await pool2.stop()

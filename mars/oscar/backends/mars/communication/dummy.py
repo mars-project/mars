@@ -15,13 +15,14 @@
 import asyncio
 import concurrent.futures as futures
 from typing import Any, Callable, Coroutine, Dict, Type
+from urllib.parse import urlparse
 
 from .....utils import implements, classproperty
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .errors import ChannelClosed
 
-DUMMY_ADDRESS = 'dummy://'
+DEFAULT_DUMMY_ADDRESS = 'dummy://0'
 
 
 class DummyChannel(Channel):
@@ -81,7 +82,7 @@ class DummyChannel(Channel):
 class DummyServer(Server):
     __slots__ = '_closed',
 
-    _instance = None
+    _address_to_instances: Dict[str, "DummyServer"] = dict()
     scheme = 'dummy'
 
     def __init__(self,
@@ -91,8 +92,8 @@ class DummyServer(Server):
         self._closed = asyncio.Event()
 
     @classmethod
-    def get_instance(cls):
-        return cls._instance
+    def get_instance(cls, address: str):
+        return cls._address_to_instances[address]
 
     @classproperty
     @implements(Server.client_type)
@@ -108,23 +109,22 @@ class DummyServer(Server):
     @implements(Server.create)
     async def create(config: Dict) -> "DummyServer":
         config = config.copy()
-        address = config.pop('address', DUMMY_ADDRESS)
+        address = config.pop('address', DEFAULT_DUMMY_ADDRESS)
         handle_channel = config.pop('handle_channel')
-        if address != DUMMY_ADDRESS:  # pragma: no cover
+        if urlparse(address).scheme != DummyServer.scheme:  # pragma: no cover
             raise ValueError(f'Address for DummyServer '
-                             f'should be {DUMMY_ADDRESS}, '
+                             f'should be starts with "dummy://", '
                              f'got {address}')
         if config:  # pragma: no cover
             raise TypeError(f'Creating DummyServer got unexpected '
                             f'arguments: {",".join(config)}')
 
-        # DummyServer is singleton
-        if DummyServer._instance is not None:
-            return DummyServer._instance
-
-        server = DummyServer(DUMMY_ADDRESS, handle_channel)
-        DummyServer._instance = server
-        return server
+        try:
+            return DummyServer.get_instance(address)
+        except KeyError:
+            server = DummyServer(address, handle_channel)
+            DummyServer._address_to_instances[address] = server
+            return server
 
     @implements(Server.start)
     async def start(self):
@@ -151,7 +151,7 @@ class DummyServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        DummyServer._instance = None
+        del DummyServer._address_to_instances[self.address]
 
     @property
     @implements(Server.stopped)
@@ -179,10 +179,10 @@ class DummyClient(Client):
     async def connect(dest_address: str,
                       local_address: str = None,
                       **kwargs) -> "Client":
-        if dest_address != DUMMY_ADDRESS:  # pragma: no cover
-            raise ValueError(f'Destination address has to be "dummy://" '
+        if urlparse(dest_address).scheme != DummyServer.scheme:  # pragma: no cover
+            raise ValueError(f'Destination address should start with "dummy://" '
                              f'for DummyClient, got {dest_address}')
-        server = DummyServer.get_instance()
+        server = DummyServer.get_instance(dest_address)
         if server is None:  # pragma: no cover
             raise RuntimeError('DummyServer needs to be created '
                                'first before DummyClient')
@@ -200,6 +200,5 @@ class DummyClient(Client):
     @implements(Client.close)
     async def close(self):
         await super().close()
-        DummyClient._instance = None
         self._task.cancel()
         self._task = None

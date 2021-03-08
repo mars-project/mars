@@ -210,9 +210,12 @@ class SocketClient(Client):
         return SocketClient(local_address, dest_address, channel)
 
 
+TEMPDIR = tempfile.gettempdir()
+
+
 @lru_cache(100)
 def _gen_unix_socket_default_path(process_index):
-    return f'{tempfile.gettempdir()}/mars/' \
+    return f'{TEMPDIR}/mars/' \
            f'{md5(to_binary(str(process_index))).hexdigest()}'  # nosec
 
 

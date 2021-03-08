@@ -84,6 +84,23 @@ cdef class BaseActorContext:
         """
         raise NotImplementedError
 
+    async def kill_actor(self, ActorRef actor_ref):
+        """
+        Force to kill an actor, take care this is a dangerous operation,
+        it may lead to the result that other actors are killed as well.
+        Hence, unless you are knowing what you are doing and know how
+        to recover possible effected actors, DO NOT USE this method!
+
+        Parameters
+        ----------
+        actor_ref : ActorRef
+            Reference to an actor
+
+        Returns
+        -------
+        bool
+        """
+
     async def send(self, ActorRef actor_ref, object message, bint wait_response=True):
         """
         Send a message to given actor by its reference
@@ -150,6 +167,10 @@ cdef class ClientActorContext(BaseActorContext):
     def destroy_actor(self, ActorRef actor_ref):
         context = self._get_backend_context(actor_ref.address)
         return context.destroy_actor(actor_ref)
+
+    def kill_actor(self, ActorRef actor_ref):
+        context = self._get_backend_context(actor_ref.address)
+        return context.kill_actor(actor_ref)
 
     def actor_ref(self, *args, **kwargs):
         from .utils import create_actor_ref

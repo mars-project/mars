@@ -29,3 +29,7 @@ class ActorAlreadyExist(Exception):
 
 class NoIdleSlot(Exception):
     pass
+
+
+class ServerClosed(Exception):
+    pass

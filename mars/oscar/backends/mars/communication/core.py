@@ -63,3 +63,7 @@ def get_server_type(address: str) -> Type[Server]:
 
 def gen_internal_address(process_index: int) -> str:
     return f'unixsocket:///{process_index}'
+
+
+def gen_local_address(process_index: int) -> str:
+    return f'dummy://{process_index}'
