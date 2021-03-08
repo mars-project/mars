@@ -14,6 +14,7 @@
 
 import asyncio
 import sys
+import time
 try:
     import mock
 except ImportError:
@@ -126,6 +127,7 @@ async def test_sub_actor_pool(notify_main_pool):
         new_message_id(), actor_ref, ('sleep', 0, (20,), dict()))
     result_task = asyncio.create_task(pool.send(send_message))
     await asyncio.sleep(0)
+    start = time.time()
     cancel_message = CancelMessage(
         new_message_id(), actor_ref.address, send_message.message_id)
     cancel_task = asyncio.create_task(pool.cancel(cancel_message))
@@ -133,6 +135,8 @@ async def test_sub_actor_pool(notify_main_pool):
     assert result.message_type == MessageType.result
     assert result.result is True
     result = await result_task
+    # test time
+    assert time.time() - start < 3
     assert result.message_type == MessageType.error
     assert isinstance(result.error, asyncio.CancelledError)
 
@@ -266,6 +270,7 @@ async def test_main_actor_pool():
         send_message = SendMessage(
             new_message_id(), actor_ref1, ('sleep', 0, (20,), dict()))
         result_task = asyncio.create_task(pool.send(send_message))
+        start = time.time()
         cancel_message = CancelMessage(
             new_message_id(), actor_ref1.address, send_message.message_id)
         cancel_task = asyncio.create_task(pool.cancel(cancel_message))
@@ -273,6 +278,7 @@ async def test_main_actor_pool():
         assert result.message_type == MessageType.result
         assert result.result is True
         result = await result_task
+        assert time.time() - start < 3
         assert result.message_type == MessageType.error
         assert isinstance(result.error, asyncio.CancelledError)
 
@@ -352,10 +358,12 @@ async def test_create_actor_pool():
         assert (await ctx.actor_ref(actor_ref2)) == actor_ref2
         # test cancel
         task = asyncio.create_task(actor_ref2.sleep(20))
+        start = time.time()
         await asyncio.sleep(0)
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+        assert time.time() - start < 3
         await ctx.destroy_actor(actor_ref2)
         assert (await ctx.has_actor(actor_ref2)) is False
 
@@ -422,10 +430,10 @@ async def test_server_closed():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    'auto_rover',
+    'auto_recover',
     [False, True, 'actor', 'process']
 )
-async def test_auto_recover(auto_rover):
+async def test_auto_recover(auto_recover):
     start_method = 'fork' if sys.platform != 'win32' else None
     recovered = asyncio.Event()
 
@@ -434,7 +442,7 @@ async def test_auto_recover(auto_rover):
 
     pool = await create_actor_pool('127.0.0.1', n_process=2,
                                    subprocess_start_method=start_method,
-                                   auto_recover=auto_rover,
+                                   auto_recover=auto_recover,
                                    on_process_recover=on_process_recover)
 
     async with pool:
@@ -456,11 +464,11 @@ async def test_auto_recover(auto_rover):
         # kill_actor will cause kill corresponding process
         await ctx.kill_actor(actor_ref)
 
-        if auto_rover:
+        if auto_recover:
             # process must have been killed
             await recovered.wait()
 
-            expect_has_actor = True if auto_rover in ['actor', True] else False
+            expect_has_actor = True if auto_recover in ['actor', True] else False
             assert await ctx.has_actor(actor_ref) is expect_has_actor
         else:
             with pytest.raises(ServerClosed):
