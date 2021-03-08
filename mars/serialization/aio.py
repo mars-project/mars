@@ -63,7 +63,7 @@ class AioDeserializer:
     def __init__(self, file):
         self._file = file
 
-    async def _get_obj(self):
+    async def _get_obj_header_bytes(self):
         header_bytes = bytes(await self._file.read(11))
         if len(header_bytes) == 0:
             raise EOFError('Received empty bytes')
@@ -74,8 +74,10 @@ class AioDeserializer:
         header_length = struct.unpack('<Q', header_bytes[1:9])[0]
         # compress
         _ = struct.unpack('<H', header_bytes[9:])[0]
-        # extract header
-        header = pickle.loads(await self._file.read(header_length))
+        return await self._file.read(header_length)
+
+    async def _get_obj(self):
+        header = pickle.loads(await self._get_obj_header_bytes())
         # get buffer size
         buffer_sizes = header.pop(BUFFER_SIZES_NAME)
         # get buffers
@@ -87,11 +89,12 @@ class AioDeserializer:
         return await self._get_obj()
 
     async def get_size(self):
-        header_bytes = bytes(await self._file.read(11))
-        # header length
-        header_length = struct.unpack('<Q', header_bytes[1:9])[0]
         # extract header
-        header = pickle.loads(await self._file.read(header_length))
+        header_bytes = await self._get_obj_header_bytes()
+        header = pickle.loads(header_bytes)
         # get buffer size
         buffer_sizes = header.pop(BUFFER_SIZES_NAME)
-        return 11 + header_length + sum(buffer_sizes)
+        return 11 + len(header_bytes) + sum(buffer_sizes)
+
+    async def get_header(self):
+        return pickle.loads(await self._get_obj_header_bytes())
