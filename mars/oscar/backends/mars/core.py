@@ -48,7 +48,7 @@ class ActorCaller:
             try:
                 try:
                     message: _MessageBase = await client.recv()
-                except EOFError:
+                except (EOFError, ConnectionError):
                     # remote server closed, close client and raise ServerClosed
                     await client.close()
                     raise ServerClosed(f'Remote server {client.dest_address} closed')
