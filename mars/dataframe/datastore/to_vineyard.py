@@ -177,23 +177,16 @@ class DataFrameToVinyardStoreGlobalMeta(DataFrameOperand, DataFrameOperandMixin)
         client = vineyard.connect(op.vineyard_socket)
 
         meta = vineyard.ObjectMeta()
-        instances = set()
-        chunks = set()
-        for idx, in_chunk in enumerate(op.inputs):
-            instance_id, chunk_id = ctx[in_chunk.key]
-            instances.add(instance_id)
-            chunks.add(chunk_id)
-            meta.add_member('object_%d' % idx, vineyard.ObjectID(chunk_id))
-        meta['typename'] = 'vineyard::ObjectSet'
-        meta['num_of_instances'] = len(instances)
-        meta['num_of_objects'] = len(chunks)
-        object_set_id = client.create_metadata(meta)
-
-        meta = vineyard.ObjectMeta()
+        meta.set_global(True)
         meta['typename'] = 'vineyard::GlobalDataFrame'
         meta['partition_shape_row_'] = op.shape[0]
         meta['partition_shape_column_'] = op.shape[1]
-        meta.add_member('objects_', object_set_id)
+
+        for idx, in_chunk in enumerate(op.inputs):
+            _, chunk_id = ctx[in_chunk.key]
+            meta.add_member('partitions_-%d' % idx, vineyard.ObjectID(chunk_id))
+        meta['partitions_-size'] = len(op.inputs)
+
         global_dataframe_id = client.create_metadata(meta)
         client.persist(global_dataframe_id)
 
