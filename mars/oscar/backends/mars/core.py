@@ -50,7 +50,11 @@ class ActorCaller:
                     message: _MessageBase = await client.recv()
                 except (EOFError, ConnectionError):
                     # remote server closed, close client and raise ServerClosed
-                    await client.close()
+                    try:
+                        await client.close()
+                    except ConnectionError:
+                        # close failed, ignore it
+                        pass
                     raise ServerClosed(f'Remote server {client.dest_address} closed')
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
