@@ -140,17 +140,16 @@ cudf_data = pd.DataFrame({'col1': np.arange(10),
 def _wrap_cuda_test(server_started_event, conf, tp):
     async def _test():
         async def check_data(chan: SocketChannel):
-            import cudf
             import cupy
 
             r = await chan.recv()
 
             if isinstance(r, cupy.ndarray):
-                cupy.testing.assert_array_equal(
-                    r, cupy.asarray(cupy_data))
+                np.testing.assert_array_equal(
+                    cupy.asnumpy(r), cupy_data)
             else:
-                cudf.testing.assert_frame_equal(
-                    r, cudf.DataFrame(cudf_data))
+                pd.testing.assert_frame_equal(
+                    r.to_pandas(), cudf_data)
             await chan.send('success')
 
         conf['handle_channel'] = check_data
