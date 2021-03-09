@@ -17,14 +17,6 @@ from asyncio import StreamReader, StreamWriter
 from typing import Dict, List
 
 import numpy as np
-try:
-    from cudf.core import Buffer
-    from cupy import ndarray
-    from cupy.cuda.memory import UnownedMemory, MemoryPointer
-except ImportError:
-    Buffer = None
-    ndarray = None
-    UnownedMemory, MemoryPointer = None, None
 
 
 from .....serialization.aio import BUFFER_SIZES_NAME
@@ -34,7 +26,10 @@ CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 
 def write_buffers(writer: StreamWriter,
                   buffers: List):
-    def _write_cuda_buffer(ptr):
+    from cudf.core import Buffer
+    from cupy import ndarray
+
+    def _write_cuda_buffer(ptr):  # pragma: no cover
         # copy cuda buffer to host
         chunk_size = CUDA_CHUNK_SIZE
         offset = 0
@@ -57,6 +52,9 @@ def write_buffers(writer: StreamWriter,
 
 async def read_buffers(header: Dict,
                        reader: StreamReader):
+    from cudf.core import Buffer
+    from cupy.cuda.memory import UnownedMemory, MemoryPointer
+
     serializer = header.get('serializer')
     chunk_size = CUDA_CHUNK_SIZE
     if serializer == 'cudf' or serializer == 'cupy':  # pragma: no cover

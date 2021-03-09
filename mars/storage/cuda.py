@@ -25,12 +25,6 @@ from .core import BufferWrappedFileObject, StorageFileObject
 
 import numpy as np
 import pandas as pd
-try:
-    from cupy.cuda import MemoryPointer
-    from cudf.core import Buffer
-except ImportError:  # pragma: no cover
-    MemoryPointer = None
-    Buffer = None
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
@@ -47,13 +41,14 @@ class CudaObjectId:
 class CudaFileObject(BufferWrappedFileObject):
     def __init__(self, object_id: CudaObjectId, mode: str,
                  size: Optional[int] = None,
-                 cuda_buffer: Optional[Buffer] = None):
+                 cuda_buffer: Optional[object] = None):
         self._object_id = object_id
         self._cuda_buffer = cuda_buffer
         self._cupy_memory = None
         super().__init__(mode, size=size)
 
     def _read_init(self):
+        from cudf.core import Buffer
         from cupy.cuda.memory import UnownedMemory
 
         ptr = self._object_id.ptrs[0]
@@ -67,7 +62,9 @@ class CudaFileObject(BufferWrappedFileObject):
         self._buffer = self._cuda_buffer
         self._cupy_memory = UnownedMemory(self._buffer.ptr, self._size, self._buffer)
 
-    def write(self, content: Union[bytes, MemoryPointer]):
+    def write(self, content):
+        from cupy.cuda import MemoryPointer
+
         if not self._initialized:
             self._write_init()
             self._initialized = True
@@ -83,7 +80,10 @@ class CudaFileObject(BufferWrappedFileObject):
         cupy_pointer.copy_from(source_mem, content_length)
         self._offset += content_length
 
-    def read(self, size=-1) -> Buffer:
+    def read(self, size=-1):
+        from cudf.core import Buffer
+        from cupy.cuda import MemoryPointer
+
         if not self._initialized:
             self._read_init()
             self._initialized = True
