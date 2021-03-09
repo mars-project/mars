@@ -78,7 +78,17 @@ class ActorCaller:
         loop = asyncio.get_running_loop()
         wait_response = loop.create_future()
         self._client_to_message_futures[client][message.message_id] = wait_response
-        await client.send(message)
+
+        try:
+            await client.send(message)
+        except ConnectionError:
+            try:
+                await client.close()
+            except ConnectionError:
+                # close failed, ignore it
+                pass
+            raise ServerClosed(f'Remote server {client.dest_address} closed')
+
         if not wait:
             return wait_response
         else:

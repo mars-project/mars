@@ -301,7 +301,11 @@ class UnixSocketClient(Client):
         process_index = UnixSocketClient._get_process_index(dest_address)
         path = kwargs.pop('path',
                           _gen_unix_socket_default_path(process_index))
-        (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
+        try:
+            (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
+        except FileNotFoundError:
+            raise ConnectionRefusedError('Cannot connect unix socket '
+                                         'due to file not exists')
         channel = SocketChannel(reader, writer,
                                 local_address=local_address,
                                 dest_address=dest_address)

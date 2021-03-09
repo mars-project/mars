@@ -57,9 +57,16 @@ class TestActor(Actor):
         self.value += val
         return self.value
 
-    async def sleep(self, second):
-        await asyncio.sleep(second)
+    async def add_other(self, ref, val):
+        self.value += await ref.add(val)
         return self.value
+
+    async def sleep(self, second):
+        try:
+            await asyncio.sleep(second)
+            return self.value
+        except asyncio.CancelledError:
+            return self.value + 1
 
     def return_cannot_unpickle(self):
         return _CannotBeUnpickled()
@@ -137,8 +144,8 @@ async def test_sub_actor_pool(notify_main_pool):
     result = await result_task
     # test time
     assert time.time() - start < 3
-    assert result.message_type == MessageType.error
-    assert isinstance(result.error, asyncio.CancelledError)
+    assert result.message_type == MessageType.result
+    assert result.result == 5
 
     # test processing message on background
     async with await pool.router.get_client(pool.external_address) as client:
@@ -279,8 +286,8 @@ async def test_main_actor_pool():
         assert result.result is True
         result = await result_task
         assert time.time() - start < 3
-        assert result.message_type == MessageType.error
-        assert isinstance(result.error, asyncio.CancelledError)
+        assert result.message_type == MessageType.result
+        assert result.result == 7
 
         # destroy
         destroy_actor_message = DestroyActorMessage(
@@ -340,8 +347,7 @@ async def test_create_actor_pool():
         task = asyncio.create_task(actor_ref.sleep(20))
         await asyncio.sleep(0)
         task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            print(await task)
+        assert await task == 5
         await ctx.destroy_actor(actor_ref)
         assert (await ctx.has_actor(actor_ref)) is False
 
@@ -361,8 +367,7 @@ async def test_create_actor_pool():
         start = time.time()
         await asyncio.sleep(0)
         task.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await task
+        assert await task == 5
         assert time.time() - start < 3
         await ctx.destroy_actor(actor_ref2)
         assert (await ctx.has_actor(actor_ref2)) is False
@@ -518,6 +523,8 @@ async def test_two_pools():
         assert await actor_ref4.add(7) == 7
         assert Router.get_instance().get_internal_address(
             actor_ref4.address).startswith('unixsocket://')
+
+        assert await actor_ref2.add_other(actor_ref4, 3) == 13
     finally:
         await pool1.stop()
         await pool2.stop()
