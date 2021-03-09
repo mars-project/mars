@@ -33,17 +33,11 @@ from mars.storage.plasma import PlasmaStorage
 from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
-from mars.tests.core import require_ray
+from mars.tests.core import require_ray, require_cudf, require_cupy
 try:
     import vineyard
 except ImportError:
     vineyard = None
-try:
-    import cupy
-    import cudf
-except ImportError:
-    cupy = None
-    cudf = None
 try:
     import ray
 except ImportError:
@@ -175,9 +169,13 @@ async def test_base_operations(storage_context):
     np.testing.assert_array_equal(t, t2)
 
 
+@require_cupy
+@require_cudf
 @pytest.mark.asyncio
-@pytest.mark.skipif(cudf is None or cupy is None, reason='Cupy or cudf not installed')
 async def test_cuda_backend():
+    import cupy
+    import cudf
+
     params, teardown_params = await CudaStorage.setup()
     storage = CudaStorage(**params)
     assert storage.level == StorageLevel.GPU

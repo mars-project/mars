@@ -288,6 +288,9 @@ class TestReduction(TestBase):
 @require_cudf
 @require_cupy
 class TestGPUReduction(TestBase):
+    def setUp(self):
+        self.executor = ExecutorForTest()
+
     def testGPUExecution(self):
         df_raw = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
         df = to_gpu(md.DataFrame(df_raw, chunk_size=6))

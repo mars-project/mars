@@ -18,6 +18,7 @@ import multiprocessing
 from typing import Union, List, Tuple, Type, Dict
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from mars.lib.aio import AioEvent
@@ -26,6 +27,7 @@ from mars.oscar.backends.mars.communication import \
     DummyChannel, DummyServer, get_client_type, \
     SocketClient, UnixSocketClient, DummyClient, Server
 from mars.utils import get_next_port
+from mars.tests.core import require_cudf, require_cupy
 
 
 test_data = np.random.RandomState(0).rand(10, 10)
@@ -128,6 +130,72 @@ async def test_multiprocess_comm(server_type, config, con):
 
     await client.close()
     assert client.closed
+
+
+cupy_data = np.arange(100).reshape((10, 10))
+cudf_data = pd.DataFrame({'col1': np.arange(10),
+                          'col2': [f's{i}' for i in range(10)]})
+
+
+def _wrap_cuda_test(server_started_event, conf, tp):
+    async def _test():
+        async def check_data(chan: SocketChannel):
+            import cudf
+            import cupy
+
+            r = await chan.recv()
+
+            if isinstance(r, cupy.ndarray):
+                cupy.testing.assert_array_equal(
+                    r, cupy.asarray(cupy_data))
+            else:
+                cudf.testing.assert_frame_equal(
+                    r, cudf.DataFrame(cudf_data))
+            await chan.send('success')
+
+        conf['handle_channel'] = check_data
+
+        # create server
+        server = await tp.create(conf)
+        await server.start()
+        server_started_event.set()
+        await server.join()
+
+    asyncio.run(_test())
+
+
+@require_cupy
+@require_cudf
+@pytest.mark.asyncio
+async def test_multiprocess_cuda_comm():
+    import cupy
+    import cudf
+
+    mp_ctx = multiprocessing.get_context('spawn')
+
+    server_started = mp_ctx.Event()
+    port = get_next_port()
+    p = mp_ctx.Process(target=_wrap_cuda_test,
+                       args=(server_started,
+                             dict(host='127.0.0.1', port=port),
+                             SocketServer))
+    p.daemon = True
+    p.start()
+
+    await AioEvent(server_started).wait()
+
+    # create client
+    client = await SocketServer.client_type.connect(f'127.0.0.1:{port}')
+
+    await client.channel.send(cupy.asarray(cupy_data))
+    assert 'success' == await client.recv()
+
+    client = await SocketServer.client_type.connect(f'127.0.0.1:{port}')
+
+    await client.channel.send(cudf.DataFrame(cudf_data))
+    assert 'success' == await client.recv()
+
+    await client.close()
 
 
 def test_get_client_type():

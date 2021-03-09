@@ -24,9 +24,10 @@ from typing import Any, Dict, Callable, Coroutine, Type
 from urllib.parse import urlparse
 
 from .....utils import implements, to_binary, classproperty
-from .....serialization import AioSerializer, AioDeserializer
+from .....serialization import AioSerializer, AioDeserializer, deserialize
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
+from .utils import read_buffers, write_buffers
 
 
 class SocketChannel(Channel):
@@ -61,15 +62,15 @@ class SocketChannel(Channel):
         buffers = await serializer.run()
 
         # write buffers
-        for buffer in buffers:
-            self.writer.write(buffer)
-
+        write_buffers(self.writer, buffers)
         await self.writer.drain()
 
     @implements(Channel.recv)
     async def recv(self):
         deserializer = AioDeserializer(self.reader)
-        return await deserializer.run()
+        header = await deserializer.get_header()
+        buffers = await read_buffers(header, self.reader)
+        return deserialize(header, buffers)
 
     @implements(Channel.close)
     async def close(self):
@@ -300,7 +301,11 @@ class UnixSocketClient(Client):
         process_index = UnixSocketClient._get_process_index(dest_address)
         path = kwargs.pop('path',
                           _gen_unix_socket_default_path(process_index))
-        (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
+        try:
+            (reader, writer) = await asyncio.open_unix_connection(path, **kwargs)
+        except FileNotFoundError:
+            raise ConnectionRefusedError('Cannot connect unix socket '
+                                         'due to file not exists')
         channel = SocketChannel(reader, writer,
                                 local_address=local_address,
                                 dest_address=dest_address)

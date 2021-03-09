@@ -29,30 +29,6 @@ from .message import DEFAULT_PROTOCOL, new_message_id, _MessageBase, \
 from .router import Router
 
 
-class CancelableContext:
-    __slots__ = '_ctx', '_address', '_future', '_current_message'
-
-    def __init__(self,
-                 ctx: "MarsActorContext",
-                 address: str,
-                 future: asyncio.Future,
-                 current_message: _MessageBase):
-        self._ctx = ctx
-        self._address = address
-        self._future = future
-        self._current_message = current_message
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is None:
-            return True
-        if not self._future.done() and issubclass(exc_type, asyncio.CancelledError):
-            await self._ctx.cancel(self._address, self._current_message.message_id)
-            return True
-
-
 class MarsActorContext(BaseActorContext):
     __slots__ = '_address', '_caller'
 
@@ -80,6 +56,16 @@ class MarsActorContext(BaseActorContext):
         else:
             raise message.error.with_traceback(message.traceback)
 
+    async def _wait(self,
+                    future: asyncio.Future,
+                    address: str,
+                    message: _MessageBase):
+        try:
+            await asyncio.wait([future])
+        except asyncio.CancelledError:
+            await self.cancel(address, message.message_id)
+        return await future
+
     async def create_actor(self, actor_cls: Type[Actor], *args, uid=None,
                            address: str = None, **kwargs) -> ActorRef:
         router = Router.get_instance_or_empty()
@@ -96,30 +82,24 @@ class MarsActorContext(BaseActorContext):
         )
         future = await self._call(
             address, create_actor_message, wait=False)
-        async with CancelableContext(self, address,
-                                     future, create_actor_message):
-            result = await future
-            return self._process_result_message(result)
+        result = await self._wait(future, address, create_actor_message)
+        return self._process_result_message(result)
 
     async def has_actor(self, actor_ref: ActorRef) -> bool:
         message = HasActorMessage(
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
         future = await self._call(actor_ref.address, message, wait=False)
-        async with CancelableContext(self, actor_ref.address,
-                                     future, message):
-            result = await future
-            return self._process_result_message(result)
+        result = await self._wait(future, actor_ref.address, message)
+        return self._process_result_message(result)
 
     async def destroy_actor(self, actor_ref: ActorRef):
         message = DestroyActorMessage(
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
         future = await self._call(actor_ref.address, message, wait=False)
-        async with CancelableContext(self, actor_ref.address,
-                                     future, message):
-            result = await future
-            return self._process_result_message(result)
+        result = await self._wait(future, actor_ref.address, message)
+        return self._process_result_message(result)
 
     async def kill_actor(self, actor_ref: ActorRef):
         # get main_pool_address
@@ -148,10 +128,8 @@ class MarsActorContext(BaseActorContext):
             new_message_id(), actor_ref,
             protocol=DEFAULT_PROTOCOL)
         future = await self._call(actor_ref.address, message, wait=False)
-        async with CancelableContext(self, actor_ref.address,
-                                     future, message):
-            result = await future
-            return self._process_result_message(result)
+        result = await self._wait(future, actor_ref.address, message)
+        return self._process_result_message(result)
 
     async def send(self,
                    actor_ref: ActorRef,
@@ -162,10 +140,8 @@ class MarsActorContext(BaseActorContext):
             message, protocol=DEFAULT_PROTOCOL)
         future = await self._call(actor_ref.address, message, wait=False)
         if wait_response:
-            async with CancelableContext(self, actor_ref.address,
-                                         future, message):
-                result = await future
-                return self._process_result_message(result)
+            result = await self._wait(future, actor_ref.address, message)
+            return self._process_result_message(result)
         else:
             return future
 
