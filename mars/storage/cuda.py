@@ -16,7 +16,7 @@
 
 import ctypes
 import os
-from typing import Tuple, Dict, List, Union, Optional
+from typing import Tuple, Dict, List, Optional
 
 from ..serialization import serialize, deserialize
 from ..utils import lazy_import, implements
