@@ -20,11 +20,6 @@ from typing import Union, List, Tuple, Type, Dict
 import numpy as np
 import pandas as pd
 import pytest
-try:
-    import cupy
-    import cudf
-except ImportError:
-    cupy, cudf = None, None
 
 from mars.lib.aio import AioEvent
 from mars.oscar.backends.mars.communication import \
@@ -32,6 +27,7 @@ from mars.oscar.backends.mars.communication import \
     DummyChannel, DummyServer, get_client_type, \
     SocketClient, UnixSocketClient, DummyClient, Server
 from mars.utils import get_next_port
+from mars.tests.core import require_cudf, require_cupy
 
 
 test_data = np.random.RandomState(0).rand(10, 10)
@@ -144,6 +140,9 @@ cudf_data = pd.DataFrame({'col1': np.arange(10),
 def _wrap_cuda_test(server_started_event, conf, tp):
     async def _test():
         async def check_data(chan: SocketChannel):
+            import cudf
+            import cupy
+
             r = await chan.recv()
 
             if isinstance(r, cupy.ndarray):
@@ -165,9 +164,13 @@ def _wrap_cuda_test(server_started_event, conf, tp):
     asyncio.run(_test())
 
 
-@pytest.mark.skipif(cudf is None or cupy is None, reason='Cupy or cudf not installed')
+@require_cupy
+@require_cudf
 @pytest.mark.asyncio
 async def test_multiprocess_cuda_comm():
+    import cupy
+    import cudf
+
     mp_ctx = multiprocessing.get_context('spawn')
 
     server_started = mp_ctx.Event()
