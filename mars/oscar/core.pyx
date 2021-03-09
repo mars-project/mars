@@ -184,7 +184,7 @@ cdef class _Actor:
             result = (result,)
             extract_tuple = True
 
-        if isinstance(result, tuple):
+        if type(result) is tuple:
             res_tuple = result
             tasks = []
             values = []
@@ -199,11 +199,12 @@ cdef class _Actor:
                     value = res_item
                 values.append(value)
 
-            dones, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-            if extract_tuple:
-                result = list(dones)[0].result()
-            else:
-                result = tuple(t.result() if t in dones else t for t in values)
+            if len(tasks) > 0:
+                dones, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+                if extract_tuple:
+                    result = list(dones)[0].result()
+                else:
+                    result = tuple(t.result() if t in dones else t for t in values)
 
         return result
 
