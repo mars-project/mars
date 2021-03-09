@@ -28,7 +28,7 @@ from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, An
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    ceildiv, is_build_mode
+    ceildiv, is_build_mode, tokenize
 from .utils import fetch_corner_data, ReprSeries
 
 
@@ -344,6 +344,27 @@ class IndexValue(Serializable):
             from ..serialize.protos.indexvalue_pb2 import IndexValue as IndexValueDef
             return IndexValueDef
         return super().cls(provider)
+
+
+class DtypesValue(Serializable):
+    """
+    Meta class for dtypes.
+    """
+    __slots__ = ()
+
+    _key = StringField('key')
+    _value = SeriesField('value')
+
+    def __init__(self, key=None, value=None, **kw):
+        super().__init__(_key=key, _value=value, **kw)
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def value(self):
+        return self._value
 
 
 class IndexChunkData(ChunkData):
@@ -1129,7 +1150,7 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
 
 
 class BaseDataFrameChunkData(ChunkData):
-    __slots__ = ()
+    __slots__ = '_dtypes_value',
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -1143,6 +1164,7 @@ class BaseDataFrameChunkData(ChunkData):
                  index_value=None, columns_value=None, **kw):
         super().__init__(_op=op, _shape=shape, _index=index, _dtypes=dtypes,
                          _index_value=index_value, _columns_value=columns_value, **kw)
+        self._dtypes_value = None
 
     def __len__(self):
         return self.shape[0]
@@ -1174,6 +1196,18 @@ class BaseDataFrameChunkData(ChunkData):
         return getattr(self.op, 'dtypes', None)
 
     @property
+    def dtypes_value(self):
+        if self._dtypes_value is not None:
+            return self._dtypes_value
+        # TODO(qinxuye): when creating Dataframe,
+        #  dtypes_value instead of dtypes later must be passed into
+        dtypes = self.dtypes
+        if dtypes is not None:
+            self._dtypes_value = DtypesValue(
+                key=tokenize(dtypes), value=dtypes)
+            return self._dtypes_value
+
+    @property
     def index_value(self):
         return self._index_value
 
@@ -1200,7 +1234,7 @@ class DataFrameChunk(Chunk):
 
 
 class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
-    __slots__ = '_accessors',
+    __slots__ = '_accessors', '_dtypes_value'
     _type_name = None
 
     # optional fields
@@ -1217,6 +1251,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
                          _index_value=index_value, _columns_value=columns_value,
                          _chunks=chunks, **kw)
         self._accessors = dict()
+        self._dtypes_value = None
 
     @property
     def params(self):
@@ -1234,6 +1269,18 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         if dt is not None:
             return dt
         return getattr(self.op, 'dtypes', None)
+
+    @property
+    def dtypes_value(self):
+        if self._dtypes_value is not None:
+            return self._dtypes_value
+        # TODO(qinxuye): when creating Dataframe,
+        #  dtypes_value instead of dtypes later must be passed into
+        dtypes = self.dtypes
+        if dtypes is not None:
+            self._dtypes_value = DtypesValue(
+                key=tokenize(dtypes), value=dtypes)
+            return self._dtypes_value
 
     @property
     def index_value(self):
