@@ -26,8 +26,11 @@ CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 
 def write_buffers(writer: StreamWriter,
                   buffers: List):
-    from cudf.core import Buffer
-    from cupy import ndarray
+    try:
+        from cudf.core import Buffer as CPBuffer
+        from cupy import ndarray as cp_ndarray
+    except ImportError:
+        CPBuffer = cp_ndarray = None
 
     def _write_cuda_buffer(ptr):  # pragma: no cover
         # copy cuda buffer to host
@@ -36,15 +39,15 @@ def write_buffers(writer: StreamWriter,
         nbytes = buffer.nbytes
         while offset < nbytes:
             size = chunk_size if (offset + chunk_size) < nbytes else nbytes - offset
-            chunk_buffer = Buffer(ptr + offset, size=size)
+            chunk_buffer = CPBuffer(ptr + offset, size=size)
             # copy chunk to host memoryview
             writer.write(chunk_buffer.host_serialize()[1][0])
             offset += size
 
     for buffer in buffers:
-        if Buffer is not None and isinstance(buffer, Buffer):  # pragma: no cover
+        if CPBuffer is not None and isinstance(buffer, CPBuffer):  # pragma: no cover
             _write_cuda_buffer(buffer.ptr)
-        elif ndarray is not None and isinstance(buffer, ndarray):  # pragma: no cover
+        elif cp_ndarray is not None and isinstance(buffer, cp_ndarray):  # pragma: no cover
             _write_cuda_buffer(buffer.data.ptr)
         else:
             writer.write(buffer)
@@ -52,24 +55,28 @@ def write_buffers(writer: StreamWriter,
 
 async def read_buffers(header: Dict,
                        reader: StreamReader):
-    from cudf.core import Buffer
-    from cupy.cuda.memory import UnownedMemory, MemoryPointer
+    try:
+        from cudf.core import Buffer as CPBuffer
+        from cupy.cuda.memory import UnownedMemory as CPUnownedMemory, \
+            MemoryPointer as CPMemoryPointer
+    except ImportError:
+        CPBuffer = CPUnownedMemory = CPMemoryPointer = None
 
     serializer = header.get('serializer')
-    chunk_size = CUDA_CHUNK_SIZE
     if serializer == 'cudf' or serializer == 'cupy':  # pragma: no cover
         # construct a empty cuda buffer and copy from host
         lengths = header.get('lengths')
         buffers = []
         for length in lengths:
-            cuda_buffer = Buffer.empty(length)
-            cupy_memory = UnownedMemory(cuda_buffer.ptr, length, cuda_buffer)
+            cuda_buffer = CPBuffer.empty(length)
+            cupy_memory = CPUnownedMemory(cuda_buffer.ptr, length, cuda_buffer)
             offset = 0
+            chunk_size = CUDA_CHUNK_SIZE
             while offset < length:
                 read_size = chunk_size if (offset + chunk_size) < length else length - offset
                 content = await reader.read(read_size)
                 source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
-                cupy_pointer = MemoryPointer(cupy_memory, offset)
+                cupy_pointer = CPMemoryPointer(cupy_memory, offset)
                 cupy_pointer.copy_from(source_mem, len(content))
                 offset += read_size
             buffers.append(cuda_buffer)

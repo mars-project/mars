@@ -200,7 +200,14 @@ cdef class _Actor:
                 values.append(value)
 
             if len(tasks) > 0:
-                dones, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+                try:
+                    dones, pending = await asyncio.wait(tasks)
+                except asyncio.CancelledError:
+                    for task in tasks:
+                        task.cancel()
+                    # wait till all tasks return cancelled
+                    dones, pending = await asyncio.wait(tasks)
+
                 if extract_tuple:
                     result = list(dones)[0].result()
                 else:

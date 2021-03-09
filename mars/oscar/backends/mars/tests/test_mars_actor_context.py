@@ -179,6 +179,17 @@ class PromiseTestActor(mo.Actor):
             raise ValueError
         raise KeyError
 
+    async def test_cancel(self, delay):
+        async def task_fun():
+            try:
+                yield asyncio.sleep(delay)
+            except asyncio.CancelledError:
+                self.call_log.append((time.time(), 'CANCELLED'))
+                raise
+
+        self.call_log.append((time.time(), 'START'))
+        return task_fun()
+
     def get_call_log(self):
         log = self.call_log
         self.call_log = []
@@ -408,3 +419,12 @@ async def test_promise_chain(actor_pool_context):
 
     with pytest.raises(ValueError):
         await promise_test_ref.test_exceptions()
+
+    with pytest.raises(asyncio.CancelledError):
+        task = asyncio.create_task(promise_test_ref.test_cancel(5))
+        await asyncio.sleep(0.1)
+        task.cancel()
+        await task
+    call_log = await promise_test_ref.get_call_log()
+    assert len(call_log) == 2
+    assert call_log[1][0] - call_log[0][0] < 1
