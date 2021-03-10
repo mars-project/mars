@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import asyncio
-from collections import deque
+from collections import deque, namedtuple
 
 from .... import oscar as mo
 
+DispatchDumpType = namedtuple('DispatchDumpType', 'free_slots requests')
 
-class RequestItem:
+
+class SlotRequest:
     event: asyncio.Event
     is_cancelled: bool
 
@@ -31,15 +33,14 @@ class DispatchActor(mo.Actor):
     def __init__(self):
         super().__init__()
         self._free_slots = set()
-        self._all_slots = set()
-        self._global_requests = deque()
+        self._requests = deque()
 
     async def acquire_free_slot(self):
         if self._free_slots:
             return self._free_slots.pop()
 
         event = asyncio.Event()
-        req_item = RequestItem(event)
+        req_item = SlotRequest(event)
 
         async def slot_waiter():
             try:
@@ -51,25 +52,24 @@ class DispatchActor(mo.Actor):
                 raise
             return ref
 
-        self._global_requests.append(req_item)
+        self._requests.append(req_item)
         return slot_waiter()
 
-    def register_free_slot(self, ref):
+    def release_free_slot(self, ref):
         self._free_slots.add(ref)
-        self._all_slots.add(ref)
         self._apply_next_request()
 
     def _apply_next_request(self):
         if not self._free_slots:
             return
-        while self._global_requests:
-            req_item = self._global_requests.popleft()
+        while self._requests:
+            req_item = self._requests.popleft()
             if not req_item.is_cancelled:
                 req_item.event.set()
                 break
 
-    def get_slots(self):
+    def dump_data(self):
         """
         Get all refs of slots of a queue
         """
-        return list(self._all_slots)
+        return DispatchDumpType(self._free_slots, self._requests)

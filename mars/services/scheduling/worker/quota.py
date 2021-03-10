@@ -28,7 +28,7 @@ QuotaDumpType = namedtuple('QuotaDumpType', 'allocations requests proc_sizes hol
 
 class QuotaRequest:
     __slots__ = 'req_size', 'delta', 'req_time', 'multiple', 'process_quota', \
-                'event', 'wait_task'
+                'event'
 
     def __init__(self, req_size: int, delta: int, req_time: float,
                  multiple: bool, process_quota: bool, event: asyncio.Event):
@@ -38,7 +38,6 @@ class QuotaRequest:
         self.multiple = multiple
         self.process_quota = process_quota
         self.event = event
-        self.wait_task = None
 
 
 class QuotaActor(mo.Actor):
@@ -139,7 +138,7 @@ class QuotaActor(mo.Actor):
                              f'larger than total capacity {self._total_size}.')
 
         if keys in self._requests:
-            quota_request = self._requests[keys]
+            event = self._requests[keys].event
         else:
             has_space = self._has_space(delta)
             if has_space and not self._requests:
@@ -155,13 +154,13 @@ class QuotaActor(mo.Actor):
                     self._log_allocate('Quota request unmet for key %r on %s.', keys, self.uid)
                 else:
                     self._log_allocate('Quota request queued for key %r on %s.', keys, self.uid)
+                event = asyncio.Event()
                 quota_request = QuotaRequest(quota_sizes, delta, time.time(), multiple,
-                                             process_quota, asyncio.Event())
+                                             process_quota, event)
                 self._enqueue_request(keys, quota_request, make_first=make_first)
 
         try:
-            quota_request.wait_task = asyncio.create_task(quota_request.event.wait())
-            await quota_request.wait_task
+            await event.wait()
         except asyncio.CancelledError:
             self._requests.pop(keys, None)
             self._process_requests()

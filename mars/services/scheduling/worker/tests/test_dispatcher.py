@@ -40,14 +40,14 @@ class TaskActor(mo.Actor):
     async def __post_create__(self):
         self._dispatch_ref = await mo.actor_ref(
             'DispatchActor', address=self.address)
-        await self._dispatch_ref.register_free_slot(self.ref())
+        await self._dispatch_ref.release_free_slot(self.ref())
 
     async def queued_call(self, key, delay):
         try:
             self._call_logs[key] = time.time()
             await asyncio.sleep(delay)
         finally:
-            await self._dispatch_ref.register_free_slot(self.ref())
+            await self._dispatch_ref.release_free_slot(self.ref())
 
 
 @pytest.mark.asyncio
@@ -62,7 +62,7 @@ async def test_dispatch(actor_pool):
         mo.create_actor(TaskActor, call_logs, address=actor_pool.external_address)
         for _ in range(group_size)
     ))
-    assert len(await dispatch_ref.get_slots()) == group_size
+    assert len((await dispatch_ref.dump_data()).free_slots) == group_size
 
     async def task_fun(idx):
         ref = await dispatch_ref.acquire_free_slot()
