@@ -129,6 +129,23 @@ class KubeDLCluster:
     def verify_ssl(self):
         return self._verify_ssl
 
+    def _check_if_exist(self):
+        try:
+            api, version = KUBEDL_API_VERSION.rsplit('/', 1)
+            service_obj = self._custom_api.get_namespaced_custom_object_status(
+                api, version, self._namespace, KUBEDL_MARS_PLURAL, self._job_name)
+            if len(service_obj.get('status', dict()).get('conditions', [])) > 0:
+                status = service_obj['status']['conditions'][-1]['type']
+                if status == 'Running' or status == 'Created':
+                    logger.warning(f'Reusing cluster: {self._job_name}')
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        except K8SApiException:
+            return False
+
     def _create_service(self):
         scheduler_cfg = MarsSchedulerSpecConfig(
             self._image, self._scheduler_num, cpu=self._scheduler_cpu, memory=self._scheduler_mem,
@@ -201,7 +218,8 @@ class KubeDLCluster:
 
     def start(self):
         try:
-            self._create_service()
+            if not self._check_if_exist():
+                self._create_service()
             self._wait_service_ready()
             return self._mars_endpoint
         except:  # noqa: E722
@@ -210,6 +228,7 @@ class KubeDLCluster:
 
     def stop(self, wait=False, timeout=0):
         from kubernetes import client as kube_client
+
         custom_api = kube_client.CustomObjectsApi(self._kube_api_client)
         api, version = KUBEDL_API_VERSION.rsplit('/', 1)
         custom_api.delete_namespaced_custom_object(

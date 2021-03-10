@@ -88,7 +88,8 @@ class K8SPodsIPWatcher(object):
         query = self._pool.spawn(
             self._client.list_namespaced_pod,
             namespace=self._k8s_namespace,
-            label_selector=self._get_label_selector(service_type)
+            label_selector=self._get_label_selector(service_type),
+            resource_version='0'
         ).result().to_dict()
 
         result = dict()
@@ -131,7 +132,8 @@ class K8SPodsIPWatcher(object):
                 self._client.list_namespaced_pod,
                 namespace=self._k8s_namespace,
                 label_selector=self._get_label_selector(service_type),
-                timeout_seconds=linger_seconds
+                timeout_seconds=linger_seconds,
+                resource_version='0'
             )
             while True:
                 try:
