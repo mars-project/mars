@@ -95,7 +95,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
             chunk_location = int(chunk_meta['instance_id'])
             columns = json.loads(chunk_meta['columns_'])
             shape = (np.nan, len(columns))
-            if not columns:
+            if not df_columns:
                 # note that in vineyard dataframe are splitted along the index axis.
                 df_columns = columns
             if not df_dtypes:
@@ -147,7 +147,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = client.get(vineyard.ObjectID(op.object_id))
 
 
-def from_vineyard(df, vineyard_socket=None):
+def from_vineyard(df, vineyard_socket=None, meta=None):
     if vineyard_socket is None:
         vineyard_socket = options.vineyard.socket
 
@@ -158,7 +158,30 @@ def from_vineyard(df, vineyard_socket=None):
     else:
         object_id = df
 
+    df_columns, df_dtypes = [], []
+    if meta is not None:
+        from vineyard.data.utils import normalize_dtype
+
+        # parse dtypes
+        for idx in range(int(meta['partitions_-size'])):
+            chunk_meta = meta['partitions_-%d' % idx]
+            columns = json.loads(chunk_meta['columns_'])
+            if not df_columns:
+                # note that in vineyard dataframe are splitted along the index axis.
+                df_columns = json.loads(chunk_meta['columns_'])
+            if not df_dtypes:
+                for column_idx in range(len(columns)):
+                    column_meta = chunk_meta['__values_-value-%d' % column_idx]
+                    dtype = normalize_dtype(column_meta['value_type_'],
+                                            column_meta.get('value_type_meta_', None))
+                    df_dtypes.append(dtype)
+            if df_columns is not None and df_dtypes is not None:
+                break
+        dtypes = pd.Series(df_dtypes, df_columns)
+    else:
+        dtypes = pd.Series([])
+
     op = DataFrameFromVineyard(vineyard_socket=vineyard_socket, object_id=object_id)
-    return op(shape=(np.nan,), chunk_size=(np.nan,), dtypes=pd.Series([]),
+    return op(shape=(np.nan,), chunk_size=(np.nan,), dtypes=dtypes,
               index_value=parse_index(pd.Index([])),
               columns_value=parse_index(pd.Index([])))
