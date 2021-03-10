@@ -17,6 +17,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 2
 
     - name: Set up conda ${{ matrix.python-version }}
       env:
