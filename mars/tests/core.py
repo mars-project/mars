@@ -261,6 +261,9 @@ class ObjectCheckMixin:
         if cupy is not None:
             np_types += (cupy.ndarray,)
 
+        if isinstance(real, tuple):
+            # allow returning a batch of chunks for some operands
+            real = real[0]
         if isinstance(real, (str, int, bool, float, complex)):
             real = np.array([real])[0]
         if not isinstance(real, np_types):
@@ -287,6 +290,9 @@ class ObjectCheckMixin:
         if cudf is not None:
             dataframe_types += (cudf.DataFrame,)
 
+        if isinstance(real, tuple):
+            # allow returning a batch of chunks for some operands
+            real = real[0]
         if not isinstance(real, dataframe_types):
             raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
         self.assert_shape_consistent(expected.shape, real.shape)
