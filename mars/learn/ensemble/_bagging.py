@@ -12,20 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import enum
 import itertools
+import warnings
 from collections import defaultdict
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, \
+    clone as clone_estimator
 
-from ... import opcodes
+from ..utils import column_or_1d, convert_to_tensor_or_dataframe
+from ..utils.multiclass import check_classification_targets
+from ..utils.validation import check_is_fitted
+from ... import opcodes, tensor as mt
 from ...core import OutputType, get_output_types, recursive_tile
+from ...core.context import Context
 from ...core.operand import OperandStage
 from ...dataframe.core import DATAFRAME_TYPE
 from ...dataframe.utils import parse_index
+from ...deploy.oscar.session import execute
 from ...serialization.serializables import AnyField, BoolField, \
-    Int64Field, Float32Field, TupleField, ReferenceField, FieldTypes
+    Int8Field, Int64Field, Float32Field, TupleField, ReferenceField, \
+    FieldTypes
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
@@ -115,7 +125,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
     @property
     def output_limit(self) -> int:
-        if self.with_feature_indices and self.stage != OperandStage.map:
+        if self.stage != OperandStage.map:
             return 1 + self.with_labels + self.with_weights + self.with_feature_indices
         return 1
 
@@ -206,7 +216,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
 
         # tile rechunks
         if to_tile:
-            tiled = yield from recursive_tile(*to_tile)
+            tiled = yield from recursive_tile(to_tile)
             tiled_iter = iter(tiled)
             if in_labels is not None:
                 in_labels = next(tiled_iter)
@@ -512,8 +522,9 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.BAGGING_SHUFFLE_REINDEX
 
     n_estimators: int = Int64Field('n_estimators')
-    start_col_index: int = Int64Field('start_col_index', 0)
     feature_indices: TileableType = ReferenceField('feature_indices', default=None)
+
+    start_col_index: int = Int64Field('start_col_index', 0)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -607,3 +618,1001 @@ class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
             cls._execute_combine(ctx, op)
         else:
             cls._execute_map(ctx, op)
+
+
+class BaggingFitOperand(LearnOperand, LearnOperandMixin):
+    _op_type_ = opcodes.BAGGING_FIT
+
+    base_estimator: BaseEstimator = AnyField('base_estimator')
+    n_estimators: int = Int64Field('n_estimators')
+    max_samples = AnyField('max_samples', default=1.0)
+    max_features = AnyField('max_features', default=1.0)
+    bootstrap: bool = BoolField('bootstrap', default=False)
+    bootstrap_features: bool = BoolField('bootstrap_features', default=True)
+    random_state = RandomStateField('random_state', default=None)
+
+    reducer_ratio: float = Float32Field('reducer_ratio')
+    n_reducers: int = Int64Field('n_reducers')
+
+    labels: TileableType = ReferenceField('labels', default=None)
+    weights: TileableType = ReferenceField('weights', default=None)
+    feature_indices: TileableType = ReferenceField(
+        'feature_indices', default=None)
+    with_feature_indices: bool = BoolField('with_feature_indices', default=None)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.with_feature_indices is None:
+            full_features = isinstance(self.max_features, float) and self.max_features == 1.0
+            self.with_feature_indices = not full_features or self.bootstrap_features
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+
+        input_iter = iter(inputs)
+        next(input_iter)
+        if self.labels is not None:
+            self.labels = next(input_iter)
+        if self.weights is not None:
+            self.weights = next(input_iter)
+        if self.feature_indices is not None:
+            self.feature_indices = next(input_iter)
+
+    def _get_bagging_sample_tileables(self, samples=None):
+        samples = samples or self.inputs[0]
+        sample_op = BaggingSample(
+            n_estimators=self.n_estimators,
+            max_samples=self.max_samples,
+            max_features=self.max_features,
+            bootstrap=self.bootstrap,
+            bootstrap_features=self.bootstrap_features,
+            random_state=self.random_state,
+            reducer_ratio=self.reducer_ratio,
+            n_reducers=self.n_reducers,
+            with_weights=self.weights is not None,
+            with_labels=self.labels is not None,
+            with_feature_indices=self.with_feature_indices,
+        )
+        return _extract_bagging_io(sample_op(samples, self.labels, self.weights),
+                                   sample_op, output=True)
+
+    @property
+    def output_limit(self) -> int:
+        if self.with_feature_indices:
+            return 2
+        return 1
+
+    def __call__(self, in_data: TileableType,
+                 in_labels: Optional[TileableType] = None,
+                 in_weights: Optional[TileableType] = None,
+                 feature_indices: TileableType = None):
+        self._output_types = [OutputType.tensor]
+        inputs = [in_data]
+
+        if in_labels is not None:
+            self.labels = in_labels
+            inputs.append(in_labels)
+        if in_weights is not None:
+            self.weights = in_weights
+            inputs.append(in_weights)
+
+        if feature_indices is not None:
+            self.feature_indices = feature_indices
+            inputs.append(feature_indices)
+
+        kws = [
+            dict(shape=(self.n_estimators,), dtype=np.dtype(object))
+        ]
+        if self.with_feature_indices:
+            self._output_types.append(OutputType.tensor)
+            sample_tileables = self._get_bagging_sample_tileables(in_data)
+            kws.append(sample_tileables[-1].params)
+
+        return self.new_tileables(inputs, kws=kws)
+
+    @classmethod
+    def tile(cls, op: "BaggingFitOperand"):
+        out = op.outputs[0]
+        sample_tileables = op._get_bagging_sample_tileables()
+        tiled_sample_iter = iter((
+            yield from recursive_tile(tuple(t for t in sample_tileables if t is not None))
+        ))
+        sampled, labels, weights, feature_indices = (
+            t if t is None else next(tiled_sample_iter) for t in sample_tileables)
+
+        estimator_nsplits = (tuple(c.op.n_estimators for c in sampled.chunks),)
+
+        label_chunks = itertools.repeat(None) if labels is None else labels.chunks
+        weight_chunks = itertools.repeat(None) if weights is None else weights.chunks
+
+        out_chunks = []
+        for sample_chunk, label_chunk, weight_chunk, n_estimators \
+                in zip(sampled.chunks, label_chunks, weight_chunks,
+                       estimator_nsplits[0]):
+            chunk_op = BaggingFitOperand(
+                base_estimator=op.base_estimator,
+                labels=label_chunk,
+                weights=weight_chunk,
+                n_estimators=n_estimators,
+                with_feature_indices=False,
+            )
+            chunk_op._output_types = op._output_types
+            inputs = [c for c in [sample_chunk, label_chunk, weight_chunk]
+                      if c is not None]
+            out_chunks.append(chunk_op.new_chunk(
+                inputs, index=(sample_chunk.index[0],),
+                shape=(n_estimators,),
+                dtype=out.dtype,
+            ))
+
+        out_op = op.copy().reset_key()
+        kws = [
+            dict(chunks=out_chunks, nsplits=estimator_nsplits, **out.params),
+        ]
+        if feature_indices is not None:
+            kws.append(dict(
+                chunks=feature_indices.chunks,
+                nsplits=feature_indices.nsplits,
+                **feature_indices.params
+            ))
+        out_tp = out_op.new_tileables(op.inputs, kws=kws)
+        out_estimators = out_tp[0]
+        out_feature_indices = None
+        if op.with_feature_indices:
+            out_feature_indices = out_tp[1]
+
+        if op.with_feature_indices:
+            return [out_estimators, out_feature_indices]
+        else:
+            return [out_estimators]
+
+    @classmethod
+    def execute(cls, ctx: Union[dict, Context],
+                op: "BaggingFitOperand"):
+        sampled_data = ctx[op.inputs[0].key]
+        labels_data = ctx[op.labels.key] if op.labels is not None \
+            else itertools.repeat(None)
+        weights_data = ctx[op.weights.key] if op.weights is not None \
+            else itertools.repeat(None)
+
+        new_estimators = []
+        for sampled, label, weights in zip(sampled_data, labels_data, weights_data):
+            estimator = clone_estimator(op.base_estimator)
+            estimator.fit(sampled, y=label, sample_weight=weights)
+            new_estimators.append(estimator)
+        ctx[op.outputs[0].key] = np.array(new_estimators, dtype=np.dtype(object))
+
+
+class PredictionType(enum.Enum):
+    REGRESSION = 0
+    PROBABILITY = 1
+    LOG_PROBABILITY = 2
+    DECISION_FUNCTION = 3
+
+
+class BaggingPredictionOperand(LearnOperand, LearnOperandMixin):
+    _op_type_ = opcodes.BAGGING_PREDICTION
+
+    estimators: TileableType = ReferenceField('estimators')
+    feature_indices: TileableType = ReferenceField('feature_indices', default=None)
+    n_classes: Optional[int] = Int64Field('n_classes', default=None)
+    prediction_type: PredictionType = Int8Field(
+        'prediction_type',
+        on_serialize=lambda x: x.value,
+        on_deserialize=PredictionType,
+        default=PredictionType.PROBABILITY
+    )
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        input_iter = iter(inputs[1:])
+        self.estimators = next(input_iter)
+        if self.feature_indices is not None:
+            self.feature_indices = next(input_iter)
+
+    def __call__(self,
+                 instances: TileableType,
+                 estimators: TileableType,
+                 feature_indices: TileableType = None) -> TileableType:
+        self._output_types = [OutputType.tensor]
+        self.estimators = estimators
+        self.feature_indices = feature_indices
+
+        if self.n_classes is not None:
+            shape = (instances.shape[0], self.n_classes)
+        else:
+            shape = (instances.shape[0],)
+        params = {
+            'dtype': np.dtype(float),
+            'shape': shape
+        }
+        inputs = [instances, estimators]
+        if feature_indices is not None:
+            inputs.append(feature_indices)
+        return self.new_tileable(inputs, **params)
+
+    def _get_class_shape(self):
+        if self.n_classes and self.n_classes > 2:
+            return self.n_classes
+        elif self.prediction_type == PredictionType.DECISION_FUNCTION:
+            return None
+        else:
+            return self.n_classes
+
+    @classmethod
+    def _build_chunks_without_feature_indices(cls, op: "BaggingPredictionOperand",
+                                              t_instances: TileableType):
+        class_shape = op._get_class_shape()
+        chunks = []
+        for c_instance in t_instances.chunks:
+            for c_estimator in op.estimators.chunks:
+                if class_shape is not None:
+                    params = {
+                        'dtype': np.dtype(float),
+                        'shape': (c_instance.shape[0], class_shape, c_estimator.shape[0]),
+                        'index': (c_instance.index[0], 0, c_estimator.index[0]),
+                    }
+                else:
+                    params = {
+                        'dtype': np.dtype(float),
+                        'shape': (c_instance.shape[0], c_estimator.shape[0]),
+                        'index': (c_instance.index[0], c_estimator.index[0]),
+                    }
+                new_op = op.copy().reset_key()
+                new_op.feature_indices = None
+                chunks.append(new_op.new_chunk([c_instance, c_estimator], **params))
+        return chunks
+
+    @classmethod
+    def _build_chunks_with_feature_indices(cls, op: "BaggingPredictionOperand",
+                                           t_instances: TileableType):
+        class_shape = op._get_class_shape()
+        chunks = []
+        for c in t_instances.chunks:
+            estimator_chunk = op.estimators.chunks[c.index[1]]
+
+            if class_shape is not None:
+                params = {
+                    'dtype': np.dtype(float),
+                    'shape': (c.shape[0], class_shape, estimator_chunk.shape[0]),
+                    'index': (c.index[0], 0, c.index[1]),
+                }
+            else:
+                params = {
+                    'dtype': np.dtype(float),
+                    'shape': (c.shape[0], estimator_chunk.shape[0]),
+                    'index': c.index,
+                }
+
+            new_op = op.copy().reset_key()
+            new_op.feature_indices = None
+            chunks.append(new_op.new_chunk([c, estimator_chunk], **params))
+        return chunks
+
+    @classmethod
+    def tile(cls, op: "BaggingPredictionOperand"):
+        n_estimators = op.estimators.shape[0]
+        reindex_op = BaggingSampleReindex(n_estimators=n_estimators)
+        t_instances = yield from recursive_tile(
+            reindex_op(op.inputs[0], op.feature_indices)
+        )
+
+        # for classifiers, form instance-class-estimator array
+        # for regressors, form instance-estimator array
+        # and then sum over estimator axis
+
+        if op.feature_indices is None:
+            chunks = cls._build_chunks_without_feature_indices(op, t_instances)
+        else:
+            chunks = cls._build_chunks_with_feature_indices(op, t_instances)
+
+        new_op = op.copy().reset_key()
+        class_shape = op._get_class_shape()
+        if class_shape is not None:
+            params = {
+                'dtype': np.dtype(float),
+                'shape': (t_instances.shape[0], class_shape, n_estimators),
+            }
+            nsplits = (t_instances.nsplits[0], (class_shape,), op.estimators.nsplits[0])
+        else:
+            params = {
+                'dtype': np.dtype(float),
+                'shape': t_instances.shape,
+            }
+            nsplits = t_instances.nsplits
+        estimator_probas = new_op.new_tileable(
+            op.inputs, chunks=chunks, nsplits=nsplits, **params)
+
+        if op.prediction_type != PredictionType.LOG_PROBABILITY:
+            return [(
+                yield from recursive_tile(mt.sum(estimator_probas, axis=-1) / n_estimators)
+            )]
+        else:
+            return [(
+                yield from recursive_tile(
+                    mt.log(mt.exp(estimator_probas).sum(axis=-1)) - np.log(n_estimators)
+                )
+            )]
+
+    @classmethod
+    def _predict_proba(cls, instance, estimator, n_classes):
+        n_samples = instance.shape[0]
+        proba = np.zeros((n_samples, n_classes))
+
+        if hasattr(estimator, 'predict_proba'):
+            proba_estimator = estimator.predict_proba(instance)
+            if n_classes == len(estimator.classes_):
+                proba += proba_estimator
+
+            else:
+                proba[:, estimator.classes_] += proba_estimator[
+                    :, range(len(estimator.classes_))
+                ]
+        else:
+            # Resort to voting
+            predictions = estimator.predict(instance)
+            for i in range(n_samples):
+                proba[i, predictions[i]] += 1
+        return proba
+
+    @classmethod
+    def _predict_log_proba(cls, instance, estimator, n_classes):
+        """Private function used to compute log probabilities within a job."""
+        n_samples = instance.shape[0]
+        log_proba = np.empty((n_samples, n_classes))
+        log_proba.fill(-np.inf)
+        all_classes = np.arange(n_classes, dtype=int)
+
+        log_proba_estimator = estimator.predict_log_proba(instance)
+
+        if n_classes == len(estimator.classes_):
+            log_proba = np.logaddexp(log_proba, log_proba_estimator)
+        else:  # pragma: no cover
+            log_proba[:, estimator.classes_] = np.logaddexp(
+                log_proba[:, estimator.classes_],
+                log_proba_estimator[:, range(len(estimator.classes_))],
+            )
+            missing = np.setdiff1d(all_classes, estimator.classes_)
+            log_proba[:, missing] = np.logaddexp(log_proba[:, missing], -np.inf)
+        return log_proba
+
+    @classmethod
+    def execute(cls,
+                ctx: Union[dict, Context],
+                op: "BaggingPredictionOperand"):
+        instances = ctx[op.inputs[0].key]
+        estimators = ctx[op.estimators.key]
+        if not isinstance(instances, tuple):
+            instances = [instances] * len(estimators)
+
+        estimate_results = []
+        for instance, estimator in zip(instances, estimators):
+            if op.n_classes is not None:
+                # classifier
+                if op.prediction_type == PredictionType.PROBABILITY:
+                    estimate_results.append(
+                        cls._predict_proba(instance, estimator, op.n_classes)
+                    )
+                elif op.prediction_type == PredictionType.LOG_PROBABILITY:
+                    if hasattr(estimator, 'predict_log_proba'):
+                        estimate_results.append(
+                            cls._predict_log_proba(instance, estimator, op.n_classes)
+                        )
+                    else:
+                        estimate_results.append(
+                            np.log(cls._predict_proba(instance, estimator, op.n_classes))
+                        )
+                else:
+                    estimate_results.append(estimator.decision_function(instance))
+            else:
+                # regressor
+                estimate_results.append(estimator.predict(instance))
+
+        out = op.outputs[0]
+        ctx[out.key] = np.stack(estimate_results, axis=out.ndim - 1)
+
+
+class BaseBagging:
+    def __init__(
+        self,
+        base_estimator=None,
+        n_estimators=10,
+        *,
+        max_samples=1.0,
+        max_features=1.0,
+        bootstrap=True,
+        bootstrap_features=False,
+        oob_score=False,
+        warm_start=False,
+        n_jobs=None,
+        random_state=None,
+        verbose=0,
+        reducers=1.0,
+    ):
+        self.base_estimator = base_estimator
+        self.n_estimators = n_estimators
+
+        self.max_samples = max_samples
+        self.max_features = max_features
+        self.bootstrap = bootstrap
+        self.bootstrap_features = bootstrap_features
+        self.oob_score = oob_score
+        self.warm_start = warm_start
+        self.n_jobs = n_jobs
+        self.random_state = np.random.RandomState(random_state) \
+            if isinstance(random_state, int) else random_state
+        self.verbose = verbose
+        self.reducers = reducers
+
+        self.estimators_ = None
+        self.estimator_features_ = None
+
+    def _validate_y(self, y, session=None, run_kwargs=None):
+        if len(y.shape) == 1 or y.shape[1] == 1:
+            return column_or_1d(y, warn=True)
+        else:
+            return y
+
+    def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
+        """
+        Build a Bagging ensemble of estimators from the training set (X, y).
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        y : array-like of shape (n_samples,)
+            The target values (class labels in classification, real numbers in
+            regression).
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights. If None, then samples are equally weighted.
+            Note that this is supported only if the base estimator supports
+            sample weighting.
+
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        estimator_features, feature_indices = None, None
+        n_more_estimators = self.n_estimators
+
+        X = convert_to_tensor_or_dataframe(X)
+        y = convert_to_tensor_or_dataframe(y) if y is not None else None
+        sample_weight = convert_to_tensor_or_dataframe(sample_weight) \
+            if sample_weight is not None else None
+
+        y = self._validate_y(y)
+
+        if self.warm_start:
+            feature_indices = self.estimator_features_
+            if self.estimators_ is not None:
+                exist_estimators = self.estimators_.shape[0]
+                # move random states to skip duplicated results
+                self.random_state.rand(exist_estimators)
+                n_more_estimators = self.n_estimators - exist_estimators
+
+        if n_more_estimators < 0:
+            raise ValueError(
+                "n_estimators=%d must be larger or equal to "
+                "len(estimators_)=%d when warm_start==True"
+                % (self.n_estimators, self.estimators_.shape[0])
+            )
+        elif n_more_estimators == 0:
+            warnings.warn(
+                "Warm-start fitting without increasing n_estimators does not "
+                "fit new trees."
+            )
+            return self
+
+        fit_op = BaggingFitOperand(
+            base_estimator=self.base_estimator,
+            n_estimators=n_more_estimators,
+            max_samples=self.max_samples,
+            max_features=self.max_features,
+            bootstrap=self.bootstrap,
+            bootstrap_features=self.bootstrap_features,
+            random_state=self.random_state,
+            reducer_ratio=self.reducers if isinstance(self.reducers, float) else None,
+            n_reducers=self.reducers if isinstance(self.reducers, int) else None,
+        )
+        tileables = fit_op(X, y, sample_weight, feature_indices)
+        ret = execute(*tileables, session=session, **(run_kwargs or dict()))
+
+        if len(ret) == 2:
+            estimators, estimator_features = ret
+        else:
+            estimators = ret
+
+        if self.estimators_ is not None:
+            estimators = mt.concatenate([self.estimators_, estimators])
+        if self.estimator_features_ is not None:
+            estimator_features = mt.concatenate([self.estimator_features_, estimator_features])
+
+        self.estimators_, self.estimator_features_ = estimators, estimator_features
+        return self
+
+
+class BaggingClassifier(ClassifierMixin, BaseBagging):
+    """
+    A Bagging classifier.
+
+    A Bagging classifier is an ensemble meta-estimator that fits base
+    classifiers each on random subsets of the original dataset and then
+    aggregate their individual predictions (either by voting or by averaging)
+    to form a final prediction. Such a meta-estimator can typically be used as
+    a way to reduce the variance of a black-box estimator (e.g., a decision
+    tree), by introducing randomization into its construction procedure and
+    then making an ensemble out of it.
+
+    This algorithm encompasses several works from the literature. When random
+    subsets of the dataset are drawn as random subsets of the samples, then
+    this algorithm is known as Pasting [1]_. If samples are drawn with
+    replacement, then the method is known as Bagging [2]_. When random subsets
+    of the dataset are drawn as random subsets of the features, then the method
+    is known as Random Subspaces [3]_. Finally, when base estimators are built
+    on subsets of both samples and features, then the method is known as
+    Random Patches [4]_.
+
+    Read more in the :ref:`User Guide <bagging>`.
+
+    .. versionadded:: 0.15
+
+    Parameters
+    ----------
+    base_estimator : object, default=None
+        The base estimator to fit on random subsets of the dataset.
+        If None, then the base estimator is a
+        :class:`~sklearn.tree.DecisionTreeClassifier`.
+
+    n_estimators : int, default=10
+        The number of base estimators in the ensemble.
+
+    max_samples : int or float, default=1.0
+        The number of samples to draw from X to train each base estimator (with
+        replacement by default, see `bootstrap` for more details).
+
+        - If int, then draw `max_samples` samples.
+        - If float, then draw `max_samples * X.shape[0]` samples.
+
+    max_features : int or float, default=1.0
+        The number of features to draw from X to train each base estimator (
+        without replacement by default, see `bootstrap_features` for more
+        details).
+
+        - If int, then draw `max_features` features.
+        - If float, then draw `max_features * X.shape[1]` features.
+
+    bootstrap : bool, default=True
+        Whether samples are drawn with replacement. If False, sampling
+        without replacement is performed.
+
+    bootstrap_features : bool, default=False
+        Whether features are drawn with replacement.
+
+    oob_score : bool, default=False
+        Whether to use out-of-bag samples to estimate
+        the generalization error. Only available if bootstrap=True.
+
+    warm_start : bool, default=False
+        When set to True, reuse the solution of the previous call to fit
+        and add more estimators to the ensemble, otherwise, just fit
+        a whole new ensemble. See :term:`the Glossary <warm_start>`.
+
+        .. versionadded:: 0.17
+           *warm_start* constructor parameter.
+
+    n_jobs : int, default=None
+        The number of jobs to run in parallel for both :meth:`fit` and
+        :meth:`predict`. ``None`` means 1 unless in a
+        :obj:`joblib.parallel_backend` context. ``-1`` means using all
+        processors. See :term:`Glossary <n_jobs>` for more details.
+
+    random_state : int, RandomState instance or None, default=None
+        Controls the random resampling of the original dataset
+        (sample wise and feature wise).
+        If the base estimator accepts a `random_state` attribute, a different
+        seed is generated for each instance in the ensemble.
+        Pass an int for reproducible output across multiple function calls.
+        See :term:`Glossary <random_state>`.
+
+    verbose : int, default=0
+        Controls the verbosity when fitting and predicting.
+
+    Attributes
+    ----------
+    base_estimator_ : estimator
+        The base estimator from which the ensemble is grown.
+
+    n_features_ : int
+        The number of features when :meth:`fit` is performed.
+
+        .. deprecated:: 1.0
+            Attribute `n_features_` was deprecated in version 1.0 and will be
+            removed in 1.2. Use `n_features_in_` instead.
+
+    n_features_in_ : int
+        Number of features seen during :term:`fit`.
+
+        .. versionadded:: 0.24
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of features seen during :term:`fit`. Defined only when `X`
+        has feature names that are all strings.
+
+        .. versionadded:: 1.0
+
+    estimators_ : list of estimators
+        The collection of fitted base estimators.
+
+    estimators_samples_ : list of arrays
+        The subset of drawn samples (i.e., the in-bag samples) for each base
+        estimator. Each subset is defined by an array of the indices selected.
+
+    estimators_features_ : list of arrays
+        The subset of drawn features for each base estimator.
+
+    classes_ : ndarray of shape (n_classes,)
+        The classes labels.
+
+    n_classes_ : int or list
+        The number of classes.
+
+    oob_score_ : float
+        Score of the training dataset obtained using an out-of-bag estimate.
+        This attribute exists only when ``oob_score`` is True.
+
+    oob_decision_function_ : ndarray of shape (n_samples, n_classes)
+        Decision function computed with out-of-bag estimate on the training
+        set. If n_estimators is small it might be possible that a data point
+        was never left out during the bootstrap. In this case,
+        `oob_decision_function_` might contain NaN. This attribute exists
+        only when ``oob_score`` is True.
+
+    See Also
+    --------
+    BaggingRegressor : A Bagging regressor.
+
+    References
+    ----------
+
+    .. [1] L. Breiman, "Pasting small votes for classification in large
+           databases and on-line", Machine Learning, 36(1), 85-103, 1999.
+
+    .. [2] L. Breiman, "Bagging predictors", Machine Learning, 24(2), 123-140,
+           1996.
+
+    .. [3] T. Ho, "The random subspace method for constructing decision
+           forests", Pattern Analysis and Machine Intelligence, 20(8), 832-844,
+           1998.
+
+    .. [4] G. Louppe and P. Geurts, "Ensembles on Random Patches", Machine
+           Learning and Knowledge Discovery in Databases, 346-361, 2012.
+
+    Examples
+    --------
+    >>> from sklearn.svm import SVC
+    >>> from mars.learn.ensemble import BaggingClassifier
+    >>> from mars.learn.datasets import make_classification
+    >>> X, y = make_classification(n_samples=100, n_features=4,
+    ...                            n_informative=2, n_redundant=0,
+    ...                            random_state=0, shuffle=False)
+    >>> clf = BaggingClassifier(base_estimator=SVC(),
+    ...                         n_estimators=10, random_state=0).fit(X, y)
+    >>> clf.predict([[0, 0, 0, 0]])
+    array([1])
+    """
+
+    def _validate_y(self, y, session=None, run_kwargs=None):
+        to_run = [check_classification_targets(y)]
+        y = column_or_1d(y, warn=True)
+        to_run.extend(mt.unique(y, return_inverse=True))
+        _, self.classes_, y = execute(*to_run, session=session, **(run_kwargs or dict()))
+        self.n_classes_ = len(self.classes_)
+
+        return y
+
+    def _predict_proba(self, X):
+        check_is_fitted(self)
+        X = convert_to_tensor_or_dataframe(X)
+        predict_op = BaggingPredictionOperand(
+            n_classes=self.n_classes_,
+            prediction_type=PredictionType.PROBABILITY,
+        )
+        return predict_op(X, self.estimators_, self.estimator_features_)
+
+    def predict(self, X, session=None, run_kwargs=None):
+        """
+        Predict class for X.
+
+        The predicted class of an input sample is computed as the class with
+        the highest mean predicted probability. If base estimators do not
+        implement a ``predict_proba`` method, then it resorts to voting.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        Returns
+        -------
+        y : ndarray of shape (n_samples,)
+            The predicted classes.
+        """
+        probas = self._predict_proba(X)
+        y = self.classes_.take(mt.argmax(probas, axis=1), axis=0)
+        return execute(y, session=session, **(run_kwargs or dict()))
+
+    def predict_proba(self, X, session=None, run_kwargs=None):
+        """
+        Predict class probabilities for X.
+
+        The predicted class probabilities of an input sample is computed as
+        the mean predicted class probabilities of the base estimators in the
+        ensemble. If base estimators do not implement a ``predict_proba``
+        method, then it resorts to voting and the predicted class probabilities
+        of an input sample represents the proportion of estimators predicting
+        each class.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        Returns
+        -------
+        p : ndarray of shape (n_samples, n_classes)
+            The class probabilities of the input samples. The order of the
+            classes corresponds to that in the attribute :term:`classes_`.
+        """
+        probas = self._predict_proba(X)
+        return execute(probas, session=session, **(run_kwargs or dict()))
+
+    def predict_log_proba(self, X, session=None, run_kwargs=None):
+        """
+        Predict class log-probabilities for X.
+
+        The predicted class log-probabilities of an input sample is computed as
+        the log of the mean predicted class probabilities of the base
+        estimators in the ensemble.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        Returns
+        -------
+        p : ndarray of shape (n_samples, n_classes)
+            The class log-probabilities of the input samples. The order of the
+            classes corresponds to that in the attribute :term:`classes_`.
+        """
+        check_is_fitted(self)
+        X = convert_to_tensor_or_dataframe(X)
+        predict_op = BaggingPredictionOperand(
+            n_classes=self.n_classes_,
+            prediction_type=PredictionType.LOG_PROBABILITY,
+        )
+        probas = predict_op(X, self.estimators_, self.estimator_features_)
+        return execute(probas, session=session, **(run_kwargs or dict()))
+
+    def decision_function(self, X, session=None, run_kwargs=None):
+        """
+        Average of the decision functions of the base classifiers.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        Returns
+        -------
+        score : ndarray of shape (n_samples, k)
+            The decision function of the input samples. The columns correspond
+            to the classes in sorted order, as they appear in the attribute
+            ``classes_``. Regression and binary classification are special
+            cases with ``k == 1``, otherwise ``k==n_classes``.
+        """
+        check_is_fitted(self)
+        X = convert_to_tensor_or_dataframe(X)
+        predict_op = BaggingPredictionOperand(
+            n_classes=self.n_classes_,
+            prediction_type=PredictionType.DECISION_FUNCTION,
+        )
+        result = predict_op(X, self.estimators_, self.estimator_features_)
+        return execute(result, session=session, **(run_kwargs or dict()))
+
+
+class BaggingRegressor(RegressorMixin, BaseBagging):
+    """
+    A Bagging regressor.
+
+    A Bagging regressor is an ensemble meta-estimator that fits base
+    regressors each on random subsets of the original dataset and then
+    aggregate their individual predictions (either by voting or by averaging)
+    to form a final prediction. Such a meta-estimator can typically be used as
+    a way to reduce the variance of a black-box estimator (e.g., a decision
+    tree), by introducing randomization into its construction procedure and
+    then making an ensemble out of it.
+
+    This algorithm encompasses several works from the literature. When random
+    subsets of the dataset are drawn as random subsets of the samples, then
+    this algorithm is known as Pasting [1]_. If samples are drawn with
+    replacement, then the method is known as Bagging [2]_. When random subsets
+    of the dataset are drawn as random subsets of the features, then the method
+    is known as Random Subspaces [3]_. Finally, when base estimators are built
+    on subsets of both samples and features, then the method is known as
+    Random Patches [4]_.
+
+    Read more in the :ref:`User Guide <bagging>`.
+
+    .. versionadded:: 0.15
+
+    Parameters
+    ----------
+    base_estimator : object, default=None
+        The base estimator to fit on random subsets of the dataset.
+        If None, then the base estimator is a
+        :class:`~sklearn.tree.DecisionTreeRegressor`.
+
+    n_estimators : int, default=10
+        The number of base estimators in the ensemble.
+
+    max_samples : int or float, default=1.0
+        The number of samples to draw from X to train each base estimator (with
+        replacement by default, see `bootstrap` for more details).
+
+        - If int, then draw `max_samples` samples.
+        - If float, then draw `max_samples * X.shape[0]` samples.
+
+    max_features : int or float, default=1.0
+        The number of features to draw from X to train each base estimator (
+        without replacement by default, see `bootstrap_features` for more
+        details).
+
+        - If int, then draw `max_features` features.
+        - If float, then draw `max_features * X.shape[1]` features.
+
+    bootstrap : bool, default=True
+        Whether samples are drawn with replacement. If False, sampling
+        without replacement is performed.
+
+    bootstrap_features : bool, default=False
+        Whether features are drawn with replacement.
+
+    oob_score : bool, default=False
+        Whether to use out-of-bag samples to estimate
+        the generalization error. Only available if bootstrap=True.
+
+    warm_start : bool, default=False
+        When set to True, reuse the solution of the previous call to fit
+        and add more estimators to the ensemble, otherwise, just fit
+        a whole new ensemble. See :term:`the Glossary <warm_start>`.
+
+    n_jobs : int, default=None
+        The number of jobs to run in parallel for both :meth:`fit` and
+        :meth:`predict`. ``None`` means 1 unless in a
+        :obj:`joblib.parallel_backend` context. ``-1`` means using all
+        processors. See :term:`Glossary <n_jobs>` for more details.
+
+    random_state : int, RandomState instance or None, default=None
+        Controls the random resampling of the original dataset
+        (sample wise and feature wise).
+        If the base estimator accepts a `random_state` attribute, a different
+        seed is generated for each instance in the ensemble.
+        Pass an int for reproducible output across multiple function calls.
+        See :term:`Glossary <random_state>`.
+
+    verbose : int, default=0
+        Controls the verbosity when fitting and predicting.
+
+    Attributes
+    ----------
+    base_estimator_ : estimator
+        The base estimator from which the ensemble is grown.
+
+    n_features_ : int
+        The number of features when :meth:`fit` is performed.
+
+        .. deprecated:: 1.0
+            Attribute `n_features_` was deprecated in version 1.0 and will be
+            removed in 1.2. Use `n_features_in_` instead.
+
+    n_features_in_ : int
+        Number of features seen during :term:`fit`.
+
+        .. versionadded:: 0.24
+
+    feature_names_in_ : ndarray of shape (`n_features_in_`,)
+        Names of features seen during :term:`fit`. Defined only when `X`
+        has feature names that are all strings.
+
+        .. versionadded:: 1.0
+
+    estimators_ : list of estimators
+        The collection of fitted sub-estimators.
+
+    estimators_samples_ : list of arrays
+        The subset of drawn samples (i.e., the in-bag samples) for each base
+        estimator. Each subset is defined by an array of the indices selected.
+
+    estimators_features_ : list of arrays
+        The subset of drawn features for each base estimator.
+
+    oob_score_ : float
+        Score of the training dataset obtained using an out-of-bag estimate.
+        This attribute exists only when ``oob_score`` is True.
+
+    oob_prediction_ : ndarray of shape (n_samples,)
+        Prediction computed with out-of-bag estimate on the training
+        set. If n_estimators is small it might be possible that a data point
+        was never left out during the bootstrap. In this case,
+        `oob_prediction_` might contain NaN. This attribute exists only
+        when ``oob_score`` is True.
+
+    See Also
+    --------
+    BaggingClassifier : A Bagging classifier.
+
+    References
+    ----------
+
+    .. [1] L. Breiman, "Pasting small votes for classification in large
+           databases and on-line", Machine Learning, 36(1), 85-103, 1999.
+
+    .. [2] L. Breiman, "Bagging predictors", Machine Learning, 24(2), 123-140,
+           1996.
+
+    .. [3] T. Ho, "The random subspace method for constructing decision
+           forests", Pattern Analysis and Machine Intelligence, 20(8), 832-844,
+           1998.
+
+    .. [4] G. Louppe and P. Geurts, "Ensembles on Random Patches", Machine
+           Learning and Knowledge Discovery in Databases, 346-361, 2012.
+
+    Examples
+    --------
+    >>> from sklearn.svm import SVR
+    >>> from mars.learn.ensemble import BaggingRegressor
+    >>> from mars.learn.datasets import make_regression
+    >>> X, y = make_regression(n_samples=100, n_features=4,
+    ...                        n_informative=2, n_targets=1,
+    ...                        random_state=0, shuffle=False)
+    >>> regr = BaggingRegressor(base_estimator=SVR(),
+    ...                         n_estimators=10, random_state=0).fit(X, y)
+    >>> regr.predict([[0, 0, 0, 0]])
+    array([-2.8720...])
+    """
+
+    def predict(self, X, session=None, run_kwargs=None):
+        """
+        Predict regression target for X.
+
+        The predicted regression target of an input sample is computed as the
+        mean predicted regression targets of the estimators in the ensemble.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            The training input samples. Sparse matrices are accepted only if
+            they are supported by the base estimator.
+
+        Returns
+        -------
+        y : ndarray of shape (n_samples,)
+            The predicted values.
+        """
+        check_is_fitted(self)
+        X = convert_to_tensor_or_dataframe(X)
+        predict_op = BaggingPredictionOperand(
+            prediction_type=PredictionType.REGRESSION,
+        )
+        probas = predict_op(X, self.estimators_, self.estimator_features_)
+        return execute(probas, session=session, **(run_kwargs or dict()))

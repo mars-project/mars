@@ -91,6 +91,8 @@ Ensemble Methods
 .. autosummary::
    :toctree: generated/
 
+   ensemble.BaggingClassifier
+   ensemble.BaggingRegressor
    ensemble.BlockwiseVotingClassifier
    ensemble.BlockwiseVotingRegressor
 
