@@ -116,6 +116,7 @@ class Base(HasKey):
 class Entity(HasData):
     __slots__ = ()
     _allow_data_type_ = ()
+    type_name = None
 
     def __init__(self, data):
         self._check_data(data)
@@ -189,6 +190,7 @@ class AttributeAsDictKey(Base, AttributeAsDict):
 
 class EntityData(SerializableWithKey):
     __slots__ = '__weakref__', '_siblings'
+    type_name = None
 
     # required fields
     _op = KeyField('op')  # store key of operand here
@@ -273,6 +275,7 @@ CHUNK_TYPE = (ChunkData, Chunk)
 class ObjectChunkData(ChunkData):
     # chunk whose data could be any serializable
     __slots__ = ()
+    type_name = 'Object'
 
     def __init__(self, op=None, index=None, **kw):
         super().__init__(_op=op, _index=index, **kw)
@@ -295,6 +298,7 @@ class ObjectChunkData(ChunkData):
 class ObjectChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (ObjectChunkData,)
+    type_name = 'Object'
 
 
 class FuseChunkData(ChunkData):
@@ -651,6 +655,7 @@ class HasShapeTileableEnity(TileableEntity):
 
 class ObjectData(TileableData, _ToObjectMixin):
     __slots__ = ()
+    type_name = 'Object'
 
     # optional fields
     _chunks = ListField('chunks', ValueType.reference(ObjectChunkData),
@@ -680,6 +685,7 @@ class ObjectData(TileableData, _ToObjectMixin):
 class Object(Entity, _ToObjectMixin):
     __slots__ = ()
     _allow_data_type_ = (ObjectData,)
+    type_name = 'Object'
 
 
 OBJECT_TYPE = (Object, ObjectData)

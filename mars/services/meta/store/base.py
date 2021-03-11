@@ -17,6 +17,7 @@ from typing import Tuple, Dict, List, Any, Type
 
 import numpy as np
 
+from ....core import CHUNK_TYPE
 from ....tensor.core import TensorOrder
 from ....dataframe.core import IndexValue, DtypesValue
 
@@ -29,6 +30,25 @@ class AbstractMetaStore(ABC):
 
     def __init__(self, session_id: str, **kw):
         self._session_id = session_id
+
+    @staticmethod
+    def _get_method_name(tp, method_type: str):
+        method_name = f'{method_type}_{tp.type_name.lower()}'
+        if issubclass(tp, CHUNK_TYPE):
+            method_name = f'{method_name}_chunk'
+        return f'{method_name}_meta'
+
+    async def set_meta(self, tp, object_id: str, **kw):
+        method_name = self._get_method_name(tp, 'set')
+        return await getattr(self, method_name)(object_id, **kw)
+
+    async def get_meta(self, tp, object_id: str, fields: List[str] = None) -> Dict:
+        method_name = self._get_method_name(tp, 'get')
+        return await getattr(self, method_name)(object_id, fields=fields)
+
+    async def del_meta(self, tp, object_id: str):
+        method_name = self._get_method_name(tp, 'del')
+        return await getattr(self, method_name)(object_id)
 
     @abstractmethod
     async def set_tensor_meta(self,

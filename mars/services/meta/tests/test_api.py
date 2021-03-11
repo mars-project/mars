@@ -20,9 +20,7 @@ import mars.dataframe as md
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
-from mars.oscar.backends.mars.allocate_strategy import RandomSubPool
-from mars.services.meta.api import MetaAPI
-from mars.services.meta.core import MetaStoreActor
+from mars.services.meta.api import MockMetaAPI
 
 
 t = mt.random.rand(10, 10)
@@ -48,14 +46,9 @@ async def test_meta_mock_api(obj):
     async with pool:
         session_id = 'mock_session_id'
 
-        await mo.create_actor(MetaStoreActor, 'mock', session_id,
-                              address=pool.external_address,
-                              uid=MetaStoreActor.gen_uid(session_id),
-                              allocate_strategy=RandomSubPool())
-
-        meta_api = await MetaAPI.create(
+        meta_api = await MockMetaAPI.create(
             dict(session_id=session_id,
-                 supervisor_address=pool.external_address))
+                 address=pool.external_address))
 
         await meta_api.set_tileable_meta(obj)
         meta = await meta_api.get_tileable_meta(obj.key,
