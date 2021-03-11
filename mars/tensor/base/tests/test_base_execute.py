@@ -1684,3 +1684,72 @@ class Test(TestBase):
                         with_chunk_index=True)
         results = self.executor.execute_tensor(r, concat=True)[0]
         np.testing.assert_array_equal(raw * 0.5 + np.arange(0, 20) // 10, results)
+
+    def testInsertExecution(self):
+        raw = np.random.randint(0, 100, size=(20, 10))
+        a = tensor(raw, chunk_size=6)
+
+        r1 = mt.insert(a, 1, 5)
+        result = self.executor.execute_tensor(r1, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, 1, 5), result)
+
+        r2 = mt.insert(a, [3, 50, 10], 10)
+        result = self.executor.execute_tensor(r2, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, [3, 50, 10], 10), result)
+
+        r3 = mt.insert(a, [2, 3, 4], [5, 6, 7])
+        result = self.executor.execute_tensor(r3, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, [2, 3, 4], [5, 6, 7]), result)
+
+        # specify axis
+        r4 = mt.insert(a, 5, 4, axis=0)
+        result = self.executor.execute_tensor(r4, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, 5, 4, axis=0), result)
+
+        r5 = mt.insert(a, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1)
+        result = self.executor.execute_tensor(r5, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+
+        r6 = mt.insert(a, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0)
+        result = self.executor.execute_tensor(r6, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+
+        # test mt.tensor as values
+        r5 = mt.insert(a, [1, 2, 6], mt.arange(20).reshape((20, 1)), axis=1)
+        result = self.executor.execute_tensor(r5, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+
+        r6 = mt.insert(a, [1, 16, 10], mt.arange(30).reshape((3, 10)), axis=0)
+        result = self.executor.execute_tensor(r6, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+
+        r7 = mt.insert(a, [20, 30, 50], mt.tensor([5, 6, 7]))
+        result = self.executor.execute_tensor(r7, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, [20, 30, 50], [5, 6, 7]), result)
+
+        # test mt.tensor as index
+        r8 = mt.insert(a, mt.tensor([1, 2, 6]),
+                       mt.arange(20).reshape((20, 1)), axis=1)
+        result = self.executor.execute_tensor(r8, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 2, 6], np.arange(20).reshape((20, 1)), axis=1), result)
+
+        r9 = mt.insert(a, mt.tensor([1, 16, 10]),
+                       mt.arange(30).reshape((3, 10)), axis=0)
+        result = self.executor.execute_tensor(r9, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, [1, 16, 10], np.arange(30).reshape((3, 10)), axis=0), result)
+
+        r10 = mt.insert(a, mt.tensor([20, 30, 50]),
+                        mt.tensor([5, 6, 7]))
+        result = self.executor.execute_tensor(r10, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, [20, 30, 50], [5, 6, 7]), result)
+
+        r11 = mt.insert(a, slice(0, 10), mt.arange(10), axis=0)
+        result = self.executor.execute_tensor(r11, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.insert(raw, slice(0, 10), np.arange(10), axis=0), result)
