@@ -28,7 +28,7 @@ from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, An
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
     TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
-    ceildiv, is_build_mode
+    ceildiv, is_build_mode, tokenize
 from .utils import fetch_corner_data, ReprSeries
 
 
@@ -346,8 +346,30 @@ class IndexValue(Serializable):
         return super().cls(provider)
 
 
+class DtypesValue(Serializable):
+    """
+    Meta class for dtypes.
+    """
+    __slots__ = ()
+
+    _key = StringField('key')
+    _value = SeriesField('value')
+
+    def __init__(self, key=None, value=None, **kw):
+        super().__init__(_key=key, _value=value, **kw)
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def value(self):
+        return self._value
+
+
 class IndexChunkData(ChunkData):
     __slots__ = ()
+    type_name = 'Index'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -404,6 +426,7 @@ class IndexChunkData(ChunkData):
 class IndexChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (IndexChunkData,)
+    type_name = 'Index'
 
 
 def _on_deserialize_index_value(index_value):
@@ -463,6 +486,7 @@ class _BatchedFetcher:
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ()
+    type_name = 'Index'
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -548,6 +572,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
 class Index(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_df_or_series', '_parent_key', '_axis'
     _allow_data_type_ = (IndexData,)
+    type_name = 'Index'
 
     def __new__(cls, data: Union[pd.Index, IndexData], **_):
         if not isinstance(data, pd.Index):
@@ -787,6 +812,8 @@ class BaseSeriesChunkData(ChunkData):
 
 
 class SeriesChunkData(BaseSeriesChunkData):
+    type_name = 'Series'
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -798,11 +825,11 @@ class SeriesChunkData(BaseSeriesChunkData):
 class SeriesChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (SeriesChunkData,)
+    type_name = 'Series'
 
 
 class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = '_cache', '_accessors'
-    _type_name = None
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -832,9 +859,9 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
         if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
+                return f'{self.type_name} <op={type(self._op).__name__}, key={self.key}>'
             else:
-                return f'{self._type_name}(op={type(self._op).__name__})'
+                return f'{self.type_name}(op={type(self._op).__name__})'
         else:
             corner_data = fetch_corner_data(
                 self, session=self._executed_sessions[-1])
@@ -892,7 +919,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
 
 
 class SeriesData(_BatchedFetcher, BaseSeriesData):
-    _type_name = 'Series'
+    type_name = 'Series'
 
     def __mars_tensor__(self, dtype=None, order='K'):
         tensor = self.to_tensor()
@@ -920,6 +947,7 @@ class SeriesData(_BatchedFetcher, BaseSeriesData):
 class Series(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
+    type_name = 'Series'
 
     def to_tensor(self, dtype=None):
         return self._data.to_tensor(dtype=dtype)
@@ -1129,7 +1157,7 @@ class Series(HasShapeTileableEnity, _ToPandasMixin):
 
 
 class BaseDataFrameChunkData(ChunkData):
-    __slots__ = ()
+    __slots__ = '_dtypes_value',
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -1143,6 +1171,7 @@ class BaseDataFrameChunkData(ChunkData):
                  index_value=None, columns_value=None, **kw):
         super().__init__(_op=op, _shape=shape, _index=index, _dtypes=dtypes,
                          _index_value=index_value, _columns_value=columns_value, **kw)
+        self._dtypes_value = None
 
     def __len__(self):
         return self.shape[0]
@@ -1174,6 +1203,18 @@ class BaseDataFrameChunkData(ChunkData):
         return getattr(self.op, 'dtypes', None)
 
     @property
+    def dtypes_value(self):
+        if self._dtypes_value is not None:
+            return self._dtypes_value
+        # TODO(qinxuye): when creating Dataframe,
+        #  dtypes_value instead of dtypes later must be passed into
+        dtypes = self.dtypes
+        if dtypes is not None:
+            self._dtypes_value = DtypesValue(
+                key=tokenize(dtypes), value=dtypes)
+            return self._dtypes_value
+
+    @property
     def index_value(self):
         return self._index_value
 
@@ -1183,6 +1224,8 @@ class BaseDataFrameChunkData(ChunkData):
 
 
 class DataFrameChunkData(BaseDataFrameChunkData):
+    type_name = 'DataFrame'
+
     @classmethod
     def cls(cls, provider):
         if provider.type == ProviderType.protobuf:
@@ -1194,14 +1237,14 @@ class DataFrameChunkData(BaseDataFrameChunkData):
 class DataFrameChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (DataFrameChunkData,)
+    type_name = 'DataFrame'
 
     def __len__(self):
         return len(self._data)
 
 
 class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
-    __slots__ = '_accessors',
-    _type_name = None
+    __slots__ = '_accessors', '_dtypes_value'
 
     # optional fields
     _dtypes = SeriesField('dtypes')
@@ -1217,6 +1260,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
                          _index_value=index_value, _columns_value=columns_value,
                          _chunks=chunks, **kw)
         self._accessors = dict()
+        self._dtypes_value = None
 
     @property
     def params(self):
@@ -1234,6 +1278,18 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         if dt is not None:
             return dt
         return getattr(self.op, 'dtypes', None)
+
+    @property
+    def dtypes_value(self):
+        if self._dtypes_value is not None:
+            return self._dtypes_value
+        # TODO(qinxuye): when creating Dataframe,
+        #  dtypes_value instead of dtypes later must be passed into
+        dtypes = self.dtypes
+        if dtypes is not None:
+            self._dtypes_value = DtypesValue(
+                key=tokenize(dtypes), value=dtypes)
+            return self._dtypes_value
 
     @property
     def index_value(self):
@@ -1275,15 +1331,15 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
 
 
 class DataFrameData(_BatchedFetcher, BaseDataFrameData):
-    _type_name = 'DataFrame'
+    type_name = 'DataFrame'
 
     def _to_str(self, representation=False):
         if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return f'{self._type_name} <op={type(self._op).__name__}, key={self.key}>'
+                return f'{self.type_name} <op={type(self._op).__name__}, key={self.key}>'
             else:
-                return f'{self._type_name}(op={type(self._op).__name__})'
+                return f'{self.type_name}(op={type(self._op).__name__})'
         else:
             corner_data = fetch_corner_data(
                 self, session=self._executed_sessions[-1])
@@ -1366,6 +1422,7 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
 class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
+    type_name = 'DataFrame'
 
     def __len__(self):
         return len(self._data)
@@ -1606,6 +1663,8 @@ class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
 
 
 class DataFrameGroupByChunkData(BaseDataFrameChunkData):
+    type_name = 'DataFrameGroupBy'
+
     _key_dtypes = SeriesField('key_dtypes')
     _selection = AnyField('selection')
 
@@ -1637,12 +1696,15 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
 class DataFrameGroupByChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (DataFrameGroupByChunkData,)
+    type_name = 'DataFrameGroupBy'
 
     def __len__(self):
         return len(self._data)
 
 
 class SeriesGroupByChunkData(BaseSeriesChunkData):
+    type_name = 'SeriesGroupBy'
+
     _key_dtypes = AnyField('key_dtypes')
 
     @property
@@ -1669,13 +1731,14 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
 class SeriesGroupByChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (SeriesGroupByChunkData,)
+    type_name = 'SeriesGroupBy'
 
     def __len__(self):
         return len(self._data)
 
 
 class DataFrameGroupByData(BaseDataFrameData):
-    _type_name = 'DataFrameGroupBy'
+    type_name = 'DataFrameGroupBy'
 
     _key_dtypes = SeriesField('key_dtypes')
     _selection = AnyField('selection')
@@ -1716,7 +1779,7 @@ class DataFrameGroupByData(BaseDataFrameData):
 
 
 class SeriesGroupByData(BaseSeriesData):
-    _type_name = 'SeriesGroupBy'
+    type_name = 'SeriesGroupBy'
 
     _key_dtypes = AnyField('key_dtypes')
     _chunks = ListField('chunks', ValueType.reference(SeriesGroupByChunkData),
@@ -1758,6 +1821,7 @@ class GroupBy(TileableEntity, _ToPandasMixin):
 class DataFrameGroupBy(GroupBy):
     __slots__ = ()
     _allow_data_type_ = (DataFrameGroupByData,)
+    type_name = 'DataFrameGroupBy'
 
     def __eq__(self, other):
         return self._equal(other)
@@ -1783,6 +1847,7 @@ class DataFrameGroupBy(GroupBy):
 class SeriesGroupBy(GroupBy):
     __slots__ = ()
     _allow_data_type_ = (SeriesGroupByData,)
+    type_name = 'SeriesGroupBy'
 
     def __eq__(self, other):
         return self._equal(other)
@@ -1794,6 +1859,7 @@ class SeriesGroupBy(GroupBy):
 
 class CategoricalChunkData(ChunkData):
     __slots__ = ()
+    type_name = 'Categorical'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -1845,11 +1911,12 @@ class CategoricalChunkData(ChunkData):
 class CategoricalChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (CategoricalChunkData,)
+    type_name = 'Categorical'
 
 
 class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = '_cache',
-    _type_name = 'Categorical'
+    type_name = 'Categorical'
 
     # optional field
     _dtype = DataTypeField('dtype')
@@ -1876,9 +1943,9 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
         if is_build_mode() or len(self._executed_sessions) == 0:
             # in build mode, or not executed, just return representation
             if representation:
-                return f'{self._type_name} <op={type(self.op).__name__}, key={self.key}>'
+                return f'{self.type_name} <op={type(self.op).__name__}, key={self.key}>'
             else:
-                return f'{self._type_name}(op={type(self.op).__name__})'
+                return f'{self.type_name}(op={type(self.op).__name__})'
         else:
             data = self.fetch(session=self._executed_sessions[-1])
             return repr(data) if repr(data) else str(data)
@@ -1922,6 +1989,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
 class Categorical(HasShapeTileableEnity, _ToPandasMixin):
     __slots__ = ()
     _allow_data_type_ = (CategoricalData,)
+    type_name = 'Categorical'
 
     def __len__(self):
         return len(self._data)

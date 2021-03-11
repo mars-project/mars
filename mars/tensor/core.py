@@ -42,6 +42,7 @@ class TensorOrder(Enum):
 
 class TensorChunkData(ChunkData):
     __slots__ = ()
+    type_name = 'Tensor'
 
     # required fields
     _shape = TupleField('shape', ValueType.int64,
@@ -116,6 +117,7 @@ class TensorChunkData(ChunkData):
 class TensorChunk(Chunk):
     __slots__ = ()
     _allow_data_type_ = (TensorChunkData,)
+    type_name = 'Tensor'
 
     def __len__(self):
         return len(self._data)
@@ -123,6 +125,7 @@ class TensorChunk(Chunk):
 
 class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     __slots__ = ()
+    type_name = 'Tensor'
 
     # required fields
     _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
@@ -293,6 +296,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
 class Tensor(HasShapeTileableEnity):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
+    type_name = 'Tensor'
 
     def __len__(self):
         return len(self._data)
