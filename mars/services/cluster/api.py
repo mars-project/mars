@@ -25,14 +25,14 @@ class ClusterApi:
         Refresh resource info of current node into service
         """
 
-    async def get_session_supervisor(self, session_id: str) -> str:
+    async def get_supervisor(self, key: str) -> str:
         """
         Get supervisor address hosting the specified session
 
         Parameters
         ----------
-        session_id : str
-            address of session to be queried
+        key : str
+            key for a supervisor address
 
         Returns
         -------
