@@ -23,7 +23,7 @@ class StorageAPI(ABC):
         self._session_id = session_id
 
     @abstractmethod
-    async def get(self, data_key: str, **kwargs):
+    async def get(self, data_key: str, conditions: List):
         """
         Get object by data key.
 
@@ -31,6 +31,9 @@ class StorageAPI(ABC):
         ----------
         data_key: str
             date key to get.
+
+        conditions: List
+            Index conditions to pushdown
 
         Returns
         -------
@@ -86,8 +89,8 @@ class StorageAPI(ABC):
 
         """
 
-    async def allocate(self, size: int,
-                       level: StorageLevel) -> bool:
+    async def _allocate(self, size: int,
+                        level: StorageLevel) -> bool:
         """
         Allocate size for storing, called in put and prefetch.
         It will send a quota request to main process.
@@ -102,18 +105,6 @@ class StorageAPI(ABC):
         Returns
         -------
             return True if request is accepted, False when rejected.
-        """
-
-    @abstractmethod
-    async def pin(self, data_key: str):
-        """
-        Pin the data to prevent the data being released or spilled.
-
-        Parameters
-        ----------
-        data_key: str
-            data key to pin
-
         """
 
     @abstractmethod
