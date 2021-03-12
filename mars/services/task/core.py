@@ -42,22 +42,21 @@ class ChunkGraph(EntityGraph):
 class TaskStatus(Enum):
     pending = 0
     running = 1
-    finished = 2
-    cancelled = 3
+    terminated = 2
 
 
 class SubTaskStatus(Enum):
     pending = 0
     running = 1
-    finished = 2
-    cancelled = 3
+    terminated = 2
 
 
 class Task:
     __slots__ = 'task_id', 'session_id', 'tileable_graph', \
-                'status', 'rerun_time'
+                'task_name', 'status', 'rerun_time'
 
     task_id: str
+    task_name: str
     session_id: str
     tileable_graph: TileableGraph
     status: TaskStatus
@@ -66,8 +65,10 @@ class Task:
     def __init__(self,
                  task_id: str,
                  session_id: str,
-                 tileable_graph: TileableGraph):
+                 tileable_graph: TileableGraph,
+                 task_name: str = None):
         self.task_id = task_id
+        self.task_name = task_name
         self.session_id = session_id
         self.tileable_graph = tileable_graph
 
@@ -77,9 +78,10 @@ class Task:
 
 class SubTask:
     __slots__ = 'subtask_id', 'session_id', 'chunk_graph', \
-                'status', 'rerun_time'
+                'subtask_name', 'status', 'rerun_time'
 
     subtask_id: str
+    subtask_name: str
     session_id: str
     chunk_graph: ChunkGraph
     status: TaskStatus
@@ -88,8 +90,10 @@ class SubTask:
     def __init__(self,
                  subtask_id: str,
                  session_id: str,
-                 chunk_graph: ChunkGraph):
+                 chunk_graph: ChunkGraph,
+                 subtask_name: str):
         self.subtask_id = subtask_id
+        self.subtask_name = subtask_name
         self.session_id = session_id
         self.chunk_graph = chunk_graph
 

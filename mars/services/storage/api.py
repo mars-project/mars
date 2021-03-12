@@ -166,7 +166,7 @@ class StorageAPI(ABC):
         """
 
     @abstractmethod
-    async def list(self, level: StorageLevel)-> List:
+    async def list(self, level: StorageLevel) -> List:
         """
         List all stored objects in storage.
 

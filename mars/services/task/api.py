@@ -59,21 +59,6 @@ class AbstractTaskAPI(ABC):
         """
 
     @abstractmethod
-    async def set_task_status(self,
-                              task_id: str,
-                              status: TaskStatus):
-        """
-        Set task status.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID
-        status : TaskStatus
-            Task status.
-        """
-
-    @abstractmethod
     async def get_task_info(self,
                             task_id: str,
                             fields: List[str] = None) -> Dict[str, Any]:
@@ -122,6 +107,48 @@ class AbstractTaskAPI(ABC):
         """
 
     @abstractmethod
+    async def get_subtask_count(self, task_id: str) -> int:
+        """
+        Get count of subtask
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        count : int
+            Count of subtasks.
+        """
+
+    @abstractmethod
+    async def list_subtasks(self,
+                            task_id: str,
+                            offset: int = 0 ,
+                            limit: int = None,
+                            fields: List[str] = None) -> List[Dict]:
+        """
+        List all subtasks
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+        offset : int
+            Offset.
+        limit : int
+            Count limitation.
+        fields : list
+            Fields to filter, if not provided, all fields will be included.
+
+        Returns
+        -------
+        infos: dict
+            Subtasks information.
+        """
+
+    @abstractmethod
     async def submit_chunk_graph(self,
                                  graph: ChunkGraph,
                                  task_id: str) -> str:
@@ -155,21 +182,6 @@ class AbstractTaskAPI(ABC):
         Returns
         -------
         status: SubTaskStatus
-            Subtask status.
-        """
-
-    @abstractmethod
-    async def set_subtask_status(self,
-                                 subtask_id: str,
-                                 status: SubTaskStatus):
-        """
-        Set subtask status.
-
-        Parameters
-        ----------
-        subtask_id : str
-            Subtask ID.
-        status : SubTaskStatus
             Subtask status.
         """
 
