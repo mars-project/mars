@@ -60,7 +60,7 @@ class ClusterApi:
             dict of worker resources by addresses and bands
         """
 
-    async def watch_single_worker(self, worker_address: str) -> Dict:
+    async def watch_worker(self, worker_address: str) -> Dict:
         """
         Watch worker info update
 
