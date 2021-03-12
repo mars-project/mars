@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .base import AbstractMetaStore, get_meta_store
-from .mock import MockMetaStore
+from .dictionary import DictMetaStore

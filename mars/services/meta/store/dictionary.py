@@ -19,7 +19,7 @@ from ....utils import implements
 from .base import AbstractMetaStore, register_meta_store, object_types
 
 
-class MockMetaStoreType(ABCMeta):
+class DictMetaStoreType(ABCMeta):
     def __new__(mcs, name: str, bases: Tuple, namespace: Dict):
         for tp in object_types:
             # set
@@ -48,7 +48,7 @@ class MockMetaStoreType(ABCMeta):
 
 
 @register_meta_store
-class MockMetaStore(AbstractMetaStore, metaclass=MockMetaStoreType):
+class DictMetaStore(AbstractMetaStore, metaclass=DictMetaStoreType):
     name = 'mock'
 
     def __init__(self, session_id: str, **kw):
