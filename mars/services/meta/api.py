@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Any
 
 from ... import oscar as mo
 from ...oscar.backends.mars import allocate_strategy
@@ -70,7 +70,7 @@ class MetaAPI:
     async def get_tileable_meta(self,
                                 object_id: str,
                                 tileable_type: Type,
-                                fields: List[str] = None):
+                                fields: List[str] = None) -> Dict[str, Any]:
         return await self._meta_store.get_meta(tileable_type, object_id, fields=fields)
 
     async def del_tileable_meta(self,
