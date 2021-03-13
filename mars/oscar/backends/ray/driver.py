@@ -36,4 +36,4 @@ class RayActorDriver(BaseActorDriver):
                                       strategy="SPREAD",
                                       lifetime="detached")
         ray.get(pg.ready())
-        logger.info("Create placement groups success.")
+        logger.info("Create placement group success.")
