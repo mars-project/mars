@@ -18,8 +18,9 @@ from typing import Dict, Type
 
 
 class BaseActorDriver(ABC):
+    @classmethod
     @abstractmethod
-    def setup_cluster(self, address_to_resources: Dict[str, Dict[str, Number]]):
+    def setup_cluster(cls, address_to_resources: Dict[str, Dict[str, Number]]):
         """
         Setup cluster according to given resources,
         resources is a dict, e.g. {'CPU': 3, 'GPU': 1}
