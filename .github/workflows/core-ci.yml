@@ -48,6 +48,11 @@ jobs:
           pip install numpy\<1.20.0
         fi
 
+        # avoid "Conflicting file tracer" in cython tests
+        if [ -n "$WITH_CYTHON" ]; then
+          pip install coverage==5.3.1 pytest-cov==2.10.1 pytest-xdist==2.2.0
+        fi
+
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         pip install virtualenv flaky flake8 etcd-gevent
