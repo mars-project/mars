@@ -16,7 +16,7 @@ import asyncio
 from ...core cimport _Actor, ActorRef
 from ...context cimport BaseActorContext
 from ...errors import ActorNotExist, ActorAlreadyExist
-# TODO(fyrestone): Move lazy_import to oscar
+from .utils import address_to_placement_group_bundle
 from ....utils import lazy_import
 
 ray = lazy_import("ray")
@@ -28,10 +28,16 @@ cdef class RayActorContext(BaseActorContext):
 
     async def create_actor(self, object actor_cls, *args, object uid=None, object address=None, **kwargs):
         uid = str(uid)
+        pg_name, bundle_index = address_to_placement_group_bundle(address)
+        if pg_name:
+            pg = ray.util.get_placement_group(pg_name)
+        else:
+            pg = None
         try:
             # TODO(fyrestone): We should make the actor dead when current job is dropped.
             actor_handle = ray.remote(actor_cls).options(
-                name=uid, lifetime="detached").remote(*args, **kwargs)
+                name=uid, lifetime="detached", placement_group=pg,
+                placement_group_bundle_index=bundle_index).remote(*args, **kwargs)
         except ValueError:
             raise ActorAlreadyExist(f'Actor {uid} already exist, cannot create')
         await asyncio.gather(

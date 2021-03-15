@@ -14,6 +14,8 @@
 
 from urllib.parse import urlparse
 from typing import Any, Dict, Type, Tuple
+from numbers import Number
+from collections import defaultdict
 
 from .backend import get_backend
 from .context import get_context
@@ -57,6 +59,21 @@ async def create_actor_pool(address: str,
 
     return await get_backend(scheme).create_actor_pool(
         address, n_process=n_process, **kwargs)
+
+
+def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
+    scheme_to_address_resources = defaultdict(dict)
+    for address, resources in address_to_resources.items():
+        if address is None:
+            raise ValueError('address has to be provided')
+        if '://' not in address:
+            scheme = None
+        else:
+            scheme = urlparse(address).scheme or None
+
+        scheme_to_address_resources[scheme][address] = resources
+    for scheme, address_resources in scheme_to_address_resources.items():
+        get_backend(scheme).get_driver_cls().setup_cluster(address_resources)
 
 
 class Actor(_Actor):

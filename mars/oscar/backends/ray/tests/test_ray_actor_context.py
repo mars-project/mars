@@ -22,7 +22,7 @@ from mars.utils import lazy_import
 
 ray = lazy_import('ray', globals=globals())
 
-RAY_TEST_ADDRESS = 'ray://test'
+RAY_TEST_ADDRESS = 'ray://'
 
 
 class DummyActor(mo.Actor):

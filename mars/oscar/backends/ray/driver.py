@@ -12,13 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from numbers import Number
 from typing import Dict
 
+from .utils import addresses_to_placement_group_info
 from ...driver import BaseActorDriver
+from ....utils import lazy_import
+
+ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 class RayActorDriver(BaseActorDriver):
-    def setup_cluster(self, address_to_resources: Dict[str, Dict[str, Number]]):
-        # nothing need to be done in driver of Ray backend
-        pass
+    @classmethod
+    def setup_cluster(cls, address_to_resources: Dict[str, Dict[str, Number]]):
+        logger.info("Setup cluster with %s", address_to_resources)
+        pg_name, bundles = addresses_to_placement_group_info(address_to_resources)
+        logger.info("Creating placement group %s with bundles %s.", pg_name, bundles)
+        # TODO(fyrestone): We should destroy the placement group when current job is dropped.
+        pg = ray.util.placement_group(name=pg_name,
+                                      bundles=bundles,
+                                      strategy="SPREAD",
+                                      lifetime="detached")
+        ray.get(pg.ready())
+        logger.info("Create placement group success.")
