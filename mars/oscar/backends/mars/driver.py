@@ -19,6 +19,7 @@ from ...driver import BaseActorDriver
 
 
 class MarsActorDriver(BaseActorDriver):
-    def setup_cluster(self, address_to_resources: Dict[str, Dict[str, Number]]):
+    @classmethod
+    def setup_cluster(cls, address_to_resources: Dict[str, Dict[str, Number]]):
         # nothing need to be done in driver of Mars backend
         pass

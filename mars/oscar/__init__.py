@@ -17,7 +17,7 @@ from ..lib import aio
 del aio
 
 from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool
+    kill_actor, Actor, create_actor_pool, setup_cluster
 from .errors import ActorNotExist, ActorAlreadyExist
 from .utils import create_actor_ref
 
