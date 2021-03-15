@@ -112,7 +112,7 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
                 index_obj = np.array(index_obj)
                 cum_splits = np.cumsum([0] + list(inp.nsplits[axis]))
                 chunk_indexes = defaultdict(list)
-                for i, int_idx in enumerate(index_obj):
+                for int_idx in index_obj:
                     in_idx = cum_splits.searchsorted(int_idx, side='right') - 1
                     chunk_indexes[in_idx].append(int_idx - cum_splits[in_idx])
 
