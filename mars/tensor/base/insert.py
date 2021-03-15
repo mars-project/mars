@@ -23,16 +23,7 @@ from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import calc_sliced_size, filter_inputs, validate_axis
-
-
-def calc_obj_length(obj, size=None):
-    if isinstance(obj, int):
-        return 1
-    elif isinstance(obj, slice):
-        return calc_sliced_size(size, obj)
-    else:
-        return len(obj)
+from ..utils import filter_inputs, validate_axis, calc_object_length
 
 
 class TensorInsert(TensorHasInput, TensorOperandMixin):
@@ -108,7 +99,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     chunk_op = op.copy().reset_key()
                     op._index_obj = index_obj - cum_splits[in_idx]
                     inputs = filter_inputs([chunk, values])
-                    shape = tuple(s + calc_obj_length(index_obj) if i == axis else s
+                    shape = tuple(s + calc_object_length(index_obj) if i == axis else s
                                   for i, s in enumerate(chunk.shape))
                     out_chunks.append(chunk_op.new_chunk(inputs, shape=shape,
                                                          index=chunk.index))
@@ -169,7 +160,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     else:
                         chunk_op._index_obj = chunk_index_obj
                         values = np.asarray(values)
-                        to_shape = [calc_obj_length(index_obj, chunk.shape[axis])] + \
+                        to_shape = [calc_object_length(index_obj, chunk.shape[axis])] + \
                                    [s for j, s in enumerate(inp.shape) if j != axis]
                         if all(j == k for j, k in zip(to_shape, values.shape)):
                             chunk_values = np.asarray(values)[chunk_idx_params[idx_on_axis][1]]
@@ -301,11 +292,11 @@ def insert(arr, obj, values, axis=None):
     if axis is None:
         # if axis is None, array will be flatten
         arr_size = arr.size
-        idx_length = calc_obj_length(obj, size=arr_size)
+        idx_length = calc_object_length(obj, size=arr_size)
         shape = (arr_size + idx_length,)
     else:
         validate_axis(arr.ndim, axis)
-        idx_length = calc_obj_length(obj, size=arr.shape[axis])
+        idx_length = calc_object_length(obj, size=arr.shape[axis])
         shape = tuple(s + idx_length if i == axis else s
                       for i, s in enumerate(arr.shape))
 

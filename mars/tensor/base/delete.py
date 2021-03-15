@@ -25,8 +25,7 @@ from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import filter_inputs, validate_axis, slice_split
-from .insert import calc_obj_length
+from ..utils import filter_inputs, validate_axis, slice_split, calc_object_length
 
 
 class TensorDelete(TensorHasInput, TensorOperandMixin):
@@ -99,7 +98,7 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
                     if c.index[axis] in slc_splits:
                         chunk_op = op.copy().reset_key()
                         chunk_slc = slc_splits[c.index[axis]]
-                        shape = tuple(s - calc_obj_length(chunk_slc, s) if j == axis else s
+                        shape = tuple(s - calc_object_length(chunk_slc, s) if j == axis else s
                                       for j, s in enumerate(c.shape))
                         chunk_op._index_obj = chunk_slc
                         out_chunks.append(
@@ -206,11 +205,11 @@ def delete(arr, obj, axis=None):
     if axis is None:
         # if axis is None, array will be flatten
         arr_size = arr.size
-        idx_length = calc_obj_length(obj, size=arr_size)
+        idx_length = calc_object_length(obj, size=arr_size)
         shape = (arr_size - idx_length,)
     else:
         validate_axis(arr.ndim, axis)
-        idx_length = calc_obj_length(obj, size=arr.shape[axis])
+        idx_length = calc_object_length(obj, size=arr.shape[axis])
         shape = tuple(s - idx_length if i == axis else s
                       for i, s in enumerate(arr.shape))
 
