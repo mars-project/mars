@@ -33,6 +33,7 @@ jobs:
         WITH_HADOOP: ${{ matrix.with-hadoop }}
         WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
         NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
+        WITH_CYTHON: ${{ matrix.with-cython }}
       shell: bash
       run: |
         source ./.github/workflows/reload-env.sh
@@ -45,6 +46,11 @@ jobs:
         # todo remove this when fastparquet release new version
         if [[ "$PYTHON" =~ "3.6" ]]; then
           pip install numpy\<1.20.0
+        fi
+
+        # avoid "Conflicting file tracer" in cython tests
+        if [ -n "$WITH_CYTHON" ]; then
+          pip install pytest-cov==2.10.1 pytest-xdist==2.2.0
         fi
 
         pip install -r requirements-dev.txt
