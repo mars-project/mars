@@ -18,7 +18,7 @@ import collections
 import pytest
 
 import mars.oscar as mo
-from mars.tests.core import require_ray
+from mars.tests.core import ray
 from ..utils import (
     address_to_placement_group_bundle,
     placement_group_bundle_to_address,
@@ -44,7 +44,8 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@require_ray
+@pytest.mark.skipif(ray is None or not hasattr(ray.util, "get_placement_group"),
+                    reason="Ray does not support named placement group.")
 @pytest.mark.asyncio
 class Test:
     def setup_method(self, _):
@@ -64,6 +65,25 @@ class Test:
         ray.shutdown()
         self.cluster.shutdown()
 
+    async def test_create_actor_in_placement_group(self):
+        actor_refs = []
+        for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
+            for _ in range(r["CPU"]):
+                address = placement_group_bundle_to_address(TEST_PLACEMENT_GROUP_NAME, i)
+                actor_ref = await mo.create_actor(DummyActor, i, address=address)
+                actor_refs.append(actor_ref)
+        results = []
+        for actor_ref in actor_refs:
+            ppid = await actor_ref.getppid()
+            index = await actor_ref.index()
+            results.append((ppid, index))
+
+        counter = collections.Counter(results)
+        assert len(counter) == len(TEST_PLACEMENT_GROUP_BUNDLES)
+        assert sorted(counter.values()) == sorted(r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES)
+
+
+class TestNotRequireRay:
     def test_address_to_placement_group_bundle(self):
         # Missing bundle index.
         with pytest.raises(ValueError):
@@ -111,20 +131,3 @@ class Test:
         pg_name, bundles = addresses_to_placement_group_info(TEST_ADDRESS_TO_RESOURCES)
         assert pg_name == TEST_PLACEMENT_GROUP_NAME
         assert bundles == TEST_PLACEMENT_GROUP_BUNDLES
-
-    async def test_create_actor_in_placement_group(self):
-        actor_refs = []
-        for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
-            for _ in range(r["CPU"]):
-                address = placement_group_bundle_to_address(TEST_PLACEMENT_GROUP_NAME, i)
-                actor_ref = await mo.create_actor(DummyActor, i, address=address)
-                actor_refs.append(actor_ref)
-        results = []
-        for actor_ref in actor_refs:
-            ppid = await actor_ref.getppid()
-            index = await actor_ref.index()
-            results.append((ppid, index))
-
-        counter = collections.Counter(results)
-        assert len(counter) == len(TEST_PLACEMENT_GROUP_BUNDLES)
-        assert sorted(counter.values()) == sorted(r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES)
