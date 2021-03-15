@@ -9,9 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-16.04]
-        python-version: [3.6, 3.7, 3.8, 3.9, 3.9-cython]
+        python-version: [3.6, 3.7, 3.8, 3.9, 3.8-cython]
         include:
-          - { os: ubuntu-16.04, python-version: 3.9-cython, no-common-tests: 1,
+          - { os: ubuntu-16.04, python-version: 3.8-cython, no-common-tests: 1,
               no-deploy: 1, with-cython: 1, with-flake8: 1 }
 
     steps:
@@ -50,7 +50,7 @@ jobs:
 
         # avoid "Conflicting file tracer" in cython tests
         if [ -n "$WITH_CYTHON" ]; then
-          pip install coverage==5.3.1 pytest-cov==2.10.1 pytest-xdist==2.2.0
+          pip install pytest==6.2.1 coverage==5.3.1 pytest-cov==2.10.1 pytest-xdist==2.2.0
         fi
 
         pip install -r requirements-dev.txt
