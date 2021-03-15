@@ -6,7 +6,7 @@
 branch = True
 relative_files = True
 cover_pylib = False
-parallel = True
+concurrency = multiprocessing,thread
 plugins = Cython.Coverage
 include =
     mars/*
