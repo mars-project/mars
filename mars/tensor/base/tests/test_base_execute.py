@@ -1753,3 +1753,40 @@ class Test(TestBase):
         result = self.executor.execute_tensor(r11, concat=True)[0]
         np.testing.assert_array_equal(
             np.insert(raw, slice(0, 10), np.arange(10), axis=0), result)
+
+    def testDeleteExecution(self):
+        raw = np.random.randint(0, 100, size=(20, 10))
+        a = tensor(raw, chunk_size=6)
+
+        r1 = mt.delete(a, 1)
+        result = self.executor.execute_tensor(r1, concat=True)[0]
+        np.testing.assert_array_equal(np.delete(raw, 1), result)
+
+        r2 = mt.delete(a, [3, 50, 10])
+        result = self.executor.execute_tensor(r2, concat=True)[0]
+        np.testing.assert_array_equal(np.delete(raw, [3, 50, 10]), result)
+
+        # specify axis
+        r4 = mt.delete(a, 5, axis=0)
+        result = self.executor.execute_tensor(r4, concat=True)[0]
+        np.testing.assert_array_equal(np.delete(raw, 5, axis=0), result)
+
+        r5 = mt.delete(a, [1, 2, 6], axis=1)
+        result = self.executor.execute_tensor(r5, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.delete(raw, [1, 2, 6], axis=1), result)
+
+        r6 = mt.delete(a, mt.tensor([1, 2, 6, 8], chunk_size=3), axis=1)
+        result = self.executor.execute_tensor(r6, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.delete(raw, [1, 2, 6, 8], axis=1), result)
+
+        r7 = mt.delete(a, slice(0, 10), axis=0)
+        result = self.executor.execute_tensor(r7, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.delete(raw, slice(0, 10), axis=0), result)
+
+        r8 = mt.delete(a, mt.tensor([10, 20, 6, 80]))
+        result = self.executor.execute_tensor(r8, concat=True)[0]
+        np.testing.assert_array_equal(
+            np.delete(raw, [10, 20, 6, 80]), result)

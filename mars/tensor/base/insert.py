@@ -23,14 +23,14 @@ from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import filter_inputs, validate_axis
+from ..utils import calc_sliced_size, filter_inputs, validate_axis
 
 
-def _calc_idx_shape(obj):
+def calc_obj_length(obj, size=None):
     if isinstance(obj, int):
         return 1
     elif isinstance(obj, slice):
-        return len(range(obj.start or 0, obj.stop, obj.step or 1))
+        return calc_sliced_size(size, obj)
     else:
         return len(obj)
 
@@ -94,7 +94,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
         values = op.values
         if isinstance(values, (Base, Entity)):
             # if values is Mars type, we rechunk it into one chunk and
-            # all chunks depend on it
+            # all insert chunks depend on it
             values = values.rechunk(values.shape)._inplace_tile()
 
         nsplits_on_axis = []
@@ -108,7 +108,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     chunk_op = op.copy().reset_key()
                     op._index_obj = index_obj - cum_splits[in_idx]
                     inputs = filter_inputs([chunk, values])
-                    shape = tuple(s + _calc_idx_shape(index_obj) if i == axis else s
+                    shape = tuple(s + calc_obj_length(index_obj) if i == axis else s
                                   for i, s in enumerate(chunk.shape))
                     out_chunks.append(chunk_op.new_chunk(inputs, shape=shape,
                                                          index=chunk.index))
@@ -169,10 +169,9 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     else:
                         chunk_op._index_obj = chunk_index_obj
                         values = np.asarray(values)
-                        to_shape = [s if j != axis else _calc_idx_shape(index_obj)
-                                    for j, s in enumerate(inp.shape)]
+                        to_shape = [calc_obj_length(index_obj, chunk.shape[axis])] + \
+                                   [s for j, s in enumerate(inp.shape) if j != axis]
                         if all(j == k for j, k in zip(to_shape, values.shape)):
-                            assert len(values) == _calc_idx_shape(index_obj)
                             chunk_values = np.asarray(values)[chunk_idx_params[idx_on_axis][1]]
                             chunk_op._values = chunk_values
                             out_chunks.append(chunk_op.new_chunk([chunk], shape=shape,
@@ -264,7 +263,7 @@ def insert(arr, obj, values, axis=None):
     --------
     >>> import mars.tensor as mt
     >>> a = mt.array([[1, 1], [2, 2], [3, 3]])
-    >>> a
+    >>> a.execute()
     array([[1, 1],
            [2, 2],
            [3, 3]])
@@ -299,13 +298,14 @@ def insert(arr, obj, values, axis=None):
         raise ValueError('index array argument obj to insert must be '
                          'one dimensional or scalar')
 
-    idx_length = _calc_idx_shape(obj)
     if axis is None:
         # if axis is None, array will be flatten
         arr_size = arr.size
+        idx_length = calc_obj_length(obj, size=arr_size)
         shape = (arr_size + idx_length,)
     else:
         validate_axis(arr.ndim, axis)
+        idx_length = calc_obj_length(obj, size=arr.shape[axis])
         shape = tuple(s + idx_length if i == axis else s
                       for i, s in enumerate(arr.shape))
 

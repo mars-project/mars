@@ -102,6 +102,18 @@ Tiling tensors
    mars.tensor.repeat
 
 
+Adding and removing elements
+----------------------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+    mars.tensor.insert
+    mars.tensor.delete
+    mars.tensor.unique
+
+
 Rearranging elements
 --------------------
 
