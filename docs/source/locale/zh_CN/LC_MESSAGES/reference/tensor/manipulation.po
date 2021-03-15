@@ -283,39 +283,70 @@ msgstr ""
 msgid "Repeat elements of a tensor."
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:106
+#: ../../source/reference/tensor/manipulation.rst:106:<autosummary>:1
+msgid "Adding and removing elements"
+msgstr "添加和删除元素"
+
+#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+msgid ":obj:`mars.tensor.insert <mars.tensor.insert>`"
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
+msgid "Insert values along the given axis before the given indices."
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+msgid ":obj:`mars.tensor.delete <mars.tensor.delete>`"
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
+msgid ""
+"Return a new array with sub-arrays along an axis deleted. For a one"
+"dimensional array, this returns those entries not returned by"
+"`arr[obj]`."
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+msgid ":obj:`mars.tensor.unique <mars.tensor.unique>`"
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
+msgid "Find the unique elements of a tensor."
+msgstr ""
+
+#: ../../source/reference/tensor/manipulation.rst:119
 msgid "Rearranging elements"
 msgstr "元素重排"
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid ":obj:`mars.tensor.flip <mars.tensor.flip>`"
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid "Reverse the order of elements in a tensor along the given axis."
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid ":obj:`mars.tensor.fliplr <mars.tensor.fliplr>`"
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid "Flip tensor in the left/right direction."
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid ":obj:`mars.tensor.flipud <mars.tensor.flipud>`"
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid "Flip tensor in the up/down direction."
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid ":obj:`mars.tensor.roll <mars.tensor.roll>`"
 msgstr ""
 
-#: ../../source/reference/tensor/manipulation.rst:116:<autosummary>:1
+#: ../../source/reference/tensor/manipulation.rst:128:<autosummary>:1
 msgid "Roll tensor elements along a given axis."
 msgstr ""
 
