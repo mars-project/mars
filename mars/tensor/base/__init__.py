@@ -60,6 +60,8 @@ from .to_gpu import to_gpu
 from .to_cpu import to_cpu
 from .rebalance import rebalance
 from .map_chunk import map_chunk, TensorMapChunk
+from .insert import insert
+from .delete import delete
 
 
 def _install():

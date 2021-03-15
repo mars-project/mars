@@ -26,7 +26,8 @@ from .base import result_type, ndim, copyto, transpose, where, broadcast_to, bro
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \
     flip, flipud, fliplr, repeat, tile, isin, searchsorted, unique, \
-    sort, argsort, partition, argpartition, topk, argtopk, copy, trapz, shape
+    sort, argsort, partition, argpartition, topk, argtopk, copy, trapz, shape, \
+    insert, delete
 from .arithmetic import add, subtract, multiply, divide, truediv as true_divide, \
     floordiv as floor_divide, mod, power, float_power, fmod, sqrt, \
     around, round_, round_ as round, logaddexp, logaddexp2, negative, positive, \
