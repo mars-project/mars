@@ -305,6 +305,15 @@ def calc_sliced_size(size, sliceobj):
     return int(ceil(abs((stop - start) / float(step))))
 
 
+def calc_object_length(obj, size=None):
+    if np.isscalar(obj):
+        return 1
+    elif isinstance(obj, slice):
+        return calc_sliced_size(size, obj)
+    else:
+        return len(obj)
+
+
 def slice_split(index, sizes):
     size = sum(sizes)
 
