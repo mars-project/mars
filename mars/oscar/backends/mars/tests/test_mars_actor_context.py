@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.utils import get_next_port, extensible
+from mars.utils import extensible
 
 
 class DummyActor(mo.Actor):
@@ -103,11 +103,29 @@ class DummyActor(mo.Actor):
         return self.ref()
 
 
-class EventActor(mo.Actor):
+class RecordActor(mo.Actor):
+    def __init__(self):
+        self._records = []
+
+    def add_record(self, rec):
+        self._records.append(rec)
+
+    def get_records(self):
+        return self._records
+
+
+class CreateDestroyActor(mo.Actor):
+    def __init__(self):
+        self._record_ref = None
+
     async def __post_create__(self):
+        self._record_ref = await mo.actor_ref(RecordActor.default_uid(),
+                                              address=self.address)
+        await self._record_ref.add_record(f'create {self.uid}')
         assert 'sth' == await self.ref().echo('sth')
 
-    async def pre_destroy(self):
+    async def __pre_destroy__(self):
+        await self._record_ref.add_record(f'destroy {self.uid}')
         assert 'sth2' == await self.ref().echo('sth2')
 
     def echo(self, message):
@@ -198,8 +216,7 @@ class PromiseTestActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool_context():
-    pool = await mo.create_actor_pool(
-        f'127.0.0.1:{get_next_port()}', n_process=2)
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=2)
     await pool.start()
     yield pool
     await pool.stop()
@@ -226,8 +243,15 @@ async def test_simple_local_actor_pool(actor_pool_context):
 @pytest.mark.asyncio
 async def test_mars_post_create_pre_destroy(actor_pool_context):
     pool = actor_pool_context
-    actor_ref = await mo.create_actor(EventActor, address=pool.external_address)
+    rec_ref = await mo.create_actor(RecordActor, uid=RecordActor.default_uid(),
+                                    address=pool.external_address)
+    actor_ref = await mo.create_actor(CreateDestroyActor, address=pool.external_address)
     await actor_ref.destroy()
+
+    records = await rec_ref.get_records()
+    assert len(records) == 2
+    assert records[0].startswith('create')
+    assert records[1].startswith('destroy')
 
 
 @pytest.mark.asyncio
@@ -292,6 +316,8 @@ async def test_mars_tell(actor_pool_context):
     assert await ref2.get_value() == 5
     await asyncio.sleep(0.45)
     assert await ref2.get_value() == 5
+    await asyncio.sleep(0.1)
+    assert await ref2.get_value() == 9
 
     # error needed when illegal uids are passed
     with pytest.raises(ValueError):
