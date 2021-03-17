@@ -132,7 +132,7 @@ cdef class ActorRefMethod:
             await asyncio.sleep(delay)
             await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
 
-        asyncio.create_task(delay_fun())
+        return asyncio.create_task(delay_fun())
 
 
 # The @cython.binding(True) is for ray getting members.

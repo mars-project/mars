@@ -740,7 +740,7 @@ class MainActorPool(ActorPoolBase):
             return result
         real_actor_ref = result.result
         if real_actor_ref.address == self.external_address:
-            del self._actors[real_actor_ref.uid]
+            await super().destroy_actor(message)
             del self._allocated_actors[self.external_address][real_actor_ref]
             return ResultMessage(message.message_id, real_actor_ref.uid,
                                  protocol=message.protocol)
