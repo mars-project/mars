@@ -1236,7 +1236,8 @@ class SyncExtensibleWrapper:
         else:
             return self._batch_func([args], [kwargs])[0]
 
-    def batch(self, args_list, kwargs_list):
+    def batch(self, args_list, kwargs_list=None):
+        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
         if self._batch_func is not None:
             return self._batch_func(args_list, kwargs_list)
         return [
@@ -1256,7 +1257,8 @@ class AsyncExtensibleWrapper:
         else:
             return (await self._batch_func([args], [kwargs]))[0]
 
-    async def batch(self, args_list, kwargs_list):
+    async def batch(self, args_list, kwargs_list=None):
+        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
         if self._batch_func is not None:
             return await self._batch_func(args_list, kwargs_list)
         return await asyncio.gather(*[

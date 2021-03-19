@@ -542,6 +542,16 @@ async def test_batch_decorator(use_async):
         assert asyncio.iscoroutinefunction(TestClass.method1)
 
     test_inst = TestClass()
+
+    ret = test_inst.method1.batch([(12,), (10,)])
+    ret = await ret if use_async else ret
+    assert ret == [2, 2]
+    assert test_inst.arg_list == [(12,), (10,)]
+    assert test_inst.kwarg_list == [{}, {}]
+
+    test_inst.arg_list.clear()
+    test_inst.kwarg_list.clear()
+
     ret = test_inst.method1(12, kwarg=34)
     ret = await ret if use_async else ret
     assert ret == 1
@@ -551,7 +561,7 @@ async def test_batch_decorator(use_async):
     if sys.version_info[:2] > (3, 6):
         test_inst = TestClass()
         ret = test_inst.method2.batch([(12,), (10,)],
-                                            [{'kwarg': 34}, {'kwarg': 33}])
+                                      [{'kwarg': 34}, {'kwarg': 33}])
         ret = await ret if use_async else ret
         assert ret == [1, 2]
         assert test_inst.arg_list == [(11,), (9,)]
@@ -562,7 +572,7 @@ async def test_batch_decorator(use_async):
         ret = await ret if use_async else ret
         assert ret == 1
         ret = test_inst.method3.batch([(16,), (17,)],
-                                            [{'kwarg': 57}, {'kwarg': 58}])
+                                      [{'kwarg': 57}, {'kwarg': 58}])
         ret = await ret if use_async else ret
         assert ret == [3, 3]
         assert test_inst.arg_list == [(30,), (33,), (35,)]
