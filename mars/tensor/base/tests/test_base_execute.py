@@ -1766,6 +1766,10 @@ class Test(TestBase):
         result = self.executor.execute_tensor(r14, concat=True)[0]
         np.testing.assert_array_equal(np.insert(raw, [2, 20], 5, axis=0), result)
 
+        r15 = mt.insert(a, 7, mt.arange(20), axis=1)
+        result = self.executor.execute_tensor(r15, concat=True)[0]
+        np.testing.assert_array_equal(np.insert(raw, 7, mt.arange(20), axis=1), result)
+
     def testDeleteExecution(self):
         raw = np.random.randint(0, 100, size=(20, 10))
         a = tensor(raw, chunk_size=6)
