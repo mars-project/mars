@@ -130,6 +130,8 @@ class KubeDLCluster:
         return self._verify_ssl
 
     def _check_if_exist(self):
+        if self._job_name is None:
+            return False
         try:
             api, version = KUBEDL_API_VERSION.rsplit('/', 1)
             service_obj = self._custom_api.get_namespaced_custom_object_status(
