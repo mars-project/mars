@@ -100,7 +100,11 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                 if chunk.index[axis] == in_idx:
                     chunk_op = op.copy().reset_key()
                     chunk_op._index_obj = index_obj - cum_splits[in_idx]
-                    inputs = filter_inputs([chunk, values])
+                    if isinstance(values, (Base, Entity)):
+                        chunk_values = values.chunks[0]
+                    else:
+                        chunk_values = values
+                    inputs = filter_inputs([chunk, chunk_values])
                     shape = tuple(s + calc_object_length(index_obj) if i == axis else s
                                   for i, s in enumerate(chunk.shape))
                     out_chunks.append(chunk_op.new_chunk(inputs, shape=shape,
