@@ -47,7 +47,10 @@ class DummyActor(mo.Actor):
 @pytest.fixture
 def ray_cluster():
     import ray
-    from ray.cluster_utils import Cluster
+    try:
+        from ray.cluster_utils import Cluster
+    except ModuleNotFoundError:
+        from ray._private.cluster_utils import Cluster
     cluster = Cluster()
     remote_nodes = []
     num_nodes = 3
