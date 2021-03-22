@@ -16,35 +16,41 @@
 
 import os
 import uuid
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 from ..lib.aio import AioFilesystem
 from ..lib.filesystem import FileSystem
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import mod_hash, implements
-from .base import StorageBackend, ObjectInfo, StorageLevel
+from .base import StorageBackend, ObjectInfo, StorageLevel, register
 from .core import StorageFileObject
 
 
 class FileSystemStorage(StorageBackend):
     def __init__(self,
-                 fs: FileSystem = None,
-                 root_dirs: List[str] = None,
-                 level: StorageLevel = None):
+                 fs: FileSystem,
+                 root_dirs: List[str],
+                 level: StorageLevel,
+                 size: int):
         self._fs = AioFilesystem(fs)
         self._root_dirs = root_dirs
         self._level = level
+        self._size = size
 
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        fs = kwargs.get('fs')
-        root_dirs = kwargs.get('root_dirs')
-        level = kwargs.get('level')
+        fs = kwargs.pop('fs')
+        root_dirs = kwargs.pop('root_dirs')
+        level = kwargs.pop('level')
+        size = kwargs.pop('size')
+        if kwargs:  # pragma: no cover
+            raise TypeError(f'FileSystemStorage got unexpected config: {",".join(kwargs)}')
+
         for d in root_dirs:
             if not fs.exists(d):
                 fs.mkdir(d)
-        params = dict(fs=fs, root_dirs=root_dirs, level=level)
+        params = dict(fs=fs, root_dirs=root_dirs, level=level, size=size)
         return params, params
 
     @staticmethod
@@ -59,6 +65,11 @@ class FileSystemStorage(StorageBackend):
     @implements(StorageBackend.level)
     def level(self) -> StorageLevel:
         return self._level
+
+    @property
+    @implements(StorageBackend.size)
+    def size(self) -> Union[int, None]:
+        return self._size
 
     def _generate_path(self):
         file_name = str(uuid.uuid4())
@@ -114,3 +125,6 @@ class FileSystemStorage(StorageBackend):
     async def open_reader(self, object_id) -> StorageFileObject:
         file = await self._fs.open(object_id, 'rb')
         return StorageFileObject(file, file.name)
+
+
+register('filesystem', FileSystemStorage)

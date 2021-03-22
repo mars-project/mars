@@ -12,38 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List
 
+from ... import oscar as mo
+from ...storage import get_storage_backend
 from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
+from ...utils import calc_data_size
+from .core import KeyMapperActor, StorageManagerActor
 
 
 class StorageAPI(ABC):
-    def __init__(self, session_id):
+    def __init__(self,
+                 address: str,
+                 session_id: str):
+        self._address = address
         self._session_id = session_id
 
+    async def _init(self):
+        self._storage_manager_ref = await mo.actor_ref(
+            self._address, StorageManagerActor.default_uid())
+        self._key_mapper_ref = await mo.actor_ref(
+            self._address, KeyMapperActor.default_uid())
+
+        client_init_params = await self._storage_manager_ref.get_client_params()
+        clients = dict()
+        for backend, params in client_init_params.items():
+            storage_cls = get_storage_backend(backend)
+            client = storage_cls(**params)
+            if client.level & StorageLevel.MEMORY:
+                clients[StorageLevel.MEMORY] = client
+            if client.level & StorageLevel.DISK:
+                clients[StorageLevel.DISK] = client
+            if client.level & StorageLevel.GPU:
+                clients[StorageLevel.GPU] = client
+        self._clients = clients
+
     @classmethod
-    @abstractmethod
     async def create(cls,
                      session_id: str,
-                     address: str) -> "StorageAPI":
-        """
-        Creating a storage API.
+                     address: str):
+        api = StorageAPI(address, session_id)
+        await api._init()
+        return api
 
-        Parameters
-        ----------
-        session_id : str
-            Session id.
-        address : str
-            Worker address.
-
-        Returns
-        -------
-        StorageAPI
-        """
-
-    @abstractmethod
-    async def get(self, data_key: str, conditions: List):
+    async def get(self, data_key: str, conditions: List = None):
         """
         Get object by data key.
 
@@ -59,8 +72,9 @@ class StorageAPI(ABC):
         -------
             object
         """
+        object_id, level = await self._key_mapper_ref.get_lowest(self._session_id, data_key)
+        return await self._clients[level].get(object_id, conditions=conditions)
 
-    @abstractmethod
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> ObjectInfo:
@@ -81,8 +95,13 @@ class StorageAPI(ABC):
         object information: ObjectInfo
             the put object information
         """
+        size = calc_data_size(obj)
+        await self._allocate(size, level=level)
+        object_info = await self._clients[level].put(obj)
+        await self._key_mapper_ref.put(
+            self._session_id, data_key, object_info.object_id, level=level)
+        return object_info
 
-    @abstractmethod
     async def delete(self, data_key: str):
         """
         Delete object.
@@ -91,26 +110,43 @@ class StorageAPI(ABC):
         ----------
         data_key: str
             object key to delete
-
         """
+        infos = await self._key_mapper_ref.get(self._session_id, data_key)
+        for info in infos or []:
+            level = info[1]
+            await self._key_mapper_ref.delete(self._session_id, data_key, level)
+            await self._clients[level].delete(info[0])
 
-    @abstractmethod
     async def prefetch(self, data_key: str,
                        level: StorageLevel = StorageLevel.MEMORY):
         """
-        Fetch object to current worker.
+        Fetch object from remote worker ot load object from disk.
 
         Parameters
         ----------
         data_key: str
-            data key to fetch to current worker
+            data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
 
         """
+        infos = await self._key_mapper_ref.get(self._session_id, data_key)
+        if infos is None:
+            # fetch data from remote
+            raise NotImplementedError
+        else:
+            infos = sorted(infos, key=lambda x: x[0])
+            object_id, min_level = infos[0]
+            if min_level > level:
+                object_info = await self._clients[min_level].object_info(object_id)
+                size = object_info.size
+                await self._allocate(size, level=level)
+                await self._storage_manager_ref.copy_to(data_key, level)
+                await self._storage_manager_ref.pin(object_id)
 
-    async def _allocate(self, size: int,
-                        level: StorageLevel) -> bool:
+    async def _allocate(self,
+                        size: int,
+                        level: StorageLevel):
         """
         Allocate size for storing, called in put and prefetch.
         It will send a quota request to main process.
@@ -121,13 +157,12 @@ class StorageAPI(ABC):
             the size to allocate
         level: StorageLevel
             the storage level to allocate
-
-        Returns
-        -------
-            return True if request is accepted, False when rejected.
         """
+        has_space, spill_size = await self._storage_manager_ref.allocate_size(size, level)
+        if not has_space:
+            await self._storage_manager_ref.do_spill(spill_size, level=level)
+            await self._allocate(size, level=level)
 
-    @abstractmethod
     async def unpin(self, data_key: str):
         """
         Unpin the data, allow storage to release the data.
@@ -138,8 +173,8 @@ class StorageAPI(ABC):
             data key to unpin
 
         """
+        await self._storage_manager_ref.unpin(data_key)
 
-    @abstractmethod
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """
         Return a file-like object for reading.
@@ -153,8 +188,10 @@ class StorageAPI(ABC):
         -------
             return a file-like object.
         """
+        object_id, level = await self._key_mapper_ref.get_lowest(self._session_id, data_key)
+        reader = await self._clients[level].open_reader(object_id)
+        return reader
 
-    @abstractmethod
     async def open_writer(self,
                           data_key: str,
                           size: int,
@@ -175,8 +212,11 @@ class StorageAPI(ABC):
         -------
             return a file-like object.
         """
+        await self._allocate(size, level=level)
+        writer = await self._clients[level].open_writer(size)
+        await self._key_mapper_ref.put(self._session_id, data_key, writer.object_id, level=level)
+        return writer
 
-    @abstractmethod
     async def list(self, level: StorageLevel) -> List:
         """
         List all stored objects in storage.
@@ -190,3 +230,23 @@ class StorageAPI(ABC):
         -------
             list of data keys
         """
+        return await self._clients[level].list()
+
+
+class MockStorageApi(StorageAPI):
+    @classmethod
+    async def create(cls,
+                     address: str,
+                     session_id: str,
+                     **kwargs):
+        from .core import StorageManagerActor, KeyMapperActor
+
+        storage_configs = kwargs.get('storage_configs')
+        await mo.create_actor(KeyMapperActor,
+                              uid=KeyMapperActor.default_uid(),
+                              address=address)
+        await mo.create_actor(StorageManagerActor,
+                              storage_configs,
+                              uid=StorageManagerActor.default_uid(),
+                              address=address)
+        return await super().create(address=address, session_id=session_id)

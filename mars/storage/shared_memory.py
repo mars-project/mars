@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -173,3 +173,6 @@ class SharedMemoryStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
         raise NotImplementedError("Shared memory storage does not support list")
+
+
+register('shared_memory', SharedMemoryStorage)

@@ -14,9 +14,19 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from .core import StorageFileObject
+
+_storage_backends = dict()
+
+
+def register(backend_name: str, cls: Type["StorageBackend"]):
+    _storage_backends[backend_name] = cls
+
+
+def get_storage_backend(backend_name) -> Type["StorageBackend"]:
+    return _storage_backends[backend_name]
 
 
 class StorageLevel(Enum):
@@ -27,6 +37,9 @@ class StorageLevel(Enum):
 
     def __and__(self, other: "StorageLevel"):
         return self.value | other.value
+
+    def __lt__(self, other):
+        return self.value < other.value
 
 
 class ObjectInfo:
@@ -69,6 +82,18 @@ class StorageBackend(ABC):
         kwargs : kwargs
              Parameters for clean up.
         """
+
+    @property
+    def size(self) -> Union[int, None]:
+        """
+        The total size of storage.
+
+        Returns
+        -------
+        Size: int
+            Total size of storage.
+        """
+        return None
 
     @property
     @abstractmethod

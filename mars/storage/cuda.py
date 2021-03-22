@@ -20,7 +20,7 @@ from typing import Tuple, Dict, List, Optional
 
 from ..serialization import serialize, deserialize
 from ..utils import lazy_import, implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register
 from .core import BufferWrappedFileObject, StorageFileObject
 
 import numpy as np
@@ -202,3 +202,6 @@ class CudaStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
         raise NotImplementedError("Cuda storage doesn't support `list` method.")
+
+
+register('cuda', CudaStorage)

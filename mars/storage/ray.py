@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..utils import lazy_import, implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
@@ -153,3 +153,6 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:
         raise NotImplementedError("Ray storage does not support list")
+
+
+register('ray', RayStorage)

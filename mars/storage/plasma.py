@@ -15,14 +15,14 @@
 # limitations under the License.
 
 import psutil
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional, Union
 
 import pyarrow as pa
 from pyarrow import plasma
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -155,6 +155,11 @@ class PlasmaStorage(StorageBackend):
     def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
 
+    @property
+    @implements(StorageBackend.size)
+    def size(self) -> Union[int, None]:
+        return self._capacity
+
     def _check_plasma_limit(self, size: int):
         used_size = psutil.disk_usage(self._plasma_directory).used
         totol = psutil.disk_usage(self._plasma_directory).total
@@ -220,3 +225,6 @@ class PlasmaStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:
         return list(self._client.list())
+
+
+register('plasma', PlasmaStorage)

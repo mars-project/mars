@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import StorageLevel, get_storage_backend
-from .filesystem import FileSystemStorage
-from .plasma import PlasmaStorage
-from .ray import RayStorage
-from .shared_memory import SharedMemoryStorage
-from .vineyard import VineyardStorage
+import sys
+
+import pytest
+
+if sys.version_info < (3, 7):
+    pytest.skip("skipping tests for python 3.6", allow_module_level=True)
