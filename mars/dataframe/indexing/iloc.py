@@ -23,7 +23,7 @@ from pandas.core.indexing import IndexingError
 from ... import opcodes as OperandDef
 from ...core import Entity, Base, OutputType
 from ...config import options
-from ...serialize import AnyField, KeyField, TupleField
+from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
@@ -229,7 +229,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
@@ -254,7 +254,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     def __call__(self, df):
         # Note [Fancy Index of Numpy and Pandas]
@@ -361,7 +361,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False,
@@ -402,7 +402,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op = op.copy().reset_key()
                 index_chunk, column_chunk = chunk_mapping[chunk.index]
-                chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
+                chunk_op._indexes = [index_chunk.op.indexes[0], column_chunk.op.indexes[0]]
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk],
                                                shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
@@ -427,7 +427,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
@@ -454,7 +454,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     @classmethod
     def tile(cls, op):
@@ -495,7 +495,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_module_ = 'series'
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
@@ -555,7 +555,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = TupleField('indexes')
+    _indexes = ListField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
@@ -582,7 +582,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     @classmethod
     def tile(cls, op):

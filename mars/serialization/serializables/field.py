@@ -87,14 +87,11 @@ class Field(ABC):
         field_type = self.field_type
         try:
             to_check_value = value
-            if self._on_serialize:
+            if to_check_value is not None and self._on_serialize:
                 to_check_value = self._on_serialize(to_check_value)
             field_type.validate(to_check_value)
         except (TypeError, ValueError) as e:
-            if not self._attr_name:
-                raise
-            else:
-                raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
+            raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
         getattr(instance, _STORE_VALUE_PROPERTY)[self._tag] = value
 
     def __delete__(self, instance):
@@ -461,8 +458,8 @@ class ReferenceField(Field):
             field_type = self.get_field_type(instance)
             try:
                 to_check_value = value
-                if self.on_serialize:
-                    to_check_value = self.on_serialize(to_check_value)
+                if to_check_value is not None and self._on_serialize:
+                    to_check_value = self._on_serialize(to_check_value)
                 field_type.validate(to_check_value)
             except (TypeError, ValueError) as e:
                 if not self._attr_name:
@@ -507,8 +504,8 @@ class OneOfField(Field):
         for reference_field in self._reference_fields:
             try:
                 to_check_value = value
-                if self.on_serialize:
-                    to_check_value = self.on_serialize(to_check_value)
+                if to_check_value is not None and self._on_serialize:
+                    to_check_value = self._on_serialize(to_check_value)
                 reference_field.get_field_type(instance).validate(to_check_value)
                 field_values[reference_field.tag] = value
                 return

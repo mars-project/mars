@@ -40,14 +40,17 @@ class SerializableMeta(type):
             v._attr_name = k
 
         properties['_FIELDS'] = property_to_fields
-        properties['__slots__'] = tuple(properties.pop('__slots__', ()))
+        slots = set(properties.pop('__slots__', set()))
+        if property_to_fields:
+            slots.add(_STORE_VALUE_PROPERTY)
+        properties['__slots__'] = tuple(slots)
 
         clz = type.__new__(mcs, name, bases, properties)
         return clz
 
 
 class Serializable(metaclass=SerializableMeta):
-    __slots__ = _STORE_VALUE_PROPERTY,
+    __slots__ = ()
 
     _FIELDS: Dict[str, Field]
     _STORE_VALUE_PROPERTY: Dict[str, Any]

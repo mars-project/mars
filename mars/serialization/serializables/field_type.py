@@ -437,6 +437,8 @@ class DictType(AbstractFieldType):
 
     def validate(self, value):
         super().validate(value)
+        if value is None:
+            return
         for k, v in value.items():
             try:
                 self.key_type.validate(k)

@@ -291,7 +291,7 @@ class Test(unittest.TestCase):
         t[1:3] = np.arange(5)
         t = t.tiles()
         slices_op = t.cix[0, 0].op.value.op
-        self.assertEqual(slices_op.slices, (slice(None, None, None), slice(None, 3, None)))
+        self.assertEqual(slices_op.slices, [slice(None, None, None), slice(None, 3, None)])
         broadcast_op = slices_op.inputs[0].op.inputs[0].op
         self.assertIsInstance(broadcast_op, TensorBroadcastTo)
         self.assertEqual(broadcast_op.shape, (2, 5))
@@ -301,7 +301,7 @@ class Test(unittest.TestCase):
         t[2:4] = np.arange(10).reshape(2, 5)
         t = t.tiles()
         slices_op = t.cix[0, 0].op.value.op
-        self.assertEqual(slices_op.slices, (slice(None, 1, None), slice(None, 3, None)))
+        self.assertEqual(slices_op.slices, [slice(None, 1, None), slice(None, 3, None)])
         np.testing.assert_array_equal(slices_op.inputs[0].op.inputs[0].op.data, np.arange(10).reshape(2, 5))
 
     def testChoose(self):

@@ -126,7 +126,7 @@ def compute_rechunk(tensor, chunk_size):
             chunk_index, chunk_slice = zip(*index_slices)
             old_chunk = tensor.cix[chunk_index]
             merge_chunk_shape = tuple(calc_sliced_size(s, chunk_slice[0]) for s in old_chunk.shape)
-            merge_chunk_op = TensorSlice(chunk_slice, dtype=old_chunk.dtype, sparse=old_chunk.op.sparse)
+            merge_chunk_op = TensorSlice(list(chunk_slice), dtype=old_chunk.dtype, sparse=old_chunk.op.sparse)
             merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                    index=merge_idx, order=tensor.order)
             to_merge.append(merge_chunk)
