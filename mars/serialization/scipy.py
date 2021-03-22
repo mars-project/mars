@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 try:
@@ -26,7 +26,7 @@ from .core import Serializer, serialize, deserialize
 class CsrMatrixSerializer(Serializer):
     serializer_name = 'sps.csr_matrix'
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         data_header, data_buffers = serialize(obj.data)
         idx_header, idx_buffers = serialize(obj.indices)
         indptr_header, indptr_buffers = serialize(obj.indptr)
@@ -38,7 +38,7 @@ class CsrMatrixSerializer(Serializer):
         }
         return header, data_buffers + idx_buffers + indptr_buffers
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         data_buf_num = header['data_buf_num']
         idx_buf_num = header['idx_buf_num']
         data_buffers = buffers[:data_buf_num]

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict
+from typing import Any, List, Dict
 
 from ..utils import lazy_import
 from .core import Serializer
@@ -24,7 +24,7 @@ cudf = lazy_import('cudf', globals=globals())
 class CupySerializer(Serializer):
     serializer_name = 'cupy'
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         if not (obj.flags["C_CONTIGUOUS"] or obj.flags["F_CONTIGUOUS"]):
             obj = cupy.array(obj, copy=True)
 
@@ -36,7 +36,7 @@ class CupySerializer(Serializer):
         )
         return header, [buffer]
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         return cupy.ndarray(
             shape=header["shape"],
             dtype=header["typestr"],
@@ -48,10 +48,10 @@ class CupySerializer(Serializer):
 class CudfSerializer(Serializer):
     serializer_name = 'cudf'
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         return obj.device_serialize()
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         from cudf.core.abc import Serializable
         return Serializable.device_deserialize(header, buffers)
 

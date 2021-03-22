@@ -55,6 +55,37 @@ def test_core(val):
     assert val == deserialized
 
 
+def test_nested_list():
+    val = ['a' * 100] * 100
+    val[0] = val
+    deserialized = deserialize(*serialize(val))
+    assert deserialized[0] is deserialized
+    assert val[1:] == deserialized[1:]
+
+
+class KeyedDict(dict):
+    def _skeys(self):
+        return set(k for k in self.keys() if isinstance(k, str))
+
+    def __hash__(self):
+        return hash(frozenset(self._skeys()))
+
+    def __eq__(self, other: 'KeyedDict'):
+        return self._skeys() == other._skeys()
+
+
+def test_nested_dict():
+    val = {i: 'b' * 100 for i in range(10)}
+    val[0] = val
+    deserialized = deserialize(*serialize(val))
+    assert deserialized[0] is deserialized
+
+    val = KeyedDict(abcd='efgh')
+    val[val] = val
+    deserialized = deserialize(*serialize(val))
+    assert deserialized[val] is deserialized
+
+
 @pytest.mark.parametrize(
     'val', [
         np.array(np.random.rand(100, 100)),

@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import sys
-from typing import Dict, List
+from functools import partial
+from typing import Any, Dict, List
 
 from ..utils import TypeDispatcher
 
@@ -36,10 +37,10 @@ _deserializers = dict()
 class Serializer:
     serializer_name = None
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         raise NotImplementedError
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         raise NotImplementedError
 
     @classmethod
@@ -76,18 +77,18 @@ def unpickle_buffers(buffers):
 class ScalarSerializer(Serializer):
     serializer_name = 'scalar'
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         header = {'val': obj}
         return header, []
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         return header['val']
 
 
 class StrSerializer(Serializer):
     serializer_name = 'str'
 
-    def serialize(self, obj):
+    def serialize(self, obj, context: Dict):
         header = {}
         if isinstance(obj, str):
             header['unicode'] = True
@@ -96,7 +97,7 @@ class StrSerializer(Serializer):
             bytes_data = obj
         return header, [bytes_data]
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         if header.get('unicode'):
             return buffers[0].decode()
         return buffers[0]
@@ -105,10 +106,10 @@ class StrSerializer(Serializer):
 class PickleSerializer(Serializer):
     serializer_name = 'pickle'
 
-    def serialize(self, obj):
+    def serialize(self, obj, context: Dict):
         return {}, pickle_buffers(obj)
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         return unpickle_buffers(buffers)
 
 
@@ -116,18 +117,18 @@ class CollectionSerializer(Serializer):
     obj_type = None
 
     @staticmethod
-    def _serialize(c):
+    def _serialize(c, context: Dict):
         headers = []
         buffers_list = []
         for obj in c:
-            header, buffers = serialize(obj)
+            header, buffers = serialize(obj, context)
             headers.append(header)
             buffers_list.append(buffers)
         return headers, buffers_list
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         buffers = []
-        headers_list, buffers_list = self._serialize(obj)
+        headers_list, buffers_list = self._serialize(obj, context)
         for b in buffers_list:
             buffers.extend(b)
         headers = {'headers': headers_list}
@@ -135,37 +136,49 @@ class CollectionSerializer(Serializer):
             headers['obj_type'] = pickle.dumps(type(obj))
         return headers, buffers
 
-    def _iter_deserial(self, headers: Dict, buffers: List):
+    def _iter_deserial(self, headers: Dict, buffers: List, context: Dict):
         pos = 0
         for sub_header in headers:
             buf_num = sub_header['buf_num']
             sub_buffers = buffers[pos:pos + buf_num]
-            yield deserialize(sub_header, sub_buffers)
+            yield deserialize(sub_header, sub_buffers, context)
             pos += buf_num
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         obj_type = self.obj_type
         if 'obj_type' in header:
             obj_type = pickle.loads(header['obj_type'])
-        return obj_type(self._iter_deserial(header['headers'], buffers))
+        return obj_type(self._iter_deserial(header['headers'], buffers, context))
 
 
 class ListSerializer(CollectionSerializer):
     serializer_name = 'list'
     obj_type = list
 
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
+        ret = super().deserialize(header, buffers, context)
+        for idx, v in enumerate(ret):
+            if isinstance(v, Placeholder):
+                v.callbacks.append(partial(ret.__setitem__, idx))
+        return ret
+
 
 class TupleSerializer(CollectionSerializer):
     serializer_name = 'tuple'
     obj_type = tuple
 
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
+        ret = super().deserialize(header, buffers, context)
+        assert not any(isinstance(v, Placeholder) for v in ret)
+        return ret
+
 
 class DictSerializer(CollectionSerializer):
     serializer_name = 'dict'
 
-    def serialize(self, obj: Dict):
-        key_headers, key_buffers_list = self._serialize(obj.keys())
-        value_headers, value_buffers_list = self._serialize(obj.values())
+    def serialize(self, obj: Dict, context: Dict):
+        key_headers, key_buffers_list = self._serialize(obj.keys(), context)
+        value_headers, value_buffers_list = self._serialize(obj.values(), context)
 
         buffers = []
         for b in key_buffers_list:
@@ -182,7 +195,7 @@ class DictSerializer(CollectionSerializer):
 
         return header, buffers
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         key_buffers = buffers[:header['key_buf_num']]
         value_buffers = buffers[header['key_buf_num']:]
 
@@ -190,10 +203,26 @@ class DictSerializer(CollectionSerializer):
         if 'obj_type' in header:
             obj_type = pickle.loads(header['obj_type'])
 
-        return obj_type(zip(
-            self._iter_deserial(header['key_headers'], key_buffers),
-            self._iter_deserial(header['value_headers'], value_buffers),
-        ))
+        keys = list(self._iter_deserial(
+            header['key_headers'], key_buffers, context))
+        values = list(self._iter_deserial(
+            header['value_headers'], value_buffers, context))
+
+        def _key_replacer(key, real_key):
+            ret[real_key] = ret.pop(key)
+
+        def _value_replacer(key, real_value):
+            if isinstance(key, Placeholder):
+                key = context[key.id]
+            ret[key] = real_value
+
+        ret = obj_type(zip(keys, values))
+        for k, v in zip(keys, values):
+            if isinstance(k, Placeholder):
+                k.callbacks.append(partial(_key_replacer, k))
+            if isinstance(v, Placeholder):
+                v.callbacks.append(partial(_value_replacer, k))
+        return ret
 
 
 PickleSerializer.register(object)
@@ -208,14 +237,51 @@ TupleSerializer.register(tuple)
 DictSerializer.register(dict)
 
 
-def serialize(obj):
+class Placeholder:
+    id: int
+    callbacks: List
+
+    def __init__(self, id_: int):
+        self.id = id_
+        self.callbacks = []
+
+    def __hash__(self):
+        return hash(self.id)
+
+
+def serialize(obj, context: Dict = None):
     serializer = _serial_dispatcher.get_handler(type(obj))
-    header, buffers = serializer.serialize(obj)
+    context = context if context is not None else dict()
+
+    if id(obj) in context:
+        return {
+            'id': id(obj),
+            'serializer': 'ref',
+            'buf_num': 0,
+        }, []
+    else:
+        context[id(obj)] = obj
+
+    header, buffers = serializer.serialize(obj, context)
     header['serializer'] = serializer.serializer_name
     header['buf_num'] = len(buffers)
+    header['id'] = id(obj)
     return header, buffers
 
 
-def deserialize(header: Dict, buffers: List):
-    serializer = _deserializers[header.pop('serializer')]
-    return serializer.deserialize(header, buffers)
+def deserialize(header: Dict, buffers: List, context: Dict = None):
+    context = context if context is not None else dict()
+
+    serializer_name = header['serializer']
+    obj_id = header['id']
+    if serializer_name == 'ref':
+        if obj_id not in context:
+            context[obj_id] = Placeholder(obj_id)
+    else:
+        serializer = _deserializers[serializer_name]
+        deserialized = serializer.deserialize(header, buffers, context)
+        context_val, context[obj_id] = context.get(obj_id), deserialized
+        if isinstance(context_val, Placeholder):
+            for cb in context_val.callbacks:
+                cb(deserialized)
+    return context[obj_id]
