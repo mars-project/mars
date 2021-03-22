@@ -125,7 +125,7 @@ class AbstractTaskAPI(ABC):
     @abstractmethod
     async def list_subtasks(self,
                             task_id: str,
-                            offset: int = 0 ,
+                            offset: int = 0,
                             limit: int = None,
                             fields: List[str] = None) -> List[Dict]:
         """

@@ -1224,7 +1224,28 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         raise TypeError("not a path-like object")
 
 
-class ExtensibleWrapper:
+class SyncExtensibleWrapper:
+    def __init__(self, instance, func, batch_func=None):
+        self.instance = instance
+        self.func = func
+        self._batch_func = batch_func
+
+    def __call__(self, *args, **kwargs):
+        if self.func is not None:
+            return self.func(*args, **kwargs)
+        else:
+            return self._batch_func([args], [kwargs])[0]
+
+    def batch(self, args_list, kwargs_list=None):
+        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
+        if self._batch_func is not None:
+            return self._batch_func(args_list, kwargs_list)
+        return [
+            self.func(*args, **kwargs) for args, kwargs in zip(args_list, kwargs_list)
+        ]
+
+
+class AsyncExtensibleWrapper:
     def __init__(self, instance, func, batch_func=None):
         self.instance = instance
         self.func = func
@@ -1236,7 +1257,8 @@ class ExtensibleWrapper:
         else:
             return (await self._batch_func([args], [kwargs]))[0]
 
-    async def batch(self, args_list, kwargs_list):
+    async def batch(self, args_list, kwargs_list=None):
+        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
         if self._batch_func is not None:
             return await self._batch_func(args_list, kwargs_list)
         return await asyncio.gather(*[
@@ -1261,7 +1283,11 @@ class ExtensibleAccessor:
             if self.implemented else None
         batch_func = self.batch_func.__get__(instance, owner) \
             if self.batch_func is not None else None
-        return ExtensibleWrapper(instance, func, batch_func)
+
+        if asyncio.iscoroutinefunction(self.func):
+            return AsyncExtensibleWrapper(instance, func, batch_func)
+        else:
+            return SyncExtensibleWrapper(instance, func, batch_func)
 
 
 def extensible(implemented):
