@@ -21,8 +21,9 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
 class TensorRandomSample(TensorSimpleRandomData, TensorRandomOperandMixin):
-    __slots__ = '_size',
     _op_type_ = OperandDef.RAND_RANDOM_SAMPLE
+
+    _fields_ = '_size',
     _func_name = 'random_sample'
 
     def __init__(self, state=None, size=None, dtype=None,

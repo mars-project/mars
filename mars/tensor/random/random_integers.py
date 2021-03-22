@@ -22,9 +22,9 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
 class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
-    __slots__ = '_low', '_high', '_size'
     _op_type_ = OperandDef.RAND_RANDOM_INTEGERS
 
+    _fields_ = '_low', '_high', '_size'
     _low = Int64Field('low')
     _high = Int64Field('high')
     _func_name = 'random_integers'

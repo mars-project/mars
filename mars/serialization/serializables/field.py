@@ -26,20 +26,24 @@ _STORE_VALUE_PROPERTY = '_FIELD_VALUES'
 
 
 class Field(ABC):
-    __slots__ = '_tag', '_default_value', '_on_serialize', '_on_deserialize'
+    __slots__ = '_tag', '_default_value', \
+                '_on_serialize', '_on_deserialize', '_attr_name'
 
     _tag: str
     _default_value: Any
+    _attr_name: str  # attribute name that set to
 
     def __init__(self,
                  tag: str,
                  default: Any = None,
                  on_serialize: Callable[[Any], Any] = None,
-                 on_deserialize: Callable[[Any], Any] = None):
+                 on_deserialize: Callable[[Any], Any] = None,
+                 attr_name: str = None):
         self._tag = tag
         self._default_value = default
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
+        self._attr_name = attr_name
 
     @property
     def tag(self):
@@ -52,6 +56,10 @@ class Field(ABC):
     @property
     def on_deserialize(self):
         return self._on_deserialize
+
+    @property
+    def attr_name(self):
+        return self._attr_name
 
     @property
     @abstractmethod
@@ -77,7 +85,16 @@ class Field(ABC):
 
     def __set__(self, instance, value):
         field_type = self.field_type
-        field_type.validate(value)
+        try:
+            to_check_value = value
+            if self._on_serialize:
+                to_check_value = self._on_serialize(to_check_value)
+            field_type.validate(to_check_value)
+        except (TypeError, ValueError) as e:
+            if not self._attr_name:
+                raise
+            else:
+                raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
         getattr(instance, _STORE_VALUE_PROPERTY)[self._tag] = value
 
     def __delete__(self, instance):
@@ -97,7 +114,7 @@ class IdentityField(Field):
 
     @property
     def field_type(self) -> AbstractFieldType:
-        return FieldTypes.int32
+        return FieldTypes.string
 
 
 class BoolField(Field):
@@ -343,6 +360,8 @@ class _CollectionField(Field, metaclass=ABCMeta):
                  on_deserialize: Callable[[Any], Any] = None):
         super().__init__(tag, default=default, on_serialize=on_serialize,
                          on_deserialize=on_deserialize)
+        if field_type is None:
+            field_type = FieldTypes.any
         if not isinstance(field_type, ListType):
             field_type = self._collection_type()(field_type, ...)
         self._field_type = field_type
@@ -440,7 +459,16 @@ class ReferenceField(Field):
     def __set__(self, instance, value):
         if self._field_type is None:
             field_type = self.get_field_type(instance)
-            field_type.validate(value)
+            try:
+                to_check_value = value
+                if self.on_serialize:
+                    to_check_value = self.on_serialize(to_check_value)
+                field_type.validate(to_check_value)
+            except (TypeError, ValueError) as e:
+                if not self._attr_name:
+                    raise
+                else:
+                    raise type(e)(f'Failed to set `{self._attr_name}`: {str(e)}')
             getattr(instance, _STORE_VALUE_PROPERTY)[self._tag] = value
         else:
             super().__set__(instance, value)
@@ -454,10 +482,12 @@ class OneOfField(Field):
                  default: Any = None,
                  on_serialize: Callable[[Any], Any] = None,
                  on_deserialize: Callable[[Any], Any] = None,
+                 attr_name: str = None,
                  **tag_to_reference_types):
         super().__init__(
             tag, default=default, on_serialize=on_serialize,
-            on_deserialize=on_deserialize)
+            on_deserialize=on_deserialize,
+            attr_name=attr_name)
         self._reference_fields = [
             ReferenceField(t, ref_type) for t, ref_type
             in tag_to_reference_types.items()]
@@ -476,14 +506,17 @@ class OneOfField(Field):
         field_values = getattr(instance, _STORE_VALUE_PROPERTY)
         for reference_field in self._reference_fields:
             try:
-                reference_field.get_field_type(instance).validate(value)
+                to_check_value = value
+                if self.on_serialize:
+                    to_check_value = self.on_serialize(to_check_value)
+                reference_field.get_field_type(instance).validate(to_check_value)
                 field_values[reference_field.tag] = value
                 return
             except TypeError:
                 continue
         valid_types = list(itertools.chain(*[r.get_field_type(instance).valid_types
                                              for r in self._reference_fields]))
-        raise TypeError(f'cannot set value, type of instance cannot '
+        raise TypeError(f'Failed to set `{self._attr_name}`: type of instance cannot '
                         f'match any of {valid_types}, got {type(value)}')
 
     def __get__(self, instance, owner):

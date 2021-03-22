@@ -37,6 +37,7 @@ class SerializableMeta(type):
 
             property_to_fields[k] = v
             properties[k] = v
+            v._attr_name = k
 
         properties['_FIELDS'] = property_to_fields
         properties['__slots__'] = tuple(properties.pop('__slots__', ()))

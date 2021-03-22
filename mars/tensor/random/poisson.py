@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_lam', '_size'
     _input_fields_ = ['_lam']
     _op_type_ = OperandDef.RAND_POSSION
 
+    _fields_ = '_lam', '_size'
     _lam = AnyField('lam')
     _func_name = 'poisson'
 

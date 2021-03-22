@@ -25,7 +25,7 @@ from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
-from .serialize import HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
+from .serialize import Serializable, HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
@@ -38,11 +38,7 @@ class Base(HasKey):
     _init_update_key_ = True
 
     def __init__(self, *args, **kwargs):
-        for slot, arg in zip(self.__slots__, args):
-            object.__setattr__(self, slot, arg)
-
-        for key, val in kwargs.items():
-            object.__setattr__(self, key, val)
+        Serializable.__init__(self, *args, **kwargs)
 
         if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
             self._update_key()
@@ -89,7 +85,7 @@ class Base(HasKey):
         return self.copy_to(type(self)(_key=self.key))
 
     def copy_to(self, target):
-        for attr in self.__slots__:
+        for attr in set(self.__slots__) | set(self._FIELDS):
             if (attr.startswith('__') and attr.endswith('__')) or attr in self._no_copy_attrs_:
                 # we don't copy id to identify that the copied one is new
                 continue
@@ -198,7 +194,7 @@ class EntityData(SerializableWithKey):
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
+        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super().__init__(*args, **kwargs)
 

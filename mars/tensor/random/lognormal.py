@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLognormal(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_mean', '_sigma', '_size'
     _input_fields_ = ['_mean', '_sigma']
     _op_type_ = OperandDef.RAND_LOGNORMAL
 
+    _fields_ = '_mean', '_sigma', '_size'
     _mean = AnyField('mean')
     _sigma = AnyField('sigma')
     _func_name = 'lognormal'

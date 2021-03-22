@@ -23,9 +23,9 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
 class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
-    __slots__ = '_low', '_high', '_density', '_size'
     _op_type_ = OperandDef.RAND_RANDINT
 
+    _fields_ = '_low', '_high', '_density', '_size'
     _low = Int64Field('low')
     _high = Int64Field('high')
     _density = Float64Field('density')

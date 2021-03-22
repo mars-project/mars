@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorExponential(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_scale', '_size'
     _input_fields_ = ['_scale']
     _op_type_ = OperandDef.RAND_EXPONENTIAL
 
+    _fields_ = '_scale', '_size'
     _scale = AnyField('scale')
     _func_name = 'exponential'
 

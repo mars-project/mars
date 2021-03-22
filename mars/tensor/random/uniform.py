@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorUniform(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_low', '_high', '_size'
     _input_fields_ = ['_low', '_high']
     _op_type_ = OperandDef.RAND_UNIFORM
 
+    _fields_ = '_low', '_high', '_size'
     _low = AnyField('low')
     _high = AnyField('high')
     _func_name = 'uniform'

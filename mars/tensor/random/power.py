@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandomPower(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_a', '_size'
     _input_fields_ = ['_a']
     _op_type_ = OperandDef.RAND_POWER
 
+    _fields_ = '_a', '_size'
     _a = AnyField('a')
     _func_name = 'power'
 

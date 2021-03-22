@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLogseries(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_p', '_size'
     _input_fields_ = ['_p']
     _op_type_ = OperandDef.RAND_LOGSERIES
 
+    _fields_ = '_p', '_size'
     _p = AnyField('p')
     _func_name = 'logseries'
 

@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorBinomial(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_n', '_p', '_size'
     _input_fields_ = ['_n', '_p']
     _op_type_ = OperandDef.RAND_BINOMIAL
 
+    _fields_ = '_n', '_p', '_size'
     _n = AnyField('n')
     _p = AnyField('p')
     _func_name = 'binomial'

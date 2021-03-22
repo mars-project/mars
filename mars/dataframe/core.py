@@ -26,7 +26,8 @@ from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData, \
     HasShapeTileableEnity, OutputType, register_output_types, _ExecuteAndFetchMixin
 from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
-    TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
+    TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField, \
+    _ENABLE_NEW_SERIALIZATION
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
     ceildiv, is_build_mode, tokenize
 from .utils import fetch_corner_data, ReprSeries
@@ -94,9 +95,14 @@ class IndexValue(Serializable):
             return None
 
         def to_pandas(self):
-            kw = {field.tag_name(None): getattr(self, attr, None)
-                  for attr, field in self._FIELDS.items()
-                  if attr not in super(type(self), self)._FIELDS}
+            if _ENABLE_NEW_SERIALIZATION:
+                kw = {field.tag: getattr(self, attr, None)
+                      for attr, field in self._FIELDS.items()
+                      if attr not in super(type(self), self)._FIELDS}
+            else:
+                kw = {field.tag_name(None): getattr(self, attr, None)
+                      for attr, field in self._FIELDS.items()
+                      if attr not in super(type(self), self)._FIELDS}
             kw = {k: v for k, v in kw.items() if v is not None}
             if kw.get('data') is None:
                 kw['data'] = []

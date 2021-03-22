@@ -308,8 +308,11 @@ class TensorSeedOperandMixin(object):
 
     @property
     def args(self):
-        return [slot for slot in self.__slots__
-                if slot not in set(TensorRandomOperand.__slots__)]
+        if hasattr(self, '_fields_'):
+            return self._fields_
+        else:
+            return [field for field in self._FIELDS
+                    if field not in TensorRandomOperand._FIELDS]
 
     def _update_key(self):
         self._key = tokenize(type(self).__name__,

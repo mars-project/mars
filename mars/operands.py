@@ -27,7 +27,7 @@ from .core import Entity, Chunk, Tileable, AttributeAsDictKey, ExecutableTuple, 
     register_fetch_class, get_fetch_class, get_output_types
 from .serialize import SerializableMetaclass, ValueType, ProviderType, IdentityField, \
     ListField, DictField, Int32Field, Float32Field, BoolField, StringField, \
-    ReferenceField
+    ReferenceField, _ENABLE_NEW_SERIALIZATION
 from .tiles import NotSupportTile
 from .utils import AttributeDict, to_str, calc_data_size, calc_object_overhead, \
     enter_mode, is_eager_mode
@@ -68,6 +68,21 @@ class OperandMetaclass(SerializableMetaclass):
         return cls
 
 
+def _on_serialize_outputs(outputs):
+    return [out() for out in outputs]
+
+
+def _on_deserialize_outputs(outputs):
+    return [weakref.ref(out) for out in outputs]
+
+
+if _ENABLE_NEW_SERIALIZATION:
+    outputs_kwargs = dict(on_serialize=_on_serialize_outputs,
+                          on_deserialize=_on_deserialize_outputs)
+else:
+    outputs_kwargs = dict(weak_ref=True)
+
+
 class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
@@ -98,9 +113,9 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
 
     _inputs = ListField('inputs', ValueType.key)
     _pure_depends = ListField('pure_depends', ValueType.bool)
-    _outputs = ListField('outputs', ValueType.key, weak_ref=True)
+    _outputs = ListField('outputs', **outputs_kwargs)
 
-    _output_types = ListField('output_type', tp=ValueType.int8,
+    _output_types = ListField('output_type',
                               on_serialize=OutputType.serialize_list,
                               on_deserialize=OutputType.deserialize_list)
 
@@ -119,7 +134,7 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         return object.__new__(cls)
 
     def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
+        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super().__init__(*args, **kwargs)
         if hasattr(self, OP_MODULE_KEY) and hasattr(self, OP_TYPE_KEY):
@@ -252,8 +267,8 @@ class Operand(AttributeAsDictKey, metaclass=OperandMetaclass):
         setattr(self, '_inputs', inputs)
 
     def _attach_outputs(self, *outputs):
-        self._outputs = tuple(weakref.ref(self._get_entity_data(o)) if o is not None else o
-                              for o in outputs)
+        self._outputs = [weakref.ref(self._get_entity_data(o)) if o is not None else o
+                         for o in outputs]
 
         if len(self._outputs) > self.output_limit:
             raise ValueError("Outputs' size exceeds limitation")

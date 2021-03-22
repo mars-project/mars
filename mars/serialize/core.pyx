@@ -758,7 +758,7 @@ class AttributeAsDict(Serializable):
 
 
 class HasKey(object):
-    __slots__ = '_key', '_id'
+    __slots__ = ()
 
 
 class HasData(object):

@@ -98,7 +98,7 @@ class AbstractFieldType(ABC):
         """
 
     def validate(self, value):
-        if not isinstance(value, self.valid_types):
+        if value is not None and not isinstance(value, self.valid_types):
             raise TypeError(f'value needs to be instance '
                             f'of {self.valid_types}, got {type(value)}')
 
@@ -352,6 +352,8 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
                (len(self._field_types) == 2 and self._field_types[1] is Ellipsis)
 
     def validate(self, value):
+        if value is None:
+            return
         if not isinstance(value, self.valid_types):
             raise TypeError(f'value should be instance of {self.valid_types}, '
                             f'got f{type(value)}')

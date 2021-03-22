@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRayleigh(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_scale', '_size'
     _input_fields_ = ['_scale']
     _op_type_ = OperandDef.RAND_RAYLEIGH
 
+    _fields_ = '_scale', '_size'
     _scale = AnyField('scale')
     _func_name = 'rayleigh'
 

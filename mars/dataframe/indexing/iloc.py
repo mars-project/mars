@@ -23,7 +23,7 @@ from pandas.core.indexing import IndexingError
 from ... import opcodes as OperandDef
 from ...core import Entity, Base, OutputType
 from ...config import options
-from ...serialize import AnyField, KeyField, ListField
+from ...serialize import AnyField, KeyField, TupleField
 from ...tensor import asarray
 from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
@@ -229,7 +229,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
@@ -361,7 +361,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
 class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False,
@@ -427,7 +427,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
@@ -495,7 +495,7 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_module_ = 'series'
     _op_type_ = OperandDef.DATAFRAME_ILOC_SETITEM
 
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, gpu=False, sparse=False, **kw):
@@ -555,7 +555,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_ILOC_GETITEM
 
     _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
 
     def __init__(self, indexes=None, gpu=False, sparse=False, output_types=None, **kw):
         super().__init__(_indexes=indexes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)

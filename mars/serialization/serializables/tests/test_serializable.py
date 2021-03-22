@@ -33,7 +33,7 @@ my_namedtuple = namedtuple('my_namedtuple', 'a, b')
 
 
 class MyHasKey(HasKey):
-    __slots__ = ()
+    __slots__ = '_key', '_id'
 
     def __init__(self, key):
         self._key = key
@@ -95,7 +95,7 @@ class MySerializable(Serializable):
 
 def test_serializable():
     my_serializable = MySerializable(
-        _id=1,
+        _id='1',
         _any_val='any_value',
         _bool_val=True,
         _int8_val=-8,
@@ -130,7 +130,7 @@ def test_serializable():
         _tuple_val=('a', 'b'),
         _dict_val={'a': b'bytes_value'},
         _ref_val=MySerializable(),
-        _oneof_val=MySerializable(_id=2)
+        _oneof_val=MySerializable(_id='2')
     )
 
     header, buffers = serialize(my_serializable)
@@ -164,10 +164,14 @@ def _assert_serializable_eq(my_serializable, my_serializable2):
 
 def test_fields_errors():
     my_simple = MySimpleSerializable(
-        _id=1, _ref_val=MySimpleSerializable(_id=2))
+        _id='1', _ref_val=MySimpleSerializable(_id='2'))
     my_serializeble = MySerializable(
         _oneof_val=my_simple
     )
+
+    with pytest.raises(TypeError) as exc_info:
+        my_simple._int_val = '10'
+    assert '_int_val' in str(exc_info.value)
 
     del my_simple._ref_val
     with pytest.raises(AttributeError):
@@ -183,7 +187,7 @@ def test_fields_errors():
     with pytest.raises(AttributeError):
         _ = my_serializeble._oneof_val
 
-    my_serializeble._ref_val2 = MySimpleSerializable(_id=3)
+    my_serializeble._ref_val2 = MySimpleSerializable(_id='3')
     del my_serializeble._ref_val2
     with pytest.raises(AttributeError):
         _ = my_serializeble._ref_val2

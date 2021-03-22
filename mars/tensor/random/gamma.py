@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandGamma(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_shape', '_scale', '_size'
     _input_fields_ = ['_shape', '_scale']
     _op_type_ = OperandDef.RAND_GAMMA
 
+    _fields_ = '_shape', '_scale', '_size'
     _shape = AnyField('shape')
     _scale = AnyField('scale')
     _func_name = 'gamma'

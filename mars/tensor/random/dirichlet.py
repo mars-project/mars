@@ -27,9 +27,9 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 
 class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_alpha', '_size'
     _op_type_ = OperandDef.RAND_DIRICHLET
 
+    _fields_ = '_alpha', '_size'
     _alpha = TupleField('alpha')
     _func_name = 'dirichlet'
 

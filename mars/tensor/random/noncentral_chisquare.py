@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_df', '_nonc', '_size'
     _input_fields_ = ['_df', '_nonc']
     _op_type_ = OperandDef.RAND_NONCENTRAL_CHISQURE
 
+    _fields_ = '_df', '_nonc', '_size'
     _df = AnyField('df')
     _nonc = AnyField('nonc')
     _func_name = 'noncentral_chisquare'

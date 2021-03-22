@@ -27,9 +27,9 @@ from .core import TensorRandomOperandMixin, TensorDistribution, TENSOR_CHUNK_TYP
 
 
 class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_mean', '_cov', '_size', '_check_valid', '_tol'
     _op_type_ = OperandDef.RAND_MULTIVARIATE_NORMAL
 
+    _fields_ = '_mean', '_cov', '_size', '_check_valid', '_tol'
     _mean = NDArrayField('mean')
     _cov = NDArrayField('cov')
     _check_valid = StringField('check_valid')
