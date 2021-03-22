@@ -38,6 +38,12 @@ class Base(HasKey):
     _init_update_key_ = True
 
     def __init__(self, *args, **kwargs):
+        for slot, arg in zip(self.__slots__, args):
+            object.__setattr__(self, slot, arg)
+
+        for key, val in kwargs.items():
+            object.__setattr__(self, key, val)
+
         if self._init_update_key_ and (not hasattr(self, '_key') or not self._key):
             self._update_key()
         if not hasattr(self, '_id') or not self._id:
