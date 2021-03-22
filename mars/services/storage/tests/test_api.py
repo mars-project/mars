@@ -22,6 +22,8 @@ import mars.oscar as mo
 from mars.serialize import dataserializer
 from mars.services.storage.api import MockStorageApi
 from mars.storage import StorageLevel
+from mars.tests.core import require_ray
+
 try:
     import vineyard
 except ImportError:
@@ -31,6 +33,7 @@ try:
 except ImportError:
     ray = None
 
+require_lib = lambda x: x
 storage_configs = []
 
 # plasma backend
@@ -47,6 +50,7 @@ storage_configs.append({'plasma': plasma_setup_params})
 
 # ray backend
 if ray is not None:
+    require_lib = require_ray
     storage_configs.append({'ray': dict()})
 
 # vineyard
@@ -63,6 +67,7 @@ if sys.version_info[:2] >= (3, 8):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('storage_configs', storage_configs)
+@require_lib
 async def test_storage_mock_api(storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', 2,

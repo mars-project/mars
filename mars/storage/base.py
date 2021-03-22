@@ -21,8 +21,9 @@ from .core import StorageFileObject
 _storage_backends = dict()
 
 
-def register(backend_name: str, cls: Type["StorageBackend"]):
-    _storage_backends[backend_name] = cls
+def register_storage_backend(backend: Type["StorageBackend"]):
+    _storage_backends[backend.name] = backend
+    return backend
 
 
 def get_storage_backend(backend_name) -> Type["StorageBackend"]:
@@ -55,6 +56,8 @@ class ObjectInfo:
 
 
 class StorageBackend(ABC):
+    name = None
+
     @classmethod
     @abstractmethod
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:

@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo, register
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -75,7 +75,10 @@ class _SharedMemoryManager:
 _shared_memory_manager = _SharedMemoryManager()
 
 
+@register_storage_backend
 class SharedMemoryStorage(StorageBackend):
+    name = 'shared_memory'
+
     def __init__(self, **kw):
         if kw:  # pragma: no cover
             raise TypeError(f'SharedMemoryStorage got unexpected arguments: {",".join(kw)}')
@@ -173,6 +176,3 @@ class SharedMemoryStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
         raise NotImplementedError("Shared memory storage does not support list")
-
-
-register('shared_memory', SharedMemoryStorage)

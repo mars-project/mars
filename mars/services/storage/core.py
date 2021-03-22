@@ -49,18 +49,20 @@ class StorageQuota:
         self._used_size -= size
 
 
-class KeyMapperActor(mo.Actor):
+class DataMetaManagerActor(mo.Actor):
     def __init__(self):
         # mapping key is (session_id, data_key)
-        # mapping value is list of (object_id, level)
+        # mapping value is list of (object_id, level, size)
         self._mapping = defaultdict(list)
 
     def put(self,
             session_id: str,
             data_key: str,
             object_id,
-            level: StorageLevel):
-        self._mapping[(session_id, data_key)].append((object_id, level))
+            level: StorageLevel,
+            size: int):
+        self._mapping[(session_id, data_key)].append(
+            (object_id, level, size))
 
     def get(self,
             session_id: str,
@@ -70,10 +72,10 @@ class KeyMapperActor(mo.Actor):
     def get_lowest(self,
                    session_id: str,
                    data_key: str):
+        # if the data is stored in multiply levels,
+        # return the lowest level info
         infos = sorted(self._mapping.get((session_id, data_key)),
                        key=lambda x: x[1])
-        if infos is None:
-            return infos
         return infos[0]
 
     def delete(self,
@@ -85,7 +87,7 @@ class KeyMapperActor(mo.Actor):
             rest = [info for info in infos if info[1] != level]
             if len(rest) == 0:
                 del self._mapping[(session_id, data_key)]
-            else:
+            else:  # pragma: no cover
                 self._mapping[(session_id, data_key)] = rest
 
 
@@ -102,22 +104,17 @@ class StorageManagerActor(mo.Actor):
 
     async def __post_create__(self):
         # stores data key to storage object id
-        self._key_mapper = await mo.actor_ref(KeyMapperActor.default_uid(),
-                                              address=self.address)
+        self._data_meta_ref = await mo.actor_ref(DataMetaManagerActor.default_uid(),
+                                                 address=self.address)
         # setup storage backend
         clients = dict()
         quotas = dict()
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
-            if client.level & StorageLevel.MEMORY:
-                clients[StorageLevel.MEMORY] = client
-                quotas[StorageLevel.MEMORY] = StorageQuota(client.size)
-            if client.level & StorageLevel.DISK:
-                clients[StorageLevel.DISK] = client
-                quotas[StorageLevel.DISK] = StorageQuota(client.size)
-            if client.level & StorageLevel.GPU:
-                clients[StorageLevel.GPU] = client
-                quotas[StorageLevel.GPU] = StorageQuota(client.size)
+            for level in StorageLevel.__members__.values():
+                if client.level & level:
+                    clients[level] = client
+                    quotas[level] = StorageQuota(client.size)
 
         self._clients = clients
         self._quotas = quotas
@@ -145,21 +142,19 @@ class StorageManagerActor(mo.Actor):
                       level: StorageLevel) -> Tuple[bool, int]:
         if self._quotas[level].request(size):
             return True, 0
-        else:
+        else:  # pragma: no cover
             quota = self._quotas[level]
             exceeded_size = (quota.used_size + size) - quota.total_size
             return False, exceeded_size
+
+    def release_size(self,
+                     size: int,
+                     level: StorageLevel
+                     ):
+        self._quotas[level].release(size)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)
 
     def unpin(self, object_id):
         self._pinned_keys.remove(object_id)
-
-    async def do_spill(self, size: int, level: StorageLevel):
-        raise NotImplementedError
-
-    async def copy_to(self,
-                      data_key: str,
-                      target_level: StorageLevel):
-        raise NotImplementedError

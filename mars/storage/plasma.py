@@ -22,7 +22,7 @@ from pyarrow import plasma
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo, register
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -111,7 +111,10 @@ def get_actual_capacity(plasma_client: plasma.PlasmaClient) -> int:
     return allocate_size
 
 
+@register_storage_backend
 class PlasmaStorage(StorageBackend):
+    name = 'plasma'
+
     def __init__(self,
                  plasma_socket: str = None,
                  plasma_directory: str = None,
@@ -225,6 +228,3 @@ class PlasmaStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:
         return list(self._client.list())
-
-
-register('plasma', PlasmaStorage)

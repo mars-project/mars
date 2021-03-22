@@ -28,7 +28,7 @@ except ImportError:
 
 from ..lib import sparse
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo, register
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -86,7 +86,10 @@ class VineyardFileObject(BufferWrappedFileObject):
         pass
 
 
+@register_storage_backend
 class VineyardStorage(StorageBackend):
+    name = 'vineyard'
+
     def __init__(self,
                  vineyard_size: int,
                  vineyard_socket: str = None):
@@ -167,6 +170,3 @@ class VineyardStorage(StorageBackend):
     async def list(self) -> List:
         # FIXME: vineyard's list_objects not equal to plasma
         raise NotImplementedError
-
-
-register('vineyard', VineyardStorage)

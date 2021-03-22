@@ -22,11 +22,14 @@ from ..lib.aio import AioFilesystem
 from ..lib.filesystem import FileSystem
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import mod_hash, implements
-from .base import StorageBackend, ObjectInfo, StorageLevel, register
+from .base import StorageBackend, ObjectInfo, StorageLevel, register_storage_backend
 from .core import StorageFileObject
 
 
+@register_storage_backend
 class FileSystemStorage(StorageBackend):
+    name = 'filesystem'
+
     def __init__(self,
                  fs: FileSystem,
                  root_dirs: List[str],
@@ -43,7 +46,7 @@ class FileSystemStorage(StorageBackend):
         fs = kwargs.pop('fs')
         root_dirs = kwargs.pop('root_dirs')
         level = kwargs.pop('level')
-        size = kwargs.pop('size')
+        size = kwargs.pop('size', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'FileSystemStorage got unexpected config: {",".join(kwargs)}')
 
@@ -125,6 +128,3 @@ class FileSystemStorage(StorageBackend):
     async def open_reader(self, object_id) -> StorageFileObject:
         file = await self._fs.open(object_id, 'rb')
         return StorageFileObject(file, file.name)
-
-
-register('filesystem', FileSystemStorage)
