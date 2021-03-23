@@ -15,10 +15,9 @@
 from typing import List
 
 from ... import oscar as mo
-from ...storage import get_storage_backend
 from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
 from ...utils import calc_data_size, extensible
-from .core import DataMetaManagerActor, StorageManagerActor
+from .core import DataManagerActor, StorageHandlerActor, StorageManagerActor
 
 
 class StorageAPI:
@@ -29,20 +28,12 @@ class StorageAPI:
         self._session_id = session_id
 
     async def _init(self):
+        self._storage_handler_ref = await mo.actor_ref(
+            self._address, StorageHandlerActor.default_uid())
         self._storage_manager_ref = await mo.actor_ref(
             self._address, StorageManagerActor.default_uid())
-        self._data_meta_ref = await mo.actor_ref(
-            self._address, DataMetaManagerActor.default_uid())
-
-        client_init_params = await self._storage_manager_ref.get_client_params()
-        clients = dict()
-        for backend, params in client_init_params.items():
-            storage_cls = get_storage_backend(backend)
-            client = storage_cls(**params)
-            for level in StorageLevel.__members__.values():
-                if client.level & level:
-                    clients[level] = client
-        self._clients = clients
+        self._data_manager_ref = await mo.actor_ref(
+            self._address, DataManagerActor.default_uid())
 
     @classmethod
     async def create(cls,
@@ -88,8 +79,8 @@ class StorageAPI:
         -------
             object
         """
-        object_id, level, _ = await self._data_meta_ref.get_lowest(self._session_id, data_key)
-        return await self._clients[level].get(object_id, conditions=conditions)
+        object_id, level, _ = await self._data_manager_ref.get_lowest(self._session_id, data_key)
+        return await self._storage_handler_ref.get(object_id, level, conditions)
 
     @extensible
     async def put(self, data_key: str,
@@ -114,11 +105,10 @@ class StorageAPI:
         """
         size = calc_data_size(obj)
         await self._allocate(size, level=level)
-        object_info = await self._clients[level].put(obj)
-        await self._data_meta_ref.put(
+        object_info = await self._storage_handler_ref.put(obj, level)
+        return await self._data_manager_ref.put(
             self._session_id, data_key, object_info.object_id,
             level=level, size=size)
-        return object_info
 
     @extensible
     async def delete(self, data_key: str):
@@ -130,11 +120,11 @@ class StorageAPI:
         data_key: str
             object key to delete
         """
-        infos = await self._data_meta_ref.get(self._session_id, data_key)
+        infos = await self._data_manager_ref.get(self._session_id, data_key)
         for info in infos or []:
             level = info[1]
-            await self._data_meta_ref.delete(self._session_id, data_key, level)
-            await self._clients[level].delete(info[0])
+            await self._data_manager_ref.delete(self._session_id, data_key, level)
+            await self._storage_handler_ref.delete(info[0], level)
             await self._storage_manager_ref.release_size(info[2], level)
 
     @extensible
@@ -151,7 +141,7 @@ class StorageAPI:
             the storage level to put into, MEMORY as default
 
         """
-        infos = await self._data_meta_ref.get(self._session_id, data_key)
+        infos = await self._data_manager_ref.get(self._session_id, data_key)
         infos = sorted(infos, key=lambda x: x[0])
         await self._storage_manager_ref.pin(infos[0][0])
 
@@ -199,9 +189,9 @@ class StorageAPI:
         -------
             return a file-like object.
         """
-        object_id, level, _ = await self._data_meta_ref.get_lowest(self._session_id, data_key)
-        reader = await self._clients[level].open_reader(object_id)
-        return reader
+        object_id, level, _ = await self._data_manager_ref.get_lowest(
+            self._session_id, data_key)
+        return await self._storage_handler_ref.open_reader(object_id, level)
 
     async def open_writer(self,
                           data_key: str,
@@ -224,9 +214,9 @@ class StorageAPI:
             return a file-like object.
         """
         await self._allocate(size, level=level)
-        writer = await self._clients[level].open_writer(size)
-        await self._data_meta_ref.put(self._session_id, data_key, writer.object_id,
-                                      level=level, size=size)
+        writer = await self._storage_handler_ref.open_writer(size, level)
+        await self._data_manager_ref.put(
+            self._session_id, data_key, writer.object_id, level=level, size=size)
         return writer
 
     async def list(self, level: StorageLevel) -> List:
@@ -242,7 +232,7 @@ class StorageAPI:
         -------
             list of data keys
         """
-        return await self._clients[level].list()
+        return await self._storage_handler_ref.list(level=level)
 
 
 class MockStorageApi(StorageAPI):
@@ -251,11 +241,11 @@ class MockStorageApi(StorageAPI):
                      session_id: str,
                      address: str,
                      **kwargs):
-        from .core import StorageManagerActor, DataMetaManagerActor
+        from .core import StorageManagerActor, DataManagerActor
 
         storage_configs = kwargs.get('storage_configs')
-        await mo.create_actor(DataMetaManagerActor,
-                              uid=DataMetaManagerActor.default_uid(),
+        await mo.create_actor(DataManagerActor,
+                              uid=DataManagerActor.default_uid(),
                               address=address)
         await mo.create_actor(StorageManagerActor,
                               storage_configs,

@@ -70,7 +70,7 @@ if sys.version_info[:2] >= (3, 8):
 @require_lib
 async def test_storage_mock_api(storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', 2,
+    pool = await mo.create_actor_pool('127.0.0.1', 1,
                                       subprocess_start_method=start_method)
     async with pool:
         session_id = 'mock_session_id'

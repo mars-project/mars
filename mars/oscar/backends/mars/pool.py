@@ -569,6 +569,15 @@ class SubActorPool(ActorPoolBase):
     async def notify_main_pool_to_destroy(self, message: DestroyActorMessage):
         await self.call(self._main_address, message)
 
+    @implements(AbstractActorPool.actor_ref)
+    async def actor_ref(self,
+                        message: ActorRefMessage) -> result_message_type:
+        result = await super().actor_ref(message)
+        if isinstance(result, ErrorMessage):
+            message.actor_ref.address = self._main_address
+            result = await self.call(self._main_address, message)
+        return result
+
     @implements(AbstractActorPool.destroy_actor)
     async def destroy_actor(self,
                             message: DestroyActorMessage) -> result_message_type:

@@ -17,7 +17,9 @@ from collections import defaultdict
 from typing import Dict, List, Union, Tuple
 
 from ... import oscar as mo
+from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
+from ...storage.base import ObjectInfo, StorageFileObject
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ class StorageQuota:
         self._used_size -= size
 
 
-class DataMetaManagerActor(mo.Actor):
+class DataManagerActor(mo.Actor):
     def __init__(self):
         # mapping key is (session_id, data_key)
         # mapping value is list of (object_id, level, size)
@@ -91,6 +93,53 @@ class DataMetaManagerActor(mo.Actor):
                 self._mapping[(session_id, data_key)] = rest
 
 
+class StorageHandlerActor(mo.Actor):
+    def __init__(self, storage_init_params: Dict):
+        self._storage_init_params = storage_init_params
+
+    async def __post_create__(self):
+        self._clients = clients = dict()
+        for backend, init_params in self._storage_init_params.items():
+            storage_cls = get_storage_backend(backend)
+            client = storage_cls(**init_params)
+            for level in StorageLevel.__members__.values():
+                if client.level & level:
+                    clients[level] = client
+
+    async def get(self,
+                  object_id: object,
+                  level: StorageLevel,
+                  conditions: List = None):
+        return await self._clients[level].get(
+            object_id, conditions=conditions)
+
+    async def put(self,
+                  obj: object,
+                  level: StorageLevel) -> ObjectInfo:
+        object_info = await self._clients[level].put(obj)
+        return object_info
+
+    async def delete(self,
+                     object_id: str,
+                     level: StorageLevel):
+        await self._clients[level].delete(object_id)
+
+    async def open_reader(self,
+                          object_id,
+                          level: StorageLevel) -> StorageFileObject:
+        reader = await self._clients[level].open_reader(object_id)
+        return reader
+
+    async def open_writer(self,
+                          size: int,
+                          level: StorageLevel) -> StorageFileObject:
+        writer = await self._clients[level].open_writer(size)
+        return writer
+
+    async def list(self, level: StorageLevel) -> List:
+        return await self._clients[level].list()
+
+
 class StorageManagerActor(mo.Actor):
     def __init__(self,
                  storage_configs: Dict,
@@ -104,19 +153,30 @@ class StorageManagerActor(mo.Actor):
 
     async def __post_create__(self):
         # stores data key to storage object id
-        self._data_meta_ref = await mo.actor_ref(DataMetaManagerActor.default_uid(),
-                                                 address=self.address)
+        self._data_manager_ref = await mo.actor_ref(DataManagerActor.default_uid(),
+                                                    address=self.address)
         # setup storage backend
-        clients = dict()
         quotas = dict()
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
-                    clients[level] = client
                     quotas[level] = StorageQuota(client.size)
 
-        self._clients = clients
+        strategy = IdleLabel(None, 'StorageHandler')
+        while True:
+            try:
+                await mo.create_actor(StorageHandlerActor,
+                                      self._init_params,
+                                      uid=StorageHandlerActor.default_uid(),
+                                      address=self.address,
+                                      allocate_strategy=strategy)
+            except NoIdleSlot:
+                break
+
+        self._storage_handler_ref = await mo.actor_ref(
+            uid=StorageHandlerActor.default_uid(),
+            address=self.address)
         self._quotas = quotas
 
     async def __pre_destroy__(self):
