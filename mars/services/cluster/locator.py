@@ -24,9 +24,9 @@ from mars.utils import extensible
 class SupervisorLocatorActor(mo.Actor):
     _backend: Union[AbstractClusterBackend, None]
 
-    def __init__(self, backend_name: str, master_address: str):
+    def __init__(self, backend_name: str, lookup_address: str):
         self._backend_name = backend_name
-        self._master_address = master_address
+        self._lookup_address = lookup_address
         self._backend = None
         self._supervisors = None
         self._hash_ring = None
@@ -36,7 +36,7 @@ class SupervisorLocatorActor(mo.Actor):
 
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
-        self._backend = await backend_cls.create(self._master_address)
+        self._backend = await backend_cls.create(self._lookup_address)
         self._set_supervisors(await self._backend.get_supervisors())
 
         self._watch_task = asyncio.create_task(self._watch_backend())

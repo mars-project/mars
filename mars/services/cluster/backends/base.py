@@ -21,12 +21,12 @@ class AbstractClusterBackend(ABC):
 
     @classmethod
     @abstractmethod
-    async def create(cls, master_address: str) -> "AbstractClusterBackend":
+    async def create(cls, lookup_address: str) -> "AbstractClusterBackend":
         """
 
         Parameters
         ----------
-        master_address
+        lookup_address
 
         Returns
         -------

@@ -43,7 +43,7 @@ async def test_cluster_service(actor_pools):
         "services": ["cluster"],
         "cluster": {
             "backend": "fixed",
-            "master_address": sv_pool.external_address,
+            "lookup_address": sv_pool.external_address,
         }
     }
     await start_services(

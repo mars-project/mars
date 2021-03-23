@@ -21,12 +21,12 @@ from .base import AbstractClusterBackend, register_cluster_backend
 class FixedClusterBackend(AbstractClusterBackend):
     name = 'fixed'
 
-    def __init__(self, master_address: str):
-        self._supervisors = [n.strip() for n in master_address.split(',')]
+    def __init__(self, lookup_address: str):
+        self._supervisors = [n.strip() for n in lookup_address.split(',')]
 
     @classmethod
-    async def create(cls, master_address: str):
-        return cls(master_address)
+    async def create(cls, lookup_address: str):
+        return cls(lookup_address)
 
     async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         yield self._supervisors

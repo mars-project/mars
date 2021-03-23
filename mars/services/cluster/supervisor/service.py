@@ -30,7 +30,7 @@ async def start(config: dict, address: None):
         {
             "cluster": {
                 "backend": "<cluster backend name>",
-                "master_address": "<address of master>",
+                "lookup_address": "<address of master>",
                 "node_timeout": timeout seconds of nodes,
                 "node_check_interval": check interval seconds for nodes
             }
@@ -42,7 +42,7 @@ async def start(config: dict, address: None):
     await mo.create_actor(
         SupervisorLocatorActor,
         backend_name=svc_config.get('backend', 'fixed'),
-        master_address=svc_config.get('master_address'),
+        lookup_address=svc_config.get('lookup_address'),
         uid=SupervisorLocatorActor.default_uid(),
         address=address)
     await mo.create_actor(
