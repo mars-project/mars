@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 
 from ..utils import TypeDispatcher
 
+import cloudpickle
 if sys.version_info[:2] < (3, 8):
     try:
         import pickle5 as pickle  # nosec  # pylint: disable=import_pickle
@@ -60,18 +61,18 @@ def pickle_buffers(obj):
                 x = x.cast(x.format)
             buffers.append(memoryview(x))
 
-        buffers[0] = pickle.dumps(
+        buffers[0] = cloudpickle.dumps(
             obj,
             buffer_callback=buffer_cb,
             protocol=BUFFER_PICKLE_PROTOCOL,
         )
     else:  # pragma: no cover
-        buffers[0] = pickle.dumps(obj)
+        buffers[0] = cloudpickle.dumps(obj)
     return buffers
 
 
 def unpickle_buffers(buffers):
-    return pickle.loads(buffers[0], buffers=buffers[1:])
+    return cloudpickle.loads(buffers[0], buffers=buffers[1:])
 
 
 class ScalarSerializer(Serializer):
@@ -247,6 +248,11 @@ class Placeholder:
 
     def __hash__(self):
         return hash(self.id)
+
+    def __eq__(self, other):  # pragma: no cover
+        if not isinstance(other, Placeholder):
+            return False
+        return self.id == other.id
 
 
 def serialize(obj, context: Dict = None):

@@ -7,4 +7,4 @@ scipy==1.5.4; python_version>='3.9'
 cython==0.29.21
 protobuf==3.6.1
 requests>=2.4.0
-cloudpickle>=1.0.0
+cloudpickle>=1.5.0
