@@ -14,6 +14,7 @@
 
 import subprocess
 import os
+from typing import NamedTuple, Union
 
 version_info = (0, 7, 0, 'a7')
 _num_index = max(idx if isinstance(v, int) else 0
@@ -31,7 +32,12 @@ def _get_cmd_results(pkg_root, cmd):
         return s
 
 
-def get_git_info():
+class GitInfo(NamedTuple):
+    commit_hash: str
+    commit_ref: str
+
+
+def get_git_info() -> Union[GitInfo, None]:
     pkg_root = os.path.dirname(os.path.abspath(__file__))
     git_root = os.path.join(os.path.dirname(pkg_root), '.git')
 
@@ -52,11 +58,11 @@ def get_git_info():
                 commit_ref = commit_ref.rstrip(')')
         if commit_ref is None:
             return
-        return commit_hash, commit_ref
+        return GitInfo(commit_hash, commit_ref)
     else:
         branch_file = os.path.join(pkg_root, '.git-branch')
         if not os.path.exists(branch_file):
             return
         with open(branch_file, 'r') as bf:
             bf_content = bf.read().strip()
-            return bf_content.split(None, 1)
+            return GitInfo(*bf_content.split(None, 1))

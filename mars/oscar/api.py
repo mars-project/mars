@@ -19,25 +19,25 @@ from collections import defaultdict
 
 from .backend import get_backend
 from .context import get_context
-from .core import _Actor
+from .core import _Actor, ActorRef
 
 
-async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs):
+async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs) -> ActorRef:
     ctx = get_context()
     return await ctx.create_actor(actor_cls, *args, uid=uid, address=address, **kwargs)
 
 
-async def has_actor(actor_ref):
+async def has_actor(actor_ref: ActorRef) -> bool:
     ctx = get_context()
     return await ctx.has_actor(actor_ref)
 
 
-async def destroy_actor(actor_ref):
+async def destroy_actor(actor_ref: ActorRef):
     ctx = get_context()
     return await ctx.destroy_actor(actor_ref)
 
 
-async def actor_ref(*args, **kwargs):
+async def actor_ref(*args, **kwargs) -> ActorRef:
     ctx = get_context()
     return await ctx.actor_ref(*args, **kwargs)
 

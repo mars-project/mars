@@ -58,6 +58,14 @@ class Test(unittest.TestCase):
         self.assertGreaterEqual(recv_speed, 0)
         self.assertGreaterEqual(send_speed, 0)
 
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        resource.disk_io_usage(curdir)
+        time.sleep(0.1)
+        usage = resource.disk_io_usage(curdir)
+        if usage is not None:
+            self.assertGreaterEqual(usage.reads, 0)
+            self.assertGreaterEqual(usage.writes, 0)
+
         resource.net_io_usage()
         time.sleep(0.1)
         recv_speed, send_speed = resource.net_io_usage()

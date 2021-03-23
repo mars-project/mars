@@ -16,7 +16,7 @@ import logging
 import os
 
 from ..actors import FunctionActor
-from ..node_info import gather_node_info
+from ..node_info import gather_node_env
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class NodeInfoActor(FunctionActor):
         self.ref().gather_info()
 
     def gather_info(self):
-        self._node_info = gather_node_info()
+        self._node_info = gather_node_env()
         self.ref().gather_info(_tell=True, _delay=1)
 
     def get_info(self):

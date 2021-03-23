@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import aio to ensure patch enabled for Python 3.6
-from ..lib import aio
-del aio
-
-from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool, setup_cluster
-from .core import ActorRef
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
-
-# make sure methods are registered
-from .backends import mars, ray
-del mars, ray
+from .base import AbstractClusterBackend, register_cluster_backend, \
+    get_cluster_backend
+from .fixed import FixedClusterBackend

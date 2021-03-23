@@ -19,6 +19,7 @@ import subprocess  # nosec
 import sys
 import time
 from collections import namedtuple
+from typing import List, Union
 
 import psutil
 
@@ -78,7 +79,7 @@ def _read_cgroup_stat_file():
 _root_pid = None
 
 
-def virtual_memory():
+def virtual_memory() -> _virt_memory_stat:
     global _root_pid
 
     sys_mem = psutil.virtual_memory()
@@ -219,12 +220,35 @@ def iowait():
         return None
 
 
-_last_disk_io_meta = None
+_last_disk_io_metas = dict()
+_path_to_device = dict()
 _win_diskperf_called = False
 
 
-def disk_io_usage():
-    global _last_disk_io_meta, _win_diskperf_called
+def get_path_device(path: str):
+    for part in psutil.disk_partitions(all=True):
+        if path.startswith(part.mountpoint):
+            return part.device
+    return None
+
+
+def _get_path_device(path: str):
+    if path in _path_to_device:
+        return _path_to_device[path]
+
+    for part in psutil.disk_partitions(all=True):
+        if path.startswith(part.mountpoint):
+            dev_name = _path_to_device[path] = part.device.replace('/dev/', '')
+            return dev_name
+    _path_to_device[path] = None
+    return None
+
+
+_disk_io_usage_type = namedtuple('_disk_io_usage_type', 'reads writes')
+
+
+def disk_io_usage(path=None) -> Union[_disk_io_usage_type, None]:
+    global _win_diskperf_called
 
     # Needed by psutil.disk_io_counters() under newer version of Windows.
     # diskperf -y need to be called or no disk information can be found.
@@ -238,22 +262,28 @@ def disk_io_usage():
             pass
         _win_diskperf_called = True
 
-    disk_counters = psutil.disk_io_counters()
+    if path is None:
+        disk_counters = psutil.disk_io_counters()
+    else:
+        dev_to_counters = psutil.disk_io_counters(perdisk=True)
+        disk_counters = dev_to_counters.get(_get_path_device(path))
+        if disk_counters is None:
+            return None
     tst = time.time()
 
     read_bytes = disk_counters.read_bytes
     write_bytes = disk_counters.write_bytes
-    if _last_disk_io_meta is None:
-        _last_disk_io_meta = (read_bytes, write_bytes, tst)
+    if path not in _last_disk_io_metas:
+        _last_disk_io_metas[path] = (read_bytes, write_bytes, tst)
         return None
 
-    last_read_bytes, last_write_bytes, last_time = _last_disk_io_meta
+    last_read_bytes, last_write_bytes, last_time = _last_disk_io_metas[path]
     delta_time = tst - last_time
     read_speed = (read_bytes - last_read_bytes) / delta_time
     write_speed = (write_bytes - last_write_bytes) / delta_time
 
-    _last_disk_io_meta = (read_bytes, write_bytes, tst)
-    return read_speed, write_speed
+    _last_disk_io_metas[path] = (read_bytes, write_bytes, tst)
+    return _disk_io_usage_type(read_speed, write_speed)
 
 
 _last_net_io_meta = None
@@ -301,7 +331,7 @@ def cuda_count():
     return nvutils.get_device_count() or 0
 
 
-def cuda_card_stats():  # pragma: no cover
+def cuda_card_stats() -> List[_cuda_card_stat]:  # pragma: no cover
     infos = []
     device_count = nvutils.get_device_count()
     if not device_count:

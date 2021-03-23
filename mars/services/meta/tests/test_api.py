@@ -47,8 +47,8 @@ async def test_meta_mock_api(obj):
         session_id = 'mock_session_id'
 
         meta_api = await MockMetaAPI.create(
-            dict(session_id=session_id,
-                 address=pool.external_address))
+            session_id=session_id,
+            address=pool.external_address)
 
         await meta_api.set_tileable_meta(obj)
         meta = await meta_api.get_tileable_meta(obj.key,

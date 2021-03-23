@@ -21,7 +21,7 @@ from collections import defaultdict
 from .utils import WorkerActor, ExpMeanHolder
 from .. import resource
 from ..config import options
-from ..node_info import gather_node_info
+from ..node_info import gather_node_env
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +164,7 @@ class StatusReporterActor(WorkerActor):
                 meta_dict['slots'][k] = v
 
             meta_dict['progress'] = self._status_ref.get_progress()
-            meta_dict['details'] = gather_node_info()
+            meta_dict['details'] = gather_node_env()
 
             if options.vineyard.enabled:  # pragma: no cover
                 import vineyard

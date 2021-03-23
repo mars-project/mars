@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 _is_initial = True
 
 
-def gather_node_info():
+def gather_node_env():
     from .lib.mkl_interface import mkl_get_version
     from .lib.nvutils import NVError
     global _is_initial
@@ -59,7 +59,7 @@ def gather_node_info():
         'command_line': ' '.join(sys.argv),
         'platform': platform.platform(),
         'host_name': socket.gethostname(),
-        'sys_version': sys.version,
+        'python_version': sys.version,
         'cpu_used': resource.cpu_percent() / 100.0,
         'cpu_total': resource.cpu_count(),
         'memory_used': mem_stats.used,

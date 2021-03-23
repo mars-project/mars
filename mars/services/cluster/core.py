@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import aio to ensure patch enabled for Python 3.6
-from ..lib import aio
-del aio
+import time
+from dataclasses import dataclass, field
+from typing import Dict
 
-from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool, setup_cluster
-from .core import ActorRef
-from .errors import ActorNotExist, ActorAlreadyExist
-from .utils import create_actor_ref
+from ..core import NodeRole
 
-# make sure methods are registered
-from .backends import mars, ray
-del mars, ray
+
+@dataclass
+class NodeInfo:
+    role: NodeRole
+    update_time: float = field(default_factory=time.time)
+    env: Dict = field(default_factory=dict)
+    resource: Dict = field(default_factory=dict)
+    state: Dict = field(default_factory=dict)
