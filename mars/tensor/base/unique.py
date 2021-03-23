@@ -401,8 +401,8 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 kw = dict(return_index=op.return_index,
                           return_inverse=op.return_inverse,
                           return_counts=op.return_counts)
-                if ar.dtype != object:
-                    # axis cannot pass when dtype is object
+                if ar.dtype != object and sum(ar.shape) > 0:
+                    # axis cannot pass when dtype is object or array size is 0
                     kw['axis'] = op.axis
                 results = xp.unique(ar, **kw)
                 outs = op.outputs
