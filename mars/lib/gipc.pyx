@@ -442,6 +442,30 @@ except ImportError:
     ForkProcess = multiprocessing.Process
 
 
+if not WINDOWS:
+    try:
+        from multiprocessing.forking import Popen as mp_Popen
+    except ImportError:  # pragma: no cover
+        # multiprocessing's internal structure has changed from 3.3 to 3.4.
+        from multiprocessing.popen_fork import Popen as mp_Popen
+
+    # multiprocessing.process.Process.start() and other methods may
+    # call multiprocessing.process._cleanup(). This and other mp methods
+    # may call multiprocessing's Popen.poll() which itself invokes
+    # os.waitpid(). In extreme cases (high-frequent child process
+    # creation, short-living child processes), this competes with libev's
+    # SIGCHLD handler and may win, resulting in libev not being able to
+    # retrieve all SIGCHLD signals corresponding to started children. This
+    # could make certain _GProcess.join() calls block forever.
+    # -> Prevent multiprocessing's Popen.poll() from calling
+    # os.waitpid(). Let libev do the job.
+    class _GPopen(mp_Popen):
+        def poll(self, *args, **kwargs):
+            pass
+else:
+    _GPopen = None
+
+
 class _GProcess(ForkProcess):
     """
     Compatible with the ``multiprocessing.Process`` API.
@@ -488,24 +512,9 @@ class _GProcess(ForkProcess):
     # On Windows, cooperative `join()` is realized via polling (non-blocking
     # calls to `Process.is_alive()`) and the original `join()` method.
     if not WINDOWS:
-        # multiprocessing.process.Process.start() and other methods may
-        # call multiprocessing.process._cleanup(). This and other mp methods
-        # may call multiprocessing's Popen.poll() which itself invokes
-        # os.waitpid(). In extreme cases (high-frequent child process
-        # creation, short-living child processes), this competes with libev's
-        # SIGCHLD handler and may win, resulting in libev not being able to
-        # retrieve all SIGCHLD signals corresponding to started children. This
-        # could make certain _GProcess.join() calls block forever.
-        # -> Prevent multiprocessing's Popen.poll() from calling
-        # os.waitpid(). Let libev do the job.
-        try:
-            from multiprocessing.forking import Popen as mp_Popen
-        except ImportError:  # pragma: no cover
-            # multiprocessing's internal structure has changed from 3.3 to 3.4.
-            from multiprocessing.popen_fork import Popen as mp_Popen
-        # Monkey-patch and forget about the name.
-        mp_Popen.poll = lambda *a, **b: None
-        del mp_Popen
+        @staticmethod
+        def _Popen(process_obj):
+            return _GPopen(process_obj)
 
         def start(self):
             # Start grabbing SIGCHLD within libev event loop.

@@ -8,16 +8,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-16.04]
+        os: [ubuntu-latest]
         python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-vineyard, 3.8-ray]
         include:
-          - { os: ubuntu-16.04, python-version: 3.8-kubernetes, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-16.04, python-version: 3.8-hadoop, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-hadoop, no-common-tests: 1,
               no-deploy: 1, with-hadoop: "with hadoop" }
-          - { os: ubuntu-16.04, python-version: 3.8-vineyard, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
-          - { os: ubuntu-16.04, python-version: 3.8-ray, no-common-tests: 1,
+          - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
               no-deploy: 1, with-ray: "with ray" }
 
     steps:
