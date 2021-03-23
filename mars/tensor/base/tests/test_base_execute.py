@@ -1024,6 +1024,17 @@ class Test(TestBase):
         res = np.sort(self.executor.execute_tensor(y, concat=True)[0])
         np.testing.assert_array_equal(res, np.unique(sparse_raw.data))
 
+        # test empty
+        x = tensor([])
+        y = unique(x)
+        res = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_array_equal(res, np.unique([]))
+
+        x = tensor([[]])
+        y = unique(x)
+        res = self.executor.execute_tensor(y, concat=True)[0]
+        np.testing.assert_array_equal(res, np.unique([[]]))
+
     @require_cupy
     def testToGPUExecution(self):
         raw = np.random.rand(10, 10)

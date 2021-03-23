@@ -18,7 +18,7 @@ from typing import List, Dict, Union, Type, TypeVar
 from ... import oscar as mo
 from ..core import NodeRole
 
-T = TypeVar('T', bound='ClusterApi')
+T = TypeVar('T', bound='ClusterAPI')
 
 
 class ClusterAPI:

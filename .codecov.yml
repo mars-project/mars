@@ -15,9 +15,6 @@ coverage:
 
 comment: off
 
-github_checks:
-  annotations: false
-
 # Matches 'omit:' in .coveragerc
 ignore:
   - "mars/compat.py"
