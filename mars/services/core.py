@@ -13,11 +13,17 @@
 # limitations under the License.
 
 import asyncio
+import enum
 import importlib
 from typing import Dict, List, Union
 
 
-async def start_services(service_type: str, config: Dict,
+class NodeRole(enum.Enum):
+    SUPERVISOR = 0
+    WORKER = 1
+
+
+async def start_services(node_role: NodeRole, config: Dict,
                          modules: Union[List, str, None] = None,
                          address: str = None):
     if modules is None:
@@ -43,7 +49,7 @@ async def start_services(service_type: str, config: Dict,
             for mod_name in modules:
                 try:
                     svc_mod = importlib.import_module(
-                        mod_name + '.' + svc_name + '.' + service_type)
+                        mod_name + '.' + svc_name + '.' + node_role.name.lower())
                     svc_entries.append(getattr(svc_mod, 'start'))
 
                     try:
@@ -56,7 +62,7 @@ async def start_services(service_type: str, config: Dict,
                 except ImportError:
                     pass
             if svc_mod is None:
-                raise ImportError(f'Cannot discover {service_type} for service {svc_name}')
+                raise ImportError(f'Cannot discover {node_role} for service {svc_name}')
         svc_entries_list.append(svc_entries)
 
     if 'web' in service_names:

@@ -169,24 +169,25 @@ def readable_size(size, trunc=False):
         return f'{int(ret_size)}{size_unit}'
 
 
-_commit_hash, _commit_ref = None, None
+_git_info = None
 
 
 def git_info():
     from ._version import get_git_info
 
-    global _commit_hash, _commit_ref
-    if _commit_ref is not None:
-        if _commit_hash is None:
+    global _git_info
+    if _git_info is not None:
+        if _git_info == ':INVALID:':
             return None
-        return _commit_hash, _commit_ref
+        else:
+            return _git_info
 
     git_tuple = get_git_info()
     if git_tuple is None:
-        _commit_ref, _commit_hash = ':INVALID:', None
+        _git_info = ':INVALID:'
         return None
     else:
-        _commit_hash, _commit_ref = git_tuple
+        _git_info = git_tuple
         return git_tuple
 
 

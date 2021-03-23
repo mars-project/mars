@@ -12,80 +12,165 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict
+import asyncio
+from typing import List, Dict, Union, Type, TypeVar
+
+from ... import oscar as mo
+from ..core import NodeRole
+
+T = TypeVar('T', bound='ClusterAPI')
 
 
-class ClusterApi:
-    @staticmethod
-    async def create(config: Dict) -> "ClusterApi":
-        pass
+class ClusterAPI:
+    def __init__(self, address: str):
+        self._address = address
+        self._locator_ref = None
+        self._uploader_ref = None
+        self._node_info_ref = None
 
-    async def refresh_resources(self):
+    async def _init(self):
+        from .locator import SupervisorLocatorActor
+        from .uploader import NodeInfoUploaderActor
+        from .supervisor.node_info import NodeInfoCollectorActor
+
+        self._locator_ref = await mo.actor_ref(SupervisorLocatorActor.default_uid(),
+                                               address=self._address)
+        self._uploader_ref = await mo.actor_ref(NodeInfoUploaderActor.default_uid(),
+                                                address=self._address)
+        [self._node_info_ref] = await self.get_supervisor_refs(
+            [NodeInfoCollectorActor.default_uid()])
+
+    @classmethod
+    async def create(cls: Type[T], address: str) -> T:
+        api_obj = cls(address)
+        await api_obj._init()
+        return api_obj
+
+    async def get_supervisors(self, watch=False) -> List[str]:
         """
-        Refresh resource info of current node into service
-        """
+        Get or watch supervisor addresses
 
-    async def get_supervisor(self, key: str) -> str:
+        Returns
+        -------
+        out
+            list of
         """
-        Get supervisor address hosting the specified session
+        if watch:
+            return await self._locator_ref.watch_supervisors()
+        else:
+            return await self._locator_ref.get_supervisors()
+
+    async def get_supervisors_by_keys(self, keys: List[str], watch: bool = False) -> List[str]:
+        """
+        Get supervisor address hosting the specified key
 
         Parameters
         ----------
-        key : str
+        keys
             key for a supervisor address
+        watch
+            if True, will watch changes of supervisor changes
 
         Returns
         -------
-        out : str
-            address of the supervisor
+        out
+            addresses of the supervisor
         """
+        if not watch:
+            return await self._locator_ref.batch(
+                *(self._locator_ref.get_supervisor(k) for k in keys)
+            )
+        else:
+            return await self._locator_ref.watch_supervisors_by_keys(keys)
 
-    async def watch_supervisors(self) -> List[str]:
+    async def get_supervisor_refs(self, uids: List[str], watch: bool = False) -> List[mo.ActorRef]:
         """
-        Watch changes of supervisors
+        Get actor references hosting the specified actor uid
+
+        Parameters
+        ----------
+        uids
+            uids for a supervisor address
+        watch
+            if True, will watch changes of supervisor changes
 
         Returns
         -------
-        out: List[str]
-            list of supervisor addresses
+        out : List[mo.ActorRef]
+            references of the actors
         """
+        addrs = await self.get_supervisors_by_keys(uids, watch=watch)
+        return await asyncio.gather(*[
+            mo.actor_ref(uid, address=addr) for addr, uid in zip(addrs, uids)
+        ])
 
-    async def watch_workers(self) -> List[Dict[str, Dict]]:
+    async def watch_nodes(self, role: NodeRole, env: bool = False,
+                          resource: bool = False, state: bool = False) -> List[Dict[str, Dict]]:
         """
         Watch changes of workers
 
         Returns
         -------
-        out: List[Dict[str, Dict]
+        out: List[Dict[str, Dict]]
             dict of worker resources by addresses and bands
         """
+        return await self._node_info_ref.watch_nodes(
+            role, env=env, resource=resource, state=state)
 
-    async def watch_worker(self, worker_address: str) -> Dict:
-        """
-        Watch worker info update
-
-        Parameters
-        ----------
-        worker_address : str
-            address of worker
-
-        Returns
-        -------
-        out: Dict
-            info of worker
-        """
-
-    async def get_worker_info(self, worker_address: str):
+    async def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
+                             env: bool = False, resource: bool = False, state: bool = False):
         """
         Get worker info
 
         Parameters
         ----------
-        worker_address : str
-            address of worker
+        nodes
+            address of nodes
+        role
+            roles of nodes
+        env
+            receive env info
+        resource
+            receive resource info
+        state
+            receive state info
 
         Returns
         -------
         out: Dict
             info of worker
         """
+        return await self._node_info_ref.get_nodes_info(
+            nodes=nodes, role=role, env=env, resource=resource, state=state)
+
+    async def set_state_value(self, key: str, value: Union[List, Dict]):
+        await self._uploader_ref.set_state_value(key, value)
+
+
+class MockClusterAPI(ClusterAPI):
+    @classmethod
+    async def create(cls: Type[T], address: str, **kw) -> T:
+        from .locator import SupervisorLocatorActor
+        from .uploader import NodeInfoUploaderActor
+        from .supervisor.node_info import NodeInfoCollectorActor
+
+        dones, _ = await asyncio.wait([
+            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
+                            uid=SupervisorLocatorActor.default_uid(),
+                            address=address),
+            mo.create_actor(NodeInfoCollectorActor,
+                            uid=NodeInfoCollectorActor.default_uid(),
+                            address=address),
+            mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
+                            interval=kw.get('upload_interval'),
+                            uid=NodeInfoUploaderActor.default_uid(),
+                            address=address),
+        ])
+
+        for task in dones:
+            try:
+                task.result()
+            except mo.ActorAlreadyExist:  # pragma: no cover
+                pass
+
+        return await super().create(address=address)

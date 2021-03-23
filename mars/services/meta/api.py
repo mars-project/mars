@@ -30,24 +30,20 @@ class MetaAPI:
         self._meta_store = meta_store
 
     @classmethod
-    async def create(cls, config: Dict) -> "MetaAPI":
+    async def create(cls, session_id: str, address: str) -> "MetaAPI":
         """
         Create Meta API according to config.
 
         Parameters
         ----------
-        config
+        session_id
+        address
 
         Returns
         -------
         meta_api
             Meta api.
         """
-        config = config.copy()
-        session_id = config.pop('session_id')
-        address = config.pop('address')
-        if config:
-            raise TypeError(f'Config {config!r} cannot be recognized.')
         meta_store_ref = await mo.actor_ref(mo.create_actor_ref(
             address, MetaStoreActor.gen_uid(session_id)))
         return MetaAPI(session_id, meta_store_ref)
@@ -108,9 +104,7 @@ class MetaAPI:
 
 class MockMetaAPI(MetaAPI):
     @classmethod
-    async def create(cls, config: Dict) -> "MetaAPI":
-        session_id = config.get('session_id')
-        address = config.get('address')
+    async def create(cls, session_id: str, address: str) -> "MetaAPI":
         # create an Actor for mock
         try:
             await mo.create_actor(MetaStoreActor, 'mock', session_id,
@@ -120,4 +114,4 @@ class MockMetaAPI(MetaAPI):
         except mo.ActorAlreadyExist:
             # ignore if actor exists
             pass
-        return await super().create(config)
+        return await super().create(session_id=session_id, address=address)

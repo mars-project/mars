@@ -5,3 +5,4 @@ requests>=2.4.0
 cloudpickle>=1.5.0
 pickle5; python_version<'3.8'
 async_generator; python_version<'3.7'
+dataclasses; python_version<'3.7'

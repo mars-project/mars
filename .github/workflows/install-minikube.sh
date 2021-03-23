@@ -23,8 +23,12 @@ curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/miniku
   chmod +x minikube && sudo mv minikube /usr/local/bin/
 
 sudo minikube start --vm-driver=none --kubernetes-version=$K8S_VERSION
-sudo chown -R $(id -u):$(id -g) $HOME/.minikube
-sudo chown -R $(id -u):$(id -g) $HOME/.kube
+export KUBECONFIG=$HOME/.kube/config
+sudo cp -R /root/.kube /root/.minikube $HOME/
+sudo chown -R $(id -u):$(id -g) $HOME/.kube $HOME/.minikube
+
+sed "s/root/home\/$USER/g" $KUBECONFIG > tmp
+mv tmp $KUBECONFIG
 
 minikube update-context
 

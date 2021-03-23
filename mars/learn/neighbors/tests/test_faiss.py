@@ -154,7 +154,8 @@ class Test(unittest.TestCase):
                 expected_distance, expected_indices = nn.kneighbors(y, 5)
 
                 np.testing.assert_array_equal(indices, expected_indices.fetch())
-                np.testing.assert_almost_equal(distance, expected_distance.fetch())
+                np.testing.assert_almost_equal(
+                    distance, expected_distance.fetch(), decimal=4)
 
                 # test other index
                 X2 = X.astype(np.float64)

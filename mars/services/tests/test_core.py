@@ -16,7 +16,7 @@ import pytest
 from tornado.httpclient import AsyncHTTPClient
 
 import mars.oscar as mo
-from mars.services import start_services
+from mars.services import NodeRole, start_services
 from mars.utils import get_next_port
 
 
@@ -38,7 +38,7 @@ async def test_start_service(actor_pool_context):
         'test_svc2': {'uid': 'TestActor2', 'arg2': 'val2',  'ref': 'TestActor1'},
         'web': {'port': web_port},
     }
-    await start_services('supervisor', config, 'mars.services.tests.test_svcs',
+    await start_services(NodeRole.SUPERVISOR, config, 'mars.services.tests.test_svcs',
                          address=pool.external_address)
 
     ref1 = await mo.actor_ref('TestActor1', address=pool.external_address)
@@ -47,7 +47,7 @@ async def test_start_service(actor_pool_context):
     assert await ref2.get_arg() == 'val1:val2'
 
     with pytest.raises(ImportError):
-        await start_services('supervisor', {'services': ['non-exist-svc']},
+        await start_services(NodeRole.SUPERVISOR, {'services': ['non-exist-svc']},
                              address=pool.external_address)
 
     http_client = AsyncHTTPClient()
