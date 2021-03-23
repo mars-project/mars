@@ -86,14 +86,14 @@ class SerializableGraph(Serializable):
 class GraphSerializer(SerializableSerializer):
     serializer_name = 'graph'
 
-    def serialize(self, obj: Union[TileableGraph, ChunkGraph]):
+    def serialize(self, obj: Union[TileableGraph, ChunkGraph], context: Dict):
         serializable_graph = SerializableGraph.from_graph(obj)
-        return super().serialize(serializable_graph)
+        return super().serialize(serializable_graph, context)
 
-    def deserialize(self, header: Dict, buffers: List) \
+    def deserialize(self, header: Dict, buffers: List, context: Dict) \
             -> Union[TileableGraph, ChunkGraph]:
         serializable_graph: SerializableGraph = \
-            super().deserialize(header, buffers)
+            super().deserialize(header, buffers, context)
         return serializable_graph.to_graph()
 
 

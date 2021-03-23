@@ -71,7 +71,7 @@ class SerializableSerializer(DictSerializer):
     """
     serializer_name = 'serializable'
 
-    def serialize(self, obj: Serializable):
+    def serialize(self, obj: Serializable, context: Dict):
         fields = obj._FIELDS
         tag_to_values = getattr(obj, _STORE_VALUE_PROPERTY).copy()
 
@@ -86,13 +86,13 @@ class SerializableSerializer(DictSerializer):
             if isinstance(field, FunctionField):
                 tag_to_values[tag] = cloudpickle.dumps(value)
 
-        header, buffers = super().serialize(tag_to_values)
+        header, buffers = super().serialize(tag_to_values, context)
         header['class'] = type(obj)
         return header, buffers
 
-    def deserialize(self, header: Dict, buffers: List) -> Serializable:
+    def deserialize(self, header: Dict, buffers: List, context: Dict) -> Serializable:
         obj_class: Type[Serializable] = header.pop('class')
-        tag_to_values = super().deserialize(header, buffers)
+        tag_to_values = super().deserialize(header, buffers, context)
 
         property_to_values = dict()
         for property_name, field in obj_class._FIELDS.items():
@@ -110,13 +110,16 @@ class SerializableSerializer(DictSerializer):
                     value = tag_to_values[field.tag]
                 except KeyError:
                     continue
-            if field.on_deserialize:
+            if value is not None and field.on_deserialize:
                 value = field.on_deserialize(value)
             if isinstance(field, FunctionField):
                 value = cloudpickle.loads(value)
             property_to_values[property_name] = value
 
-        return obj_class(**property_to_values)
+        obj = obj_class()
+        for prop, value in property_to_values.items():
+            setattr(obj, prop, value)
+        return obj
 
 
 SerializableSerializer.register(Serializable)

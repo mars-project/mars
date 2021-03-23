@@ -151,7 +151,7 @@ class CollectionSerializer(Serializer):
             obj_type = pickle.loads(header['obj_type'])
         if hasattr(obj_type, '_fields'):
             # namedtuple
-            return obj_type(*self._iter_deserial(header['headers'], buffers))
+            return obj_type(*self._iter_deserial(header['headers'], buffers, context))
         else:
             return obj_type(self._iter_deserial(header['headers'], buffers, context))
 
