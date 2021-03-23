@@ -18,7 +18,7 @@ from typing import Dict, Union
 from ...errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, \
-    DesrializeMessageFailed
+    DeserializeMessageFailed
 from .router import Router
 
 
@@ -58,7 +58,7 @@ class ActorCaller:
                     raise ServerClosed(f'Remote server {client.dest_address} closed')
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
-            except DesrializeMessageFailed as e:  # pragma: no cover
+            except DeserializeMessageFailed as e:  # pragma: no cover
                 message_id = e.message_id
                 future = self._client_to_message_futures[client].pop(message_id)
                 future.set_exception(e)

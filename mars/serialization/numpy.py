@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, List
+
 import numpy as np
 
 from .core import Serializer, pickle_buffers, unpickle_buffers
@@ -20,7 +22,7 @@ from .core import Serializer, pickle_buffers, unpickle_buffers
 class NDArraySerializer(Serializer):
     serializer_name = 'np_ndarray'
 
-    def serialize(self, obj: np.ndarray):
+    def serialize(self, obj: np.ndarray, context: Dict):
         header = {}
         if obj.dtype.hasobject:
             header['pickle'] = True
@@ -41,7 +43,7 @@ class NDArraySerializer(Serializer):
         ))
         return header, [memoryview(obj.ravel(order=order).view('uint8').data)]
 
-    def deserialize(self, header, buffers):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         if header['pickle']:
             return unpickle_buffers(buffers)
 

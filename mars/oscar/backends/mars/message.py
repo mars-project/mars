@@ -288,7 +288,7 @@ class CancelMessage(_MessageBase):
         return MessageType.cancel
 
 
-class DesrializeMessageFailed(Exception):
+class DeserializeMessageFailed(Exception):
     def __init__(self, message_id):
         self.message_id = message_id
 
@@ -299,20 +299,20 @@ class DesrializeMessageFailed(Exception):
 class MessageSerializer(Serializer):
     serializer_name = 'actor_message'
 
-    def serialize(self, obj: _MessageBase):
+    def serialize(self, obj: _MessageBase, context: Dict):
         assert obj.protocol == 0, 'only support protocol 0 for now'
         # use pickle for protocol 0
         return {'protocol': 0, 'message_id': obj.message_id}, \
-               pickle_buffers(obj)
+            pickle_buffers(obj)
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         protocol = header['protocol']
         assert protocol == 0, 'only support protocol 0 for now'
         message_id = header['message_id']
         try:
             return unpickle_buffers(buffers)
         except pickle.UnpicklingError as e:  # pragma: no cover
-            raise DesrializeMessageFailed(message_id) from e
+            raise DeserializeMessageFailed(message_id) from e
 
 
 # register message serializer

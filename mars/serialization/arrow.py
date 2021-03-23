@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import typing
+from typing import Union, List, Dict
 
 from .core import Serializer
 
@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover
 class ArrowBatchSerializer(Serializer):
     serializer_name = 'arrow'
 
-    def serialize(self, obj: typing.Union[pa.Table, pa.RecordBatch]):
+    def serialize(self, obj: Union[pa.Table, pa.RecordBatch], context: Dict):
         header = {}
 
         sink = pa.BufferOutputStream()
@@ -42,7 +42,7 @@ class ArrowBatchSerializer(Serializer):
         buffers = [buf]
         return header, buffers
 
-    def deserialize(self, header, buffers):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         reader = pa.RecordBatchStreamReader(pa.BufferReader(buffers[0]))
         if header['type'] == 'Table':
             return reader.read_all()

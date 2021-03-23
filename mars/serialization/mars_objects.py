@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List
+from typing import Any, Dict, List
 
 try:
     import scipy.sparse as sps
@@ -26,14 +26,14 @@ from .core import Serializer, serialize, deserialize
 class SparseNDArraySerializer(Serializer):
     serializer_name = 'mars.SparseNDArray'
 
-    def serialize(self, obj):
+    def serialize(self, obj: Any, context: Dict):
         raw_header, raw_buffers = serialize(obj.raw)
         header = {
             'raw_header': raw_header, 'shape': list(obj.shape),
         }
         return header, raw_buffers
 
-    def deserialize(self, header: Dict, buffers: List):
+    def deserialize(self, header: Dict, buffers: List, context: Dict):
         raw_csr = deserialize(header['raw_header'], buffers)
         return SparseNDArray(raw_csr, shape=tuple(header['shape']))
 
