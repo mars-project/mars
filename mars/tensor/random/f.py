@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorF(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_dfnum', '_dfden', '_size'
     _input_fields_ = ['_dfnum', '_dfden']
     _op_type_ = OperandDef.RAND_F
 
+    _fields_ = '_dfnum', '_dfden', '_size'
     _dfnum = AnyField('dfnum')
     _dfden = AnyField('dfden')
     _func_name = 'f'

@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorVonmises(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_mu', '_kappa', '_size'
     _input_fields_ = ['_mu', '_kappa']
     _op_type_ = OperandDef.RAND_VONMISES
 
+    _fields_ = '_mu', '_kappa', '_size'
     _mu = AnyField('mu')
     _kappa = AnyField('kappa')
     _func_name = 'vonmises'

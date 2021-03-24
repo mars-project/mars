@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorTriangular(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_left', '_mode', '_right', '_size'
     _input_fields_ = ['_left', '_mode', '_right']
     _op_type_ = OperandDef.RAND_TRIANGULAR
 
+    _fields_ = '_left', '_mode', '_right', '_size'
     _left = AnyField('left')
     _mode = AnyField('mode')
     _right = AnyField('right')

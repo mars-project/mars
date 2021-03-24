@@ -20,12 +20,12 @@ import functools
 import itertools
 from concurrent.futures import ThreadPoolExecutor
 from operator import attrgetter
-from typing import List
+from typing import List, Union
 from weakref import WeakKeyDictionary, WeakSet, ref
 
 import numpy as np
 
-from .serialize import HasKey, HasData, ValueType, ProviderType, Serializable, AttributeAsDict, \
+from .serialize import Serializable, HasKey, HasData, ValueType, ProviderType, AttributeAsDict, \
     TupleField, ListField, DictField, KeyField, BoolField, StringField
 from .tiles import Tileable, handler
 from .utils import tokenize, AttributeDict, on_serialize_shape, \
@@ -89,7 +89,7 @@ class Base(HasKey):
         return self.copy_to(type(self)(_key=self.key))
 
     def copy_to(self, target):
-        for attr in self.__slots__:
+        for attr in self._FIELDS:
             if (attr.startswith('__') and attr.endswith('__')) or attr in self._no_copy_attrs_:
                 # we don't copy id to identify that the copied one is new
                 continue
@@ -182,10 +182,18 @@ class SerializableWithKey(Base, Serializable):
     _key = StringField('key')
     _id = StringField('id')
 
+    def __init__(self, *args, **kwargs):
+        Serializable.__init__(self, *args, **kwargs)
+        Base.__init__(self, *args, **kwargs)
+
 
 class AttributeAsDictKey(Base, AttributeAsDict):
     _key = StringField('key')
     _id = StringField('id')
+
+    def __init__(self, *args, **kwargs):
+        AttributeAsDict.__init__(self, *args, **kwargs)
+        Base.__init__(self, *args, **kwargs)
 
 
 class EntityData(SerializableWithKey):
@@ -198,7 +206,7 @@ class EntityData(SerializableWithKey):
     _extra_params = DictField('extra_params', key_type=ValueType.string, on_deserialize=AttributeDict)
 
     def __init__(self, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self.__slots__))
+        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
         kwargs['_extra_params'] = kwargs.pop('_extra_params', extras)
         super().__init__(*args, **kwargs)
 
@@ -965,3 +973,6 @@ def get_output_types(*objs, unknown_as=None):
             else:  # pragma: no cover
                 raise
     return output_types
+
+
+EntityType = Union[Tileable, Chunk]

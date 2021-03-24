@@ -33,16 +33,16 @@ class Test(unittest.TestCase):
         self.assertIsInstance(new_tensor.chunks[0].inputs[0].op, TensorSlice)
         self.assertIs(new_tensor.chunks[0].inputs[0].inputs[0], tensor.chunks[0].data)
         self.assertEqual(new_tensor.chunks[0].inputs[0].op.slices,
-                         (slice(None, None, None), slice(None, 2, None)))
+                         [slice(None, None, None), slice(None, 2, None)])
         self.assertIs(new_tensor.chunks[0].inputs[1].inputs[0], tensor.chunks[3].data)
         self.assertEqual(new_tensor.chunks[0].inputs[1].op.slices,
-                         (slice(None, None, None), slice(None, 2, None)))
+                         [slice(None, None, None), slice(None, 2, None)])
         self.assertIs(new_tensor.chunks[0].inputs[2].inputs[0], tensor.chunks[6].data)
         self.assertEqual(new_tensor.chunks[0].inputs[2].op.slices,
-                         (slice(None, 1, None), slice(None, 2, None)))
+                         [slice(None, 1, None), slice(None, 2, None)])
         self.assertIs(new_tensor.chunks[-1].inputs[0], tensor.chunks[-1].data)
         self.assertEqual(new_tensor.chunks[-1].op.slices,
-                         (slice(None, None, None), slice(1, None, None)))
+                         [slice(None, None, None), slice(1, None, None)])
 
     def testRechunk(self):
         tensor = ones((12, 9), chunk_size=4)
@@ -53,14 +53,14 @@ class Test(unittest.TestCase):
         self.assertEqual(new_tensor.chunks[0].inputs[0], get_tiled(tensor).chunks[0].data)
         self.assertEqual(len(new_tensor.chunks[1].inputs), 2)
         self.assertEqual(new_tensor.chunks[1].inputs[0].op.slices,
-                         (slice(None, 3, None), slice(3, None, None)))
+                         [slice(None, 3, None), slice(3, None, None)])
         self.assertEqual(new_tensor.chunks[1].inputs[1].op.slices,
-                         (slice(None, 3, None), slice(None, 2, None)))
+                         [slice(None, 3, None), slice(None, 2, None)])
         self.assertEqual(len(new_tensor.chunks[-1].inputs), 2)
         self.assertEqual(new_tensor.chunks[-1].inputs[0].op.slices,
-                         (slice(1, None, None), slice(2, None, None)))
+                         [slice(1, None, None), slice(2, None, None)])
         self.assertEqual(new_tensor.chunks[-1].inputs[1].op.slices,
-                         (slice(1, None, None), slice(None, None, None)))
+                         [slice(1, None, None), slice(None, None, None)])
 
     def testSparse(self):
         tensor = ones((7, 12), chunk_size=4).tosparse()

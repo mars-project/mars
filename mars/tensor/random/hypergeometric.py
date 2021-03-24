@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorHypergeometric(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_ngood', '_nbad', '_nsample', '_size'
     _input_fields_ = ['_ngood', '_nbad', '_nsample']
     _op_type_ = OperandDef.RAND_HYPERGEOMETRIC
 
+    _fields_ = '_ngood', '_nbad', '_nsample', '_size'
     _ngood = AnyField('ngood')
     _nbad = AnyField('nbad')
     _nsample = AnyField('nsample')

@@ -21,10 +21,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorRandBeta(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_a', '_b', '_size'
     _input_fields_ = ['_a', '_b']
     _op_type_ = OperandDef.RAND_BETA
 
+    _fields_ = '_a', '_b', '_size'
     _a = AnyField('a')
     _b = AnyField('b')
     _func_name = 'beta'

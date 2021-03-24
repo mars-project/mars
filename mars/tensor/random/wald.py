@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorWald(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_mean', '_scale', '_size'
     _input_fields_ = ['_mean', '_scale']
     _op_type_ = OperandDef.RAND_WALD
 
+    _fields_ = '_mean', '_scale', '_size'
     _mean = AnyField('mean')
     _scale = AnyField('scale')
     _func_name = 'wald'

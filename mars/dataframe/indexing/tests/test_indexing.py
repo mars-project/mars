@@ -84,8 +84,8 @@ class Test(TestBase):
         self.assertEqual(df3.chunk_shape, (2,))
         self.assertEqual(df3.chunks[0].shape, (2,))
         self.assertEqual(df3.chunks[1].shape, (1,))
-        self.assertEqual(df3.chunks[0].op.indexes, (1, slice(None, None, None)))
-        self.assertEqual(df3.chunks[1].op.indexes, (1, slice(None, None, None)))
+        self.assertEqual(df3.chunks[0].op.indexes, [1, slice(None, None, None)])
+        self.assertEqual(df3.chunks[1].op.indexes, [1, slice(None, None, None)])
         self.assertEqual(df3.chunks[0].inputs[0].index, (0, 0))
         self.assertEqual(df3.chunks[0].inputs[0].shape, (2, 2))
         self.assertEqual(df3.chunks[1].inputs[0].index, (0, 1))
@@ -107,8 +107,8 @@ class Test(TestBase):
         pd.testing.assert_series_equal(df4.chunks[1].dtypes, df1.dtypes[2:3])
         self.assertNotEqual(df4.chunks[0].index_value.key, df4.chunks[1].index_value.key)
         self.assertIsInstance(df4.chunks[1].index_value.to_pandas(), type(df1.index))
-        self.assertEqual(df4.chunks[0].op.indexes, (slice(None, None, None), slice(None, None, None)))
-        self.assertEqual(df4.chunks[1].op.indexes, (slice(None, None, None), slice(None, None, None)))
+        self.assertEqual(df4.chunks[0].op.indexes, [slice(None, None, None), slice(None, None, None)])
+        self.assertEqual(df4.chunks[1].op.indexes, [slice(None, None, None), slice(None, None, None)])
         self.assertEqual(df4.chunks[0].inputs[0].index, (0, 1))
         self.assertEqual(df4.chunks[0].inputs[0].shape, (2, 1))
         self.assertEqual(df4.chunks[1].inputs[0].index, (1, 1))
@@ -175,7 +175,7 @@ class Test(TestBase):
         self.assertEqual(df7.chunk_shape, ())
         self.assertEqual(df7.chunks[0].dtype, df7.dtype)
         self.assertEqual(df7.chunks[0].shape, ())
-        self.assertEqual(df7.chunks[0].op.indexes, (1, 0))
+        self.assertEqual(df7.chunks[0].op.indexes, [1, 0])
         self.assertEqual(df7.chunks[0].inputs[0].index, (0, 1))
         self.assertEqual(df7.chunks[0].inputs[0].shape, (2, 1))
 
@@ -190,9 +190,9 @@ class Test(TestBase):
         self.assertEqual(len(series.chunks), 2)
         self.assertEqual(series.chunks[0].shape, (2,))
         self.assertEqual(series.chunks[0].index, (0,))
-        self.assertEqual(series.chunks[0].op.indexes, (slice(1, 3, 1),))
+        self.assertEqual(series.chunks[0].op.indexes, [slice(1, 3, 1),])
         self.assertEqual(series.chunks[1].shape, (2,))
-        self.assertEqual(series.chunks[1].op.indexes, (slice(0, 2, 1),))
+        self.assertEqual(series.chunks[1].op.indexes, [slice(0, 2, 1),])
         self.assertEqual(series.chunks[1].index, (1,))
 
         # fancy index
@@ -234,8 +234,8 @@ class Test(TestBase):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
                 self.assertEqual(c1.key, c2.key)
-        self.assertEqual(df3.chunks[0].op.indexes, (1, slice(None, None, None)))
-        self.assertEqual(df3.chunks[1].op.indexes, (1, slice(None, None, None)))
+        self.assertEqual(df3.chunks[0].op.indexes, [1, slice(None, None, None)])
+        self.assertEqual(df3.chunks[1].op.indexes, [1, slice(None, None, None)])
 
         # # slice index
         df4 = md.DataFrame(df1, chunk_size=2)
@@ -253,8 +253,8 @@ class Test(TestBase):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
                 self.assertEqual(c1.key, c2.key)
-        self.assertEqual(df4.chunks[1].op.indexes, (slice(None, None, None), slice(None, None, None)))
-        self.assertEqual(df4.chunks[3].op.indexes, (slice(None, None, None), slice(None, None, None)))
+        self.assertEqual(df4.chunks[1].op.indexes, [slice(None, None, None), slice(None, None, None)])
+        self.assertEqual(df4.chunks[3].op.indexes, [slice(None, None, None), slice(None, None, None)])
 
         # plain fancy index
         df5 = md.DataFrame(df1, chunk_size=2)
@@ -318,7 +318,7 @@ class Test(TestBase):
                 self.assertEqual(c1.key, c2.inputs[0].key)
             else:
                 self.assertEqual(c1.key, c2.key)
-        self.assertEqual(df7.chunks[1].op.indexes, (1, 0))
+        self.assertEqual(df7.chunks[1].op.indexes, [1, 0])
 
         # test Series
 

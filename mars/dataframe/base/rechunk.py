@@ -174,14 +174,14 @@ def compute_rechunk(a, chunk_size):
             new_index_value = indexing_index_value(old_chunk.index_value, chunk_slice[0])
             if is_dataframe:
                 new_columns_value = indexing_index_value(old_chunk.columns_value, chunk_slice[1], store_data=True)
-                merge_chunk_op = DataFrameIlocGetItem(chunk_slice, sparse=old_chunk.op.sparse,
+                merge_chunk_op = DataFrameIlocGetItem(list(chunk_slice), sparse=old_chunk.op.sparse,
                                                       output_types=[OutputType.dataframe])
                 merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                        index=merge_idx, index_value=new_index_value,
                                                        columns_value=new_columns_value,
                                                        dtypes=old_chunk.dtypes.iloc[chunk_slice[1]])
             else:
-                merge_chunk_op = SeriesIlocGetItem(chunk_slice, sparse=old_chunk.op.sparse,
+                merge_chunk_op = SeriesIlocGetItem(list(chunk_slice), sparse=old_chunk.op.sparse,
                                                    output_types=a.op.output_types)
                 merge_chunk = merge_chunk_op.new_chunk([old_chunk], shape=merge_chunk_shape,
                                                        index=merge_idx, index_value=new_index_value,

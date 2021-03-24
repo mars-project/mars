@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorStandardT(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_df', '_size'
     _input_fields_ = ['_df']
     _op_type_ = OperandDef.RAND_STANDARD_T
 
+    _fields_ = '_df', '_size'
     _df = AnyField('df')
     _func_name = 'standard_t'
 

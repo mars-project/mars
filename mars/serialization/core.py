@@ -149,7 +149,11 @@ class CollectionSerializer(Serializer):
         obj_type = self.obj_type
         if 'obj_type' in header:
             obj_type = pickle.loads(header['obj_type'])
-        return obj_type(self._iter_deserial(header['headers'], buffers, context))
+        if hasattr(obj_type, '_fields'):
+            # namedtuple
+            return obj_type(*self._iter_deserial(header['headers'], buffers, context))
+        else:
+            return obj_type(self._iter_deserial(header['headers'], buffers, context))
 
 
 class ListSerializer(CollectionSerializer):

@@ -22,9 +22,9 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 
 class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_n', '_pvals', '_size'
     _op_type_ = OperandDef.RAND_MULTINOMIAL
 
+    _fields_ = '_n', '_pvals', '_size'
     _n = Int64Field('n')
     _pvals = TupleField('pvals', ValueType.float64)
     _func_name = 'multinomial'

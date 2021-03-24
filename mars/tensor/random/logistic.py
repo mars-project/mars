@@ -22,10 +22,10 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorLogistic(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_loc', '_scale', '_size'
     _input_fields_ = ['_loc', '_scale']
     _op_type_ = OperandDef.RAND_LOGISTIC
 
+    _fields_ = '_loc', '_scale', '_size'
     _loc = AnyField('loc')
     _scale = AnyField('scale')
     _func_name = 'logistic'

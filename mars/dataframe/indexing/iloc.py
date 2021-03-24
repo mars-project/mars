@@ -254,7 +254,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     def __call__(self, df):
         # Note [Fancy Index of Numpy and Pandas]
@@ -402,7 +402,7 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op = op.copy().reset_key()
                 index_chunk, column_chunk = chunk_mapping[chunk.index]
-                chunk_op._indexes = (index_chunk.op.indexes[0], column_chunk.op.indexes[0])
+                chunk_op._indexes = [index_chunk.op.indexes[0], column_chunk.op.indexes[0]]
                 chunk_op._value = op.value
                 out_chunk = chunk_op.new_chunk([chunk],
                                                shape=chunk.shape, index=chunk.index, dtypes=chunk.dtypes,
@@ -454,7 +454,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     @classmethod
     def tile(cls, op):
@@ -582,7 +582,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = indexes
 
     @classmethod
     def tile(cls, op):

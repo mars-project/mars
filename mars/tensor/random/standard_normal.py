@@ -21,9 +21,9 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 
 
 class TensorStandardNormal(TensorDistribution, TensorRandomOperandMixin):
-    __slots__ = '_size',
     _op_type_ = OperandDef.RAND_STANDARD_NORMAL
     _func_name = 'standard_normal'
+    _fields_ = '_size',
 
     def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
