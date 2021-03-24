@@ -22,6 +22,26 @@ class StorageAPI(ABC):
     def __init__(self, session_id):
         self._session_id = session_id
 
+    @classmethod
+    @abstractmethod
+    async def create(cls,
+                     session_id: str,
+                     address: str) -> "StorageAPI":
+        """
+        Creating a storage API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session id.
+        address : str
+            Worker address.
+
+        Returns
+        -------
+        StorageAPI
+        """
+
     @abstractmethod
     async def get(self, data_key: str, conditions: List):
         """
