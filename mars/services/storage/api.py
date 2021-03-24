@@ -133,7 +133,8 @@ class StorageAPI:
             await self._storage_manager_ref.release_size(info.size, level)
 
     @extensible
-    async def prefetch(self, data_key: str,
+    async def prefetch(self,
+                       data_key: str,
                        level: StorageLevel = StorageLevel.MEMORY):
         """
         Fetch object from remote worker ot load object from disk.
@@ -146,9 +147,8 @@ class StorageAPI:
             the storage level to put into, MEMORY as default
 
         """
-        infos = await self._data_manager_ref.get_infos(self._session_id, data_key)
-        infos = sorted(infos, key=lambda x: x.level)
-        await self._storage_manager_ref.pin(infos[0].object_id)
+        await self._storage_manager_ref.prefetch(
+            self._session_id, data_key, level)
 
     @extensible
     async def unpin(self, data_key: str):

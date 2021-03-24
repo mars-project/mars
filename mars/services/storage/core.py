@@ -215,6 +215,14 @@ class StorageManagerActor(mo.Actor):
         else:  # pragma: no cover
             raise NotImplementedError
 
+    async def prefetch(self,
+                       session_id: str,
+                       data_key: str,
+                       level: StorageLevel):
+        infos = await self._data_manager_ref.get_infos(session_id, data_key)
+        infos = sorted(infos, key=lambda x: x.level)
+        self.pin(infos[0].object_id)
+
     def update_quota(self,
                      size: int,
                      level: StorageLevel):
