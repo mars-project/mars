@@ -15,6 +15,7 @@
 import sys
 
 import numpy as np
+import pandas as pd
 import pytest
 
 import mars.oscar as mo
@@ -72,3 +73,9 @@ async def test_cluster_service(actor_pools):
 
     get_value1 = await api2.get('data1')
     np.testing.assert_array_equal(value1, get_value1)
+
+    value2 = pd.DataFrame(value1)
+    await api2.put('data2', value2)
+
+    get_value2 = await api.get('data2')
+    pd.testing.assert_frame_equal(value2, get_value2)
