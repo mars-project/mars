@@ -27,8 +27,10 @@ from ...core import ActorRef
 from ...errors import ActorAlreadyExist, ActorNotExist, ServerClosed
 from ...utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
+from .communication.core import get_scheme
 from .communication import Channel, Server, \
     get_server_type, gen_internal_address, gen_local_address
+from .communication.ray import ChannelID, RayServer
 from .core import result_message_type, ActorCaller
 from .config import ActorPoolConfig
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
@@ -1055,28 +1057,10 @@ class MainActorPool(ActorPoolBase):
         pass
 
 
-async def create_actor_pool(address: str,
-                            n_process: int = None,
-                            labels: List[str] = None,
-                            ports: List[int] = None,
-                            envs: List[Dict] = None,
-                            subprocess_start_method: str = None,
-                            auto_recover: Union[str, bool] = 'actor',
-                            on_process_down: Callable[["MainActorPool", str], None] = None,
-                            on_process_recover: Callable[["MainActorPool", str], None] = None) \
-        -> MainActorPool:
-    n_process = n_process or multiprocessing.cpu_count()
-    if labels and len(labels) != n_process + 1:
-        raise ValueError(f'`labels` should be of size {n_process + 1}, '
-                         f'got {len(labels)}')
-    if envs and len(envs) != n_process:
-        raise ValueError(f'`envs` should be of size {n_process}, '
-                         f'got {len(envs)}')
-    if auto_recover is True:
-        auto_recover = 'actor'
-    if auto_recover not in ('actor', 'process', False):
-        raise ValueError(f'`auto_recover` should be one of "actor", "process", '
-                         f'True or False, got {auto_recover}')
+def get_external_socket_addresses(address: str,
+                           n_process: int = None,
+                           ports: List[int] = None):
+    """Get socket address for every process"""
     if ':' in address:
         host, port = address.split(':', 1)
         port = int(port)
@@ -1101,23 +1085,51 @@ async def create_actor_pool(address: str,
             ports = [get_next_port() for _ in range(n_process + 1)]
         port = ports[0]
         sub_ports = ports[1:]
+    return [f'{host}:{port}' for port in [port] + sub_ports]
 
+
+async def create_actor_pool(address: str,
+                            n_process: int = None,
+                            labels: List[str] = None,
+                            ports: List[int] = None,
+                            envs: List[Dict] = None,
+                            subprocess_start_method: str = None,
+                            auto_recover: Union[str, bool] = 'actor',
+                            on_process_down: Callable[["MainActorPool", str], None] = None,
+                            on_process_recover: Callable[["MainActorPool", str], None] = None) \
+        -> MainActorPool:
+    n_process = n_process or multiprocessing.cpu_count()
+    if labels and len(labels) != n_process + 1:
+        raise ValueError(f'`labels` should be of size {n_process + 1}, '
+                         f'got {len(labels)}')
+    if envs and len(envs) != n_process:
+        raise ValueError(f'`envs` should be of size {n_process}, '
+                         f'got {len(envs)}')
+    if auto_recover is True:
+        auto_recover = 'actor'
+    if auto_recover not in ('actor', 'process', False):
+        raise ValueError(f'`auto_recover` should be one of "actor", "process", '
+                         f'True or False, got {auto_recover}')
+    if get_scheme(address) == "ray":
+        external_addresses = [f'{address}/{i}' for i in range(n_process + 1)]
+    else:
+        external_addresses = get_external_socket_addresses(address, ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
     main_process_index = MainActorPool.next_process_index()
     actor_pool_config.add_pool_conf(
         main_process_index,
         labels[0] if labels else None,
-        gen_internal_address(main_process_index),
-        f'{host}:{port}')
+        gen_internal_address(main_process_index, external_addresses[0]),
+        external_addresses[0])
     # add sub configs
     for i in range(n_process):
         sub_process_index = MainActorPool.next_process_index()
         actor_pool_config.add_pool_conf(
             sub_process_index,
             labels[i + 1] if labels else None,
-            gen_internal_address(sub_process_index),
-            f'{host}:{sub_ports[i]}',
+            gen_internal_address(sub_process_index, external_addresses[i + 1]),
+            external_addresses[i + 1],
             env=envs[i] if envs else None
         )
 

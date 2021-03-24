@@ -43,25 +43,27 @@ def _check_scheme(scheme: str, types: Dict):
     return scheme
 
 
-def get_client_type(address: str) -> Type[Client]:
+def get_scheme(address: str) -> str:
     if '://' not in address:
         scheme = None
     else:
         scheme = urlparse(address).scheme
-    scheme = _check_scheme(scheme, _scheme_to_client_types)
+    return scheme
+
+
+def get_client_type(address: str) -> Type[Client]:
+    scheme = _check_scheme(get_scheme(address), _scheme_to_client_types)
     return _scheme_to_client_types[scheme]
 
 
 def get_server_type(address: str) -> Type[Server]:
-    if '://' not in address:
-        scheme = None
-    else:
-        scheme = urlparse(address).scheme
-    scheme = _check_scheme(scheme, _scheme_to_server_types)
+    scheme = _check_scheme(get_scheme(address), _scheme_to_server_types)
     return _scheme_to_server_types[scheme]
 
 
-def gen_internal_address(process_index: int) -> str:
+def gen_internal_address(process_index: int, external_address: str = None) -> str:
+    if external_address and get_scheme(external_address) == "ray":
+        return external_address
     return f'unixsocket:///{process_index}'
 
 

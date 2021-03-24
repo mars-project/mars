@@ -23,6 +23,7 @@ class ChannelType(Enum):
     local = 0   # for local communication
     ipc = 1     # inproc
     remote = 2  # remote
+    ray = 3     # for ray actors communication
 
 
 class Channel(ABC):
