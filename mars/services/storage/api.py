@@ -17,7 +17,8 @@ from typing import List
 from ... import oscar as mo
 from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
 from ...utils import calc_data_size, extensible
-from .core import DataManagerActor, StorageHandlerActor, StorageManagerActor
+from .core import DataManagerActor, StorageHandlerActor, \
+    StorageManagerActor, DataInfo
 
 
 class StorageAPI:
@@ -79,8 +80,9 @@ class StorageAPI:
         -------
             object
         """
-        object_id, level, _ = await self._data_manager_ref.get_lowest(self._session_id, data_key)
-        return await self._storage_handler_ref.get(object_id, level, conditions)
+        data_info = await self._data_manager_ref.get_info(self._session_id, data_key)
+        return await self._storage_handler_ref.get(
+            data_info.object_id, data_info.level, conditions)
 
     @extensible
     async def put(self, data_key: str,
@@ -104,11 +106,14 @@ class StorageAPI:
             the put object information
         """
         size = calc_data_size(obj)
-        await self._allocate(size, level=level)
+        await self._storage_manager_ref.allocate_size(size, level=level)
         object_info = await self._storage_handler_ref.put(obj, level)
+        if object_info.size is not None and size != object_info.size:
+            await self._storage_manager_ref.update_quota(
+                object_info.size - size, level=level)
+        data_info = DataInfo(object_info.object_id, level, size)
         return await self._data_manager_ref.put(
-            self._session_id, data_key, object_info.object_id,
-            level=level, size=size)
+            self._session_id, data_key, data_info)
 
     @extensible
     async def delete(self, data_key: str):
@@ -120,12 +125,12 @@ class StorageAPI:
         data_key: str
             object key to delete
         """
-        infos = await self._data_manager_ref.get(self._session_id, data_key)
+        infos = await self._data_manager_ref.get_infos(self._session_id, data_key)
         for info in infos or []:
-            level = info[1]
+            level = info.level
             await self._data_manager_ref.delete(self._session_id, data_key, level)
-            await self._storage_handler_ref.delete(info[0], level)
-            await self._storage_manager_ref.release_size(info[2], level)
+            await self._storage_handler_ref.delete(info.object_id, level)
+            await self._storage_manager_ref.release_size(info.size, level)
 
     @extensible
     async def prefetch(self, data_key: str,
@@ -141,29 +146,11 @@ class StorageAPI:
             the storage level to put into, MEMORY as default
 
         """
-        infos = await self._data_manager_ref.get(self._session_id, data_key)
-        infos = sorted(infos, key=lambda x: x[0])
-        await self._storage_manager_ref.pin(infos[0][0])
+        infos = await self._data_manager_ref.get_infos(self._session_id, data_key)
+        infos = sorted(infos, key=lambda x: x.level)
+        await self._storage_manager_ref.pin(infos[0].object_id)
 
-    async def _allocate(self,
-                        size: int,
-                        level: StorageLevel):
-        """
-        Allocate size for storing, called in put and prefetch.
-        It will send a quota request to main process.
-
-        Parameters
-        ----------
-        size: int
-            the size to allocate
-        level: StorageLevel
-            the storage level to allocate
-        """
-        has_space, spill_size = await self._storage_manager_ref.allocate_size(size, level)
-        if not has_space:  # pragma: no cover
-            await self._storage_manager_ref.do_spill(spill_size, level=level)
-            await self._allocate(size, level=level)
-
+    @extensible
     async def unpin(self, data_key: str):
         """
         Unpin the data, allow storage to release the data.
@@ -189,9 +176,10 @@ class StorageAPI:
         -------
             return a file-like object.
         """
-        object_id, level, _ = await self._data_manager_ref.get_lowest(
+        data_info = await self._data_manager_ref.get_info(
             self._session_id, data_key)
-        return await self._storage_handler_ref.open_reader(object_id, level)
+        return await self._storage_handler_ref.open_reader(
+            data_info.object_id, data_info.level)
 
     async def open_writer(self,
                           data_key: str,
@@ -213,10 +201,11 @@ class StorageAPI:
         -------
             return a file-like object.
         """
-        await self._allocate(size, level=level)
+        await self._storage_manager_ref.allocate_size(size, level=level)
         writer = await self._storage_handler_ref.open_writer(size, level)
+        data_info = DataInfo(writer.object_id, level, size)
         await self._data_manager_ref.put(
-            self._session_id, data_key, writer.object_id, level=level, size=size)
+            self._session_id, data_key, data_info)
         return writer
 
     async def list(self, level: StorageLevel) -> List:

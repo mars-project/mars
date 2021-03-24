@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import sys
 
 import numpy as np
 import pytest
 
 import mars.oscar as mo
-from mars.services import start_services
+from mars.services import start_services, NodeRole
 from mars.services.storage import StorageAPI
 
 
 @pytest.fixture
 async def actor_pools():
     async def start_pool():
-        pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+        pool = await mo.create_actor_pool('127.0.0.1', n_process=1)
         await pool.start()
         return pool
 
@@ -55,11 +54,19 @@ async def test_cluster_service(actor_pools):
         }
     }
 
-    await start_services('worker', config, 'mars.services.storage',
-                         address=worker_pool.external_address)
+    await start_services(
+        NodeRole.WORKER, config, address=worker_pool.external_address)
 
     api = await StorageAPI.create('mock_session', worker_pool.external_address)
     value1 = np.random.rand(10, 10)
     await api.put('data1', value1)
     get_value1 = await api.get('data1')
+    np.testing.assert_array_equal(value1, get_value1)
+
+    # test api in subpool
+    subpool_address = list(worker_pool._sub_processes.keys())[0]
+    api2 = await StorageAPI.create('mock_session', subpool_address)
+    assert api2._storage_handler_ref.address == subpool_address
+
+    get_value1 = await api2.get('data1')
     np.testing.assert_array_equal(value1, get_value1)

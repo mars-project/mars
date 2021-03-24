@@ -14,7 +14,8 @@
 
 import logging
 from collections import defaultdict
-from typing import Dict, List, Union, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Union
 
 from ... import oscar as mo
 from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
@@ -37,6 +38,10 @@ class StorageQuota:
     def used_size(self):
         return self._used_size
 
+    def update(self, size: int):
+        if self._total_size is not None:
+            self._total_size += size
+
     def request(self, size: int) -> bool:
         if self._total_size is None:
             self._used_size += size
@@ -51,33 +56,37 @@ class StorageQuota:
         self._used_size -= size
 
 
+@dataclass
+class DataInfo:
+    object_id: object
+    level: StorageLevel
+    size: int
+
+
 class DataManagerActor(mo.Actor):
     def __init__(self):
         # mapping key is (session_id, data_key)
-        # mapping value is list of (object_id, level, size)
+        # mapping value is list of DataInfo
         self._mapping = defaultdict(list)
 
     def put(self,
             session_id: str,
             data_key: str,
-            object_id,
-            level: StorageLevel,
-            size: int):
-        self._mapping[(session_id, data_key)].append(
-            (object_id, level, size))
+            data_info: DataInfo):
+        self._mapping[(session_id, data_key)].append(data_info)
 
-    def get(self,
-            session_id: str,
-            data_key: str) -> List:
+    def get_infos(self,
+                  session_id: str,
+                  data_key: str) -> List:
         return self._mapping.get((session_id, data_key))
 
-    def get_lowest(self,
-                   session_id: str,
-                   data_key: str):
+    def get_info(self,
+                 session_id: str,
+                 data_key: str):
         # if the data is stored in multiply levels,
         # return the lowest level info
         infos = sorted(self._mapping.get((session_id, data_key)),
-                       key=lambda x: x[1])
+                       key=lambda x: x.level)
         return infos[0]
 
     def delete(self,
@@ -86,7 +95,7 @@ class DataManagerActor(mo.Actor):
                level: StorageLevel):
         if (session_id, data_key) in self._mapping:
             infos = self._mapping[(session_id, data_key)]
-            rest = [info for info in infos if info[1] != level]
+            rest = [info for info in infos if info.level != level]
             if len(rest) == 0:
                 del self._mapping[(session_id, data_key)]
             else:  # pragma: no cover
@@ -163,6 +172,7 @@ class StorageManagerActor(mo.Actor):
                 if client.level & level:
                     quotas[level] = StorageQuota(client.size)
 
+        # create handler actors for every process
         strategy = IdleLabel(None, 'StorageHandler')
         while True:
             try:
@@ -199,13 +209,16 @@ class StorageManagerActor(mo.Actor):
 
     def allocate_size(self,
                       size: int,
-                      level: StorageLevel) -> Tuple[bool, int]:
+                      level: StorageLevel):
         if self._quotas[level].request(size):
-            return True, 0
+            return
         else:  # pragma: no cover
-            quota = self._quotas[level]
-            exceeded_size = (quota.used_size + size) - quota.total_size
-            return False, exceeded_size
+            raise NotImplementedError
+
+    def update_quota(self,
+                     size: int,
+                     level: StorageLevel):
+        self._quotas[level].update(size)
 
     def release_size(self,
                      size: int,

@@ -42,6 +42,9 @@ class StorageLevel(Enum):
     def __lt__(self, other):
         return self.value < other.value
 
+    def __gt__(self, other):
+        return self.value > other.value
+
 
 class ObjectInfo:
     __slots__ = 'size', 'device', 'object_id'

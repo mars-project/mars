@@ -354,6 +354,7 @@ async def test_create_actor_pool():
         actor_ref2 = await ctx.create_actor(TestActor, uid='test-2',
                                             address=pool.external_address,
                                             allocate_strategy=RandomSubPool())
+        assert (await ctx.actor_ref(uid='test-2', address=actor_ref2.address)) == actor_ref2
         main_ref = await ctx.actor_ref(uid='test-main', address=actor_ref2.address)
         assert main_ref.address == pool.external_address
         main_ref = await ctx.actor_ref(actor_ref1)

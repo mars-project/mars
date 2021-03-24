@@ -41,4 +41,3 @@ async def start(config: dict, address: None):
                           storage_configs,
                           uid=StorageManagerActor.default_uid(),
                           address=address)
-

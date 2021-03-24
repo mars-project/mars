@@ -88,6 +88,7 @@ async def test_storage_mock_api(storage_configs):
         value2 = pd.DataFrame({'col1': [str(i) for i in range(10)],
                                'col2': np.random.randint(0, 100, (10,))})
         await storage_api.put('data2', value2)
+        storage_api.prefetch('data2')
         get_value2 = await storage_api.get('data2')
         pd.testing.assert_frame_equal(value2, get_value2)
 
