@@ -66,16 +66,26 @@ class PlasmaFileObject(BufferWrappedFileObject):
 
 
 class PlasmaObjectInfo(ObjectInfo):
-    __slots__ = "buffer",
+    __slots__ = "buffer", "plasma_dir"
 
     def __init__(self,
                  size: int = None,
                  device: int = None,
                  object_id: Any = None,
-                 buffer: memoryview = None):
+                 buffer: memoryview = None,
+                 plasma_dir: str = None):
         super().__init__(size=size, device=device,
                          object_id=object_id)
         self.buffer = buffer
+        self.plasma_dir = plasma_dir
+
+    def __getstate__(self):
+        return self.size, self.device, self.object_id, self.plasma_dir
+
+    def __setstate__(self, state):
+        self.size, self.device, self.object_id, self.plasma_dir = state
+        client = plasma.connect("/tmp/plasma")
+        self.buffer = client.get_buffers([self.object_id])[0]
 
 
 def get_actual_capacity(plasma_client: plasma.PlasmaClient) -> int:
@@ -199,7 +209,8 @@ class PlasmaStorage(StorageBackend):
                 await f.write(buffer)
 
         return PlasmaObjectInfo(size=buffer_size, object_id=object_id,
-                                buffer=plasma_file.buffer)
+                                buffer=plasma_file.buffer,
+                                plasma_dir=self._plasma_directory)
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
@@ -209,7 +220,7 @@ class PlasmaStorage(StorageBackend):
     async def object_info(self, object_id) -> ObjectInfo:
         buf = self._client.get_buffers([object_id])[0]
         return PlasmaObjectInfo(size=buf.size, object_id=object_id,
-                                buffer=buf)
+                                buffer=buf, plasma_dir=self._plasma_directory)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

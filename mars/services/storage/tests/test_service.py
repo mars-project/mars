@@ -25,7 +25,9 @@ from mars.services.storage import StorageAPI
 @pytest.fixture
 async def actor_pools():
     async def start_pool():
-        pool = await mo.create_actor_pool('127.0.0.1', n_process=1)
+        start_method = 'spawn' if sys.platform != 'win32' else None
+        pool = await mo.create_actor_pool('127.0.0.1', n_process=1,
+                                          subprocess_start_method=start_method)
         await pool.start()
         return pool
 

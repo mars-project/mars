@@ -16,9 +16,8 @@ from typing import List
 
 from ... import oscar as mo
 from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
-from ...utils import calc_data_size, extensible
-from .core import DataManagerActor, StorageHandlerActor, \
-    StorageManagerActor, DataInfo
+from ...utils import extensible
+from .core import StorageHandlerActor, StorageManagerActor
 
 
 class StorageAPI:
@@ -33,8 +32,6 @@ class StorageAPI:
             self._address, StorageHandlerActor.default_uid())
         self._storage_manager_ref = await mo.actor_ref(
             self._address, StorageManagerActor.default_uid())
-        self._data_manager_ref = await mo.actor_ref(
-            self._address, DataManagerActor.default_uid())
 
     @classmethod
     async def create(cls,
@@ -80,9 +77,8 @@ class StorageAPI:
         -------
             object
         """
-        data_info = await self._data_manager_ref.get_info(self._session_id, data_key)
         return await self._storage_handler_ref.get(
-            data_info.object_id, data_info.level, conditions)
+            self._session_id, data_key, conditions)
 
     @extensible
     async def put(self, data_key: str,
@@ -105,15 +101,9 @@ class StorageAPI:
         object information: ObjectInfo
             the put object information
         """
-        size = calc_data_size(obj)
-        await self._storage_manager_ref.allocate_size(size, level=level)
-        object_info = await self._storage_handler_ref.put(obj, level)
-        if object_info.size is not None and size != object_info.size:
-            await self._storage_manager_ref.update_quota(
-                object_info.size - size, level=level)
-        data_info = DataInfo(object_info.object_id, level, size)
-        return await self._data_manager_ref.put(
-            self._session_id, data_key, data_info)
+        return await self._storage_handler_ref.put(
+            self._session_id, data_key, obj, level
+        )
 
     @extensible
     async def delete(self, data_key: str):
@@ -125,12 +115,8 @@ class StorageAPI:
         data_key: str
             object key to delete
         """
-        infos = await self._data_manager_ref.get_infos(self._session_id, data_key)
-        for info in infos or []:
-            level = info.level
-            await self._data_manager_ref.delete(self._session_id, data_key, level)
-            await self._storage_handler_ref.delete(info.object_id, level)
-            await self._storage_manager_ref.release_size(info.size, level)
+        await self._storage_handler_ref.delete(
+            self._session_id, data_key)
 
     @extensible
     async def prefetch(self,
@@ -176,10 +162,8 @@ class StorageAPI:
         -------
             return a file-like object.
         """
-        data_info = await self._data_manager_ref.get_info(
-            self._session_id, data_key)
         return await self._storage_handler_ref.open_reader(
-            data_info.object_id, data_info.level)
+            self._session_id, data_key)
 
     async def open_writer(self,
                           data_key: str,
@@ -201,12 +185,9 @@ class StorageAPI:
         -------
             return a file-like object.
         """
-        await self._storage_manager_ref.allocate_size(size, level=level)
-        writer = await self._storage_handler_ref.open_writer(size, level)
-        data_info = DataInfo(writer.object_id, level, size)
-        await self._data_manager_ref.put(
-            self._session_id, data_key, data_info)
-        return writer
+        return await self._storage_handler_ref.open_writer(
+            self._session_id, data_key, size, level
+        )
 
     async def list(self, level: StorageLevel) -> List:
         """
@@ -230,12 +211,9 @@ class MockStorageApi(StorageAPI):
                      session_id: str,
                      address: str,
                      **kwargs):
-        from .core import StorageManagerActor, DataManagerActor
+        from .core import StorageManagerActor
 
         storage_configs = kwargs.get('storage_configs')
-        await mo.create_actor(DataManagerActor,
-                              uid=DataManagerActor.default_uid(),
-                              address=address)
         await mo.create_actor(StorageManagerActor,
                               storage_configs,
                               uid=StorageManagerActor.default_uid(),

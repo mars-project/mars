@@ -21,6 +21,7 @@ from ... import oscar as mo
 from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageFileObject
+from ...utils import calc_data_size
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class DataInfo:
     size: int
 
 
-class DataManagerActor(mo.Actor):
+class DataManager:
     def __init__(self):
         # mapping key is (session_id, data_key)
         # mapping value is list of DataInfo
@@ -103,8 +104,11 @@ class DataManagerActor(mo.Actor):
 
 
 class StorageHandlerActor(mo.Actor):
-    def __init__(self, storage_init_params: Dict):
+    def __init__(self,
+                 storage_init_params: Dict,
+                 storage_manager_ref: "StorageManagerActor"):
         self._storage_init_params = storage_init_params
+        self._storage_manager_ref = storage_manager_ref
 
     async def __post_create__(self):
         self._clients = clients = dict()
@@ -116,33 +120,61 @@ class StorageHandlerActor(mo.Actor):
                     clients[level] = client
 
     async def get(self,
-                  object_id: object,
-                  level: StorageLevel,
+                  session_id:str,
+                  data_key: str,
                   conditions: List = None):
-        return await self._clients[level].get(
-            object_id, conditions=conditions)
+        data_info = await self._storage_manager_ref.get_data_info(
+            session_id, data_key)
+        return await self._clients[data_info.level].get(
+            data_info.object_id, conditions=conditions)
 
     async def put(self,
+                  session_id: str,
+                  data_key: str,
                   obj: object,
                   level: StorageLevel) -> ObjectInfo:
+        size = calc_data_size(obj)
+        await self._storage_manager_ref.allocate_size(size, level=level)
         object_info = await self._clients[level].put(obj)
+        if object_info.size is not None and size != object_info.size:
+            await self._storage_manager_ref.update_quota(
+                object_info.size - size, level=level)
+        data_info = DataInfo(object_info.object_id, level, size)
+        await self._storage_manager_ref.put_data_info(
+            session_id, data_key, data_info)
         return object_info
 
     async def delete(self,
-                     object_id: str,
-                     level: StorageLevel):
-        await self._clients[level].delete(object_id)
+                     session_id: str,
+                     data_key: str):
+        infos = await self._storage_manager_ref.get_data_infos(
+            session_id, data_key)
+        for info in infos or []:
+            level = info.level
+            await self._storage_manager_ref.delete_data_info(
+                session_id, data_key, level)
+            await self._clients[level].delete(info.object_id)
+            await self._storage_manager_ref.release_size(info.size, level)
 
     async def open_reader(self,
-                          object_id,
-                          level: StorageLevel) -> StorageFileObject:
-        reader = await self._clients[level].open_reader(object_id)
+                          session_id: str,
+                          data_key: str) -> StorageFileObject:
+        data_info = await self._storage_manager_ref.get_data_info(
+            session_id, data_key)
+        reader = await self._clients[data_info.level].open_reader(
+            data_info.object_id)
         return reader
 
     async def open_writer(self,
+                          session_id: str,
+                          data_key: str,
                           size: int,
                           level: StorageLevel) -> StorageFileObject:
+        await self._storage_manager_ref.allocate_size(size, level=level)
         writer = await self._clients[level].open_writer(size)
+        data_info = DataInfo(writer.object_id, level, size)
+        await self._storage_manager_ref.put_data_info(
+            session_id, data_key, data_info)
         return writer
 
     async def list(self, level: StorageLevel) -> List:
@@ -159,11 +191,10 @@ class StorageManagerActor(mo.Actor):
         self._teardown_params = dict()
         # pinned_keys
         self._pinned_keys = []
+        # stores the mapping from data key to storage info
+        self._data_manager = DataManager()
 
     async def __post_create__(self):
-        # stores data key to storage object id
-        self._data_manager_ref = await mo.actor_ref(DataManagerActor.default_uid(),
-                                                    address=self.address)
         # setup storage backend
         quotas = dict()
         for backend, setup_params in self._storage_configs.items():
@@ -178,15 +209,13 @@ class StorageManagerActor(mo.Actor):
             try:
                 await mo.create_actor(StorageHandlerActor,
                                       self._init_params,
+                                      self.ref(),
                                       uid=StorageHandlerActor.default_uid(),
                                       address=self.address,
                                       allocate_strategy=strategy)
             except NoIdleSlot:
                 break
 
-        self._storage_handler_ref = await mo.actor_ref(
-            uid=StorageHandlerActor.default_uid(),
-            address=self.address)
         self._quotas = quotas
 
     async def __pre_destroy__(self):
@@ -219,7 +248,7 @@ class StorageManagerActor(mo.Actor):
                        session_id: str,
                        data_key: str,
                        level: StorageLevel):
-        infos = await self._data_manager_ref.get_infos(session_id, data_key)
+        infos = self._data_manager.get_infos(session_id, data_key)
         infos = sorted(infos, key=lambda x: x.level)
         self.pin(infos[0].object_id)
 
@@ -233,6 +262,28 @@ class StorageManagerActor(mo.Actor):
                      level: StorageLevel
                      ):
         self._quotas[level].release(size)
+
+    def get_data_infos(self,
+                       session_id: str,
+                       data_key: str):
+        return self._data_manager.get_infos(session_id, data_key)
+
+    def get_data_info(self,
+                      session_id: str,
+                      data_key: str):
+        return self._data_manager.get_info(session_id, data_key)
+
+    def put_data_info(self,
+                      session_id: str,
+                      data_key: str,
+                      data_info: DataInfo):
+        self._data_manager.put(session_id, data_key, data_info)
+
+    def delete_data_info(self,
+                         session_id: str,
+                         data_key: str,
+                         level: StorageLevel):
+        self._data_manager.delete(session_id, data_key, level)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)

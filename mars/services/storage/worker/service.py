@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .... import oscar as mo
-from ..core import StorageManagerActor, DataManagerActor
+from ..core import StorageManagerActor
 
 
 async def start(config: dict, address: None):
@@ -34,9 +34,6 @@ async def start(config: dict, address: None):
     """
     storage_configs = config['storage_configs']
 
-    await mo.create_actor(DataManagerActor,
-                          uid=DataManagerActor.default_uid(),
-                          address=address)
     await mo.create_actor(StorageManagerActor,
                           storage_configs,
                           uid=StorageManagerActor.default_uid(),
