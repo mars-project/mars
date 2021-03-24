@@ -15,10 +15,6 @@
 import asyncio
 import sys
 import time
-try:
-    import mock
-except ImportError:
-    from unittest import mock
 
 import pytest
 
@@ -37,6 +33,7 @@ from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
 from mars.oscar.backends.mars.router import Router
 from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
 from mars.oscar.utils import create_actor_ref
+from mars.tests.core import mock
 
 
 class _CannotBeUnpickled:

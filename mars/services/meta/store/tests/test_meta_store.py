@@ -15,25 +15,26 @@
 import pytest
 
 import mars.tensor as mt
+from mars.services.meta import TensorMeta
 from mars.services.meta.store import get_meta_store
 
 
 @pytest.mark.asyncio
 async def test_mock_meta_store():
-    meta_store = get_meta_store('mock')('mock_session_id')
+    meta_store = get_meta_store('dict')('mock_session_id')
 
     t = mt.random.rand(10, 10)
     t = t.tiles()
 
-    await meta_store.set_tensor_meta(
-        t.key, shape=t.shape, dtype=t.dtype,
-        order=t.order, nsplits=t.nsplits)
+    await meta_store.set_meta(t.key, TensorMeta(
+        object_id=t.key, shape=t.shape, dtype=t.dtype,
+        order=t.order, nsplits=t.nsplits))
 
-    meta = await meta_store.get_tensor_meta(t.key, fields=['shape', 'order'])
+    meta = await meta_store.get_meta(t.key, fields=['shape', 'order'])
     assert meta['shape'] == t.shape
     assert meta['order'] == t.order
 
-    await meta_store.del_tensor_meta(t.key)
+    await meta_store.del_meta(t.key)
 
     with pytest.raises(KeyError):
-        await meta_store.get_tensor_meta(t.key)
+        await meta_store.get_meta(t.key)

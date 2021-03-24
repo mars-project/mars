@@ -12,61 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABCMeta
-from typing import Dict, List, Tuple, Any
+from dataclasses import asdict
+from typing import Dict, List
 
 from ....utils import implements
-from .base import AbstractMetaStore, register_meta_store, object_types
-
-
-class DictMetaStoreType(ABCMeta):
-    def __new__(mcs, name: str, bases: Tuple, namespace: Dict):
-        for tp in object_types:
-            # set
-            for method_name in (f'set_{tp}_meta', f'set_{tp}_chunk_meta'):
-                @implements(getattr(AbstractMetaStore, method_name))
-                async def _set(self, object_id: str, **meta):
-                    return self._set_meta(object_id, **meta)
-
-                namespace[method_name] = _set
-            # get
-            for method_name in (f'get_{tp}_meta', f'get_{tp}_chunk_meta'):
-                @implements(getattr(AbstractMetaStore, method_name))
-                async def _get(self, object_id: str, fields: List[str] = None):
-                    return self._get_meta(object_id, fields=fields)
-
-                namespace[method_name] = _get
-            # del
-            for method_name in (f'del_{tp}_meta', f'del_{tp}_chunk_meta'):
-                @implements(getattr(AbstractMetaStore, method_name))
-                async def _del(self, object_id: str):
-                    return self._del_meta(object_id)
-
-                namespace[method_name] = _del
-
-        return ABCMeta.__new__(mcs, name, bases, namespace)
+from ..core import _CommonMeta
+from .base import AbstractMetaStore, register_meta_store
 
 
 @register_meta_store
-class DictMetaStore(AbstractMetaStore, metaclass=DictMetaStoreType):
-    name = 'mock'
+class DictMetaStore(AbstractMetaStore):
+    name = 'dict'
 
     def __init__(self, session_id: str, **kw):
         super().__init__(session_id)
-        self._store: Dict[str, Dict[str, Any]] = dict()
+        self._store: Dict[str, _CommonMeta] = dict()
         if kw:  # pragma: no cover
             raise TypeError(f'Keyword arguments {kw!r} cannot be recognized.')
 
-    def _set_meta(self, object_id: str, **meta):
+    @classmethod
+    @implements(AbstractMetaStore.create)
+    async def create(cls, config) -> Dict:
+        # Nothing needs to do for dict-based meta store.
+        # no extra kwargs.
+        return dict()
+
+    @implements(AbstractMetaStore.set_meta)
+    async def set_meta(self,
+                       object_id: str,
+                       meta: _CommonMeta):
         self._store[object_id] = meta
 
-    def _get_meta(self,
-                  object_id: str,
-                  fields: List[str] = None) -> Dict[str, Any]:
-        meta = self._store[object_id]
+    @implements(AbstractMetaStore.get_meta)
+    async def get_meta(self,
+                       object_id: str,
+                       fields: List[str] = None) -> Dict:
+        meta = asdict(self._store[object_id])
         if fields:
             return {k: meta[k] for k in fields}
         return meta
 
-    def _del_meta(self, object_id: str):
+    @implements(AbstractMetaStore.del_meta)
+    async def del_meta(self,
+                       object_id: str):
         del self._store[object_id]

@@ -13,44 +13,95 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Type, Any
+from typing import Dict, List, Type, Any, Union
 
 from ... import oscar as mo
 from ...oscar.backends.mars import allocate_strategy
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
-from .core import MetaStoreActor
+from .core import get_meta_type
+from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 from .store import AbstractMetaStore
 
 
 class MetaAPI:
     def __init__(self,
                  session_id: str,
-                 meta_store: AbstractMetaStore):
+                 meta_store: Union[AbstractMetaStore, mo.ActorRef]):
         self._session_id = session_id
         self._meta_store = meta_store
 
     @classmethod
-    async def create(cls, session_id: str, address: str) -> "MetaAPI":
+    async def create(cls,
+                     session_id: str,
+                     address: str) -> "MetaAPI":
         """
         Create Meta API according to config.
 
         Parameters
         ----------
-        session_id
-        address
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address.
 
         Returns
         -------
         meta_api
             Meta api.
         """
-        meta_store_ref = await mo.actor_ref(mo.create_actor_ref(
-            address, MetaStoreActor.gen_uid(session_id)))
+        meta_store_ref = await mo.actor_ref(
+            address, MetaStoreActor.gen_uid(session_id))
+
         return MetaAPI(session_id, meta_store_ref)
+
+    @classmethod
+    async def create_session(cls,
+                             session_id: str,
+                             address: str) -> "MetaAPI":
+        """
+        Creating a new meta store for the session, and return meta API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address.
+
+        Returns
+        -------
+        meta_api
+            Meta API.
+        """
+        # get MetaStoreManagerActor ref.
+        meta_store_manager_ref = await mo.actor_ref(
+            address, MetaStoreManagerActor.default_uid())
+        meta_store_ref = \
+            await meta_store_manager_ref.new_session_meta_store(session_id, address)
+        return MetaAPI(session_id, meta_store_ref)
+
+    @classmethod
+    async def destroy_session(cls,
+                              session_id: str,
+                              address: str):
+        """
+        Destroy a session.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address.
+        """
+        meta_store_ref = await mo.actor_ref(
+            address, MetaStoreActor.gen_uid(session_id))
+        return await mo.destroy_actor(meta_store_ref)
 
     async def set_tileable_meta(self,
                                 tileable,
-                                physical_size: int = None,
+                                memory_size: int = None,
+                                store_size: int = None,
                                 **extra):
         params = tileable.params.copy()
         if isinstance(tileable, DATAFRAME_TYPE):
@@ -60,23 +111,27 @@ class MetaAPI:
             params['dtypes_value'] = tileable.dtypes_value
         params['nsplits'] = tileable.nsplits
         params.update(extra)
-        return await self._meta_store.set_meta(
-            type(tileable), tileable.key, **params, physical_size=physical_size)
+        meta = get_meta_type(type(tileable))(object_id=tileable.key,
+                                             **params,
+                                             memory_size=memory_size,
+                                             store_size=store_size)
+        return await self._meta_store.set_meta(tileable.key, meta)
 
     async def get_tileable_meta(self,
                                 object_id: str,
                                 tileable_type: Type,
                                 fields: List[str] = None) -> Dict[str, Any]:
-        return await self._meta_store.get_meta(tileable_type, object_id, fields=fields)
+        return await self._meta_store.get_meta(object_id, fields=fields)
 
     async def del_tileable_meta(self,
                                 object_id: str,
                                 tileable_type: Type):
-        return await self._meta_store.del_meta(tileable_type, object_id)
+        return await self._meta_store.del_meta(object_id)
 
     async def set_chunk_meta(self,
                              chunk,
-                             physical_size: int = None,
+                             memory_size: int = None,
+                             store_size: int = None,
                              workers: List[str] = None,
                              **extra):
         params = chunk.params.copy()
@@ -86,20 +141,22 @@ class MetaAPI:
             del params['dtypes']
             params['dtypes_value'] = chunk.dtypes_value
         params.update(extra)
-        return await self._meta_store.set_meta(
-            type(chunk), chunk.key, **params,
-            physical_size=physical_size, workers=workers)
+        meta = get_meta_type(type(chunk))(object_id=chunk.key,
+                                          **params,
+                                          memory_size=memory_size,
+                                          store_size=store_size)
+        return await self._meta_store.set_meta(chunk.key, meta)
 
     async def get_chunk_meta(self,
                              object_id: str,
                              chunk_type: Type,
                              fields: List[str] = None):
-        return await self._meta_store.get_meta(chunk_type, object_id, fields=fields)
+        return await self._meta_store.get_meta(object_id, fields=fields)
 
     async def del_chunk_meta(self,
                              object_id: str,
                              chunk_type: Type):
-        return await self._meta_store.del_meta(chunk_type, object_id)
+        return await self._meta_store.del_meta(object_id)
 
 
 class MockMetaAPI(MetaAPI):
@@ -107,7 +164,7 @@ class MockMetaAPI(MetaAPI):
     async def create(cls, session_id: str, address: str) -> "MetaAPI":
         # create an Actor for mock
         try:
-            await mo.create_actor(MetaStoreActor, 'mock', session_id,
+            await mo.create_actor(MetaStoreActor, 'dict', session_id,
                                   address=address,
                                   uid=MetaStoreActor.gen_uid(session_id),
                                   allocate_strategy=allocate_strategy.ProcessIndex(1))
