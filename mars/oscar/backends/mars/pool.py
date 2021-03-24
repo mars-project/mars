@@ -19,7 +19,7 @@ import itertools
 import os
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Dict, List, Type, Coroutine, Callable, Union, Optional
+from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
 from ....utils import implements, get_next_port, to_binary
 from ...api import Actor
@@ -30,7 +30,6 @@ from .allocate_strategy import allocated_type, AddressSpecified
 from .communication.core import get_scheme
 from .communication import Channel, Server, \
     get_server_type, gen_internal_address, gen_local_address
-from .communication.ray import ChannelID, RayServer
 from .core import result_message_type, ActorCaller
 from .config import ActorPoolConfig
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
@@ -547,8 +546,9 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
 
-        # create pool
-        pool = cls(**kw)
+        # create or get passed pool
+        # use pool_instance as a hook for ray to pass the actor instance.
+        pool = config.get("pool_instance", None) or cls(**kw)
         return pool
 
 
@@ -630,8 +630,7 @@ class MainActorPool(ActorPoolBase):
         self._allocated_actors: allocated_type = \
             {addr: dict() for addr in self._config.get_external_addresses()}
 
-        self.sub_actor_pool_manager = MainActorPool.SubActorPoolManager.\
-            get_manager_cls(subprocess_start_method)(self)
+        self.sub_actor_pool_manager = self.__class__.get_sub_pool_manager_cls()
 
     _process_index_gen = itertools.count()
 
@@ -829,7 +828,7 @@ class MainActorPool(ActorPoolBase):
         config = config.copy()
         actor_pool_config: ActorPoolConfig = config.get('actor_pool_config')
         start_method = config.get('start_method', None)
-        sub_actor_pool_manager_cls = MainActorPool.SubActorPoolManager.get_manager_cls(start_method)
+        sub_actor_pool_manager_cls = cls.get_sub_pool_manager_cls()
         if 'process_index' not in config:
             config['process_index'] = actor_pool_config.get_process_indexes()[0]
         curr_process_index = config.get('process_index')
@@ -879,19 +878,20 @@ class MainActorPool(ActorPoolBase):
             await self._monitor_task
             self._monitor_task = None
 
-    class SubActorPoolManager(ABC):
+    @classmethod
+    def get_sub_pool_manager_cls(cls):
+        return MainActorPool.ProcessSubActorPoolManager
 
-        @staticmethod
-        def get_manager_cls(process_start_method):
-            if process_start_method == "ray":
-                return MainActorPool.RaySubActorPoolManager
-            else:
-                return MainActorPool.ProcessSubActorPoolManager
+    class SubActorPoolManager(ABC):
 
         @classmethod
         @abstractmethod
-        def start_sub_pool(cls):
-            pass
+        def start_sub_pool(
+                cls,
+                actor_config: ActorPoolConfig,
+                process_index: int,
+                start_method: str = None):
+            raise NotImplementedError
 
         def __init__(self, main_actor_pool: 'MainActorPool'):
             self.main_actor_pool = main_actor_pool
@@ -902,29 +902,95 @@ class MainActorPool(ActorPoolBase):
                                process: SubProcessHandle):
             self._sub_processes[external_address] = process
 
-        @abstractmethod
+        async def stop_sub_pools(self):
+            to_stop_processes: Dict[str, SubProcessHandle] = dict()
+            for address, process in self._sub_processes.items():
+                if not await self.is_sub_pool_alive(process):
+                    continue
+                to_stop_processes[address] = process
+
+            tasks = []
+            for address, process in to_stop_processes.items():
+                tasks.append(self.stop_sub_pool(address, process))
+            await asyncio.gather(*tasks)
+
         async def stop_sub_pool(
                 self,
                 address: str,
                 process: multiprocessing.Process,
                 timeout: float = None):
+            stop_message = ControlMessage(
+                new_message_id(), address, ControlMessageType.stop,
+                None, protocol=DEFAULT_PROTOCOL)
+            try:
+                if timeout is None:
+                    message = await self.main_actor_pool.call(address, stop_message)
+                    if isinstance(message, ErrorMessage):
+                        raise message.error.with_traceback(message.traceback)
+                else:
+                    call = asyncio.create_task(self.main_actor_pool.call(address, stop_message))
+                    try:
+                        await asyncio.wait_for(call, timeout)
+                    except (futures.TimeoutError, asyncio.TimeoutError):
+                        # timeout, just let kill to finish it
+                        pass
+            except (ConnectionError, ServerClosed):
+                # process dead maybe, ignore it
+                pass
+            # kill process
+            self.kill_sub_pool(process)
+
+        @abstractmethod
+        def kill_sub_pool(self, process: SubProcessHandle):
             pass
 
         @abstractmethod
-        def stop_sub_pools(self):
+        async def is_sub_pool_alive(self, process: SubProcessHandle):
             pass
 
-        @abstractmethod
         def process_sub_pool_lost(self, address: str):
-            pass
+            if self.main_actor_pool._auto_recover in (False, 'process'):
+                # process down, when not auto_recover
+                # or only recover process, remove all created actors
+                self.main_actor_pool._allocated_actors[address] = dict()
 
-        @abstractmethod
         async def recover_sub_pool(self, address: str):
-            pass
+            process_index = self.main_actor_pool._config.get_process_index(address)
+            # process dead, restart it
+            loop = asyncio.get_running_loop()
+            executor = futures.ThreadPoolExecutor(1)
+            task = loop.run_in_executor(
+                executor, self.__class__.start_sub_pool,
+                self.main_actor_pool._config, process_index,
+                self.main_actor_pool._subprocess_start_method)
+            await asyncio.sleep(0)
+            self._sub_processes[address] = await task
 
-        @abstractmethod
-        def monitor_sub_pools(self):
-            pass
+            if self.main_actor_pool._auto_recover == 'actor':
+                # need to recover all created actors
+                for _, message in self.main_actor_pool._allocated_actors[address].values():
+                    create_actor_message: CreateActorMessage = message
+                    await self.main_actor_pool.call(address, create_actor_message)
+
+        async def monitor_sub_pools(self):
+            try:
+                while not self.main_actor_pool._stopped.is_set():
+                    for address in self._sub_processes:
+                        process = self._sub_processes[address]
+                        if not await self.is_sub_pool_alive(process):
+                            if self.main_actor_pool._on_process_down is not None:
+                                self.main_actor_pool._on_process_down(self.main_actor_pool, address)
+                            self.process_sub_pool_lost(address)
+                            if self.main_actor_pool._auto_recover:
+                                await self.recover_sub_pool(address)
+                                if self.main_actor_pool._on_process_recover is not None:
+                                    self.main_actor_pool._on_process_recover(self.main_actor_pool, address)
+
+                    # check every half second
+                    await asyncio.sleep(.5)
+            except asyncio.CancelledError:
+                # cancelled
+                return
 
     class ProcessSubActorPoolManager(SubActorPoolManager):
 
@@ -971,125 +1037,49 @@ class MainActorPool(ActorPoolBase):
                 started.set()
             await pool.join()
 
-        async def stop_sub_pool(
-                self,
-                address: str,
-                process: multiprocessing.Process,
-                timeout: float = None):
-            stop_message = ControlMessage(
-                new_message_id(), address, ControlMessageType.stop,
-                None, protocol=DEFAULT_PROTOCOL)
-            try:
-                if timeout is None:
-                    message = await self.main_actor_pool.call(address, stop_message)
-                    if isinstance(message, ErrorMessage):
-                        raise message.error.with_traceback(message.traceback)
-                else:
-                    call = asyncio.create_task(self.main_actor_pool.call(address, stop_message))
-                    try:
-                        await asyncio.wait_for(call, timeout)
-                    except (futures.TimeoutError, asyncio.TimeoutError):
-                        # timeout, just let kill to finish it
-                        pass
-            except (ConnectionError, ServerClosed):
-                # process dead maybe, ignore it
-                pass
-            # kill process
+        def kill_sub_pool(self, process: multiprocessing.Process):
             process.kill()
 
-        async def stop_sub_pools(self):
-            to_stop_processes: Dict[str, SubProcessHandle] = dict()
-            for address, process in self._sub_processes.items():
-                if not process.is_alive():
-                    return
-                to_stop_processes[address] = process
+        async def is_sub_pool_alive(self, process: multiprocessing.Process):
+            return process.is_alive()
 
-            tasks = []
-            for address, process in to_stop_processes.items():
-                tasks.append(self.stop_sub_pool(address, process))
-            await asyncio.gather(*tasks)
-
-        def process_sub_pool_lost(self, address: str):
-            if self.main_actor_pool._auto_recover in (False, 'process'):
-                # process down, when not auto_recover
-                # or only recover process, remove all created actors
-                self.main_actor_pool._allocated_actors[address] = dict()
-
-        async def recover_sub_pool(self, address: str):
-            process_index = self.main_actor_pool._config.get_process_index(address)
-            # process dead, restart it
-            loop = asyncio.get_running_loop()
-            executor = futures.ThreadPoolExecutor(1)
-            task = loop.run_in_executor(
-                executor, self.__class__.start_sub_pool,
-                self.main_actor_pool._config, process_index,
-                self.main_actor_pool._subprocess_start_method)
-            await asyncio.sleep(0)
-            self._sub_processes[address] = await task
-
-            if self.main_actor_pool._auto_recover == 'actor':
-                # need to recover all created actors
-                for _, message in self.main_actor_pool._allocated_actors[address].values():
-                    create_actor_message: CreateActorMessage = message
-                    await self.main_actor_pool.call(address, create_actor_message)
-
-        async def monitor_sub_pools(self):
-            try:
-                while not self.main_actor_pool._stopped.is_set():
-                    for address in self._sub_processes:
-                        process = self._sub_processes[address]
-                        if not process.is_alive():
-                            if self.main_actor_pool._on_process_down is not None:
-                                self.main_actor_pool._on_process_down(self.main_actor_pool, address)
-                            self.process_sub_pool_lost(address)
-                            if self.main_actor_pool._auto_recover:
-                                await self.recover_sub_pool(address)
-                                if self.main_actor_pool._on_process_recover is not None:
-                                    self.main_actor_pool._on_process_recover(self.main_actor_pool, address)
-
-                    # check every half second
-                    await asyncio.sleep(.5)
-            except asyncio.CancelledError:
-                # cancelled
-                return
-
-    class RaySubActorPoolManager(SubActorPoolManager):
-        pass
-
-
-def get_external_socket_addresses(address: str,
-                           n_process: int = None,
-                           ports: List[int] = None):
-    """Get socket address for every process"""
-    if ':' in address:
-        host, port = address.split(':', 1)
-        port = int(port)
-        if ports:
-            if len(ports) != n_process:
-                raise ValueError(f'`ports` specified, but its count '
-                                 f'is not equal to `n_process`, '
-                                 f'number of ports: {len(ports)}, '
-                                 f'n_process: {n_process}')
-            sub_ports = ports
+    @classmethod
+    def get_external_addresses(
+            cls, address: str, n_process: int = None, ports: List[int] = None):
+        """Get socket address for every process"""
+        if ':' in address:
+            host, port = address.split(':', 1)
+            port = int(port)
+            if ports:
+                if len(ports) != n_process:
+                    raise ValueError(f'`ports` specified, but its count '
+                                     f'is not equal to `n_process`, '
+                                     f'number of ports: {len(ports)}, '
+                                     f'n_process: {n_process}')
+                sub_ports = ports
+            else:
+                sub_ports = [get_next_port() for _ in range(n_process)]
         else:
-            sub_ports = [get_next_port() for _ in range(n_process)]
-    else:
-        host = address
-        if ports and len(ports) != n_process + 1:
-            # ports specified, the first of which should be main port
-            raise ValueError(f'`ports` specified, but its count '
-                             f'is not equal to `n_process` + 1, '
-                             f'number of ports: {len(ports)}, '
-                             f'n_process + 1: {n_process + 1}')
-        elif not ports:
-            ports = [get_next_port() for _ in range(n_process + 1)]
-        port = ports[0]
-        sub_ports = ports[1:]
-    return [f'{host}:{port}' for port in [port] + sub_ports]
+            host = address
+            if ports and len(ports) != n_process + 1:
+                # ports specified, the first of which should be main port
+                raise ValueError(f'`ports` specified, but its count '
+                                 f'is not equal to `n_process` + 1, '
+                                 f'number of ports: {len(ports)}, '
+                                 f'n_process + 1: {n_process + 1}')
+            elif not ports:
+                ports = [get_next_port() for _ in range(n_process + 1)]
+            port = ports[0]
+            sub_ports = ports[1:]
+        return [f'{host}:{port}' for port in [port] + sub_ports]
+
+
+MainActorPoolType = TypeVar('MainActorPoolType', bound=MainActorPool)
 
 
 async def create_actor_pool(address: str,
                             n_process: int = None,
+                            pool_cls: Type[MainActorPoolType] = MainActorPool,
                             labels: List[str] = None,
                             ports: List[int] = None,
                             envs: List[Dict] = None,
@@ -1097,7 +1087,7 @@ async def create_actor_pool(address: str,
                             auto_recover: Union[str, bool] = 'actor',
                             on_process_down: Callable[["MainActorPool", str], None] = None,
                             on_process_recover: Callable[["MainActorPool", str], None] = None) \
-        -> MainActorPool:
+        -> MainActorPoolType:
     n_process = n_process or multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(f'`labels` should be of size {n_process + 1}, '
@@ -1110,13 +1100,10 @@ async def create_actor_pool(address: str,
     if auto_recover not in ('actor', 'process', False):
         raise ValueError(f'`auto_recover` should be one of "actor", "process", '
                          f'True or False, got {auto_recover}')
-    if get_scheme(address) == "ray":
-        external_addresses = [f'{address}/{i}' for i in range(n_process + 1)]
-    else:
-        external_addresses = get_external_socket_addresses(address, ports)
+    external_addresses = pool_cls.get_external_addresses(address, ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
-    main_process_index = MainActorPool.next_process_index()
+    main_process_index = pool_cls.next_process_index()
     actor_pool_config.add_pool_conf(
         main_process_index,
         labels[0] if labels else None,
@@ -1124,7 +1111,7 @@ async def create_actor_pool(address: str,
         external_addresses[0])
     # add sub configs
     for i in range(n_process):
-        sub_process_index = MainActorPool.next_process_index()
+        sub_process_index = pool_cls.next_process_index()
         actor_pool_config.add_pool_conf(
             sub_process_index,
             labels[i + 1] if labels else None,
@@ -1133,7 +1120,7 @@ async def create_actor_pool(address: str,
             env=envs[i] if envs else None
         )
 
-    pool = await MainActorPool.create({
+    pool = await pool_cls.create({
         'actor_pool_config': actor_pool_config,
         'process_index': main_process_index,
         'start_method': subprocess_start_method,
