@@ -35,7 +35,8 @@ import warnings
 import weakref
 import zlib
 from contextlib import contextmanager
-from typing import List, Union
+from dataclasses import dataclass
+from typing import List, Dict, Tuple, Union, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -1225,77 +1226,131 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         raise TypeError("not a path-like object")
 
 
-class SyncExtensibleWrapper:
-    def __init__(self, instance, func, batch_func=None):
-        self.instance = instance
-        self.func = func
-        self._batch_func = batch_func
+@dataclass
+class _DelayedArgument:
+    args: Tuple
+    kwargs: Dict
+
+
+class _ExtensibleCallable:
+    func: Callable
+    batch_func: Optional[Callable]
+    is_async: bool
 
     def __call__(self, *args, **kwargs):
-        if self.func is not None:
-            return self.func(*args, **kwargs)
+        if self.is_async:
+            return self._async_call(*args, **kwargs)
         else:
-            return self._batch_func([args], [kwargs])[0]
+            return self._sync_call(*args, **kwargs)
 
-    def batch(self, args_list, kwargs_list=None):
-        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
-        if self._batch_func is not None:
-            return self._batch_func(args_list, kwargs_list)
-        return [
-            self.func(*args, **kwargs) for args, kwargs in zip(args_list, kwargs_list)
-        ]
-
-
-class AsyncExtensibleWrapper:
-    def __init__(self, instance, func, batch_func=None):
-        self.instance = instance
-        self.func = func
-        self._batch_func = batch_func
-
-    async def __call__(self, *args, **kwargs):
-        if self.func is not None:
+    async def _async_call(self, *args, **kwargs):
+        try:
             return await self.func(*args, **kwargs)
+        except NotImplementedError:
+            if self.batch_func:
+                return (await self.batch_func([args], [kwargs]))[0]
+            raise
+
+    def _sync_call(self, *args, **kwargs):
+        try:
+            return self.func(*args, **kwargs)
+        except NotImplementedError:
+            if self.batch_func:
+                return self.batch_func([args], [kwargs])[0]
+            raise
+
+
+class _ExtensibleWrapper(_ExtensibleCallable):
+    def __init__(self,
+                 func: Callable,
+                 batch_func: Callable = None,
+                 is_async: bool = False):
+        self.func = func
+        self.batch_func = batch_func
+        self.is_async = is_async
+
+    @staticmethod
+    def delay(*args, **kwargs):
+        return _DelayedArgument(args=args, kwargs=kwargs)
+
+    @staticmethod
+    def _gen_args_kwargs_list(delays):
+        args_list = list()
+        kwargs_list = list()
+        for delay in delays:
+            args_list.append(delay.args)
+            kwargs_list.append(delay.kwargs)
+        return args_list, kwargs_list
+
+    async def _async_batch(self, *delays):
+        if self.batch_func:
+            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
+            return await self.batch_func(args_list, kwargs_list)
         else:
-            return (await self._batch_func([args], [kwargs]))[0]
+            # this function has no batch implementation
+            # call it separately
+            coros = [self.func(*d.args, **d.kwargs)
+                     for d in delays]
+            return await asyncio.gather(*coros)
 
-    async def batch(self, args_list, kwargs_list=None):
-        kwargs_list = kwargs_list if kwargs_list is not None else [{} for _ in args_list]
-        if self._batch_func is not None:
-            return await self._batch_func(args_list, kwargs_list)
-        return await asyncio.gather(*[
-            self.func(*args, **kwargs) for args, kwargs in zip(args_list, kwargs_list)]
-        )
+    def _sync_batch(self, *delays):
+        if self.batch_func:
+            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
+            return self.batch_func(args_list, kwargs_list)
+        else:
+            # this function has no batch implementation
+            # call it separately
+            return [self.func(*d.args, **d.kwargs) for d in delays]
+
+    def batch(self, *delays):
+        if self.is_async:
+            return self._async_batch(*delays)
+        else:
+            return self._sync_batch(*delays)
 
 
-class ExtensibleAccessor:
-    def __init__(self, func, implemented=True):
+class _ExtensibleAccessor(_ExtensibleCallable):
+    func: Callable
+    batch_func: Optional[Callable]
+
+    def __init__(self, func: Callable):
         self.func = func
         self.batch_func = None
-        self.implemented = implemented
+        self.is_async = asyncio.iscoroutinefunction(self.func)
 
-    def batch(self, func):
+    def batch(self, func: Callable):
         self.batch_func = func
         return self
 
     def __get__(self, instance, owner):
         if instance is None:
+            # calling from class
             return self.func
-        func = self.func.__get__(instance, owner) \
-            if self.implemented else None
+
+        func = self.func.__get__(instance, owner)
         batch_func = self.batch_func.__get__(instance, owner) \
             if self.batch_func is not None else None
 
-        if asyncio.iscoroutinefunction(self.func):
-            return AsyncExtensibleWrapper(instance, func, batch_func)
-        else:
-            return SyncExtensibleWrapper(instance, func, batch_func)
+        return _ExtensibleWrapper(func, batch_func=batch_func,
+                                  is_async=self.is_async)
 
 
-def extensible(implemented):
-    if callable(implemented):
-        return ExtensibleAccessor(implemented)
+def extensible(func: Callable):
+    """
+    `extensible` means this func could be functionality extended,
+    especially for batch operations.
 
-    def deco_fun(func):
-        return ExtensibleAccessor(func, implemented)
+    Consider remote function calls, each function may have operations
+    like opening file, closing file, batching them can help to reduce the cost,
+    especially for remote function calls.
 
-    return deco_fun
+    Parameters
+    ----------
+    func : callable
+        Function
+
+    Returns
+    -------
+    func
+    """
+    return _ExtensibleAccessor(func)
