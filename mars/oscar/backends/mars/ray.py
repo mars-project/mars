@@ -21,6 +21,8 @@ from enum import Enum
 from numbers import Number
 from typing import List, Optional, Dict
 from urllib.parse import urlparse, unquote
+import types
+import inspect
 
 from .communication.ray import ChannelID, RayServer
 from .config import ActorPoolConfig
@@ -81,17 +83,16 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPool):
                 actor_pool_config: ActorPoolConfig,
                 process_index: int,
                 start_method: str = None):
-            ray.init(ignore_reinit_error=True)
             external_addresses = \
                 actor_pool_config.get_pool_config(process_index)['external_address']
-            assert len(external_addresses) == 1,\
+            assert len(external_addresses) == 1, \
                 f"Ray pool allows only one external address but got {external_addresses}"
             external_address = external_addresses[0]
             pg_name, bundle_index, _process_index = address_to_placement_info(external_address)
-            assert process_index == _process_index,\
+            assert process_index == _process_index, \
                 f"process_index {process_index} is not consistent with index {_process_index} " \
                 f"in external_address {external_address}"
-            pg = ray.util.get_placement_group(pg_name) if pg_name else None
+            pg = get_placement_group(pg_name) if pg_name else None
             # Hold actor_handle to avoid actor being freed.
             actor_handle = ray.remote(RaySubPool).options(
                 name=external_address, placement_group=pg,
@@ -109,6 +110,15 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPool):
             except Exception:
                 logger.info("Detected RaySubPool actor {} died", process)
                 return False
+
+
+def get_placement_group(pg_name):
+    if hasattr(ray.util, "get_placement_group"):
+        return ray.util.get_placement_group(pg_name)
+    else:
+        logger.warning("Current installed ray version doesn't support named placement group. "
+                       "Actor will be created on arbitrary node randomly.")
+        return None
 
 
 class RaySubActorPool(RayActorPoolMixin, SubActorPool):
@@ -135,6 +145,15 @@ class RayPoolBase(ABC):
 
     def health_check(self):
         return PoolStatus.HEALTHY
+
+    async def __proxy_call__(self, attribute, *args, **kwargs):
+        attr = getattr(self.actor_pool, attribute)
+        if isinstance(attr, types.MethodType):
+            if inspect.iscoroutinefunction(attr):
+                return await attr(*args, **kwargs)
+            return attr(*args, **kwargs)
+        else:
+            return attr
 
 
 class RayMainPool(RayPoolBase):
@@ -262,7 +281,6 @@ def create_cluster(cluster_name, resource_specs: List[NodeResourceSpec]):
     cluster_manager = ClusterManager(cluster_name, resource_specs)
     for index, (spec, bundle) in enumerate(zip(resource_specs, bundles)):
         address = pg_bundle_to_address(pg_name, index, process_index=0)
-        print(f"address {address}")
         # Hold actor_handle to avoid actor being freed.
         actor_handle = ray.remote(RayMainPool).options(
             name=address, placement_group=pg, placement_group_bundle_index=index).remote()
