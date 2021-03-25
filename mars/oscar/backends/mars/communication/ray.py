@@ -193,7 +193,7 @@ class RayOneWayActorChannel(RayChannelBase):
 
 @register_server
 class RayServer(Server):
-    __slots__ = '_closed', '_address', 'channels'
+    __slots__ = '_closed', '_address', '_channels', '_tasks'
 
     # Multiple instance for ray local mode
     _address_to_instances: Dict[str, "RayServer"] = dict()
@@ -203,7 +203,8 @@ class RayServer(Server):
         super().__init__(DEFAULT_DUMMY_RAY_ADDRESS, channel_handler)
         self._address = address
         self._closed = asyncio.Event()
-        self.channels: Dict[ChannelID, RayTwoWayChannel] = dict()
+        self._channels: Dict[ChannelID, RayTwoWayChannel] = dict()
+        self._tasks: Dict[ChannelID, asyncio.Task] = dict()
 
     @classmethod
     def get_instance(cls, address):
@@ -271,7 +272,7 @@ class RayServer(Server):
         return self._closed.is_set()
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
-        channel = self.channels.get(channel_id, None)
+        channel = self._channels.get(channel_id, None)
         if not channel:
             peer_local_address, peer_dest_address, peer_channel_index = channel_id
             if not peer_local_address:
@@ -281,14 +282,12 @@ class RayServer(Server):
                 # Peer is a ray actor too.
                 channel = RayTwoWayChannel(
                     peer_dest_address, peer_local_address, peer_channel_index, channel_id)
-            self.channels[channel_id] = channel
-            await self.on_connected(channel)
-            print(f"__on_ray_recv__ channel on_connected channel_id {channel_id} message {message}")
-        print(f"server __on_ray_recv__  channel_id {channel_id} message {message}")
+            self._channels[channel_id] = channel
+            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
         return await channel.__on_ray_recv__(message)
 
     def register_channel(self, channel: RayTwoWayChannel):
-        self.channels[channel.channel_id] = channel
+        self._channels[channel.channel_id] = channel
 
 
 @register_client
