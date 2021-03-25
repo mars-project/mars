@@ -93,6 +93,8 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPool):
                 f"process_index {process_index} is not consistent with index {_process_index} " \
                 f"in external_address {external_address}"
             pg = get_placement_group(pg_name) if pg_name else None
+            if not pg:
+                bundle_index = -1
             # Hold actor_handle to avoid actor being freed.
             actor_handle = ray.remote(RaySubPool).options(
                 name=external_address, placement_group=pg,
