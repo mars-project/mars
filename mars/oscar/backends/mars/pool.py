@@ -858,11 +858,6 @@ class MainActorPool(ActorPoolBase):
         # await asyncio.gather(*tasks)
         pool: MainActorPool = await create_task
         addresses = actor_pool_config.get_external_addresses()[1:]
-        print(f"tasks len {tasks}")
-        for i, t in enumerate(tasks[:-1]):
-            print(f"await i {i}")
-            # await t
-
         processes = [await t for t in tasks[:-1]]
         assert len(addresses) == len(processes), f"addresses {addresses}, processes {processes}"
         for addr, proc in zip(addresses, processes):

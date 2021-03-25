@@ -140,9 +140,9 @@ class RayOneWayDriverChannel(RayChannelBase):
             # Wait on ray object ref
             object_ref = await self._in_queue.get()
             return await object_ref
-        except RuntimeError:
-            if self._closed.is_set():
-                pass
+        except RuntimeError as e:
+            if not self._closed.is_set():
+                raise e
 
 
 class RayOneWayActorChannel(RayChannelBase):
@@ -168,7 +168,10 @@ class RayOneWayActorChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         # Current process is ray actor, peer is ray driver.
-        # We can't ray call to ray driver for message send.
+        # We can't ray call to ray driver for message send, so we use ray call reply
+        # to send message to ray driver.
+        # Not that we can send once for every read message in channel, other else
+        # it will be taken as other message's reply.
         await self._out_queue.put(message)
         self._msg_sent_counter += 1
         assert self._msg_sent_counter <= self._msg_recv_counter,\

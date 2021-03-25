@@ -27,7 +27,6 @@ from .config import ActorPoolConfig
 from .pool import AbstractActorPool, MainActorPool, SubActorPool, create_actor_pool
 from ....utils import lazy_import
 from ...backend import BaseActorBackend, register_backend
-from ...context import BaseActorContext
 from .driver import MarsActorDriver
 from .context import MarsActorContext
 
@@ -39,7 +38,6 @@ logger = logging.getLogger(__name__)
 class RayActorBackend(BaseActorBackend):
     @staticmethod
     def name():
-        # return None because Mars is default scheme
         return "ray"
 
     @staticmethod
@@ -55,12 +53,10 @@ class RayActorPoolMixin(AbstractActorPool, ABC):
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         """Method for communication based on ray actors"""
-        print(f"__on_ray_recv__ start channel_id {channel_id} message {message}")
         if not hasattr(self, '_external_servers'):
             ray_servers = [server for server in self._servers if isinstance(server, RayServer)]
             assert len(ray_servers) == 1, f"Ray only support single server but got {ray_servers}."
             self._external_servers = ray_servers
-        print(f"__on_ray_recv__ end channel_id {channel_id} message {message}")
         return await self._external_servers[0].__on_ray_recv__(channel_id, message)
 
 
@@ -135,7 +131,7 @@ class RayPoolBase(ABC):
         raise NotImplementedError
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
-        await self.actor_pool.__on_ray_recv__(channel_id, message)
+        return await self.actor_pool.__on_ray_recv__(channel_id, message)
 
     def health_check(self):
         return PoolStatus.HEALTHY
