@@ -220,13 +220,13 @@ class Test(TestBase):
                           [1., 1., 3., 0., 0.],
                           [1., 1., 0., 3., 0.],
                           [1., 1., 0., 0., 3.]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         # hstack([1, 2, 3])
         c = block([1, 2, 3])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([1, 2, 3])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         # hstack([a, b, 10])
         a = array([1, 2, 3])
@@ -234,7 +234,7 @@ class Test(TestBase):
         c = block([a, b, 10])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([1, 2, 3, 2, 3, 4, 10])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         # hstack([A, B])
         A = ones((2, 2), int)
@@ -243,7 +243,7 @@ class Test(TestBase):
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[1, 1, 2, 2],
                           [1, 1, 2, 2]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         # vstack([a, b])
         a = array([1, 2, 3])
@@ -252,7 +252,7 @@ class Test(TestBase):
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[1, 2, 3],
                           [2, 3, 4]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         # vstack([A, B])
         A = ones((2, 2), int)
@@ -263,7 +263,7 @@ class Test(TestBase):
                           [1, 1],
                           [2, 2],
                           [2, 2]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
 
         a = array(0)
         b = array([1])
@@ -271,19 +271,19 @@ class Test(TestBase):
         c = block([a])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([0])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
         # atleast_1d(b)
         c = block([b])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([1])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
         # atleast_2d(a)
         c = block([[a]])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[0]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
         # atleast_2d(b)
         c = block([[b]])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[1]])
-        self.assertEqual(r, expected)
+        np.testing.assert_array_equal(r, expected)
