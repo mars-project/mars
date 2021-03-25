@@ -283,7 +283,9 @@ class RayServer(Server):
                     peer_dest_address, peer_local_address, peer_channel_index, channel_id)
             self.channels[channel_id] = channel
             await self.on_connected(channel)
-        await channel.__on_ray_recv__(message)
+            print(f"__on_ray_recv__ channel on_connected channel_id {channel_id} message {message}")
+        print(f"server __on_ray_recv__  channel_id {channel_id} message {message}")
+        return await channel.__on_ray_recv__(message)
 
     def register_channel(self, channel: RayTwoWayChannel):
         self.channels[channel.channel_id] = channel
