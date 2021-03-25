@@ -899,15 +899,13 @@ class MainActorPool(ActorPoolBase):
                 await asyncio.sleep(0)
                 tasks.append(create_task_pool)
 
-        # create main actor pool
-        create_task = asyncio.create_task(super().create(config))
-        tasks.append(create_task)
-
-        # wait for all pools
+        # wait for sub pools to start
         await asyncio.gather(*tasks)
-        pool: MainActorPool = await create_task
+
+        # create main actor pool
+        pool: MainActorPool = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
-        processes = [await t for t in tasks[:-1]]
+        processes = [await t for t in tasks]
         assert len(addresses) == len(processes)
         for addr, proc in zip(addresses, processes):
             pool.attach_sub_process(addr, proc)

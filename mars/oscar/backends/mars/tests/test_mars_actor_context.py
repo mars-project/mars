@@ -20,6 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
+from mars.oscar.backends.mars.allocate_strategy import RandomSubPool
 from mars.utils import extensible
 
 
@@ -289,6 +290,11 @@ async def test_mars_send(actor_pool_context):
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
     ref2 = await mo.actor_ref(await ref1.create(DummyActor, 2, address=pool.external_address))
     assert await ref1.send(ref2, 'add', 3) == 5
+
+    ref3 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    ref4 = await mo.create_actor(DummyActor, 2, address=pool.external_address,
+                                 allocate_strategy=RandomSubPool())
+    assert await ref4.send(ref3, 'add', 3) == 4
 
 
 @pytest.mark.asyncio
