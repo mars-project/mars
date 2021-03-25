@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Type, Union
 
+from ..utils import dataslots
 from .core import StorageFileObject
 
 _storage_backends = dict()
@@ -36,7 +38,7 @@ class StorageLevel(Enum):
     DISK = 1 << 2
     REMOTE = 1 << 3
 
-    def __and__(self, other: "StorageLevel"):
+    def __or__(self, other: "StorageLevel"):
         return self.value | other.value
 
     def __lt__(self, other):
@@ -46,16 +48,12 @@ class StorageLevel(Enum):
         return self.value > other.value
 
 
+@dataslots
+@dataclass
 class ObjectInfo:
-    __slots__ = 'size', 'device', 'object_id'
-
-    def __init__(self,
-                 size: int = None,
-                 device: int = None,
-                 object_id: Any = None):
-        self.size = size
-        self.device = device
-        self.object_id = object_id
+    size: int = None
+    device: int = None
+    object_id: Any = None
 
 
 class StorageBackend(ABC):
