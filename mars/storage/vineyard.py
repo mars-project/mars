@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 import pyarrow as pa
 try:
@@ -28,7 +28,7 @@ except ImportError:
 
 from ..lib import sparse
 from ..utils import implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 
@@ -86,8 +86,14 @@ class VineyardFileObject(BufferWrappedFileObject):
         pass
 
 
+@register_storage_backend
 class VineyardStorage(StorageBackend):
-    def __init__(self, vineyard_socket: str = None):
+    name = 'vineyard'
+
+    def __init__(self,
+                 vineyard_size: int,
+                 vineyard_socket: str = None):
+        self._size = vineyard_size
         self._client = vineyard.connect(vineyard_socket)
 
     @classmethod
@@ -106,7 +112,10 @@ class VineyardStorage(StorageBackend):
             vineyardd_path,
             vineyard_size,
             vineyard_socket)
-        return dict(vineyard_socket=vineyard_store.__enter__()[1]), dict(vineyard_store=vineyard_store)
+        init_params = dict(vineyard_size=vineyard_size,
+                           vineyard_socket=vineyard_store.__enter__()[1])
+        teardown_params = dict(vineyard_store=vineyard_store)
+        return init_params, teardown_params
 
     @staticmethod
     @implements(StorageBackend.teardown)
@@ -118,6 +127,11 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.level)
     def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
+
+    @property
+    @implements(StorageBackend.size)
+    def size(self) -> Union[int, None]:
+        return self._size
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwarg) -> object:

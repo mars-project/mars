@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..utils import lazy_import, implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
@@ -97,7 +97,10 @@ class RayFileObject(BufferWrappedFileObject):
         pass
 
 
+@register_storage_backend
 class RayStorage(StorageBackend):
+    name = 'ray'
+
     def __init__(self, *args, **kwargs):
         pass
 
