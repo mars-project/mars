@@ -188,7 +188,7 @@ class RayOneWayActorChannel(RayChannelBase):
                 pass
 
     async def __on_ray_recv__(self, message):
-        """This method will be invoked when current process is a ray actor instead of ray driver"""
+        """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
         await self._in_queue.put(message)
         return await self._out_queue.get()
