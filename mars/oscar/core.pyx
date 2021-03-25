@@ -15,7 +15,6 @@
 import asyncio
 cimport cython
 import sys
-import weakref
 
 from .utils cimport is_async_generator
 from .utils import create_actor_ref
@@ -23,9 +22,6 @@ from .utils import create_actor_ref
 
 CALL_METHOD_DEFAULT = 0
 CALL_METHOD_BATCH = 1
-
-
-_coro_to_arg = weakref.WeakKeyDictionary()
 
 
 cdef class ActorRef:
@@ -51,27 +47,6 @@ cdef class ActorRef:
         from .context import get_context
         ctx = get_context()
         return ctx.destroy_actor(self)
-
-    def batch(self, *calls):
-        cdef list args_list = []
-        cdef list kwargs_list = []
-
-        last_call_type = last_method = None
-        for ref_call in calls:
-            call_type, (method, _call_method, args, kwargs) = _coro_to_arg.pop(ref_call)
-            if (last_call_type is not None and call_type != last_call_type) \
-                    or (last_method is not None and method != last_method):
-                raise ValueError('Does not support calling multiple methods in batch')
-            last_call_type = call_type
-            last_method = method
-
-            args_list.append(args)
-            kwargs_list.append(kwargs)
-
-        if last_call_type == 'send':
-            return self.__send__((last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {}))
-        else:
-            return self.__tell__((last_method, CALL_METHOD_BATCH, (args_list, kwargs_list), {}))
 
     def __getstate__(self):
         return self.address, self.uid
@@ -101,6 +76,13 @@ cdef class ActorRef:
                other.uid == self.uid
 
 
+cdef class _DelayedArgument:
+    cdef readonly tuple arguments
+
+    def __init__(self, tuple arguments):
+        self.arguments = arguments
+
+
 cdef class ActorRefMethod:
     """
     Wrapper for an Actor method at client
@@ -117,15 +99,37 @@ cdef class ActorRefMethod:
 
     def send(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        coro = self.ref.__send__(arg_tuple)
-        _coro_to_arg[coro] = ('send', arg_tuple)
-        return coro
+        return self.ref.__send__(arg_tuple)
 
     def tell(self, *args, **kwargs):
         arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
-        coro = self.ref.__tell__(arg_tuple)
-        _coro_to_arg[coro] = ('tell', arg_tuple)
-        return coro
+        return self.ref.__tell__(arg_tuple)
+
+    def delay(self, *args, **kwargs):
+        arg_tuple = (self.method_name, CALL_METHOD_DEFAULT, args, kwargs)
+        return _DelayedArgument(arg_tuple)
+
+    def batch(self, *delays, send=True):
+        cdef:
+            list args_list = list()
+            list kwargs_list = list()
+
+        last_method = None
+        for delay in delays:
+            method, _call_method, args, kwargs = delay.arguments
+            if last_method is not None and method != last_method:
+                raise ValueError('Does not support calling multiple methods in batch')
+            last_method = method
+
+            args_list.append(args)
+            kwargs_list.append(kwargs)
+
+        if send:
+            return self.ref.__send__((last_method, CALL_METHOD_BATCH,
+                                      (args_list, kwargs_list), {}))
+        else:
+            return self.ref.__tell__((last_method, CALL_METHOD_BATCH,
+                                      (args_list, kwargs_list), {}))
 
     def tell_delay(self, *args, delay=None, **kwargs):
         async def delay_fun():
@@ -261,13 +265,20 @@ cdef class _Actor:
         method, call_method, args, kwargs = message
         if call_method == CALL_METHOD_DEFAULT:
             func = getattr(self, method)
+            async with self._lock:
+                result = func(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    result = await result
         elif call_method == CALL_METHOD_BATCH:
-            func = getattr(self, method).batch
+            func = getattr(self, method)
+            async with self._lock:
+                delays = []
+                for s_args, s_kwargs in zip(*args):
+                    delays.append(func.delay(*s_args, **s_kwargs))
+                result = func.batch(*delays)
+                if asyncio.iscoroutine(result):
+                    result = await result
         else:  # pragma: no cover
             raise ValueError(f'call_method {call_method} not valid')
 
-        async with self._lock:
-            result = func(*args, **kwargs)
-            if asyncio.iscoroutine(result):
-                result = await result
         return await self._handle_actor_result(result)
