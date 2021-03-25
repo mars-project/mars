@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Type, Any, Union
+from typing import Dict, List, Tuple, Any, Union
 
 from ... import oscar as mo
 from ...oscar.backends.mars import allocate_strategy
@@ -119,20 +119,18 @@ class MetaAPI:
 
     async def get_tileable_meta(self,
                                 object_id: str,
-                                tileable_type: Type,
                                 fields: List[str] = None) -> Dict[str, Any]:
         return await self._meta_store.get_meta(object_id, fields=fields)
 
     async def del_tileable_meta(self,
-                                object_id: str,
-                                tileable_type: Type):
+                                object_id: str):
         return await self._meta_store.del_meta(object_id)
 
     async def set_chunk_meta(self,
                              chunk,
                              memory_size: int = None,
                              store_size: int = None,
-                             workers: List[str] = None,
+                             bands: List[Tuple[str, str]] = None,
                              **extra):
         params = chunk.params.copy()
         if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
@@ -143,20 +141,24 @@ class MetaAPI:
         params.update(extra)
         meta = get_meta_type(type(chunk))(object_id=chunk.key,
                                           **params,
+                                          bands=bands,
                                           memory_size=memory_size,
                                           store_size=store_size)
         return await self._meta_store.set_meta(chunk.key, meta)
 
     async def get_chunk_meta(self,
                              object_id: str,
-                             chunk_type: Type,
                              fields: List[str] = None):
         return await self._meta_store.get_meta(object_id, fields=fields)
 
     async def del_chunk_meta(self,
-                             object_id: str,
-                             chunk_type: Type):
+                             object_id: str):
         return await self._meta_store.del_meta(object_id)
+
+    async def add_chunk_bands(self,
+                              object_id: str,
+                              bands: List[Tuple[str, str]]):
+        return await self._meta_store.add_chunk_bands(object_id, bands)
 
 
 class MockMetaAPI(MetaAPI):

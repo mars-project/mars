@@ -55,6 +55,7 @@ class _CommonMeta:
     Class for common meta, for both tileable and chunk, or DataFrame, tensor etc.
     """
     object_id: str
+    name: Any = None
     memory_size: int = None # size in memory
     store_size: int = None  # size that stored in storage
     extra: Dict = None
@@ -87,7 +88,6 @@ class SeriesMeta(_TileableMeta):
     shape: Tuple[int] = None
     dtype: PandasDtypeType = None
     index_value: IndexValue = None
-    name: Any = None
 
 
 @_register_type(INDEX_TYPE)
@@ -96,7 +96,6 @@ class IndexMeta(_TileableMeta):
     shape: Tuple[int] = None
     dtype: PandasDtypeType = None
     index_value: IndexValue = None
-    name: Any = None
 
 
 @_register_type(OBJECT_TYPE)
@@ -109,7 +108,7 @@ class ObjectMeta(_TileableMeta):
 @dataclass
 class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
-    workers: List[str] = None
+    bands: List[Tuple[str, str]] = None
 
 
 @_register_type(TENSOR_CHUNK_TYPE)
@@ -134,7 +133,6 @@ class SeriesChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
     dtype: PandasDtypeType = None
     index_value: IndexValue = None
-    name: Any = None
 
 
 @_register_type(INDEX_CHUNK_TYPE)
@@ -143,7 +141,6 @@ class IndexChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
     dtype: PandasDtypeType = None
     index_value: IndexValue = None
-    name: Any = None
 
 
 @_register_type(OBJECT_CHUNK_TYPE)

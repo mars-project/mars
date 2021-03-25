@@ -31,7 +31,7 @@ def gather_node_env():
         }
     }
     # todo numa can be supported by adding more bands
-    bands['cpu-0'] = cpu_band
+    bands['numa-0'] = cpu_band
 
     for idx, gpu_card_stat in enumerate(mars_resource.cuda_card_stats()):  # pragma: no cover
         bands[f'gpu-{idx}'] = {
@@ -47,7 +47,7 @@ def gather_node_resource():
     # todo numa can be supported by adding more bands
     res = dict()
     mem_info = mars_resource.virtual_memory()
-    res['cpu-0'] = {
+    res['numa-0'] = {
         'cpu_avail': mars_resource.cpu_count() - mars_resource.cpu_percent() / 100.0,
         'cpu_total': mars_resource.cpu_count(),
         'memory_avail': mem_info.available,

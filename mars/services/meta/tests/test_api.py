@@ -52,24 +52,26 @@ async def test_meta_mock_api(obj):
 
         await meta_api.set_tileable_meta(obj)
         meta = await meta_api.get_tileable_meta(obj.key,
-                                                fields=['nsplits'],
-                                                tileable_type=type(obj))
+                                                fields=['nsplits'])
         assert meta['nsplits'] == obj.nsplits
-        await meta_api.del_tileable_meta(obj.key,
-                                         tileable_type=type(obj))
+        await meta_api.del_tileable_meta(obj.key)
         with pytest.raises(KeyError):
-            await meta_api.get_tileable_meta(obj.key,
-                                             tileable_type=type(obj))
+            await meta_api.get_tileable_meta(obj.key)
 
         chunk = obj.chunks[0]
 
-        await meta_api.set_chunk_meta(chunk)
+        await meta_api.set_chunk_meta(chunk,
+                                      bands=[(pool.external_address, 'numa-0')])
         meta = await meta_api.get_chunk_meta(chunk.key,
-                                             fields=['index'],
-                                             chunk_type=type(chunk))
+                                             fields=['index', 'bands'])
         assert meta['index'] == chunk.index
-        await meta_api.del_chunk_meta(chunk.key,
-                                      chunk_type=type(chunk))
+        assert meta['bands'] == [(pool.external_address, 'numa-0')]
+
+        await meta_api.add_chunk_bands(chunk.key, [('1.2.3.4:1234', 'numa-0')])
+        meta = await meta_api.get_chunk_meta(chunk.key,
+                                             fields=['bands'])
+        assert ('1.2.3.4:1234', 'numa-0') in meta['bands']
+
+        await meta_api.del_chunk_meta(chunk.key)
         with pytest.raises(KeyError):
-            await meta_api.get_chunk_meta(chunk.key,
-                                          chunk_type=type(chunk))
+            await meta_api.get_chunk_meta(chunk.key)
