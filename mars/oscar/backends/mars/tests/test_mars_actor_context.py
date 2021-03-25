@@ -214,15 +214,80 @@ class PromiseTestActor(mo.Actor):
         return log
 
 
-@pytest.fixture
-async def actor_pool_context():
+async def mars_actor_pool_context():
     pool = await mo.create_actor_pool('127.0.0.1', n_process=2)
     await pool.start()
     yield pool
     await pool.stop()
 
 
-@pytest.mark.asyncio
+async def ray_actor_pool_context():
+    import ray
+    import inspect
+    from ..ray import pg_bundle_to_address, RayPoolBase, RayMainPool
+    try:
+        from ray.cluster_utils import Cluster
+    except ModuleNotFoundError:
+        from ray._private.cluster_utils import Cluster
+    cluster = Cluster()
+    remote_nodes = []
+    num_nodes = 3
+    for i in range(num_nodes):
+        remote_nodes.append(cluster.add_node(num_cpus=10))
+        if len(remote_nodes) == 1:
+            print("Starting ray cluster.")
+            ray.init()
+            print("Started ray cluster.")
+
+    pg_name, n_process = 'ray_cluster', 2
+    pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}], strategy="SPREAD")
+    ray.get(pg.ready())
+    address = pg_bundle_to_address(pg_name, 0, process_index=0)
+    # Hold actor_handle to avoid actor being freed.
+    actor_handle = ray.remote(RayMainPool).options(
+        name=address, placement_group=pg, placement_group_bundle_index=0).remote()
+    await actor_handle.start.remote(address, n_process)
+
+    class ProxyPool:
+
+        def __init__(self, ray_pool_actor_handle):
+            self.ray_pool_actor_handle = ray_pool_actor_handle
+
+        def __getattr__(self, item):
+            if hasattr(RayPoolBase, item) and inspect.isfunction(getattr(RayPoolBase, item)):
+                def call(*args, **kwargs):
+                    ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item, *args, **kwargs))
+                return call
+
+            return ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item))
+
+    yield ProxyPool(actor_handle)
+
+    print("Start to shutdown ray cluster.")
+    ray.shutdown()
+    print("Shutdown ray cluster succeed.")
+
+
+@pytest.fixture
+async def actor_pool_context(request):
+    pool_context = request.param
+    async_generator = pool_context()
+    yield await async_generator.asend(None)
+    try:
+        yield await async_generator.asend(None)
+    except StopAsyncIteration:
+        pass
+
+
+def pool_test(f):
+    f = pytest.mark.parametrize(
+        'actor_pool_context',
+        [ray_actor_pool_context], indirect=True)(f)
+    f = pytest.mark.asyncio(f)
+    return f
+
+
+@pool_test
 async def test_simple_local_actor_pool(actor_pool_context):
     pool = actor_pool_context
     actor_ref = await mo.create_actor(DummyActor, 100, address=pool.external_address)
@@ -240,6 +305,9 @@ async def test_simple_local_actor_pool(actor_pool_context):
     assert await ref.add(2) == 104
 
 
+@pytest.mark.parametrize(
+    'actor_pool_context',
+    [mars_actor_pool_context], indirect=True)
 @pytest.mark.asyncio
 async def test_mars_post_create_pre_destroy(actor_pool_context):
     pool = actor_pool_context
@@ -254,8 +322,10 @@ async def test_mars_post_create_pre_destroy(actor_pool_context):
     assert records[1].startswith('destroy')
 
 
-@pytest.mark.asyncio
-async def test_mars_create_actor(actor_pool_context):
+@pool_test
+async def test_mars_create_actor(actor_pool_context, event_loop):
+    asyncio.set_event_loop(event_loop)
+    event_loop.set_debug(True)
     pool = actor_pool_context
     actor_ref = await mo.create_actor(DummyActor, 1, address=pool.external_address)
     # create actor inside on_receive
@@ -268,8 +338,10 @@ async def test_mars_create_actor(actor_pool_context):
     assert r == 6
 
 
-@pytest.mark.asyncio
-async def test_mars_create_actor_error(actor_pool_context):
+@pool_test
+async def test_mars_create_actor_error(actor_pool_context, event_loop):
+    asyncio.set_event_loop(event_loop)
+    event_loop.set_debug(True)
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, uid='dummy1', address=pool.external_address)
     with pytest.raises(mo.ActorAlreadyExist):
@@ -283,7 +355,7 @@ async def test_mars_create_actor_error(actor_pool_context):
         await ref1.create(DummyActor, -2, address=pool.external_address)
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_send(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
@@ -291,7 +363,7 @@ async def test_mars_send(actor_pool_context):
     assert await ref1.send(ref2, 'add', 3) == 5
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_send_error(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
@@ -304,7 +376,7 @@ async def test_mars_send_error(actor_pool_context):
         await (await mo.actor_ref('fake_uid', address=pool.external_address)).add(1)
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_tell(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
@@ -324,7 +396,7 @@ async def test_mars_tell(actor_pool_context):
         await ref1.tell(await mo.actor_ref(set()), 'add', 3)
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_batch_method(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
@@ -343,7 +415,7 @@ async def test_mars_batch_method(actor_pool_context):
         await ref1.batch(ref1.add_ret(1), ref1.add(2))
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_destroy_has_actor(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
@@ -383,7 +455,7 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_mars_resource_lock(actor_pool_context):
     pool = actor_pool_context
     ref = await mo.create_actor(ResourceLockActor, address=pool.external_address)
@@ -405,7 +477,7 @@ async def test_mars_resource_lock(actor_pool_context):
         assert event_pair[0][1] == event_pair[1][1]
 
 
-@pytest.mark.asyncio
+@pool_test
 async def test_promise_chain(actor_pool_context):
     pool = actor_pool_context
     lock_ref = await mo.create_actor(

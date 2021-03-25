@@ -12,36 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-import sys
-import time
 try:
     import mock
 except ImportError:
     from unittest import mock
 
-import pytest
 import os
 
-from mars.utils import get_next_port
-from mars.oscar import Actor, kill_actor
-from mars.oscar.context import get_context
-from mars.oscar.backends.mars import create_actor_pool
-from mars.oscar.backends.mars.allocate_strategy import \
-    AddressSpecified, IdleLabel, MainPool, RandomSubPool, ProcessIndex
-from mars.oscar.backends.mars.config import ActorPoolConfig
-from mars.oscar.backends.mars.message import new_message_id, \
-    CreateActorMessage, DestroyActorMessage, HasActorMessage, \
-    ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
-    CancelMessage, ControlMessageType, MessageType
-from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
-from mars.oscar.backends.mars.ray import create_cluster, NodeResourceSpec, pg_bundle_to_address,\
-    address_to_placement_info, RayMainPool
-from mars.oscar.backends.mars.router import Router
-from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
-from mars.oscar.utils import create_actor_ref
-from mars.oscar.utils import create_actor_ref
+import pytest
+
 import mars.oscar as mo
+from mars.oscar.backends.mars.ray import create_cluster, NodeResourceSpec, pg_bundle_to_address, \
+    RayMainPool
 from mars.tests.core import ray
 
 
@@ -89,8 +71,8 @@ async def test_ray_main_pool(ray_cluster):
     actor_handle = ray.remote(RayMainPool).options(
         name=address, placement_group=pg, placement_group_bundle_index=0).remote()
     ray.get(actor_handle.start.remote(address, n_process))
-    actor_ref = await mo.create_actor(DummyActor, 0, address=address)
-    assert await actor_ref.index() == 0
+    actor_ref = await mo.create_actor(DummyActor, 1, address=address)
+    assert await actor_ref.index() == 1
 
 
 @pytest.mark.asyncio
@@ -120,8 +102,3 @@ async def test_ray_cluster(ray_cluster):
     # actor_ref = await ctx.create_actor(
     #     TestActor, address=pool.external_address,
     #     allocate_strategy=ProcessIndex(1))
-
-if __name__ == '__main__':
-    next(ray_cluster())
-    import asyncio
-    asyncio.run(test_ray_cluster())
