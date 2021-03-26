@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import Any, List, Type, TypeVar
 
 from ... import oscar as mo
-from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
+from ...storage.base import StorageLevel, StorageFileObject
 from ...utils import extensible
-from .core import StorageHandlerActor, StorageManagerActor
+from .core import StorageHandlerActor, StorageManagerActor, DataInfo
+
+APIType = TypeVar('APIType', bound='StorageAPI')
 
 
 class StorageAPI:
@@ -34,10 +36,10 @@ class StorageAPI:
             self._address, StorageManagerActor.default_uid())
 
     @classmethod
-    async def create(cls,
+    async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,
-                     **kwargs):
+                     **kwargs) -> APIType:
         """
         Create storage API.
 
@@ -61,7 +63,7 @@ class StorageAPI:
         return api
 
     @extensible
-    async def get(self, data_key: str, conditions: List = None):
+    async def get(self, data_key: str, conditions: List = None) -> Any:
         """
         Get object by data key.
 
@@ -83,7 +85,7 @@ class StorageAPI:
     @extensible
     async def put(self, data_key: str,
                   obj: object,
-                  level: StorageLevel = StorageLevel.MEMORY) -> ObjectInfo:
+                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
         """
         Put object into storage.
 
@@ -103,6 +105,24 @@ class StorageAPI:
         """
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
+        )
+
+    @extensible
+    async def get_infos(self, data_key: str) -> List[DataInfo]:
+        """
+        Get data information items for specific data key
+
+        Parameters
+        ----------
+        data_key
+
+        Returns
+        -------
+        out
+            List of information for specified key
+        """
+        return await self._storage_manager_ref.get_data_infos(
+            self._session_id, data_key
         )
 
     @extensible
@@ -207,10 +227,10 @@ class StorageAPI:
 
 class MockStorageApi(StorageAPI):
     @classmethod
-    async def create(cls,
+    async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,
-                     **kwargs):
+                     **kwargs) -> APIType:
         from .core import StorageManagerActor
 
         storage_configs = kwargs.get('storage_configs')

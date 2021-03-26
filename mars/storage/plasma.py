@@ -14,14 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import psutil
+from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Optional, Union
 
+import psutil
 import pyarrow as pa
 from pyarrow import plasma
 
 from ..serialization import AioSerializer, AioDeserializer
-from ..utils import implements
+from ..utils import implements, dataslots
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -65,19 +66,11 @@ class PlasmaFileObject(BufferWrappedFileObject):
         pass
 
 
+@dataslots
+@dataclass
 class PlasmaObjectInfo(ObjectInfo):
-    __slots__ = "buffer", "plasma_socket"
-
-    def __init__(self,
-                 size: int = None,
-                 device: int = None,
-                 object_id: Any = None,
-                 buffer: memoryview = None,
-                 plasma_socket: str = None):
-        super().__init__(size=size, device=device,
-                         object_id=object_id)
-        self.buffer = buffer
-        self.plasma_socket = plasma_socket
+    buffer: memoryview = None
+    plasma_socket: str = None
 
     def __getstate__(self):
         return self.size, self.device, self.object_id, self.plasma_socket

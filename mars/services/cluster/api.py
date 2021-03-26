@@ -18,7 +18,7 @@ from typing import List, Dict, Union, Type, TypeVar
 from ... import oscar as mo
 from ..core import NodeRole
 
-T = TypeVar('T', bound='ClusterAPI')
+APIType = TypeVar('APIType', bound='ClusterAPI')
 
 
 class ClusterAPI:
@@ -41,7 +41,7 @@ class ClusterAPI:
             [NodeInfoCollectorActor.default_uid()])
 
     @classmethod
-    async def create(cls: Type[T], address: str) -> T:
+    async def create(cls: Type[APIType], address: str) -> APIType:
         api_obj = cls(address)
         await api_obj._init()
         return api_obj
@@ -150,7 +150,7 @@ class ClusterAPI:
 
 class MockClusterAPI(ClusterAPI):
     @classmethod
-    async def create(cls: Type[T], address: str, **kw) -> T:
+    async def create(cls: Type[APIType], address: str, **kw) -> APIType:
         from .locator import SupervisorLocatorActor
         from .uploader import NodeInfoUploaderActor
         from .supervisor.node_info import NodeInfoCollectorActor

@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .api import StorageAPI
+from .core import DataInfo
