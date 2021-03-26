@@ -236,8 +236,7 @@ class Client(ABC):
 
     @staticmethod
     @abstractmethod
-    async def connect(dest_address: str,
-                      local_address: str = None,
+    async def connect(dest_address: str, local_address: str = None,
                       **kwargs) -> "Client":
         """
         Create a client that is able to connect to some server.

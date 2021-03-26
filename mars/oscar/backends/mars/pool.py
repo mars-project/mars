@@ -16,28 +16,26 @@ import asyncio
 import concurrent.futures as futures
 import contextlib
 import itertools
-import os
 import multiprocessing
+import os
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
-from ....utils import implements, get_next_port, to_binary
-from ...api import Actor
-from ...core import ActorRef
-from ...errors import ActorAlreadyExist, ActorNotExist, ServerClosed
-from ...utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
-from .communication.core import get_scheme
 from .communication import Channel, Server, \
     get_server_type, gen_internal_address, gen_local_address
-from .core import result_message_type, ActorCaller
 from .config import ActorPoolConfig
+from .core import result_message_type, ActorCaller
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
     ResultMessage, ErrorMessage, CreateActorMessage, HasActorMessage, \
     DestroyActorMessage, ActorRefMessage, SendMessage, TellMessage, \
     CancelMessage, ControlMessage, ControlMessageType
 from .router import Router
-
+from ...api import Actor
+from ...core import ActorRef
+from ...errors import ActorAlreadyExist, ActorNotExist, ServerClosed
+from ...utils import create_actor_ref
+from ....utils import implements, get_next_port, to_binary
 from ....utils import lazy_import
 
 ray = lazy_import("ray")
