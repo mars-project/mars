@@ -19,7 +19,6 @@ from typing import Dict
 from .communication import RayServer
 from .pool import RayMainPool
 from .utils import process_placement_to_address, node_addresses_to_pg_info
-from ..mars.router import Router
 from ...driver import BaseActorDriver
 from ....utils import lazy_import
 
@@ -73,5 +72,4 @@ class RayActorDriver(BaseActorDriver):
         ray.util.remove_placement_group(pg)
         cls._cluster_info = dict()
         RayServer.clear()
-        Router.set_instance(Router([], None))
         logger.info('Stopped cluster %s.', pg_name)

@@ -37,7 +37,7 @@ class Router:
 
     @staticmethod
     def get_instance_or_empty() -> "Router":
-        return Router._instance or _empty_router
+        return Router._instance or Router(list(), None)
 
     def __init__(self,
                  external_addresses: List[str],
@@ -105,6 +105,3 @@ class Router:
         if cached:
             self._cache[external_address, from_who] = client
         return client
-
-
-_empty_router = Router(list(), None)
