@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...backend import BaseActorBackend, register_backend
 from .driver import RayActorDriver
-from .context import RayActorContext
-
+from ..mars.context import MarsActorContext
+from ...backend import BaseActorBackend, register_backend
 
 __all__ = ['RayActorBackend']
 
@@ -28,7 +27,7 @@ class RayActorBackend(BaseActorBackend):
 
     @staticmethod
     def get_context_cls():
-        return RayActorContext
+        return MarsActorContext
 
     @staticmethod
     def get_driver_cls():

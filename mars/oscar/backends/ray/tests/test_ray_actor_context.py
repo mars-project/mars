@@ -12,233 +12,141 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
-
 import pytest
 
-import mars.oscar as mo
 from mars.tests.core import require_ray
-from mars.utils import lazy_import
+from ..communication import RayServer
+from ...mars.router import Router
+from ...mars.tests import test_mars_actor_context
+from .....utils import lazy_import
 
-ray = lazy_import('ray', globals=globals())
-
-RAY_TEST_ADDRESS = 'ray://'
-
-
-class DummyActor(mo.Actor):
-    def __init__(self, value):
-        super().__init__()
-
-        if value < 0:
-            raise ValueError('value < 0')
-        self.value = value
-
-    def add(self, value):
-        if not isinstance(value, int):
-            raise TypeError('add number must be int')
-        self.value += value
-        return self.value
-
-    def add_ret(self, value):
-        return self.value + value
-
-    async def create(self, actor_cls, *args, **kw):
-        return await mo.create_actor(actor_cls, *args, address=RAY_TEST_ADDRESS, **kw)
-
-    async def create_ignore(self, actor_cls, *args, **kw):
-        try:
-            return await mo.create_actor(actor_cls, *args, **kw)
-        except ValueError:
-            pass
-
-    async def create_send(self, actor_cls, *args, **kw):
-        method = kw.pop('method')
-        method_args = kw.pop('method_args')
-        ref = await mo.create_actor(actor_cls, *args, **kw)
-        return await getattr(ref, method)(*method_args)
-
-    async def delete(self, value):
-        return await mo.destroy_actor(value)
-
-    async def has(self, value):
-        return await mo.has_actor(value)
-
-    async def send(self, uid, method, *args):
-        actor_ref = await mo.actor_ref(uid)
-        return await getattr(actor_ref, method)(*args)
-
-    async def tell(self, uid, method, *args):
-        actor_ref = await mo.actor_ref(uid)
-        return getattr(actor_ref, method).tell(*args)
-
-    async def tell_delay(self, uid, method, *args, delay=None):
-        actor_ref = await mo.actor_ref(uid)
-        getattr(actor_ref, method).tell_delay(*args, delay=delay)
-
-    async def send_unpickled(self, value):
-        actor_ref = await mo.actor_ref(value)
-        return await actor_ref.send(lambda x: x)
-
-    async def create_unpickled(self):
-        return await mo.create_actor(DummyActor, lambda x: x, uid='admin-5')
-
-    async def destroy(self):
-        await self.ref().destroy()
-
-    def get_value(self):
-        return self.value
-
-    def get_ref(self):
-        return self.ref()
+ray = lazy_import('ray')
 
 
-class EventActor(mo.Actor):
-    async def __post_create__(self):
-        assert 'sth' == await self.ref().echo('sth')
+pg_name, n_process = 'ray_cluster', 2
 
-    async def pre_destroy(self):
-        assert 'sth2' == await self.ref().echo('sth2')
 
-    def echo(self, message):
-        return message
+@pytest.fixture(scope="module")
+def ray_start_regular_shared():
+    import ray
+    try:
+        from ray.cluster_utils import Cluster
+    except ModuleNotFoundError:
+        from ray._private.cluster_utils import Cluster
+    cluster = Cluster()
+    remote_nodes = []
+    num_nodes = 3
+    for i in range(num_nodes):
+        remote_nodes.append(cluster.add_node(num_cpus=10))
+        if len(remote_nodes) == 1:
+            print("Starting ray cluster.")
+            ray.init()
+            print("Started ray cluster.")
+    if hasattr(ray.util, "get_placement_group"):
+        pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}], strategy="SPREAD")
+        ray.get(pg.ready())
+    yield
 
 
 @pytest.fixture
-def ray_pool():
-    ray.init()
-    yield
-    ray.shutdown()
+def actor_pool_context():
+    import inspect
+    from ..utils import process_placement_to_address
+    from ..pool import RayPoolBase, RayMainPool
+    address = process_placement_to_address(pg_name, 0, process_index=0)
+    # Hold actor_handle to avoid actor being freed.
+    if hasattr(ray.util, "get_placement_group"):
+        pg, bundle_index = ray.util.get_placement_group(pg_name), 0
+    else:
+        pg, bundle_index = None, -1
+    actor_handle = ray.remote(RayMainPool).options(
+        name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
+    ray.get(actor_handle.start.remote(address, n_process))
+
+    class ProxyPool:
+
+        def __init__(self, ray_pool_actor_handle):
+            self.ray_pool_actor_handle = ray_pool_actor_handle
+
+        def __getattr__(self, item):
+            if hasattr(RayPoolBase, item) and inspect.isfunction(getattr(RayPoolBase, item)):
+                def call(*args, **kwargs):
+                    ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item, *args, **kwargs))
+                return call
+
+            return ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item))
+
+    yield ProxyPool(actor_handle)
+    for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(n_process)]:
+        try:
+            ray.kill(ray.get_actor(addr))
+        except Exception:
+            pass
+    RayServer.clear()
+    Router.set_instance(Router([], None))
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_simple_ray_actor_pool(ray_pool):
-    actor_ref = await mo.create_actor(DummyActor, 100, address=RAY_TEST_ADDRESS)
-    assert await actor_ref.add(1) == 101
-    await actor_ref.add(1)
-
-    res = await actor_ref.get_value()
-    assert res == 102
-
-    ref2 = await actor_ref.get_ref()
-    assert actor_ref.address == ref2.address
-    assert actor_ref.uid == ref2.uid
-
-    ref = await mo.actor_ref(uid=actor_ref.uid, address=actor_ref.address)
-    assert await ref.add(2) == 104
+async def test_simple_local_actor_pool(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_simple_local_actor_pool(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_post_create_pre_destroy(ray_pool):
-    actor_ref = await mo.create_actor(EventActor, address=RAY_TEST_ADDRESS)
-    await actor_ref.destroy()
+async def test_mars_post_create_pre_destroy(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_post_create_pre_destroy(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_create_actor(ray_pool):
-    actor_ref = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    # create actor inside on_receive
-    ref = await actor_ref.create(DummyActor, 5)
-    assert await ref.add(10) == 15
-    # create actor inside on_receive and send message
-    r = await actor_ref.create_send(DummyActor, 5, method='add', method_args=(1,), address=RAY_TEST_ADDRESS)
-    assert r == 6
+async def test_mars_create_actor(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_create_actor(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_create_actor_error(ray_pool):
-    ref1 = await mo.create_actor(DummyActor, 1, uid='dummy1', address=RAY_TEST_ADDRESS)
-    with pytest.raises(mo.ActorAlreadyExist):
-        await mo.create_actor(DummyActor, 1, uid='dummy1', address=RAY_TEST_ADDRESS)
-    await mo.destroy_actor(ref1)
-
-    # It's hard to get the exception raised from Actor.__init__.
-    # with pytest.raises(ValueError):
-    #     await mo.create_actor(DummyActor, -1, address=RAY_TEST_ADDRESS)
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    with pytest.raises(ValueError):
-        await ref1.create(DummyActor, -2)
+async def test_mars_create_actor_error(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_create_actor_error(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_send(ray_pool):
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    ref2 = await ref1.create(DummyActor, 2)
-    assert await ref1.send(ref2, 'add', 3) == 5
+async def test_mars_send(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_send(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_send_error(ray_pool):
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    with pytest.raises(TypeError):
-        await ref1.add(1.0)
-    ref2 = await mo.create_actor(DummyActor, 2, address=RAY_TEST_ADDRESS)
-    with pytest.raises(TypeError):
-        await ref1.send(ref2, 'add', 1.0)
-    with pytest.raises(mo.ActorNotExist):
-        await (await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS)).add(1)
+async def test_mars_send_error(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_send_error(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_tell(ray_pool):
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    ref2 = await ref1.create(DummyActor, 2)
-    assert await ref1.tell(ref2, 'add', 3) is None
-    assert await ref2.get_value() == 5
-
-    await ref1.tell_delay(ref2, 'add', 4, delay=.5)  # delay 0.5 secs
-    assert await ref2.get_value() == 5
-    await asyncio.sleep(0.5)
-    assert await ref2.get_value() == 9
-
-    # error needed when illegal uids are passed
-    with pytest.raises(ValueError):
-        await ref1.tell(await mo.actor_ref(set()), 'add', 3)
+async def test_mars_tell(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_tell(actor_pool_context)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_ray_destroy_has_actor(ray_pool):
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    assert await mo.has_actor(ref1)
+async def test_mars_batch_method(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_batch_method(actor_pool_context)
 
-    await mo.destroy_actor(ref1)
-    await asyncio.sleep(.5)
-    assert not await mo.has_actor(ref1)
 
-    # error needed when illegal uids are passed
-    with pytest.raises(ValueError):
-        await mo.has_actor(await mo.actor_ref(set()))
+@require_ray
+@pytest.mark.asyncio
+async def test_mars_destroy_has_actor(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_destroy_has_actor(actor_pool_context)
 
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    await mo.destroy_actor(ref1)
-    await asyncio.sleep(.5)
-    assert not await mo.has_actor(ref1)
 
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    ref2 = await ref1.create(DummyActor, 2)
+@require_ray
+@pytest.mark.asyncio
+async def test_mars_resource_lock(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_mars_resource_lock(actor_pool_context)
 
-    assert await mo.has_actor(ref2)
 
-    await ref1.delete(ref2)
-    assert not await ref1.has(ref2)
-
-    with pytest.raises(mo.ActorNotExist):
-        await mo.destroy_actor(
-            await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS))
-
-    ref1 = await mo.create_actor(DummyActor, 1, address=RAY_TEST_ADDRESS)
-    with pytest.raises(mo.ActorNotExist):
-        await ref1.delete(await mo.actor_ref('fake_uid', address=RAY_TEST_ADDRESS))
-
-    # test self destroy
-    ref1 = await mo.create_actor(DummyActor, 2, address=RAY_TEST_ADDRESS)
-    await ref1.destroy()
-    await asyncio.sleep(.5)
-    assert not await mo.has_actor(ref1)
+@require_ray
+@pytest.mark.asyncio
+async def test_promise_chain(ray_start_regular_shared, actor_pool_context):
+    await test_mars_actor_context.test_promise_chain(actor_pool_context)

@@ -21,11 +21,11 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
-from .base import Channel, ChannelType, Server, Client
-from .core import register_client, register_server
-from .errors import ChannelClosed
-from .....utils import implements, classproperty
-from .....utils import lazy_import
+from ..mars.communication.base import Channel, ChannelType, Server, Client
+from ..mars.communication.core import register_client, register_server
+from ..mars.communication.errors import ChannelClosed
+from ....utils import implements, classproperty
+from ....utils import lazy_import
 
 ray = lazy_import("ray")
 
@@ -212,6 +212,10 @@ class RayServer(Server):
     @classmethod
     def get_instance(cls, address):
         return cls._address_to_instances.get(address)
+
+    @classmethod
+    def clear(cls):
+        cls._address_to_instances = dict()
 
     @classproperty
     @implements(Server.client_type)

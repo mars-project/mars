@@ -12,23 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import collections
+import os
 
 import pytest
 
 import mars.oscar as mo
-from mars.tests.core import ray
 from ..utils import (
-    address_to_placement_group_bundle,
-    placement_group_bundle_to_address,
-    addresses_to_placement_group_info,
-    placement_group_info_to_addresses,
+    node_address_to_placement,
+    process_placement_to_address,
+    node_addresses_to_pg_info,
+    pg_info_to_node_addresses,
 )
 
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
-TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(TEST_PLACEMENT_GROUP_NAME,
+TEST_ADDRESS_TO_RESOURCES = pg_info_to_node_addresses(TEST_PLACEMENT_GROUP_NAME,
                                                               TEST_PLACEMENT_GROUP_BUNDLES)
 
 
@@ -66,14 +65,12 @@ def ray_cluster():
     cluster.shutdown()
 
 
-@pytest.mark.skipif(ray is None or not hasattr(ray.util, "get_placement_group"),
-                    reason="Ray does not support named placement group.")
 @pytest.mark.asyncio
 async def test_create_actor_in_placement_group(ray_cluster):
     actor_refs = []
     for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
         for _ in range(r["CPU"]):
-            address = placement_group_bundle_to_address(TEST_PLACEMENT_GROUP_NAME, i)
+            address = process_placement_to_address(TEST_PLACEMENT_GROUP_NAME, i, 0)
             actor_ref = await mo.create_actor(DummyActor, i, address=address)
             actor_refs.append(actor_ref)
     results = []
@@ -90,48 +87,47 @@ async def test_create_actor_in_placement_group(ray_cluster):
 def test_address_to_placement_group_bundle():
     # Missing bundle index.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://bundle_name")
+        node_address_to_placement("ray://bundle_name")
     # Extra path is not allowed.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://bundle_name/0/")
+        node_address_to_placement("ray://bundle_name/0/")
     # The scheme is not ray
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("http://bundle_name/0")
+        node_address_to_placement("http://bundle_name/0")
     # The bundle index is not an int string.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://abc/def")
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://bundle_name/0")
+        node_address_to_placement("ray://abc/def")
+    pg_name, bundle_index = node_address_to_placement("ray://bundle_name/0")
     assert pg_name == "bundle_name"
     assert bundle_index == 0
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://127.0.0.1/1")
+    pg_name, bundle_index = node_address_to_placement("ray://127.0.0.1/1")
     assert pg_name == "127.0.0.1"
     assert bundle_index == 1
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://127.0.0.1%2F2")
+    pg_name, bundle_index = node_address_to_placement("ray://127.0.0.1%2F2")
     assert pg_name == "127.0.0.1"
     assert bundle_index == 2
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://")
-    assert pg_name == ""
-    assert bundle_index == -1
+    with pytest.raises(ValueError):
+        node_address_to_placement("ray://")
 
 
-def test_addresses_to_placement_group_info():
+def test_node_addresses_to_pg_info():
     # Missing bundle index 1
     with pytest.raises(ValueError):
-        addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1},
+        node_addresses_to_pg_info({"ray://127.0.0.1/0": {"CPU": 1},
                                            "ray://127.0.0.1/2": {"CPU": 1}})
     # The bundle index is not starts from 0
     with pytest.raises(ValueError):
-        addresses_to_placement_group_info({"ray://127.0.0.1/1": {"CPU": 1}})
-    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1}})
+        node_addresses_to_pg_info({"ray://127.0.0.1/1": {"CPU": 1}})
+    pg_name, bundles = node_addresses_to_pg_info({"ray://127.0.0.1/0": {"CPU": 1}})
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 1}]
-    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/4": {"CPU": 4},
+    pg_name, bundles = node_addresses_to_pg_info({"ray://127.0.0.1/4": {"CPU": 4},
                                                           "ray://127.0.0.1/2": {"CPU": 2},
                                                           "ray://127.0.0.1/1": {"CPU": 1},
                                                           "ray://127.0.0.1/3": {"CPU": 3},
                                                           "ray://127.0.0.1/0": {"CPU": 0}})
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 0}, {"CPU": 1}, {"CPU": 2}, {"CPU": 3}, {"CPU": 4}]
-    pg_name, bundles = addresses_to_placement_group_info(TEST_ADDRESS_TO_RESOURCES)
+    pg_name, bundles = node_addresses_to_pg_info(TEST_ADDRESS_TO_RESOURCES)
     assert pg_name == TEST_PLACEMENT_GROUP_NAME
     assert bundles == TEST_PLACEMENT_GROUP_BUNDLES
