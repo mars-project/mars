@@ -58,7 +58,7 @@ jobs:
         pip install virtualenv flaky flake8 etcd-gevent
 
         if [ -z "$NO_COMMON_TESTS" ]; then
-          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
             pip install h5py zarr matplotlib
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
               "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
@@ -68,14 +68,14 @@ jobs:
 
           if [[ ! "$PYTHON" =~ "3.9" ]]; then
             conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-              libxgboost py-xgboost xgboost lightgbm tensorflow statsmodels
+              libxgboost py-xgboost xgboost lightgbm tensorflow
           fi
           if [[ "$PYTHON" =~ "3.6" ]]; then
             pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu fastparquet
           fi
-          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
             pip install torch torchvision
-            pip install tsfresh
+            pip install statsmodels tsfresh
           fi
           virtualenv testenv && source testenv/bin/activate
           pip install -r requirements.txt && pip install pytest pytest-timeout
