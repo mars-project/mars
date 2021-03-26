@@ -162,4 +162,3 @@ class RaySubPool(RayPoolBase):
         await pool.start()
         self.actor_pool = pool
         asyncio.create_task(pool.join())
-
