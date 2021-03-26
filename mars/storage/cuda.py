@@ -20,7 +20,7 @@ from typing import Tuple, Dict, List, Optional
 
 from ..serialization import serialize, deserialize
 from ..utils import lazy_import, implements
-from .base import StorageBackend, StorageLevel, ObjectInfo
+from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 import numpy as np
@@ -99,7 +99,10 @@ class CudaFileObject(BufferWrappedFileObject):
         self._cupy_memory = None
 
 
+@register_storage_backend
 class CudaStorage(StorageBackend):
+    name = 'cuda'
+
     def __init__(self, **kw):
         if kw:  # pragma: no cover
             raise TypeError(f'CudaStorage got unexpected arguments: {",".join(kw)}')

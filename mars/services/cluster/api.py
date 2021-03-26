@@ -77,8 +77,9 @@ class ClusterAPI:
             addresses of the supervisor
         """
         if not watch:
-            return await self._locator_ref.batch(
-                *(self._locator_ref.get_supervisor(k) for k in keys)
+            get_supervisor = self._locator_ref.get_supervisor
+            return await get_supervisor.batch(
+                *(get_supervisor.delay(k) for k in keys)
             )
         else:
             return await self._locator_ref.watch_supervisors_by_keys(keys)

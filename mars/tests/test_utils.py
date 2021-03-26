@@ -504,10 +504,10 @@ async def test_batch_decorator(use_async):
             self.arg_list = []
             self.kwarg_list = []
 
-        @utils.extensible(False)
+        @utils.extensible
         @_wrap_async
         def method1(self, *args, **kwargs):
-            pass
+            raise NotImplementedError
 
         @method1.batch
         @_wrap_async
@@ -543,7 +543,9 @@ async def test_batch_decorator(use_async):
 
     test_inst = TestClass()
 
-    ret = test_inst.method1.batch([(12,), (10,)])
+    ret = test_inst.method1.batch(
+        test_inst.method1.delay(12),
+        test_inst.method1.delay(10))
     ret = await ret if use_async else ret
     assert ret == [2, 2]
     assert test_inst.arg_list == [(12,), (10,)]
@@ -560,8 +562,10 @@ async def test_batch_decorator(use_async):
 
     if sys.version_info[:2] > (3, 6):
         test_inst = TestClass()
-        ret = test_inst.method2.batch([(12,), (10,)],
-                                      [{'kwarg': 34}, {'kwarg': 33}])
+        ret = test_inst.method2.batch(
+            test_inst.method2.delay(12, kwarg=34),
+            test_inst.method2.delay(10, kwarg=33)
+        )
         ret = await ret if use_async else ret
         assert ret == [1, 2]
         assert test_inst.arg_list == [(11,), (9,)]
@@ -571,8 +575,10 @@ async def test_batch_decorator(use_async):
         ret = test_inst.method3(15, kwarg=56)
         ret = await ret if use_async else ret
         assert ret == 1
-        ret = test_inst.method3.batch([(16,), (17,)],
-                                      [{'kwarg': 57}, {'kwarg': 58}])
+        ret = test_inst.method3.batch(
+            test_inst.method3.delay(16, kwarg=57),
+            test_inst.method3.delay(17, kwarg=58)
+        )
         ret = await ret if use_async else ret
         assert ret == [3, 3]
         assert test_inst.arg_list == [(30,), (33,), (35,)]

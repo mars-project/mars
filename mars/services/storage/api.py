@@ -12,18 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 from typing import List
 
+from ... import oscar as mo
 from ...storage.base import ObjectInfo, StorageLevel, StorageFileObject
+from ...utils import extensible
+from .core import StorageHandlerActor, StorageManagerActor
 
 
-class StorageAPI(ABC):
-    def __init__(self, session_id):
+class StorageAPI:
+    def __init__(self,
+                 address: str,
+                 session_id: str):
+        self._address = address
         self._session_id = session_id
 
-    @abstractmethod
-    async def get(self, data_key: str, conditions: List):
+    async def _init(self):
+        self._storage_handler_ref = await mo.actor_ref(
+            self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref = await mo.actor_ref(
+            self._address, StorageManagerActor.default_uid())
+
+    @classmethod
+    async def create(cls,
+                     session_id: str,
+                     address: str,
+                     **kwargs):
+        """
+        Create storage API.
+
+        Parameters
+        ----------
+        session_id: str
+            session id
+
+        address: str
+            worker address
+
+        Returns
+        -------
+        storage_api
+            Storage api.
+        """
+        if kwargs:  # pragma: no cover
+            raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
+        api = StorageAPI(address, session_id)
+        await api._init()
+        return api
+
+    @extensible
+    async def get(self, data_key: str, conditions: List = None):
         """
         Get object by data key.
 
@@ -39,8 +77,10 @@ class StorageAPI(ABC):
         -------
             object
         """
+        return await self._storage_handler_ref.get(
+            self._session_id, data_key, conditions)
 
-    @abstractmethod
+    @extensible
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> ObjectInfo:
@@ -61,8 +101,11 @@ class StorageAPI(ABC):
         object information: ObjectInfo
             the put object information
         """
+        return await self._storage_handler_ref.put(
+            self._session_id, data_key, obj, level
+        )
 
-    @abstractmethod
+    @extensible
     async def delete(self, data_key: str):
         """
         Delete object.
@@ -71,43 +114,29 @@ class StorageAPI(ABC):
         ----------
         data_key: str
             object key to delete
-
         """
+        await self._storage_handler_ref.delete(
+            self._session_id, data_key)
 
-    @abstractmethod
-    async def prefetch(self, data_key: str,
+    @extensible
+    async def prefetch(self,
+                       data_key: str,
                        level: StorageLevel = StorageLevel.MEMORY):
         """
-        Fetch object to current worker.
+        Fetch object from remote worker ot load object from disk.
 
         Parameters
         ----------
         data_key: str
-            data key to fetch to current worker
+            data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
 
         """
+        await self._storage_manager_ref.prefetch(
+            self._session_id, data_key, level)
 
-    async def _allocate(self, size: int,
-                        level: StorageLevel) -> bool:
-        """
-        Allocate size for storing, called in put and prefetch.
-        It will send a quota request to main process.
-
-        Parameters
-        ----------
-        size: int
-            the size to allocate
-        level: StorageLevel
-            the storage level to allocate
-
-        Returns
-        -------
-            return True if request is accepted, False when rejected.
-        """
-
-    @abstractmethod
+    @extensible
     async def unpin(self, data_key: str):
         """
         Unpin the data, allow storage to release the data.
@@ -118,8 +147,8 @@ class StorageAPI(ABC):
             data key to unpin
 
         """
+        await self._storage_manager_ref.unpin(data_key)
 
-    @abstractmethod
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """
         Return a file-like object for reading.
@@ -133,8 +162,9 @@ class StorageAPI(ABC):
         -------
             return a file-like object.
         """
+        return await self._storage_handler_ref.open_reader(
+            self._session_id, data_key)
 
-    @abstractmethod
     async def open_writer(self,
                           data_key: str,
                           size: int,
@@ -155,8 +185,10 @@ class StorageAPI(ABC):
         -------
             return a file-like object.
         """
+        return await self._storage_handler_ref.open_writer(
+            self._session_id, data_key, size, level
+        )
 
-    @abstractmethod
     async def list(self, level: StorageLevel) -> List:
         """
         List all stored objects in storage.
@@ -170,3 +202,20 @@ class StorageAPI(ABC):
         -------
             list of data keys
         """
+        return await self._storage_handler_ref.list(level=level)
+
+
+class MockStorageApi(StorageAPI):
+    @classmethod
+    async def create(cls,
+                     session_id: str,
+                     address: str,
+                     **kwargs):
+        from .core import StorageManagerActor
+
+        storage_configs = kwargs.get('storage_configs')
+        await mo.create_actor(StorageManagerActor,
+                              storage_configs,
+                              uid=StorageManagerActor.default_uid(),
+                              address=address)
+        return await super().create(address=address, session_id=session_id)

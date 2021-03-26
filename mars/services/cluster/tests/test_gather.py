@@ -21,14 +21,14 @@ from ..gather import gather_node_env, gather_node_resource, \
 
 def test_gather_node_env():
     node_env = gather_node_env()
-    band_data = node_env['bands']['cpu-0']
+    band_data = node_env['bands']['numa-0']
     assert band_data['resources']['cpu'] > 0
     assert band_data['resources']['memory'] > 0
 
 
 def test_gather_node_resource():
     node_res = gather_node_resource()
-    band_res = node_res['cpu-0']
+    band_res = node_res['numa-0']
     assert band_res['cpu_total'] >= band_res['cpu_avail']
     assert band_res['memory_total'] >= band_res['memory_avail']
 

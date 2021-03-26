@@ -18,6 +18,7 @@ import os
 import pytest
 
 import mars.oscar as mo
+from mars.tests.core import require_ray
 from ..utils import (
     node_address_to_placement,
     process_placement_to_address,
@@ -65,6 +66,7 @@ def ray_cluster():
     cluster.shutdown()
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_create_actor_in_placement_group(ray_cluster):
     actor_refs = []

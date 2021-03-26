@@ -546,9 +546,8 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
 
-        # create or get passed pool
-        # use pool_instance as a hook for ray to pass the actor instance.
-        pool = config.get("pool_instance", None) or cls(**kw)
+        # create pool
+        pool = cls(**kw)
         return pool
 
 
@@ -577,6 +576,15 @@ class SubActorPool(ActorPoolBase):
 
     async def notify_main_pool_to_destroy(self, message: DestroyActorMessage):
         await self.call(self._main_address, message)
+
+    @implements(AbstractActorPool.actor_ref)
+    async def actor_ref(self,
+                        message: ActorRefMessage) -> result_message_type:
+        result = await super().actor_ref(message)
+        if isinstance(result, ErrorMessage):
+            message.actor_ref.address = self._main_address
+            result = await self.call(self._main_address, message)
+        return result
 
     @implements(AbstractActorPool.destroy_actor)
     async def destroy_actor(self,
@@ -850,15 +858,11 @@ class MainActorPool(ActorPoolBase):
                 # await create_pool_task
                 tasks.append(create_pool_task)
 
+        processes = [await t for t in tasks]
         # create main actor pool
-        create_task = asyncio.create_task(super().create(config))
-        tasks.append(create_task)
-
-        # wait for all pools
-        # await asyncio.gather(*tasks)
-        pool: MainActorPool = await create_task
+        pool: MainActorPool = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
-        processes = [await t for t in tasks[:-1]]
+
         assert len(addresses) == len(processes), f"addresses {addresses}, processes {processes}"
         for addr, proc in zip(addresses, processes):
             pool.sub_actor_pool_manager.attach_sub_process(addr, proc)

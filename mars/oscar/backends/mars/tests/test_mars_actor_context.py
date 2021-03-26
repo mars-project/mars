@@ -20,6 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
+from mars.oscar.backends.mars.allocate_strategy import RandomSubPool
 from mars.utils import extensible
 
 
@@ -290,6 +291,11 @@ async def test_mars_send(actor_pool_context):
     ref2 = await mo.actor_ref(await ref1.create(DummyActor, 2, address=pool.external_address))
     assert await ref1.send(ref2, 'add', 3) == 5
 
+    ref3 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
+    ref4 = await mo.create_actor(DummyActor, 2, address=pool.external_address,
+                                 allocate_strategy=RandomSubPool())
+    assert await ref4.send(ref3, 'add', 3) == 4
+
 
 @pytest.mark.asyncio
 async def test_mars_send_error(actor_pool_context):
@@ -328,19 +334,20 @@ async def test_mars_tell(actor_pool_context):
 async def test_mars_batch_method(actor_pool_context):
     pool = actor_pool_context
     ref1 = await mo.create_actor(DummyActor, 1, address=pool.external_address)
-    batch_result = await ref1.batch(
-        ref1.add_ret(1), ref1.add_ret(2), ref1.add_ret(3)
+    batch_result = await ref1.add_ret.batch(
+        ref1.add_ret.delay(1), ref1.add_ret.delay(2), ref1.add_ret.delay(3)
     )
     assert len(batch_result) == 3
     assert all(r == 7 for r in batch_result)
 
-    await ref1.batch(
-        ref1.add.tell(1), ref1.add.tell(2), ref1.add.tell(3)
+    await ref1.add.batch(
+        ref1.add.delay(1), ref1.add.delay(2), ref1.add.delay(3),
+        send=False
     )
     assert await ref1.get_value() == 7
 
     with pytest.raises(ValueError):
-        await ref1.batch(ref1.add_ret(1), ref1.add(2))
+        await ref1.add_ret.batch(ref1.add_ret.delay(1), ref1.add.delay(2))
 
 
 @pytest.mark.asyncio

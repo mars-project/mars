@@ -198,7 +198,7 @@ class RayOneWayActorChannel(RayChannelBase):
 class RayServer(Server):
     __slots__ = '_closed', '_address', '_channels', '_tasks'
 
-    # Multiple instance for ray local mode
+    # Multiple instances for ray local mode
     _address_to_instances: Dict[str, "RayServer"] = dict()
     scheme = 'ray'
 
@@ -319,10 +319,10 @@ class RayClient(Client):
         if urlparse(dest_address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Destination address should start with "ray://" '
                              f'for RayClient, got {dest_address}')
-        server = RayServer.get_instance(dest_address)
+        server = RayServer.get_instance(local_address)
         if server is None and local_address:  # pragma: no cover
-            raise RuntimeError(f'RayServer needs to be created '
-                               f'first before RayClient {local_address}')
+            raise RuntimeError(f'RayServer needs to be created first before RayClient '
+                               f'local_address {local_address}, dest_address {dest_address}')
         if local_address:
             # Current process ia a ray actor, is connecting to another ray actor.
             client_channel = RayTwoWayChannel(local_address, dest_address)

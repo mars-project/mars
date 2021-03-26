@@ -12,21 +12,138 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import oscar as mo
-from .store import get_meta_store
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple, Union, Type
+
+import numpy as np
+import pandas as pd
+
+from ...core import OBJECT_TYPE, OBJECT_CHUNK_TYPE
+from ...dataframe.core import DtypesValue, IndexValue, \
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, \
+    DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
+from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
+
+PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
+
+_type_to_meta_class = dict()
 
 
-class MetaStoreActor(mo.Actor):
-    def __init__(self,
-                 meta_store_name: str,
-                 session_id: str,
-                 **meta_store_kwargs):
-        meta_store_type = get_meta_store(meta_store_name)
-        self._store = meta_store_type(session_id, **meta_store_kwargs)
+def _register_type(object_types: Tuple):
+    def _call(meta):
+        for obj_type in object_types:
+            _type_to_meta_class[obj_type] = meta
+        return meta
+    return _call
 
-    @staticmethod
-    def gen_uid(session_id):
-        return f'{session_id}_meta'
 
-    def __getattr__(self, attr):
-        return getattr(self._store, attr)
+def get_meta_type(object_type: Type) -> Type["_CommonMeta"]:
+    try:
+        return _type_to_meta_class[object_type]
+    except KeyError:
+        for m_type in object_type.__mro__:
+            try:
+                return _type_to_meta_class[m_type]
+            except KeyError:
+                continue
+        raise
+
+
+@dataclass
+class _CommonMeta:
+    """
+    Class for common meta, for both tileable and chunk, or DataFrame, tensor etc.
+    """
+    object_id: str
+    name: Any = None
+    memory_size: int = None # size in memory
+    store_size: int = None  # size that stored in storage
+    extra: Dict = None
+
+
+@dataclass
+class _TileableMeta(_CommonMeta):
+    nsplits: Tuple[Tuple[int]] = None
+
+
+@_register_type(TENSOR_TYPE)
+@dataclass
+class TensorMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtype: np.dtype = None
+    order: TensorOrder = None
+
+
+@_register_type(DATAFRAME_TYPE)
+@dataclass
+class DataFrameMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtypes_value: DtypesValue = None
+    index_value: IndexValue = None
+
+
+@_register_type(SERIES_TYPE)
+@dataclass
+class SeriesMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+
+
+@_register_type(INDEX_TYPE)
+@dataclass
+class IndexMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+
+
+@_register_type(OBJECT_TYPE)
+@dataclass
+class ObjectMeta(_TileableMeta):
+    pass
+
+
+@_register_type(OBJECT_CHUNK_TYPE)
+@dataclass
+class _ChunkMeta(_CommonMeta):
+    index: Tuple[int] = None
+    bands: List[Tuple[str, str]] = None
+
+
+@_register_type(TENSOR_CHUNK_TYPE)
+@dataclass
+class TensorChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtype: np.dtype = None
+    order: TensorOrder = None
+
+
+@_register_type(DATAFRAME_CHUNK_TYPE)
+@dataclass
+class DataFrameChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtypes_value: DtypesValue = None
+    index_value: IndexValue = None
+
+
+@_register_type(SERIES_CHUNK_TYPE)
+@dataclass
+class SeriesChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+
+
+@_register_type(INDEX_CHUNK_TYPE)
+@dataclass
+class IndexChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+
+
+@_register_type(OBJECT_CHUNK_TYPE)
+@dataclass
+class ObjectChunkMeta(_ChunkMeta):
+    pass
