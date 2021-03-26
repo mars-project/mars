@@ -39,13 +39,12 @@ def ray_start_regular_shared():
     for i in range(num_nodes):
         remote_nodes.append(cluster.add_node(num_cpus=10))
         if len(remote_nodes) == 1:
-            print("Starting ray cluster.")
             ray.init()
-            print("Started ray cluster.")
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}], strategy="SPREAD")
         ray.get(pg.ready())
     yield
+    ray.shutdown()
 
 
 @pytest.fixture
