@@ -419,7 +419,7 @@ async def test_server_closed():
         await asyncio.sleep(0)
 
         # kill subprocess 1
-        process = list(pool.sub_actor_pool_manager.sub_processes.values())[0]
+        process = list(pool._sub_processes.values())[0]
         process.kill()
 
         with pytest.raises(ServerClosed):

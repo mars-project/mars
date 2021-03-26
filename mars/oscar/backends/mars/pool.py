@@ -646,6 +646,10 @@ class MainActorPool(ActorPoolBase):
     def next_process_index(cls):
         return next(cls._process_index_gen)
 
+    @property
+    def _sub_processes(self):
+        return self.sub_actor_pool_manager.sub_processes
+
     @implements(AbstractActorPool.create_actor)
     async def create_actor(self,
                            message: CreateActorMessage) -> result_message_type:

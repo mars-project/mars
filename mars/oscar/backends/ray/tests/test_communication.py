@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from mars.tests.core import require_ray
 from ..communication import ChannelID, Channel, RayServer, RayClient
 from .....utils import lazy_import
 
@@ -52,6 +53,7 @@ class ServerCallActor(ServerActor):
         return await client.recv() == x
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_driver_to_actor_channel(ray_cluster_shared):
     dest_address = 'ray://test_cluster/0/0'
@@ -63,6 +65,7 @@ async def test_driver_to_actor_channel(ray_cluster_shared):
         assert await client.recv() == i
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_actor_to_actor_channel(ray_cluster_shared):
     server1_address, server2_address = 'ray://test_cluster/0/0', 'ray://test_cluster/0/1'
