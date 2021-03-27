@@ -449,7 +449,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                         message: ActorRefMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
-            actor_id = message.actor_ref.uid
+            actor_id = to_binary(message.actor_ref.uid)
             if actor_id not in self._actors:
                 raise ActorNotExist(f'Actor {actor_id} does not exist')
             result = ResultMessage(message.message_id,
