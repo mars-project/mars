@@ -21,7 +21,7 @@ from ... import oscar as mo
 from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageFileObject
-from ...utils import calc_data_size
+from ...utils import calc_data_size, dataslots
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +57,13 @@ class StorageQuota:
         self._used_size -= size
 
 
+@dataslots
 @dataclass
 class DataInfo:
     object_id: object
     level: StorageLevel
     size: int
+    band: str = None
 
 
 class DataManager:
@@ -78,12 +80,12 @@ class DataManager:
 
     def get_infos(self,
                   session_id: str,
-                  data_key: str) -> List:
+                  data_key: str) -> List[DataInfo]:
         return self._mapping.get((session_id, data_key))
 
     def get_info(self,
                  session_id: str,
-                 data_key: str):
+                 data_key: str) -> DataInfo:
         # if the data is stored in multiply levels,
         # return the lowest level info
         infos = sorted(self._mapping.get((session_id, data_key)),
@@ -110,17 +112,24 @@ class StorageHandlerActor(mo.Actor):
         self._storage_init_params = storage_init_params
         self._storage_manager_ref = storage_manager_ref
 
+    @staticmethod
+    def _build_data_info(storage_info: ObjectInfo, level, size):
+        # todo handle multiple
+        band = 'numa-0' if storage_info.device is not None \
+            else f'gpu-{storage_info.device}'
+        return DataInfo(storage_info.object_id, level, size, band)
+
     async def __post_create__(self):
         self._clients = clients = dict()
         for backend, init_params in self._storage_init_params.items():
             storage_cls = get_storage_backend(backend)
             client = storage_cls(**init_params)
             for level in StorageLevel.__members__.values():
-                if client.level & level:
+                if client.level | level:
                     clients[level] = client
 
     async def get(self,
-                  session_id:str,
+                  session_id: str,
                   data_key: str,
                   conditions: List = None):
         data_info = await self._storage_manager_ref.get_data_info(
@@ -132,17 +141,17 @@ class StorageHandlerActor(mo.Actor):
                   session_id: str,
                   data_key: str,
                   obj: object,
-                  level: StorageLevel) -> ObjectInfo:
+                  level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
         await self._storage_manager_ref.allocate_size(size, level=level)
         object_info = await self._clients[level].put(obj)
         if object_info.size is not None and size != object_info.size:
             await self._storage_manager_ref.update_quota(
                 object_info.size - size, level=level)
-        data_info = DataInfo(object_info.object_id, level, size)
+        data_info = self._build_data_info(object_info, level, size)
         await self._storage_manager_ref.put_data_info(
             session_id, data_key, data_info)
-        return object_info
+        return data_info
 
     async def delete(self,
                      session_id: str,
@@ -200,7 +209,7 @@ class StorageManagerActor(mo.Actor):
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
-                if client.level & level:
+                if client.level | level:
                     quotas[level] = StorageQuota(client.size)
 
         # create handler actors for every process
@@ -265,12 +274,12 @@ class StorageManagerActor(mo.Actor):
 
     def get_data_infos(self,
                        session_id: str,
-                       data_key: str):
+                       data_key: str) -> List[DataInfo]:
         return self._data_manager.get_infos(session_id, data_key)
 
     def get_data_info(self,
                       session_id: str,
-                      data_key: str):
+                      data_key: str) -> DataInfo:
         return self._data_manager.get_info(session_id, data_key)
 
     def put_data_info(self,

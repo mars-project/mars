@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Type, Union
 
+from ..utils import dataslots
 from .core import StorageFileObject
 
 _storage_backends = dict()
@@ -30,32 +32,42 @@ def get_storage_backend(backend_name) -> Type["StorageBackend"]:
     return _storage_backends[backend_name]
 
 
+_ComparableLevel = Union[int, "StorageLevel"]
+
+
 class StorageLevel(Enum):
     GPU = 1 << 0
     MEMORY = 1 << 1
     DISK = 1 << 2
     REMOTE = 1 << 3
 
-    def __and__(self, other: "StorageLevel"):
-        return self.value | other.value
+    def __and__(self, other: _ComparableLevel):
+        other_value = getattr(other, 'value', other)
+        return self.value & other_value
 
-    def __lt__(self, other):
-        return self.value < other.value
+    __rand__ = __and__
 
-    def __gt__(self, other):
-        return self.value > other.value
+    def __or__(self, other: _ComparableLevel):
+        other_value = getattr(other, 'value', other)
+        return self.value | other_value
+
+    __ror__ = __or__
+
+    def __lt__(self, other: _ComparableLevel):
+        other_value = getattr(other, 'value', other)
+        return self.value < other_value
+
+    def __gt__(self, other: _ComparableLevel):
+        other_value = getattr(other, 'value', other)
+        return self.value > other_value
 
 
+@dataslots
+@dataclass
 class ObjectInfo:
-    __slots__ = 'size', 'device', 'object_id'
-
-    def __init__(self,
-                 size: int = None,
-                 device: int = None,
-                 object_id: Any = None):
-        self.size = size
-        self.device = device
-        self.object_id = object_id
+    size: int = None
+    device: int = None
+    object_id: Any = None
 
 
 class StorageBackend(ABC):

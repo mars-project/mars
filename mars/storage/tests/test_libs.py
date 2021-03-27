@@ -116,6 +116,17 @@ async def storage_context(request):
         await RayStorage.teardown(**teardown_params)
 
 
+def test_storage_level():
+    level = StorageLevel.DISK | StorageLevel.MEMORY
+    assert level == StorageLevel.DISK.value | StorageLevel.MEMORY.value
+
+    assert (StorageLevel.DISK | StorageLevel.MEMORY) & StorageLevel.DISK
+    assert not (StorageLevel.DISK | StorageLevel.MEMORY) & StorageLevel.GPU
+
+    assert StorageLevel.GPU < StorageLevel.MEMORY < StorageLevel.DISK
+    assert StorageLevel.DISK > StorageLevel.MEMORY > StorageLevel.GPU
+
+
 @pytest.mark.asyncio
 @require_lib
 async def test_base_operations(storage_context):

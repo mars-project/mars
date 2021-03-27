@@ -23,6 +23,7 @@ from ...dataframe.core import DtypesValue, IndexValue, \
     DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, \
     DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
+from ...utils import dataslots
 
 PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 
@@ -49,6 +50,7 @@ def get_meta_type(object_type: Type) -> Type["_CommonMeta"]:
         raise
 
 
+@dataslots
 @dataclass
 class _CommonMeta:
     """
@@ -61,12 +63,14 @@ class _CommonMeta:
     extra: Dict = None
 
 
+@dataslots
 @dataclass
 class _TileableMeta(_CommonMeta):
     nsplits: Tuple[Tuple[int]] = None
 
 
 @_register_type(TENSOR_TYPE)
+@dataslots
 @dataclass
 class TensorMeta(_TileableMeta):
     shape: Tuple[int] = None
@@ -75,6 +79,7 @@ class TensorMeta(_TileableMeta):
 
 
 @_register_type(DATAFRAME_TYPE)
+@dataslots
 @dataclass
 class DataFrameMeta(_TileableMeta):
     shape: Tuple[int] = None
@@ -83,6 +88,7 @@ class DataFrameMeta(_TileableMeta):
 
 
 @_register_type(SERIES_TYPE)
+@dataslots
 @dataclass
 class SeriesMeta(_TileableMeta):
     shape: Tuple[int] = None
@@ -91,6 +97,7 @@ class SeriesMeta(_TileableMeta):
 
 
 @_register_type(INDEX_TYPE)
+@dataslots
 @dataclass
 class IndexMeta(_TileableMeta):
     shape: Tuple[int] = None
@@ -99,12 +106,14 @@ class IndexMeta(_TileableMeta):
 
 
 @_register_type(OBJECT_TYPE)
+@dataslots
 @dataclass
 class ObjectMeta(_TileableMeta):
     pass
 
 
 @_register_type(OBJECT_CHUNK_TYPE)
+@dataslots
 @dataclass
 class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
@@ -112,6 +121,7 @@ class _ChunkMeta(_CommonMeta):
 
 
 @_register_type(TENSOR_CHUNK_TYPE)
+@dataslots
 @dataclass
 class TensorChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
@@ -120,6 +130,7 @@ class TensorChunkMeta(_ChunkMeta):
 
 
 @_register_type(DATAFRAME_CHUNK_TYPE)
+@dataslots
 @dataclass
 class DataFrameChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
@@ -128,6 +139,7 @@ class DataFrameChunkMeta(_ChunkMeta):
 
 
 @_register_type(SERIES_CHUNK_TYPE)
+@dataslots
 @dataclass
 class SeriesChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
@@ -136,6 +148,7 @@ class SeriesChunkMeta(_ChunkMeta):
 
 
 @_register_type(INDEX_CHUNK_TYPE)
+@dataslots
 @dataclass
 class IndexChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
@@ -144,6 +157,7 @@ class IndexChunkMeta(_ChunkMeta):
 
 
 @_register_type(OBJECT_CHUNK_TYPE)
+@dataslots
 @dataclass
 class ObjectChunkMeta(_ChunkMeta):
     pass
