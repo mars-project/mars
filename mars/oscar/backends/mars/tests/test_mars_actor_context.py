@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.oscar.backends.mars.allocate_strategy import RandomSubPool
+from mars.oscar.backends.allocate_strategy import RandomSubPool
 from mars.utils import extensible
 
 

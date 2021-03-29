@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import pytest
-
-from mars.oscar.backends.mars.config import ActorPoolConfig
-from mars.oscar.backends.mars.allocate_strategy import \
-    AddressSpecified, MainPool, RandomSubPool, RandomLabel, IdleLabel
-from mars.oscar.errors import NoIdleSlot
 from mars.oscar.utils import create_actor_ref
 
+from mars.oscar.backends.allocate_strategy import \
+    AddressSpecified, MainPool, RandomSubPool, RandomLabel, IdleLabel
+from mars.oscar.backends.config import ActorPoolConfig
+from mars.oscar.errors import NoIdleSlot
 
 config = ActorPoolConfig()
 config.add_pool_conf(0, 'main', 'unixsocket:///0', '127.0.0.1:1111')

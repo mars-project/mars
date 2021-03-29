@@ -19,10 +19,10 @@ from typing import Any, Type, Tuple, Dict, List
 
 import numpy as np
 
-from ....lib.tblib import pickling_support
-from ....serialization.core import Serializer, pickle, pickle_buffers, unpickle_buffers
-from ....utils import classproperty, implements
-from ...core import ActorRef
+from ...lib.tblib import pickling_support
+from ...serialization.core import Serializer, pickle, pickle_buffers, unpickle_buffers
+from ...utils import classproperty, implements
+from ..core import ActorRef
 
 
 # make sure traceback can be pickled

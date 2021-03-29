@@ -15,6 +15,7 @@
 from ...backend import BaseActorBackend, register_backend
 from .driver import MarsActorDriver
 from .context import MarsActorContext
+from .pool import MainActorPool
 
 
 __all__ = ['MarsActorBackend']
@@ -40,6 +41,6 @@ class MarsActorBackend(BaseActorBackend):
             address: str,
             n_process: int = None,
             **kwargs):
-        from .pool import create_actor_pool
+        from ..pool import create_actor_pool
         return await create_actor_pool(
-            address, n_process=n_process, **kwargs)
+            address, pool_cls=MainActorPool, n_process=n_process, **kwargs)

@@ -16,8 +16,8 @@ import pytest
 
 from mars.tests.core import require_ray
 from ..communication import RayServer
-from ...mars.router import Router
 from ...mars.tests import test_mars_actor_context
+from ...router import Router
 from .....utils import lazy_import
 
 ray = lazy_import('ray')

@@ -15,7 +15,7 @@
 import asyncio
 from typing import Dict, Union
 
-from ...errors import ServerClosed
+from ..errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, \
     DeserializeMessageFailed

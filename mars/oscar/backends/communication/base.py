@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, Callable, Coroutine, Type
 
-from .....utils import classproperty, implements
+from ....utils import classproperty, implements
 
 
 class ChannelType(Enum):

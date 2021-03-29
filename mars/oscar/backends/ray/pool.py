@@ -23,8 +23,8 @@ from typing import List, Optional
 
 from .communication import ChannelID, RayServer
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
-from ..mars.config import ActorPoolConfig
-from ..mars.pool import AbstractActorPool, MainActorPool, SubActorPool, create_actor_pool
+from ..config import ActorPoolConfig
+from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
 from ....utils import lazy_import
 
 ray = lazy_import('ray')
@@ -45,13 +45,14 @@ class RayActorPoolMixin(AbstractActorPool, ABC):
 
 async def _serialize(message):
     # TODO(chaokunyang) register mars serializer with ray.util.register_serializer
-    from ..mars.message import ResultMessage
+    from ..message import ResultMessage
     if isinstance(message, ResultMessage) and isinstance(message.result, asyncio.Future):
         message.result = await message.result
     return message
 
 
-class RayMainActorPool(RayActorPoolMixin, MainActorPool):
+@_register_message_handler
+class RayMainActorPool(RayActorPoolMixin, MainActorPoolBase):
 
     @classmethod
     def get_external_addresses(
@@ -64,7 +65,7 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPool):
     def get_sub_pool_manager_cls(cls):
         return cls.RaySubActorPoolManager
 
-    class RaySubActorPoolManager(MainActorPool.SubActorPoolManager):
+    class RaySubActorPoolManager(MainActorPoolBase.SubActorPoolManager):
 
         @classmethod
         async def start_sub_pool(
@@ -103,7 +104,8 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPool):
                 return False
 
 
-class RaySubActorPool(RayActorPoolMixin, SubActorPool):
+@_register_message_handler
+class RaySubActorPool(RayActorPoolMixin, SubActorPoolBase):
     pass
 
 

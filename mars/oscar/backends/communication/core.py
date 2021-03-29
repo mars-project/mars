@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from urllib.parse import urlparse
 from typing import Dict, Type
+from urllib.parse import urlparse
 
 from .base import Client, Server
 

@@ -17,23 +17,24 @@ import sys
 import time
 
 import pytest
-
-from mars.utils import get_next_port
-from mars.oscar import Actor, kill_actor
 from mars.oscar.context import get_context
-from mars.oscar.backends.mars import create_actor_pool
-from mars.oscar.backends.mars.allocate_strategy import \
+from mars.oscar.utils import create_actor_ref
+
+from mars.oscar import Actor, kill_actor
+from mars.oscar.backends.allocate_strategy import \
     AddressSpecified, IdleLabel, MainPool, RandomSubPool, ProcessIndex
-from mars.oscar.backends.mars.config import ActorPoolConfig
-from mars.oscar.backends.mars.message import new_message_id, \
+from mars.oscar.backends.config import ActorPoolConfig
+from mars.oscar.backends.mars.pool import MainActorPool
+from mars.oscar.backends.mars.pool import SubActorPool
+from mars.oscar.backends.message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
     ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
     CancelMessage, ControlMessageType, MessageType
-from mars.oscar.backends.mars.pool import SubActorPool, MainActorPool
-from mars.oscar.backends.mars.router import Router
+from mars.oscar.backends.pool import create_actor_pool
+from mars.oscar.backends.router import Router
 from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
-from mars.oscar.utils import create_actor_ref
 from mars.tests.core import mock
+from mars.utils import get_next_port
 
 
 class _CannotBeUnpickled:
@@ -321,7 +322,7 @@ async def test_main_actor_pool():
 
 @pytest.mark.asyncio
 async def test_create_actor_pool():
-    pool = await create_actor_pool('127.0.0.1', n_process=2)
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2)
 
     async with pool:
         # test global router
@@ -385,25 +386,25 @@ async def test_create_actor_pool():
 @pytest.mark.asyncio
 async def test_errors():
     with pytest.raises(ValueError):
-        _ = await create_actor_pool('127.0.0.1', n_process=1, labels=['a'])
+        _ = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=1, labels=['a'])
 
     with pytest.raises(ValueError):
-        _ = await create_actor_pool(f'127.0.0.1:{get_next_port()}', n_process=1,
+        _ = await create_actor_pool(f'127.0.0.1:{get_next_port()}', pool_cls=MainActorPool, n_process=1,
                                     ports=[get_next_port(), get_next_port()])
 
     with pytest.raises(ValueError):
-        _ = await create_actor_pool('127.0.0.1', n_process=1,
+        _ = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=1,
                                     ports=[get_next_port()])
 
     with pytest.raises(ValueError):
-        _ = await create_actor_pool('127.0.0.1', n_process=1,
+        _ = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=1,
                                     auto_recover='illegal')
 
 
 @pytest.mark.asyncio
 async def test_server_closed():
     start_method = 'fork' if sys.platform != 'win32' else None
-    pool = await create_actor_pool('127.0.0.1', n_process=2,
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                    subprocess_start_method=start_method,
                                    auto_recover=False)
 
@@ -449,7 +450,7 @@ async def test_auto_recover(auto_recover):
     def on_process_recover(*_):
         recovered.set()
 
-    pool = await create_actor_pool('127.0.0.1', n_process=2,
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                    subprocess_start_method=start_method,
                                    auto_recover=auto_recover,
                                    on_process_recover=on_process_recover)
@@ -490,9 +491,9 @@ async def test_two_pools():
 
     ctx = get_context()
 
-    pool1 = await create_actor_pool('127.0.0.1', n_process=2,
+    pool1 = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                     subprocess_start_method=start_method)
-    pool2 = await create_actor_pool('127.0.0.1', n_process=2,
+    pool2 = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                     subprocess_start_method=start_method)
 
     try:

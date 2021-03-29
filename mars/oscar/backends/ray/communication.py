@@ -21,9 +21,9 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
-from ..mars.communication.base import Channel, ChannelType, Server, Client
-from ..mars.communication.core import register_client, register_server
-from ..mars.communication.errors import ChannelClosed
+from ..communication.base import Channel, ChannelType, Server, Client
+from ..communication.core import register_client, register_server
+from ..communication.errors import ChannelClosed
 from ....utils import implements, classproperty
 from ....utils import lazy_import
 
