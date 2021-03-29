@@ -146,7 +146,7 @@ class RayOneWayDriverChannel(RayChannelBase):
 
 
 class RayOneWayActorChannel(RayChannelBase):
-    """A channel from ray actor to ray driver. Since ray actor can't call ray actor,
+    """A channel from ray actor to ray driver. Since ray actor can't call ray driver,
      we use ray call reply for channel recv. Note that there can't be multiple
      channel message send for one received message, or else it will be taken as next
      message's reply.
