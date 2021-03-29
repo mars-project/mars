@@ -125,7 +125,7 @@ class RayPoolBase(ABC):
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         return await self.actor_pool.__on_ray_recv__(channel_id, message)
 
-    def health_check(self):
+    def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY
 
     async def __proxy_call__(self, attribute, *args, **kwargs):
@@ -141,7 +141,8 @@ class RayPoolBase(ABC):
 class RayMainPool(RayPoolBase):
     actor_pool: RayMainActorPool
 
-    async def start(self, address, n_process, **kwargs):
+    async def start(self, *args, **kwargs):
+        address, n_process = args
         self.actor_pool = await create_actor_pool(
             address, n_process=n_process, pool_cls=RayMainActorPool,
             subprocess_start_method="ray", **kwargs)
