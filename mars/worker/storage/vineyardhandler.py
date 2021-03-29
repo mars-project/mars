@@ -210,15 +210,19 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
         return obj_id
 
     def _batch_get_object_id(self, session_id, data_keys):
-        addr = self._cluster_info.get_scheduler((session_id, data_keys[0]))
-        obj_ids = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
-            .batch_get(session_id, data_keys)
+        obj_ids = []
+        for data_key in data_keys:
+            addr = self._cluster_info.get_scheduler((session_id, data_key))
+            obj_id = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
+                .get(session_id, data_key)
+            obj_ids.append(obj_id)
         return obj_ids
 
     def _batch_delete_from_key_mapper(self, session_id, data_keys):
-        addr = self._cluster_info.get_scheduler((session_id, data_keys[0]))
-        self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
-            .batch_delete(session_id, data_keys)
+        for data_key in data_keys:
+            addr = self._cluster_info.get_scheduler((session_id, data_key))
+            self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
+                .delete(session_id, data_key)
 
     @wrap_promised
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,

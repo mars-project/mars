@@ -387,4 +387,5 @@ class WorkerService(object):
                 shutil.rmtree(custom_dir, ignore_errors=True)
                 options.custom_log_dir = None
         finally:
-            self._plasma_store.__exit__(None, None, None)
+            if not options.vineyard.enabled:
+                self._plasma_store.__exit__(None, None, None)
