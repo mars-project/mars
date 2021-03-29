@@ -223,18 +223,22 @@ class Test(TestBase):
         np.testing.assert_array_equal(r, expected)
 
         # eye with different chunk sizes
-        a = eye(2, chunk_size=5) * 2
-        b = eye(3, chunk_size=7) * 3
+        a = eye(5, chunk_size=2) * 2
+        b = eye(4, chunk_size=3) * 3
         c = block([
-            [a, zeros((2, 3), chunk_size=6)],
-            [ones((3, 2), chunk_size=3), b]
+            [a, zeros((5, 4), chunk_size=4)],
+            [ones((4, 5), chunk_size=5), b]
         ])
         r = self.executor.execute_tensor(c, concat=True)[0]
-        expected = array([[2., 0., 0., 0., 0.],
-                          [0., 2., 0., 0., 0.],
-                          [1., 1., 3., 0., 0.],
-                          [1., 1., 0., 3., 0.],
-                          [1., 1., 0., 0., 3.]])
+        expected = array([[2., 0., 0., 0., 0., 0., 0., 0., 0.],
+                          [0., 2., 0., 0., 0., 0., 0., 0., 0.],
+                          [0., 0., 2., 0., 0., 0., 0., 0., 0.],
+                          [0., 0., 0., 2., 0., 0., 0., 0., 0.],
+                          [0., 0., 0., 0., 2., 0., 0., 0., 0.],
+                          [1., 1., 1., 1., 1., 3., 0., 0., 0.],
+                          [1., 1., 1., 1., 1., 0., 3., 0., 0.],
+                          [1., 1., 1., 1., 1., 0., 0., 3., 0.],
+                          [1., 1., 1., 1., 1., 0., 0., 0., 3.]])
         np.testing.assert_array_equal(r, expected)
 
         # hstack([1, 2, 3])
@@ -252,11 +256,11 @@ class Test(TestBase):
         np.testing.assert_array_equal(r, expected)
 
         # hstack([a, b, 10]) with different chunk sizes
-        a = array([1, 2, 3], chunk_size=3)
-        b = array([2, 3, 4], chunk_size=4)
+        a = array([1, 2, 3, 4, 5, 6, 7], chunk_size=3)
+        b = array([2, 3, 4, 5], chunk_size=4)
         c = block([a, b, 10])
         r = self.executor.execute_tensor(c, concat=True)[0]
-        expected = array([1, 2, 3, 2, 3, 4, 10])
+        expected = array([1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 10])
         np.testing.assert_array_equal(r, expected)
 
         # hstack([A, B])
@@ -278,12 +282,12 @@ class Test(TestBase):
         np.testing.assert_array_equal(r, expected)
 
         # vstack([a, b]) with different chunk sizes
-        a = array([1, 2, 3], chunk_size=6)
-        b = array([2, 3, 4], chunk_size=7)
+        a = array([1, 2, 3, 4, 5, 6, 7], chunk_size=5)
+        b = array([2, 3, 4, 5, 6, 7, 8], chunk_size=6)
         c = block([[a], [b]])
         r = self.executor.execute_tensor(c, concat=True)[0]
-        expected = array([[1, 2, 3],
-                          [2, 3, 4]])
+        expected = array([[1, 2, 3, 4, 5, 6, 7],
+                          [2, 3, 4, 5, 6, 7, 8]])
         np.testing.assert_array_equal(r, expected)
 
         # vstack([A, B])
