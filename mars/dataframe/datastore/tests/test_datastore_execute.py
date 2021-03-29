@@ -24,7 +24,7 @@ from mars.config import option_context
 from mars.dataframe import DataFrame
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
-from mars.tests.core import TestBase
+from mars.tests.core import TestBase, flaky
 
 try:
     import vineyard
@@ -42,6 +42,8 @@ try:
     import fastparquet
 except ImportError:
     fastparquet = None
+
+_exec_timeout = 120 if 'CI' in os.environ else -1
 
 
 class Test(TestBase):
@@ -160,26 +162,28 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
     @unittest.skipIf(vineyard is None, 'vineyard not installed')
+    @flaky(max_runs=3)
     def testToVineyard(self):
-        def testWithGivenSession(session):
+        def run_with_given_session(session, **kw):
             ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
             with option_context({'vineyard.socket': ipc_socket}):
                 df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
                                 chunk_size=2)
-                object_id = df1.to_vineyard().execute(session=session).fetch()
+                object_id = df1.to_vineyard().execute(session=session, **kw).fetch(session=session)
                 df2 = md.from_vineyard(object_id)
 
-                df1_value = df1.execute(session=session).fetch()
-                df2_value = df2.execute(session=session).fetch()
-                pd.testing.assert_frame_equal(df1_value.reset_index(drop=True), df2_value.reset_index(drop=True))
+                df1_value = df1.execute(session=session, **kw).fetch(session=session)
+                df2_value = df2.execute(session=session, **kw).fetch(session=session)
+                pd.testing.assert_frame_equal(
+                    df1_value.reset_index(drop=True), df2_value.reset_index(drop=True))
 
         with new_session().as_default() as session:
-            testWithGivenSession(session)
+            run_with_given_session(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
-                testWithGivenSession(session)
+                run_with_given_session(session, timeout=_exec_timeout)
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testToParquetArrowExecution(self):
