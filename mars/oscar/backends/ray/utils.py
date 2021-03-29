@@ -104,7 +104,7 @@ def process_placement_to_address(pg_name: str, bundle_index: int, process_index:
     return f"ray://{pg_name}/{bundle_index}/{process_index}"
 
 
-def pg_bundle_to_node_address(pg_name, bundle_index):
+def node_placement_to_address(pg_name, bundle_index):
     return f"ray://{pg_name}/{bundle_index}"
 
 
@@ -131,6 +131,6 @@ def node_addresses_to_pg_info(address_to_resources):
 def pg_info_to_node_addresses(pg_name, bundles):
     addresses = {}
     for bundle_index, bundle_resources in enumerate(bundles):
-        address = pg_bundle_to_node_address(pg_name, bundle_index)
+        address = node_placement_to_address(pg_name, bundle_index)
         addresses[address] = bundle_resources
     return addresses
