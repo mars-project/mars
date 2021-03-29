@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import asyncio
+import os
+import sys
 import time
 from collections import deque
 
@@ -217,7 +219,10 @@ class PromiseTestActor(mo.Actor):
 
 @pytest.fixture
 async def actor_pool_context():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=2)
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
+                                      subprocess_start_method=start_method)
     await pool.start()
     yield pool
     await pool.stop()

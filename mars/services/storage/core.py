@@ -125,7 +125,7 @@ class StorageHandlerActor(mo.Actor):
             storage_cls = get_storage_backend(backend)
             client = storage_cls(**init_params)
             for level in StorageLevel.__members__.values():
-                if client.level | level:
+                if client.level & level:
                     clients[level] = client
 
     async def get(self,
@@ -209,7 +209,7 @@ class StorageManagerActor(mo.Actor):
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
-                if client.level | level:
+                if client.level & level:
                     quotas[level] = StorageQuota(client.size)
 
         # create handler actors for every process

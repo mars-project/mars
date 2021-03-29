@@ -39,13 +39,15 @@ from mars.deploy.local.core import new_cluster
 from mars.session import new_session
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
     from_vineyard, tovineyard
-from mars.tests.core import TestBase, ExecutorForTest
+from mars.tests.core import TestBase, ExecutorForTest, flaky
 from mars.tiles import get_tiled
 
 try:
     import vineyard
 except ImportError:
     vineyard = None
+
+_exec_timeout = 120 if 'CI' in os.environ else -1
 
 
 class Test(TestBase):
@@ -223,22 +225,23 @@ class Test(TestBase):
             np.testing.assert_array_equal(result, raw + 1)
 
     @unittest.skipIf(vineyard is None, 'vineyard not installed')
+    @flaky(max_runs=3)
     def testToVineyard(self):
-        def testWithGivenSession(session):
+        def run_with_given_session(session, **kw):
             ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
             with option_context({'vineyard.socket': ipc_socket}):
                 tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
-                object_id = tovineyard(tensor1).execute(session=session).fetch()
+                object_id = tovineyard(tensor1).execute(session=session, **kw).fetch(session=session)
                 tensor2 = from_vineyard(object_id)
 
-                tensor1_value = tensor1.execute(session=session).fetch()
-                tensor2_value = tensor2.execute(session=session).fetch()
+                tensor1_value = tensor1.execute(session=session, **kw).fetch(session=session)
+                tensor2_value = tensor2.execute(session=session, **kw).fetch(session=session)
                 np.testing.assert_array_equal(tensor1_value, tensor2_value)
 
         with new_session().as_default() as session:
-            testWithGivenSession(session)
+            run_with_given_session(session)
 
         with new_cluster(scheduler_n_process=2, worker_n_process=2,
                          shared_memory='20M', web=False) as cluster:
             with new_session(cluster.endpoint).as_default() as session:
-                testWithGivenSession(session)
+                run_with_given_session(session, timeout=_exec_timeout)

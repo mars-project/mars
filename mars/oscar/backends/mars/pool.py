@@ -88,6 +88,7 @@ class MainActorPool(MainActorPoolBase):
             actor_config: ActorPoolConfig,
             process_index: int,
             started: multiprocessing.Event):
+        asyncio.set_event_loop(asyncio.new_event_loop())
         coro = cls._create_sub_pool(actor_config, process_index, started)
         asyncio.run(coro)
 
