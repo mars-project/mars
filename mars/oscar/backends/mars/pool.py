@@ -57,70 +57,64 @@ class MainActorPool(MainActorPoolBase):
         return [f'{host}:{port}' for port in [port] + sub_ports]
 
     @classmethod
-    def get_sub_pool_manager_cls(cls):
-        return MainActorPool.ProcessSubActorPoolManager
+    async def start_sub_pool(
+            cls,
+            actor_pool_config: ActorPoolConfig,
+            process_index: int,
+            start_method: str = None):
 
-    class ProcessSubActorPoolManager(MainActorPoolBase.SubActorPoolManager):
+        def start_pool_in_process():
+            ctx = multiprocessing.get_context(method=start_method)
+            started = ctx.Event()
+            process = ctx.Process(
+                target=cls._start_sub_pool,
+                args=(actor_pool_config, process_index, started),
+                name=f'MarsActorPool{process_index}'
+            )
+            process.daemon = True
+            process.start()
+            # wait for sub actor pool to finish starting
+            started.wait()
+            return process
 
-        @classmethod
-        async def start_sub_pool(
-                cls,
-                actor_pool_config: ActorPoolConfig,
-                process_index: int,
-                start_method: str = None):
+        loop = asyncio.get_running_loop()
+        executor = futures.ThreadPoolExecutor(1)
+        create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
+        return await create_pool_task
 
-            def start_pool_in_process():
-                ctx = multiprocessing.get_context(method=start_method)
-                started = ctx.Event()
-                process = ctx.Process(
-                    target=cls._start_sub_pool,
-                    args=(actor_pool_config, process_index, started),
-                    name=f'MarsActorPool{process_index}'
-                )
-                process.daemon = True
-                process.start()
-                # wait for sub actor pool to finish starting
-                started.wait()
-                return process
+    @classmethod
+    def _start_sub_pool(
+            cls,
+            actor_config: ActorPoolConfig,
+            process_index: int,
+            started: multiprocessing.Event):
+        coro = cls._create_sub_pool(actor_config, process_index, started)
+        asyncio.run(coro)
 
-            loop = asyncio.get_running_loop()
-            executor = futures.ThreadPoolExecutor(1)
-            create_pool_task = loop.run_in_executor(executor, start_pool_in_process)
-            return await create_pool_task
+    @classmethod
+    async def _create_sub_pool(
+            cls,
+            actor_config: ActorPoolConfig,
+            process_index: int,
+            started: multiprocessing.Event):
+        try:
+            env = actor_config.get_pool_config(process_index)['env']
+            if env:
+                os.environ.update(env)
+            pool = await SubActorPool.create({
+                'actor_pool_config': actor_config,
+                'process_index': process_index
+            })
+            await pool.start()
+        finally:
+            started.set()
+        await pool.join()
 
-        @classmethod
-        def _start_sub_pool(
-                cls,
-                actor_config: ActorPoolConfig,
-                process_index: int,
-                started: multiprocessing.Event):
-            coro = cls._create_sub_pool(actor_config, process_index, started)
-            asyncio.run(coro)
+    def kill_sub_pool(self, process: multiprocessing.Process):
+        process.kill()
 
-        @classmethod
-        async def _create_sub_pool(
-                cls,
-                actor_config: ActorPoolConfig,
-                process_index: int,
-                started: multiprocessing.Event):
-            try:
-                env = actor_config.get_pool_config(process_index)['env']
-                if env:
-                    os.environ.update(env)
-                pool = await SubActorPool.create({
-                    'actor_pool_config': actor_config,
-                    'process_index': process_index
-                })
-                await pool.start()
-            finally:
-                started.set()
-            await pool.join()
-
-        def kill_sub_pool(self, process: multiprocessing.Process):
-            process.kill()
-
-        async def is_sub_pool_alive(self, process: multiprocessing.Process):
-            return process.is_alive()
+    async def is_sub_pool_alive(self, process: multiprocessing.Process):
+        return process.is_alive()
 
 
 @_register_message_handler

@@ -62,46 +62,40 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPoolBase):
         return [process_placement_to_address(pg_name, bundle_index, i) for i in range(n_process + 1)]
 
     @classmethod
-    def get_sub_pool_manager_cls(cls):
-        return cls.RaySubActorPoolManager
+    async def start_sub_pool(
+            cls,
+            actor_pool_config: ActorPoolConfig,
+            process_index: int,
+            start_method: str = None):
+        external_addresses = \
+            actor_pool_config.get_pool_config(process_index)['external_address']
+        assert len(external_addresses) == 1, \
+            f"Ray pool allows only one external address but got {external_addresses}"
+        external_address = external_addresses[0]
+        pg_name, bundle_index, _process_index = process_address_to_placement(external_address)
+        assert process_index == _process_index, \
+            f"process_index {process_index} is not consistent with index {_process_index} " \
+            f"in external_address {external_address}"
+        pg = get_placement_group(pg_name) if pg_name else None
+        if not pg:
+            bundle_index = -1
+        # Hold actor_handle to avoid actor being freed.
+        actor_handle = ray.remote(RaySubPool).options(
+            name=external_address, placement_group=pg,
+            placement_group_bundle_index=bundle_index).remote()
+        await actor_handle.start.remote(actor_pool_config, process_index)
+        return actor_handle
 
-    class RaySubActorPoolManager(MainActorPoolBase.SubActorPoolManager):
+    def kill_sub_pool(self, process: 'ray.actor.ActorHandle'):
+        ray.kill(process)
 
-        @classmethod
-        async def start_sub_pool(
-                cls,
-                actor_pool_config: ActorPoolConfig,
-                process_index: int,
-                start_method: str = None):
-            external_addresses = \
-                actor_pool_config.get_pool_config(process_index)['external_address']
-            assert len(external_addresses) == 1, \
-                f"Ray pool allows only one external address but got {external_addresses}"
-            external_address = external_addresses[0]
-            pg_name, bundle_index, _process_index = process_address_to_placement(external_address)
-            assert process_index == _process_index, \
-                f"process_index {process_index} is not consistent with index {_process_index} " \
-                f"in external_address {external_address}"
-            pg = get_placement_group(pg_name) if pg_name else None
-            if not pg:
-                bundle_index = -1
-            # Hold actor_handle to avoid actor being freed.
-            actor_handle = ray.remote(RaySubPool).options(
-                name=external_address, placement_group=pg,
-                placement_group_bundle_index=bundle_index).remote()
-            await actor_handle.start.remote(actor_pool_config, process_index)
-            return actor_handle
-
-        def kill_sub_pool(self, process: 'ray.actor.ActorHandle'):
-            ray.kill(process)
-
-        async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
-            try:
-                await process.health_check.remote()
-                return True
-            except Exception:
-                logger.info("Detected RaySubPool %s died", process)
-                return False
+    async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
+        try:
+            await process.health_check.remote()
+            return True
+        except Exception:
+            logger.info("Detected RaySubPool %s died", process)
+            return False
 
 
 @_register_message_handler
