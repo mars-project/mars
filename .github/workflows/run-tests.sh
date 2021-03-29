@@ -1,9 +1,20 @@
 #!/bin/bash
 set -e
 if [ -n "$WITH_CYTHON" ]; then
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/oscar mars/deploy/local \
-    mars/serialize mars/optimizes mars/scheduler mars/tests mars/web
-  coverage report
+  mkdir -p build
+  pytest $PYTEST_CONFIG --cov-config .coveragerc --ignore-glob "*/integrated/*" \
+    --ignore mars/tests/test_mutable.py mars/serialize mars/optimizes mars/tests
+  mv .coverage build/.coverage.non-fork.file
+
+  export POOL_START_METHOD=fork
+
+  pytest $PYTEST_CONFIG --cov-config .coveragerc mars/oscar
+  mv .coverage build/.coverage.oscar_ctx.file
+
+  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local \
+    mars/scheduler mars/web
+  mv .coverage build/.coverage.fork.file
+  coverage combine build/ && coverage report
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build

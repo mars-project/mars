@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import os
 import sys
 import time
 
@@ -321,7 +322,10 @@ async def test_main_actor_pool():
 
 @pytest.mark.asyncio
 async def test_create_actor_pool():
-    pool = await create_actor_pool('127.0.0.1', n_process=2)
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
+    pool = await create_actor_pool('127.0.0.1', n_process=2,
+                                   subprocess_start_method=start_method)
 
     async with pool:
         # test global router
@@ -402,7 +406,8 @@ async def test_errors():
 
 @pytest.mark.asyncio
 async def test_server_closed():
-    start_method = 'fork' if sys.platform != 'win32' else None
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
     pool = await create_actor_pool('127.0.0.1', n_process=2,
                                    subprocess_start_method=start_method,
                                    auto_recover=False)
@@ -443,7 +448,8 @@ async def test_server_closed():
     [False, True, 'actor', 'process']
 )
 async def test_auto_recover(auto_recover):
-    start_method = 'fork' if sys.platform != 'win32' else None
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
     recovered = asyncio.Event()
 
     def on_process_recover(*_):
@@ -486,7 +492,8 @@ async def test_auto_recover(auto_recover):
 
 @pytest.mark.asyncio
 async def test_two_pools():
-    start_method = 'fork' if sys.platform != 'win32' else None
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
 
     ctx = get_context()
 
@@ -495,7 +502,7 @@ async def test_two_pools():
     pool2 = await create_actor_pool('127.0.0.1', n_process=2,
                                     subprocess_start_method=start_method)
 
-    try:
+    async with pool1, pool2:
         actor_ref1 = await ctx.create_actor(
             TestActor, address=pool1.external_address,
             allocate_strategy=MainPool())
@@ -529,6 +536,3 @@ async def test_two_pools():
             actor_ref4.address).startswith('unixsocket://')
 
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
-    finally:
-        await pool1.stop()
-        await pool2.stop()
