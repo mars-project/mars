@@ -4,6 +4,7 @@ import pytest
 
 from mars.tests.core import require_ray
 from ..communication import ChannelID, Channel, RayServer, RayClient
+from ...mars.router import Router
 from .....utils import lazy_import
 
 ray = lazy_import('ray')
@@ -14,6 +15,8 @@ def ray_cluster_shared():
     ray.init()
     yield
     ray.shutdown()
+    Router.set_instance(None)
+    RayServer.clear()
 
 
 class ServerActor:
