@@ -67,7 +67,7 @@ class RayActorDriver(BaseActorDriver):
                 address = process_placement_to_address(pg_name, index, process_index=process_index)
                 try:
                     ray.kill(ray.get_actor(address))
-                except ray.exceptions.RayError:
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass
         ray.util.remove_placement_group(pg)
         cls._cluster_info = dict()

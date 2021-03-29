@@ -79,7 +79,7 @@ def actor_pool_context():
     for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(n_process)]:
         try:
             ray.kill(ray.get_actor(addr))
-        except ray.exceptions.RayError:
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
     RayServer.clear()
     Router.set_instance(None)
