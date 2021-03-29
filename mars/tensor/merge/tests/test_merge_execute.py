@@ -226,8 +226,8 @@ class Test(TestBase):
         a = eye(2, chunk_size=5) * 2
         b = eye(3, chunk_size=7) * 3
         c = block([
-            [a, zeros((2, 3))],
-            [ones((3, 2)), b]
+            [a, zeros((2, 3), chunk_size=6)],
+            [ones((3, 2), chunk_size=3), b]
         ])
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[2., 0., 0., 0., 0.],
