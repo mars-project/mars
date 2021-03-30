@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+import types
+
 import pytest
 
 from mars.tests.core import require_ray
 from ..communication import RayServer
+from ..pool import RayMainPool
+from ..utils import process_placement_to_address
 from ...mars.tests import test_mars_actor_context
 from ...router import Router
 from .....utils import lazy_import
@@ -28,7 +33,6 @@ pg_name, n_process = 'ray_cluster', 2
 
 @pytest.fixture(scope="module")
 def ray_start_regular_shared():
-    import ray
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -47,18 +51,27 @@ def ray_start_regular_shared():
     ray.shutdown()
 
 
+class MainPool(RayMainPool):
+
+    async def __proxy_call__(self, attribute, *args, **kwargs):
+        attr = getattr(self.actor_pool, attribute)
+        if isinstance(attr, types.MethodType):
+            if inspect.iscoroutinefunction(attr):
+                return await attr(*args, **kwargs)
+            return attr(*args, **kwargs)
+        else:
+            return attr
+
+
 @pytest.fixture
 def actor_pool_context():
-    import inspect
-    from ..utils import process_placement_to_address
-    from ..pool import RayPoolBase, RayMainPool
     address = process_placement_to_address(pg_name, 0, process_index=0)
     # Hold actor_handle to avoid actor being freed.
     if hasattr(ray.util, "get_placement_group"):
         pg, bundle_index = ray.util.get_placement_group(pg_name), 0
     else:
         pg, bundle_index = None, -1
-    actor_handle = ray.remote(RayMainPool).options(
+    actor_handle = ray.remote(MainPool).options(
         name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
     ray.get(actor_handle.start.remote(address, n_process))
 
@@ -68,7 +81,7 @@ def actor_pool_context():
             self.ray_pool_actor_handle = ray_pool_actor_handle
 
         def __getattr__(self, item):
-            if hasattr(RayPoolBase, item) and inspect.isfunction(getattr(RayPoolBase, item)):
+            if hasattr(RayMainPool, item) and inspect.isfunction(getattr(RayMainPool, item)):
                 def call(*args, **kwargs):
                     ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item, *args, **kwargs))
                 return call
