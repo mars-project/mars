@@ -1358,7 +1358,7 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
             session.run(a1, timeout=_exec_timeout)
 
             # test if `to_vineyard` works with vineyard as backend
-            session.run(tovineyard(a1))
+            session.run(tovineyard(a1), timeout=_exec_timeout)
 
     def testDataFrameToVineyard(self, *_):
         from mars.dataframe.datastore.to_vineyard import to_vineyard
@@ -1369,7 +1369,7 @@ class VineyardEnabledTest(IntegrationTestBase, Test):
             a = mt.random.rand(10, 10, chunk_size=3)
             df = md.DataFrame(a)
 
-            session.run(df)
+            session.run(df, timeout=_exec_timeout)
 
             # test if `to_vineyard` works with vineyard as backend
-            session.run(to_vineyard(df))
+            session.run(to_vineyard(df), timeout=_exec_timeout)

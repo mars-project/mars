@@ -115,7 +115,8 @@ class LocalDistributedCluster(object):
         self._started = True
 
         # start plasma
-        self._worker_service.start_plasma()
+        if not options.vineyard.enabled:
+            self._worker_service.start_plasma()
 
         # start actor pool
         n_process = self._scheduler_n_process + self._worker_n_process

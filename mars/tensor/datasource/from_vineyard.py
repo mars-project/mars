@@ -103,10 +103,13 @@ class TensorFromVineyard(TensorNoInput):
         client = vineyard.connect(op.vineyard_socket)
 
         # setup resolver context
-        from vineyard.data.tensor import tensor_resolver
+        try:
+            from vineyard.data.tensor import numpy_ndarray_resolver
+        except ImportError:
+            from vineyard.data.tensor import tensor_resolver as numpy_ndarray_resolver
 
         # chunk has a tensor chunk
-        ctx[op.outputs[0].key] = client.get(vineyard.ObjectID(op.object_id), tensor_resolver)
+        ctx[op.outputs[0].key] = client.get(vineyard.ObjectID(op.object_id), numpy_ndarray_resolver)
 
 
 def from_vineyard(tensor, vineyard_socket=None):

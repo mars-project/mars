@@ -33,11 +33,21 @@ fi
 export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
 
 function retry {
+  retrial=5
+  if [ $1 == "-n" ]; then
+    retrial=$2
+    shift; shift
+  fi
   r=0
-  until [ "$r" -ge 5 ]; do
-    $@ && break || true
+  while true; do
     r=$((r+1))
-    sleep 1
+    if [ "$r" -ge $retrial ]; then
+      $@
+      return $?
+    else
+      $@ && break || true
+      sleep 1
+    fi
   done
 }
 alias pip="retry pip"

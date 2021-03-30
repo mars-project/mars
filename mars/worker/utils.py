@@ -64,7 +64,10 @@ class WorkerActor(WorkerHasClusterInfoActor, PromiseActor):
             self.set_cluster_info_ref()
         except ActorNotExist:
             pass
-        self._init_shared_store()
+        if not options.vineyard.enabled:
+            self._init_shared_store()
+        else:
+            self._shared_store = None
         self._proc_id = self.ctx.distributor.distribute(self.uid)
 
     def pre_destroy(self):
