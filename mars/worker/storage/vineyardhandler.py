@@ -285,7 +285,10 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
 
     def delete(self, session_id, data_keys, _tell=False):
         data_ids = self._batch_get_object_id(session_id, data_keys)
-        logger.debug('delete chunks from vineyard: %s', data_ids)
+        logger.debug('delete chunks from vineyard: keys = %s, in vineyard is %s', data_keys, data_ids)
+        # when multiple workers connected to the same vineyard, they will think they both
+        # hold the chunk, but when it being deleted, it won't be there anymore.
+        data_ids = [data_id for data_id in data_ids if data_id]
         try:
             self._client.delete(data_ids, deep=True)
         except vineyard._C.ObjectNotExistsException:
