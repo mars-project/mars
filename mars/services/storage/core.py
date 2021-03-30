@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Union
 
 from ... import oscar as mo
-from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
+from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageFileObject
 from ...utils import calc_data_size, dataslots
