@@ -92,13 +92,36 @@ class SerializableSerializer(DictSerializer):
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
         tag_to_values = self._get_tag_to_values(obj)
-        header, buffers = super().serialize(tag_to_values, context)
-        header['class'] = type(obj)
-        return header, buffers
+
+        from ..core import serialize
+        keys = [None] * len(tag_to_values)
+        value_headers = [None] * len(tag_to_values)
+        value_sizes = [0] * len(tag_to_values)
+        value_buffers = []
+        for idx, (key, val) in enumerate(tag_to_values.items()):
+            keys[idx] = key
+            value_headers[idx], val_buf = serialize(val, context)
+            value_sizes[idx] = len(val_buf)
+            value_buffers.extend(val_buf)
+
+        header = {
+            'keys': keys,
+            'value_headers': value_headers,
+            'value_sizes': value_sizes,
+            'class': type(obj),
+        }
+        return header, value_buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict) -> Serializable:
         obj_class: Type[Serializable] = header.pop('class')
-        tag_to_values = super().deserialize(header, buffers, context)
+
+        from ..core import deserialize
+        tag_to_values = dict()
+        pos = 0
+        for key, value_header, value_size in \
+                zip(header['keys'], header['value_headers'], header['value_sizes']):
+            tag_to_values[key] = deserialize(value_header, buffers[pos:pos + value_size], context)
+            pos += value_size
 
         for field in obj_class._FIELDS.values():
             if not isinstance(field, OneOfField):
@@ -106,9 +129,14 @@ class SerializableSerializer(DictSerializer):
                     value = tag_to_values[field.tag]
                 except KeyError:
                     continue
-                if value is not None and field.on_deserialize:
-                    def cb(v, field_):
-                        tag_to_values[field_.tag] = field_.on_deserialize(v)
+                if value is not None:
+                    if field.on_deserialize:
+                        def cb(v, field_):
+                            tag_to_values[field_.tag] = field_.on_deserialize(v)
+                    else:
+                        def cb(v, field_):
+                            tag_to_values[field_.tag] = v
+
                     if isinstance(value, Placeholder):
                         value.callbacks.append(partial(cb, field_=field))
                     else:

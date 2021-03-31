@@ -136,12 +136,12 @@ class CollectionSerializer(Serializer):
 
     @staticmethod
     def _serialize(c, context: Dict):
-        headers = []
-        buffers_list = []
-        for obj in c:
+        headers = [None] * len(c)
+        buffers_list = [None] * len(c)
+        for idx, obj in enumerate(c):
             header, buffers = serialize(obj, context)
-            headers.append(header)
-            buffers_list.append(buffers)
+            headers[idx] = header
+            buffers_list[idx] = buffers
         return headers, buffers_list
 
     @buffered
@@ -254,6 +254,7 @@ ScalarSerializer.register(bool)
 ScalarSerializer.register(int)
 ScalarSerializer.register(float)
 ScalarSerializer.register(complex)
+ScalarSerializer.register(type(None))
 StrSerializer.register(bytes)
 StrSerializer.register(str)
 ListSerializer.register(list)
