@@ -208,6 +208,18 @@ class Test(TestBase):
         np.testing.assert_array_equal(res, expected)
 
     def testBlockExecution(self):
+        with self.assertRaises(TypeError):
+            block((1, 2, 3))
+
+        with self.assertRaises(ValueError):
+            block([[1, 2], [[3, 4]]])
+
+        with self.assertRaises(ValueError):
+            block([])
+
+        # Test large block.
+        block([eye(512), eye(512), ones((512, 1))])
+
         a = eye(2) * 2
         b = eye(3) * 3
         c = block([
@@ -323,3 +335,4 @@ class Test(TestBase):
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[1]])
         np.testing.assert_array_equal(r, expected)
+
