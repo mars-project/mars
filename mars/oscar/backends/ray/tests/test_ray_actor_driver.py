@@ -30,7 +30,7 @@ from ..utils import (
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
 TEST_ADDRESS_TO_RESOURCES = pg_info_to_node_addresses(TEST_PLACEMENT_GROUP_NAME,
-                                                              TEST_PLACEMENT_GROUP_BUNDLES)
+                                                      TEST_PLACEMENT_GROUP_BUNDLES)
 
 
 class DummyActor(mo.Actor):
@@ -118,7 +118,7 @@ def test_node_addresses_to_pg_info():
     # Missing bundle index 1
     with pytest.raises(ValueError):
         node_addresses_to_pg_info({"ray://127.0.0.1/0": {"CPU": 1},
-                                           "ray://127.0.0.1/2": {"CPU": 1}})
+                                   "ray://127.0.0.1/2": {"CPU": 1}})
     # The bundle index is not starts from 0
     with pytest.raises(ValueError):
         node_addresses_to_pg_info({"ray://127.0.0.1/1": {"CPU": 1}})
@@ -126,10 +126,10 @@ def test_node_addresses_to_pg_info():
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 1}]
     pg_name, bundles = node_addresses_to_pg_info({"ray://127.0.0.1/4": {"CPU": 4},
-                                                          "ray://127.0.0.1/2": {"CPU": 2},
-                                                          "ray://127.0.0.1/1": {"CPU": 1},
-                                                          "ray://127.0.0.1/3": {"CPU": 3},
-                                                          "ray://127.0.0.1/0": {"CPU": 0}})
+                                                  "ray://127.0.0.1/2": {"CPU": 2},
+                                                  "ray://127.0.0.1/1": {"CPU": 1},
+                                                  "ray://127.0.0.1/3": {"CPU": 3},
+                                                  "ray://127.0.0.1/0": {"CPU": 0}})
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 0}, {"CPU": 1}, {"CPU": 2}, {"CPU": 3}, {"CPU": 4}]
     pg_name, bundles = node_addresses_to_pg_info(TEST_ADDRESS_TO_RESOURCES)

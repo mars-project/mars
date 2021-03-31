@@ -61,8 +61,8 @@ class RayActorDriver(BaseActorDriver):
         logger.info('Stopping cluster %s.', cls._cluster_info)
         pg_name = cls._cluster_info['pg_name']
         pg = cls._cluster_info['pg_group']
-        for index, bundle_spec in enumerate(pg.bundle_specs()):
-            n_process = bundle_spec["CPU"]
+        for index, bundle_spec in enumerate(pg.bundle_specs):
+            n_process = int(bundle_spec["CPU"])
             for process_index in range(n_process):
                 address = process_placement_to_address(pg_name, index, process_index=process_index)
                 try:
