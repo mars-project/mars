@@ -58,7 +58,7 @@ class RayChannelBase(Channel, ABC):
         super().__init__(local_address=local_address,
                          dest_address=dest_address,
                          compression=compression)
-        self._channel_index = channel_index or RayTwoWayChannel.next_channel_index()
+        self._channel_index = channel_index or RayChannelBase.next_channel_index()
         self._channel_id = channel_id or ChannelID(local_address, dest_address, self._channel_index)
         # ray actor should be created with the address as the name.
         self.peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address) if dest_address else None
@@ -88,34 +88,8 @@ class RayChannelBase(Channel, ABC):
         return self._closed.is_set()
 
 
-class RayTwoWayChannel(RayChannelBase):
-    """
-    Channel for communications between ray actors.
-    """
-
-    @implements(Channel.send)
-    async def send(self, message: Any):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot send message')
-        await self.peer_actor.__on_ray_recv__.remote(self.channel_id, message)
-
-    @implements(Channel.recv)
-    async def recv(self):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot write message')
-        try:
-            return await self._in_queue.get()
-        except RuntimeError:
-            if self._closed.is_set():
-                pass
-
-    async def __on_ray_recv__(self, message):
-        await self._in_queue.put(message)
-
-
-class RayOneWayDriverChannel(RayChannelBase):
-    """A channel from ray driver to ray actor. Since ray actor can't call ray actor,
-     we use ray call reply for channel send.
+class RayOneWayClientChannel(RayChannelBase):
+    """A channel from ray driver/actor to ray actor. Use ray call reply for client channel recv.
     """
 
     def __init__(self,
@@ -145,10 +119,10 @@ class RayOneWayDriverChannel(RayChannelBase):
                 raise e
 
 
-class RayOneWayActorChannel(RayChannelBase):
-    """A channel from ray actor to ray driver. Since ray actor can't call ray driver,
-     we use ray call reply for channel recv. Note that there can't be multiple
-     channel message send for one received message, or else it will be taken as next
+class RayOneWayServerChannel(RayChannelBase):
+    """A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
+     we use ray call reply for server channel send. Note that there can't be multiple
+     channel message sends for one received message, or else it will be taken as next
      message's reply.
     """
     __slots__ = '_out_queue', '_msg_recv_counter', '_msg_sent_counter'
@@ -170,12 +144,12 @@ class RayOneWayActorChannel(RayChannelBase):
         # Current process is ray actor, peer is ray driver.
         # We can't ray call to ray driver for message send, so we use ray call reply
         # to send message to ray driver.
-        # Not that we can send once for every read message in channel, other else
+        # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
         await self._out_queue.put(message)
         self._msg_sent_counter += 1
         assert self._msg_sent_counter <= self._msg_recv_counter,\
-            "One way channel doesn't support multiple reply for one message."
+            "One way channel doesn't support multiple replies for one message."
 
     @implements(Channel.recv)
     async def recv(self):
@@ -206,7 +180,7 @@ class RayServer(Server):
         super().__init__(DEFAULT_DUMMY_RAY_ADDRESS, channel_handler)
         self._address = address
         self._closed = asyncio.Event()
-        self._channels: Dict[ChannelID, RayTwoWayChannel] = dict()
+        self._channels: Dict[ChannelID, RayOneWayServerChannel] = dict()
         self._tasks: Dict[ChannelID, asyncio.Task] = dict()
 
     @classmethod
@@ -261,8 +235,10 @@ class RayServer(Server):
 
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
-        channel = args[0]
-        assert isinstance(channel, RayChannelBase)
+        channel_id = args[0]
+        peer_local_address, peer_dest_address, peer_channel_index = channel_id
+        channel = RayOneWayServerChannel(peer_dest_address, peer_channel_index, channel_id)
+        self._channels[channel_id] = channel
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
@@ -279,22 +255,13 @@ class RayServer(Server):
         return self._closed.is_set()
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
-        channel = self._channels.get(channel_id, None)
+        channel = self._channels.get(channel_id)
         if not channel:
-            peer_local_address, peer_dest_address, peer_channel_index = channel_id
-            if not peer_local_address:
-                # Peer is a ray driver.
-                channel = RayOneWayActorChannel(peer_dest_address, peer_channel_index, channel_id)
-            else:
-                # Peer is a ray actor too.
-                channel = RayTwoWayChannel(
-                    peer_dest_address, peer_local_address, peer_channel_index, channel_id)
-            self._channels[channel_id] = channel
-            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
-        return await channel.__on_ray_recv__(message)
-
-    def register_channel(self, channel: RayTwoWayChannel):
-        self._channels[channel.channel_id] = channel
+            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel_id))
+        while not channel:
+            await asyncio.sleep(0.01)
+            channel = self._channels.get(channel_id)
+        return await self._channels[channel_id].__on_ray_recv__(message)
 
 
 @register_client
@@ -323,15 +290,7 @@ class RayClient(Client):
         if server is None and local_address:  # pragma: no cover
             raise RuntimeError(f'RayServer needs to be created first before RayClient '
                                f'local_address {local_address}, dest_address {dest_address}')
-        if local_address:
-            # Current process ia a ray actor, is connecting to another ray actor.
-            client_channel = RayTwoWayChannel(local_address, dest_address)
-            # The RayServer will push message to this channel's queue after it received
-            # the message from the `dest_address` actor.
-            server.register_channel(client_channel)
-        else:
-            # Current process ia a ray driver
-            client_channel = RayOneWayDriverChannel(dest_address)
+        client_channel = RayOneWayClientChannel(dest_address)
         client = RayClient(local_address, dest_address, client_channel)
         return client
 

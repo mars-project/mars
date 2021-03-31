@@ -45,7 +45,8 @@ class Channel(ABC):
     @abstractmethod
     async def send(self, message: Any):
         """
-        Send data to dest.
+        Send data to dest. There should be only one send for one recv, otherwise recv messages
+        may overlap.
 
         Parameters
         ----------
