@@ -16,7 +16,7 @@ import subprocess
 import os
 from typing import NamedTuple, Union
 
-version_info = (0, 7, 0, 'a7')
+version_info = (0, 7, 0, 'a8')
 _num_index = max(idx if isinstance(v, int) else 0
                  for idx, v in enumerate(version_info))
 __version__ = '.'.join(map(str, version_info[:_num_index + 1])) + \

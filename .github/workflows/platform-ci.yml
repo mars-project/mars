@@ -157,8 +157,11 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray
-            coverage report
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray --ignore-glob "mars/oscar/*"
+            mv .coverage build/.coverage.non-aio.file
+            retry pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
+            mv .coverage build/.coverage.aio.file
+            coverage combine build/ && coverage report
           fi
           coverage xml
 

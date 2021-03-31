@@ -299,7 +299,8 @@ class SharedHolderActor(ObjectHolderActor):
 
     def post_create(self):
         super().post_create()
-        self._size_limit = self._shared_store.get_actual_capacity(self._size_limit)
+        if not options.vineyard.enabled:
+            self._size_limit = self._shared_store.get_actual_capacity(self._size_limit)
         logger.info('Detected actual plasma store size: %s', readable_size(self._size_limit))
 
     def update_cache_status(self):
@@ -308,7 +309,8 @@ class SharedHolderActor(ObjectHolderActor):
                 dict(hold=self._total_hold, total=self._size_limit), _tell=True, _wait=False)
 
     def post_delete(self, session_id, data_keys):
-        self._shared_store.batch_delete(session_id, data_keys)
+        if self._shared_store:
+            self._shared_store.batch_delete(session_id, data_keys)
         self._storage_handler.unregister_data(session_id, data_keys)
 
     def put_objects_by_keys(self, session_id, data_keys, shapes=None, pin_token=None):
