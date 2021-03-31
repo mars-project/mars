@@ -37,16 +37,7 @@ class RayActorPoolMixin(AbstractActorPool, ABC):
             ray_servers = [server for server in self._servers if isinstance(server, RayServer)]
             assert len(ray_servers) == 1, f"Ray only support single server but got {ray_servers}."
             self._external_servers = ray_servers
-        reply = await self._external_servers[0].__on_ray_recv__(channel_id, message)
-        return await _serialize(reply)
-
-
-async def _serialize(message):
-    # TODO(chaokunyang) register mars serializer with ray.util.register_serializer
-    from ..message import ResultMessage
-    if isinstance(message, ResultMessage) and isinstance(message.result, asyncio.Future):
-        message.result = await message.result
-    return message
+        return await self._external_servers[0].__on_ray_recv__(channel_id, message)
 
 
 @_register_message_handler
