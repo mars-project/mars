@@ -71,34 +71,47 @@ class VineyardKeyMapActor(FunctionActor):
     def put(self, session_id, chunk_key, obj_id):
         logger.debug('mapper put: session_id = %s, data_key = %s, data_id = %r', session_id, chunk_key, obj_id)
         session_chunk_key = (session_id, chunk_key)
-        if session_chunk_key in self._mapping:
-            # FIXME no throw, just a warning
-            #
-            # raise StorageDataExists(session_chunk_key)
-            logger.warning('StorageDataExists: chunk_key = %r', chunk_key)
-        self._mapping[session_chunk_key] = obj_id
+        target = self._mapping.get(session_chunk_key)
+        if target:
+            count = target[1] + 1
+        else:
+            count = 1
+        self._mapping[session_chunk_key] = (obj_id, count)
 
     def get(self, session_id, chunk_key):
         logger.debug('mapper get: session_id = %s, data_key = %s', session_id, chunk_key)
-        return self._mapping.get((session_id, chunk_key))
+        target = self._mapping.get((session_id, chunk_key))
+        if target:
+            return target[0]
+        else:
+            return None
 
     def batch_get(self, session_id, chunk_keys):
         obj_ids = []
         for key in chunk_keys:
-            if (session_id, key) in self._mapping:
-                obj_ids.append(self._mapping[(session_id, key)])
+            obj_ids.append(self.get(session_id, key))
         return obj_ids
 
     def delete(self, session_id, chunk_key):
-        try:
-            del self._mapping[(session_id, chunk_key)]
-        except KeyError:
-            pass
+        session_chunk_key = (session_id, chunk_key)
+        target = self._mapping.get(session_chunk_key)
+        logger.debug('mapper delete: session_id = %s, chunk_key = %s, target = %s', session_id, chunk_key, target)
+        if target:
+            if target[1] <= 1:
+                self._mapping[session_chunk_key] = (target[0], target[1] - 1)
+                return False
+            else:
+                del self._mapping[session_chunk_key]
+                return True
+        logger.warn("delete non-existing chunk from mapper: session_id = %s, chunk_key = %s", session_id, chunk_key)
+        return True
 
     def batch_delete(self, session_id, chunk_keys):
         logger.debug('mapper delete: session_id = %s, data_keys = %s', session_id, chunk_keys)
-        for k in chunk_keys:
-            self.delete(session_id, k)
+        deletable = []
+        for key in chunk_keys:
+            deletable.append(self.delete(session_id, key))
+        return deletable
 
 
 class VineyardBytesIO(BytesStorageIO):
@@ -219,10 +232,13 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
         return obj_ids
 
     def _batch_delete_from_key_mapper(self, session_id, data_keys):
+        deletable = []
         for data_key in data_keys:
             addr = self._cluster_info.get_scheduler((session_id, data_key))
-            self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
+            val = self._actor_ctx.actor_ref(VineyardKeyMapActor.default_uid(), address=addr) \
                 .delete(session_id, data_key)
+            deletable.append(val)
+        return deletable
 
     @wrap_promised
     def create_bytes_reader(self, session_id, data_key, packed=False, packed_compression=None,
@@ -289,13 +305,16 @@ class VineyardHandler(StorageHandler, ObjectStorageMixin):
         # when multiple workers connected to the same vineyard, they will think they both
         # hold the chunk, but when it being deleted, it won't be there anymore.
         data_ids = [data_id for data_id in data_ids if data_id]
-        try:
-            self._client.delete(data_ids, deep=True)
-        except vineyard._C.ObjectNotExistsException:
-            # the object may has been deleted by other worker
-            pass
+
         if data_ids:
-            self._batch_delete_from_key_mapper(session_id, data_keys)
+            deletable = self._batch_delete_from_key_mapper(session_id, data_keys)
+            data_ids_to_delete = [data_id for data_id, val in zip(data_ids, deletable)
+                                          if val]
+            try:
+                self._client.delete(data_ids_to_delete, deep=True)
+            except vineyard._C.ObjectNotExistsException:
+                # the object may has been deleted by other worker
+                pass
         self.unregister_data(session_id, data_keys, _tell=_tell)
 
 
