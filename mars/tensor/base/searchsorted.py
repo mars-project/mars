@@ -17,11 +17,11 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
 from ...config import options
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TENSOR_TYPE, TensorOrder
 from ..datasource.array import tensor as astensor
@@ -38,10 +38,9 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
     # offset is used only for map stage
     _offset = Int64Field('offset')
 
-    def __init__(self, values=None, side=None, dtype=None, gpu=None, combine_size=None,
-                 stage=None,  offset=None, **kw):
-        super().__init__(_values=values, _side=side, _dtype=dtype, _gpu=gpu,
-                         _combine_size=combine_size, _stage=stage, _offset=offset, **kw)
+    def __init__(self, values=None, side=None, combine_size=None, offset=None, **kw):
+        super().__init__(_values=values, _side=side, _combine_size=combine_size,
+                         _offset=offset, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -108,7 +107,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         combine_op = TensorStack(axis=0, dtype=op.outputs[0].dtype)
         combine_chunk = combine_op.new_chunk(to_combine, shape=v_shape)
         chunk_op = op.copy().reset_key()
-        chunk_op._stage = stage
+        chunk_op.stage = stage
         in_chunks = [combine_chunk]
         if len(op.inputs) == 2:
             in_chunks.append(v)
@@ -131,7 +130,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
             chunks = []
             for i, c in enumerate(a.chunks):
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = OperandStage.map
+                chunk_op.stage = OperandStage.map
                 chunk_op._offset = offsets[i]
                 in_chunks = [c]
                 if input_len == 2:

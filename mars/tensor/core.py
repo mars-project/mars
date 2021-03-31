@@ -23,10 +23,10 @@ from operator import attrgetter
 
 import numpy as np
 
-from ..core import Entity, HasShapeTileableEnity, ChunkData, Chunk, HasShapeTileableData, \
-    Serializable, OutputType, register_output_types, _ExecuteAndFetchMixin
-from ..serialize import ProviderType, ValueType, DataTypeField, ListField, TupleField, \
-    BoolField, StringField, AnyField
+from ..core import Entity, HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
+    OutputType, register_output_types, _ExecuteAndFetchMixin
+from ..serialization.serializables import Serializable, FieldTypes, \
+    DataTypeField, ListField, TupleField, BoolField, StringField, AnyField, ReferenceField
 from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_build_mode
 from .utils import get_chunk_slices, fetch_corner_data
 
@@ -45,9 +45,10 @@ class TensorChunkData(ChunkData):
     type_name = 'Tensor'
 
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
-    _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
+    _shape = TupleField('shape', FieldTypes.int64,
+                        on_serialize=on_serialize_shape,
+                        on_deserialize=on_deserialize_shape)
+    _order = ReferenceField('order', TensorOrder)
     # optional fields
     _dtype = DataTypeField('dtype')
 
@@ -63,13 +64,6 @@ class TensorChunkData(ChunkData):
                 self._order = TensorOrder.F_ORDER
             else:
                 self._order = TensorOrder.C_ORDER
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.tensor_pb2 import TensorChunkDef
-            return TensorChunkDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -131,7 +125,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
     _order = StringField('order', on_serialize=attrgetter('value'), on_deserialize=TensorOrder)
     # optional fields
     _dtype = DataTypeField('dtype')
-    _chunks = ListField('chunks', ValueType.reference(TensorChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(TensorChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [TensorChunk(it) for it in x] if x is not None else x)
 
@@ -148,13 +142,6 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
                 self._order = TensorOrder.F_ORDER
             else:
                 self._order = TensorOrder.C_ORDER
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.tensor_pb2 import TensorDef
-            return TensorDef
-        return super().cls(provider)
 
     def _to_str(self, representation=False):
         if is_build_mode() or len(self._executed_sessions) == 0:
@@ -293,7 +280,7 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
         return self._execute_and_fetch(session=session, **kw)
 
 
-class Tensor(HasShapeTileableEnity):
+class Tensor(HasShapeTileable):
     __slots__ = ()
     _allow_data_type_ = (TensorData,)
     type_name = 'Tensor'

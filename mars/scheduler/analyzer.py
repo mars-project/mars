@@ -20,13 +20,13 @@ from functools import reduce
 
 import numpy as np
 
-from ..operands import VirtualOperand
+from ..core.operand import VirtualOperand
 from .operands import OperandState
 
 logger = logging.getLogger(__name__)
 
 
-class GraphAnalyzer(object):
+class GraphAnalyzer:
     """
     Analyzer for chunk graph, supporting optimization analysis
     as well as fail-over analysis.

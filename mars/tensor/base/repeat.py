@@ -20,9 +20,9 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, AnyField, Int32Field
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..core import Tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -83,8 +83,8 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
             size = a.shape[axis or 0] * repeats
 
         shape = a.shape[:ax] + (size,) + a.shape[ax + 1:]
-        self._dtype = a.dtype
-        self._sparse = a.issparse()
+        self.dtype = a.dtype
+        self.sparse = a.issparse()
 
         inputs = [a]
         if isinstance(repeats, Tensor):

@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, DictField, StringField, \
     BoolField
-from ...tiles import TilesError
 from ...utils import enter_current_session, check_chunks_unknown_shape, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_empty_df, build_series, parse_index, \

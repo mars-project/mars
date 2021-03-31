@@ -19,11 +19,11 @@ import unittest
 import numpy as np
 
 from mars import tensor
-from mars.tensor.datasource import tensor as from_ndarray
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.lib.sparse.core import issparse
-from mars.utils import ignore_warning
+from mars.tensor.datasource import tensor as from_ndarray
 from mars.tests.core import ExecutorForTest
+from mars.utils import ignore_warning
 
 
 class Test(unittest.TestCase):

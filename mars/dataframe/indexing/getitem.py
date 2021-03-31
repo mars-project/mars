@@ -20,12 +20,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import Base, Entity, OutputType
+from ...core import ENTITY_TYPE, OutputType, TilesError
 from ...serialize import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..align import align_dataframe_series, align_dataframe_dataframe
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ..merge import DataFrameConcat
@@ -234,9 +233,9 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._col_names, (Base, Entity)):
+        if isinstance(self._col_names, ENTITY_TYPE):
             self._col_names = self._inputs[0]
-        if isinstance(self._mask, (Base, Entity)):
+        if isinstance(self._mask, ENTITY_TYPE):
             self._mask = self._inputs[-1]
 
     def __call__(self, df):

@@ -16,10 +16,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType
-from ...operands import OperandStage
+from ...core import OutputType, TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, BoolField, Int64Field, StringField
-from ...tiles import TilesError
 from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -41,12 +40,11 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, normalize=None, sort=None, ascending=None,
                  bins=None, dropna=None, method=None,
-                 convert_index_to_interval=None, nrows=None,
-                 stage=None, **kw):
+                 convert_index_to_interval=None, nrows=None, **kw):
         super().__init__(_normalize=normalize, _sort=sort, _ascending=ascending,
                          _bins=bins, _dropna=dropna, _method=method,
                          _convert_index_to_interval=convert_index_to_interval,
-                         _nrows=nrows, _stage=stage, **kw)
+                         _nrows=nrows, **kw)
         self.output_types = [OutputType.series]
 
     @property

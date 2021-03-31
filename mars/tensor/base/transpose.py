@@ -37,10 +37,10 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _axes = ListField('axes', ValueType.int32)
 
-    def __init__(self, axes=None, dtype=None, sparse=False, **kw):
-        super().__init__(_axes=axes, _dtype=dtype, _sparse=sparse,
+    def __init__(self, axes=None, **kw):
+        super().__init__(_axes=axes,
                          # transpose will create a view
-                         _create_view=True, **kw)
+                         create_view=True, **kw)
 
     @property
     def axes(self):
@@ -150,6 +150,9 @@ def transpose(a, axes=None):
         if len(axes) != a.ndim:
             raise ValueError("axes don't match tensor")
 
-    axes = axes or list(range(a.ndim))[::-1]
+    if not axes:
+        axes = list(range(a.ndim))[::-1]
+    else:
+        axes = list(axes)
     op = TensorTranspose(axes, dtype=a.dtype, sparse=a.issparse())
     return op(a)

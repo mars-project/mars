@@ -24,9 +24,9 @@ import pandas as pd
 
 from ... import opcodes, tensor as mars_tensor
 from ...config import options
-from ...core import OutputType, Base, Entity
+from ...core import OutputType, ENTITY_TYPE
+from ...core.operand import OperandStage
 from ...custom_log import redirect_custom_log
-from ...operands import OperandStage
 from ...serialize import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_mode, enter_current_session
 from ..core import INDEX_CHUNK_TYPE
@@ -44,7 +44,7 @@ def where_function(cond, var1, var2):
     if var1.ndim >= 1:
         return var1.where(cond, var2)
     else:
-        if isinstance(var1, (Base, Entity)):
+        if isinstance(var1, ENTITY_TYPE):
             return mars_tensor.where(cond, var1, var2)
         else:
             return np.where(cond, var1, var2).item()
@@ -95,7 +95,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                          _func_rename=func_rename, _axis=axis, _use_inf_as_na=use_inf_as_na,
                          _numeric_only=numeric_only, _bool_only=bool_only,
                          _combine_size=combine_size, _pre_funcs=pre_funcs, _agg_funcs=agg_funcs,
-                         _post_funcs=post_funcs, _stage=stage, _output_types=output_types, **kw)
+                         _post_funcs=post_funcs, _output_types=output_types, stage=stage, **kw)
 
     @property
     def raw_func(self):
@@ -239,7 +239,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             func_info = func_infos[new_axis_index]
             # force as_index=True for map phase
             map_op.output_types = [OutputType.dataframe] if chunk.ndim == 2 else [OutputType.series]
-            map_op._stage = OperandStage.map
+            map_op.stage = OperandStage.map
             map_op._pre_funcs = func_info.pre_funcs
             map_op._agg_funcs = func_info.agg_funcs
 
@@ -411,7 +411,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                                                   shape=concat_shape, index_value=chks[0].index_value)
                     chunk_op = op.copy().reset_key()
                     chunk_op.output_types = [OutputType.dataframe]
-                    chunk_op._stage = OperandStage.combine
+                    chunk_op.stage = OperandStage.combine
                     chunk_op._agg_funcs = func_info.agg_funcs
 
                     if axis == 0:
@@ -442,7 +442,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             chk = concat_op.new_chunk(chks, dtypes=dtypes_list[idx] if dtypes_list else None,
                                       shape=concat_shape, index_value=chks[0].index_value)
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.agg
+            chunk_op.stage = OperandStage.agg
             chunk_op._agg_funcs = func_info.agg_funcs
             chunk_op._post_funcs = func_info.post_funcs
 

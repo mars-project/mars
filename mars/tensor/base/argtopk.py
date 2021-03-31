@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from .topk import _validate_topk_arguments, TensorTopk
 
 

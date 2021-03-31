@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import Base, Entity, get_output_types
+from ...core import ENTITY_TYPE, get_output_types, TilesError
 from ...serialize import AnyField, Int8Field, KeyField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index, validate_axis
@@ -49,7 +48,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = inputs[0]
-        if isinstance(self.value, (Base, Entity)):
+        if isinstance(self.value, ENTITY_TYPE):
             self._value = inputs[-1]
 
     def __call__(self, df_or_series):
@@ -70,12 +69,12 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
             params['columns_value'] = parse_index(self.value, store_data=True) \
                 if isinstance(self.value, pd.Index) else self.value.index_value
             pd_columns = self.value.index_value.to_pandas() \
-                if isinstance(self.value, (Base, Entity)) else self.value
+                if isinstance(self.value, ENTITY_TYPE) else self.value
             params['dtypes'] = params['dtypes'].set_axis(pd_columns)
 
         self._output_types = get_output_types(df_or_series)
         inputs = [df_or_series]
-        if isinstance(self.value, (Base, Entity)):
+        if isinstance(self.value, ENTITY_TYPE):
             inputs += [self.value]
         return self.new_tileable(inputs, **params)
 
@@ -85,7 +84,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
         input_tileables = [op.input]
 
         value = op.value
-        if isinstance(value, (Base, Entity)):
+        if isinstance(value, ENTITY_TYPE):
             input_tileables.append(value)
             check_chunks_unknown_shape([value], TilesError)
 
@@ -98,7 +97,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
                 f'new values have {op.input.shape[op.axis]} elements'
             )
 
-        if isinstance(value, (Base, Entity)):
+        if isinstance(value, ENTITY_TYPE):
             value = value.rechunk({0: op.input.nsplits[op.axis]})._inplace_tile()
             input_tileables[-1] = value
 
@@ -113,7 +112,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
             value_index = inp_chunk.index[op.axis]
             params = inp_chunk.params
 
-            if isinstance(value, (Base, Entity)):
+            if isinstance(value, ENTITY_TYPE):
                 value_data = value.chunks[value_index]
                 input_chunks.append(value_data)
             else:
@@ -121,7 +120,7 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
 
             if param_cache[value_index] is None:
                 cached_params = param_cache[value_index] = dict()
-                if isinstance(value, (Base, Entity)):
+                if isinstance(value, ENTITY_TYPE):
                     if op.axis == 0:
                         cached_params['index_value'] = value_data.index_value
                     else:
@@ -152,14 +151,14 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: 'DataFrameSetAxis'):
         in_data = ctx[op.input.key]
         value = op.value
-        if isinstance(value, (Base, Entity)):
+        if isinstance(value, ENTITY_TYPE):
             value = ctx[value.key]
         ctx[op.outputs[0].key] = in_data.set_axis(value, axis=op.axis)
 
 
 def _set_axis(df_or_axis, labels, axis=0, inplace=False):
     axis = validate_axis(axis, df_or_axis)
-    if not isinstance(labels, (Base, Entity)) and not isinstance(labels, pd.Index):
+    if not isinstance(labels, ENTITY_TYPE) and not isinstance(labels, pd.Index):
         labels = pd.Index(labels)
 
     op = DataFrameSetAxis(value=labels, axis=axis)

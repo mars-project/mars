@@ -33,9 +33,9 @@ class TensorStandardGamma(TensorDistribution, TensorRandomOperandMixin):
     def shape(self):
         return self._shape
 
-    def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
+    def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
 
     def __call__(self, shape, chunk_size=None):
         return self.new_tensor([shape], None, raw_chunk_size=chunk_size)

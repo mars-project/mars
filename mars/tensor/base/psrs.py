@@ -18,10 +18,10 @@ from functools import partial
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...tiles import TilesError
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import ValueType, Int32Field, \
     ListField, StringField, BoolField, AnyField
-from ...operands import OperandStage
 from ...utils import get_shuffle_input_keys_idxes, flatten, stack_back
 from ..core import TensorOrder
 from ..operands import TensorOperand, TensorMapReduceOperand, \
@@ -499,12 +499,11 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
     def __init__(self, return_value=None, return_indices=None,
                  axis=None, order=None, n_partition=None, input_sorted=None,
-                 kind=None, need_align=None, stage=None, shuffle_key=None,
-                 dtype=None, gpu=None, **kw):
+                 kind=None, need_align=None, **kw):
         super().__init__(_return_value=return_value, _return_indices=return_indices,
                          _axis=axis, _order=order, _n_partition=n_partition,
-                         _input_sorted=input_sorted, _kind=kind, _need_align=need_align,
-                         _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
+                         _input_sorted=input_sorted, _kind=kind,
+                         _need_align=need_align, **kw)
 
     @property
     def return_value(self):
@@ -540,7 +539,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
     @property
     def output_limit(self):
-        if self._stage == OperandStage.map:
+        if self.stage == OperandStage.map:
             return 1
         else:
             limit = int(bool(self._return_value)) + \
@@ -694,11 +693,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
     _output_sizes = ListField('output_sizes', ValueType.int32)
 
     def __init__(self, return_value=None, return_indices=None, axis=None,
-                 output_sizes=None, stage=None, shuffle_key=None,
-                 dtype=None, gpu=None, **kw):
+                 output_sizes=None, **kw):
         super().__init__(_return_value=return_value, _return_indices=return_indices,
-                         _axis=axis, _output_sizes=output_sizes, _stage=stage,
-                         _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
+                         _axis=axis, _output_sizes=output_sizes, **kw)
 
     @property
     def return_value(self):
@@ -718,7 +715,7 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
 
     @property
     def output_limit(self):
-        if self._stage == OperandStage.map:
+        if self.stage == OperandStage.map:
             return 1
         else:
             return int(bool(self._return_value)) + int(bool(self._return_indices))

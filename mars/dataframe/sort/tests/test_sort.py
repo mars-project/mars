@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from mars.operands import OperandStage
+from mars.core.operand import OperandStage
 from mars.dataframe.initializer import DataFrame
 from mars.dataframe.indexing.getitem import DataFrameIndex
 from mars.dataframe.sort.sort_values import dataframe_sort_values, DataFrameSortValues

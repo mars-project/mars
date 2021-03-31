@@ -18,10 +18,10 @@ import cloudpickle
 
 from .... import opcodes
 from ....context import get_context
-from ....operands import OutputType, OperandStage, MergeDictOperand
+from ....core import OutputType, TilesError
+from ....core.operand import OperandStage, MergeDictOperand
 from ....serialize import KeyField, BytesField, DictField, Int32Field, \
     Float32Field, FunctionField
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape
 
 

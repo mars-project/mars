@@ -16,11 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import KeyField, StringField, TupleField, DictField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..align import align_series_series
 from ..core import SERIES_TYPE

@@ -20,14 +20,15 @@ except ImportError:  # pragma: no cover
     sps = None
 
 from ..lib.sparse import SparseNDArray
-from .core import Serializer, serialize, deserialize
+from .core import Serializer, serialize, deserialize, buffered
 
 
 class SparseNDArraySerializer(Serializer):
     serializer_name = 'mars.SparseNDArray'
 
+    @buffered
     def serialize(self, obj: Any, context: Dict):
-        raw_header, raw_buffers = serialize(obj.raw)
+        raw_header, raw_buffers = serialize(obj.raw, context)
         header = {
             'raw_header': raw_header, 'shape': list(obj.shape),
         }

@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import HasKey
+from mars.core import EntityData
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import Serializable, FieldTypes, \
     IdentityField, BoolField, AnyField, Int8Field, Int16Field, Int32Field, Int64Field, \
@@ -32,12 +32,10 @@ from mars.serialization.serializables import Serializable, FieldTypes, \
 my_namedtuple = namedtuple('my_namedtuple', 'a, b')
 
 
-class MyHasKey(HasKey):
-    __slots__ = '_key', '_id'
-
-    def __init__(self, key):
-        self._key = key
-        self._id = 1
+class MyHasKey(EntityData):
+    def __init__(self, key=None, **kw):
+        super().__init__(_key=key, **kw)
+        self._id = '1'
 
     def __eq__(self, other):
         return isinstance(other, MyHasKey) and other._key == self._key

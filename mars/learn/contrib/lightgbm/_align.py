@@ -14,9 +14,8 @@
 
 from .... import opcodes
 from ....context import get_context, RunningMode
-from ....core import ExecutableTuple, get_output_types
+from ....core import ExecutableTuple, get_output_types, TilesError
 from ....serialize import AnyField
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 

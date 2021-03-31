@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, \
     DictField, StringField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_series, build_empty_df, parse_index, \
@@ -38,11 +38,12 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
     _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, left=None, right=None, func=None, args=None, kwargs=None,
-                 memory_scale=None, output_types=None, tileable_op_key=None, **kw):
+                 output_types=None, tileable_op_key=None, **kw):
         super().__init__(_left=left, _right=right, _func=func, _args=args,
-                         _kwargs=kwargs, _memory_scale=memory_scale,
-                         _output_types=output_types,
+                         _kwargs=kwargs, _output_types=output_types,
                          _tileable_op_key=tileable_op_key, **kw)
+        if self.memory_scale is None:
+            self.memory_scale = 2.0
 
     @property
     def left(self):
@@ -63,10 +64,6 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
     @property
     def kwargs(self):
         return self._kwargs
-
-    @property
-    def memory_scale(self):
-        return self._memory_scale or 2.0
 
     @property
     def tileable_op_key(self):

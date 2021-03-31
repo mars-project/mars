@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField
 from ...utils import check_chunks_unknown_shape, recursive_tile
-from ...tiles import TilesError
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .ravel import ravel
@@ -31,9 +31,6 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.ARGWHERE
 
     _input = KeyField('input')
-
-    def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -117,5 +114,5 @@ def argwhere(a):
 
     """
     a = astensor(a).astype(bool, order='A')
-    op = TensorArgwhere(np.dtype(np.intp))
+    op = TensorArgwhere(dtype=np.dtype(np.intp))
     return op(a)

@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, StringField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..utils import unify_chunks, broadcast_shape
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -37,8 +37,8 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
     _casting = StringField('casting')
     _where = KeyField('where')
 
-    def __init__(self, casting=None, dtype=None, gpu=None, sparse=None, **kw):
-        super().__init__(_casting=casting, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+    def __init__(self, casting=None, **kw):
+        super().__init__(_casting=casting, **kw)
 
     @property
     def src(self):
@@ -89,9 +89,9 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         if not isinstance(dst, Tensor):
             raise TypeError('dst has to be a Tensor')
 
-        self._dtype = dst.dtype
-        self._gpu = dst.op.gpu
-        self._sparse = dst.issparse()
+        self.dtype = dst.dtype
+        self.gpu = dst.op.gpu
+        self.sparse = dst.issparse()
 
         if not np.can_cast(src.dtype, dst.dtype, casting=self.casting):
             raise TypeError(f'Cannot cast array from {src.dtype!r} to {dst.dtype!r} '

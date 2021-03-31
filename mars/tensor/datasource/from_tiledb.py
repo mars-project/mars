@@ -35,13 +35,11 @@ class TensorTileDBDataSource(TensorNoInput):
     _axis_offsets = TupleField('axis_offsets', ValueType.int64)
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_dim_starts=None,
-                 tiledb_key=None, tiledb_timstamp=None, dtype=None,
-                 gpu=None, sparse=None, **kw):
+                 tiledb_key=None, tiledb_timstamp=None, **kw):
         super().__init__(
             _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri,
             _tiledb_dim_starts=tiledb_dim_starts,
-            _tiledb_key=tiledb_key, _tiledb_timestamp=tiledb_timstamp,
-            _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+            _tiledb_key=tiledb_key, _tiledb_timestamp=tiledb_timstamp, **kw)
 
     @property
     def tiledb_config(self):

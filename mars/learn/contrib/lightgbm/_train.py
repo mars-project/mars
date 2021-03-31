@@ -23,8 +23,8 @@ import numpy as np
 
 from .... import opcodes
 from ....context import get_context, RunningMode
-from ....core import ExecutableTuple
-from ....operands import MergeDictOperand, OutputType
+from ....core import ExecutableTuple, OutputType
+from ....core.operand import MergeDictOperand
 from ....serialize import DictField, Int32Field, KeyField, ListField, StringField, ValueType
 from ...utils import concat_chunks, collect_ports
 from ._align import align_data_set

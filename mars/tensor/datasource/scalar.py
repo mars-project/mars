@@ -30,8 +30,8 @@ class Scalar(TensorNoInput):
 
     _data = AnyField('data')
 
-    def __init__(self, data=None, dtype=None, gpu=False, **kw):
-        super().__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, data=None, **kw):
+        super().__init__(_data=data, **kw)
 
     @classmethod
     def tile(cls, op):

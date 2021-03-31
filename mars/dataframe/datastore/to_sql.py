@@ -27,7 +27,7 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.TO_SQL
 
     _table_name = StringField('table_name')
-    _con = StringField('con')
+    _con = AnyField('con')
     _schema = StringField('schema')
     _if_exists = StringField('if_exists')
     _index = BoolField('index')

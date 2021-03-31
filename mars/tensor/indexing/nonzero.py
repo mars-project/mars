@@ -31,9 +31,6 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
 
-    def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
-
     @property
     def output_limit(self):
         return float('inf')

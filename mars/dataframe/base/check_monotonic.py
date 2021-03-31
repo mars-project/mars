@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import BoolField
 from ...tensor.core import TensorOrder
 from ...tensor.merge import TensorConcatenate
@@ -31,8 +31,8 @@ class DataFrameCheckMonotonic(DataFrameOperand, DataFrameOperandMixin):
     _decreasing = BoolField('decreasing')
     _strict = BoolField('strict')
 
-    def __init__(self, decreasing=None, strict=None, stage=None, output_types=None, **kw):
-        super().__init__(_decreasing=decreasing, _strict=strict, _stage=stage,
+    def __init__(self, decreasing=None, strict=None, output_types=None, **kw):
+        super().__init__(_decreasing=decreasing, _strict=strict,
                          _output_types=output_types, **kw)
 
     @property
@@ -70,7 +70,7 @@ class DataFrameCheckMonotonic(DataFrameOperand, DataFrameOperandMixin):
         params = op.outputs[0].params
         params['chunks'] = [r_chunk]
         params['nsplits'] = ()
-        return new_op.new_tileables([op.inputs], **params)
+        return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
     def execute(cls, ctx, op: 'DataFrameCheckMonotonic'):

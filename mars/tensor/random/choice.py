@@ -20,8 +20,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import TilesError
 from ...serialize import ValueType, AnyField, KeyField, BoolField, TupleField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
@@ -40,9 +40,9 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     _p = KeyField('p')
 
     def __init__(self, a=None, size=None, replace=None, p=None,
-                 state=None, seed=None, dtype=None, gpu=None, **kw):
+                 state=None, seed=None, **kw):
         super().__init__(_a=a, _size=size, _replace=replace, _p=p,
-                         _state=state, _seed=seed, _dtype=dtype, _gpu=gpu, **kw)
+                         _state=state, _seed=seed, **kw)
 
     @property
     def a(self):
@@ -193,7 +193,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             ind_chunk = ind.chunks[0]
 
             # do fancy index to find result
-            indexes = (ind_chunk, arange(m)._inplace_tile().chunks[0])
+            indexes = [ind_chunk, arange(m)._inplace_tile().chunks[0]]
             out_chunk = TensorIndex(dtype=stacked_chunk.dtype, indexes=indexes).new_chunk(
                 [stacked_chunk] + list(indexes), shape=(m,), order=TensorOrder.C_ORDER)
 

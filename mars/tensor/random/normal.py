@@ -30,9 +30,9 @@ class TensorNormal(TensorDistribution, TensorRandomOperandMixin):
     _scale = AnyField('scale')
     _func_name = 'normal'
 
-    def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
+    def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
 
     @property
     def loc(self):

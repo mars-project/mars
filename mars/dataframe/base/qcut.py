@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_integer
 
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ...tensor import tensor as astensor
 from ...tensor.statistics.percentile import percentile
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -87,7 +87,7 @@ def qcut(x, q, labels=None, retbins=False, precision=3, duplicate='raise'):
         bins = x.quantile(q)
     else:
         x = astensor(x)
-        if isinstance(q, (Base, Entity)):
+        if isinstance(q, ENTITY_TYPE):
             q = q * 100
         else:
             q = [iq * 100 for iq in q]

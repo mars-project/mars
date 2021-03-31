@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ...serialize import AnyField, Int32Field, BoolField, StringField
 from ...tensor.utils import filter_inputs
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -118,9 +118,9 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._input = next(inputs_iter)
-        if isinstance(self._cond, (Base, Entity)):
+        if isinstance(self._cond, ENTITY_TYPE):
             self._cond = next(inputs_iter)
-        if isinstance(self._other, (Base, Entity)):
+        if isinstance(self._other, ENTITY_TYPE):
             self._other = next(inputs_iter)
 
     @classmethod
@@ -168,11 +168,11 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
 
         input_data = ctx[op.input.key]
         cond = op.cond
-        if isinstance(cond, (Base, Entity)):
+        if isinstance(cond, ENTITY_TYPE):
             cond = ctx[cond.key]
 
         other = op.other
-        if isinstance(other, (Base, Entity)):
+        if isinstance(other, ENTITY_TYPE):
             other = ctx[other.key]
 
         if op.replace_true:

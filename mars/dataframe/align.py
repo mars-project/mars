@@ -20,7 +20,8 @@ import numpy as np
 import pandas as pd
 
 from .. import opcodes as OperandDef
-from ..operands import OperandStage, OutputType
+from ..core import OutputType
+from ..core.operand import OperandStage
 from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
 from ..utils import get_shuffle_input_keys_idxes
 from .core import SERIES_CHUNK_TYPE
@@ -50,8 +51,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     def __init__(self, index_min_max=None, index_shuffle_size=None, column_min_max=None,
                  column_shuffle_size=None, column_shuffle_segments=None,
-                 sparse=None, dtype=None, dtypes=None, gpu=None, stage=None, shuffle_key=None,
-                 output_types=None, **kw):
+                 sparse=None, dtype=None, dtypes=None, output_types=None, **kw):
         if index_min_max is not None:
             kw.update(dict(_index_min=index_min_max[0], _index_min_close=index_min_max[1],
                            _index_max=index_min_max[2], _index_max_close=index_min_max[3]))
@@ -61,8 +61,7 @@ class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
         super().__init__(
             _index_shuffle_size=index_shuffle_size, _column_shuffle_size=column_shuffle_size,
             _column_shuffle_segments=column_shuffle_segments, _sparse=sparse,
-            _dtype=dtype, _dtypes=dtypes, _gpu=gpu, _stage=stage, _shuffle_key=shuffle_key,
-            _output_types=output_types, **kw)
+            _dtype=dtype, _dtypes=dtypes, _output_types=output_types, **kw)
 
     @property
     def index_min(self):

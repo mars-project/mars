@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from ...core import FuseChunkData
-from ...operands import Fuse, VirtualOperand, Fetch
+from ...core.operand import Fuse, VirtualOperand, Fetch
 from ...utils import replace_inputs, build_fuse_chunk
 
 

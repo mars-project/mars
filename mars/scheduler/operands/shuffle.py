@@ -15,7 +15,7 @@
 import logging
 from collections import defaultdict
 
-from ...operands import ShuffleProxy
+from ...core.operand import ShuffleProxy
 from ...errors import WorkerDead
 from .base import BaseOperandActor
 from .core import register_operand_class, rewrite_worker_errors, OperandState

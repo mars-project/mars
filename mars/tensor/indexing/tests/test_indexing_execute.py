@@ -17,12 +17,12 @@
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tiles import get_tiled
+from mars.config import options
+from mars.core import get_tiled
 from mars.tensor.datasource import tensor, arange, zeros
 from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero, fill_diagonal
 from mars.tensor import mod, stack, hstack
-from mars.config import options
 from mars.tests.core import ExecutorForTest, TestBase
 
 

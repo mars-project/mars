@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialBinOp
+from .core import spspecial, TensorSpecialBinOp, _register_special_op
 
 
+@_register_special_op
 class TensorXLogY(TensorSpecialBinOp):
     _func_name = 'xlogy'
 

@@ -18,7 +18,8 @@ from collections import OrderedDict, defaultdict
 import numpy as np
 
 from ....serialize import ValueType, DictField, KeyField, ListField
-from ....operands import MergeDictOperand, OutputType
+from ....core import OutputType
+from ....core.operand import MergeDictOperand
 from .... import opcodes as OperandDef
 from ....context import get_context, RunningMode
 from .start_tracker import StartTracker

@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import pandas as pd
 
-from ...core import Entity, Base, ExecutableTuple
+from ...core import ENTITY_TYPE, ExecutableTuple
 from ...utils import adapt_mars_docstring
 
 
@@ -29,7 +29,7 @@ class PlotAccessor:
         to_executes['__object__'] = self._obj
 
         for k, v in kwargs.items():
-            if isinstance(v, (Base, Entity)):
+            if isinstance(v, ENTITY_TYPE):
                 to_executes[k] = v
 
         result = dict()

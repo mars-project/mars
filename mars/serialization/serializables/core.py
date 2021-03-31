@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cloudpickle
+from functools import partial
 from typing import Dict, Tuple, List, Type, Any
 
-from ..core import DictSerializer
-from .field import _STORE_VALUE_PROPERTY, Field, FunctionField, OneOfField
+from ..core import DictSerializer, Placeholder, buffered
+from .field import Field, OneOfField
 
 
 class SerializableMeta(type):
@@ -24,10 +24,12 @@ class SerializableMeta(type):
                 name: str,
                 bases: Tuple[Type],
                 properties: Dict):
-        properties = properties.copy()
+        new_properties = dict()
         for base in bases:
             if hasattr(base, '_FIELDS'):
-                properties.update(base._FIELDS)
+                new_properties.update(base._FIELDS)
+        new_properties.update(properties)
+        properties = new_properties
 
         property_to_fields = dict()
         # filter out all fields
@@ -42,7 +44,7 @@ class SerializableMeta(type):
         properties['_FIELDS'] = property_to_fields
         slots = set(properties.pop('__slots__', set()))
         if property_to_fields:
-            slots.add(_STORE_VALUE_PROPERTY)
+            slots.add('_FIELD_VALUES')
         properties['__slots__'] = tuple(slots)
 
         clz = type.__new__(mcs, name, bases, properties)
@@ -53,10 +55,10 @@ class Serializable(metaclass=SerializableMeta):
     __slots__ = ()
 
     _FIELDS: Dict[str, Field]
-    _STORE_VALUE_PROPERTY: Dict[str, Any]
+    _FIELD_VALUES: Dict[str, Any]
 
     def __init__(self, *args, **kwargs):
-        setattr(self, _STORE_VALUE_PROPERTY, dict())
+        setattr(self, '_FIELD_VALUES', dict())
 
         for slot, arg in zip(self.__slots__, args):  # pragma: no cover
             object.__setattr__(self, slot, arg)
@@ -71,9 +73,10 @@ class SerializableSerializer(DictSerializer):
     """
     serializer_name = 'serializable'
 
-    def serialize(self, obj: Serializable, context: Dict):
+    @classmethod
+    def _get_tag_to_values(cls, obj: Serializable):
         fields = obj._FIELDS
-        tag_to_values = getattr(obj, _STORE_VALUE_PROPERTY).copy()
+        tag_to_values = obj._FIELD_VALUES.copy()
 
         for field in fields.values():
             tag = field.tag
@@ -82,10 +85,13 @@ class SerializableSerializer(DictSerializer):
             except KeyError:
                 continue
             if field.on_serialize:
-                value = tag_to_values[tag] = field.on_serialize(value)
-            if isinstance(field, FunctionField):
-                tag_to_values[tag] = cloudpickle.dumps(value)
+                tag_to_values[tag] = field.on_serialize(value)
 
+        return tag_to_values
+
+    @buffered
+    def serialize(self, obj: Serializable, context: Dict):
+        tag_to_values = self._get_tag_to_values(obj)
         header, buffers = super().serialize(tag_to_values, context)
         header['class'] = type(obj)
         return header, buffers
@@ -94,31 +100,22 @@ class SerializableSerializer(DictSerializer):
         obj_class: Type[Serializable] = header.pop('class')
         tag_to_values = super().deserialize(header, buffers, context)
 
-        property_to_values = dict()
-        for property_name, field in obj_class._FIELDS.items():
-            if isinstance(field, OneOfField):
-                value = None
-                for ref_field in field.reference_fields:
-                    try:
-                        value = tag_to_values.pop(ref_field.tag)
-                    except KeyError:
-                        continue
-                if value is None:
-                    continue
-            else:
+        for field in obj_class._FIELDS.values():
+            if not isinstance(field, OneOfField):
                 try:
                     value = tag_to_values[field.tag]
                 except KeyError:
                     continue
-            if value is not None and field.on_deserialize:
-                value = field.on_deserialize(value)
-            if isinstance(field, FunctionField):
-                value = cloudpickle.loads(value)
-            property_to_values[property_name] = value
+                if value is not None and field.on_deserialize:
+                    def cb(v, field_):
+                        tag_to_values[field_.tag] = field_.on_deserialize(v)
+                    if isinstance(value, Placeholder):
+                        value.callbacks.append(partial(cb, field_=field))
+                    else:
+                        cb(value, field)
 
         obj = obj_class()
-        for prop, value in property_to_values.items():
-            setattr(obj, prop, value)
+        obj._FIELD_VALUES = tag_to_values
         return obj
 
 

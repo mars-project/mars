@@ -20,10 +20,10 @@ import pandas as pd
 from pandas.api.types import is_scalar, is_dict_like
 
 from ... import opcodes
+from ...core import TilesError
 from ...serialize import KeyField, StringField, BoolField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_CHUNK_TYPE
-from ...tiles import TilesError
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, INDEX_CHUNK_TYPE
 from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin

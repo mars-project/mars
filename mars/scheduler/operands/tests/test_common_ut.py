@@ -18,7 +18,7 @@ import uuid
 from collections import defaultdict
 
 from mars import promise, tensor as mt
-from mars.graph import DAG
+from mars.core.graph import TileableGraph, TileableGraphBuilder
 from mars.scheduler import OperandState, ResourceActor, ChunkMetaActor,\
     ChunkMetaClient, AssignerActor, GraphActor, OperandActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
@@ -73,9 +73,9 @@ class Test(unittest.TestCase):
         s = a1 + a2
         v1, v2 = mt.split(s, 2)
 
-        graph = DAG()
-        v1.build_graph(graph=graph, compose=False)
-        v2.build_graph(graph=graph, compose=False)
+        graph = TileableGraph([v1.data, v2.data])
+        builder = TileableGraphBuilder(graph)
+        next(iter(builder.build()))
 
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
             pool.create_actor(SchedulerClusterInfoActor, [pool.cluster_info.address],

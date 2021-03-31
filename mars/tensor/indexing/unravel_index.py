@@ -34,8 +34,8 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
     _dims = TupleField('dims', ValueType.int32)
     _order = StringField('order')
 
-    def __init__(self, dims=None, dtype=None, order=None, **kw):
-        super().__init__(_dims=dims, _dtype=dtype, _order=order, **kw)
+    def __init__(self, dims=None, order=None, **kw):
+        super().__init__(_dims=dims, _order=order, **kw)
         if self._order is None:
             self._order = 'C'
 

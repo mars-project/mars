@@ -26,13 +26,12 @@ from .... import opcodes
 from .... import tensor as mt
 from ....config import options
 from ....context import get_context, RunningMode
-from ....core import Base, Entity
+from ....core import ENTITY_TYPE, TilesError, OutputType
+from ....core.operand import OperandStage
 from ....lib.filesystem import get_fs, FileSystem
-from ....operands import OutputType, OperandStage
 from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
     DictField, AnyField, BytesField, BoolField
 from ....tensor.core import TensorOrder
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, Timer, ceildiv
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, validate_tensor
@@ -131,9 +130,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.agg and not self._download_index:
+        if self.stage != OperandStage.agg and not self._download_index:
             self._tensor = self._inputs[0]
-            if isinstance(self._index, (Base, Entity)):
+            if isinstance(self._index, ENTITY_TYPE):
                 self._index = self._inputs[-1]
 
     def __call__(self, tensor, index):

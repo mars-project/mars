@@ -31,8 +31,8 @@ class TensorIndices(TensorNoInput):
 
     _dimensions = ListField('dimensions', ValueType.uint64)
 
-    def __init__(self, dimensions=None, dtype=None, gpu=None, **kw):
-        super().__init__(_dimensions=dimensions, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, dimensions=None, **kw):
+        super().__init__(_dimensions=dimensions, **kw)
 
     @property
     def dimensions(self):

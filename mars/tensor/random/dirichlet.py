@@ -33,9 +33,9 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     _alpha = TupleField('alpha')
     _func_name = 'dirichlet'
 
-    def __init__(self, alpha=None, state=None, size=None, dtype=None, gpu=None, **kw):
+    def __init__(self, alpha=None, state=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_alpha=alpha, _state=state, _size=size, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_alpha=alpha, _state=state, _size=size, dtype=dtype, **kw)
 
     @property
     def alpha(self):

@@ -18,7 +18,7 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import KeyField, Int32Field
 from ...utils import get_shuffle_input_keys_idxes
 from ..operands import TensorOperandMixin, TensorShuffleProxy
@@ -49,10 +49,9 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
 
     _reduce_size = Int32Field('reduce_size')
 
-    def __init__(self, seed=None, state=None, axis=None, reduce_size=None, stage=None,
-                 shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_reduce_size=reduce_size, _stage=stage, _shuffle_key=shuffle_key,
-                         _dtype=dtype, _gpu=gpu, _seed=seed, _state=state, _axis=axis, **kw)
+    def __init__(self, seed=None, state=None, axis=None, reduce_size=None, **kw):
+        super().__init__(_reduce_size=reduce_size, _seed=seed, _state=state,
+                         _axis=axis, **kw)
 
     @property
     def input(self):

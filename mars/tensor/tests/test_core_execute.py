@@ -32,18 +32,6 @@ class Test(unittest.TestCase):
         self.session = Session()
         self.session._sess = local_session
 
-    def testDecref(self):
-        a = ones((10, 20), chunk_size=5)
-        b = a + 1
-
-        b.execute(session=self.session)
-
-        self.assertEqual(len(self.executor.chunk_result), 1)
-
-        del b
-        # decref called
-        self.assertEqual(len(self.executor.chunk_result), 0)
-
     def testArrayFunction(self):
         a = ones((10, 20), chunk_size=5)
 

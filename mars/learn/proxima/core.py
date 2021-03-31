@@ -107,7 +107,7 @@ def build_mmap_chunks(chunks, worker, file_prefix):
                                        total_shape=array_shape,
                                        file_prefix=file_prefix,
                                        dtype=array_dtype)
-    create_mmap_op._expect_worker = worker
+    create_mmap_op.expect_worker = worker
     create_mmap_chunk = create_mmap_op.new_chunk(
         None, index=(0,), shape=(), dtype=array_dtype)
     start_index = 0
@@ -118,7 +118,7 @@ def build_mmap_chunks(chunks, worker, file_prefix):
                                           total_shape=array_shape,
                                           partition_slice=s,
                                           dtype=array_dtype)
-        write_mmap_op._expect_worker = worker
+        write_mmap_op.expect_worker = worker
         write_mmap_chunk = write_mmap_op.new_chunk([create_mmap_chunk, chk],
                                                    index=(j + 1, 0), shape=(),
                                                    dtype=array_dtype)

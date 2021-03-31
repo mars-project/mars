@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-def _import_all():
-    import importlib
-    import os
-
-    for fn in os.listdir(os.path.dirname(__file__)):
-        if fn.endswith('_pb2.py'):
-            try:
-                importlib.import_module('.' + os.path.splitext(fn)[0], __name__)
-            except ImportError:
-                break
-
-
-_import_all()
-del _import_all
+from .builder import TileableGraphBuilder, ChunkGraphBuilder, \
+    IterativeChunkGraphBuilder, get_tiled
+from .core import DirectedGraph, DAG, GraphContainsCycleError
+from .entity import TileableGraph, ChunkGraph

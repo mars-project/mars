@@ -27,9 +27,9 @@ class TensorLessThan(TensorBinOp):
     _op_type_ = OperandDef.LT
     _func_name = 'less'
 
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
+    def __init__(self, casting='same_kind', err=None, **kw):
         err = err if err is not None else np.geterr()
-        super().__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_casting=casting, _err=err, **kw)
 
 
 @inject_dtype(np.bool_)

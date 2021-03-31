@@ -14,7 +14,7 @@
 
 from typing import Union, List, Dict
 
-from .core import Serializer
+from .core import Serializer, buffered
 
 try:
     import pyarrow as pa
@@ -25,6 +25,7 @@ except ImportError:  # pragma: no cover
 class ArrowBatchSerializer(Serializer):
     serializer_name = 'arrow'
 
+    @buffered
     def serialize(self, obj: Union[pa.Table, pa.RecordBatch], context: Dict):
         header = {}
 

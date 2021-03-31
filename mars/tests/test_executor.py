@@ -19,12 +19,11 @@ import unittest
 import numpy as np
 
 import mars.tensor as mt
+from mars.core import DirectedGraph, get_tiled
 from mars.executor import Executor, register, GraphDeviceAssigner, EventQueue
 from mars.serialize import Int64Field
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
-from mars.graph import DirectedGraph
 from mars.actors import Distributor, Actor
-from mars.tiles import get_tiled
 from mars.tests.core import create_actor_pool
 
 
@@ -90,7 +89,7 @@ class Test(unittest.TestCase):
 
     def testMockExecuteSize(self):
         import mars.tensor as mt
-        from mars.graph import DAG
+        from mars.core.graph import DAG
         from mars.tensor.fetch import TensorFetch
         from mars.tensor.arithmetic import TensorTreeAdd
 
@@ -137,7 +136,7 @@ class Test(unittest.TestCase):
         self.assertGreaterEqual(executor.mock_max_memory, 8000)
 
     def testRegister(self):
-        from mars.graph import DAG
+        from mars.core.graph import DAG
 
         fake_result = np.random.rand(10, 10)
         fake_size = (fake_result.nbytes * 2, fake_result.nbytes * 2)
@@ -173,7 +172,7 @@ class Test(unittest.TestCase):
 
         a = mt.random.rand(10, 10, chunk_size=5, gpu=True)
         b = a.sum(axis=1)
-        graph = b.build_graph(tiled=True, compose=False)
+        graph = b.build_graph(tiled=True, fuse_enabled=False)
 
         assigner = GraphDeviceAssigner(graph, list(n.op for n in graph.iter_indep()), devices=[0, 1])
         assigner.assign()

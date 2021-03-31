@@ -33,9 +33,9 @@ class TensorGeometric(TensorDistribution, TensorRandomOperandMixin):
     def p(self):
         return self._p
 
-    def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
+    def __init__(self, state=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
 
     def __call__(self, p, chunk_size=None):
         return self.new_tensor([p], None, raw_chunk_size=chunk_size)

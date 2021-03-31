@@ -29,9 +29,9 @@ class SparseToDense(TensorHasInput):
     _order = StringField('order')
     _fill_value = AnyField('fill_value')
 
-    def __init__(self, dtype=None, fill_value=None, gpu=None, order=None, **kw):
-        super().__init__(_dtype=dtype, _fill_value=fill_value,
-                         _gpu=gpu, _sparse=False, _order=order, **kw)
+    def __init__(self, fill_value=None, order=None, **kw):
+        super().__init__(_fill_value=fill_value,
+                         _sparse=False, _order=order, **kw)
 
     @property
     def order(self):

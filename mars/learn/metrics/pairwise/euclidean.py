@@ -16,9 +16,9 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
+from ....core import TilesError
 from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
-from ....tiles import TilesError
 from ....utils import recursive_tile, check_chunks_unknown_shape
 from ...utils import check_array
 from ...utils.extmath import row_norms
@@ -35,10 +35,9 @@ class EuclideanDistances(PairwiseDistances):
     _squared = BoolField('squared')
 
     def __init__(self, x=None, y=None, x_norm_squared=None, y_norm_squared=None,
-                 squared=None, dtype=None, gpu=None, **kw):
+                 squared=None, **kw):
         super().__init__(_x=x, _y=y, _x_norm_squared=x_norm_squared,
-                         _y_norm_squared=y_norm_squared, _squared=squared,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         _y_norm_squared=y_norm_squared, _squared=squared, **kw)
 
     @property
     def x(self):

@@ -20,10 +20,10 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity, get_output_types
+from ...core import ENTITY_TYPE, get_output_types
+from ...core.operand import OperandStage
 from ...config import options
 from ...serialize import KeyField, StringField, BoolField, DataTypeField
-from ...operands import OperandStage
 from ...tensor.core import TensorOrder, TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
 from ...utils import ceildiv, recursive_tile
@@ -199,11 +199,10 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
     def __init__(self, x=None, allow_nan=None, msg_dtype=None,
                  check_only=None, is_finite=None, check_nan=None,
-                 sparse=None, stage=None, output_types=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_x=x, _allow_nan=allow_nan, _msg_dtype=msg_dtype,
                          _check_only=check_only, _is_finite=is_finite,
-                         _check_nan=check_nan, _sparse=sparse, _stage=stage,
-                         _output_types=output_types, **kw)
+                         _check_nan=check_nan, _output_types=output_types, **kw)
 
     @property
     def x(self):
@@ -281,7 +280,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
         map_chunks = []
         for c in x.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
+            chunk_op.stage = OperandStage.map
             chunk_op._is_finite = is_finite_chunk
             chunk_op._check_nan = check_nan_chunk
             chunk_inputs = [c]
@@ -378,7 +377,7 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
 
 def assert_all_finite(X, allow_nan=False, msg_dtype=None, check_only=True):
-    if not isinstance(X, (Base, Entity)):
+    if not isinstance(X, ENTITY_TYPE):
         X = mt.asarray(X)
 
     if isinstance(X.op, AssertAllFinite) and X.op.allow_nan == allow_nan and \

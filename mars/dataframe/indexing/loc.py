@@ -21,8 +21,8 @@ from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
-from ...operands import OperandStage
+from ...core import ENTITY_TYPE
+from ...core.operand import OperandStage
 from ...serialize import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
@@ -48,8 +48,8 @@ def process_loc_indexes(inp, indexes):
 
     new_indexes = []
     for ax, index in enumerate(indexes):
-        if isinstance(index, (list, np.ndarray, pd.Series, Base, Entity)):
-            if not isinstance(index, (Base, Entity)):
+        if isinstance(index, (list, np.ndarray, pd.Series, ENTITY_TYPE)):
+            if not isinstance(index, ENTITY_TYPE):
                 index = np.asarray(index)
             else:
                 index = asarray(index)
@@ -136,11 +136,11 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
         self._input = next(inputs_iter)
         indexes = []
         for index in self._indexes:
-            if isinstance(index, (Entity, Base)):
+            if isinstance(index, ENTITY_TYPE):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
-        self._indexes = tuple(indexes)
+        self._indexes = list(indexes)
 
     @classmethod
     def _calc_slice_param(cls,

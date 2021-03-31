@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import Base, Entity, OutputType, get_output_types
+from ...core import ENTITY_TYPE, OutputType, get_output_types
 from ...serialize import BoolField, DictField, StringField
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -233,7 +233,7 @@ class CollectionVisitor(ast.NodeVisitor):
     def visit_Subscript(self, node):
         value = self.visit(node.value)
         sub = self.visit(node.slice)
-        if isinstance(value, (Base, Entity)):
+        if isinstance(value, ENTITY_TYPE):
             self.entity_subscribe = True
         return value[sub]
 
@@ -505,7 +505,7 @@ def mars_eval(expr, parser='mars', engine=None, local_dict=None, global_dict=Non
     visitor = CollectionVisitor(resolvers, target, env)
     result = visitor.eval(expr)
     result = result if result is not None else target
-    has_var_frame = any(isinstance(env[k], (Base, Entity)) for k in visitor.referenced_vars)
+    has_var_frame = any(isinstance(env[k], ENTITY_TYPE) for k in visitor.referenced_vars)
     if len(ref_frames) != 1 or visitor.entity_subscribe or has_var_frame:
         if parser != 'mars':
             raise NotImplementedError('Does not support parser names other than mars')

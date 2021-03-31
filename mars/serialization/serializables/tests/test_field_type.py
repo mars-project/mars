@@ -19,11 +19,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import HasKey
+from mars.core import EntityData
 from mars.serialization.serializables import FieldTypes
 
 
-class MyClass(HasKey):
+class MyClass(EntityData):
     __slots__ = ()
 
     @staticmethod

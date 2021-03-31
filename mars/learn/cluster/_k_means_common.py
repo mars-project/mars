@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes
 from ... import tensor as mt
-from ...operands import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import KeyField
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_fast import _inertia_dense, _inertia_sparse, merge_update_chunks

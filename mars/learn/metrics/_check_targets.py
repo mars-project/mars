@@ -16,10 +16,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity, ExecutableTuple
+from ...core import ENTITY_TYPE, ExecutableTuple, TilesError
 from ...context import get_context
 from ...serialize import AnyField, KeyField
-from ...tiles import TilesError
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -64,9 +63,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
-        if isinstance(self._y_true, (Base, Entity)):
+        if isinstance(self._y_true, ENTITY_TYPE):
             self._y_true = next(inputs_iter)
-        if isinstance(self._y_pred, (Base, Entity)):
+        if isinstance(self._y_pred, ENTITY_TYPE):
             self._y_pred = next(inputs_iter)
         if self._type_true is not None:
             self._type_true = next(inputs_iter)
@@ -75,9 +74,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
 
     def __call__(self, y_true, y_pred):
         inputs = []
-        if isinstance(y_true, (Base, Entity)):
+        if isinstance(y_true, ENTITY_TYPE):
             inputs.append(y_true)
-        if isinstance(y_pred, (Base, Entity)):
+        if isinstance(y_pred, ENTITY_TYPE):
             inputs.append(y_pred)
         self._type_true = type_of_target(y_true)
         self._type_pred = type_of_target(y_pred)
@@ -98,7 +97,7 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
     def tile(cls, op):
         y_true, y_pred = op.y_true, op.y_pred
         for y in (op.y_true, op.y_pred):
-            if isinstance(y, (Base, Entity)):
+            if isinstance(y, ENTITY_TYPE):
                 if np.isnan(y.size):  # pragma: no cover
                     raise TilesError('input has unknown shape')
 
@@ -140,9 +139,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
             y_pred = mt.tensor(y_pred).tosparse()
             y_type = 'multilabel-indicator'
 
-        if not isinstance(y_true, (Base, Entity)):
+        if not isinstance(y_true, ENTITY_TYPE):
             y_true = mt.tensor(y_true)
-        if not isinstance(y_pred, (Base, Entity)):
+        if not isinstance(y_pred, ENTITY_TYPE):
             y_pred = mt.tensor(y_pred)
 
         if not isinstance(y_type, TENSOR_TYPE):

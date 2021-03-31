@@ -32,12 +32,13 @@ class TensorArange(TensorNoInput):
     _stop = AnyField('stop')
     _step = AnyField('step')
 
-    def __init__(self, start=None, stop=None, step=None, dtype=None, gpu=None, **kw):
+    def __init__(self, start=None, stop=None, step=None, dtype=None, **kw):
         if dtype is not None:
             dtype = np.dtype(dtype)
         elif stop is not None and step is not None:
             dtype = np.dtype(dtype) if dtype is not None else np.arange(0, type(stop)(1), step).dtype
-        super().__init__(_start=start, _stop=stop, _step=step, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_start=start, _stop=stop, _step=step,
+                         dtype=dtype, **kw)
 
     @property
     def start(self):

@@ -33,8 +33,8 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
     _indices_or_sections = AnyField('indices_or_sections')
     _axis = Int32Field('axis')
 
-    def __init__(self, axis=None, dtype=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, **kw)
+    def __init__(self, axis=None, **kw):
+        super().__init__(_axis=axis, **kw)
 
     @property
     def indices_or_sections(self):

@@ -23,10 +23,9 @@ from numbers import Integral
 
 import numpy as np
 
-from .core import Entity, Base
+from .core import ENTITY_TYPE, get_tiled
+from .core.operand import Fetch
 from .context import get_context, LocalContext
-from .operands import Fetch
-from .tiles import get_tiled
 from .executor import Executor
 from .config import options
 from .utils import classproperty, calc_nsplits
@@ -501,7 +500,7 @@ class Session(object):
         elif len(tileables) > 1:
             ret_list = True
 
-        tileables = tuple(mt.tensor(t) if not isinstance(t, (Entity, Base)) else t
+        tileables = tuple(mt.tensor(t) if not isinstance(t, ENTITY_TYPE) else t
                           for t in tileables)
         result = self._sess.run(*tileables, **kw)
 

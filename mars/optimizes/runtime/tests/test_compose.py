@@ -16,8 +16,8 @@
 
 import unittest
 
+from mars.core.graph import DAG
 from mars.executor import Executor
-from mars.graph import DAG
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
 from mars.optimizes.runtime.ne import NeRuntimeOptimizer
@@ -60,7 +60,7 @@ class Test(unittest.TestCase):
           /         \                  /   \
         @             @              @       @
         """
-        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(6)]
         graph = DAG()
         list(map(graph.add_node, chunks[:6]))
@@ -84,8 +84,8 @@ class Test(unittest.TestCase):
         self.assertIn(composed_nodes[0], graph.successors(chunks[0]))
         self.assertIn(composed_nodes[0], graph.successors(chunks[1]))
         # check composed's inputs
-        self.assertIn(chunks[0].data, composed_nodes[0].inputs)
-        self.assertIn(chunks[1].data, composed_nodes[0].inputs)
+        self.assertIn(chunks[0], composed_nodes[0].inputs)
+        self.assertIn(chunks[1], composed_nodes[0].inputs)
         # check composed's predecessors
         self.assertIn(chunks[0], graph.predecessors(composed_nodes[0]))
         self.assertIn(chunks[1], graph.predecessors(composed_nodes[0]))

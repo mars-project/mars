@@ -18,7 +18,7 @@ import socket
 import numpy as np
 
 from ... import opcodes
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import Int32Field, ListField, StringField, ValueType
 from ...tensor.merge import TensorConcatenate
 from ...utils import get_next_port

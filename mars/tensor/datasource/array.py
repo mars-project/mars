@@ -37,12 +37,12 @@ class ArrayDataSource(TensorNoInput):
 
     _data = NDArrayField('data')
 
-    def __init__(self, data=None, dtype=None, gpu=None, **kw):
+    def __init__(self, data=None, dtype=None, **kw):
         if dtype is not None:
             dtype = np.dtype(dtype)
         elif data is not None:
             dtype = np.dtype(data.dtype)
-        super().__init__(_data=data, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_data=data, dtype=dtype, **kw)
 
     @property
     def data(self):
@@ -74,15 +74,14 @@ class CSRMatrixDataSource(TensorNoInput):
     _shape = TupleField('shape', ValueType.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
-    def __init__(self, indices=None, indptr=None, data=None, shape=None,
-                 dtype=None, gpu=None, **kw):
+    def __init__(self, indices=None, indptr=None, data=None, shape=None, **kw):
         super().__init__(_indices=indices, _indptr=indptr, _data=data, _shape=shape,
-                         _dtype=dtype, _gpu=gpu, _sparse=True, **kw)
+                         sparse=True, **kw)
 
     def to_chunk_op(self, *args):
         _, idx, chunk_size = args
 
-        xps = cps if self._gpu else sps
+        xps = cps if self.gpu else sps
         if len(self._shape) == 1:
             shape = (1, self._shape[0])
         else:

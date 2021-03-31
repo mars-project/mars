@@ -19,7 +19,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import AnyField, BoolField, Int32Field, Int64Field, \
     DictField, StringField
 from ...utils import tokenize
@@ -59,8 +59,8 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
     def __init__(self, min_periods=None, axis=None, func=None, count_always_valid=None,
                  append_index=None, output_agg=False, map_groups=None, map_sources=None,
                  combine_sources=None, combine_columns=None, combine_funcs=None,
-                 key_to_funcs=None, min_periods_func_name=None, stage=None, **kw):
-        super().__init__(_min_periods=min_periods, _axis=axis, _func=func, _stage=stage,
+                 key_to_funcs=None, min_periods_func_name=None, **kw):
+        super().__init__(_min_periods=min_periods, _axis=axis, _func=func,
                          _count_always_valid=count_always_valid, _append_index=append_index,
                          _output_agg=output_agg, _map_groups=map_groups, _map_sources=map_sources,
                          _combine_sources=combine_sources, _combine_columns=combine_columns,
@@ -334,7 +334,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
             chunk_op = op.copy().reset_key()
             chunk_op._output_agg = c.index[axis] != in_df.chunk_shape[axis] - 1
-            chunk_op._stage = OperandStage.map
+            chunk_op.stage = OperandStage.map
             chunk_op._map_sources = stage_info.map_sources
             chunk_op._map_groups = stage_info.map_groups
             chunk_op._key_to_funcs = stage_info.key_to_funcs
@@ -362,7 +362,7 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
 
             chunk_op = op.copy().reset_key()
             chunk_op._output_agg = False
-            chunk_op._stage = OperandStage.combine
+            chunk_op.stage = OperandStage.combine
             chunk_op._map_groups = stage_info.map_groups
             chunk_op._combine_sources = stage_info.combine_sources
             chunk_op._combine_columns = stage_info.combine_columns

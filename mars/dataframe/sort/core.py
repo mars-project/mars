@@ -15,10 +15,10 @@
 import pandas as pd
 
 from ...config import options
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import Int32Field, Int64Field, StringField, \
     ListField, BoolField, ValueType
-from ...tiles import TilesError
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
 from ..utils import parse_index

@@ -14,9 +14,9 @@
 
 from ... import opcodes
 from ...context import get_context
+from ...core import TilesError
 from ...serialize import KeyField, Float64Field, Int64Field, BoolField
 from ...tensor.datasource import tensor as astensor
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin, TensorOperand
 

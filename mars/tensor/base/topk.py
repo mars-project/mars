@@ -19,9 +19,9 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import ExecutableTuple
+from ...core.operand import OperandStage
 from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
-from ...operands import OperandStage
 from ...utils import ceildiv, flatten, recursive_tile
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -44,16 +44,17 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
-    _axis_offset = Int64Field('axis_offset')
+    _axis_offset = Int64Field('axis_offset',
+                              on_serialize=lambda x: -1 if x is not None and np.isnan(x) else x,
+                              on_deserialize=lambda x: np.nan if x == -1 else x)
 
     def __init__(self, k=None, axis=None, largest=None, sorted=None, order=None,
                  parallel_kind=None, psrs_kinds=None, return_value=None, return_indices=None,
-                 axis_offset=None, stage=None, dtype=None, gpu=None, **kw):
+                 axis_offset=None, **kw):
         super().__init__(_k=k, _axis=axis, _largest=largest, _sorted=sorted,
                          _parallel_kind=parallel_kind, _psrs_kinds=psrs_kinds,
                          _return_value=return_value, _return_indices=return_indices,
-                         _order=order, _axis_offset=axis_offset, _stage=stage,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         _order=order, _axis_offset=axis_offset, **kw)
 
     @property
     def input(self):
@@ -101,7 +102,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
 
     @property
     def output_limit(self):
-        if self._stage != OperandStage.agg:
+        if self.stage != OperandStage.agg:
             return 1
         else:
             return int(bool(self._return_value)) + int(bool(self._return_indices))
@@ -216,14 +217,14 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
             # whenever return_indices, value is required
             chunk_op._return_value = True
             if axis_offset is not None:
-                chunk_op._stage = OperandStage.map
+                chunk_op.stage = OperandStage.map
             else:
-                chunk_op._stage = OperandStage.combine
+                chunk_op.stage = OperandStage.combine
             return chunk_op.new_chunk([input_chunk], shape=tuple(shape),
                                       order=input_chunk.order,
                                       index=chunk_index)
         else:
-            chunk_op._stage = OperandStage.agg
+            chunk_op.stage = OperandStage.agg
             kws = []
             if op.return_value:
                 kws.append({

@@ -17,8 +17,8 @@ import unittest
 
 import numpy as np
 
+from mars.core import get_tiled
 from mars.tensor import tensor
-from mars.tiles import get_tiled
 
 try:
     import scipy

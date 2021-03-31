@@ -16,7 +16,7 @@
 
 import unittest
 
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.tensor.datasource import ones
 from mars.tensor.indexing.slice import TensorSlice
 from mars.tensor.rechunk.rechunk import compute_rechunk

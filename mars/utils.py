@@ -19,11 +19,13 @@ import dataclasses
 import functools
 import importlib
 import inspect
+import io
 import itertools
 import json
 import logging
 import numbers
 import os
+import pickle
 import pkgutil
 import random
 import shutil
@@ -285,42 +287,36 @@ def lazy_import(name, package=None, globals=None, locals=None, rename=None):
         return None
 
 
-def serialize_graph(graph, compress=False, data_serial_type=None, pickle_protocol=None,
-                    serialize_method=None):
+def serialize_graph(graph, compress=False, serialize_method=None):
+    from .serialization import serialize
+
     serialize_method = serialize_method or options.serialize_method
-    if serialize_method == 'json':
-        ser_graph = json.dumps(graph.to_json(data_serial_type=data_serial_type,
-                                             pickle_protocol=pickle_protocol))
-    else:
-        ser_graph = graph.to_pb(data_serial_type=data_serial_type,
-                                pickle_protocol=pickle_protocol).SerializeToString()
+    assert serialize_method == 'pickle'
+
+    bio = io.BytesIO()
+    header, buffers = serialize(graph)
+    header['buf_sizes'] = [getattr(buf, 'nbytes', len(buf))
+                           for buf in buffers]
+    s_header = pickle.dumps(header)
+    bio.write(struct.pack('<Q', len(s_header)))
+    bio.write(s_header)
+    for buf in buffers:
+        bio.write(buf)
+    ser_graph = bio.getvalue()
+
     if compress:
         ser_graph = zlib.compress(ser_graph)
     return ser_graph
 
 
-def deserialize_graph(ser_graph, graph_cls=None):
-    from google.protobuf.message import DecodeError
-    from .serialize.protos.graph_pb2 import GraphDef
-    from .graph import DirectedGraph
-    graph_cls = graph_cls or DirectedGraph
-    ser_graph_bin = to_binary(ser_graph)
-    g = GraphDef()
-    try:
-        g.ParseFromString(ser_graph_bin)
-        return graph_cls.from_pb(g)
-    except DecodeError:
-        pass
+def deserialize_graph(ser_graph):
+    from .serialization import deserialize
 
-    try:
-        ser_graph_bin = zlib.decompress(ser_graph_bin)
-        g.ParseFromString(ser_graph_bin)
-        return graph_cls.from_pb(g)
-    except (zlib.error, DecodeError):
-        pass
-
-    json_obj = json.loads(to_str(ser_graph))
-    return graph_cls.from_json(json_obj)
+    bio = io.BytesIO(ser_graph)
+    s_header_length = struct.unpack('Q', bio.read(8))[0]
+    header2 = pickle.loads(bio.read(s_header_length))
+    buffers2 = [bio.read(s) for s in header2['buf_sizes']]
+    return deserialize(header2, buffers2)
 
 
 def calc_data_size(dt, shape=None):
@@ -354,7 +350,7 @@ def calc_data_size(dt, shape=None):
 
 
 def get_shuffle_input_keys_idxes(chunk):
-    from .operands import ShuffleProxy
+    from .core.operand import ShuffleProxy
 
     if isinstance(chunk.op, ShuffleProxy):
         return [inp.key for inp in chunk.inputs], [inp.index for inp in chunk.inputs]
@@ -422,7 +418,11 @@ def is_eager_mode():
 
 
 def is_kernel_mode():
-    return bool(getattr(_internal_mode, 'kernel', None))
+    try:
+        return bool(_internal_mode.kernel)
+    except AttributeError:
+        _internal_mode.kernel = None
+        return bool(_internal_mode)
 
 
 def is_build_mode():
@@ -475,8 +475,8 @@ def enter_mode(kernel=None, build=None):
 
 
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
-    from .operands import Fetch
-    from .tiles import TileableGraphBuilder
+    from .core import TileableGraph, TileableGraphBuilder
+    from .core.operand import Fetch
 
     with enter_mode(build=True):
         node_to_copy = weakref.WeakKeyDictionary()
@@ -512,9 +512,10 @@ def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
                     copied.add(copy.data)
             return node_to_copy[n]
 
+        graph = TileableGraph(tileables)
         tileable_graph_builder = TileableGraphBuilder(
-            graph=graph, node_processor=replace_with_fetch_or_copy)
-        return tileable_graph_builder.build(tileables)
+            graph, node_processor=replace_with_fetch_or_copy)
+        return next(iter(tileable_graph_builder.build()))
 
 
 def build_exc_info(exc_type, *args, **kwargs):
@@ -573,7 +574,7 @@ class BlacklistSet(object):
 
 
 def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
-    from .operands import ShuffleProxy
+    from .core.operand import ShuffleProxy
 
     chunk_op = chunk.op
     params = chunk.params.copy()
@@ -610,10 +611,10 @@ def build_fetch_tileable(tileable):
 
 
 def build_fetch(entity):
-    from .core import Chunk, ChunkData
-    if isinstance(entity, (Chunk, ChunkData)):
+    from .core import CHUNK_TYPE, ENTITY_TYPE
+    if isinstance(entity, CHUNK_TYPE):
         return build_fetch_chunk(entity)
-    elif hasattr(entity, 'tiles'):
+    elif isinstance(entity, ENTITY_TYPE):
         return build_fetch_tileable(entity)
     else:
         raise TypeError(f'Type {type(entity)} not supported')
@@ -938,9 +939,9 @@ def replace_inputs(obj, old, new):
 
 
 def build_fuse_chunk(fused_chunks, fuse_op_cls, op_kw=None, chunk_kw=None):
-    from .graph import DAG
+    from .core.graph import ChunkGraph
 
-    fuse_graph = DAG()
+    fuse_graph = ChunkGraph(fused_chunks)
     for i, fuse_chunk in enumerate(fused_chunks):
         fuse_graph.add_node(fuse_chunk)
         if i > 0:
@@ -994,7 +995,7 @@ def adapt_mars_docstring(doc):
 
 
 def prune_chunk_graph(chunk_graph, result_chunk_keys):
-    from .operands import Fetch
+    from .core.operand import Fetch
 
     key_to_fetch_chunk = {c.key: c for c in chunk_graph
                           if isinstance(c.op, Fetch)}

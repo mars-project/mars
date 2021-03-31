@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, Int32Field
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..core import TENSOR_TYPE
 from ...lib.sparse import diag as sparse_diag
 from ...lib.sparse.core import issparse, get_array_module, get_sparse_module
@@ -104,8 +104,8 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
     _input = KeyField('input')
     _k = Int32Field('k')
 
-    def __init__(self, k=None, dtype=None, gpu=None, sparse=False, **kw):
-        super().__init__(_k=k, _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+    def __init__(self, k=None, **kw):
+        super().__init__(_k=k, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)

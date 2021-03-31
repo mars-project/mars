@@ -21,7 +21,7 @@ import pandas as pd
 import numpy as np
 
 from mars import opcodes as OperandDef, dataframe as md
-from mars.operands import OperandStage
+from mars.core.operand import OperandStage
 from mars.tests.core import TestBase, parameterized
 from mars.tensor import Tensor
 from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
@@ -60,46 +60,6 @@ class TestReduction(TestBase):
     def op_name(self):
         return getattr(OperandDef, self.func_name.upper())
 
-    def testSeriesReductionSerialize(self):
-        data = pd.Series(np.random.rand(10), name='a')
-        if self.has_skipna:
-            kwargs = dict(axis='index', skipna=False)
-        else:
-            kwargs = dict()
-        reduction_df = getattr(from_pandas_series(data, chunk_size=3), self.func_name)(**kwargs).tiles()
-
-        # pb
-        chunk = reduction_df.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), DataFrameAggregate._op_type_)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
-                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-
-        # json
-        chunk = reduction_df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
-                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-
     def testSeriesReduction(self):
         data = pd.Series(range(20), index=[str(i) for i in range(20)])
         series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
@@ -131,55 +91,6 @@ class TestReduction(TestBase):
         self.assertIsInstance(series.chunks[0].op, DataFrameAggregate)
         self.assertIsInstance(series.chunks[0].inputs[0].op, DataFrameConcat)
         self.assertEqual(len(series.chunks[0].inputs[0].inputs), 4)
-
-    def testDataFrameReductionSerialize(self):
-        data = pd.DataFrame(np.random.rand(10, 8), columns=[np.random.bytes(10) for _ in range(8)])
-        kwargs = dict(axis='index')
-        if self.has_skipna:
-            kwargs['skipna'] = False
-        if self.has_numeric_only:
-            kwargs['numeric_only'] = True
-        if self.has_bool_only:
-            kwargs['bool_only'] = True
-        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(**kwargs).tiles()
-
-        # pb
-        chunk = reduction_df.chunks[0]
-        serials = self._pb_serial(chunk)
-        chunk_op, chunk_pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(chunk_pb.index), chunk.index)
-        self.assertEqual(chunk_pb.key, chunk.key)
-        self.assertEqual(tuple(chunk_pb.shape), chunk.shape)
-        self.assertEqual(int(chunk_op.type.split('.', 1)[1]), DataFrameAggregate._op_type_)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
-                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        self.assertEqual(chunk.op.numeric_only, chunk2.op.numeric_only)
-        self.assertEqual(chunk.op.bool_only, chunk2.op.bool_only)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-
-        # json
-        chunk = reduction_df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.agg_funcs[0].kwds.get('skipna'),
-                         chunk2.op.agg_funcs[0].kwds.get('skipna'))
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        self.assertEqual(chunk.op.numeric_only, chunk2.op.numeric_only)
-        self.assertEqual(chunk.op.bool_only, chunk2.op.bool_only)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
     def testDataFrameReduction(self):
         data = pd.DataFrame({'a': list(range(20)), 'b': list(range(20, 0, -1))},
@@ -245,46 +156,6 @@ class TestCumReduction(TestBase):
     def op_name(self):
         return getattr(OperandDef, self.func_name.upper())
 
-    def testSeriesReductionSerialize(self):
-        data = pd.Series(np.random.rand(10), name='a')
-        if self.has_skipna:
-            kwargs = dict(axis='index', skipna=False)
-        else:
-            kwargs = dict()
-        reduction_df = getattr(from_pandas_series(data), self.func_name)(**kwargs).tiles()
-
-        # pb
-        chunk = reduction_df.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk.index_value.to_pandas(), chunk2.index_value.to_pandas())
-
-        # json
-        chunk = reduction_df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk.index_value.to_pandas(), chunk2.index_value.to_pandas())
-
     def testSeriesReduction(self):
         data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
         series = getattr(from_pandas_series(data, chunk_size=3), self.func_name)()
@@ -319,47 +190,6 @@ class TestCumReduction(TestBase):
         self.assertIsInstance(series.chunks[-1].inputs[-1].op, self.op)
         self.assertEqual(series.chunks[-1].inputs[-1].op.stage, OperandStage.map)
         self.assertEqual(len(series.chunks[-1].inputs), 4)
-
-    def testDataFrameReductionSerialize(self):
-        data = pd.DataFrame(np.random.rand(10, 8), columns=[np.random.bytes(10) for _ in range(8)])
-        kwargs = dict(axis='index')
-        if self.has_skipna:
-            kwargs['skipna'] = False
-        reduction_df = getattr(from_pandas_df(data, chunk_size=3), self.func_name)(**kwargs).tiles()
-
-        # pb
-        chunk = reduction_df.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), self.op_name)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-
-        # json
-        chunk = reduction_df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.skipna, chunk2.op.skipna)
-        self.assertEqual(chunk.op.axis, chunk2.op.axis)
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
 
     def testDataFrameReduction(self):
         data = pd.DataFrame({'a': list(range(20)), 'b': list(range(20, 0, -1))},

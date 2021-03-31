@@ -19,8 +19,8 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
+from ...core.operand import OperandStage
 from ...lib.filesystem import open_file
-from ...operands import OperandStage
 from ...serialize import KeyField, AnyField, StringField, ListField, \
     BoolField, Int32Field, Int64Field, DictField
 from ...tensor.core import TensorOrder
@@ -61,14 +61,14 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                  mode=None, encoding=None, compression=None, quoting=None,
                  quotechar=None, line_terminator=None, chunksize=None, date_format=None,
                  doublequote=None, escapechar=None, decimal=None, output_stat=None,
-                 storage_options=None, stage=None, output_types=None, **kw):
+                 storage_options=None, output_types=None, **kw):
         super().__init__(_path=path, _sep=sep, _na_rep=na_rep, _float_format=float_format,
                          _columns=columns, _header=header, _index=index, _index_label=index_label,
                          _mode=mode, _encoding=encoding, _compression=compression, _quoting=quoting,
                          _quotechar=quotechar, _line_terminator=line_terminator, _chunksize=chunksize,
                          _date_format=date_format, _doublequote=doublequote,
                          _escapechar=escapechar, _decimal=decimal, _output_stat=output_stat,
-                         _storage_options=storage_options, _output_types=output_types, _stage=stage, **kw)
+                         _storage_options=storage_options, _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -201,7 +201,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks[0].append(out_chunk)
             else:
                 chunk_op._output_stat = True
-                chunk_op._stage = OperandStage.map
+                chunk_op.stage = OperandStage.map
                 # bytes of csv
                 kws = [{
                     'shape': (),

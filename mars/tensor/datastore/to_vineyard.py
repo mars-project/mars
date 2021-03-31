@@ -17,9 +17,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core import TilesError
 from ...context import RunningMode, get_context
 from ...serialize import TupleField, KeyField, StringField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
@@ -47,8 +47,8 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     # vineyard object id
     _vineyard_object_id = StringField('vineyard_object_id')
 
-    def __init__(self, vineyard_socket=None, dtype=None, sparse=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, vineyard_socket=None, **kw):
+        super().__init__(_vineyard_socket=vineyard_socket, **kw)
 
     @property
     def vineyard_socket(self):

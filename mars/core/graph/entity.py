@@ -15,6 +15,7 @@
 from typing import List, Dict, Union
 
 from ...core import Tileable, Chunk
+from ...serialization.core import buffered
 from ...serialization.serializables import Serializable, DictField, ListField, BoolField
 from ...serialization.serializables.core import SerializableSerializer
 from .core import DAG
@@ -27,7 +28,7 @@ class EntityGraph(DAG):
 class TileableGraph(EntityGraph):
     _result_tileables: List[Tileable]
 
-    def __init__(self, result_tileables: List[Tileable]):
+    def __init__(self, result_tileables: List[Tileable] = None):
         super().__init__()
         self._result_tileables = result_tileables
 
@@ -43,7 +44,7 @@ class TileableGraph(EntityGraph):
 class ChunkGraph(EntityGraph):
     _result_chunks: List[Chunk]
 
-    def __init__(self, result_chunks: List[Chunk]):
+    def __init__(self, result_chunks: List[Chunk] = None):
         super().__init__()
         self._result_chunks = result_chunks
 
@@ -86,6 +87,7 @@ class SerializableGraph(Serializable):
 class GraphSerializer(SerializableSerializer):
     serializer_name = 'graph'
 
+    @buffered
     def serialize(self, obj: Union[TileableGraph, ChunkGraph], context: Dict):
         serializable_graph = SerializableGraph.from_graph(obj)
         return super().serialize(serializable_graph, context)

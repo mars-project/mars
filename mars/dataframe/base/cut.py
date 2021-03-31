@@ -19,12 +19,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity, ExecutableTuple, OutputType
+from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, TilesError
 from ...context import get_context
 from ...serialize import KeyField, AnyField, BoolField, Int32Field, StringField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE, TensorOrder
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import SERIES_TYPE, INDEX_TYPE
 from ..datasource.index import from_pandas as asindex
@@ -107,15 +106,15 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             self._input_min = next(inputs_iter)
         if self._input_max is not None:
             self._input_max = next(inputs_iter)
-        if isinstance(self._bins, (Base, Entity)):
+        if isinstance(self._bins, ENTITY_TYPE):
             self._bins = next(inputs_iter)
-        if isinstance(self._labels, (Base, Entity)):
+        if isinstance(self._labels, ENTITY_TYPE):
             self._labels = next(inputs_iter)
 
     def __call__(self, x):
         if isinstance(x, pd.Series):
             x = asseries(x)
-        elif not isinstance(x, (Base, Entity)):
+        elif not isinstance(x, ENTITY_TYPE):
             x = astensor(x)
         if x.ndim != 1:
             raise ValueError('Input array must be 1 dimensional')
@@ -129,7 +128,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             inputs.extend([input_min, input_max])
 
         if self._labels is not None and \
-                not isinstance(self._labels, (bool, Base, Entity)):
+                not isinstance(self._labels, (bool, ENTITY_TYPE)):
             self._labels = np.asarray(self._labels)
 
         # infer dtype
@@ -139,14 +138,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             bins = self._bins.index_value.to_pandas()
             inputs.append(self._bins)
             bins_unknown = True
-        elif isinstance(self._bins, (Base, Entity)):
+        elif isinstance(self._bins, ENTITY_TYPE):
             bins = np.asarray([2], dtype=self._bins.dtype)
             inputs.append(self._bins)
             bins_unknown = True
         else:
             bins = self._bins
             bins_unknown = isinstance(self._bins, Integral)
-        if isinstance(self._labels, (Base, Entity)):
+        if isinstance(self._labels, ENTITY_TYPE):
             bins_unknown = True
             labels = None
             inputs.append(self._labels)
@@ -215,14 +214,14 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if isinstance(op.bins, (Base, Entity)):
+        if isinstance(op.bins, ENTITY_TYPE):
             # check op.bins chunk shapes
             check_chunks_unknown_shape([op.bins], TilesError)
             bins = op.bins.rechunk(op.bins.shape)._inplace_tile()
         else:
             bins = op.bins
 
-        if isinstance(op.labels, (Base, Entity)):
+        if isinstance(op.labels, ENTITY_TYPE):
             # check op.labels chunk shapes
             check_chunks_unknown_shape([op.labels], TilesError)
             labels = op.labels.rechunk(op.labels.shape)._inplace_tile()
@@ -269,10 +268,10 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             chunk_op._bins = bins
             # do not return bins always for chunk
             chunk_op._retbins = False
-            if isinstance(bins, (Base, Entity)):
+            if isinstance(bins, ENTITY_TYPE):
                 chunk_inputs.append(bins.chunks[0])
             chunk_op._labels = labels
-            if isinstance(labels, (Base, Entity)):
+            if isinstance(labels, ENTITY_TYPE):
                 chunk_inputs.append(labels.chunks[0])
 
             chunk_kws = []
@@ -309,7 +308,7 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         if len(outs) == 2:
             bins_kw = outs[1].params
             bins_kw['chunks'] = bins_chunks = []
-            if isinstance(bins, (Base, Entity)):
+            if isinstance(bins, ENTITY_TYPE):
                 bins_chunks.append(bins.chunks[0])
             else:
                 if op.duplicates == 'drop':
@@ -330,8 +329,8 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         x = ctx[op.input.key]
-        bins = ctx[op.bins.key] if isinstance(op.bins, (Base, Entity)) else op.bins
-        labels = ctx[op.labels.key] if isinstance(op.labels, (Base, Entity)) else op.labels
+        bins = ctx[op.bins.key] if isinstance(op.bins, ENTITY_TYPE) else op.bins
+        labels = ctx[op.labels.key] if isinstance(op.labels, ENTITY_TYPE) else op.labels
 
         cut = partial(pd.cut, right=op.right, retbins=op.retbins, precision=op.precision,
                       include_lowest=op.include_lowest, duplicates=op.duplicates)

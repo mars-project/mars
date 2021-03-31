@@ -15,9 +15,9 @@
 from threading import Thread
 
 from .... import opcodes as OperandDef
+from ....core import NotSupportTile
 from ....serialize import Int32Field
 from ....utils import to_binary
-from ....tiles import NotSupportTile
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
 

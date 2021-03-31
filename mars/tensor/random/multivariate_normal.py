@@ -37,10 +37,10 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     _func_name = 'multivariate_normal'
 
     def __init__(self, mean=None, cov=None, size=None, check_valid=None, tol=None,
-                 state=None, dtype=None, gpu=None, **kw):
+                 state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super().__init__(_mean=mean, _cov=cov, _size=size, _check_valid=check_valid,
-                         _tol=tol, _state=state, _dtype=dtype, _gpu=gpu, **kw)
+                         _tol=tol, _state=state, dtype=dtype, **kw)
 
     @property
     def mean(self):

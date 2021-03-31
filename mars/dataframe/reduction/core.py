@@ -19,8 +19,8 @@ from typing import NamedTuple, Any, List, Dict, Union, Callable
 import numpy as np
 import pandas as pd
 
-from ...core import OutputType, Entity, Base
-from ...operands import OperandStage
+from ...core import OutputType, ENTITY_TYPE
+from ...core.operand import OperandStage
 from ...utils import tokenize, is_build_mode, is_kernel_mode, enter_mode, recursive_tile
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..core import SERIES_TYPE
@@ -45,7 +45,7 @@ class DataFrameReductionOperand(DataFrameOperand):
                  min_count=None, stage=None, dtype=None, combine_size=None, gpu=None,
                  sparse=None, output_types=None, use_inf_as_na=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
-                         _bool_only=bool_only, _min_count=min_count, _stage=stage, _dtype=dtype,
+                         _bool_only=bool_only, _min_count=min_count, _dtype=dtype,
                          _combine_size=combine_size, _gpu=gpu, _sparse=sparse,
                          _output_types=output_types, _use_inf_as_na=use_inf_as_na, **kw)
 
@@ -108,9 +108,9 @@ class DataFrameCumReductionOperand(DataFrameOperand):
     _dtype = DataTypeField('dtype')
 
     def __init__(self, axis=None, skipna=None, dtype=None, gpu=None, sparse=None,
-                 output_types=None, use_inf_as_na=None, stage=None, **kw):
+                 output_types=None, use_inf_as_na=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _dtype=dtype, _gpu=gpu, _sparse=sparse,
-                         _output_types=output_types, _stage=stage, _use_inf_as_na=use_inf_as_na, **kw)
+                         _output_types=output_types, _use_inf_as_na=use_inf_as_na, **kw)
 
     @property
     def axis(self):
@@ -282,7 +282,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
             to_concat_chunks.append(summary_chunks[j])
 
         new_chunk_op = op.copy().reset_key()
-        new_chunk_op._stage = OperandStage.combine
+        new_chunk_op.stage = OperandStage.combine
         return new_chunk_op.new_chunk(to_concat_chunks, **c.params)
 
     @classmethod
@@ -297,7 +297,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
-            new_chunk_op._stage = OperandStage.map
+            new_chunk_op.stage = OperandStage.map
             if op.axis == 1:
                 summary_shape = (c.shape[0], 1)
             else:
@@ -335,7 +335,7 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
         summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
-            new_chunk_op._stage = OperandStage.map
+            new_chunk_op.stage = OperandStage.map
             summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=(1,), dtype=series.dtype)
 
         # combine summaries into results
@@ -590,7 +590,7 @@ class ReductionCompiler:
                               n, cell in zip(func_code.co_freevars, func.__closure__)})
         # external Mars objects shall not be referenced
         for var_name, val in func_vars.items():
-            if isinstance(val, (Base, Entity)):
+            if isinstance(val, ENTITY_TYPE):
                 raise ValueError(f'Variable {var_name} used by {func.__name__} '
                                  'cannot be a Mars object')
 
@@ -676,7 +676,7 @@ class ReductionCompiler:
             func_ret = self._build_mock_return_object(func, object, ndim=1)
         output_limit = getattr(func, 'output_limit', None) or 1
 
-        if not isinstance(func_ret, (Base, Entity)):
+        if not isinstance(func_ret, ENTITY_TYPE):
             raise ValueError(f'Custom function should return a Mars object, not {type(func_ret)}')
         if func_ret.ndim >= ndim:
             raise ValueError('Function not a reduction')

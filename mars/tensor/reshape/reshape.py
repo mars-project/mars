@@ -20,9 +20,9 @@ import logging
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...tiles import TilesError
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
@@ -44,12 +44,9 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
     _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
 
     def __init__(self, newshape=None, order=None, axis_offsets=None, oldshape=None,
-                 new_chunk_size=None, stage=None, shuffle_key=None, dtype=None,
-                 create_view=None, **kw):
+                 new_chunk_size=None, **kw):
         super().__init__(_newshape=newshape, _order=order, _axis_offsets=axis_offsets,
-                         _oldshape=oldshape, _new_chunk_size=new_chunk_size,
-                         _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype,
-                         _create_view=create_view, **kw)
+                         _oldshape=oldshape, _new_chunk_size=new_chunk_size, **kw)
 
     @property
     def input(self):

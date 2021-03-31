@@ -15,12 +15,12 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, StringField, DictField, TupleField
 from ...context import RunningMode
+from ...core import TilesError
+from ...core.operand import SuccessorsExclusive
+from ...serialize import ValueType, KeyField, StringField, DictField, TupleField
 from ...lib.filesystem import open_file
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
-from ...operands import SuccessorsExclusive
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
 

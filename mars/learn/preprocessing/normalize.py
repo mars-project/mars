@@ -41,9 +41,9 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
     _use_sklearn = BoolField('use_sklearn')
 
     def __init__(self, norm=None, axis=None, return_norm=None,
-                 use_sklearn=None, dtype=None, gpu=None, **kw):
+                 use_sklearn=None, **kw):
         super().__init__(_norm=norm, _axis=axis, _return_norm=return_norm,
-                         _use_sklearn=use_sklearn, _dtype=dtype, _gpu=gpu, **kw)
+                         _use_sklearn=use_sklearn, **kw)
         if self._use_sklearn is None:
             # force to use sklearn if not specified
             self._use_sklearn = True

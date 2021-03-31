@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core import OutputType
 from ...dataframe.utils import parse_index
-from ...operands import OutputType
 from ...utils import replace_inputs
 
 

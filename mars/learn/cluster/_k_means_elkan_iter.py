@@ -15,11 +15,11 @@
 import numpy as np
 
 from ... import opcodes
-from ...operands import OutputType, OperandStage
+from ...core import OutputType, TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, Int32Field, BoolField
 from ...tensor.array_utils import as_same_device, device, cp, sparse
 from ...tensor.core import TensorOrder
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_common import _execute_merge_update, _relocate_empty_clusters
@@ -205,14 +205,13 @@ class KMeansElkanUpdate(LearnOperand, LearnOperandMixin):
     def __init__(self, x=None, sample_weight=None, centers_old=None,
                  center_half_distances=None, distance_next_center=None,
                  labels=None, upper_bounds=None, lower_bounds=None, update_centers=None,
-                 n_clusters=None, output_types=None, stage=None, **kw):
+                 n_clusters=None, output_types=None, **kw):
         super().__init__(_x=x, _sample_weight=sample_weight, _centers_old=centers_old,
                          _center_half_distances=center_half_distances,
                          _distance_next_center=distance_next_center,
                          _labels=labels, _upper_bounds=upper_bounds,
                          _lower_bounds=lower_bounds, _update_centers=update_centers,
-                         _n_clusters=n_clusters, _output_types=output_types,
-                         _stage=stage, **kw)
+                         _n_clusters=n_clusters, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -258,7 +257,7 @@ class KMeansElkanUpdate(LearnOperand, LearnOperandMixin):
 
     @property
     def output_limit(self):
-        return 5 if self._stage != OperandStage.reduce else 2
+        return 5 if self.stage != OperandStage.reduce else 2
 
     @property
     def _input_fields(self):
@@ -268,7 +267,7 @@ class KMeansElkanUpdate(LearnOperand, LearnOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.reduce:
+        if self.stage != OperandStage.reduce:
             input_fields = self._input_fields
             assert len(input_fields) == len(self._inputs)
             inputs_iter = iter(inputs)
@@ -324,7 +323,7 @@ class KMeansElkanUpdate(LearnOperand, LearnOperandMixin):
             upper_bounds_chunk = upper_bounds.cix[i, ]
             lower_bounds_chunk = lower_bounds.cix[i, 0]
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
+            chunk_op.stage = OperandStage.map
             chunk_kws = list((
                 # labels
                 labels_chunk.params,
@@ -451,13 +450,12 @@ class KMeansElkanPostprocess(LearnOperand, LearnOperandMixin):
 
     def __init__(self, centers_old=None, centers_new=None,
                  center_shift=None, lower_bounds=None, upper_bounds=None,
-                 labels=None, weight_in_clusters=None, output_types=None,
-                 stage=None, **kw):
+                 labels=None, weight_in_clusters=None, output_types=None, **kw):
         super().__init__(_centers_old=centers_old, _centers_new=centers_new,
                          _center_shift=center_shift, _lower_bounds=lower_bounds,
                          _upper_bounds=upper_bounds, _labels=labels,
-                         _weight_in_clusters=weight_in_clusters, _output_types=output_types,
-                         _stage=stage, **kw)
+                         _weight_in_clusters=weight_in_clusters,
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -491,13 +489,13 @@ class KMeansElkanPostprocess(LearnOperand, LearnOperandMixin):
 
     @property
     def output_limit(self):
-        if self._stage is None:
+        if self.stage is None:
             # for tileable
             return 4
-        elif self._stage == OperandStage.combine:
+        elif self.stage == OperandStage.combine:
             return 2
         else:
-            assert self._stage == OperandStage.reduce
+            assert self.stage == OperandStage.reduce
             return 2
 
     @property

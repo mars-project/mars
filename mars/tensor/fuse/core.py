@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...operands import FuseChunkMixin
+from ...core.operand import FuseChunkMixin
 from ..operands import TensorFuse, TensorOperandMixin
 
 
@@ -28,7 +28,7 @@ class TensorFuseChunk(TensorFuse, TensorFuseChunkMixin):
 
 
 def estimate_fuse_size(ctx, op):
-    from ...graph import DAG
+    from ...core.graph import DAG
     from ...executor import Executor
     from ...utils import build_fetch_chunk
 

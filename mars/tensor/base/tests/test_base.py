@@ -18,14 +18,14 @@ import unittest
 
 import numpy as np
 
+from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, topk, to_gpu, to_cpu
-from mars.operands import OperandStage
-from mars.tiles import get_tiled
+from mars.core.graph import get_tiled
 
 
 class Test(unittest.TestCase):

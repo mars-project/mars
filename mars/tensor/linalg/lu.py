@@ -19,9 +19,8 @@ from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...core import ExecutableTuple
+from ...core import ExecutableTuple, TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile
-from ...tiles import TilesError
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -31,9 +30,6 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.LU
 
     _input = KeyField('input')
-
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
 
     @property
     def output_limit(self):

@@ -15,9 +15,9 @@
 import numpy as np
 import pandas as pd
 
-from mars.operands import OperandStage
+from mars.core import get_tiled
+from mars.core.operand import OperandStage
 from mars.executor import Executor
-from mars.tiles import get_tiled
 from mars.tests.core import TestBase
 from mars.dataframe.core import IndexValue
 from mars.dataframe.base.standardize_range_index import ChunkStandardizeRangeIndex

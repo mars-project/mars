@@ -15,7 +15,7 @@
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tiles import TilesError
+from mars.core import TilesError
 from mars.utils import ignore_warning
 from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \

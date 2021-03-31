@@ -17,9 +17,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, BoolField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -37,7 +37,8 @@ class TensorIsIn(TensorOperand, TensorOperandMixin):
 
     def __init__(self, assume_unique=None, invert=None, dtype=None, **kw):
         dtype = np.dtype(bool) if dtype is None else dtype
-        super().__init__(_assume_unique=assume_unique, _invert=invert, _dtype=dtype, **kw)
+        super().__init__(_assume_unique=assume_unique, _invert=invert,
+                         dtype=dtype, **kw)
 
     @property
     def element(self):

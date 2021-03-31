@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from mars.core import OutputType
-from mars.operands import OperandStage
+from mars.core import OutputType, get_tiled
+from mars.core.operand import OperandStage
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import hash_dtypes
 from mars.dataframe.utils import split_monotonic_index_min_max, \
@@ -33,7 +33,6 @@ from mars.dataframe.arithmetic import DataFrameAbs, DataFrameAdd, DataFrameSubtr
     DataFrameGreaterEqual, DataFrameLessEqual, DataFrameNot, \
     DataFrameAnd, DataFrameOr, DataFrameXor
 from mars.dataframe.align import DataFrameIndexAlign, DataFrameShuffleProxy
-from mars.tiles import get_tiled
 from mars.tests.core import TestBase, parameterized
 
 

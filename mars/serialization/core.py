@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from functools import partial
+from functools import partial, wraps
 from typing import Any, Dict, List
 
 from ..utils import TypeDispatcher
@@ -49,6 +49,21 @@ class Serializer:
         inst = cls()
         _serial_dispatcher.register(obj_type, inst)
         _deserializers[cls.serializer_name] = inst
+
+
+def buffered(func):
+    @wraps(func)
+    def wrapped(self, obj: Any, context: Dict):
+        if id(obj) in context:
+            return {
+                       'id': id(obj),
+                       'serializer': 'ref',
+                       'buf_num': 0,
+                   }, []
+        else:
+            context[id(obj)] = obj
+            return func(self, obj, context)
+    return wrapped
 
 
 def pickle_buffers(obj):
@@ -89,6 +104,7 @@ class ScalarSerializer(Serializer):
 class StrSerializer(Serializer):
     serializer_name = 'str'
 
+    @buffered
     def serialize(self, obj, context: Dict):
         header = {}
         if isinstance(obj, str):
@@ -107,6 +123,7 @@ class StrSerializer(Serializer):
 class PickleSerializer(Serializer):
     serializer_name = 'pickle'
 
+    @buffered
     def serialize(self, obj, context: Dict):
         return {}, pickle_buffers(obj)
 
@@ -127,6 +144,7 @@ class CollectionSerializer(Serializer):
             buffers_list.append(buffers)
         return headers, buffers_list
 
+    @buffered
     def serialize(self, obj: Any, context: Dict):
         buffers = []
         headers_list, buffers_list = self._serialize(obj, context)
@@ -181,6 +199,7 @@ class TupleSerializer(CollectionSerializer):
 class DictSerializer(CollectionSerializer):
     serializer_name = 'dict'
 
+    @buffered
     def serialize(self, obj: Dict, context: Dict):
         key_headers, key_buffers_list = self._serialize(obj.keys(), context)
         value_headers, value_buffers_list = self._serialize(obj.values(), context)
@@ -263,16 +282,10 @@ def serialize(obj, context: Dict = None):
     serializer = _serial_dispatcher.get_handler(type(obj))
     context = context if context is not None else dict()
 
-    if id(obj) in context:
-        return {
-            'id': id(obj),
-            'serializer': 'ref',
-            'buf_num': 0,
-        }, []
-    else:
-        context[id(obj)] = obj
-
     header, buffers = serializer.serialize(obj, context)
+    if header.get('serializer') == 'ref':
+        return header, buffers
+
     header['serializer'] = serializer.serializer_name
     header['buf_num'] = len(buffers)
     header['id'] = id(obj)

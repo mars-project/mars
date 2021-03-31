@@ -17,7 +17,8 @@ import pandas as pd
 
 from mars import opcodes
 from mars.config import options, option_context
-from mars.core import OutputType
+from mars.core import OutputType, TilesError, get_tiled
+from mars.core.operand import OperandStage
 from mars.dataframe import eval as mars_eval, cut
 from mars.dataframe.base import to_gpu, to_cpu, astype
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
@@ -25,10 +26,8 @@ from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, 
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.operands import OperandStage
 from mars.tensor.core import TENSOR_TYPE
 from mars.tests.core import TestBase
-from mars.tiles import get_tiled, TilesError
 
 
 class Test(TestBase):
@@ -698,13 +697,6 @@ class Test(TestBase):
             self.assertIsInstance(c, CATEGORICAL_CHUNK_TYPE)
             self.assertEqual(c.shape, (2,))
             self.assertEqual(c.ndim, 1)
-
-        # test serialize
-        g = r.build_graph(tiled=False)
-        g2 = type(g).from_pb(g.to_pb())
-        g2 = type(g).from_json(g2.to_json())
-        r2 = next(n for n in g2 if isinstance(n, CATEGORICAL_TYPE))
-        self.assertEqual(len(r2), len(r))
 
         r = cut([0, 1, 1, 2], bins=4, labels=False)
         self.assertIsInstance(r, TENSOR_TYPE)

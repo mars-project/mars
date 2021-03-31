@@ -14,9 +14,10 @@
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialBinOp
+from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialBinOp, _register_special_op
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorEntr(TensorSpecialUnaryOp):
     _func_name = 'entr'
@@ -52,6 +53,7 @@ def entr(x, out=None, where=None, **kwargs):
     return op(x, out=out, where=where)
 
 
+@_register_special_op
 class TensorRelEntr(TensorSpecialBinOp):
     _func_name = 'rel_entr'
 
@@ -119,6 +121,7 @@ def rel_entr(x, y, out=None, where=None, **kwargs):
     return op(x, y, out=out, where=where)
 
 
+@_register_special_op
 class TensorKlDiv(TensorSpecialBinOp):
     _func_name = 'kl_div'
 

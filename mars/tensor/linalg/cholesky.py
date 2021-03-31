@@ -19,8 +19,8 @@ from numpy.linalg import LinAlgError
 
 from ...serialize import KeyField, BoolField
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..operands import TensorHasInput, TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -33,8 +33,8 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _lower = BoolField('lower')
 
-    def __init__(self, lower=None, dtype=None, **kw):
-        super().__init__(_lower=lower, _dtype=dtype, **kw)
+    def __init__(self, lower=None, **kw):
+        super().__init__(_lower=lower, **kw)
 
     @property
     def lower(self):

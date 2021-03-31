@@ -29,8 +29,8 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
     _n = Int32Field('n')
     _d = Float64Field('d')
 
-    def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
-        super().__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, n=None, d=None, **kw):
+        super().__init__(_n=n, _d=d, **kw)
 
     @property
     def n(self):

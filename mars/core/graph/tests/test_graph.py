@@ -13,31 +13,12 @@
 # limitations under the License.
 
 import pytest
-from typing import List, Union
 
 import mars.tensor as mt
-from mars._core.graph import DAG, GraphContainsCycleError, TileableGraph, ChunkGraph, \
-    TileableGraphBuilder, ChunkGraphBuilder
-from mars.core import Tileable
+from mars.core.graph import DAG, GraphContainsCycleError, TileableGraph, ChunkGraph
+from mars.core.graph.builder import _build_graph
 from mars.serialization import serialize, deserialize
 from mars.serialization.serializables import Serializable, Int32Field
-from mars.utils import enter_mode
-
-
-@enter_mode(kernel=True)
-def _build_graph(tileables: List[Tileable],
-                 tiled: bool = False,
-                 fuse_enabled: bool = True,
-                 **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
-    tileable_graph = TileableGraph(tileables)
-    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
-    tileable_graph = next(tileable_graph_builder.build())
-    if not tiled:
-        return tileable_graph
-    chunk_graph_builder = ChunkGraphBuilder(
-        tileable_graph, fuse_enabled=fuse_enabled,
-        **chunk_graph_build_kwargs)
-    return next(chunk_graph_builder.build())
 
 
 class MySerializable(Serializable):

@@ -114,7 +114,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         for chunk_index, (instance_id, chunk_id, shape, columns) in chunk_map.items():
             chunk_op = op.copy().reset_key()
             chunk_op._object_id = chunk_id
-            chunk_op._expect_worker = workers[instance_id]
+            chunk_op.expect_worker = workers[instance_id]
             out_chunks.append(chunk_op.new_chunk([], shape=shape, index=chunk_index,
                               # use the same value as `read_csv`
                               index_value=parse_index(pd.RangeIndex(0, -1)),

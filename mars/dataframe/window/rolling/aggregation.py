@@ -18,9 +18,9 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes
+from ....core import TilesError
 from ....serialize import ValueType, AnyField, Int64Field, BoolField, \
     StringField, Int32Field, KeyField, TupleField, DictField, ListField
-from ....tiles import TilesError
 from ....utils import lazy_import, check_chunks_unknown_shape
 from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE

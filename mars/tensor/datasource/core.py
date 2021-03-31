@@ -126,12 +126,12 @@ class TensorLike(TensorHasInput):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         if self.dtype is None:
-            self._dtype = self.input.dtype
+            self.dtype = self.input.dtype
         if self.gpu is None:
-            self._gpu = self.input.op.gpu
+            self.gpu = self.input.op.gpu
 
         # FIXME: remove when cupy supports other dtypes
-        if self._gpu and self._dtype not in (np.float32, np.float64):
+        if self.gpu and self.dtype not in (np.float32, np.float64):
             raise NotImplementedError('Sparse tensor on GPU only supports float32 and float64')
 
 
@@ -141,10 +141,9 @@ class TensorFromHDF5Like(TensorNoInput):
     _dataset = StringField('dataset')
     _axis_offsets = TupleField('axis_offsets', ValueType.int64)
 
-    def __init__(self, filename=None, group=None, dataset=None,
-                 dtype=None, **kw):
+    def __init__(self, filename=None, group=None, dataset=None, **kw):
         super().__init__(_filename=filename, _group=group,
-                         _dataset=dataset, _dtype=dtype, **kw)
+                         _dataset=dataset, **kw)
 
     @property
     def filename(self):

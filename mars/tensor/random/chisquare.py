@@ -29,9 +29,9 @@ class TensorChisquareDist(TensorDistribution, TensorRandomOperandMixin):
     _df = AnyField('df')
     _func_name = 'chisquare'
 
-    def __init__(self, state=None, size=None, dtype=None, gpu=None, **kw):
+    def __init__(self, state=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
 
     @property
     def df(self):

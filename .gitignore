@@ -76,10 +76,10 @@ bin/etcd*
 # cython compiled files
 mars/*.c*
 mars/*.h*
-mars/_core/**/*.c*
-mars/lib/*.c*
 mars/actors/*.c*
 mars/actors/pool/*.c*
+mars/core/**/*.c*
+mars/lib/*.c*
 mars/optimizes/**/*.c*
 mars/oscar/**/*.c*
 mars/scheduler/*.c*

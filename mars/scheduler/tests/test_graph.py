@@ -17,12 +17,12 @@ import uuid
 import unittest
 
 import mars.tensor as mt
+from mars.core.graph import DAG
 from mars.scheduler.analyzer import GraphAnalyzer
 from mars.scheduler import GraphActor, GraphMetaActor, ResourceActor, ChunkMetaActor, \
     AssignerActor, GraphState, OperandState
 from mars.scheduler.utils import SchedulerClusterInfoActor
 from mars.utils import serialize_graph, get_next_port
-from mars.graph import DAG
 from mars.tests.core import patch_method, create_actor_pool
 
 
@@ -35,9 +35,9 @@ class Test(unittest.TestCase):
         session_id = str(uuid.uuid4())
         graph_key = str(uuid.uuid4())
 
-        graph = expr.build_graph(compose=compose)
+        graph = expr.build_graph(fuse_enabled=compose)
         serialized_graph = serialize_graph(graph)
-        chunked_graph = expr.build_graph(compose=compose, tiled=True)
+        chunked_graph = expr.build_graph(fuse_enabled=compose, tiled=True)
 
         addr = f'127.0.0.1:{get_next_port()}'
         with create_actor_pool(n_process=1, backend='gevent', address=addr) as pool:
@@ -220,8 +220,8 @@ class Test(unittest.TestCase):
             # error occurred in create_operand_actors
             graph_key = str(uuid.uuid4())
             expr = mt.random.random((8, 2), chunk_size=2) + 1
-            graph = expr.build_graph(compose=False)
-            serialized_graph = serialize_graph(graph, serialize_method='pb')
+            graph = expr.build_graph(fuse_enabled=False)
+            serialized_graph = serialize_graph(graph)
 
             graph_ref = pool.create_actor(GraphActor, session_id, graph_key, serialized_graph,
                                           uid=GraphActor.gen_uid(session_id, graph_key))

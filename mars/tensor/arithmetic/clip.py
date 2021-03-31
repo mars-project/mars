@@ -20,7 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ..array_utils import as_same_device, device
 from ..core import Tensor
 from ..utils import broadcast_shape
@@ -36,10 +36,8 @@ class TensorClip(TensorOperand, TensorElementWise):
     _a_max = AnyField('a_max')
     _out = KeyField('out')
 
-    def __init__(self, a=None, a_min=None, a_max=None, out=None,
-                 sparse=None, gpu=None, dtype=None, **kw):
-        super().__init__(_a=a, _a_min=a_min, _a_max=a_max, _out=out,
-                         _sparse=sparse, _gpu=gpu, _dtype=dtype, **kw)
+    def __init__(self, a=None, a_min=None, a_max=None, out=None, **kw):
+        super().__init__(_a=a, _a_min=a_min, _a_max=a_max, _out=out, **kw)
 
     @property
     def a(self):
@@ -61,9 +59,9 @@ class TensorClip(TensorOperand, TensorElementWise):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._a = next(inputs_iter)
-        if isinstance(self._a_min, (Base, Entity)):
+        if isinstance(self._a_min, ENTITY_TYPE):
             self._a_min = next(inputs_iter)
-        if isinstance(self._a_max, (Base, Entity)):
+        if isinstance(self._a_max, ENTITY_TYPE):
             self._a_max = next(inputs_iter)
         if getattr(self, '_out', None) is not None:
             self._out = next(inputs_iter)
@@ -112,12 +110,12 @@ class TensorClip(TensorOperand, TensorElementWise):
         # check broadcast
         shape = broadcast_shape(*[t.shape for t in tensors])
 
-        setattr(self, '_sparse', sparse)
+        setattr(self, 'sparse', sparse)
         inputs = filter_inputs([a, a_min, a_max, out])
         t = self.new_tensor(inputs, shape)
 
         if out is None:
-            setattr(self, '_dtype', dtype)
+            setattr(self, 'dtype', dtype)
             return t
 
         # if `out` is specified, use out's dtype and shape
@@ -125,7 +123,7 @@ class TensorClip(TensorOperand, TensorElementWise):
 
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape)
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
 
         out.data = t.data
         return out

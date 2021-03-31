@@ -24,8 +24,8 @@ from .core import TensorFFTMixin, validate_fft, TensorHermitianFFT
 class TensorHFFT(TensorHermitianFFT, TensorFFTMixin):
     _op_type_ = OperandDef.HFFT
 
-    def __init__(self, n=None, axis=-1, norm=None, dtype=None, **kw):
-        super().__init__(_n=n, _axis=axis, _norm=norm, _dtype=dtype, **kw)
+    def __init__(self, n=None, axis=-1, norm=None, **kw):
+        super().__init__(_n=n, _axis=axis, _norm=norm, **kw)
 
     @classmethod
     def _get_shape(cls, op, shape):

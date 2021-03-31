@@ -14,7 +14,8 @@
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialMultiOp, TensorSpecialBinOp
+from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialMultiOp, \
+    TensorSpecialBinOp, _register_special_op
 
 
 class NoOrderSpecialMixin:
@@ -29,6 +30,7 @@ class NoOrderSpecialMixin:
         return _wrapped
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorGamma(TensorSpecialUnaryOp):
     _func_name = 'gamma'
@@ -41,6 +43,7 @@ def gamma(x, **kwargs):
     return op(x)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorGammaln(TensorSpecialUnaryOp):
     _func_name = 'gammaln'
@@ -88,6 +91,7 @@ def gammaln(x, out=None, where=None, **kwargs):
     return op(x, out=out, where=where)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorLogGamma(TensorSpecialUnaryOp):
     _func_name = 'loggamma'
@@ -100,6 +104,7 @@ def loggamma(x, **kwargs):
     return op(x)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorGammaSgn(TensorSpecialUnaryOp):
     _func_name = 'gammasgn'
@@ -112,6 +117,7 @@ def gammasgn(x, **kwargs):
     return op(x)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorGammaInc(TensorSpecialBinOp):
     _func_name = 'gammainc'
@@ -124,6 +130,7 @@ def gammainc(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorGammaIncInv(TensorSpecialBinOp):
     _func_name = 'gammaincinv'
@@ -136,6 +143,7 @@ def gammaincinv(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorGammaIncc(TensorSpecialBinOp):
     _func_name = 'gammaincc'
@@ -148,6 +156,7 @@ def gammaincc(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorGammaInccInv(TensorSpecialBinOp):
     _func_name = 'gammainccinv'
@@ -160,6 +169,7 @@ def gammainccinv(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorBeta(TensorSpecialBinOp):
     _func_name = 'beta'
@@ -172,6 +182,7 @@ def beta(a, b, out=None, **kwargs):
     return op(a, b, out=out)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorBetaLn(TensorSpecialBinOp):
     _func_name = 'betaln'
@@ -184,6 +195,7 @@ def betaln(a, b, out=None, **kwargs):
     return op(a, b, out=out)
 
 
+@_register_special_op
 class TensorBetaInc(TensorSpecialMultiOp):
     _ARG_COUNT = 3
     _func_name = 'betainc'
@@ -196,6 +208,7 @@ def betainc(a, b, x, out=None, **kwargs):
     return op(a, b, x, out=out)
 
 
+@_register_special_op
 class TensorBetaIncInv(TensorSpecialMultiOp):
     _ARG_COUNT = 3
     _func_name = 'betaincinv'
@@ -208,6 +221,7 @@ def betaincinv(a, b, y, out=None, **kwargs):
     return op(a, b, y, out=out)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorPsi(TensorSpecialUnaryOp):
     _func_name = 'psi'
@@ -220,6 +234,7 @@ def psi(x, out=None, **kwargs):
     return op(x, out=out)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorRGamma(TensorSpecialUnaryOp):
     _func_name = 'rgamma'
@@ -232,6 +247,7 @@ def rgamma(x, out=None, **kwargs):
     return op(x, out=out)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorPolyGamma(NoOrderSpecialMixin, TensorSpecialBinOp):
     _func_name = 'polygamma'
@@ -244,6 +260,7 @@ def polygamma(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorMultiGammaLn(NoOrderSpecialMixin, TensorSpecialBinOp):
     _func_name = 'multigammaln'
@@ -256,6 +273,7 @@ def multigammaln(a, b, **kwargs):
     return op(a, b)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorDiGamma(TensorSpecialUnaryOp):
     _func_name = 'digamma'
@@ -268,6 +286,7 @@ def digamma(x, out=None, **kwargs):
     return op(x, out=out)
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='binary_and')
 class TensorPoch(TensorSpecialBinOp):
     _func_name = 'poch'

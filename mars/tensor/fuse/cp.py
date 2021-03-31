@@ -23,15 +23,8 @@ from .core import TensorFuseChunkMixin, estimate_fuse_size
 
 
 class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
-    _op_type_ = None  # no opcode, cannot be serialized
-
     # use for cupy-fused operand
-    def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    _op_type_ = None  # no opcode, cannot be serialized
 
     @classmethod
     def execute(cls, ctx, op):

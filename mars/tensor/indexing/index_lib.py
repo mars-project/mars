@@ -22,9 +22,8 @@ from numbers import Integral
 
 import numpy as np
 
-from ...core import TileableEntity
-from ...operands import OperandStage
-from ...tiles import TilesError
+from ...core import Tileable, TilesError
+from ...core.operand import OperandStage
 from ...utils import check_chunks_unknown_shape, calc_nsplits, \
     merge_chunks, recursive_tile
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
@@ -137,7 +136,7 @@ class IndexHandlerContext(ABC):
     def get_indexes(self, index_type: IndexType):
         return [self.parsed_infos[i] for i in self.get_positions(index_type)]
 
-    def set_tileable(self, tileable: TileableEntity):
+    def set_tileable(self, tileable: Tileable):
         for chunk in tileable.chunks:
             self.chunk_index_to_info[chunk.index] = ChunkIndexInfo()
 
@@ -153,7 +152,7 @@ class IndexHandlerContext(ABC):
                      chunk_index_info: ChunkIndexInfo) -> Chunk:
         pass
 
-    def create_tileable(self) -> TileableEntity:
+    def create_tileable(self) -> Tileable:
         out = self.op.outputs[0]
         params = out.params
         params['chunks'] = self.out_chunks
@@ -647,7 +646,7 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
             concat_chunk = context.concat_chunks(to_concat_chunks, to_concat_axis)
 
             reorder_chunk_op = context.op.copy().reset_key()
-            reorder_chunk_op._indexes = (slice(None),) * to_concat_axis + (reorder_index,)
+            reorder_chunk_op._indexes = [slice(None)] * to_concat_axis + [reorder_index]
             reorder_shape = concat_chunk.shape[:to_concat_axis] + fancy_index_shape + \
                 concat_chunk.shape[to_concat_axis + 1:]
             chunk_reorder_index = concat_chunk.index[:to_concat_axis] + \
@@ -712,7 +711,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
 
     @classmethod
     def _shuffle_fancy_indexes(cls,
-                               concat_fancy_index: TileableEntity,
+                               concat_fancy_index: Tileable,
                                context: IndexHandlerContext,
                                index_info: IndexInfo,
                                axes: Tuple):

@@ -18,10 +18,9 @@ import itertools
 
 import numpy as np
 
-from ...core import ExecutableTuple
+from ...core import ExecutableTuple, TilesError
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField, ListField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
@@ -186,7 +185,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         inputs_iter = iter(inputs)
         x1 = self._lhs if np.isscalar(self._lhs) else next(inputs_iter)
         x2 = self._rhs if np.isscalar(self._rhs) else next(inputs_iter)
-        setattr(self, '_sparse', self._is_sparse(x1, x2))
+        setattr(self, 'sparse', self._is_sparse(x1, x2))
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -281,7 +280,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
 
         out.data = t.data
         return out
@@ -412,7 +411,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         return x, out, where
 
     def _set_sparse(self, inputs):
-        setattr(self, '_sparse', self._is_sparse(inputs[0]))
+        setattr(self, 'sparse', self._is_sparse(inputs[0]))
 
     def _calc_order(self, x, out):
         if out is not None:
@@ -461,7 +460,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
 
         out.data = t.data
         return out
@@ -550,7 +549,7 @@ class TensorOutBinOp(TensorOperand, TensorElementWiseWithInputs):
         return False
 
     def _set_sparse(self, inputs):
-        setattr(self, '_sparse', self._is_sparse(inputs[0]))
+        setattr(self, 'sparse', self._is_sparse(inputs[0]))
 
     @property
     def _fun(self):
@@ -624,10 +623,10 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
     _order = StringField('order')
     _err = DictField('err', ValueType.string, ValueType.string)
 
-    def __init__(self, args=None, out=None, where=None, dtype=None, casting=None,
+    def __init__(self, args=None, out=None, where=None, casting=None,
                  order=None, err=None, **kwargs):
         super().__init__(_args=args, _out=out, _where=where, _order=order,
-                         _dtype=dtype, _casting=casting, _er=err, **kwargs)
+                         _casting=casting, _er=err, **kwargs)
         if self._casting is None:
             self._casting = 'same_kind'
         if self._order is None:
@@ -664,7 +663,7 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
         for idx in range(len(self._args)):
             if not np.isscalar(self._args[idx]):
                 args[idx] = next(inputs_iter)
-        setattr(self, '_sparse', self._is_sparse(*args))
+        setattr(self, 'sparse', self._is_sparse(*args))
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -713,7 +712,7 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
         # if `out` is specified, use out's dtype and shape
         if t.shape != out_shape:
             t = self.new_tensor(inputs, out_shape, order=order)
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
 
         out.data = t.data
         return out

@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ...context import get_context
+from ...core import TilesError
 from ...serialize import Int64Field, KeyField
-from ...tiles import TilesError
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 

@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..utils import broadcast_shape, unify_chunks
 from ..array_utils import as_same_device, device
 from ..core import TENSOR_TYPE
@@ -36,9 +36,6 @@ class TensorWhere(TensorOperand, TensorOperandMixin):
     _condition = KeyField('condition')
     _x = KeyField('x')
     _y = KeyField('y')
-
-    def __init__(self, dtype=None, **kw):
-        super().__init__(_dtype=dtype, **kw)
 
     @property
     def condition(self):
@@ -178,5 +175,5 @@ def where(condition, x=None, y=None):
         return broadcast_to(x if condition else y, shape).astype(dtype)
     else:
         condition = astensor(condition)
-        op = TensorWhere(dtype)
+        op = TensorWhere(dtype=dtype)
         return op(condition, x, y, shape=shape)

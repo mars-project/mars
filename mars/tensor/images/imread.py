@@ -35,8 +35,8 @@ class TensorImread(TensorOperand, TensorOperandMixin):
 
     _filepath = AnyField('filepath')
 
-    def __init__(self, filepath=None, dtype=None, **kwargs):
-        super().__init__(_filepath=filepath, _dtype=dtype, **kwargs)
+    def __init__(self, filepath=None, **kwargs):
+        super().__init__(_filepath=filepath, **kwargs)
 
     @property
     def filepath(self):

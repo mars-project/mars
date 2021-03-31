@@ -190,7 +190,7 @@ class ExpiringCache(dict):
 
 
 def concat_operand_keys(graph, sep=',', decompose=False):
-    from ..operands import Fetch
+    from ..core.operand import Fetch
     graph_op_dict = OrderedDict()
 
     if not decompose:

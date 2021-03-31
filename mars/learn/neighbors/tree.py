@@ -16,9 +16,8 @@ import cloudpickle
 import numpy as np
 
 from ...context import RunningMode
-from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE
+from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE, TilesError
 from ...serialize import KeyField, Int32Field, DictField, AnyField, BoolField
-from ...tiles import TilesError
 from ...tensor.core import TensorOrder
 from ...utils import check_chunks_unknown_shape, tokenize
 from ..operands import LearnOperand, LearnOperandMixin, OutputType

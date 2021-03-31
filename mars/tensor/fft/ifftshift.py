@@ -24,8 +24,8 @@ from .core import TensorFFTShiftMixin, TensorFFTShiftBase
 class TensorIFFTShift(TensorFFTShiftBase, TensorFFTShiftMixin):
     _op_type_ = OperandDef.IFFTSHIFT
 
-    def __init__(self, axes=None, dtype=None, **kw):
-        super().__init__(_axes=axes, _dtype=dtype, **kw)
+    def __init__(self, axes=None, **kw):
+        super().__init__(_axes=axes, **kw)
 
     @classmethod
     def _is_inverse(cls):

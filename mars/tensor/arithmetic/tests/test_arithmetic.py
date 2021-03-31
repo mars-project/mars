@@ -19,6 +19,7 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
+from mars.core import get_tiled
 from mars.tensor.datasource import array, ones, tensor, empty
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, \
@@ -27,7 +28,6 @@ from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, \
     TensorLog, TensorIsclose, TensorGreaterThan
 from mars.tensor.linalg import matmul
 from mars.tensor.core import Tensor, SparseTensor
-from mars.tiles import get_tiled
 from mars.utils import enter_mode
 
 

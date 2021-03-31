@@ -19,9 +19,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Entity, Base, OutputType
+from ...core import ENTITY_TYPE, Entity, OutputType
+from ...core.operand import OperandStage
 from ...lib.groupby_wrapper import wrapped_groupby
-from ...operands import OperandStage
 from ...serialize import BoolField, Int32Field, AnyField
 from ...utils import get_shuffle_input_keys_idxes
 from ..align import align_dataframe_series, align_series_series
@@ -44,12 +44,12 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _shuffle_size = Int32Field('shuffle_size')
 
     def __init__(self, by=None, level=None, as_index=None, sort=None, group_keys=None,
-                 shuffle_size=None, stage=None, shuffle_key=None, output_types=None, **kw):
+                 shuffle_size=None, output_types=None, **kw):
         super().__init__(_by=by, _level=level, _as_index=as_index, _sort=sort,
-                         _group_keys=group_keys, _shuffle_size=shuffle_size, _stage=stage,
-                         _shuffle_key=shuffle_key, _output_types=output_types, **kw)
+                         _group_keys=group_keys, _shuffle_size=shuffle_size,
+                         _output_types=output_types, **kw)
         if output_types:
-            if stage in (OperandStage.map, OperandStage.reduce):
+            if self.stage in (OperandStage.map, OperandStage.reduce):
                 if output_types[0] in (OutputType.dataframe, OutputType.dataframe_groupby):
                     output_types = [OutputType.dataframe]
                 else:
@@ -108,7 +108,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if isinstance(new_kw['by'], list):
             new_by = []
             for v in new_kw['by']:
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     build_fun = build_df if v.ndim == 2 else build_series
                     mock_by = pd.concat([
                         build_fun(v, size=2, fill_value=1, name=v.name),
@@ -166,7 +166,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         inp_params = inp.params
         inp_params['chunks'] = inp_chunks
         inp_params['nsplits'] = nsplits
-        inp = op.copy().new_tileable(op.inputs, kws=[inp_params])
+        inp = inp.op.copy().new_tileable(op.inputs, kws=[inp_params])
 
         by_params = by.params
         by_params['chunks'] = by_chunks
@@ -214,7 +214,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         map_chunks = []
         for chunk in in_df.chunks:
             map_op = op.copy().reset_key()
-            map_op._stage = OperandStage.map
+            map_op.stage = OperandStage.map
             map_op._shuffle_size = chunk_shape[0]
             chunk_inputs = [chunk]
             if len(op.inputs) > 1:
@@ -237,8 +237,8 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             shuffle_key = ','.join(str(idx) for idx in out_idx)
             reduce_op = op.copy().reset_key()
             reduce_op._by = None
-            reduce_op._stage = OperandStage.reduce
-            reduce_op._shuffle_key = shuffle_key
+            reduce_op.stage = OperandStage.reduce
+            reduce_op.shuffle_key = shuffle_key
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))
 
@@ -282,7 +282,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if isinstance(by, list):
             new_by = []
             for v in by:
-                if isinstance(v, Base):
+                if isinstance(v, ENTITY_TYPE):
                     deliver_by = True
                     new_by.append(ctx[v.key])
                 else:

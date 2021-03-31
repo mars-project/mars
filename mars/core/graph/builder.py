@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import sys
 import weakref
 from abc import ABC, abstractmethod
 from typing import Callable, List, Set, Union, Tuple, Iterable
 
-from ...core import EntityType, Tileable, TileableData
-from ...operands import Operand
 from ...utils import enter_mode, copy_tileables
+from ..typing import OperandType, TileableType, EntityType
+from ..entity import TilesError
 from .entity import EntityGraph, TileableGraph, ChunkGraph
 
 
@@ -99,13 +100,24 @@ class TileableGraphBuilder(AbstractGraphBuilder):
                          inputs_selector=inputs_selector)
 
     @enter_mode(build=True, kernel=True)
+    def _build(self) -> Union[TileableGraph, ChunkGraph]:
+        self._add_nodes(self._graph, list(self._graph.result_tileables), set())
+        return self._graph
+
     def build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
-        self._add_nodes(self._graph, self._graph.result_tileables, set())
-        yield self._graph
+        yield self._build()
 
 
 _tileable_data_to_tiled = weakref.WeakKeyDictionary()
 _op_to_copied = weakref.WeakKeyDictionary()
+
+
+@enter_mode(build=True)
+def get_tiled(tileable, mapping=None):
+    tileable_data = tileable.data if hasattr(tileable, 'data') else tileable
+    if mapping:
+        tileable_data = mapping.get(tileable_data, tileable_data)
+    return _tileable_data_to_tiled[tileable_data]
 
 
 class ChunkGraphBuilder(AbstractGraphBuilder):
@@ -113,14 +125,13 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
 
     def __init__(self,
                  graph: TileableGraph,
-                 node_process: Callable[[EntityType], EntityType] = None,
+                 node_processor: Callable[[EntityType], EntityType] = None,
                  inputs_selector: Callable[[List[EntityType]], List[EntityType]] = None,
-                 on_tile: Callable[[List[Tileable], List[Tileable]], List[Tileable]] = None,
-                 on_tile_success: Callable[[Tileable, Tileable], Tileable] = None,
-                 on_tile_failure: Callable[[Operand, Tuple], List[Tileable]] = None,
-                 fuse_enabled: bool = True,
-                 ):
-        super().__init__(graph=graph, node_processor=node_process,
+                 on_tile: Callable[[List[TileableType], List[TileableType]], List[TileableType]] = None,
+                 on_tile_success: Callable[[TileableType, TileableType], TileableType] = None,
+                 on_tile_failure: Callable[[OperandType, Tuple], List[TileableType]] = None,
+                 fuse_enabled: bool = True):
+        super().__init__(graph=graph, node_processor=node_processor,
                          inputs_selector=inputs_selector)
         self._fuse_enabled = fuse_enabled
         self._on_tile = on_tile
@@ -132,7 +143,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         return self._fuse_enabled
 
     def _tile(self,
-              tileable_data: TileableData) -> List[Tileable]:
+              tileable_data: TileableType) -> List[TileableType]:
         cache = _tileable_data_to_tiled
         on_tile = self._on_tile
 
@@ -165,7 +176,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         return tds
 
     @enter_mode(build=True, kernel=True)
-    def build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
+    def _build(self) -> Union[TileableGraph, ChunkGraph]:
         tileable_graph = self._graph
         tileables = tileable_graph.result_tileables
 
@@ -215,4 +226,120 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         if self._fuse_enabled:
             graph.compose(keys=keys)
 
-        yield graph
+        return graph
+
+    def build(self) -> Iterable[Union[EntityGraph, ChunkGraph]]:
+        yield self._build()
+
+
+@enter_mode(kernel=True)
+def _build_graph(tileables: List[TileableType],
+                 tiled: bool = False,
+                 fuse_enabled: bool = True,
+                 **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
+    """
+    Helper for test purpose.
+    """
+    tileables = list(itertools.chain(
+        *(tileable.op.outputs for tileable in tileables)))
+    tileable_graph = TileableGraph(tileables)
+    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
+    tileable_graph = next(tileable_graph_builder.build())
+    if not tiled:
+        return tileable_graph
+    chunk_graph_builder = ChunkGraphBuilder(
+        tileable_graph, fuse_enabled=fuse_enabled,
+        **chunk_graph_build_kwargs)
+    return next(chunk_graph_builder.build())
+
+
+class IterativeChunkGraphBuilder(ChunkGraphBuilder):
+    def __init__(self,
+                 graph: TileableGraph,
+                 node_processor: Callable[[EntityType], EntityType] = None,
+                 inputs_selector: Callable[[List[EntityType]], List[EntityType]] = None,
+                 on_tile: Callable[[List[TileableType], List[TileableType]], List[TileableType]] = None,
+                 on_tile_success: Callable[[TileableType, TileableType], TileableType] = None,
+                 on_tile_failure: Callable[[OperandType, Tuple], List[TileableType]] = None,
+                 fuse_enabled: bool = True):
+
+        super().__init__(
+            graph=graph, node_processor=node_processor,
+            inputs_selector=inputs_selector, on_tile=on_tile,
+            on_tile_success=self._wrap_on_tile_success(on_tile_success),
+            on_tile_failure=self._wrap_on_tile_failure(on_tile_failure),
+            fuse_enabled=fuse_enabled)
+
+        self._interrupted_ops = set()
+        self._prev_tileable_graph = None
+        self._cur_tileable_graph = None
+        self._iterative_chunk_graphs = []
+        self._done = False
+
+    def _wrap_on_tile_failure(self, on_tile_failure):
+        def inner(op, exc_info):
+            if isinstance(exc_info[1], TilesError):
+                self._interrupted_ops.add(op)
+                partial_tiled_chunks = getattr(exc_info[1], 'partial_tiled_chunks', None)
+                if partial_tiled_chunks is not None:
+                    return partial_tiled_chunks
+            else:
+                if on_tile_failure is not None:
+                    on_tile_failure(op, exc_info)
+                else:
+                    raise exc_info[1].with_traceback(exc_info[2]) from None
+        return inner
+
+    def _wrap_on_tile_success(self, on_tile_success):
+        def inner(tile_before, tile_after):
+            # if tile succeed, add the node before tiling
+            # to current iterative tileable graph
+            if on_tile_success is not None:
+                tile_after = on_tile_success(tile_before, tile_after)
+            iterative_tileable_graph = self._cur_tileable_graph
+            iterative_tileable_graph.add_node(tile_before)
+            for inp in self._prev_tileable_graph.iter_predecessors(tile_before):
+                if inp in iterative_tileable_graph:
+                    iterative_tileable_graph.add_edge(inp, tile_before)
+            return tile_after
+        return inner
+
+    @property
+    def interrupted_ops(self):
+        return self._interrupted_ops
+
+    @property
+    def prev_tileable_graph(self):
+        return self._prev_tileable_graph
+
+    @property
+    def iterative_chunk_graphs(self):
+        return self._iterative_chunk_graphs
+
+    @property
+    def done(self):
+        return self._done
+
+    def _tile(self,
+              tileable_data: TileableType):
+        if any(inp.op in self._interrupted_ops for inp in tileable_data.inputs):
+            raise TilesError('Tile fail due to failure of inputs')
+        return super()._tile(tileable_data)
+
+    @enter_mode(build=True, kernel=True)
+    def _build(self) -> Union[TileableGraph, ChunkGraph]:
+        self._interrupted_ops.clear()
+        self._prev_tileable_graph = self._graph
+        self._cur_tileable_graph = type(self._graph)(self._graph.result_tileables)
+
+        chunk_graph = super()._build()
+        self._iterative_chunk_graphs.append(chunk_graph)
+        if len(self._interrupted_ops) == 0:
+            self._done = True
+        self._prev_tileable_graph = self._cur_tileable_graph
+        self._cur_tileable_graph = None
+        return chunk_graph
+
+    def build(self) -> Iterable[Union[EntityGraph, ChunkGraph]]:
+        while not self._done:
+            yield self._build()
