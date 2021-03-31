@@ -19,6 +19,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.tests.core import require_ray
+from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
     process_placement_to_address,
@@ -62,6 +63,7 @@ def ray_cluster():
 
     yield
 
+    RayActorDriver.stop_cluster()
     ray.shutdown()
     cluster.shutdown()
 
