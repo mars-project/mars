@@ -24,7 +24,7 @@ from ..utils import (
     node_address_to_placement,
     process_placement_to_address,
     addresses_to_placement_group_info,
-    pg_info_to_node_addresses,
+    placement_group_info_to_addresses,
     get_placement_group,
     process_address_to_placement,
 )
@@ -34,7 +34,7 @@ ray = lazy_import('ray')
 
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
-TEST_ADDRESS_TO_RESOURCES = pg_info_to_node_addresses(TEST_PLACEMENT_GROUP_NAME,
+TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(TEST_PLACEMENT_GROUP_NAME,
                                                       TEST_PLACEMENT_GROUP_BUNDLES)
 
 

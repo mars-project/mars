@@ -122,7 +122,7 @@ def addresses_to_placement_group_info(address_to_resources):
     return pg_name, bundles
 
 
-def pg_info_to_node_addresses(pg_name, bundles):
+def placement_group_info_to_addresses(pg_name, bundles):
     addresses = {}
     for bundle_index, bundle_resources in enumerate(bundles):
         address = node_placement_to_address(pg_name, bundle_index)
