@@ -887,7 +887,7 @@ class MainActorPoolBase(ActorPoolBase):
             actor_pool_config: ActorPoolConfig,
             process_index: int,
             start_method: str = None):
-        pass
+        raise NotImplementedError
 
     def attach_sub_process(self,
                            external_address: str,
@@ -934,11 +934,11 @@ class MainActorPoolBase(ActorPoolBase):
 
     @abstractmethod
     def kill_sub_pool(self, process: SubProcessHandle):
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     async def is_sub_pool_alive(self, process: SubProcessHandle):
-        pass
+        raise NotImplementedError
 
     def process_sub_pool_lost(self, address: str):
         if self._auto_recover in (False, 'process'):
@@ -983,7 +983,7 @@ class MainActorPoolBase(ActorPoolBase):
     @abstractmethod
     def get_external_addresses(
             cls, address: str, n_process: int = None, ports: List[int] = None):
-        pass
+        raise NotImplementedError
 
 
 async def create_actor_pool(address: str,

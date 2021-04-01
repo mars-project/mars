@@ -30,7 +30,7 @@ from mars.oscar.backends.mars.pool import SubActorPool
 from mars.oscar.backends.message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
     ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
-    CancelMessage, ControlMessageType, MessageType
+    CancelMessage, ErrorMessage, ControlMessageType, MessageType
 from mars.oscar.backends.pool import create_actor_pool
 from mars.oscar.backends.router import Router
 from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
@@ -294,6 +294,11 @@ async def test_main_actor_pool():
         message = await pool.destroy_actor(destroy_actor_message)
         assert message.result == actor_ref1.uid
 
+        tell_message = TellMessage(
+            new_message_id(), actor_ref1, ('add', 0, (2,), dict()))
+        message = await pool.tell(tell_message)
+        assert isinstance(message, ErrorMessage)
+
         # destroy via connecting to sub pool directly
         async with await pool.router.get_client(
                 config.get_external_addresses()[-1]) as client:
@@ -352,6 +357,9 @@ async def test_create_actor_pool():
         assert await task == 5
         await ctx.destroy_actor(actor_ref)
         assert (await ctx.has_actor(actor_ref)) is False
+        for f in actor_ref.add, ctx.actor_ref, ctx.destroy_actor:
+            with pytest.raises(ActorNotExist):
+                await f(actor_ref)
 
         # actor on sub pool
         actor_ref1 = await ctx.create_actor(TestActor, uid='test-main',
