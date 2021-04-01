@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import wraps
+from typing import Dict
+
 from ..serialization.serializables import Serializable, StringField
+from ..serialization.serializables.core import SerializableSerializer
 from ..utils import tokenize
 
 
@@ -93,3 +97,28 @@ class Base(Serializable):
     @property
     def id(self):
         return self._id
+
+
+def buffered(func):
+    @wraps(func)
+    def wrapped(self, obj: Base, context: Dict):
+        obj_id = (obj.key, obj.id)
+        if obj_id in context:
+            return {
+                       'id': id(context[obj_id]),
+                       'serializer': 'ref',
+                       'buf_num': 0,
+                   }, []
+        else:
+            context[obj_id] = obj
+            return func(self, obj, context)
+    return wrapped
+
+
+class BaseSerializer(SerializableSerializer):
+    @buffered
+    def serialize(self, obj: Serializable, context: Dict):
+        return super().serialize(obj, context)
+
+
+BaseSerializer.register(Base)

@@ -49,14 +49,14 @@ class StatsModelsTrain(MergeDictOperand):
     def __init__(self, exog=None, endog=None, num_partitions=None, partition_id=None,
                  factor=None, model_class=None, init_kwds=None, fit_kwds=None,
                  estimation_method=None, estimation_kwds=None, join_method=None,
-                 join_kwds=None, results_class=None, results_kwds=None, stage=None, **kw):
+                 join_kwds=None, results_class=None, results_kwds=None, **kw):
         super().__init__(_exog=exog, _endog=endog, _num_partitions=num_partitions,
                          _partition_id=partition_id, _factor=factor,
                          _model_class=model_class, _init_kwds=init_kwds,
                          _fit_kwds=fit_kwds, _estimation_method=estimation_method,
                          _estimation_kwds=estimation_kwds, _join_method=join_method,
                          _join_kwds=join_kwds, _results_class=results_class,
-                         _results_kwds=results_kwds, _stage=stage, **kw)
+                         _results_kwds=results_kwds, **kw)
 
     @property
     def exog(self):
@@ -151,7 +151,7 @@ class StatsModelsTrain(MergeDictOperand):
             new_op._factor = None
             new_op._partition_id = part_id
             new_op._num_partitions = num_partitions
-            new_op._stage = OperandStage.map
+            new_op.stage = OperandStage.map
 
             map_chunks.append(new_op.new_chunk(
                 [exog_chunk, endog_chunk], index=exog_chunk.index))
@@ -160,7 +160,7 @@ class StatsModelsTrain(MergeDictOperand):
         new_op = op.copy().reset_key()
         new_op._factor = None
         new_op._num_partitions = num_partitions
-        new_op._stage = OperandStage.combine
+        new_op.stage = OperandStage.combine
 
         combine_chunk = new_op.new_chunk(map_chunks, index=(0,))
 

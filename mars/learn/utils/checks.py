@@ -35,11 +35,9 @@ class CheckBase(LearnOperand, LearnOperandMixin):
     _value = KeyField('value')
     _err_msg = StringField('err_msg')
 
-    def __init__(self, input=None, value=None, err_msg=None, stage=None,
-                 gpu=None, output_types=None, **kw):
+    def __init__(self, input=None, value=None, err_msg=None, output_types=None, **kw):
         super().__init__(_input=input, _value=value, _err_msg=err_msg,
-                         _stage=stage, _output_types=output_types,
-                         _gpu=gpu, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -64,7 +62,7 @@ class CheckBase(LearnOperand, LearnOperandMixin):
         # output input if value not specified
         self._value = value = value if value is not None else x
         self.output_types = get_output_types(value)
-        self._stage = OperandStage.agg
+        self.stage = OperandStage.agg
         return self.new_tileable([x, value],
                                  kws=[value.params])
 

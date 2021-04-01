@@ -26,10 +26,10 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ...context import RunningMode
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, StringField, Int64Field, \
     Int32Field, BoolField, Int8Field
-from ...tiles import TilesError
 from ...tensor import tensor as astensor
 from ...tensor.core import TensorOrder
 from ...tensor.random import RandomState

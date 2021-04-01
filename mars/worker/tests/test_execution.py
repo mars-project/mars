@@ -24,7 +24,7 @@ from numpy.testing import assert_array_equal
 
 from mars import promise
 from mars.config import options
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.errors import WorkerProcessStopped, ExecutionInterrupted, DependencyMissing
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ChunkMetaActor, ResourceActor
@@ -102,7 +102,7 @@ class ExecutionTestActor(WorkerActor):
 
         import mars.tensor as mt
         arr = mt.ones((4,), chunk_size=4) + 1
-        graph = arr.build_graph(compose=False, tiled=True)
+        graph = arr.build_graph(fuse_enabled=False, tiled=True)
 
         arr = get_tiled(arr)
         self._array_key = arr.chunks[0].key
@@ -183,7 +183,7 @@ class Test(WorkerCase):
             arr = mt.ones((10, 8), chunk_size=10)
             arr_add = mt.ones((10, 8), chunk_size=10)
             arr2 = arr + arr_add
-            graph = arr2.build_graph(compose=False, tiled=True)
+            graph = arr2.build_graph(fuse_enabled=False, tiled=True)
 
             arr = get_tiled(arr)
             arr2 = get_tiled(arr2)
@@ -261,7 +261,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = result_tensor.build_graph(fuse_enabled=False, tiled=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -315,7 +315,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = result_tensor.build_graph(fuse_enabled=False, tiled=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -378,7 +378,7 @@ class Test(WorkerCase):
 
             import mars.tensor as mt
             arr = mt.ones((10, 8), chunk_size=10)
-            graph = arr.build_graph(compose=False, tiled=True)
+            graph = arr.build_graph(fuse_enabled=False, tiled=True)
 
             arr = get_tiled(arr)
 
@@ -473,7 +473,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = result_tensor.build_graph(fuse_enabled=False, tiled=True)
 
             arr_add = get_tiled(arr_add)
             result_tensor = get_tiled(result_tensor)
@@ -544,7 +544,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = result_tensor.build_graph(fuse_enabled=False, tiled=True)
             result_tensor = get_tiled(result_tensor)
             result_key = result_tensor.chunks[0].key
 
@@ -583,7 +583,7 @@ class Test(WorkerCase):
             arr = mt.ones((4,), chunk_size=4)
             arr_add = mt.array(mock_data)
             result_tensor = arr + arr_add
-            graph = result_tensor.build_graph(compose=False, tiled=True)
+            graph = result_tensor.build_graph(fuse_enabled=False, tiled=True)
 
             result_tensor = get_tiled(result_tensor)
 

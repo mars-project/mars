@@ -555,7 +555,3 @@ class TensorCumReduction(TensorHasInput):
     @property
     def axis(self):
         return getattr(self, '_axis', None)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)

@@ -30,13 +30,13 @@ except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
 import mars.tensor as mt
+from mars.core import get_tiled
 from mars.session import new_session
 from mars.learn.neighbors import NearestNeighbors
 from mars.learn.proxima.core import proxima
 from mars.lib.sparse import SparseNDArray
 from mars.tests.core import ExecutorForTest
 from mars.tests.core import require_cupy
-from mars.tiles import get_tiled
 from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
@@ -268,11 +268,6 @@ class Test(unittest.TestCase):
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
 
-        # test serialization
-        graph = ret[0].build_graph()
-        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
-        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
-
         # test fit a sklearn tree
         nn = NearestNeighbors(n_neighbors=3)
         nn.fit(snn._tree)
@@ -282,11 +277,6 @@ class Test(unittest.TestCase):
         self.assertEqual(nn._fit_method, snn._fit_method)
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
-
-        # test serialization
-        graph = ret[0].build_graph()
-        self.assertEqual(len(graph.from_pb(graph.to_pb())), len(graph))
-        self.assertEqual(len(graph.from_json(graph.to_json())), len(graph))
 
     def testKNeighborsGraphExecution(self):
         rs = np.random.RandomState(0)

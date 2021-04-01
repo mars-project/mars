@@ -260,11 +260,11 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
     def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
                  state=None, init_iter=None, oversampling_factor=None,
-                 output_types=None, stage=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_x=x, _n_clusters=n_clusters, _x_squared_norms=x_squared_norms,
                          _state=state, _init_iter=init_iter,
                          _oversampling_factor=oversampling_factor,
-                         _stage=stage, _output_types=output_types, **kw)
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
 

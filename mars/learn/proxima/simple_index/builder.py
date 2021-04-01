@@ -215,8 +215,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         final_out_chunks = []
         for j, chunks in enumerate(out_chunks):
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
-            chunk_op._expect_worker = chunks[0].op.expect_worker
+            chunk_op.stage = OperandStage.map
+            chunk_op.expect_worker = chunks[0].op.expect_worker
             chunk_op._array_shape = chunks[0].op.total_shape
             chunk_op._array_dtype = chunks[0].dtype
             chunk_op._offset = offsets[j]

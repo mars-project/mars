@@ -205,7 +205,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                             continue
                     nodes.extend(c.data for c in td.chunks)
                     if t in tileables_set:
-                        result_chunks.extend(td.chunks)
+                        result_chunks.extend(c.data for c in td.chunks)
                         keys.extend(c.key for c in td.chunks)
                     self._add_nodes(graph, nodes, visited)
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover

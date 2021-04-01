@@ -627,14 +627,23 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                     raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
                                          % (tiled.chunks[cid].op, shape, chunk_shape))
 
+    @staticmethod
+    def _check_graph(graph):
+        for chunk in graph:
+            for inp in chunk.inputs:
+                assert inp in graph, f'{inp} not in graph'
+        for chunk in graph.results:
+            try:
+                assert chunk in graph, f'{chunk} not in graph'
+            except AssertionError:
+                raise
+
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             raw_graph = graph
 
-            from ..utils import Timer
-            with Timer() as t:
-                graph = deserialize(*serialize(raw_graph))
-            print('cost', t.duration)
+            graph = deserialize(*serialize(raw_graph))
+            self._check_graph(graph)
 
             if kw.get('compose', True):
                 # decompose the raw graph

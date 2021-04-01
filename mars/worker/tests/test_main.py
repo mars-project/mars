@@ -25,7 +25,7 @@ import gevent
 
 from mars.actors import register_actor_implementation
 from mars.config import options
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.promise import PromiseActor
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ResourceActor, ChunkMetaActor, SessionManagerActor

@@ -223,11 +223,11 @@ class PairwiseDistancesTopk(PairwiseDistances):
     @property
     def output_limit(self):
         return 1 if not self._return_index or \
-                    self._stage == OperandStage.map else 2
+                    self.stage == OperandStage.map else 2
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.agg:
+        if self.stage != OperandStage.agg:
             self._x = self._inputs[0]
             self._y = self._inputs[1]
         else:
@@ -324,7 +324,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
                     y_chunk = Y.cix[j, 0]
                     chunk_op = op.copy().reset_key()
                     chunk_op._y_offset = y_acc_chunk_shapes[j]
-                    chunk_op._stage = OperandStage.map
+                    chunk_op.stage = OperandStage.map
                     o = chunk_op.new_chunk([x_chunk, y_chunk],
                                            shape=(x_chunk.shape[0], k),
                                            order=TensorOrder.C_ORDER,
@@ -339,7 +339,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
                                              index=(i, 0))
 
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = OperandStage.agg
+                chunk_op.stage = OperandStage.agg
                 distance_params = {
                     'shape': (x_chunk.shape[0], k),
                     'order': TensorOrder.C_ORDER,

@@ -780,7 +780,7 @@ class Executor(object):
         tileable_data_to_concat_keys = weakref.WeakKeyDictionary()
         tileable_data_to_chunks = weakref.WeakKeyDictionary()
 
-        node_to_fetch = weakref.WeakKeyDictionary()
+        node_to_fetch = dict()
         skipped_tileables = set()
 
         def _generate_fetch_tileable(node):
@@ -813,13 +813,13 @@ class Executor(object):
         def _generate_fetch_if_executed(nd):
             # node processor that if the node is executed
             # replace it with a fetch node
-            _to_fetch = node_to_fetch  # noqa: F821
             if nd.key not in chunk_result:
                 return nd
-            if nd in _to_fetch:
-                return _to_fetch[nd]
+            _to_fetch = node_to_fetch  # noqa: F821
+            if (nd.key, nd.id) in _to_fetch:
+                return _to_fetch[nd.key, nd.id]
             fn = build_fetch(nd).data
-            _to_fetch[nd] = fn
+            _to_fetch[nd.key, nd.id] = fn
             return fn
 
         def _on_tile_success(before_tile_data, after_tile_data):

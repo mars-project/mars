@@ -34,8 +34,13 @@ class Fusion:
             head_node = c[0]
             tail_node = c[-1]
             fuse_chunk = build_fuse_chunk(
-                c, tail_node.op.get_fuse_op_cls(tail_node), None, None)
+                c, tail_node.op.get_fuse_op_cls(tail_node), None, None).data
             self._graph.add_node(fuse_chunk)
+            try:
+                result_index = self._graph.results.index(tail_node)
+                self._graph.results[result_index] = fuse_chunk
+            except ValueError:
+                pass
             for node in self._graph.iter_successors(tail_node):
                 self._graph.add_edge(fuse_chunk, node)
                 # replace inputs

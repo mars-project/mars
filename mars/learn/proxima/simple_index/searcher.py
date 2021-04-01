@@ -68,7 +68,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                          _index_searcher=index_searcher, _index_searcher_params=index_searcher_params,
                          _index_reformer=index_reformer, _index_reformer_params=index_reformer_params,
                          _download_index=download_index, _output_types=output_types, _topk=topk,
-                         _stage=stage, _storage_options=storage_options, **kw)
+                         _storage_options=storage_options, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor, OutputType.tensor]
 
@@ -160,8 +160,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         download_chunks = defaultdict(list)
         for i, worker in enumerate(workers):
             download_op = op.copy().reset_key()
-            download_op._stage = OperandStage.map
-            download_op._expect_worker = worker
+            download_op.stage = OperandStage.map
+            download_op.expect_worker = worker
             download_op._download_index = True
             download_op._tensor = None
             download_op._index = next(indexes_iter)
@@ -218,11 +218,11 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             for j, chunk_index, worker in \
                     zip(itertools.count(), built_indexes[i], index_chunks_workers):
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = OperandStage.map
+                chunk_op.stage = OperandStage.map
                 if hasattr(index, 'op'):
-                    chunk_op._expect_worker = worker
+                    chunk_op.expect_worker = worker
                 else:
-                    chunk_op._expect_worker = chunk_index.op.expect_worker
+                    chunk_op.expect_worker = chunk_index.op.expect_worker
                 chunk_op._index = chunk_index
                 chunk_op._tensor = None
                 chunk_kws = [
@@ -258,7 +258,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                     to_combine_distances = tensor_out_chunks[1][k * combine_size: (k + 1) * combine_size]
 
                     chunk_op = op.copy().reset_key()
-                    chunk_op._stage = OperandStage.agg
+                    chunk_op.stage = OperandStage.agg
                     chunk_op._tensor = None
                     chunk_op._index = None
                     agg_chunk_kws = [

@@ -15,7 +15,7 @@
 from functools import partial
 from typing import Dict, Tuple, List, Type, Any
 
-from ..core import DictSerializer, Placeholder, buffered
+from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
 
 
@@ -67,7 +67,7 @@ class Serializable(metaclass=SerializableMeta):
             object.__setattr__(self, key, val)
 
 
-class SerializableSerializer(DictSerializer):
+class SerializableSerializer(Serializer):
     """
     Leverage DictSerializer to perform serde.
     """

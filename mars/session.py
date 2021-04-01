@@ -28,7 +28,7 @@ from .core.operand import Fetch
 from .context import get_context, LocalContext
 from .executor import Executor
 from .config import options
-from .utils import classproperty, calc_nsplits
+from .utils import classproperty, calc_nsplits, serialize_graph
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -296,7 +296,7 @@ class ClusterSession(object):
 
         if len(graph) > 0:
             # submit graph to local cluster
-            self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
+            self._api.submit_graph(self._session_id, serialize_graph(graph),
                                    graph_key, targets, compose=compose, names=name)
 
             ctx = get_context()

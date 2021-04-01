@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Iterable
 
 from ...core import Tileable, Chunk
 from ...serialization.core import buffered
@@ -25,7 +25,7 @@ class EntityGraph(DAG):
     pass
 
 
-class TileableGraph(EntityGraph):
+class TileableGraph(EntityGraph, Iterable[Tileable]):
     _result_tileables: List[Tileable]
 
     def __init__(self, result_tileables: List[Tileable] = None):
@@ -40,8 +40,12 @@ class TileableGraph(EntityGraph):
     def results(self):
         return self._result_tileables
 
+    @results.setter
+    def results(self, new_results):
+        self._result_tileables = new_results
 
-class ChunkGraph(EntityGraph):
+
+class ChunkGraph(EntityGraph, Iterable[Chunk]):
     _result_chunks: List[Chunk]
 
     def __init__(self, result_chunks: List[Chunk] = None):
@@ -56,19 +60,34 @@ class ChunkGraph(EntityGraph):
     def results(self):
         return self._result_chunks
 
+    @results.setter
+    def results(self, new_results):
+        self._result_chunks = new_results
+
 
 class SerializableGraph(Serializable):
     _is_chunk = BoolField('is_chunk')
+    # TODO(qinxuye): remove this logic when we handle fetch elegantly,
+    # now, the node in the graph and inputs for operand may be inconsistent,
+    # for example, an operand's inputs may be chunks,
+    # but in the graph, the predecessors are all fetch chunks,
+    # we serialize the fetch chunks first to make sure when operand's inputs
+    # are serialized, they will just be marked as serialized and skip serialization.
+    _fetch_nodes = ListField('fetch_nodes')
     _nodes = DictField('nodes')
     _predecessors = DictField('predecessors')
     _successors = DictField('successors')
     _results = ListField('results')
 
     @classmethod
-    def from_graph(cls, graph: Union[TileableGraph, ChunkGraph]):
+    def from_graph(cls, graph: Union[TileableGraph, ChunkGraph]) -> "SerializableGraph":
+        from ..operand import Fetch
+
         is_chunk = isinstance(graph, ChunkGraph)
         return SerializableGraph(
             _is_chunk=is_chunk,
+            _fetch_nodes=[chunk for chunk in graph
+                          if isinstance(chunk.op, Fetch)],
             _nodes=graph._nodes,
             _predecessors=graph._predecessors,
             _successors=graph._successors,

@@ -17,10 +17,10 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.core import get_tiled
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
 from mars.session import new_session
-from mars.tiles import get_tiled
 from mars.tests.core import TestBase, ExecutorForTest
 
 

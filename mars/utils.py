@@ -625,7 +625,7 @@ def get_chunk_shuffle_key(chunk):
     try:
         return op.shuffle_key
     except AttributeError:
-        from .operands import Fuse
+        from .core.operand import Fuse
         if isinstance(op, Fuse):
             return chunk.composed[0].op.shuffle_key
         else:  # pragma: no cover
@@ -1015,6 +1015,9 @@ def prune_chunk_graph(chunk_graph, result_chunk_keys):
     for n in list(chunk_graph):
         if n not in marked:
             chunk_graph.remove_node(n)
+
+    chunk_graph.results = [r for r in chunk_graph.results
+                           if r.key in result_chunk_keys]
 
 
 @functools.lru_cache(500)

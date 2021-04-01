@@ -19,7 +19,7 @@ import uuid
 import numpy as np
 
 from mars.errors import StorageFull
-from mars.graph import DAG
+from mars.core import ChunkGraph
 from mars.utils import get_next_port, serialize_graph
 from mars.scheduler import ChunkMetaActor
 from mars.scheduler.utils import SchedulerClusterInfoActor
@@ -77,11 +77,11 @@ class Test(WorkerCase):
         add_chunk = TensorTreeAdd(args=inputs, dtype=data_list[0].dtype) \
             .new_chunk(inputs, shape=data_list[0].shape)
 
-        exec_graph = DAG()
-        exec_graph.add_node(add_chunk)
+        exec_graph = ChunkGraph([add_chunk.data])
+        exec_graph.add_node(add_chunk.data)
         for input_chunk in inputs:
-            exec_graph.add_node(input_chunk)
-            exec_graph.add_edge(input_chunk, add_chunk)
+            exec_graph.add_node(input_chunk.data)
+            exec_graph.add_edge(input_chunk.data, add_chunk.data)
         return exec_graph, inputs, add_chunk
 
     def testCpuCalcSingleFetches(self):
