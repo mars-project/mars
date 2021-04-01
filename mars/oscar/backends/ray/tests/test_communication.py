@@ -3,8 +3,8 @@ import asyncio
 import pytest
 
 from mars.tests.core import require_ray
-from ...communication.core import gen_internal_address
 from ..communication import ChannelID, Channel, RayServer, RayClient
+from ...communication.core import gen_internal_address
 from ...router import Router
 from .....utils import lazy_import
 
@@ -17,7 +17,6 @@ def ray_cluster_shared():
     yield
     ray.shutdown()
     Router.set_instance(None)
-    RayServer.clear()
 
 
 class ServerActor:

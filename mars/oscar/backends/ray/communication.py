@@ -58,16 +58,12 @@ class RayChannelBase(Channel, ABC):
         super().__init__(local_address=local_address,
                          dest_address=dest_address,
                          compression=compression)
-        self._channel_index = channel_index or RayChannelBase.next_channel_index()
+        self._channel_index = channel_index or next(self._channel_index_gen)
         self._channel_id = channel_id or ChannelID(local_address, dest_address, self._channel_index)
         # ray actor should be created with the address as the name.
         self.peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address) if dest_address else None
         self._in_queue = asyncio.Queue()
         self._closed = asyncio.Event()
-
-    @classmethod
-    def next_channel_index(cls):
-        return next(cls._channel_index_gen)
 
     @property
     def channel_id(self) -> ChannelID:
@@ -141,9 +137,7 @@ class RayOneWayServerChannel(RayChannelBase):
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
-        # Current process is ray actor, peer is ray driver.
-        # We can't ray call to ray driver for message send, so we use ray call reply
-        # to send message to ray driver.
+        # Current process is ray actor, we use ray call reply to send message to ray driver/driver.
         # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
         await self._out_queue.put(message)
@@ -163,6 +157,8 @@ class RayOneWayServerChannel(RayChannelBase):
 
     async def __on_ray_recv__(self, message):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
+        if self._closed.is_set():  # pragma: no cover
+            raise ChannelClosed('Channel already closed')
         self._msg_recv_counter += 1
         await self._in_queue.put(message)
         return await self._out_queue.get()
@@ -172,8 +168,6 @@ class RayOneWayServerChannel(RayChannelBase):
 class RayServer(Server):
     __slots__ = '_closed', '_address', '_channels', '_tasks'
 
-    # Multiple instances for ray local mode
-    _address_to_instances: Dict[str, "RayServer"] = dict()
     scheme = 'ray'
 
     def __init__(self, address, channel_handler: Callable[[Channel], Coroutine] = None):
@@ -182,14 +176,6 @@ class RayServer(Server):
         self._closed = asyncio.Event()
         self._channels: Dict[ChannelID, RayOneWayServerChannel] = dict()
         self._tasks: Dict[ChannelID, asyncio.Task] = dict()
-
-    @classmethod
-    def get_instance(cls, address):
-        return cls._address_to_instances.get(address)
-
-    @classmethod
-    def clear(cls):
-        cls._address_to_instances = dict()
 
     @classproperty
     @implements(Server.client_type)
@@ -214,10 +200,7 @@ class RayServer(Server):
         if config:  # pragma: no cover
             raise TypeError(f'Creating RayServer got unexpected '
                             f'arguments: {",".join(config)}')
-        server = RayServer.get_instance(address)
-        if not server:
-            server = RayServer(address, handle_channel)
-            RayServer._address_to_instances[address] = server
+        server = RayServer(address, handle_channel)
         return server
 
     @implements(Server.start)
@@ -247,7 +230,6 @@ class RayServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        del RayServer._address_to_instances[self.address]
 
     @property
     @implements(Server.stopped)
@@ -286,10 +268,6 @@ class RayClient(Client):
         if urlparse(dest_address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Destination address should start with "ray://" '
                              f'for RayClient, got {dest_address}')
-        server = RayServer.get_instance(local_address)
-        if server is None and local_address:  # pragma: no cover
-            raise RuntimeError(f'RayServer needs to be created first before RayClient '
-                               f'local_address {local_address}, dest_address {dest_address}')
         client_channel = RayOneWayClientChannel(dest_address)
         client = RayClient(local_address, dest_address, client_channel)
         return client

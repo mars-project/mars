@@ -16,9 +16,8 @@ import logging
 from numbers import Number
 from typing import Dict
 
-from .communication import RayServer
 from .pool import RayMainPool
-from .utils import process_placement_to_address, node_addresses_to_pg_info
+from .utils import process_placement_to_address, addresses_to_placement_group_info
 from ...driver import BaseActorDriver
 from ....utils import lazy_import
 
@@ -32,7 +31,7 @@ class RayActorDriver(BaseActorDriver):
     @classmethod
     def setup_cluster(cls, address_to_resources: Dict[str, Dict[str, Number]]):
         logger.info("Setup cluster with %s", address_to_resources)
-        pg_name, bundles = node_addresses_to_pg_info(address_to_resources)
+        pg_name, bundles = addresses_to_placement_group_info(address_to_resources)
         logger.info("Creating placement group %s with bundles %s.", pg_name, bundles)
         pg = ray.util.placement_group(name=pg_name,
                                       bundles=bundles,
@@ -71,5 +70,4 @@ class RayActorDriver(BaseActorDriver):
                     pass
         ray.util.remove_placement_group(pg)
         cls._cluster_info = dict()
-        RayServer.clear()
         logger.info('Stopped cluster %s.', pg_name)

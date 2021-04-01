@@ -102,7 +102,7 @@ def node_placement_to_address(pg_name, bundle_index):
     return f"ray://{pg_name}/{bundle_index}"
 
 
-def node_addresses_to_pg_info(address_to_resources):
+def addresses_to_placement_group_info(address_to_resources):
     bundles = {}
     pg_name = None
     for address, bundle_resources in address_to_resources.items():

@@ -18,7 +18,6 @@ import types
 import pytest
 
 from mars.tests.core import require_ray
-from ..communication import RayServer
 from ..pool import RayMainPool
 from ..utils import process_placement_to_address
 from ...mars.tests import test_mars_actor_context
@@ -94,7 +93,6 @@ def actor_pool_context():
             ray.kill(ray.get_actor(addr))
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
-    RayServer.clear()
     Router.set_instance(None)
 
 

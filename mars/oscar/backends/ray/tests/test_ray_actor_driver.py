@@ -23,7 +23,7 @@ from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
     process_placement_to_address,
-    node_addresses_to_pg_info,
+    addresses_to_placement_group_info,
     pg_info_to_node_addresses,
     get_placement_group,
     process_address_to_placement,
@@ -118,25 +118,25 @@ def test_address_to_pg_bundle():
         node_address_to_placement("ray://")
 
 
-def test_node_addresses_to_pg_info():
+def test_addresses_to_placement_group_info():
     # Missing bundle index 1
     with pytest.raises(ValueError):
-        node_addresses_to_pg_info({"ray://127.0.0.1/0": {"CPU": 1},
-                                   "ray://127.0.0.1/2": {"CPU": 1}})
+        addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1},
+                                           "ray://127.0.0.1/2": {"CPU": 1}})
     # The bundle index is not starts from 0
     with pytest.raises(ValueError):
-        node_addresses_to_pg_info({"ray://127.0.0.1/1": {"CPU": 1}})
-    pg_name, bundles = node_addresses_to_pg_info({"ray://127.0.0.1/0": {"CPU": 1}})
+        addresses_to_placement_group_info({"ray://127.0.0.1/1": {"CPU": 1}})
+    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/0": {"CPU": 1}})
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 1}]
-    pg_name, bundles = node_addresses_to_pg_info({"ray://127.0.0.1/4": {"CPU": 4},
-                                                  "ray://127.0.0.1/2": {"CPU": 2},
-                                                  "ray://127.0.0.1/1": {"CPU": 1},
-                                                  "ray://127.0.0.1/3": {"CPU": 3},
-                                                  "ray://127.0.0.1/0": {"CPU": 0}})
+    pg_name, bundles = addresses_to_placement_group_info({"ray://127.0.0.1/4": {"CPU": 4},
+                                                          "ray://127.0.0.1/2": {"CPU": 2},
+                                                          "ray://127.0.0.1/1": {"CPU": 1},
+                                                          "ray://127.0.0.1/3": {"CPU": 3},
+                                                          "ray://127.0.0.1/0": {"CPU": 0}})
     assert pg_name == "127.0.0.1"
     assert bundles == [{"CPU": 0}, {"CPU": 1}, {"CPU": 2}, {"CPU": 3}, {"CPU": 4}]
-    pg_name, bundles = node_addresses_to_pg_info(TEST_ADDRESS_TO_RESOURCES)
+    pg_name, bundles = addresses_to_placement_group_info(TEST_ADDRESS_TO_RESOURCES)
     assert pg_name == TEST_PLACEMENT_GROUP_NAME
     assert bundles == TEST_PLACEMENT_GROUP_BUNDLES
 
