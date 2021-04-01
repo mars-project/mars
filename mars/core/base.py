@@ -118,7 +118,7 @@ def buffered(func):
 class BaseSerializer(SerializableSerializer):
     @buffered
     def serialize(self, obj: Serializable, context: Dict):
-        return super().serialize(obj, context)
+        return (yield from super().serialize(obj, context))
 
 
 BaseSerializer.register(Base)

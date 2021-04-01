@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import types
 from functools import partial, wraps
 from typing import Any, Dict, List
 
@@ -135,11 +136,11 @@ class CollectionSerializer(Serializer):
     obj_type = None
 
     @staticmethod
-    def _serialize(c, context: Dict):
+    def _serialize(c):
         headers = [None] * len(c)
         buffers_list = [None] * len(c)
         for idx, obj in enumerate(c):
-            header, buffers = serialize(obj, context)
+            header, buffers = yield obj
             headers[idx] = header
             buffers_list[idx] = buffers
         return headers, buffers_list
@@ -147,7 +148,7 @@ class CollectionSerializer(Serializer):
     @buffered
     def serialize(self, obj: Any, context: Dict):
         buffers = []
-        headers_list, buffers_list = self._serialize(obj, context)
+        headers_list, buffers_list = yield from self._serialize(obj)
         for b in buffers_list:
             buffers.extend(b)
         headers = {'headers': headers_list}
@@ -155,13 +156,16 @@ class CollectionSerializer(Serializer):
             headers['obj_type'] = pickle.dumps(type(obj))
         return headers, buffers
 
-    def _iter_deserial(self, headers: Dict, buffers: List, context: Dict):
+    @staticmethod
+    def _list_deserial(headers: Dict, buffers: List):
         pos = 0
-        for sub_header in headers:
+        ret = [None] * len(headers)
+        for idx, sub_header in enumerate(headers):
             buf_num = sub_header['buf_num']
             sub_buffers = buffers[pos:pos + buf_num]
-            yield deserialize(sub_header, sub_buffers, context)
+            ret[idx] = yield sub_header, sub_buffers
             pos += buf_num
+        return ret
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         obj_type = self.obj_type
@@ -169,9 +173,9 @@ class CollectionSerializer(Serializer):
             obj_type = pickle.loads(header['obj_type'])
         if hasattr(obj_type, '_fields'):
             # namedtuple
-            return obj_type(*self._iter_deserial(header['headers'], buffers, context))
+            return obj_type(*(yield from self._list_deserial(header['headers'], buffers)))
         else:
-            return obj_type(self._iter_deserial(header['headers'], buffers, context))
+            return obj_type((yield from self._list_deserial(header['headers'], buffers)))
 
 
 class ListSerializer(CollectionSerializer):
@@ -179,7 +183,7 @@ class ListSerializer(CollectionSerializer):
     obj_type = list
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        ret = super().deserialize(header, buffers, context)
+        ret = yield from super().deserialize(header, buffers, context)
         for idx, v in enumerate(ret):
             if isinstance(v, Placeholder):
                 v.callbacks.append(partial(ret.__setitem__, idx))
@@ -191,7 +195,7 @@ class TupleSerializer(CollectionSerializer):
     obj_type = tuple
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        ret = super().deserialize(header, buffers, context)
+        ret = yield from super().deserialize(header, buffers, context)
         assert not any(isinstance(v, Placeholder) for v in ret)
         return ret
 
@@ -201,8 +205,8 @@ class DictSerializer(CollectionSerializer):
 
     @buffered
     def serialize(self, obj: Dict, context: Dict):
-        key_headers, key_buffers_list = self._serialize(obj.keys(), context)
-        value_headers, value_buffers_list = self._serialize(obj.values(), context)
+        key_headers, key_buffers_list = yield from self._serialize(obj.keys())
+        value_headers, value_buffers_list = yield from self._serialize(obj.values())
 
         buffers = []
         for b in key_buffers_list:
@@ -227,10 +231,8 @@ class DictSerializer(CollectionSerializer):
         if 'obj_type' in header:
             obj_type = pickle.loads(header['obj_type'])
 
-        keys = list(self._iter_deserial(
-            header['key_headers'], key_buffers, context))
-        values = list(self._iter_deserial(
-            header['value_headers'], value_buffers, context))
+        keys = yield from self._list_deserial(header['key_headers'], key_buffers)
+        values = yield from self._list_deserial(header['value_headers'], value_buffers)
 
         def _key_replacer(key, real_key):
             ret[real_key] = ret.pop(key)
@@ -280,32 +282,109 @@ class Placeholder:
 
 
 def serialize(obj, context: Dict = None):
-    serializer = _serial_dispatcher.get_handler(type(obj))
+    def _wrap_headers(_obj, _serializer_name, _header, _buffers):
+        if _header.get('serializer') == 'ref':
+            return _header, _buffers
+        _header['serializer'] = _serializer_name
+        _header['buf_num'] = len(_buffers)
+        _header['id'] = id(_obj)
+        return _header, _buffers
+
     context = context if context is not None else dict()
 
-    header, buffers = serializer.serialize(obj, context)
-    if header.get('serializer') == 'ref':
-        return header, buffers
+    serializer = _serial_dispatcher.get_handler(type(obj))
+    result = serializer.serialize(obj, context)
 
-    header['serializer'] = serializer.serializer_name
-    header['buf_num'] = len(buffers)
-    header['id'] = id(obj)
-    return header, buffers
+    if not isinstance(result, types.GeneratorType):
+        # result is not a generator, return directly
+        header, buffers = result
+        return _wrap_headers(obj, serializer.serializer_name, header, buffers)
+    else:
+        # result is a generator, iter it till final result
+        gen_stack = [(result, obj, serializer.serializer_name)]
+        last_serial = None
+        while gen_stack:
+            gen, call_obj, ser_name = gen_stack[-1]
+            try:
+                gen_to_serial = gen.send(last_serial)
+                gen_serializer = _serial_dispatcher.get_handler(type(gen_to_serial))
+                gen_result = gen_serializer.serialize(gen_to_serial, context)
+                if isinstance(gen_result, types.GeneratorType):
+                    # when intermediate result still generator, push its contexts
+                    # into stack and handle it first
+                    gen_stack.append(
+                        (gen_result, gen_to_serial, gen_serializer.serializer_name)
+                    )
+                    # result need to be emptied to run the generator
+                    last_serial = None
+                else:
+                    # when intermediate result is not generator, pass it
+                    # to the generator again
+                    last_serial = _wrap_headers(
+                        gen_to_serial, gen_serializer.serializer_name, *gen_result)
+            except StopIteration as si:
+                # when current generator finishes, jump to the previous one
+                # and pass final result to it
+                gen_stack.pop()
+                last_serial = _wrap_headers(call_obj, ser_name, *si.value)
+
+        return last_serial
 
 
 def deserialize(header: Dict, buffers: List, context: Dict = None):
-    context = context if context is not None else dict()
+    def _deserialize(_header, _buffers):
+        serializer_name = _header['serializer']
+        obj_id = _header['id']
+        if serializer_name == 'ref':
+            try:
+                result = context[obj_id]
+            except KeyError:
+                result = context[obj_id] = Placeholder(obj_id)
+        else:
+            serializer = _deserializers[serializer_name]
+            result = serializer.deserialize(_header, _buffers, context)
+            if not isinstance(result, types.GeneratorType):
+                _fill_context(obj_id, result)
+        return result
 
-    serializer_name = header['serializer']
-    obj_id = header['id']
-    if serializer_name == 'ref':
-        if obj_id not in context:
-            context[obj_id] = Placeholder(obj_id)
-    else:
-        serializer = _deserializers[serializer_name]
-        deserialized = serializer.deserialize(header, buffers, context)
-        context_val, context[obj_id] = context.get(obj_id), deserialized
+    def _fill_context(obj_id, result):
+        context_val, context[obj_id] = context.get(obj_id), result
         if isinstance(context_val, Placeholder):
             for cb in context_val.callbacks:
-                cb(deserialized)
-    return context[obj_id]
+                cb(result)
+
+    context = context if context is not None else dict()
+
+    deserialized = _deserialize(header, buffers)
+    if not isinstance(deserialized, types.GeneratorType):
+        # result is not a generator, return directly
+        return deserialized
+    else:
+        # result is a generator, iter it till final result
+        gen_stack = [(deserialized, (header, buffers))]
+        last_deserial = None
+        while gen_stack:
+            gen, to_deserial = gen_stack[-1]
+            try:
+                gen_to_deserial = gen.send(last_deserial)
+                gen_deserialized = _deserialize(*gen_to_deserial)
+                if isinstance(gen_deserialized, types.GeneratorType):
+                    # when intermediate result still generator, push its contexts
+                    # into stack and handle it first
+                    gen_stack.append(
+                        (gen_deserialized, gen_to_deserial)
+                    )
+                    # result need to be emptied to run the generator
+                    last_deserial = None
+                else:
+                    # when intermediate result is not generator, pass it
+                    # to the generator again
+                    last_deserial = gen_deserialized
+            except StopIteration as si:
+                # when current generator finishes, jump to the previous one
+                # and pass final result to it
+                gen_stack.pop()
+                last_deserial = si.value
+                # remember to fill Placeholders when some result is generated
+                _fill_context(to_deserial[0]['id'], last_deserial)
+        return last_deserial

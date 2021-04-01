@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from functools import partial
-from typing import Dict, Tuple, List, Type, Any
+from typing import Any, Dict, Generator, List, Type, Tuple
 
 from ..core import Serializer, Placeholder, buffered
 from .field import Field, OneOfField
@@ -93,14 +93,13 @@ class SerializableSerializer(Serializer):
     def serialize(self, obj: Serializable, context: Dict):
         tag_to_values = self._get_tag_to_values(obj)
 
-        from ..core import serialize
         keys = [None] * len(tag_to_values)
         value_headers = [None] * len(tag_to_values)
         value_sizes = [0] * len(tag_to_values)
         value_buffers = []
         for idx, (key, val) in enumerate(tag_to_values.items()):
             keys[idx] = key
-            value_headers[idx], val_buf = serialize(val, context)
+            value_headers[idx], val_buf = yield val
             value_sizes[idx] = len(val_buf)
             value_buffers.extend(val_buf)
 
@@ -112,15 +111,15 @@ class SerializableSerializer(Serializer):
         }
         return header, value_buffers
 
-    def deserialize(self, header: Dict, buffers: List, context: Dict) -> Serializable:
+    def deserialize(self, header: Dict, buffers: List,
+                    context: Dict) -> Generator[Any, Any, Serializable]:
         obj_class: Type[Serializable] = header.pop('class')
 
-        from ..core import deserialize
         tag_to_values = dict()
         pos = 0
         for key, value_header, value_size in \
                 zip(header['keys'], header['value_headers'], header['value_sizes']):
-            tag_to_values[key] = deserialize(value_header, buffers[pos:pos + value_size], context)
+            tag_to_values[key] = yield value_header, buffers[pos:pos + value_size]
             pos += value_size
 
         for field in obj_class._FIELDS.values():

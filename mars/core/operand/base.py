@@ -222,7 +222,7 @@ class OperandDeserializer(SerializableSerializer):
                     buffers: List,
                     context: Dict) -> Operand:
         # convert outputs back to weak-refs
-        operand: Operand = super().deserialize(header, buffers, context)
+        operand: Operand = yield from super().deserialize(header, buffers, context)
         for i, out in enumerate(operand._outputs):
             def cb(o, index):
                 operand._outputs[index] = weakref.ref(o)
