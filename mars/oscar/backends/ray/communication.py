@@ -44,7 +44,7 @@ class RayChannelBase(Channel, ABC):
     """
     Channel for communications between ray processes.
     """
-    __slots__ = '_channel_index', '_channel_id', 'peer_actor', '_in_queue', '_closed'
+    __slots__ = '_channel_index', '_channel_id', '_in_queue', '_closed'
 
     name = 'ray'
     _channel_index_gen = itertools.count()
@@ -60,8 +60,6 @@ class RayChannelBase(Channel, ABC):
                          compression=compression)
         self._channel_index = channel_index or next(self._channel_index_gen)
         self._channel_id = channel_id or ChannelID(local_address, dest_address, self._channel_index)
-        # ray actor should be created with the address as the name.
-        self.peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address) if dest_address else None
         self._in_queue = asyncio.Queue()
         self._closed = asyncio.Event()
 
@@ -84,9 +82,10 @@ class RayChannelBase(Channel, ABC):
         return self._closed.is_set()
 
 
-class RayOneWayClientChannel(RayChannelBase):
+class RayClientChannel(RayChannelBase):
     """A channel from ray driver/actor to ray actor. Use ray call reply for client channel recv.
     """
+    __slots__ = '_peer_actor',
 
     def __init__(self,
                  dest_address: str = None,
@@ -94,13 +93,15 @@ class RayOneWayClientChannel(RayChannelBase):
                  channel_id: ChannelID = None,
                  compression=None):
         super().__init__(None, dest_address, channel_index, channel_id, compression)
+        # ray actor should be created with the address as the name.
+        self._peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address) if dest_address else None
 
     @implements(Channel.send)
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         # Put ray object ref to queue
-        await self._in_queue.put(self.peer_actor.__on_ray_recv__.remote(self.channel_id, message))
+        await self._in_queue.put(self._peer_actor.__on_ray_recv__.remote(self.channel_id, message))
 
     @implements(Channel.recv)
     async def recv(self):
@@ -115,7 +116,7 @@ class RayOneWayClientChannel(RayChannelBase):
                 raise e
 
 
-class RayOneWayServerChannel(RayChannelBase):
+class RayServerChannel(RayChannelBase):
     """A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
      we use ray call reply for server channel send. Note that there can't be multiple
      channel message sends for one received message, or else it will be taken as next
@@ -174,7 +175,7 @@ class RayServer(Server):
         super().__init__(DEFAULT_DUMMY_RAY_ADDRESS, channel_handler)
         self._address = address
         self._closed = asyncio.Event()
-        self._channels: Dict[ChannelID, RayOneWayServerChannel] = dict()
+        self._channels: Dict[ChannelID, RayServerChannel] = dict()
         self._tasks: Dict[ChannelID, asyncio.Task] = dict()
 
     @classproperty
@@ -220,7 +221,7 @@ class RayServer(Server):
     async def on_connected(self, *args, **kwargs):
         channel_id = args[0]
         _, peer_dest_address, peer_channel_index = channel_id
-        channel = RayOneWayServerChannel(peer_dest_address, peer_channel_index, channel_id)
+        channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
         self._channels[channel_id] = channel
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
@@ -268,7 +269,7 @@ class RayClient(Client):
         if urlparse(dest_address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Destination address should start with "ray://" '
                              f'for RayClient, got {dest_address}')
-        client_channel = RayOneWayClientChannel(dest_address)
+        client_channel = RayClientChannel(dest_address)
         client = RayClient(local_address, dest_address, client_channel)
         return client
 
