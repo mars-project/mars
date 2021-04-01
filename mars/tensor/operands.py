@@ -94,4 +94,3 @@ class TensorFuse(Fuse):
     _output_type_ = OutputType.tensor
 
     dtype = DataTypeField('dtype', default=None)
-

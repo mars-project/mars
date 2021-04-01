@@ -21,9 +21,8 @@ import numpy as np
 import pandas as pd
 
 import mars.tensor as mt
-from mars import opcodes as OperandDef
 from mars.tests.core import TestBase
-from mars.dataframe.core import IndexValue, DataFrameChunk, DatetimeIndex, Int64Index, Float64Index
+from mars.dataframe.core import IndexValue, DatetimeIndex, Int64Index, Float64Index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable

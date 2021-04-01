@@ -17,7 +17,7 @@
 import weakref
 from collections import defaultdict
 
-from ...core.graph import TileableGraphBuilder, TileableGraph, DAG
+from ...core.graph import TileableGraphBuilder, TileableGraph
 from ...utils import copy_tileables, enter_mode
 
 _rules = defaultdict(list)
@@ -131,6 +131,8 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
         graph = super()._build()
         graph = self._replace_copied_tilebale(graph)
         self._mapping_tileables(tileables)
+        graph.results = [tileable_optimized.get(n, n)
+                         for n in graph.results]
         return graph
 
 

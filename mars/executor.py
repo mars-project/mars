@@ -29,7 +29,7 @@ import numpy as np
 
 from .core.operand import Fetch, FetchShuffle
 from .core.graph import TileableGraphBuilder, IterativeChunkGraphBuilder, \
-    ChunkGraphBuilder, TileableGraph, DAG, get_tiled
+    ChunkGraphBuilder, TileableGraph, get_tiled
 from .config import options
 from .optimizes.runtime.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder

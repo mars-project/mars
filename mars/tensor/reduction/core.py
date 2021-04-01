@@ -27,7 +27,7 @@ import numpy as np
 
 from ...config import options
 from ...core.operand import OperandStage
-from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
+from ...serialize import KeyField, AnyField, BoolField, Int32Field
 from ..core import Tensor, TensorOrder
 from ..array_utils import get_array_module, as_same_device, device, cp
 from ..utils import check_out_param, validate_axis

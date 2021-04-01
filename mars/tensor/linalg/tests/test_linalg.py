@@ -23,11 +23,9 @@ import scipy.sparse as sps
 import mars.tensor as mt
 from mars.core import get_tiled
 from mars.tensor import ones, tensor, dot, empty
-from mars.graph import DirectedGraph
 from mars.tensor.core import SparseTensor, Tensor
 from mars.tensor.linalg import matmul
 from mars.tensor.linalg.inv import TensorInv
-from mars.utils import serialize_graph, deserialize_graph
 
 
 class Test(unittest.TestCase):

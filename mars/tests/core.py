@@ -145,8 +145,6 @@ class TestBase(unittest.TestCase):
                 return obj1.key == obj2.key
             elif isinstance(obj1, ReferenceType) and isinstance(obj2, ReferenceType):
                 return cmp(obj1(), obj2())
-            elif isinstance(obj1, SerializableGraph) and isinstance(obj2, SerializableGraph):
-                return cmp(obj1.nodes, obj2.nodes)
             else:
                 return obj1 == obj2
 

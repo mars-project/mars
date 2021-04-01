@@ -683,15 +683,6 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(r1, r3)
             np.testing.assert_array_equal(r3, r3_fetch)
 
-            del a
-            self.assertEqual(len(local_session._sess._executor.chunk_result), 0)
-
-            with self.assertRaises(ValueError):
-                session.fetch(b)
-
-            with self.assertRaises(ValueError):
-                web_session.fetch(b)
-
     def testEagerMode(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
                               shared_memory='20M', web=True) as cluster:
@@ -1017,7 +1008,7 @@ class Test(unittest.TestCase):
 
     def testIterativeDependency(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
-                              shared_memory='20M', web=True):
+                              shared_memory='20M', web=False):
             with tempfile.TemporaryDirectory() as d:
                 file_path = os.path.join(d, 'test.csv')
                 df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
@@ -1030,11 +1021,6 @@ class Test(unittest.TestCase):
                 mdf2 = md.read_csv(file_path, chunk_bytes=10)
                 r2 = mdf2.iloc[:3].to_pandas()
                 pd.testing.assert_frame_equal(df[:3], r2.reset_index(drop=True))
-
-                f = mdf1[mdf1.a > mdf2.a]
-                r3 = f.iloc[:3].to_pandas()
-                pd.testing.assert_frame_equal(r3, df[df.a > df.a].reset_index(drop=True),
-                                              check_index_type=False)
 
                 mdf3 = md.read_csv(file_path, chunk_bytes=15, incremental_index=True)
                 r4 = mdf3.to_pandas()

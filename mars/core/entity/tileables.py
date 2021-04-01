@@ -48,7 +48,7 @@ class OperandTilesHandler:
         return type(op)
 
     @classmethod
-    def register(cls, op: OperandType, tile_handler: Callable[[OperandType], "_Tileable"]):
+    def register(cls, op: OperandType, tile_handler: Callable[[OperandType], "Tileable"]):
         cls._handlers[cls._get_op_cls(op)] = tile_handler
 
     @classmethod

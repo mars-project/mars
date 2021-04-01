@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import TilesError
-from ...serialize import KeyField, AnyField, BoolField, Int32Field, Int64Field
+from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...utils import check_chunks_unknown_shape
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -33,13 +33,10 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
     _chunk_size = AnyField('chunk_size')
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
-    _reassign_worker = BoolField('reassign_worker')
 
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None,
-                 reassign_worker=None, **kw):
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, **kw):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
-                         _chunk_size_limit=chunk_size_limit,
-                         _reassign_worker=reassign_worker, **kw)
+                         _chunk_size_limit=chunk_size_limit, **kw)
 
     @property
     def input(self):

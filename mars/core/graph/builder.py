@@ -298,6 +298,8 @@ class IterativeChunkGraphBuilder(ChunkGraphBuilder):
                 tile_after = on_tile_success(tile_before, tile_after)
             iterative_tileable_graph = self._cur_tileable_graph
             iterative_tileable_graph.add_node(tile_before)
+            if tile_before not in self._prev_tileable_graph:
+                return
             for inp in self._prev_tileable_graph.iter_predecessors(tile_before):
                 if inp in iterative_tileable_graph:
                     iterative_tileable_graph.add_edge(inp, tile_before)

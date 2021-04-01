@@ -18,15 +18,13 @@ import numpy as np
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.core import get_tiled
 from mars.session import new_session
 from mars.tests.core import TestBase
-from mars.tiles import get_tiled
-from mars.learn.operands import OutputType
 from mars.learn.contrib.xgboost import train, MarsDMatrix
 from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
 from mars.learn.contrib.xgboost.train import XGBTrain
-from mars.context import ContextBase, ChunkMeta, RunningMode, LocalContext
-from mars.graph import DAG
+from mars.context import ContextBase, ChunkMeta, RunningMode
 
 try:
     import xgboost
@@ -57,28 +55,6 @@ class Test(TestBase):
 
     def tearDown(self) -> None:
         self.session._sess._executor = self._old_executor
-
-    def testSerializeLocalTrain(self):
-        with LocalContext(self.session._sess):
-            dmatrix = ToDMatrix(data=self.X, label=self.y)()
-            model = XGBTrain(dtrain=dmatrix)()
-
-            graph = model.build_graph(tiled=True)
-            DAG.from_json(graph.to_json())
-
-            dmatrix = ToDMatrix(data=self.X_df, label=self.y_series,
-                                output_types=[OutputType.dataframe])()
-            model = XGBTrain(dtrain=dmatrix)()
-
-            graph = model.build_graph(tiled=True)
-            DAG.from_json(graph.to_json())
-
-            new_X = mt.random.rand(1000, 10, chunk_size=(1000, 5))
-            new_X, new_y = ToDMatrix(data=new_X, label=self.y, multi_output=True)()
-            dmatrix = ToDMatrix(data=new_X, label=new_y)()
-            dmatrix = dmatrix.tiles()
-
-            self.assertEqual(len(dmatrix.chunks), 1)
 
     def testDmatrix(self):
         x = self.X

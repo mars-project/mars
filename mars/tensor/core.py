@@ -620,15 +620,7 @@ class flatiter(object):
 
 
 class Indexes(Serializable):
-    _indexes = AnyField('indexes')
-
-    def __init__(self, indexes=None, **kw):
-        self._indexes = indexes
-        super().__init__(**kw)
-
-    @property
-    def indexes(self):
-        return self._indexes
+    indexes = AnyField('indexes')
 
 
 class MutableTensorData(TensorData):

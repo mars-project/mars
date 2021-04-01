@@ -131,7 +131,7 @@ class XGBTrain(MergeDictOperand):
                         worker_to_evals[worker].append((chunk, ev))
             for in_chunk, worker in zip(in_chunks, workers):
                 chunk_op = op.copy().reset_key()
-                chunk_op._expect_worker = worker
+                chunk_op.expect_worker = worker
                 chunk_op._tracker = tracker_chunk
                 chunk_evals = list(worker_to_evals.get(worker, list()))
                 chunk_op._evals = chunk_evals

@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, EntityData, OutputType, TilesError
+from ...core import ENTITY_TYPE, OutputType, TilesError
 from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
@@ -203,7 +203,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         if columns is not None:
             if not isinstance(columns, pd.Index):
-                if isinstance(columns, Base):
+                if isinstance(columns, ENTITY_TYPE):
                     raise NotImplementedError('The columns value cannot be a tileable')
                 columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)

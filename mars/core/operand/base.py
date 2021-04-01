@@ -206,7 +206,7 @@ class Operand(Base, metaclass=OperandMetaclass):
         raise NotImplementedError
 
 
-class OperandDeserializer(SerializableSerializer):
+class OperandSerializer(SerializableSerializer):
     serializer_name = 'operand'
 
     @classmethod
@@ -222,10 +222,20 @@ class OperandDeserializer(SerializableSerializer):
                     buffers: List,
                     context: Dict) -> Operand:
         # convert outputs back to weak-refs
-        operand: Operand = yield from super().deserialize(header, buffers, context)
+        operand: Operand = yield from super().deserialize(header, buffers, context)  # noqa: E999
         for i, out in enumerate(operand._outputs):
             def cb(o, index):
-                operand._outputs[index] = weakref.ref(o)
+                outputs = operand._outputs
+                outputs[index] = weakref.ref(o)
+
+                if len(outputs) > 1 and \
+                        all(not isinstance(o, Placeholder) for o in outputs):
+                    # all replaced
+                    # add siblings for multiple outputs
+                    outputs = operand.outputs
+                    for j in range(len(outputs)):
+                        outputs[j]._siblings = outputs[:j] + outputs[j + 1:]
+
             if isinstance(out, Placeholder):
                 out.callbacks.append(partial(cb, index=i))
             else:
@@ -233,7 +243,7 @@ class OperandDeserializer(SerializableSerializer):
         return operand
 
 
-OperandDeserializer.register(Operand)
+OperandSerializer.register(Operand)
 
 
 class VirtualOperand(Operand):

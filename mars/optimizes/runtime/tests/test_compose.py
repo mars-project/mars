@@ -16,7 +16,7 @@
 
 import unittest
 
-from mars.core.graph import DAG
+from mars.core.graph import ChunkGraph
 from mars.executor import Executor
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.tensor.indexing import TensorSlice
@@ -37,9 +37,9 @@ class Test(unittest.TestCase):
 
         @ --> @ --> @   ========>    #
         """
-        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(3)]
-        graph = DAG()
+        graph = ChunkGraph([chunks[2]])
         list(map(graph.add_node, chunks[:3]))
         graph.add_edge(chunks[0], chunks[1])
         graph.add_edge(chunks[1], chunks[2])
@@ -62,7 +62,7 @@ class Test(unittest.TestCase):
         """
         chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(6)]
-        graph = DAG()
+        graph = ChunkGraph([chunks[4], chunks[5]])
         list(map(graph.add_node, chunks[:6]))
 
         chunks[2].op._inputs = [chunks[0], chunks[1]]
@@ -90,8 +90,8 @@ class Test(unittest.TestCase):
         self.assertIn(chunks[0], graph.predecessors(composed_nodes[0]))
         self.assertIn(chunks[1], graph.predecessors(composed_nodes[0]))
         # check 4 and 5's inputs
-        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
-        self.assertIn(composed_nodes[0].data, graph.successors(composed_nodes[0])[0].inputs)
+        self.assertIn(composed_nodes[0], graph.successors(composed_nodes[0])[0].inputs)
+        self.assertIn(composed_nodes[0], graph.successors(composed_nodes[0])[0].inputs)
         # check 4 and 5's predecessors
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[4]))
         self.assertIn(composed_nodes[0], graph.predecessors(chunks[5]))
@@ -109,10 +109,10 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(6)]
         chunk_slice = TensorSlice().new_chunk([None], None)
-        graph = DAG()
+        graph = ChunkGraph([chunks[4], chunks[5]])
         list(map(graph.add_node, chunks[:6]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[2])
@@ -132,9 +132,9 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(4)]
-        graph = DAG()
+        graph = ChunkGraph([chunks[2]])
         list(map(graph.add_node, chunks[:3]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])
@@ -152,9 +152,9 @@ class Test(unittest.TestCase):
 
         compose stopped at S, because numexpr don't support Slice op
         """
-        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None)
+        chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
                   for n in range(4)]
-        graph = DAG()
+        graph = ChunkGraph([chunks[3]])
         list(map(graph.add_node, chunks[:4]))
         graph.add_node(chunk_slice)
         graph.add_edge(chunks[0], chunks[1])

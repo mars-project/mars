@@ -220,7 +220,7 @@ class LGBMTrain(MergeDictOperand):
             workers = list(set(workers))
             for worker_id, worker in enumerate(workers):
                 chunk_op = op.copy().reset_key()
-                chunk_op._expect_worker = worker
+                chunk_op.expect_worker = worker
 
                 input_chunks = []
                 concat_args = worker_to_args.get(worker, {})

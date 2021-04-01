@@ -48,4 +48,3 @@ class MapReduceOperand(Operand):
                     deps.append(inp.key)
             return deps
         return super().get_dependent_data_keys()
-

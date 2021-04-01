@@ -49,10 +49,8 @@ class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
-    def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, output_types=None, **kw):
-        super().__init__(
-            _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
-            _output_types=output_types, **kw)
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
 
 register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)

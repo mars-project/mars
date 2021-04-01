@@ -17,7 +17,7 @@
 import numpy as np
 
 from mars.core import get_tiled
-from mars.tensor.random import RandomState, beta, rand, choice, multivariate_normal, \
+from mars.tensor.random import beta, rand, choice, multivariate_normal, \
     randint, randn, permutation, TensorPermutation, shuffle
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.tests.core import TestBase

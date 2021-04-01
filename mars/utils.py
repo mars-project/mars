@@ -21,7 +21,6 @@ import importlib
 import inspect
 import io
 import itertools
-import json
 import logging
 import numbers
 import os
@@ -287,14 +286,14 @@ def lazy_import(name, package=None, globals=None, locals=None, rename=None):
         return None
 
 
-def serialize_graph(graph, compress=False, serialize_method=None):
+def serialize_serializable(serializable, compress=False, serialize_method=None):
     from .serialization import serialize
 
     serialize_method = serialize_method or options.serialize_method
     assert serialize_method == 'pickle'
 
     bio = io.BytesIO()
-    header, buffers = serialize(graph)
+    header, buffers = serialize(serializable)
     header['buf_sizes'] = [getattr(buf, 'nbytes', len(buf))
                            for buf in buffers]
     s_header = pickle.dumps(header)
@@ -309,14 +308,20 @@ def serialize_graph(graph, compress=False, serialize_method=None):
     return ser_graph
 
 
-def deserialize_graph(ser_graph):
+serialize_graph = serialize_serializable
+
+
+def deserialize_serializable(ser_serializable):
     from .serialization import deserialize
 
-    bio = io.BytesIO(ser_graph)
+    bio = io.BytesIO(ser_serializable)
     s_header_length = struct.unpack('Q', bio.read(8))[0]
     header2 = pickle.loads(bio.read(s_header_length))
     buffers2 = [bio.read(s) for s in header2['buf_sizes']]
     return deserialize(header2, buffers2)
+
+
+deserialize_graph = deserialize_serializable
 
 
 def calc_data_size(dt, shape=None):
@@ -807,10 +812,7 @@ def copy_tileables(tileables: List, **kwargs):
 def require_not_none(obj):
     def wrap(func):
         if obj is not None:
-            @functools.wraps(func)
-            def inner(*args, **kwargs):
-                return func(*args, **kwargs)
-            return inner
+            return func
         else:
             return
     return wrap

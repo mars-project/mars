@@ -620,7 +620,7 @@ class GraphActor(SchedulerActor):
                                     if n.key in self._target_tileable_keys]
                 tileable_graph = TileableGraph(target_tileables)
                 optimized_graph_builder = OptimizeIntegratedTileableGraphBuilder(tileable_graph)
-                self._tileable_graph_cache = next(optimized_graph_builder.build())
+                self._tileable_graph_cache = optimized_graph_builder._build()
                 # rescan
                 self._target_tileable_datas = list()
                 self._scan_tileable_graph()
@@ -665,7 +665,7 @@ class GraphActor(SchedulerActor):
             # add fetch tileables to make sure that they won't be fused
             chunk_graph_builder._graph._result_tileables = \
                 self._target_tileable_datas + fetch_tileables
-            cur_chunk_graph = next(chunk_graph_builder.build())
+            cur_chunk_graph = chunk_graph_builder._build()
         else:
             # some TilesFail happens before
             # build tileable graph from failed ops and their inputs
@@ -674,7 +674,7 @@ class GraphActor(SchedulerActor):
             tileable_graph_builder = self._get_tileable_graph_builder(
                 TileableGraph(list(failed_tileable_set)),
                 inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
-            to_run_tileable_graph = next(tileable_graph_builder.build())
+            to_run_tileable_graph = tileable_graph_builder._build()
             to_fetch_tileables = []
             for failed_op in chunk_graph_builder.interrupted_ops:
                 for inp in failed_op.inputs:
@@ -689,9 +689,10 @@ class GraphActor(SchedulerActor):
                         for o in failed_op.outputs:
                             to_run_tileable_graph.add_edge(fetch_inp, o)
             # add to_fetch_tileables to make sure that fetch chunk would not be fused
+            chunk_graph_builder._graph = to_run_tileable_graph
             chunk_graph_builder._graph._result_tileables = \
                 self._target_tileable_datas + to_fetch_tileables
-            cur_chunk_graph = next(chunk_graph_builder.build())
+            cur_chunk_graph = chunk_graph_builder._build()
 
         self._gen_target_info()
         if chunk_graph_builder.done:
@@ -1088,7 +1089,7 @@ class GraphActor(SchedulerActor):
                 self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                 self._graph_meta_ref.set_graph_end(_tell=True)
             else:
-                self._execute_graph(compose=self._chunk_graph_builder.is_compose)
+                self._execute_graph(compose=self._chunk_graph_builder.fused_enabled)
 
     def _update_tileable_and_its_chunk_shapes(self):
         need_update_tileable_to_tiled = dict()
@@ -1278,10 +1279,12 @@ class GraphActor(SchedulerActor):
         :param tileable_key: the key of tileable node
         """
         tileable = self._get_tileable_by_key(tileable_key)
-        graph = DAG()
+        results = []
+        graph = TileableGraph(results)
 
         new_tileable = build_fetch_tileable(tileable).data
         graph.add_node(new_tileable)
+        results.append(new_tileable)
         return serialize_graph(graph)
 
     def tile_fetch_tileable(self, tileable):

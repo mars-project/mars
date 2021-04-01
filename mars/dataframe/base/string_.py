@@ -37,9 +37,9 @@ class SeriesStringMethod(DataFrameOperand, DataFrameOperandMixin):
     _method_kwargs = DictField('method_kwargs')
 
     def __init__(self, method=None, method_args=None, method_kwargs=None,
-                 stage=None, output_types=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_method=method, _method_args=method_args,
-                         _method_kwargs=method_kwargs, _stage=stage,
+                         _method_kwargs=method_kwargs,
                          _output_types=output_types, **kw)
         if not self.output_types:
             self.output_types = [OutputType.series]

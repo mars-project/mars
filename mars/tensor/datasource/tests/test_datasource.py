@@ -15,7 +15,6 @@
 import unittest
 import shutil
 import tempfile
-from weakref import ReferenceType
 from copy import copy
 
 import numpy as np
@@ -26,21 +25,17 @@ except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars import dataframe as md
-from mars import opcodes
-from mars.graph import DAG
-from mars.core import get_tiled
-from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
+from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like
 from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, fromdense
 from mars.tensor.datasource.tri import TensorTriu, TensorTril
 from mars.tensor.datasource.zeros import TensorZeros
 from mars.tensor.datasource.from_dense import DenseToSparse
 from mars.tensor.datasource.array import CSRMatrixDataSource
 from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
-from mars.tensor.fuse.core import TensorFuseChunk
-from mars.tensor.core import Tensor, SparseTensor, TensorChunk
+from mars.tensor.core import Tensor, SparseTensor
 from mars.tensor.datasource.from_dataframe import from_dataframe
 from mars.tests.core import TestBase
-from mars.utils import build_fuse_chunk, enter_mode
+from mars.utils import enter_mode
 
 
 class Test(TestBase):

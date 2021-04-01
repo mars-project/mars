@@ -110,7 +110,7 @@ class RunTensorFlow(RunScript):
                 chunk_op = op.copy().reset_key()
                 addr = f'{worker_addr}:{next(worker_to_port_iter[worker_addr])}'
                 # tell graph actor that the chunk should be executed on the exact worker
-                chunk_op._expect_worker = worker
+                chunk_op.expect_worker = worker
                 tp = 'worker' if i < n_workers else 'ps'
                 chunk_op._tf_task_type = tp
                 idx = i if i < n_workers else i - n_workers

@@ -66,7 +66,7 @@ class RunPyTorch(RunScript):
         for i in range(op.world_size):
             chunk_op = op.copy().reset_key()
             if ctx.running_mode == RunningMode.distributed:
-                chunk_op._expect_worker = workers[i]
+                chunk_op.expect_worker = workers[i]
             if op.init_method is None:
                 chunk_op._master_port = op.master_port
                 chunk_op._master_addr = workers[0].split(':', 1)[0]

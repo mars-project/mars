@@ -119,7 +119,7 @@ class SerializableSerializer(Serializer):
         pos = 0
         for key, value_header, value_size in \
                 zip(header['keys'], header['value_headers'], header['value_sizes']):
-            tag_to_values[key] = yield value_header, buffers[pos:pos + value_size]
+            tag_to_values[key] = yield value_header, buffers[pos:pos + value_size]  # noqa: E999
             pos += value_size
 
         for field in obj_class._FIELDS.values():

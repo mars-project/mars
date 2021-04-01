@@ -49,10 +49,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     _enable_sparse = BoolField('enable_sparse')
 
     def __init__(self, index=None, index_freq=None, columns=None, method=None, level=None,
-                 fill_value=None, limit=None, enable_sparse=None, stage=None, **kw):
+                 fill_value=None, limit=None, enable_sparse=None, **kw):
         super().__init__(_index=index, _index_freq=index_freq, _columns=columns,
                          _method=method, _level=level, _fill_value=fill_value,
-                         _limit=limit, _enable_sparse=enable_sparse, _stage=stage, **kw)
+                         _limit=limit, _enable_sparse=enable_sparse, **kw)
 
     @property
     def input(self):

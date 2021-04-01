@@ -35,11 +35,9 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None,
-                 reassign_worker=None, **kw):
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None, **kw):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
-                         _chunk_size_limit=chunk_size_limit, _output_types=output_types,
-                         _reassign_worker=reassign_worker, **kw)
+                         _chunk_size_limit=chunk_size_limit, _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -95,7 +93,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
         if op.reassign_worker:
             for c in out.chunks:
-                c.op._reassign_worker = True
+                c.op.reassign_worker = True
 
         return [out]
 

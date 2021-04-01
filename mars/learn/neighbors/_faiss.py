@@ -77,12 +77,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     def __init__(self, metric=None, faiss_index=None, n_sample=None, seed=None,
                  same_distribution=None, return_index_type=None,
                  accuracy=None, memory_require=None,
-                 stage=None, output_types=None, gpu=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_metric=metric, _faiss_index=faiss_index, _n_sample=n_sample,
                          _seed=seed, _same_distribution=same_distribution,
                          _return_index_type=return_index_type,
-                         _accuracy=accuracy, _memory_require=memory_require, _gpu=gpu,
-                         _stage=stage, _output_types=output_types, **kw)
+                         _accuracy=accuracy, _memory_require=memory_require,
+                         _output_types=output_types, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.object]
 
@@ -208,7 +208,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         build_index_chunks = []
         for i, chunk in enumerate(in_tensor.chunks):
             build_index_op = op.copy().reset_key()
-            build_index_op._stage = OperandStage.map
+            build_index_op.stage = OperandStage.map
             build_index_op._faiss_index = faiss_index
             if train_chunk is not None:
                 build_index_chunk = build_index_op.new_chunk(
@@ -223,7 +223,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             # merge all indices into one, do only when trained on sample data
             out_chunk_op = op.copy().reset_key()
             out_chunk_op._faiss_index = faiss_index
-            out_chunk_op._stage = OperandStage.agg
+            out_chunk_op.stage = OperandStage.agg
             out_chunk = out_chunk_op.new_chunk(build_index_chunks, index=(0,))
             out_chunks.append(out_chunk)
         else:

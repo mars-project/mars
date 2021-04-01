@@ -18,7 +18,7 @@ from collections.abc import Iterable
 
 from ...core import TilesError
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
-    Int64Field, ListField, TupleField
+    Int64Field, TupleField
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
