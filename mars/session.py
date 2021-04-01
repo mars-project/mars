@@ -132,7 +132,8 @@ class LocalSession(object):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
             raise ValueError(f"The mutable tensor named '{name}' already exists.")
-        mut_tensor = MutableTensor(data=MutableTensorData(name=name, op=None, shape=shape, dtype=dtype))
+        mut_tensor = MutableTensor(data=MutableTensorData(name=name, op=None,
+                                                          shape=shape, dtype=np.dtype(dtype)))
         self._mut_tensor[name] = mut_tensor
         if fill_value is None:
             self._mut_tensor_data[name] = np.zeros(shape, dtype=dtype)

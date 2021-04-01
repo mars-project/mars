@@ -15,20 +15,8 @@
 import pytest
 
 import mars.tensor as mt
-from mars.core.graph import DAG, GraphContainsCycleError, TileableGraph, ChunkGraph
+from mars.core.graph import DAG, GraphContainsCycleError
 from mars.core.graph.builder import _build_graph
-from mars.serialization import serialize, deserialize
-from mars.serialization.serializables import Serializable, Int32Field
-
-
-class MySerializable(Serializable):
-    _id = Int32Field('id')
-
-    def __hash__(self):
-        return hash((type(self), self._id))
-
-    def __eq__(self, other):
-        return isinstance(other, MySerializable) and self._id == other._id
 
 
 def test_dag():
@@ -108,21 +96,3 @@ def test_to_dot():
 
     dot = str(graph.to_dot(trunc_key=5))
     assert all(str(n.op.key)[5] in dot for n in graph) is True
-
-
-@pytest.mark.parametrize(
-    'graph_type',
-    [TileableGraph, ChunkGraph]
-)
-def test_dag_serialization(graph_type):
-    n1 = MySerializable(_id=1)
-    n2 = MySerializable(_id=2)
-    graph = graph_type([n2])
-    graph.add_node(n1)
-    graph.add_node(n2)
-    graph.add_edge(n1, n2)
-
-    header, buffers = serialize(graph)
-    graph2 = deserialize(header, buffers)
-
-    assert len(graph) == len(graph2) > 0

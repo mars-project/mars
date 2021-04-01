@@ -737,7 +737,7 @@ class MutableTensor(Entity):
         tensor_index = process_index(self.ndim, tensor_index)
         output_shape = calc_shape(self.shape, tensor_index)
 
-        index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=tensor_index)
+        index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=list(tensor_index))
         index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape))._inplace_tile()
         output_chunks = index_tensor.chunks
 
@@ -801,7 +801,7 @@ def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_siz
     if shape is None:
         return session.get_mutable_tensor(name)
     else:
-        return session.create_mutable_tensor(name, shape=shape, dtype=dtype,
+        return session.create_mutable_tensor(name, shape=shape, dtype=np.dtype(dtype),
                                              fill_value=fill_value, chunk_size=chunk_size)
 
 

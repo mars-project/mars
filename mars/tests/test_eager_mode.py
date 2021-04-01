@@ -23,6 +23,7 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.core import get_tiled
 from mars.config import option_context
+from mars.session import new_session
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.dataframe.datasource.dataframe import from_pandas
 
@@ -34,6 +35,9 @@ class TileFailOp(TensorOperand, TensorOperandMixin):
 
 
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        new_session().as_default()
+
     def testBaseExecute(self):
         with option_context({'eager_mode': True}):
             a_data = np.random.rand(10, 10)

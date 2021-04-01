@@ -366,8 +366,8 @@ class Session(object):
         from ..tensor.core import Indexes
         from ..serialize import dataserializer
 
-        index = Indexes(_indexes=index)
-        index_bytes = json.dumps(index.to_json()).encode('ascii')
+        index = Indexes(indexes=index)
+        index_bytes = base64.b64encode(serialize_serializable(index))
         bio = BytesIO()
         bio.write(np.int64(len(index_bytes)).tobytes())
         bio.write(index_bytes)

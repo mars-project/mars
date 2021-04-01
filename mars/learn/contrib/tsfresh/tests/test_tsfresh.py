@@ -14,6 +14,7 @@
 
 import unittest
 
+from mars.session import new_session
 from mars.learn.contrib.tsfresh import MarsDistributor
 
 try:
@@ -28,6 +29,9 @@ except ImportError:
 
 @unittest.skipIf(tsfresh is None, 'tsfresh not installed')
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        new_session().as_default()
+
     def testLocalTSFresh(self):
         robot_execution_failures.download_robot_execution_failures()
         df, y = robot_execution_failures.load_robot_execution_failures()
