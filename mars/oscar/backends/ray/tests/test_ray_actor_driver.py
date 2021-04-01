@@ -25,7 +25,12 @@ from ..utils import (
     process_placement_to_address,
     node_addresses_to_pg_info,
     pg_info_to_node_addresses,
+    get_placement_group,
+    process_address_to_placement,
 )
+from .....utils import lazy_import
+
+ray = lazy_import('ray')
 
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
@@ -47,7 +52,6 @@ class DummyActor(mo.Actor):
 
 @pytest.fixture
 def ray_cluster():
-    import ray
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -135,3 +139,29 @@ def test_node_addresses_to_pg_info():
     pg_name, bundles = node_addresses_to_pg_info(TEST_ADDRESS_TO_RESOURCES)
     assert pg_name == TEST_PLACEMENT_GROUP_NAME
     assert bundles == TEST_PLACEMENT_GROUP_BUNDLES
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_get_placement_group(ray_cluster):
+    pg_name = 'test_pg'
+    pg = ray.util.placement_group(name=pg_name,
+                                  bundles=[{'CPU': 1}],
+                                  strategy="SPREAD")
+    ray.get(pg.ready())
+    pg2 = get_placement_group(pg_name)
+    if hasattr(ray.util, "get_placement_group"):
+        assert pg2.bundle_specs == pg.bundle_specs
+    else:
+        assert not pg2
+
+
+def test_address_to_placement():
+    assert process_address_to_placement('ray://test_cluster/0/0') == ('test_cluster', 0, 0)
+    with pytest.raises(ValueError):
+        process_address_to_placement('ray://')
+    assert node_address_to_placement('ray://test_cluster/0') == ('test_cluster', 0)
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://')
+
+

@@ -236,7 +236,7 @@ class RayServer(Server):
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
         channel_id = args[0]
-        peer_local_address, peer_dest_address, peer_channel_index = channel_id
+        _, peer_dest_address, peer_channel_index = channel_id
         channel = RayOneWayServerChannel(peer_dest_address, peer_channel_index, channel_id)
         self._channels[channel_id] = channel
         if kwargs:  # pragma: no cover

@@ -50,10 +50,7 @@ def process_address_to_placement(address):
     if bool(name) != bool(bundle_index) or bool(bundle_index) != bool(process_index):
         raise ValueError(f"Missing placement group name or bundle index or process index "
                          f"from address {address}")
-    if name and bundle_index:
-        return name, int(bundle_index), int(process_index)
-    else:
-        return name, -1, -1
+    return name, int(bundle_index), int(process_index)
 
 
 def node_address_to_placement(address):
@@ -70,10 +67,7 @@ def node_address_to_placement(address):
     bundle_index = parts[0]
     if bool(name) != bool(bundle_index):
         raise ValueError(f"Missing placement group name or bundle index from address {address}")
-    if name and bundle_index:
-        return name, int(bundle_index)
-    else:
-        return name, -1
+    return name, int(bundle_index)
 
 
 def _address_to_placement(address):
