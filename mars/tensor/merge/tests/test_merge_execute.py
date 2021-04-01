@@ -208,17 +208,33 @@ class Test(TestBase):
         np.testing.assert_array_equal(res, expected)
 
     def testBlockExecution(self):
+        # arrays is a tuple.
         with self.assertRaises(TypeError):
             block((1, 2, 3))
 
+        # List depths are mismatched.
         with self.assertRaises(ValueError):
             block([[1, 2], [[3, 4]]])
 
+        # List at arrays cannot be empty.
         with self.assertRaises(ValueError):
             block([])
 
+        # List at arrays[1] cannot be empty.
+        with self.assertRaises(ValueError):
+            block([[1, 2], []])
+
+        # Mismatched array shapes.
+        with self.assertRaises(ValueError):
+            block([eye(512), eye(512), ones((511, 1))])
+
         # Test large block.
         block([eye(512), eye(512), ones((512, 1))])
+
+        # Test block inputs a single array.
+        c = block(array([1, 2, 3]))
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        np.testing.assert_array_equal(r, array([1, 2, 3]))
 
         a = eye(2) * 2
         b = eye(3) * 3
