@@ -50,7 +50,7 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ray_cluster():
     try:
         from ray.cluster_utils import Cluster
@@ -92,7 +92,7 @@ async def test_create_actor_in_placement_group(ray_cluster):
     assert sorted(counter.values()) == sorted(r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES)
 
 
-def test_address_to_placement_group_bundle():
+def test_address_to_pg_bundle():
     # Missing bundle index.
     with pytest.raises(ValueError):
         node_address_to_placement("ray://bundle_name")
@@ -163,5 +163,9 @@ def test_address_to_placement():
     assert node_address_to_placement('ray://test_cluster/0') == ('test_cluster', 0)
     with pytest.raises(ValueError):
         node_address_to_placement('ray://')
-
-
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster')
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster/')
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster//')

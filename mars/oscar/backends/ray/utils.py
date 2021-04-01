@@ -45,11 +45,8 @@ def process_address_to_placement(address):
     name, parts = _address_to_placement(address)
     if not parts or len(parts) != 2:
         raise ValueError(f"Only bundle index and process index path are allowed in ray "
-                         f"address {address}.")
+                         f"address {address} bug got {parts}.")
     bundle_index, process_index = parts
-    if bool(name) != bool(bundle_index) or bool(bundle_index) != bool(process_index):
-        raise ValueError(f"Missing placement group name or bundle index or process index "
-                         f"from address {address}")
     return name, int(bundle_index), int(process_index)
 
 
@@ -63,10 +60,8 @@ def node_address_to_placement(address):
     """
     name, parts = _address_to_placement(address)
     if not parts or len(parts) != 1:
-        raise ValueError(f"Only bundle index path is allowed in ray address {address}.")
+        raise ValueError(f"Only bundle index path is allowed in ray address {address} but got {parts}")
     bundle_index = parts[0]
-    if bool(name) != bool(bundle_index):
-        raise ValueError(f"Missing placement group name or bundle index from address {address}")
     return name, int(bundle_index)
 
 
@@ -88,8 +83,13 @@ def _address_to_placement(address):
     if parsed_url.netloc:
         tmp = parsed_url.path
         while tmp and tmp != "/":
-            tmp, item = posixpath.split(tmp)
+            tmp2, item = posixpath.split(tmp)
             parts.append(item)
+            if tmp2 != tmp:
+                tmp = tmp2
+            else:
+                parts.append(tmp2)
+                break
     parts = list(reversed(parts))
     return parsed_url.netloc, parts
 
