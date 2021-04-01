@@ -24,7 +24,7 @@ ray = lazy_import('ray')
 logger = logging.getLogger(__name__)
 
 
-def get_placement_group(pg_name):
+def get_placement_group(pg_name):  # pragma: no cover
     if hasattr(ray.util, "get_placement_group"):
         return ray.util.get_placement_group(pg_name)
     else:

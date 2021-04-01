@@ -346,7 +346,7 @@ class AbstractActorPool(ABC):
 
         try:
             await asyncio.wait_for(wait_stopped, timeout=timeout)
-        except (futures.TimeoutError, asyncio.TimeoutError):
+        except (futures.TimeoutError, asyncio.TimeoutError):  # pragma: no cover
             wait_stopped.cancel()
 
     async def stop(self):
@@ -478,7 +478,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
             actor_id = message.actor_ref.uid
-            if actor_id not in self._actors:
+            if actor_id not in self._actors:  # pragma: no cover
                 raise ActorNotExist(f'Actor {actor_id} does not exist')
             call = self._actors[actor_id].__on_receive__(message.content)
             # asynchronously run, tell does not care about result
@@ -494,7 +494,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
-            if future is None:
+            if future is None:  # pragma: no cover
                 raise ValueError('Task not exists, maybe it is done '
                                  'or cancelled already')
             future.cancel()
@@ -572,7 +572,7 @@ class SubActorPoolBase(ActorPoolBase):
                          env, router, config, servers)
         self._main_address = main_address
 
-    async def notify_main_pool_to_destroy(self, message: DestroyActorMessage):
+    async def notify_main_pool_to_destroy(self, message: DestroyActorMessage):  # pragma: no cover
         await self.call(self._main_address, message)
 
     @implements(AbstractActorPool.actor_ref)
@@ -917,16 +917,16 @@ class MainActorPoolBase(ActorPoolBase):
         try:
             if timeout is None:
                 message = await self.call(address, stop_message)
-                if isinstance(message, ErrorMessage):
+                if isinstance(message, ErrorMessage):  # pragma: no cover
                     raise message.error.with_traceback(message.traceback)
             else:
                 call = asyncio.create_task(self.call(address, stop_message))
                 try:
                     await asyncio.wait_for(call, timeout)
-                except (futures.TimeoutError, asyncio.TimeoutError):
+                except (futures.TimeoutError, asyncio.TimeoutError):  # pragma: no cover
                     # timeout, just let kill to finish it
                     pass
-        except (ConnectionError, ServerClosed):
+        except (ConnectionError, ServerClosed):  # pragma: no cover
             # process dead maybe, ignore it
             pass
         # kill process
@@ -962,9 +962,9 @@ class MainActorPoolBase(ActorPoolBase):
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for address in self.sub_processes:
+                for address in self.sub_procesqses:
                     process = self.sub_processes[address]
-                    if not await self.is_sub_pool_alive(process):
+                    if not await self.is_sub_pool_alive(process):  # pragma: no cover
                         if self._on_process_down is not None:
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)
@@ -975,7 +975,7 @@ class MainActorPoolBase(ActorPoolBase):
 
                 # check every half second
                 await asyncio.sleep(.5)
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # pragma: no cover
             # cancelled
             return
 
