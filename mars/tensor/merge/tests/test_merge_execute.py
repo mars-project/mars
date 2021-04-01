@@ -351,4 +351,3 @@ class Test(TestBase):
         r = self.executor.execute_tensor(c, concat=True)[0]
         expected = array([[1]])
         np.testing.assert_array_equal(r, expected)
-
