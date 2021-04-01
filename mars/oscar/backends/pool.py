@@ -76,8 +76,7 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
 
 class AbstractActorPool(ABC):
     __slots__ = 'process_index', 'label', 'external_address', 'internal_address', 'env', \
-                '_servers', '_external_servers', '_router', '_config', '_stopped', '_actors', \
-                '_caller', '_process_messages'
+                '_servers', '_router', '_config', '_stopped', '_actors', '_caller', '_process_messages'
 
     def __init__(self,
                  process_index: int,

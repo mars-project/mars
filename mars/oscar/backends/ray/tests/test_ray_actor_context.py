@@ -53,7 +53,7 @@ def ray_start_regular_shared():
 class MainPool(RayMainPool):
 
     async def __proxy_call__(self, attribute, *args, **kwargs):
-        attr = getattr(self.actor_pool, attribute)
+        attr = getattr(self._actor_pool, attribute)
         if isinstance(attr, types.MethodType):
             if inspect.iscoroutinefunction(attr):
                 return await attr(*args, **kwargs)

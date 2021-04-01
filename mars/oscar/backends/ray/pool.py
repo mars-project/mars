@@ -29,19 +29,8 @@ ray = lazy_import('ray')
 logger = logging.getLogger(__name__)
 
 
-class RayActorPoolMixin(AbstractActorPool, ABC):
-
-    async def __on_ray_recv__(self, channel_id: ChannelID, message):
-        """Method for communication based on ray actors"""
-        if not hasattr(self, '_external_servers'):
-            ray_servers = [server for server in self._servers if isinstance(server, RayServer)]
-            assert len(ray_servers) == 1, f"Ray only support single server but got {ray_servers}."
-            self._external_servers = ray_servers
-        return await self._external_servers[0].__on_ray_recv__(channel_id, message)
-
-
 @_register_message_handler
-class RayMainActorPool(RayActorPoolMixin, MainActorPoolBase):
+class RayMainActorPool(MainActorPoolBase):
 
     @classmethod
     def get_external_addresses(
@@ -88,7 +77,7 @@ class RayMainActorPool(RayActorPoolMixin, MainActorPoolBase):
 
 
 @_register_message_handler
-class RaySubActorPool(RayActorPoolMixin, SubActorPoolBase):
+class RaySubActorPool(SubActorPoolBase):
     pass
 
 
@@ -98,44 +87,54 @@ class PoolStatus(Enum):
 
 
 class RayPoolBase(ABC):
-    actor_pool: Optional['RayActorPoolMixin']
+    __slots__ = '_actor_pool', '_ray_server'
+
+    _actor_pool: Optional['AbstractActorPool']
 
     def __init__(self):
-        self.actor_pool = None
+        self._actor_pool = None
+        self._ray_server = None
 
     @abstractmethod
     async def start(self, *args, **kwargs):
         raise NotImplementedError
 
+    def _set_ray_server(self, actor_pool: AbstractActorPool):
+        ray_servers = [server for server in actor_pool._servers if isinstance(server, RayServer)]
+        assert len(ray_servers) == 1, f"Ray only support single server but got {ray_servers}."
+        self._ray_server = ray_servers[0]
+
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
-        return await self.actor_pool.__on_ray_recv__(channel_id, message)
+        """Method for communication based on ray actors"""
+        return await self._ray_server.__on_ray_recv__(channel_id, message)
 
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY
 
 
 class RayMainPool(RayPoolBase):
-    actor_pool: RayMainActorPool
+    _actor_pool: RayMainActorPool
 
     async def start(self, *args, **kwargs):
         address, n_process = args
-        self.actor_pool = await create_actor_pool(
+        self._actor_pool = await create_actor_pool(
             address, n_process=n_process, pool_cls=RayMainActorPool,
             subprocess_start_method="ray", **kwargs)
+        self._set_ray_server(self._actor_pool)
 
 
 class RaySubPool(RayPoolBase):
-    actor_pool: RaySubActorPool
+    _actor_pool: RaySubActorPool
 
     async def start(self, *args, **kwargs):
         actor_config, process_index = args
         env = actor_config.get_pool_config(process_index)['env']
         if env:
             os.environ.update(env)
-        pool = await RaySubActorPool.create({
+        self._actor_pool = await RaySubActorPool.create({
             'actor_pool_config': actor_config,
             'process_index': process_index
         })
-        await pool.start()
-        self.actor_pool = pool
-        asyncio.create_task(pool.join())
+        self._set_ray_server(self._actor_pool)
+        await self._actor_pool.start()
+        asyncio.create_task(self._actor_pool.join())
