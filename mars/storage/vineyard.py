@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Tuple, Optional, Union
+from typing import Dict, List, Optional, Tuple
 
 import pyarrow as pa
 try:
@@ -130,7 +130,7 @@ class VineyardStorage(StorageBackend):
 
     @property
     @implements(StorageBackend.size)
-    def size(self) -> Union[int, None]:
+    def size(self) -> Optional[int]:
         return self._size
 
     @implements(StorageBackend.get)

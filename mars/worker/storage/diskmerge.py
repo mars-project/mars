@@ -17,7 +17,7 @@ import os
 import random
 import time
 from collections import defaultdict, deque
-from typing import NamedTuple, Union
+from typing import NamedTuple, Optional
 
 from ...config import options
 from ...errors import SpillNotConfigured
@@ -36,7 +36,7 @@ def _build_file_path_by_name(session_id, filename):
 class DataMeta(NamedTuple):
     filename: str
     start: int
-    end: Union[int, None]
+    end: Optional[int]
 
 
 class DiskFileMergerActor(WorkerActor):

@@ -15,7 +15,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Union
+from typing import Dict, List, Optional
 
 from ... import oscar as mo
 from ...oscar.backends.mars.allocate_strategy import IdleLabel, NoIdleSlot
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class StorageQuota:
-    def __init__(self, total_size: Union[int, None]):
+    def __init__(self, total_size: Optional[int]):
         self._total_size = total_size
         self._used_size = 0
 

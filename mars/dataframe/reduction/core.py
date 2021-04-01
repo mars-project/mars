@@ -14,7 +14,7 @@
 
 import functools
 from collections import OrderedDict
-from typing import NamedTuple, Any, List, Dict, Union, Callable
+from typing import Any, Callable, Dict, List, NamedTuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -438,8 +438,8 @@ class DataFrameCumReductionMixin(DataFrameOperandMixin):
 
 
 class CustomReduction:
-    name: Union[str, None]
-    output_limit: Union[int, None]
+    name: Optional[str]
+    output_limit: Optional[int]
     kwds: Dict
 
     # set to True when pre() already performs aggregation
@@ -497,15 +497,15 @@ class CustomReduction:
 class ReductionPreStep(NamedTuple):
     input_key: str
     output_key: str
-    columns: Union[List[str], None]
+    columns: Optional[List[str]]
     func: Callable
 
 
 class ReductionAggStep(NamedTuple):
     input_key: str
-    map_func_name: Union[str, None]
-    agg_func_name: Union[str, None]
-    custom_reduction: Union[CustomReduction, None]
+    map_func_name: Optional[str]
+    agg_func_name: Optional[str]
+    custom_reduction: Optional[CustomReduction]
     output_key: str
     output_limit: int
     kwds: Dict[str, Any]
@@ -515,7 +515,7 @@ class ReductionPostStep(NamedTuple):
     input_keys: List[str]
     output_key: str
     func_name: str
-    columns: Union[List[str], None]
+    columns: Optional[List[str]]
     func: Callable
 
 
