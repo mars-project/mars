@@ -962,7 +962,7 @@ class MainActorPoolBase(ActorPoolBase):
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
-                for address in self.sub_procesqses:
+                for address in self.sub_processes:
                     process = self.sub_processes[address]
                     if not await self.is_sub_pool_alive(process):  # pragma: no cover
                         if self._on_process_down is not None:
