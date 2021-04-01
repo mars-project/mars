@@ -114,7 +114,7 @@ class GraphSerializer(SerializableSerializer):
     def deserialize(self, header: Dict, buffers: List, context: Dict) \
             -> Union[TileableGraph, ChunkGraph]:
         serializable_graph: SerializableGraph = \
-            yield from super().deserialize(header, buffers, context)  # noqa: E999
+            (yield from super().deserialize(header, buffers, context))
         return serializable_graph.to_graph()
 
 
