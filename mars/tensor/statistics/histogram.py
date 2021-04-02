@@ -984,6 +984,7 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
     >>> plt.show()
 
     """
+    a, weights = _ravel_and_check_weights(a, weights)
     op = TensorHistogram(input=a, bins=bins, range=range,
                          weights=weights, density=density)
     return op(a, bins, range, weights)

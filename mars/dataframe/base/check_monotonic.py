@@ -70,7 +70,7 @@ class DataFrameCheckMonotonic(DataFrameOperand, DataFrameOperandMixin):
         params = op.outputs[0].params
         params['chunks'] = [r_chunk]
         params['nsplits'] = ()
-        return new_op.new_tileables([op.inputs], **params)
+        return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
     def execute(cls, ctx, op: 'DataFrameCheckMonotonic'):

@@ -1220,3 +1220,47 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         return path.__fspath__()
     except AttributeError:
         raise TypeError("not a path-like object")
+
+
+def find_objects(nested, types):
+    found = []
+    stack = [nested]
+
+    while len(stack) > 0:
+        it = stack.pop()
+        if isinstance(it, types):
+            found.append(it)
+            continue
+
+        if isinstance(it, (list, tuple, set)):
+            stack.extend(list(it)[::-1])
+        elif isinstance(it, dict):
+            stack.extend(list(it.values())[::-1])
+
+    return found
+
+
+def replace_objects(nested, mapping):
+    if not mapping:
+        return nested
+
+    if isinstance(nested, dict):
+        vals = list(nested.values())
+    else:
+        vals = list(nested)
+
+    new_vals = []
+    for val in vals:
+        if isinstance(val, (dict, list, tuple, set)):
+            new_val = replace_objects(val, mapping)
+        else:
+            try:
+                new_val = mapping.get(val, val)
+            except TypeError:
+                new_val = val
+        new_vals.append(new_val)
+
+    if isinstance(nested, dict):
+        return type(nested)((k, v) for k, v in zip(nested.keys(), new_vals))
+    else:
+        return type(nested)(new_vals)

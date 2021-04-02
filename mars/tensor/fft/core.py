@@ -17,7 +17,7 @@
 from collections.abc import Iterable
 
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
-    Int64Field, ListField
+    Int64Field, TupleField
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ...tiles import TilesError
 from ..utils import validate_axis, decide_chunk_sizes
@@ -221,8 +221,8 @@ class TensorBaseSingleDimensionFFT(TensorBaseFFT):
 
 
 class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
-    _shape = ListField('shape', ValueType.int64)
-    _axes = ListField('axes', ValueType.int32)
+    _shape = TupleField('shape', ValueType.int64)
+    _axes = TupleField('axes', ValueType.int32)
 
     @property
     def shape(self):
@@ -258,7 +258,7 @@ class TensorStandardFFTN(TensorBaseMultipleDimensionFFT):
 
 class TensorFFTShiftBase(TensorHasInput):
     _input = KeyField('input')
-    _axes = ListField('axes', ValueType.int32)
+    _axes = TupleField('axes', ValueType.int32)
 
     @property
     def axes(self):

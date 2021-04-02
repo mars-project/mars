@@ -196,7 +196,7 @@ class Test(TestBase):
                     r = mt_func(fa, fb, alternative=alt)
                 else:
                     r = mt_func(fa, fb)
-                result = r.execute().fetch()
+                result = self.executor.execute_tensors(r)
 
                 if LooseVersion(scipy.__version__) >= '1.6.0':
                     expected = sp_func(fa_raw, fb_raw, alternative=alt)

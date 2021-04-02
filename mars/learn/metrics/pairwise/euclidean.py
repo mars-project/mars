@@ -72,10 +72,6 @@ class EuclideanDistances(PairwiseDistances):
             self._y_norm_squared = next(input_iter)
 
     def __call__(self, X, Y=None, Y_norm_squared=None, X_norm_squared=None):
-        X, Y = self.check_pairwise_arrays(X, Y)
-        if self._y is None:
-            self._y = Y
-
         # If norms are passed as float32, they are unused. If arrays are passed as
         # float32, norms needs to be recomputed on upcast chunks.
         # TODO: use a float64 accumulator in row_norms to avoid the latter.
@@ -227,6 +223,8 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
             dtype = np.float64
     else:
         dtype = np.float64
+
+    X, Y = EuclideanDistances.check_pairwise_arrays(X, Y)
     op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
                             y_norm_squared=Y_norm_squared, squared=squared,
                             dtype=np.dtype(dtype))

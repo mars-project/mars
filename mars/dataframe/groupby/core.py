@@ -166,7 +166,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         inp_params = inp.params
         inp_params['chunks'] = inp_chunks
         inp_params['nsplits'] = nsplits
-        inp = op.copy().new_tileable(op.inputs, kws=[inp_params])
+        inp = inp.op.copy().new_tileable(op.inputs, kws=[inp_params])
 
         by_params = by.params
         by_params['chunks'] = by_chunks

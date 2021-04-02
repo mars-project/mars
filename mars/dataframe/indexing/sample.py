@@ -162,7 +162,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             probs = np.array(in_df.nsplits[op.axis])
             probs = 1.0 * probs / probs.sum()
             chunk_sizes = rs.multinomial(size, probs)
-            new_nsplits[op.axis] = tuple(s for s in chunk_sizes if s > 0)
+            new_nsplits[op.axis] = tuple(int(s) for s in chunk_sizes if s > 0)
 
             chunk_idx = 0
             for data_chunk, chunk_size, seed in zip(in_df.chunks, chunk_sizes, seeds):
