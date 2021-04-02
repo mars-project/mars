@@ -131,7 +131,7 @@ export HADOOP_HOME=/usr/local/hadoop
 
 # enable ssh login without password
 sudo su - hduser -c "ssh-keygen -t rsa -P \"\" -f /home/hduser/.ssh/id_rsa"
-sudo su - hduser -c "cat /home/hduser/.ssh/id_rsa.pub >> /home/hduser/.ssh/authorized_keys"
+sudo su - hduser -c "cat /home/hduser/.ssh/id_rsa.pub >> /home/hduser/.ssh/authorized_keys /home/hduser/.ssh/id_rsa"
 sudo su - hduser -c "chmod 600 /home/hduser/.ssh/authorized_keys"
 sudo su - hduser -c "ssh -o StrictHostKeyChecking=no localhost echo "
 
