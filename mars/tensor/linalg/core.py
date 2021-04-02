@@ -16,14 +16,14 @@
 
 import numpy as np
 
+from ...core import TilesError
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..core import TensorOrder
 from ..utils import decide_chunk_sizes
 from .utils import calc_svd_shapes
 
 
-class SFQR(object):
+class SFQR:
     __slots__ = ()
 
     @classmethod
@@ -91,7 +91,7 @@ class SFQR(object):
         return new_op.new_tensors(op.inputs, kws=kws)
 
 
-class TSQR(object):
+class TSQR:
     __slots__ = ()
 
     @classmethod

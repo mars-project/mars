@@ -15,7 +15,6 @@
 import unittest
 import shutil
 import tempfile
-from weakref import ReferenceType
 from copy import copy
 
 import numpy as np
@@ -26,165 +25,20 @@ except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
 from mars import dataframe as md
-from mars import opcodes
-from mars.graph import DAG
-from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like, dot
+from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like
 from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, fromdense
 from mars.tensor.datasource.tri import TensorTriu, TensorTril
 from mars.tensor.datasource.zeros import TensorZeros
 from mars.tensor.datasource.from_dense import DenseToSparse
 from mars.tensor.datasource.array import CSRMatrixDataSource
 from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
-from mars.tensor.fuse.core import TensorFuseChunk
-from mars.tensor.core import Tensor, SparseTensor, TensorChunk
+from mars.tensor.core import Tensor, SparseTensor
 from mars.tensor.datasource.from_dataframe import from_dataframe
 from mars.tests.core import TestBase
-from mars.tiles import get_tiled
-from mars.utils import build_fuse_chunk, enter_mode
+from mars.utils import enter_mode
 
 
 class Test(TestBase):
-    def testChunkSerialize(self):
-        t = ones((10, 3), chunk_size=(5, 2)).tiles()
-
-        # pb
-        chunk = t.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.TENSOR_ONES)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
-
-        # json
-        chunk = t.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(chunk.op.dtype, chunk2.op.dtype)
-
-        t = tensor(np.random.random((10, 3)), chunk_size=(5, 2)).tiles()
-
-        # pb
-        chunk = t.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.TENSOR_DATA_SOURCE)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertTrue(np.array_equal(chunk.op.data, chunk2.op.data))
-
-        # json
-        chunk = t.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertTrue(np.array_equal(chunk.op.data, chunk2.op.data))
-
-        t1 = tensor(np.random.random((10, 3)), chunk_size=(5, 2))
-        t2 = (t1 + 1).tiles()
-
-        # pb
-        chunk1 = get_tiled(t1).chunks[0]
-        chunk2 = t2.chunks[0]
-
-        composed_chunk = build_fuse_chunk([chunk1.data, chunk2.data], TensorFuseChunk)
-        serials = self._pb_serial(composed_chunk)
-        op, pb = serials[composed_chunk.op, composed_chunk.data]
-
-        self.assertEqual(pb.key, composed_chunk.key)
-        self.assertEqual(int(op.type.split('.', 1)[1]), opcodes.FUSE)
-
-        composed_chunk2 = self._pb_deserial(serials)[composed_chunk.data]
-
-        self.assertEqual(composed_chunk.key, composed_chunk2.key)
-        self.assertEqual(type(composed_chunk.op), type(composed_chunk2.op))
-        self.assertEqual(composed_chunk.composed[0].key,
-                         composed_chunk2.composed[0].key)
-        self.assertEqual(composed_chunk.composed[-1].key,
-                         composed_chunk2.composed[-1].key)
-
-        # json
-        chunk1 = get_tiled(t1).chunks[0]
-        chunk2 = t2.chunks[0]
-
-        composed_chunk = build_fuse_chunk([chunk1.data, chunk2.data], TensorFuseChunk)
-        serials = self._json_serial(composed_chunk)
-
-        composed_chunk2 = self._json_deserial(serials)[composed_chunk.data]
-
-        self.assertEqual(composed_chunk.key, composed_chunk2.key)
-        self.assertEqual(type(composed_chunk.op), type(composed_chunk2.op))
-        self.assertEqual(composed_chunk.composed[0].key,
-                         composed_chunk2.composed[0].key)
-        self.assertEqual(composed_chunk.composed[-1].key,
-                         composed_chunk2.composed[-1].key)
-
-        t1 = ones((10, 3), chunk_size=2)
-        t2 = ones((3, 5), chunk_size=2)
-        c = dot(t1, t2).tiles().chunks[0].inputs[0]
-
-        # pb
-        serials = self._pb_serial(c)
-        c2 = self._pb_deserial(serials)[c]
-        self.assertEqual(c.key, c2.key)
-
-        # json
-        serials = self._json_serial(c)
-        c2 = self._json_deserial(serials)[c]
-        self.assertEqual(c.key, c2.key)
-
-    def testTensorSerialize(self):
-        from mars.tensor import split
-
-        t = ones((10, 10, 8), chunk_size=(3, 3, 5))
-
-        serials = self._pb_serial(t)
-        dt = self._pb_deserial(serials)[t.data]
-
-        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
-
-        serials = self._json_serial(t)
-        dt = self._json_deserial(serials)[t.data]
-
-        self.assertEqual(dt.extra_params.raw_chunk_size, (3, 3, 5))
-
-        t2, _ = split(t, 2)
-
-        serials = self._pb_serial(t2)
-        dt = self._pb_deserial(serials)[t2.data]
-        self.assertEqual(dt.op.indices_or_sections, 2)
-
-        t2, _, _ = split(t, ones(2, chunk_size=2))
-
-        serials = self._pb_serial(t2)
-        dt = self._pb_deserial(serials)[t2.data]
-        with enter_mode(build=True):
-            self.assertIn(dt.op.indices_or_sections, dt.inputs)
 
     def testOnes(self):
         tensor = ones((10, 10, 8), chunk_size=(3, 3, 5))
@@ -302,94 +156,6 @@ class Test(TestBase):
 
         with self.assertRaises(ValueError):
             full((2, 2), [1.0, 2.0, 3.0], dtype='f4')
-
-    def testTensorGraphSerialize(self):
-        t = ones((10, 3), chunk_size=(5, 2)) + tensor(np.random.random((10, 3)), chunk_size=(5, 2))
-        graph = t.build_graph(tiled=False)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        self.assertEqual(len(graph), len(graph2))
-        t = next(c for c in graph if c.inputs)
-        t2 = next(c for c in graph2 if c.key == t.key)
-        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
-        self.assertBaseEqual(t.op, t2.op)
-        self.assertEqual(t.shape, t2.shape)
-        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        self.assertEqual(len(graph), len(graph2))
-        t = next(c for c in graph if c.inputs)
-        t2 = next(c for c in graph2 if c.key == t.key)
-        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
-        self.assertBaseEqual(t.op, t2.op)
-        self.assertEqual(t.shape, t2.shape)
-        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
-
-        # test graph with tiled tensor
-        t2 = ones((10, 10), chunk_size=(5, 4)).tiles()
-        graph = DAG()
-        graph.add_node(t2)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        self.assertEqual(len(graph), len(graph2))
-        chunks = next(iter(graph2)).chunks
-        self.assertEqual(len(chunks), 6)
-        self.assertIsInstance(chunks[0], TensorChunk)
-        self.assertEqual(chunks[0].index, t2.chunks[0].index)
-        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        self.assertEqual(len(graph), len(graph2))
-        chunks = next(iter(graph2)).chunks
-        self.assertEqual(len(chunks), 6)
-        self.assertIsInstance(chunks[0], TensorChunk)
-        self.assertEqual(chunks[0].index, t2.chunks[0].index)
-        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
-
-    def testTensorGraphTiledSerialize(self):
-        t = ones((10, 3), chunk_size=(5, 2)) + tensor(np.random.random((10, 3)), chunk_size=(5, 2))
-        graph = t.build_graph(tiled=True)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        self.assertEqual(len(graph), len(graph2))
-        chunk = next(c for c in graph if c.inputs)
-        chunk2 = next(c for c in graph2 if c.key == chunk.key)
-        self.assertBaseEqual(chunk.op, chunk2.op)
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        self.assertEqual(len(graph), len(graph2))
-        chunk = next(c for c in graph if c.inputs)
-        chunk2 = next(c for c in graph2 if c.key == chunk.key)
-        self.assertBaseEqual(chunk.op, chunk2.op)
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        self.assertEqual(sorted(i.key for i in chunk.inputs), sorted(i.key for i in chunk2.inputs))
-
-        t = ones((10, 3), chunk_size=((3, 5, 2), 2)) + 2
-        graph = t.build_graph(tiled=True)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        chunk = next(c for c in graph)
-        chunk2 = next(c for c in graph2 if c.key == chunk.key)
-        self.assertBaseEqual(chunk.op, chunk2.op)
-        self.assertEqual(sorted(i.key for i in chunk.composed), sorted(i.key for i in chunk2.composed))
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        chunk = next(c for c in graph)
-        chunk2 = next(c for c in graph2 if c.key == chunk.key)
-        self.assertBaseEqual(chunk.op, chunk2.op)
-        self.assertEqual(sorted(i.key for i in chunk.composed), sorted(i.key for i in chunk2.composed))
 
     def testUfunc(self):
         t = ones((3, 10), chunk_size=2)

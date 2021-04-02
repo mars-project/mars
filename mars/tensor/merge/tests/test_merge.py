@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.tensor.datasource import ones, empty
 from mars.tensor.merge import concatenate, stack
 

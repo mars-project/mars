@@ -27,13 +27,12 @@ from numbers import Integral
 
 import numpy as np
 
-from .operands import Fetch, FetchShuffle
-from .graph import DAG
+from .core.operand import Fetch, FetchShuffle
+from .core.graph import TileableGraphBuilder, IterativeChunkGraphBuilder, \
+    ChunkGraphBuilder, TileableGraph, get_tiled
 from .config import options
-from .tiles import IterativeChunkGraphBuilder, ChunkGraphBuilder, get_tiled
 from .optimizes.runtime.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
-from .graph_builder import TileableGraphBuilder
 from .context import LocalContext
 from .utils import enter_mode, build_fetch, calc_nsplits, has_unknown_shape, prune_chunk_graph
 
@@ -327,7 +326,7 @@ class GraphDeviceAssigner(object):
         for k, v in cur_assigns.items():
             if k in keys_to_assign:
                 for chunk in op_key_to_chunks[k]:
-                    chunk.op._device = v
+                    chunk.op.device = v
 
 
 class GraphExecution:
@@ -717,11 +716,11 @@ class Executor(object):
 
         # shallow copy
         chunk_result = self._chunk_result.copy()
-        tileable_graph_builder = TileableGraphBuilder()
-        tileable_graph = tileable_graph_builder.build([tileable])
-        chunk_graph_builder = ChunkGraphBuilder(compose=compose,
+        tileable_graph_builder = TileableGraphBuilder(TileableGraph([tileable]))
+        tileable_graph = next(tileable_graph_builder.build())
+        chunk_graph_builder = ChunkGraphBuilder(tileable_graph, fuse_enabled=compose,
                                                 on_tile_success=_on_tile_success)
-        chunk_graph = chunk_graph_builder.build([tileable], tileable_graph=tileable_graph)
+        chunk_graph = next(chunk_graph_builder.build())
         ret = self.execute_graph(chunk_graph, result_keys, n_parallel=n_parallel or n_thread,
                                  print_progress=print_progress, mock=mock,
                                  chunk_result=chunk_result)
@@ -779,7 +778,7 @@ class Executor(object):
         tileable_data_to_concat_keys = weakref.WeakKeyDictionary()
         tileable_data_to_chunks = weakref.WeakKeyDictionary()
 
-        node_to_fetch = weakref.WeakKeyDictionary()
+        node_to_fetch = dict()
         skipped_tileables = set()
 
         def _generate_fetch_tileable(node):
@@ -812,13 +811,13 @@ class Executor(object):
         def _generate_fetch_if_executed(nd):
             # node processor that if the node is executed
             # replace it with a fetch node
-            _to_fetch = node_to_fetch  # noqa: F821
             if nd.key not in chunk_result:
                 return nd
-            if nd in _to_fetch:
-                return _to_fetch[nd]
+            _to_fetch = node_to_fetch  # noqa: F821
+            if (nd.key, nd.id) in _to_fetch:
+                return _to_fetch[nd.key, nd.id]
             fn = build_fetch(nd).data
-            _to_fetch[nd] = fn
+            _to_fetch[nd.key, nd.id] = fn
             return fn
 
         def _on_tile_success(before_tile_data, after_tile_data):
@@ -841,29 +840,29 @@ class Executor(object):
                 tileable_data_to_concat_keys[before_tile_data] = after_tile_data.chunks[0].key
             return after_tile_data
 
-        def _get_tileable_graph_builder(**kwargs):
+        def _get_tileable_graph_builder(graph: TileableGraph, **kwargs):
             if options.optimize_tileable_graph:
-                return OptimizeIntegratedTileableGraphBuilder(**kwargs)
+                return OptimizeIntegratedTileableGraphBuilder(graph, **kwargs)
             else:
-                return TileableGraphBuilder(**kwargs)
+                return TileableGraphBuilder(graph, **kwargs)
 
         # As the chunk_result is copied, we cannot use the original context any more,
         # and if `chunk_result` is a LocalContext, it's copied into a LocalContext as well,
         # thus here just to make sure the new context is entered
         with self._gen_local_context(chunk_result):
             # build tileable graph
+            tileable_graph = TileableGraph(list(itertools.chain(
+                *(tileable.op.outputs for tileable in tileables))))
             tileable_graph_builder = _get_tileable_graph_builder(
-                node_processor=_generate_fetch_tileable,
+                tileable_graph, node_processor=_generate_fetch_tileable,
                 inputs_selector=_skip_executed_tileables)
-            tileable_graph = tileable_graph_builder.build(tileables)
+            tileable_graph = next(tileable_graph_builder.build())
             chunk_graph_builder = IterativeChunkGraphBuilder(
-                graph_cls=DAG, node_processor=_generate_fetch_if_executed,
-                compose=False, on_tile_success=_on_tile_success)
+                tileable_graph, node_processor=_generate_fetch_if_executed,
+                fuse_enabled=False, on_tile_success=_on_tile_success)
             intermediate_result_keys = set()
-            while True:
+            for chunk_graph in chunk_graph_builder.build():
                 # build chunk graph, tile will be done during building
-                chunk_graph = chunk_graph_builder.build(
-                    tileables, tileable_graph=tileable_graph)
                 tileable_graph = chunk_graph_builder.prev_tileable_graph
                 temp_result_keys = set(result_keys)
                 if not chunk_graph_builder.done:
@@ -910,9 +909,10 @@ class Executor(object):
                             if inp not in to_run_tileables_set:
                                 to_run_tileables_set.add(inp)
                     tileable_graph_builder = _get_tileable_graph_builder(
+                        TileableGraph(list(to_run_tileables_set)),
                         inputs_selector=lambda inps: [inp for inp in inps
                                                       if inp in to_run_tileables_set])
-                    tileable_graph = tileable_graph_builder.build(to_run_tileables_set)
+                    tileable_graph = next(tileable_graph_builder.build())
 
             if name is not None:
                 if not isinstance(name, (list, tuple)):

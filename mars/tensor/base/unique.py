@@ -18,11 +18,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...lib import sparse
 from ...lib.sparse.core import get_array_module as get_sparse_array_module
 from ...serialize import BoolField, Int32Field, Int64Field
-from ...tiles import TilesError
 from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
 from ..operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ..array_utils import as_same_device, device
@@ -43,12 +43,10 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     _start_pos = Int64Field('start_pos')
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
-                 axis=None, start_pos=None, stage=None, shuffle_key=None,
-                 dtype=None, gpu=None, aggregate_id=None, aggregate_size=None, **kw):
+                 axis=None, start_pos=None, aggregate_id=None, aggregate_size=None, **kw):
         super().__init__(_return_index=return_index, _return_inverse=return_inverse,
                          _return_counts=return_counts, _axis=axis, _start_pos=start_pos,
-                         _aggregate_id=aggregate_id, _aggregate_size=aggregate_size,
-                         _stage=stage, _shuffle_key=shuffle_key, _dtype=dtype, _gpu=gpu, **kw)
+                         _aggregate_id=aggregate_id, _aggregate_size=aggregate_size, **kw)
 
     @property
     def output_limit(self):
@@ -418,9 +416,8 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
 class TensorUniqueInverseReduce(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.UNIQUE_INVERSE_REDUCE
 
-    def __init__(self, shuffle_key=None, dtype=None, gpu=None, **kw):
-        super().__init__(_stage=OperandStage.reduce, _shuffle_key=shuffle_key,
-                         _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, **kw):
+        super().__init__(stage=OperandStage.reduce, **kw)
 
     @classmethod
     def execute(cls, ctx, op):

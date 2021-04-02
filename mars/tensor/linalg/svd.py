@@ -34,8 +34,8 @@ class TensorSVD(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _method = StringField('method')
 
-    def __init__(self, method=None, dtype=None, **kw):
-        super().__init__(_method=method, _dtype=dtype, **kw)
+    def __init__(self, method=None, **kw):
+        super().__init__(_method=method, **kw)
 
     @property
     def method(self):

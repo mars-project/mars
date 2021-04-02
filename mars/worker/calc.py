@@ -90,7 +90,7 @@ class BaseCalcActor(WorkerActor):
 
     @staticmethod
     def _get_keys_to_fetch(graph):
-        from ..operands import Fetch, FetchShuffle
+        from ..core.operand import Fetch, FetchShuffle
         fetch_keys = set()
         exclude_fetch_keys = set()
         for chunk in graph:

@@ -31,10 +31,9 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
     _axis = AnyField('axis')
     _ascending = BoolField('ascending')
 
-    def __init__(self, axis=None, ascending=None, gpu=None, sparse=None, output_types=None,
-                 stage=None, **kw):
-        super().__init__(_axis=axis, _ascending=ascending, _gpu=gpu, _sparse=sparse,
-                         _output_types=output_types, _stage=stage, **kw)
+    def __init__(self, axis=None, ascending=None, output_types=None, **kw):
+        super().__init__(_axis=axis, _ascending=ascending,
+                         _output_types=output_types, **kw)
 
     @property
     def axis(self) -> int:

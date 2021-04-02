@@ -35,6 +35,12 @@ from ..array_utils import np, cp, sparse, convert_order, as_same_device, device
 _func_name_to_special_cls = {}
 
 
+def _register_special_op(cls):
+    if cls._func_name is not None:
+        _func_name_to_special_cls[cls._func_name] = cls
+    return cls
+
+
 class TensorSpecialOperandMixin:
     _op_code_ = opcodes.SPECIAL
     _func_name = None
@@ -43,11 +49,6 @@ class TensorSpecialOperandMixin:
         if cls._func_name is not None:
             return object.__new__(_func_name_to_special_cls[cls._func_name])
         return super().__new__(cls, *args, **kwargs)
-
-    @classmethod
-    def _on_op_register_(cls):
-        if cls._func_name is not None:
-            _func_name_to_special_cls[cls._func_name] = cls
 
     @classmethod
     def _get_func(cls, xp):

@@ -23,12 +23,12 @@ except ImportError:  # pragma: no cover
 
 from .... import opcodes
 from .... import options
-from ....operands import OperandStage
+from ....core import TilesError
+from ....core.operand import OperandStage
 from ....serialize import KeyField, BoolField, DictField, Int64Field, AnyField
 from ....tensor.core import TensorOrder
 from ....tensor.merge import TensorConcatenate
 from ....tensor.array_utils import as_same_device, device, get_array_module
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, parse_readable_size
 from ...utils import gen_batches
 from ...utils.validation import _num_samples
@@ -183,12 +183,10 @@ class PairwiseDistancesTopk(PairwiseDistances):
     _y_offset = Int64Field('y_offset')
 
     def __init__(self, x=None, y=None, k=None, metric=None,
-                 metric_kwargs=None, return_index=None, working_memory=None,
-                 dtype=None, gpu=None, stage=None, **kw):
+                 metric_kwargs=None, return_index=None, working_memory=None, **kw):
         super().__init__(_x=x, _y=y, _k=k, _metric=metric,
                          _metric_kwargs=metric_kwargs, _return_index=return_index,
-                         _working_memory=working_memory,
-                         _dtype=dtype, _gpu=gpu, _stage=stage, **kw)
+                         _working_memory=working_memory, **kw)
 
     @property
     def x(self):
@@ -225,11 +223,11 @@ class PairwiseDistancesTopk(PairwiseDistances):
     @property
     def output_limit(self):
         return 1 if not self._return_index or \
-                    self._stage == OperandStage.map else 2
+                    self.stage == OperandStage.map else 2
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.agg:
+        if self.stage != OperandStage.agg:
             self._x = self._inputs[0]
             self._y = self._inputs[1]
         else:
@@ -326,7 +324,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
                     y_chunk = Y.cix[j, 0]
                     chunk_op = op.copy().reset_key()
                     chunk_op._y_offset = y_acc_chunk_shapes[j]
-                    chunk_op._stage = OperandStage.map
+                    chunk_op.stage = OperandStage.map
                     o = chunk_op.new_chunk([x_chunk, y_chunk],
                                            shape=(x_chunk.shape[0], k),
                                            order=TensorOrder.C_ORDER,
@@ -341,7 +339,7 @@ class PairwiseDistancesTopk(PairwiseDistances):
                                              index=(i, 0))
 
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = OperandStage.agg
+                chunk_op.stage = OperandStage.agg
                 distance_params = {
                     'shape': (x_chunk.shape[0], k),
                     'order': TensorOrder.C_ORDER,

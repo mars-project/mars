@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-
-message AnyReference {
-    uint32 type_id = 1;
-    bytes value = 2;
-}

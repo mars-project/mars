@@ -25,10 +25,14 @@ from .core import TensorReduction, TensorReductionMixin
 class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.COUNT_NONZERO
 
-    def __init__(self, axis=None, dtype=np.intp, keepdims=None, combine_size=None, stage=None, **kw):
+    def __init__(self, axis=None, dtype=None,keepdims=None, combine_size=None,
+                 stage=None, **kw):
+        if dtype is None:
+            dtype = np.dtype(np.intp)
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims,
-                         _combine_size=combine_size, _stage=stage, **kw)
+        super().__init__(_axis=axis, _keepdims=keepdims,
+                         _combine_size=combine_size,
+                         dtype=dtype, stage=stage, **kw)
 
     @classmethod
     def execute_map(cls, ctx, op):

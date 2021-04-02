@@ -22,8 +22,8 @@ class TensorToCPU(TensorDeviceConversionBase):
 
     def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
         super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
-        if self._gpu or self._gpu is None:
-            self._gpu = False
+        if self.gpu or self.gpu is None:
+            self.gpu = False
 
     @classmethod
     def execute(cls, ctx, op):

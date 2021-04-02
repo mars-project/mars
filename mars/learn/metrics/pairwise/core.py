@@ -17,9 +17,9 @@ import itertools
 import numpy as np
 
 from ....config import options
+from ....core import TilesError
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....tensor import tensor as astensor
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape
 from ...utils import check_array
 

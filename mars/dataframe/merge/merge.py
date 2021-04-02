@@ -18,7 +18,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
 from ...utils import get_shuffle_input_keys_idxes
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameMapReduceOperand, \
@@ -38,12 +38,10 @@ class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     _input = KeyField('input')
 
-    def __init__(self, index_shuffle_size=None, shuffle_on=None, sparse=None,
-                 stage=None, shuffle_key=None, **kw):
+    def __init__(self, index_shuffle_size=None, shuffle_on=None, **kw):
         super().__init__(
             _index_shuffle_size=index_shuffle_size, _shuffle_on=shuffle_on,
-            _sparse=sparse, _output_types=[OutputType.dataframe], _stage=stage,
-            _shuffle_key=shuffle_key, **kw)
+            _output_types=[OutputType.dataframe], **kw)
 
     @property
     def index_shuffle_size(self):

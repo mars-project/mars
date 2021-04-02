@@ -33,10 +33,10 @@ class TensorLinspace(TensorNoInput):
     _num = Int64Field('num')
     _endpoint = BoolField('endpoint')
 
-    def __init__(self, start=None, stop=None, num=None, endpoint=None, dtype=None, gpu=None, **kw):
+    def __init__(self, start=None, stop=None, num=None, endpoint=None, dtype=None, **kw):
         dtype = np.dtype(np.linspace(0, 1, 1).dtype if dtype is None else dtype)
-        super().__init__(_start=start, _stop=stop, _num=num, _endpoint=endpoint, _dtype=dtype,
-                         _gpu=gpu, **kw)
+        super().__init__(_start=start, _stop=stop, _num=num, _endpoint=endpoint,
+                         dtype=dtype, **kw)
 
     def to_chunk_op(self, *args):
         start, stop, num, endpoint = args

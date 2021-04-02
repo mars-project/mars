@@ -15,10 +15,10 @@
 import pandas as pd
 
 from ...config import options
-from ...operands import OperandStage
+from ...core import TilesError
+from ...core.operand import OperandStage
 from ...serialize import Int32Field, Int64Field, StringField, \
     ListField, BoolField, ValueType
-from ...tiles import TilesError
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
 from ..utils import parse_index
@@ -100,7 +100,7 @@ class DataFrameSortOperand(DataFrameOperand):
         out_chunks = []
         for c in inp.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
+            chunk_op.stage = OperandStage.map
             chunk_params = c.params
             chunk_params['index_value'] = parse_index(pd_index, c)
             out_chunks.append(chunk_op.new_chunk([c], kws=[chunk_params]))
@@ -122,7 +122,7 @@ class DataFrameSortOperand(DataFrameOperand):
                     to_combine_chunks, kws=[concat_params])
 
                 chunk_op = op.copy().reset_key()
-                chunk_op._stage = OperandStage.combine \
+                chunk_op.stage = OperandStage.combine \
                     if chunk_size > 1 else OperandStage.agg
                 chunk_params = c.params
                 chunk_params['index_value'] = parse_index(pd_index, c)

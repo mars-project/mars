@@ -19,8 +19,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...core import Base, Entity, OutputType, get_output_types
-from ...operands import OperandStage
+from ...core import ENTITY_TYPE, Entity, OutputType, get_output_types
+from ...core.operand import OperandStage
 from ...serialize import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -41,11 +41,11 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     _output_limit = Int64Field('output_limit')
 
     def __init__(self, value=None, method=None, axis=None, limit=None, downcast=None,
-                 use_inf_as_na=None, sparse=None, stage=None, gpu=None, output_types=None,
+                 use_inf_as_na=None, output_types=None,
                  output_limit=None, **kw):
         super().__init__(_value=value, _method=method, _axis=axis, _limit=limit, _downcast=downcast,
-                         _use_inf_as_na=use_inf_as_na, _sparse=sparse, _stage=stage, _gpu=gpu,
-                         _output_types=output_types, _output_limit=output_limit, **kw)
+                         _use_inf_as_na=use_inf_as_na, _output_types=output_types,
+                         _output_limit=output_limit, **kw)
 
     @property
     def value(self):
@@ -151,7 +151,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             else:
                 input_data = ctx[op.inputs[0].key]
                 value = getattr(op, 'value', None)
-                if isinstance(op.value, (Base, Entity)):
+                if isinstance(op.value, ENTITY_TYPE):
                     value = ctx[op.value.key]
                 if not isinstance(input_data, pd.Index):
                     ctx[op.outputs[0].key] = input_data.fillna(
@@ -166,7 +166,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _tile_one_by_one(cls, op):
         in_df = op.inputs[0]
-        in_value_df = op.value if isinstance(op.value, (Base, Entity)) else None
+        in_value_df = op.value if isinstance(op.value, ENTITY_TYPE) else None
         df = op.outputs[0]
 
         new_chunks = []
@@ -192,7 +192,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
             summaries_to_concat.append(summary_chunks[i])
 
         new_chunk_op = op.copy().reset_key()
-        new_chunk_op._stage = OperandStage.combine
+        new_chunk_op.stage = OperandStage.combine
 
         chunks_to_concat = [c] + summaries_to_concat
         return new_chunk_op.new_chunk(chunks_to_concat, **c.params)
@@ -210,7 +210,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         summary_chunks = np.empty(in_df.chunk_shape, dtype=np.object)
         for c in in_df.chunks:
             new_chunk_op = op.copy().reset_key()
-            new_chunk_op._stage = OperandStage.map
+            new_chunk_op.stage = OperandStage.map
             if op.axis == 1:
                 summary_shape = (c.shape[0], 1)
             else:
@@ -252,7 +252,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         summary_chunks = np.empty(in_series.chunk_shape, dtype=np.object)
         for c in in_series.chunks:
             new_chunk_op = op.copy().reset_key()
-            new_chunk_op._stage = OperandStage.map
+            new_chunk_op.stage = OperandStage.map
             summary_chunks[c.index] = new_chunk_op.new_chunk([c], shape=(1,), dtype=series.dtype)
 
         # combine summaries into results
@@ -331,14 +331,14 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         in_df = op.inputs[0]
         if len(in_df.chunks) == 1 and \
-                (not isinstance(op.value, (Base, Entity)) or len(op.value.chunks) == 1):
+                (not isinstance(op.value, ENTITY_TYPE) or len(op.value.chunks) == 1):
             return cls._tile_one_by_one(op)
         elif op.method is not None:
             if op.output_types[0] == OutputType.dataframe:
                 return cls._tile_directional_dataframe(op)
             else:
                 return cls._tile_directional_series(op)
-        elif not isinstance(op.value, (Base, Entity)):
+        elif not isinstance(op.value, ENTITY_TYPE):
             return cls._tile_one_by_one(op)
         elif isinstance(op.value, DATAFRAME_TYPE):
             return cls._tile_both_dataframes(op)
@@ -475,7 +475,7 @@ def fillna(df, value=None, method=None, axis=None, inplace=False, limit=None, do
     if limit is not None:
         raise NotImplementedError('Currently argument "limit" is not implemented yet')
 
-    if isinstance(value, (Base, Entity)):
+    if isinstance(value, ENTITY_TYPE):
         value, value_df = None, value
     else:
         value_df = None

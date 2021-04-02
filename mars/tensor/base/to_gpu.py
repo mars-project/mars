@@ -23,8 +23,8 @@ class TensorToGPU(TensorDeviceConversionBase):
 
     def __init__(self, dtype=None, gpu=None, sparse=None, **kw):
         super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
-        if not self._gpu:
-            self._gpu = True
+        if not self.gpu:
+            self.gpu = True
 
     @classmethod
     def execute(cls, ctx, op):

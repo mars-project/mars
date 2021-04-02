@@ -43,10 +43,8 @@ class TensorFromVineyard(TensorNoInput):
     # ObjectID in vineyard
     _object_id = StringField('object_id')
 
-    def __init__(self, vineyard_socket=None, object_id=None,
-                 dtype=None, gpu=None, sparse=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id,
-                         _dtype=dtype, _gpu=gpu, _sparse=sparse, **kw)
+    def __init__(self, vineyard_socket=None, object_id=None, **kw):
+        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id, **kw)
 
     @property
     def vineyard_socket(self):
@@ -90,7 +88,7 @@ class TensorFromVineyard(TensorNoInput):
         for chunk_index, (instance_id, chunk_id, shape) in chunk_map.items():
             chunk_op = op.copy().reset_key()
             chunk_op._object_id = chunk_id
-            chunk_op._expect_worker = workers[instance_id]
+            chunk_op.expect_worker = workers[instance_id]
             out_chunks.append(chunk_op.new_chunk([], shape=shape, index=chunk_index))
 
         new_op = op.copy()

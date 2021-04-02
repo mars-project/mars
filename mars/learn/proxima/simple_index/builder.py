@@ -25,10 +25,10 @@ from .... import opcodes
 from .... import tensor as mt
 from ....context import get_context, RunningMode
 from ....lib.filesystem import get_fs, LocalFileSystem
-from ....operands import OutputType, OperandStage
+from ....core import OutputType, TilesError
+from ....core.operand import OperandStage
 from ....serialize import StringField, Int32Field, Int64Field, \
     DictField, BytesField, TupleField, DataTypeField
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor, \
@@ -65,14 +65,14 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                  index_builder=None, index_builder_params=None,
                  index_converter=None, index_converter_params=None,
                  array_shape=None, array_dtype=None, offset=None,
-                 topk=None, storage_options=None, output_types=None, stage=None, **kw):
+                 topk=None, storage_options=None, output_types=None, **kw):
         super().__init__(_distance_metric=distance_metric, _index_path=index_path,
                          _dimension=dimension, _column_number=column_number, _index_builder=index_builder,
                          _index_builder_params=index_builder_params,
                          _array_shape=array_shape, _array_dtype=array_dtype, _offset=offset,
                          _index_converter=index_converter, _index_converter_params=index_converter_params,
                          _topk=topk, _storage_options=storage_options,
-                         _output_types=output_types, _stage=stage, **kw)
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.object]
 
@@ -215,8 +215,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         final_out_chunks = []
         for j, chunks in enumerate(out_chunks):
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
-            chunk_op._expect_worker = chunks[0].op.expect_worker
+            chunk_op.stage = OperandStage.map
+            chunk_op.expect_worker = chunks[0].op.expect_worker
             chunk_op._array_shape = chunks[0].op.total_shape
             chunk_op._array_dtype = chunks[0].dtype
             chunk_op._offset = offsets[j]

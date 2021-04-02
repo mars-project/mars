@@ -323,9 +323,9 @@ class Test(SchedulerIntegratedTest):
         worker_endpoints = resource_ref.get_worker_endpoints()
 
         t1 = mt.random.rand(10)
-        t1.op._expect_worker = worker_endpoints[0]
+        t1.op.expect_worker = worker_endpoints[0]
         t2 = mt.random.rand(10)
-        t2.op._expect_worker = worker_endpoints[1]
+        t2.op.expect_worker = worker_endpoints[1]
 
         t = PureDependsOperand().new_tileable([t1, t2])
         t.op._pure_depends = [True, True]

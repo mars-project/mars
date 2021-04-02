@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from ..serialize import DataTypeField
-from ..operands import Operand, TileableOperandMixin, HasInput, ShuffleProxy, MapReduceOperand, \
-    Fuse, OutputType
+from ..core import OutputType
+from ..core.operand import Operand, TileableOperandMixin, HasInput, \
+    ShuffleProxy, MapReduceOperand, Fuse
 from ..utils import calc_nsplits
 
 
@@ -63,33 +64,20 @@ class TensorOperandMixin(TileableOperandMixin):
 
 class TensorOperand(Operand):
     _output_type_ = OutputType.tensor
-    _dtype = DataTypeField('dtype')
 
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    dtype = DataTypeField('dtype', default=None)
 
 
 class TensorHasInput(HasInput):
     _output_type_ = OutputType.tensor
-    _dtype = DataTypeField('dtype')
 
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    dtype = DataTypeField('dtype', default=None)
 
 
 class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
     _output_type_ = OutputType.tensor
-    _dtype = DataTypeField('dtype')
 
-    def __init__(self, dtype=None, **kwargs):
-        kwargs['_dtype'] = kwargs.get('_dtype', dtype)
-        super().__init__(**kwargs)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    dtype = DataTypeField('dtype', default=None)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -98,17 +86,11 @@ class TensorShuffleProxy(ShuffleProxy, TensorOperandMixin):
 
 class TensorMapReduceOperand(MapReduceOperand):
     _output_type_ = OutputType.tensor
-    _dtype = DataTypeField('dtype')
 
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    dtype = DataTypeField('dtype', default=None)
 
 
 class TensorFuse(Fuse):
     _output_type_ = OutputType.tensor
-    _dtype = DataTypeField('dtype')
 
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
+    dtype = DataTypeField('dtype', default=None)

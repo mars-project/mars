@@ -19,8 +19,8 @@ except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ... import opcodes as OperandDef
+from ...core.operand import Operand
 from ...serialize import ValueType, DictField, TupleField, StringField, Int64Field, KeyField
-from ...operands import Operand
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import sps
 from ..datasource import tensor as astensor
@@ -44,10 +44,10 @@ class TensorTileDBDataStore(TensorDataStore):
     _axis_offsets = TupleField('axis_offsets', ValueType.int64)
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
-                 tiledb_timestamp=None, dtype=None, sparse=None, **kw):
+                 tiledb_timestamp=None, **kw):
         super().__init__(
             _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
-            _tiledb_timestamp=tiledb_timestamp, _dtype=dtype, _sparse=sparse, **kw)
+            _tiledb_timestamp=tiledb_timestamp, **kw)
 
     @property
     def tiledb_config(self):
@@ -158,11 +158,10 @@ class TensorTileDBConsolidate(TensorOperandMixin, Operand):
     # encryption key to decrypt if provided
     _tiledb_key = StringField('tiledb_key')
 
-    def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
-                 dtype=None, sparse=None, **kw):
+    def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None, **kw):
         super().__init__(
-            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri, _tiledb_key=tiledb_key,
-            _dtype=dtype, _sparse=sparse, **kw)
+            _tiledb_config=tiledb_config, _tiledb_uri=tiledb_uri,
+            _tiledb_key=tiledb_key, **kw)
 
     def calc_shape(self, *inputs_shape):
         return self.outputs[0].shape

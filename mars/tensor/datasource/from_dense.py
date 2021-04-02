@@ -35,9 +35,8 @@ class DenseToSparse(TensorHasInput):
     _input = KeyField('input')
     _missing = AnyField('missing')
 
-    def __init__(self, dtype=None, gpu=None, missing=None, **kw):
-        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=True,
-                         _missing=missing, **kw)
+    def __init__(self, missing=None, **kw):
+        super().__init__(sparse=True, _missing=missing, **kw)
 
     @property
     def missing(self):

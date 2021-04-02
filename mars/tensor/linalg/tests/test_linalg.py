@@ -21,12 +21,11 @@ import numpy as np
 import scipy.sparse as sps
 
 import mars.tensor as mt
+from mars.core import get_tiled
 from mars.tensor import ones, tensor, dot, empty
-from mars.graph import DirectedGraph
 from mars.tensor.core import SparseTensor, Tensor
 from mars.tensor.linalg import matmul
 from mars.tensor.linalg.inv import TensorInv
-from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):
@@ -196,28 +195,6 @@ class Test(unittest.TestCase):
         self.assertEqual(V.shape, (6, 9))
 
         rs = mt.random.RandomState(1)
-        a = rs.rand(9, 6, chunk_size=(3, 6))
-        U, s, V = mt.linalg.svd(a)
-
-        # test tensor graph
-        graph = DirectedGraph()
-        U.build_graph(tiled=False, graph=graph)
-        s.build_graph(tiled=False, graph=graph)
-        new_graph = DirectedGraph.from_json(graph.to_json())
-        self.assertEqual((len(new_graph)), 4)
-        new_outputs = [n for n in new_graph if new_graph.count_predecessors(n) == 1]
-        self.assertEqual(len(new_outputs), 3)
-        self.assertEqual(len(set([o.op for o in new_outputs])), 1)
-
-        # test tensor graph, do some caculation
-        graph = DirectedGraph()
-        (U + 1).build_graph(tiled=False, graph=graph)
-        (s + 1).build_graph(tiled=False, graph=graph)
-        new_graph = DirectedGraph.from_json(graph.to_json())
-        self.assertEqual((len(new_graph)), 6)
-        new_outputs = [n for n in new_graph if new_graph.count_predecessors(n) == 1]
-        self.assertEqual(len(new_outputs), 5)
-        self.assertEqual(len(set([o.op for o in new_outputs])), 3)
 
         a = rs.rand(20, 10, chunk_size=10)
         _, s, _ = mt.linalg.svd(a)

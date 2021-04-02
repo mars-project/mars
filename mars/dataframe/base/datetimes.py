@@ -31,10 +31,10 @@ class SeriesDatetimeMethod(DataFrameOperand, DataFrameOperandMixin):
     _is_property = BoolField('is_property')
 
     def __init__(self, method=None, method_args=None, method_kwargs=None,
-                 is_property=None, stage=None, output_types=None, **kw):
+                 is_property=None, output_types=None, **kw):
         super().__init__(_method=method, _method_args=method_args,
                          _method_kwargs=method_kwargs, _is_property=is_property,
-                         _stage=stage, _output_types=output_types, **kw)
+                         _output_types=output_types, **kw)
         if not self.output_types:
             self.output_types = [OutputType.series]
 

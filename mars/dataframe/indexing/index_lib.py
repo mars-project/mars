@@ -20,9 +20,8 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
-from ...core import TileableEntity, Chunk, OutputType
-from ...operands import OperandStage
-from ...tiles import TilesError
+from ...core import Tileable, Chunk, OutputType, TilesError
+from ...core.operand import OperandStage
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
     IndexInfo, IndexType, ChunkIndexInfo as ChunkIndexInfoBase, \
@@ -92,7 +91,7 @@ class LabelFancyIndexInfo(IndexInfo):
 
 
 class DataFrameIndexHandlerContext(IndexHandlerContext):
-    def set_tileable(self, tileable: TileableEntity):
+    def set_tileable(self, tileable: Tileable):
         for chunk in tileable.chunks:
             self.chunk_index_to_info[chunk.index] = ChunkIndexInfo()
 
@@ -120,7 +119,7 @@ class DataFrameIndexHandlerContext(IndexHandlerContext):
                      chunk_index_info: ChunkIndexInfo) -> Chunk:
         chunk_op = self.op.copy().reset_key()
         chunk_op._indexes = indexes = chunk_index_info.indexes
-        chunk_op._stage = OperandStage.map
+        chunk_op.stage = OperandStage.map
 
         chunk_input = self.tileable.cix[chunk_index]
         chunk_inputs = filter_inputs([chunk_input] + indexes)
@@ -267,7 +266,7 @@ class LabelSliceIndexHandler(IndexHandler):
         chunk_index_info.set(ChunkIndexAxisInfo(**kw))
 
     def _process_has_value_index(self,
-                                 tileable: TileableEntity,
+                                 tileable: Tileable,
                                  index_info: IndexInfo,
                                  index_value,
                                  input_axis: int,
@@ -877,7 +876,7 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                 shape[1] = len(dtypes)
                 params['shape'] = tuple(shape)
             chunk_op._indexes = indexes
-            chunk_op._stage = OperandStage.agg
+            chunk_op.stage = OperandStage.agg
             out_chunk = chunk_op.new_chunk([concat_chunk], kws=[params])
             if len(out_chunk.shape) != 0:
                 chunk_axis_shapes[out_chunk.index[axis]] = out_chunk.shape[axis]
@@ -989,7 +988,7 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
                     slice_chunks.append(slice_chunk)
 
                 chunk_op = context.op.copy().reset_key()
-                chunk_op._stage = OperandStage.agg
+                chunk_op.stage = OperandStage.agg
                 chunk_op._indexes = (None,) * len(nsplits)
                 chunk_op._fill_value = None
                 assert axis == 0

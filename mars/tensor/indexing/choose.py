@@ -32,8 +32,8 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
     _choices = ListField('choices', ValueType.key)
     _mode = StringField('mode')
 
-    def __init__(self, mode=None, dtype=None, **kw):
-        super().__init__(_mode=mode, _dtype=dtype, **kw)
+    def __init__(self, mode=None, **kw):
+        super().__init__(_mode=mode, **kw)
 
     def __setattr__(self, key, value):
         if key == '_mode' and value not in ('raise', 'wrap', 'clip'):
@@ -75,7 +75,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
         # if `out` is specified, use out's dtype and shape
         if out_shape != t.shape:
             raise ValueError(f'output shape should be {t.shape}, got {out_shape}')
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
         out.data = t.data
         return out
 

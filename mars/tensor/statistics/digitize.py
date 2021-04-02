@@ -17,10 +17,10 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, AnyField, BoolField
 from ...lib.sparse.core import get_array_module
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..array_utils import as_same_device, device
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
@@ -34,8 +34,8 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
     _bins = AnyField('bins')
     _right = BoolField('right')
 
-    def __init__(self, right=False, dtype=None, **kw):
-        super().__init__(_right=right, _dtype=dtype, **kw)
+    def __init__(self, right=False, **kw):
+        super().__init__(_right=right, **kw)
 
     @property
     def bins(self):
@@ -59,7 +59,7 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
             self._bins = bins
         else:
             inputs.append(bins)
-        self._dtype = np.digitize([0], np.empty(1, dtype=bins.dtype), right=self._right).dtype
+        self.dtype = np.digitize([0], np.empty(1, dtype=bins.dtype), right=self._right).dtype
 
         return self.new_tensor(inputs, x.shape, order=TensorOrder.C_ORDER)
 

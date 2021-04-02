@@ -16,12 +16,13 @@ from typing import Dict, List
 
 import numpy as np
 
-from .core import Serializer, pickle_buffers, unpickle_buffers
+from .core import Serializer, buffered, pickle_buffers, unpickle_buffers
 
 
 class NDArraySerializer(Serializer):
     serializer_name = 'np_ndarray'
 
+    @buffered
     def serialize(self, obj: np.ndarray, context: Dict):
         header = {}
         if obj.dtype.hasobject:

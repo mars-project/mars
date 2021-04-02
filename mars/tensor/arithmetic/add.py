@@ -89,9 +89,6 @@ class TensorTreeAdd(TensorMultiOp):
     _op_type_ = OperandDef.TREE_ADD
     _func_name = 'add'
 
-    def __init__(self, sparse=False, **kw):
-        super().__init__(_sparse=sparse, **kw)
-
     @classmethod
     def _is_sparse(cls, *args):
         if args and all(hasattr(x, 'issparse') and x.issparse() for x in args):

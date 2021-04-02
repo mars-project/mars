@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import functools
-import json
 import logging
 import re
 import threading
@@ -28,7 +28,7 @@ from bokeh.server.server import Server
 import jinja2
 from tornado import web, ioloop
 
-from ..utils import get_next_port
+from ..utils import get_next_port, deserialize_serializable
 from ..scheduler import SessionActor
 from ..api import MarsAPI
 
@@ -165,13 +165,12 @@ class MarsWebAPI(MarsAPI):
         import pyarrow
 
         from ..serialize import dataserializer
-        from ..tensor.core import Indexes
         session_uid = SessionActor.gen_uid(session_id)
         session_ref = self.get_actor_ref(session_uid)
 
         index_json_size = np.frombuffer(body[0:8], dtype=np.int64).item()
-        index_json = json.loads(body[8:8+index_json_size].decode('ascii'))
-        index = Indexes.from_json(index_json).indexes
+        index = deserialize_serializable(base64.b64decode(body[8:8+index_json_size]))
+        index = index.indexes
         if payload_type is None:
             value = dataserializer.loads(body[8+index_json_size:])
         elif payload_type == 'tensor':

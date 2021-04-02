@@ -29,11 +29,11 @@ class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     _high = Int64Field('high')
     _func_name = 'random_integers'
 
-    def __init__(self, state=None, size=None, dtype=None,
-                 low=None, high=None, gpu=None, **kw):
+    def __init__(self, state=None, size=None, low=None, high=None,
+                 dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _dtype=dtype, _low=low, _high=high,
-                         _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, _low=low, _high=high,
+                         dtype=dtype, **kw)
 
     @property
     def low(self):

@@ -19,8 +19,8 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import Int32Field
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..utils import unify_chunks, check_out_param
 from ..array_utils import as_same_device, device
@@ -34,8 +34,8 @@ class TensorStack(TensorOperand, TensorOperandMixin):
 
     _axis = Int32Field('axis')
 
-    def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, axis=None, **kw):
+        super().__init__(_axis=axis, **kw)
 
     @property
     def axis(self):

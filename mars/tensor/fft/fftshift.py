@@ -24,8 +24,8 @@ from .core import TensorFFTShiftMixin, TensorFFTShiftBase
 class TensorFFTShift(TensorFFTShiftBase, TensorFFTShiftMixin):
     _op_type_ = OperandDef.FFTSHIFT
 
-    def __init__(self, axes=None, dtype=None, **kw):
-        super().__init__(_axes=axes, _dtype=dtype, **kw)
+    def __init__(self, axes=None, **kw):
+        super().__init__(_axes=axes, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)

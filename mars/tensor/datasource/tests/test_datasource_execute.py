@@ -39,15 +39,15 @@ try:
 except ImportError:  # pragma: no cover
     zarr = None
 
-from mars.tests.core import TestBase, ExecutorForTest
-from mars.tiles import get_tiled
+import mars.tensor as mt
+import mars.dataframe as md
+from mars.core import get_tiled
 from mars.lib.sparse import SparseNDArray
+from mars.tests.core import TestBase, ExecutorForTest
 from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, from_dataframe, fromtiledb, fromhdf5, fromzarr
 from mars.tensor.lib import nd_grid
-import mars.tensor as mt
-import mars.dataframe as md
 
 
 class Test(TestBase):

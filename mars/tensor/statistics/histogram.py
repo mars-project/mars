@@ -19,8 +19,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
+from ...core import TilesError
 from ...serialize import AnyField, TupleField, KeyField, BoolField
-from ...tiles import TilesError
 from ...context import get_context
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
@@ -414,9 +414,9 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
     _uniform_bins = TupleField('uniform_bins')
 
     def __init__(self, input=None, bins=None, range=None, weights=None,
-                 input_min=None, input_max=None, dtype=None, **kw):
+                 input_min=None, input_max=None, **kw):
         super().__init__(_input=input, _bins=bins, _range=range, _weights=weights,
-                         _input_min=input_min, _input_max=input_max, _dtype=dtype, **kw)
+                         _input_min=input_min, _input_max=input_max, **kw)
         if getattr(self, '_calc_bin_edges_dependencies', None) is None:
             self._calc_bin_edges_dependencies = []
 
@@ -825,7 +825,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         else:
             inputs.append(weights)
             dtype = weights.dtype
-        self._dtype = dtype
+        self.dtype = dtype
 
         hist = self.new_tensor(inputs, shape=(bins.size - 1,),
                                order=TensorOrder.C_ORDER)
@@ -984,6 +984,7 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
     >>> plt.show()
 
     """
+    a, weights = _ravel_and_check_weights(a, weights)
     op = TensorHistogram(input=a, bins=bins, range=range,
                          weights=weights, density=density)
     return op(a, bins, range, weights)

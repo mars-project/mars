@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize.core import AnyField, StringField
+from ...serialize import AnyField, StringField
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_empty_df, parse_index, standardize_range_index
 

@@ -20,9 +20,9 @@ import numpy as np
 
 from ...lib import sparse
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, Int32Field
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..array_utils import create_array
 from ..core import TensorOrder
 from .core import TensorHasInput
@@ -100,8 +100,8 @@ class TensorTriu(TensorTri):
     _input = KeyField('input')
     _k = Int32Field('k')
 
-    def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
-        super().__init__(_k=k, _dtype=dtype, _sparse=sparse, _gpu=gpu, **kw)
+    def __init__(self, k=None, **kw):
+        super().__init__(_k=k, **kw)
 
     @property
     def k(self):
@@ -144,8 +144,8 @@ class TensorTril(TensorTri):
     _input = KeyField('input')
     _k = Int32Field('k')
 
-    def __init__(self, k=None, dtype=None, sparse=False, gpu=None, **kw):
-        super().__init__(_k=k, _dtype=dtype, _sparse=sparse, _gpu=gpu, **kw)
+    def __init__(self, k=None, **kw):
+        super().__init__(_k=k, **kw)
 
     @property
     def k(self):

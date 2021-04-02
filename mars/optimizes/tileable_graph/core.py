@@ -17,8 +17,7 @@
 import weakref
 from collections import defaultdict
 
-from ...graph import DAG
-from ...graph_builder import TileableGraphBuilder
+from ...core.graph import TileableGraphBuilder, TileableGraph
 from ...utils import copy_tileables, enter_mode
 
 _rules = defaultdict(list)
@@ -51,9 +50,9 @@ class OptimizeContext(weakref.WeakKeyDictionary):
 
 
 class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
-    def __init__(self, **kw):
+    def __init__(self, graph: TileableGraph, **kw):
         self._optimizer_context = OptimizeContext()
-        super().__init__(**kw)
+        super().__init__(graph, **kw)
         self._node_processor = self._apply_rules(self._node_processor, self._optimizer_context)
 
     @staticmethod
@@ -89,7 +88,8 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
         if len(self._optimizer_context) == 0:
             return graph
 
-        new_graph = DAG()
+        new_result_tileables = []
+        new_graph = TileableGraph(new_result_tileables)
         replaced_tileables = weakref.WeakKeyDictionary()
         for n in graph.topological_iter():
             if graph.count_predecessors(n) == 0:
@@ -120,14 +120,19 @@ class OptimizeIntegratedTileableGraphBuilder(TileableGraphBuilder):
                 new_graph.add_node(inp)
                 new_graph.add_edge(inp, new_node)
         self._optimizer_context.update(replaced_tileables)
+        new_result_tileables.extend(replaced_tileables.get(n, n)
+                                    for n in self._graph.result_tileables)
         return new_graph
 
     @enter_mode(build=True, kernel=True)
-    def build(self, tileables, tileable_graph=None):
+    def _build(self) -> TileableGraph:
+        tileables = self._graph.result_tileables
         self._optimizer_context.append_result_tileables(tileables)
-        graph = super().build(tileables, tileable_graph=tileable_graph)
+        graph = super()._build()
         graph = self._replace_copied_tilebale(graph)
         self._mapping_tileables(tileables)
+        graph.results = [tileable_optimized.get(n, n)
+                         for n in graph.results]
         return graph
 
 

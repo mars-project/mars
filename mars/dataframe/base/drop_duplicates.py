@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import BoolField
 from ...utils import get_shuffle_input_keys_idxes, lazy_import
 from ..operands import OutputType

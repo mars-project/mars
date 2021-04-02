@@ -16,7 +16,7 @@
 
 import os
 import uuid
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from ..lib.aio import AioFilesystem
 from ..lib.filesystem import FileSystem
@@ -71,7 +71,7 @@ class FileSystemStorage(StorageBackend):
 
     @property
     @implements(StorageBackend.size)
-    def size(self) -> Union[int, None]:
+    def size(self) -> Optional[int]:
         return self._size
 
     def _generate_path(self):

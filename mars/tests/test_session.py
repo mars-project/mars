@@ -26,10 +26,10 @@ except ImportError:  # pragma: no cover
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.core import get_tiled
 from mars.executor import register, Executor
 from mars.tensor.core import TensorOrder
 from mars.tensor.datasource import ArrayDataSource
-from mars.tiles import get_tiled
 from mars.session import new_session, Session
 
 
@@ -388,23 +388,6 @@ class Test(unittest.TestCase):
             self.assertAlmostEqual(s.fetch(), raw.sum())
         finally:
             del Executor._op_runners[ArrayDataSource]
-
-    def testDecref(self):
-        sess = new_session()
-
-        arr1 = mt.ones((10, 5), chunk_size=3)
-        arr2 = mt.ones((10, 5), chunk_size=3)
-        sess.run(arr1)
-        sess.run(arr2)
-        sess.fetch(arr1)
-
-        executor = sess._sess._executor
-
-        self.assertEqual(len(executor.chunk_result), 4)  # 4 kinds of shapes
-        del arr1
-        self.assertEqual(len(executor.chunk_result), 4)
-        del arr2
-        self.assertEqual(len(executor.chunk_result), 0)
 
     def testWithoutCompose(self):
         sess = new_session()

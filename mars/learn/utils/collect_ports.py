@@ -18,7 +18,7 @@ import socket
 import numpy as np
 
 from ... import opcodes
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import Int32Field, ListField, StringField, ValueType
 from ...tensor.merge import TensorConcatenate
 from ...utils import get_next_port
@@ -62,8 +62,8 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
         for idx, (worker, inp) in enumerate(zip(op.workers, chunk_iter)):
             new_op = op.copy().reset_key()
             new_op._workers = [worker]
-            new_op._expect_worker = worker
-            new_op._stage = OperandStage.map
+            new_op.expect_worker = worker
+            new_op.stage = OperandStage.map
             new_op._tileable_key = op.outputs[0].key
             new_op._index = idx
             new_op._pure_depends = [True]

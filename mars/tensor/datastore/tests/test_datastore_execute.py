@@ -35,12 +35,12 @@ except ImportError:  # pragma: no cover
     zarr = None
 
 from mars.config import option_context
+from mars.core import get_tiled
 from mars.deploy.local.core import new_cluster
 from mars.session import new_session
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
     from_vineyard, tovineyard
 from mars.tests.core import TestBase, ExecutorForTest, flaky
-from mars.tiles import get_tiled
 
 try:
     import vineyard

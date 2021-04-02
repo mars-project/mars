@@ -15,7 +15,7 @@
 from typing import Any, List, Dict
 
 from ..utils import lazy_import
-from .core import Serializer
+from .core import Serializer, buffered
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
@@ -24,6 +24,7 @@ cudf = lazy_import('cudf', globals=globals())
 class CupySerializer(Serializer):
     serializer_name = 'cupy'
 
+    @buffered
     def serialize(self, obj: Any, context: Dict):
         if not (obj.flags["C_CONTIGUOUS"] or obj.flags["F_CONTIGUOUS"]):
             obj = cupy.array(obj, copy=True)

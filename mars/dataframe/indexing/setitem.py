@@ -17,10 +17,9 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ...tiles import TilesError
 from ..core import SERIES_TYPE, DataFrame
 from ..initializer import Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin

@@ -21,9 +21,9 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...config import options
 from ...context import get_context, RunningMode
-from ...core import Base, Entity, OutputType
+from ...core import ENTITY_TYPE, OutputType
+from ...core.operand import OperandStage
 from ...custom_log import redirect_custom_log
-from ...operands import OperandStage
 from ...serialize import Int32Field, AnyField, BoolField, StringField, ListField, DictField
 from ...utils import enter_current_session, lazy_import
 from ..core import GROUPBY_TYPE
@@ -103,14 +103,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
     def __init__(self, raw_func=None, raw_func_kw=None, func=None, func_rename=None,
                  method=None, groupby_params=None, use_inf_as_na=None, combine_size=None,
-                 pre_funcs=None, agg_funcs=None, post_funcs=None, stage=None,
+                 pre_funcs=None, agg_funcs=None, post_funcs=None,
                  output_types=None, tileable_op_key=None, **kw):
         super().__init__(_raw_func=raw_func, _raw_func_kw=raw_func_kw, _func=func,
                          _func_rename=func_rename, _method=method, _groupby_params=groupby_params,
                          _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
                          _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
-                         _stage=stage, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _output_types=output_types, _tileable_op_key=tileable_op_key, **kw)
 
     @property
     def raw_func(self):
@@ -166,7 +165,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         if len(self._inputs) > 1:
             by = []
             for v in self._groupby_params['by']:
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     by.append(next(inputs_iter))
                 else:
                     by.append(v)
@@ -175,7 +174,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     def _get_inputs(self, inputs):
         if isinstance(self._groupby_params['by'], list):
             for v in self._groupby_params['by']:
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     inputs.append(v)
         return inputs
 
@@ -275,14 +274,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(map_op._groupby_params['by'], list):
                 by = []
                 for v in map_op._groupby_params['by']:
-                    if isinstance(v, (Base, Entity)):
+                    if isinstance(v, ENTITY_TYPE):
                         by_chunk = v.cix[chunk.index[0], ]
                         chunk_inputs.append(by_chunk)
                         by.append(by_chunk)
                     else:
                         by.append(v)
                 map_op._groupby_params['by'] = by
-            map_op._stage = OperandStage.map
+            map_op.stage = OperandStage.map
             map_op._pre_funcs = func_infos.pre_funcs
             map_op._agg_funcs = func_infos.agg_funcs
             new_index = chunk.index if len(chunk.index) == 2 else (chunk.index[0], 0)
@@ -346,7 +345,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             # use levels instead of by for reducer
             agg_op._groupby_params.pop('by', None)
             agg_op._groupby_params['level'] = level
-            agg_op._stage = OperandStage.agg
+            agg_op.stage = OperandStage.agg
             agg_op._agg_funcs = func_infos.agg_funcs
             agg_op._post_funcs = func_infos.post_funcs
             if op.output_types[0] == OutputType.dataframe:
@@ -396,7 +395,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op = op.copy().reset_key()
                 chunk_op._tileable_op_key = None
                 chunk_op.output_types = [OutputType.dataframe]
-                chunk_op._stage = OperandStage.combine
+                chunk_op.stage = OperandStage.combine
                 chunk_op._groupby_params = chunk_op.groupby_params.copy()
                 chunk_op._groupby_params.pop('selection', None)
                 # use levels instead of by for agg
@@ -415,7 +414,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
         chunk_op._tileable_op_key = op.key
-        chunk_op._stage = OperandStage.agg
+        chunk_op.stage = OperandStage.agg
         chunk_op._groupby_params = chunk_op.groupby_params.copy()
         chunk_op._groupby_params.pop('selection', None)
         # use levels instead of by for agg
@@ -466,7 +465,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         elif isinstance(params.get('by'), list):
             new_by = []
             for v in params['by']:
-                if isinstance(v, Base):
+                if isinstance(v, ENTITY_TYPE):
                     new_by.append(ctx[v.key])
                 else:
                     new_by.append(v)

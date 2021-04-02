@@ -18,9 +18,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, StringField, BoolField
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile
-from ...tiles import TilesError
 from ...context import get_context
 from ..datasource import tensor as astensor
 from ..base import moveaxis, where
@@ -194,11 +193,11 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
     _keepdims = BoolField('keepdims')
 
     def __init__(self, q=None, axis=None, out=None, overwrite_input=None,
-                 interpolation=None, keepdims=None, dtype=None, gpu=None, **kw):
+                 interpolation=None, keepdims=None, **kw):
         self.q_error_msg = kw.pop('q_error_msg', q_error_msg)
         super().__init__(_q=q, _axis=axis, _interpolation=interpolation,
                          _out=out, _overwrite_input=overwrite_input,
-                         _keepdims=keepdims, _dtype=dtype, _gpu=gpu, **kw)
+                         _keepdims=keepdims, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -341,7 +340,7 @@ def _quantile_unchecked(a, q, axis=None, out=None, overwrite_input=False,
         # to handle the datetime-like dtype
         a = a.astype('i8')
         need_view_back = True
-    if isinstance(q, (Base, Entity)):
+    if isinstance(q, ENTITY_TYPE):
         q = astensor(q)
         # do check in tile
         q_input = q
@@ -476,7 +475,7 @@ def quantile(a, q, axis=None, out=None, overwrite_input=False,
         raise TypeError('quantile() got an unexpected keyword '
                         f'argument \'{next(iter(kw))}\'')
 
-    if not isinstance(q, (Base, Entity)):
+    if not isinstance(q, ENTITY_TYPE):
         q = np.asanyarray(q)
         # do check instantly if q is not a tensor
         if not _quantile_is_valid(q):

@@ -16,8 +16,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField, Int32Field
-from ...core import Entity, Base
-from ...tiles import TilesError
+from ...core import ENTITY_TYPE, TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -35,8 +34,8 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     # used for chunk
     _k = Int32Field('k')
 
-    def __init__(self, val=None, wrap=None, k=None, dtype=None, **kw):
-        super().__init__(_val=val, _wrap=wrap, _k=k, _dtype=dtype, **kw)
+    def __init__(self, val=None, wrap=None, k=None, **kw):
+        super().__init__(_val=val, _wrap=wrap, _k=k, **kw)
 
     @property
     def input(self):
@@ -420,7 +419,7 @@ def fill_diagonal(a, val, wrap=False):
         raise ValueError("All dimensions of input must be of equal length")
 
     # process val
-    if isinstance(val, (Base, Entity)):
+    if isinstance(val, ENTITY_TYPE):
         val = astensor(val)
         if val.ndim > 1:
             val = val.ravel()

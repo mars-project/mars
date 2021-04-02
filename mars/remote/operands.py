@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ..core import FuseChunkData, FuseChunk
-from ..operands import Fuse, FuseChunkMixin, ObjectOperandMixin
+from ..core.operand import Fuse, FuseChunkMixin, ObjectOperandMixin
 
 
 class RemoteFuseChunkMixin(ObjectOperandMixin, FuseChunkMixin):

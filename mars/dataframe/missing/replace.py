@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import AnyField, Int32Field, ListField, StringField, ValueType
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_df, build_series, parse_index
@@ -127,7 +127,7 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
             ))
 
         new_op = op.copy().reset_key()
-        new_op._stage = stage
+        new_op.stage = stage
         return new_op.new_chunk(in_chunks, **kw)
 
     @classmethod

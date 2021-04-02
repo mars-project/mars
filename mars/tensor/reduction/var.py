@@ -43,13 +43,13 @@ class TensorMoment(TensorReduction, TensorReductionMixin):
     _moment = Int32Field('moment', default=2)
     _ddof = Int32Field('ddof')
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, moment=None, ddof=None,
+    def __init__(self, axis=None, keepdims=None, moment=None, ddof=None,
                  combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
         if moment is not None:
             kw['_moment'] = moment
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
-                         _combine_size=combine_size, _stage=stage, **kw)
+        super().__init__(_axis=axis, _keepdims=keepdims, _ddof=ddof,
+                         _combine_size=combine_size, stage=stage, **kw)
 
     @property
     def moment(self):
@@ -131,10 +131,10 @@ class TensorVar(TensorReduction, TensorReductionMixin):
     def __new__(cls, *args, **kwargs):
         if kwargs.get('stage') is not None:
             return TensorMoment(*args, **kwargs)
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, ddof=0, combine_size=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _keepdims=keepdims, _ddof=ddof,
+    def __init__(self, axis=None, keepdims=None, ddof=0, combine_size=None, **kw):
+        super().__init__(_axis=axis, _keepdims=keepdims, _ddof=ddof,
                          _combine_size=combine_size, **kw)
 
     @property
@@ -263,5 +263,6 @@ def var(a, axis=None, dtype=None, out=None, ddof=0, keepdims=None, combine_size=
     a = astensor(a)
     if dtype is None:
         dtype = np.var(np.ones((1,), dtype=a.dtype)).dtype
-    op = TensorVar(axis=axis, dtype=dtype, keepdims=keepdims, ddof=ddof, combine_size=combine_size)
+    op = TensorVar(axis=axis, dtype=dtype, keepdims=keepdims,
+                   ddof=ddof, combine_size=combine_size)
     return op(a, out=out)

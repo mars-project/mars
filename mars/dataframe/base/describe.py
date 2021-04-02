@@ -17,8 +17,8 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...operands import OperandStage
-from ...serialize import ValueType, KeyField, ListField
+from ...core.operand import OperandStage
+from ...serialize import ValueType, KeyField, ListField, AnyField
 from ...utils import recursive_tile, lazy_import
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
@@ -34,14 +34,13 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
     _input = KeyField('input')
     _percentiles = ListField('percentiles', ValueType.float64)
-    _include = ListField('include')
-    _exclude = ListField('exclude')
+    _include = AnyField('include')
+    _exclude = AnyField('exclude')
 
     def __init__(self, percentiles=None, include=None, exclude=None,
-                 output_types=None, stage=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_percentiles=percentiles, _include=include,
-                         _exclude=exclude, _output_types=output_types,
-                         _stage=stage, **kw)
+                         _exclude=exclude, _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -61,7 +60,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if self._stage != OperandStage.agg:
+        if self.stage != OperandStage.agg:
             self._input = self._inputs[0]
 
     def __call__(self, df_or_series):
@@ -222,7 +221,7 @@ def describe(df_or_series, percentiles=None, include=None, exclude=None):
         unique_pcts = np.unique(percentiles)
         if len(unique_pcts) < len(percentiles):
             raise ValueError("percentiles cannot contain duplicates")
-        percentiles = unique_pcts
+        percentiles = unique_pcts.tolist()
 
     op = DataFrameDescribe(percentiles=percentiles, include=include, exclude=exclude)
     return op(df_or_series)

@@ -17,10 +17,9 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...serialize import KeyField, ListField, AnyField
 from ...tensor import tensor as astensor
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -37,10 +36,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     # input[indexes]
     _indexed = KeyField('indexed')
 
-    def __init__(self, dtype=None, sparse=False, indexes=None, value=None,
-                 indexed=None, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
-                         _value=value, _indexed=indexed, **kw)
+    def __init__(self, indexes=None, value=None, indexed=None, **kw):
+        super().__init__(_indexes=indexes, _value=value, _indexed=indexed, **kw)
 
     @property
     def indexes(self):
@@ -57,12 +54,12 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
+        new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
                        for index in self._indexes]
         self._indexes = new_indexes
-        if isinstance(self._value, (Base, Entity)):
+        if isinstance(self._value, ENTITY_TYPE):
             self._value = next(inputs_iter)
-        if isinstance(self._indexed, (Base, Entity)):
+        if isinstance(self._indexed, ENTITY_TYPE):
             self._indexed = next(inputs_iter)
 
     def __call__(self, a, index, value):
@@ -70,7 +67,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
         indexed = _getitem_nocheck(a, index, convert_bool_to_fancy=False)
         inputs = filter_inputs([a] + list(index) + [value] + [indexed])
-        self._indexes = index
+        self._indexes = list(index)
         self._value = value
         self._indexed = indexed
         return self.new_tensor(inputs, a.shape, order=a.order)
@@ -159,7 +156,8 @@ def _setitem(a, item, value):
         _check_support(ix)
 
     # __setitem__ on a view should be still a view, see GH #732.
-    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(), indexes=index, value=value,
-                             _create_view=a.op.create_view)
+    op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
+                             indexes=list(index), value=value,
+                             create_view=a.op.create_view)
     ret = op(a, index, value)
     a.data = ret.data

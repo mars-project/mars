@@ -32,14 +32,14 @@ class TensorFull(TensorNoInput):
     _fill_value = AnyField('fill_value')
     _order = StringField('order')
 
-    def __init__(self, fill_value=None, dtype=None, gpu=None, order=None, **kw):
+    def __init__(self, fill_value=None, dtype=None, order=None, **kw):
         if dtype is not None:
             dtype = np.dtype(dtype)
             if fill_value is not None:
                 fill_value = dtype.type(fill_value)
         elif fill_value is not None:
             dtype = np.array(fill_value).dtype
-        super().__init__(_fill_value=fill_value, _dtype=dtype, _gpu=gpu, _order=order, **kw)
+        super().__init__(_fill_value=fill_value, dtype=dtype, _order=order, **kw)
 
     @property
     def fill_value(self):

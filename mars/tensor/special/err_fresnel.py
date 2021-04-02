@@ -14,9 +14,10 @@
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialUnaryOp
+from .core import spspecial, TensorSpecialUnaryOp, _register_special_op
 
 
+@_register_special_op
 @arithmetic_operand(sparse_mode='unary')
 class TensorErf(TensorSpecialUnaryOp):
     _func_name = 'erf'

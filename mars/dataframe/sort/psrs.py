@@ -19,8 +19,8 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...context import RunningMode
+from ...core.operand import OperandStage
 from ...utils import lazy_import, get_shuffle_input_keys_idxes
-from ...operands import OperandStage
 from ...serialize import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
@@ -288,12 +288,12 @@ class DataFramePSRSChunkOperand(DataFrameOperand):
     _n_partition = Int32Field('n_partition')
 
     def __init__(self, sort_type=None, by=None, axis=None, ascending=None, inplace=None, kind=None,
-                 na_position=None, level=None, sort_remaining=None, n_partition=None, gpu=None,
+                 na_position=None, level=None, sort_remaining=None, n_partition=None,
                  output_types=None, **kw):
         super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
                          _inplace=inplace, _kind=kind, _na_position=na_position,
                          _level=level, _sort_remaining=sort_remaining, _n_partition=n_partition,
-                         _gpu=gpu, _output_types=output_types, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def sort_type(self):
@@ -446,11 +446,11 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
     def __init__(self, sort_type=None, by=None, axis=None, ascending=None, n_partition=None,
                  na_position=None, inplace=None, kind=None, level=None, sort_remaining=None,
-                 stage=None, shuffle_key=None, output_types=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
                          _n_partition=n_partition, _na_position=na_position, _inplace=inplace,
-                         _kind=kind, _level=level, _sort_remaining=sort_remaining, _stage=stage,
-                         _shuffle_key=shuffle_key, _output_types=output_types, **kw)
+                         _kind=kind, _level=level, _sort_remaining=sort_remaining,
+                         _output_types=output_types, **kw)
 
     @property
     def sort_type(self):

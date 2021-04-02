@@ -30,10 +30,10 @@ class TensorIsclose(TensorBinOp):
     _equal_nan = BoolField('equal_nan')
 
     def __init__(self, rtol=None, atol=None, equal_nan=None,
-                 casting='same_kind', err=None, dtype=None, sparse=False, **kw):
+                 casting='same_kind', err=None, sparse=False, **kw):
         err = err if err is not None else np.geterr()
-        super().__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan, _casting=casting,
-                         _err=err, _dtype=dtype, _sparse=sparse, **kw)
+        super().__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
+                         _casting=casting, _err=err, sparse=sparse, **kw)
 
     @property
     def rtol(self):

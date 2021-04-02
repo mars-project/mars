@@ -15,8 +15,8 @@
 import numpy as np
 
 from ... import opcodes
+from ...core import TilesError
 from ...serialize import KeyField, Float64Field, Int8Field
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder

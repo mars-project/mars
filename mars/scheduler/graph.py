@@ -25,6 +25,19 @@ from functools import lru_cache, reduce
 
 import numpy as np
 
+from ..actors.errors import ActorAlreadyExist
+from ..config import options
+from ..context import DistributedContext
+from ..core import get_tiled, TileableGraph, ChunkGraph
+from ..core.entity.tileables import handler
+from ..core.graph import DAG, IterativeChunkGraphBuilder, TileableGraphBuilder
+from ..core.operand import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
+from ..errors import ExecutionInterrupted, GraphNotExists, WorkerDead
+from ..optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
+from ..serialize import dataserializer
+from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
+    build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
+    get_chunk_shuffle_key, enter_mode, has_unknown_shape
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
@@ -32,19 +45,6 @@ from .operands import get_operand_actor_class, OperandState
 from .resource import ResourceActor
 from .session import SessionActor
 from .utils import SchedulerActor, GraphState
-from ..actors.errors import ActorAlreadyExist
-from ..config import options
-from ..errors import ExecutionInterrupted, GraphNotExists, WorkerDead
-from ..graph import DAG
-from ..operands import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
-from ..optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
-from ..serialize import dataserializer
-from ..tiles import handler, IterativeChunkGraphBuilder, \
-    TileableGraphBuilder, get_tiled
-from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
-    build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key, enter_mode, has_unknown_shape
-from ..context import DistributedContext
 
 logger = logging.getLogger(__name__)
 
@@ -472,7 +472,7 @@ class GraphActor(SchedulerActor):
 
     def _gen_tileable_graph(self):
         if self._tileable_graph_cache is None:
-            tileable_graph = deserialize_graph(self._serialized_tileable_graph, graph_cls=DAG)
+            tileable_graph = deserialize_graph(self._serialized_tileable_graph)
             self._tileable_graph_cache = tileable_graph
 
             logger.debug('Begin preparing graph %s with %d tileables to chunk graph.',
@@ -594,11 +594,11 @@ class GraphActor(SchedulerActor):
         logger.debug(f'Terminal chunk keys: {self._terminal_chunk_keys}')
 
     @staticmethod
-    def _get_tileable_graph_builder(**kwargs):
+    def _get_tileable_graph_builder(graph, **kwargs):
         if options.optimize_tileable_graph:
-            return OptimizeIntegratedTileableGraphBuilder(**kwargs)
+            return OptimizeIntegratedTileableGraphBuilder(graph, **kwargs)
         else:
-            return TileableGraphBuilder(**kwargs)
+            return TileableGraphBuilder(graph, **kwargs)
 
     @log_unhandled
     @enter_mode(build=True)
@@ -618,9 +618,9 @@ class GraphActor(SchedulerActor):
             if options.optimize_tileable_graph:
                 target_tileables = [n for n in tileable_graph
                                     if n.key in self._target_tileable_keys]
-                optimized_graph_builder = OptimizeIntegratedTileableGraphBuilder()
-                self._tileable_graph_cache = tileable_graph = \
-                    optimized_graph_builder.build(target_tileables)
+                tileable_graph = TileableGraph(target_tileables)
+                optimized_graph_builder = OptimizeIntegratedTileableGraphBuilder(tileable_graph)
+                self._tileable_graph_cache = optimized_graph_builder._build()
                 # rescan
                 self._target_tileable_datas = list()
                 self._scan_tileable_graph()
@@ -655,23 +655,26 @@ class GraphActor(SchedulerActor):
 
             # do not compose here
             self._chunk_graph_builder = IterativeChunkGraphBuilder(
-                on_tile=on_tile, on_tile_success=on_tile_success, compose=False)
+                tileable_graph, on_tile=on_tile, on_tile_success=on_tile_success,
+                fuse_enabled=False)
 
         chunk_graph_builder = self._chunk_graph_builder
         if chunk_graph_builder.prev_tileable_graph is None:
             # first tile
             fetch_tileables = [t for t in tileable_graph if isinstance(t.op, Fetch)]
-            cur_chunk_graph = chunk_graph_builder.build(
-                # add fetch tileables to make sure that they won't be fused
-                self._target_tileable_datas + fetch_tileables, tileable_graph)
+            # add fetch tileables to make sure that they won't be fused
+            chunk_graph_builder._graph._result_tileables = \
+                self._target_tileable_datas + fetch_tileables
+            cur_chunk_graph = chunk_graph_builder._build()
         else:
             # some TilesFail happens before
             # build tileable graph from failed ops and their inputs
             failed_tileable_set = set(itertools.chain(
                 *(op.outputs for op in chunk_graph_builder.interrupted_ops)))
             tileable_graph_builder = self._get_tileable_graph_builder(
+                TileableGraph(list(failed_tileable_set)),
                 inputs_selector=lambda inps: [inp for inp in inps if inp in failed_tileable_set])
-            to_run_tileable_graph = tileable_graph_builder.build(failed_tileable_set)
+            to_run_tileable_graph = tileable_graph_builder._build()
             to_fetch_tileables = []
             for failed_op in chunk_graph_builder.interrupted_ops:
                 for inp in failed_op.inputs:
@@ -685,10 +688,11 @@ class GraphActor(SchedulerActor):
                         to_run_tileable_graph.add_node(fetch_inp)
                         for o in failed_op.outputs:
                             to_run_tileable_graph.add_edge(fetch_inp, o)
-            cur_chunk_graph = chunk_graph_builder.build(
-                # add to_fetch_tileables to make sure that fetch chunk would not be fused
-                self._target_tileable_datas + to_fetch_tileables,
-                tileable_graph=to_run_tileable_graph)
+            # add to_fetch_tileables to make sure that fetch chunk would not be fused
+            chunk_graph_builder._graph = to_run_tileable_graph
+            chunk_graph_builder._graph._result_tileables = \
+                self._target_tileable_datas + to_fetch_tileables
+            cur_chunk_graph = chunk_graph_builder._build()
 
         self._gen_target_info()
         if chunk_graph_builder.done:
@@ -818,7 +822,8 @@ class GraphActor(SchedulerActor):
         :param input_chunk_keys: actual input chunks, None if use all chunks in input
         :param serialize: whether to return serialized dag
         """
-        graph = DAG()
+        result_chunks = []
+        graph = ChunkGraph(result_chunks)
         input_mapping = dict()
         output_keys = set()
 
@@ -840,6 +845,7 @@ class GraphActor(SchedulerActor):
                     graph.add_node(out)
                     for inp in inputs:
                         graph.add_edge(inp, out)
+                    result_chunks.append(out)
         if serialize:
             return serialize_graph(graph)
         else:
@@ -1083,7 +1089,7 @@ class GraphActor(SchedulerActor):
                 self.state = self.final_state if self.final_state is not None else GraphState.SUCCEEDED
                 self._graph_meta_ref.set_graph_end(_tell=True)
             else:
-                self._execute_graph(compose=self._chunk_graph_builder.is_compose)
+                self._execute_graph(compose=self._chunk_graph_builder.fused_enabled)
 
     def _update_tileable_and_its_chunk_shapes(self):
         need_update_tileable_to_tiled = dict()
@@ -1273,10 +1279,12 @@ class GraphActor(SchedulerActor):
         :param tileable_key: the key of tileable node
         """
         tileable = self._get_tileable_by_key(tileable_key)
-        graph = DAG()
+        results = []
+        graph = TileableGraph(results)
 
         new_tileable = build_fetch_tileable(tileable).data
         graph.add_node(new_tileable)
+        results.append(new_tileable)
         return serialize_graph(graph)
 
     def tile_fetch_tileable(self, tileable):

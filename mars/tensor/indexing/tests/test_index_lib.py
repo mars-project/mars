@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.tensor import tensor
 from mars.tensor.indexing.index_lib import NDArrayIndexesHandler
 from mars.tests.core import ExecutorForTest

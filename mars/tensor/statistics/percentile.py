@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ..arithmetic import truediv
 from .quantile import _quantile_unchecked, _quantile_is_valid
 
@@ -148,7 +148,7 @@ def percentile(a, q, axis=None, out=None, overwrite_input=False,
         plt.show()
 
     """
-    if not isinstance(q, (Base, Entity)):
+    if not isinstance(q, ENTITY_TYPE):
         q = np.asanyarray(q)
         q = np.true_divide(q, 100)
         # do check instantly if q is not a tensor

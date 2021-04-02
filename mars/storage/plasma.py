@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 import pyarrow as pa
@@ -164,7 +164,7 @@ class PlasmaStorage(StorageBackend):
 
     @property
     @implements(StorageBackend.size)
-    def size(self) -> Union[int, None]:
+    def size(self) -> Optional[int]:
         return self._capacity
 
     def _check_plasma_limit(self, size: int):

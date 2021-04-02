@@ -21,8 +21,9 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.tiles import get_tiled
+from mars.core import get_tiled
 from mars.config import option_context
+from mars.session import new_session
 from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.dataframe.datasource.dataframe import from_pandas
 
@@ -34,6 +35,9 @@ class TileFailOp(TensorOperand, TensorOperandMixin):
 
 
 class Test(unittest.TestCase):
+    def setUp(self) -> None:
+        new_session().as_default()
+
     def testBaseExecute(self):
         with option_context({'eager_mode': True}):
             a_data = np.random.rand(10, 10)
@@ -143,18 +147,6 @@ class Test(unittest.TestCase):
             np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
             np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
 
-        arr3 = mt.ones((10, 5), chunk_size=4) - 1
-        # arr1's data is used by arr2,
-        # so if arr2 not deleted, arr1's data will not be gc collected
-        del arr2
-
-        with self.assertRaises(ValueError):
-            arr3.fetch()
-
-        result = arr3.execute()
-        np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
-        np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
-
     def testKernelMode(self):
         from mars.session import Session
 
@@ -210,13 +202,6 @@ class Test(unittest.TestCase):
             r = a + 1
             self.assertIn(repr(np.zeros((10, 10)) + 1), repr(r))
             np.testing.assert_array_equal(r.fetch(), np.zeros((10, 10)) + 1)
-
-        a = mt.zeros((10, 10))
-        # a's data is used by r,
-        # if not deleted, a's data would not be gc collected
-        del r
-        with self.assertRaises(ValueError):
-            a.fetch()
 
     def testView(self):
         with option_context({'eager_mode': True}):

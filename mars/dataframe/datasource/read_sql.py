@@ -37,10 +37,10 @@ from .core import ColumnPruneSupportedDataSourceMixin
 class DataFrameReadSQL(DataFrameOperand, ColumnPruneSupportedDataSourceMixin):
     _op_type_ = OperandDef.READ_SQL
 
-    _table_or_sql = StringField('table_or_sql')
+    _table_or_sql = AnyField('table_or_sql')
     _selectable = BytesField('selectable', on_serialize=pickle.dumps,
                              on_deserialize=pickle.loads)
-    _con = StringField('con')
+    _con = AnyField('con')
     _schema = StringField('schema')
     _index_col = AnyField('index_col')
     _coerce_float = BoolField('coerce_float')

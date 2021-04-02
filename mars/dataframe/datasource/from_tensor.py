@@ -20,11 +20,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity, OutputType
+from ...core import ENTITY_TYPE, OutputType, TilesError
 from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -67,7 +66,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 # check each value for input
                 new_input = OrderedDict()
                 for k, v in self._input.items():
-                    if isinstance(v, (Base, Entity)):
+                    if isinstance(v, ENTITY_TYPE):
                         new_input[k] = next(inputs_iter)
                     else:
                         new_input[k] = v
@@ -90,7 +89,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 self._index = index
                 index_value = index.index_value
                 inputs.append(index)
-            elif isinstance(index, (Base, Entity)):
+            elif isinstance(index, ENTITY_TYPE):
                 self._index = index
                 index = astensor(index)
                 if index.ndim != 1:
@@ -115,7 +114,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 elif shape != tileable_shape:
                     raise ValueError('input 1-d tensors should have same shape')
 
-            if isinstance(tileable, (Base, Entity)):
+            if isinstance(tileable, ENTITY_TYPE):
                 tileables.append(tileable)
 
         if index is not None:
@@ -138,7 +137,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError(
                     f'columns {columns} should have size {len(input_1d_tileables)}')
             if not isinstance(columns, pd.Index):
-                if isinstance(columns, Base):
+                if isinstance(columns, ENTITY_TYPE):
                     raise NotImplementedError('The columns value cannot be a tileable')
                 columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)
@@ -172,7 +171,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 raise ValueError(
                     f'columns {columns} should have the same shape with tensor: {input_tensor.shape[1]}')
             if not isinstance(columns, pd.Index):
-                if isinstance(columns, Base):
+                if isinstance(columns, ENTITY_TYPE):
                     raise NotImplementedError('The columns value cannot be a tileable')
                 columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)
@@ -204,7 +203,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         if columns is not None:
             if not isinstance(columns, pd.Index):
-                if isinstance(columns, Base):
+                if isinstance(columns, ENTITY_TYPE):
                     raise NotImplementedError('The columns value cannot be a tileable')
                 columns = pd.Index(columns)
             columns_value = parse_index(columns, store_data=True)
@@ -241,7 +240,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             new_input = OrderedDict()
             for k, v in op.input.items():
-                if not isinstance(v, (Base, Entity)):
+                if not isinstance(v, ENTITY_TYPE):
                     try:
                         new_input[k] = v[cum_sizes[i]: cum_sizes[i + 1]]
                     except TypeError:
@@ -579,7 +578,7 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
                     self._index = index
                     index_value = index.index_value
                     inputs.append(index)
-                elif isinstance(index, (Base, Entity)):
+                elif isinstance(index, ENTITY_TYPE):
                     self._index = index
                     index = astensor(index)
                     if index.ndim != 1:

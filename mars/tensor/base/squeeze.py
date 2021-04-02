@@ -47,8 +47,8 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _axis = TupleField('axis', ValueType.int32)
 
-    def __init__(self, axis=None, dtype=None, sparse=False, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _sparse=sparse, _create_view=True, **kw)
+    def __init__(self, axis=None, **kw):
+        super().__init__(_axis=axis, create_view=True, **kw)
 
     def on_output_modify(self, new_output):
         slcs = [slice(None)] * new_output.ndim

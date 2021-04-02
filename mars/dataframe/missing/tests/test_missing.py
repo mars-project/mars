@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
-from mars.operands import OperandStage
+from mars.core.operand import OperandStage
 from mars.tests.core import TestBase
 
 

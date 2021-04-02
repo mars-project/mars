@@ -22,10 +22,9 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
 from ...tensor.core import TensorOrder
-from ...tiles import TilesError
 from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite
@@ -58,13 +57,13 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._y, (Base, Entity)):
+        if isinstance(self._y, ENTITY_TYPE):
             self._y = self._inputs[0]
         if self._unique_y is not None:
             self._unique_y = self._inputs[-1]
 
     def __call__(self, y, y_unique=None):
-        inputs = [y] if isinstance(y, (Base, Entity)) else []
+        inputs = [y] if isinstance(y, ENTITY_TYPE) else []
         if y_unique is not None:
             inputs.append(y_unique)
         return self.new_tileable(inputs, shape=(), dtype=np.dtype(bool),
@@ -144,7 +143,7 @@ def is_multilabel(y):
     >>> is_multilabel(mt.array([[1, 0, 0]])).execute()
     True
     """
-    if not isinstance(y, (Base, Entity)):
+    if not isinstance(y, ENTITY_TYPE):
         if hasattr(y, '__array__') or isinstance(y, Sequence):
             y = np.asarray(y)
         if hasattr(y, 'shape'):
@@ -231,11 +230,11 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                      '_check_float', '_assert_all_finite',
                      '_unique_y']:
             v = getattr(self, attr)
-            if isinstance(v, (Base, Entity)):
+            if isinstance(v, ENTITY_TYPE):
                 setattr(self, attr, next(inputs_iter))
 
     def __call__(self, y):
-        inputs = [y] if isinstance(y, (Base, Entity)) else []
+        inputs = [y] if isinstance(y, ENTITY_TYPE) else []
         return self.new_tileable(inputs, shape=(), order=TensorOrder.C_ORDER,
                                  dtype=np.dtype(object))
 
@@ -248,7 +247,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         is_multilabel_chunk = recursive_tile(is_multilabel(y)).chunks[0]
         chunk_inputs.append(is_multilabel_chunk)
 
-        if not isinstance(y, (Base, Entity)):
+        if not isinstance(y, ENTITY_TYPE):
             if hasattr(y, '__array__'):
                 y = np.asarray(y)
             y = mt.asarray(y)
@@ -409,7 +408,7 @@ def type_of_target(y):
     if sparse_pandas:  # pragma: no cover
         raise ValueError("y cannot be class 'SparseSeries' or 'SparseArray'")
 
-    if isinstance(y, (Base, Entity)):
+    if isinstance(y, ENTITY_TYPE):
         y = mt.tensor(y)
 
     op = TypeOfTarget(y=y)

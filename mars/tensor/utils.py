@@ -706,9 +706,9 @@ def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
 
 
 def filter_inputs(inputs):
-    from ..core import Base, Entity
+    from ..core import ENTITY_TYPE
 
-    return [inp for inp in inputs if isinstance(inp, (Base, Entity))]
+    return [inp for inp in inputs if isinstance(inp, ENTITY_TYPE)]
 
 
 # As TileDB Ctx's creation is a bit time-consuming,

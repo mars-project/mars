@@ -15,7 +15,8 @@
 import numpy as np
 import pandas as pd
 
-from ..core import Base, Entity, OutputType
+from ..core import ENTITY_TYPE, OutputType
+from ..serialization.serializables import SerializableMeta
 from ..tensor import tensor as astensor, stack
 from ..tensor.core import TENSOR_TYPE
 from ..utils import ceildiv
@@ -30,7 +31,7 @@ from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
 from .fetch import DataFrameFetch
 
 
-class InitializerMeta(type):
+class InitializerMeta(SerializableMeta):
     def __instancecheck__(cls, instance):
         return isinstance(instance, (cls.__base__,) + getattr(cls, '_allow_data_type_'))
 
@@ -38,9 +39,6 @@ class InitializerMeta(type):
 class DataFrame(_Frame, metaclass=InitializerMeta):
     def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None, num_partitions=None):
-        # make sure __getattr__ does not result in stack overflow
-        self._data = None
-
         need_repart = False
         if isinstance(data, TENSOR_TYPE):
             if chunk_size is not None:
@@ -57,12 +55,12 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
             else:
                 df = data
             need_repart = num_partitions is not None
-        elif isinstance(data, dict) and any(isinstance(v, (Base, Entity)) for v in data.values()):
+        elif isinstance(data, dict) and any(isinstance(v, ENTITY_TYPE) for v in data.values()):
             # data is a dict and some value is tensor
             df = dataframe_from_1d_tileables(
                 data, index=index, columns=columns, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
-        elif isinstance(data, list) and any(isinstance(v, (Base, Entity)) for v in data):
+        elif isinstance(data, list) and any(isinstance(v, ENTITY_TYPE) for v in data):
             # stack data together
             data = stack(data)
             df = dataframe_from_tensor(data, index=index, columns=columns,
@@ -93,9 +91,6 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
 class Series(_Series, metaclass=InitializerMeta):
     def __init__(self, data=None, index=None, dtype=None, name=None, copy=False,
                  chunk_size=None, gpu=None, sparse=None, num_partitions=None):
-        # make sure __getattr__ does not result in stack overflow
-        self._data = None
-
         if dtype is not None:
             dtype = np.dtype(dtype)
 
@@ -138,9 +133,6 @@ class Index(_Index, metaclass=InitializerMeta):
     def __init__(self, data=None, dtype=None, copy=False, name=None, tupleize_cols=True,
                  chunk_size=None, gpu=None, sparse=None, names=None, num_partitions=None,
                  store_data=False):
-        # make sure __getattr__ does not result in stack overflow
-        self._data = None
-
         need_repart = False
         if isinstance(data, INDEX_TYPE):
             if not hasattr(data, 'data'):
@@ -150,7 +142,7 @@ class Index(_Index, metaclass=InitializerMeta):
                 index = data
             need_repart = num_partitions is not None
         else:
-            if isinstance(data, (Base, Entity)):
+            if isinstance(data, ENTITY_TYPE):
                 name = name if name is not None else getattr(data, 'name', None)
                 index = from_tileable_index(data, dtype=dtype, name=name, names=names)
                 need_repart = num_partitions is not None

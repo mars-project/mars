@@ -19,7 +19,7 @@ import subprocess  # nosec
 import sys
 import time
 from collections import namedtuple
-from typing import List, Union
+from typing import List, Optional
 
 import psutil
 
@@ -247,7 +247,7 @@ def _get_path_device(path: str):
 _disk_io_usage_type = namedtuple('_disk_io_usage_type', 'reads writes')
 
 
-def disk_io_usage(path=None) -> Union[_disk_io_usage_type, None]:
+def disk_io_usage(path=None) -> Optional[_disk_io_usage_type]:
     global _win_diskperf_called
 
     # Needed by psutil.disk_io_counters() under newer version of Windows.

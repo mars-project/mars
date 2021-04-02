@@ -30,9 +30,9 @@ class TensorNoncentralChisquare(TensorDistribution, TensorRandomOperandMixin):
     _nonc = AnyField('nonc')
     _func_name = 'noncentral_chisquare'
 
-    def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
+    def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
 
     @property
     def df(self):

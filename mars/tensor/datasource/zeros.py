@@ -32,9 +32,9 @@ class TensorZeros(TensorNoInput):
 
     _order = StringField('order')
 
-    def __init__(self, dtype=None, gpu=None, sparse=False, order=None, **kw):
+    def __init__(self, dtype=None, order=None, **kw):
         dtype = np.dtype(dtype or 'f8')
-        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse, _order=order, **kw)
+        super().__init__(dtype=dtype, _order=order, **kw)
 
     @property
     def order(self):

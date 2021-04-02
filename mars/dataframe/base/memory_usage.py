@@ -20,7 +20,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...operands import OperandStage
+from ...core.operand import OperandStage
 from ...serialize import BoolField, Int64Field
 from ...utils import ceildiv, lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -173,7 +173,7 @@ class DataFrameMemoryUsage(DataFrameOperand, DataFrameOperandMixin):
             for idx in range(0, chunks_to_reduce.shape[0], combine_size):
                 for idx2 in range(chunks_to_reduce.shape[1]):
                     new_op = op.copy().reset_key()
-                    new_op._stage = OperandStage.reduce
+                    new_op.stage = OperandStage.reduce
                     chunks = list(chunks_to_reduce[idx:idx + combine_size, idx2])
 
                     new_chunks_to_reduce[idx // combine_size, idx2] = new_op.new_chunk(

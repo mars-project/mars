@@ -29,11 +29,14 @@ class TensorNanArgmax(TensorReduction, TensorArgReductionMixin):
     _offset = AnyField('offset')
     _total_shape = TupleField('total_shape')
 
-    def __init__(self, axis=None, dtype=np.dtype(int), combine_size=None,
+    def __init__(self, axis=None, dtype=None, combine_size=None,
                  offset=None, total_shape=None, stage=None, **kw):
+        if dtype is None:
+            dtype = np.dtype(int)
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _dtype=dtype, _combine_size=combine_size,
-                         _offset=offset, _total_shape=total_shape, _stage=stage, **kw)
+        super().__init__(_axis=axis, _combine_size=combine_size,
+                         _offset=offset, _total_shape=total_shape,
+                         dtype=dtype, stage=stage, **kw)
 
     @property
     def offset(self):

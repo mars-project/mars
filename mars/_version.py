@@ -14,7 +14,7 @@
 
 import subprocess
 import os
-from typing import NamedTuple, Union
+from typing import NamedTuple, Optional
 
 version_info = (0, 7, 0, 'a8')
 _num_index = max(idx if isinstance(v, int) else 0
@@ -37,7 +37,7 @@ class GitInfo(NamedTuple):
     commit_ref: str
 
 
-def get_git_info() -> Union[GitInfo, None]:
+def get_git_info() -> Optional[GitInfo]:
     pkg_root = os.path.dirname(os.path.abspath(__file__))
     git_root = os.path.join(os.path.dirname(pkg_root), '.git')
 

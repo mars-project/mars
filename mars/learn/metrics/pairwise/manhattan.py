@@ -35,10 +35,10 @@ class ManhattanDistances(PairwiseDistances):
     _y = KeyField('y')
     _sum_over_features = BoolField('sum_over_features')
 
-    def __init__(self, x=None, y=None, sum_over_features=None, use_sklearn=None,
-                 dtype=None, **kw):
+    def __init__(self, x=None, y=None, sum_over_features=None,
+                 use_sklearn=None, **kw):
         super().__init__(_x=x, _y=y, _sum_over_features=sum_over_features,
-                         _use_sklearn=use_sklearn, _dtype=dtype, **kw)
+                         _use_sklearn=use_sklearn, **kw)
 
     @property
     def x(self):

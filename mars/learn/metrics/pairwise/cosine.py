@@ -29,8 +29,8 @@ class CosineDistances(PairwiseDistances):
     _x = KeyField('x')
     _y = KeyField('y')
 
-    def __init__(self, x=None, y=None, dtype=None, gpu=None, **kw):
-        super().__init__(_x=x, _y=y, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, x=None, y=None, **kw):
+        super().__init__(_x=x, _y=y, **kw)
 
     @property
     def x(self):

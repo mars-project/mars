@@ -26,12 +26,12 @@ from functools import lru_cache
 
 from tornado import gen, web
 
-from ..tensor.core import Indexes
 from ..actors import new_client
 from ..errors import GraphNotExists
 from ..lib.tblib import pickling_support
 from ..serialize.dataserializer import SerialType, CompressType
-from ..utils import to_str, tokenize, numpy_dtype_from_descr_json, parse_readable_size
+from ..utils import to_str, tokenize, numpy_dtype_from_descr_json, \
+    parse_readable_size, deserialize_serializable
 from .server import MarsWebAPI, MarsRequestHandler, register_web_handler
 
 pickling_support.install()
@@ -144,7 +144,7 @@ class GraphsApiHandler(MarsApiRequestHandler):
 
     def post(self, session_id):
         try:
-            graph = self.get_argument('graph')
+            graph = base64.b64decode(self.get_argument('graph'))
             target = self.get_argument('target').split(',')
             names = self.get_argument('names', default='').split(',')
             compose = bool(int(self.get_argument('compose', '1')))
@@ -220,7 +220,7 @@ class GraphDataApiHandler(MarsApiRequestHandler):
                 compressions_arg = [CompressType(s) for s in compressions_arg.split(',') if s]
             slices_arg = self.request.arguments.get('slices')
             if slices_arg:
-                slices_arg = Indexes.from_json(json.loads(to_str(slices_arg[0]))).indexes
+                slices_arg = deserialize_serializable(base64.b64decode(to_str(slices_arg[0]))).indexes
         except (TypeError, ValueError):
             raise web.HTTPError(403, 'Malformed encodings')
 

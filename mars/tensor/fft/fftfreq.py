@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...tiles import NotSupportTile
+from ...core import NotSupportTile
 from ...serialize import Int32Field, Float64Field, KeyField
 from ..operands import TensorOperand, TensorHasInput, TensorOperandMixin
 from ..datasource import arange
@@ -30,8 +30,8 @@ class TensorFFTFreq(TensorOperand, TensorOperandMixin):
     _n = Int32Field('n')
     _d = Float64Field('d')
 
-    def __init__(self, n=None, d=None, dtype=None, gpu=False, **kw):
-        super().__init__(_n=n, _d=d, _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(self, n=None, d=None, **kw):
+        super().__init__(_n=n, _d=d, **kw)
 
     @property
     def n(self):

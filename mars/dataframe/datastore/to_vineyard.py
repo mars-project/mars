@@ -17,9 +17,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...context import RunningMode, get_context
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import TupleField, StringField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 

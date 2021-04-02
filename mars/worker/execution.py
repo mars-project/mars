@@ -20,10 +20,10 @@ from collections import defaultdict
 
 from .. import promise
 from ..config import options
+from ..core.operand import Fetch, FetchShuffle
 from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
-from ..operands import Fetch, FetchShuffle
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
     calc_data_size, get_chunk_shuffle_key, calc_object_overhead
 from .storage import DataStorageDevice

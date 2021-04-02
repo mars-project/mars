@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..operands import Operand, TileableOperandMixin, Fuse, FuseChunkMixin, \
-    MapReduceOperand, ShuffleProxy, OutputType
+from ..core import OutputType
+from ..core.operand import Operand, TileableOperandMixin, Fuse, FuseChunkMixin, \
+    MapReduceOperand, ShuffleProxy
 from ..tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..tensor.fuse import TensorFuseChunk

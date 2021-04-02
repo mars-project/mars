@@ -18,8 +18,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
-from ...core import Base, Entity
-from ...operands import OperandStage
+from ...core import ENTITY_TYPE
+from ...core.operand import OperandStage
 from ...utils import get_shuffle_input_keys_idxes
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import split_indexes_into_chunks, calc_pos, filter_inputs
@@ -37,9 +37,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     _input = KeyField('input')
     _indexes = ListField('indexes')
 
-    def __init__(self, dtype=None, sparse=False, indexes=None, create_view=False, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, _indexes=indexes,
-                         _create_view=create_view, **kw)
+    def __init__(self, indexes=None, **kw):
+        super().__init__(_indexes=indexes, **kw)
 
     @property
     def indexes(self):
@@ -48,27 +47,27 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        new_indexes = [next(inputs_iter) if isinstance(index, (Base, Entity)) else index
+        new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
                        for index in self._indexes]
         self._indexes = new_indexes
 
     def on_output_modify(self, new_output):
         from .setitem import TensorIndexSetValue
 
-        if self._create_view:
+        if self.create_view:
             a = self.input
             op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
                                      indexes=self._indexes, value=new_output)
             return op(a, self._indexes, new_output)
 
     def on_input_modify(self, new_input):
-        if self._create_view:
+        if self.create_view:
             new_op = self.copy().reset_key()
             new_inputs = [new_input] + self.inputs[1:]
             return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     def __call__(self, a, index, shape, order):
-        self._indexes = index
+        self._indexes = list(index)
         return self.new_tensor(filter_inputs([a] + list(index)), shape, order=order)
 
     @classmethod
@@ -90,7 +89,6 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def estimate_size(cls, ctx, op):
-        from mars.core import Base, Entity
         chunk = op.outputs[0]
         shape = chunk.shape
         new_indexes = [index for index in op._indexes if index is not None]
@@ -98,7 +96,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         new_shape = []
         first_fancy_index = False
         for index in new_indexes:
-            if isinstance(index, (Base, Entity)):
+            if isinstance(index, ENTITY_TYPE):
                 if index.dtype != np.bool_:
                     if not first_fancy_index:
                         first_fancy_index = True
@@ -125,10 +123,8 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
     _dest_nsplits = TupleField('dest_nsplits', ValueType.tuple(ValueType.uint64))
     _axes = TupleField('axes', ValueType.int32)
 
-    def __init__(self, stage=None, dest_nsplits=None, axes=None, dtype=None, sparse=None,
-                 shuffle_key=None, **kw):
-        super().__init__(_stage=stage, _dest_nsplits=dest_nsplits, _axes=axes,
-                         _dtype=dtype, _sparse=sparse, _shuffle_key=shuffle_key, **kw)
+    def __init__(self, dest_nsplits=None, axes=None, **kw):
+        super().__init__(_dest_nsplits=dest_nsplits, _axes=axes, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -218,11 +214,9 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
     _fancy_index_axis = Int32Field('fancy_index_axis')
     _fancy_index_shape = TupleField('fancy_index_shape', ValueType.int64)
 
-    def __init__(self, stage=None, fancy_index_axis=None, fancy_index_shape=None,
-                 shuffle_key=None, dtype=None, sparse=None, **kw):
-        super().__init__(_stage=stage, _fancy_index_axis=fancy_index_axis,
-                         _fancy_index_shape=fancy_index_shape,
-                         _shuffle_key=shuffle_key, _dtype=dtype, _sparse=sparse, **kw)
+    def __init__(self, fancy_index_axis=None, fancy_index_shape=None, **kw):
+        super().__init__(_fancy_index_axis=fancy_index_axis,
+                         _fancy_index_shape=fancy_index_shape, **kw)
 
     @property
     def input(self):
@@ -346,7 +340,7 @@ def _getitem_nocheck(a, item, convert_bool_to_fancy=None):
     else:
         shape = calc_shape(a.shape, index)
     tensor_order = _calc_order(a, index)
-    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=index,
+    op = TensorIndex(dtype=a.dtype, sparse=a.issparse(), indexes=list(index),
                      create_view=_is_create_view(index))
     return op(a, index, tuple(shape), order=tensor_order)
 

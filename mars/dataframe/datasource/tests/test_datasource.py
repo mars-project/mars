@@ -16,16 +16,13 @@ import os
 import tempfile
 import shutil
 from collections import OrderedDict
-from weakref import ReferenceType
 
 import numpy as np
 import pandas as pd
 
 import mars.tensor as mt
-from mars import opcodes as OperandDef
-from mars.graph import DAG
 from mars.tests.core import TestBase
-from mars.dataframe.core import IndexValue, DataFrameChunk, DatetimeIndex, Int64Index, Float64Index
+from mars.dataframe.core import IndexValue, DatetimeIndex, Int64Index, Float64Index
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
@@ -38,98 +35,6 @@ from mars.dataframe.datasource.date_range import date_range
 
 
 class Test(TestBase):
-    def testChunkSerialize(self):
-        data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
-                            columns=[np.random.bytes(10) for _ in range(10)])
-        df = from_pandas_df(data).tiles()
-
-        # pb
-        chunk = df.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.DATAFRAME_DATA_SOURCE)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
-
-        # json
-        chunk = df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
-
-    def testDataFrameGraphSerialize(self):
-        df = from_pandas_df(pd.DataFrame(np.random.rand(10, 10),
-                                         columns=pd.timedelta_range(start='1 day', periods=10),
-                                         index=pd.date_range('2020-1-1', periods=10)))
-        graph = df.build_graph(tiled=False)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        self.assertEqual(len(graph), len(graph2))
-        t = next(iter(graph))
-        t2 = next(iter(graph2))
-        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
-        self.assertBaseEqual(t.op, t2.op)
-        self.assertEqual(t.shape, t2.shape)
-        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
-        pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
-        pd.testing.assert_index_equal(t2.columns_value.to_pandas(), t.columns_value.to_pandas())
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        self.assertEqual(len(graph), len(graph2))
-        t = next(iter(graph))
-        t2 = next(iter(graph2))
-        self.assertTrue(t2.op.outputs[0], ReferenceType)  # make sure outputs are all weak reference
-        self.assertBaseEqual(t.op, t2.op)
-        self.assertEqual(t.shape, t2.shape)
-        self.assertEqual(sorted(i.key for i in t.inputs), sorted(i.key for i in t2.inputs))
-        pd.testing.assert_index_equal(t2.index_value.to_pandas(), t.index_value.to_pandas())
-        pd.testing.assert_index_equal(t2.columns_value.to_pandas(), t.columns_value.to_pandas())
-
-        # test graph with tiled DataFrame
-        t2 = from_pandas_df(pd.DataFrame(np.random.rand(10, 10)), chunk_size=(5, 4)).tiles()
-        graph = DAG()
-        graph.add_node(t2)
-
-        pb = graph.to_pb()
-        graph2 = DAG.from_pb(pb)
-        self.assertEqual(len(graph), len(graph2))
-        chunks = next(iter(graph2)).chunks
-        self.assertEqual(len(chunks), 6)
-        self.assertIsInstance(chunks[0], DataFrameChunk)
-        self.assertEqual(chunks[0].index, t2.chunks[0].index)
-        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
-        pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
-        pd.testing.assert_index_equal(chunks[0].columns_value.to_pandas(), t2.chunks[0].columns_value.to_pandas())
-
-        jsn = graph.to_json()
-        graph2 = DAG.from_json(jsn)
-        self.assertEqual(len(graph), len(graph2))
-        chunks = next(iter(graph2)).chunks
-        self.assertEqual(len(chunks), 6)
-        self.assertIsInstance(chunks[0], DataFrameChunk)
-        self.assertEqual(chunks[0].index, t2.chunks[0].index)
-        self.assertBaseEqual(chunks[0].op, t2.chunks[0].op)
-        pd.testing.assert_index_equal(chunks[0].index_value.to_pandas(), t2.chunks[0].index_value.to_pandas())
-        pd.testing.assert_index_equal(chunks[0].columns_value.to_pandas(), t2.chunks[0].columns_value.to_pandas())
-
     def testFromPandasDataFrame(self):
         data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
         df = from_pandas_df(data, chunk_size=4)
@@ -306,41 +211,6 @@ class Test(TestBase):
             self.assertEqual(c.dtype, np.float64)
             self.assertEqual(c.name, 'new_name')
             self.assertIsInstance(c.index_value.value, IndexValue.Float64Index)
-
-    def testFromTensorSerialize(self):
-        # test serialization and deserialization
-        # pb
-        tensor = mt.random.rand(10, 10)
-        df = dataframe_from_tensor(tensor)
-        df = df.tiles()
-        chunk = df.chunks[0]
-        serials = self._pb_serial(chunk)
-        op, pb = serials[chunk.op, chunk.data]
-
-        self.assertEqual(tuple(pb.index), chunk.index)
-        self.assertEqual(pb.key, chunk.key)
-        self.assertEqual(tuple(pb.shape), chunk.shape)
-        self.assertEqual(int(op.type.split('.', 1)[1]), OperandDef.DATAFRAME_FROM_TENSOR)
-
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
-
-        # json
-        chunk = df.chunks[0]
-        serials = self._json_serial(chunk)
-
-        chunk2 = self._json_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.key, chunk2.key)
-        self.assertEqual(chunk.shape, chunk2.shape)
-        pd.testing.assert_index_equal(chunk2.index_value.to_pandas(), chunk.index_value.to_pandas())
-        pd.testing.assert_index_equal(chunk2.columns_value.to_pandas(), chunk.columns_value.to_pandas())
 
     def testFromTensor(self):
         tensor = mt.random.rand(10, 10, chunk_size=5)

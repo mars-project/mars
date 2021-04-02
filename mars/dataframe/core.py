@@ -22,12 +22,11 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from ..core import ChunkData, Chunk, TileableEntity, HasShapeTileableData, \
-    HasShapeTileableEnity, OutputType, register_output_types, _ExecuteAndFetchMixin
-from ..serialize import Serializable, ValueType, ProviderType, DataTypeField, AnyField, \
+from ..core import ChunkData, Chunk, Tileable, HasShapeTileableData, \
+    HasShapeTileable, OutputType, register_output_types, _ExecuteAndFetchMixin
+from ..serialization.serializables import Serializable, FieldTypes, DataTypeField, AnyField, \
     SeriesField, BoolField, Int32Field, StringField, ListField, SliceField, \
-    TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField, \
-    _ENABLE_NEW_SERIALIZATION
+    TupleField, OneOfField, ReferenceField, NDArrayField, IntervalArrayField
 from ..utils import on_serialize_shape, on_deserialize_shape, on_serialize_numpy_type, \
     ceildiv, is_build_mode, tokenize
 from .utils import fetch_corner_data, ReprSeries
@@ -95,14 +94,9 @@ class IndexValue(Serializable):
             return None
 
         def to_pandas(self):
-            if _ENABLE_NEW_SERIALIZATION:
-                kw = {field.tag: getattr(self, attr, None)
-                      for attr, field in self._FIELDS.items()
-                      if attr not in super(type(self), self)._FIELDS}
-            else:
-                kw = {field.tag_name(None): getattr(self, attr, None)
-                      for attr, field in self._FIELDS.items()
-                      if attr not in super(type(self), self)._FIELDS}
+            kw = {field.tag: getattr(self, attr, None)
+                  for attr, field in self._FIELDS.items()
+                  if attr not in super(type(self), self)._FIELDS}
             kw = {k: v for k, v in kw.items() if v is not None}
             if kw.get('data') is None:
                 kw['data'] = []
@@ -134,7 +128,7 @@ class IndexValue(Serializable):
     class CategoricalIndex(IndexBase):
         _name = AnyField('name')
         _data = NDArrayField('data')
-        _categories = ListField('categories')
+        _categories = AnyField('categories')
         _ordered = BoolField('ordered')
 
         @property
@@ -344,13 +338,6 @@ class IndexValue(Serializable):
     def to_pandas(self):
         return self._index_value.to_pandas()
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.indexvalue_pb2 import IndexValue as IndexValueDef
-            return IndexValueDef
-        return super().cls(provider)
-
 
 class DtypesValue(Serializable):
     """
@@ -378,7 +365,7 @@ class IndexChunkData(ChunkData):
     type_name = 'Index'
 
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional field
     _dtype = DataTypeField('dtype')
@@ -389,13 +376,6 @@ class IndexChunkData(ChunkData):
                  index_value=None, **kw):
         super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
                          _index_value=index_value, **kw)
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import IndexChunkDef
-            return IndexChunkDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -499,7 +479,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
     _name = AnyField('name')
     _names = AnyField('names')
     _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
-    _chunks = ListField('chunks', ValueType.reference(IndexChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(IndexChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [IndexChunk(it) for it in x] if x is not None else x)
 
@@ -507,13 +487,6 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
                  name=None, names=None, index_value=None, chunks=None, **kw):
         super().__init__(_op=op, _shape=shape, _nsplits=nsplits, _dtype=dtype, _name=name,
                          _names=names, _index_value=index_value, _chunks=chunks, **kw)
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import IndexDef
-            return IndexDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -575,7 +548,7 @@ class IndexData(HasShapeTileableData, _ToPandasMixin):
         return from_index(self, dtype=dtype, extract_multi_index=extract_multi_index)
 
 
-class Index(HasShapeTileableEnity, _ToPandasMixin):
+class Index(HasShapeTileable, _ToPandasMixin):
     __slots__ = '_df_or_series', '_parent_key', '_axis'
     _allow_data_type_ = (IndexData,)
     type_name = 'Index'
@@ -773,7 +746,7 @@ class BaseSeriesChunkData(ChunkData):
     __slots__ = ()
 
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional field
     _dtype = DataTypeField('dtype')
@@ -820,13 +793,6 @@ class BaseSeriesChunkData(ChunkData):
 class SeriesChunkData(BaseSeriesChunkData):
     type_name = 'Series'
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesChunkDef
-            return SeriesChunkDef
-        return super().cls(provider)
-
 
 class SeriesChunk(Chunk):
     __slots__ = ()
@@ -841,7 +807,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
     _dtype = DataTypeField('dtype')
     _name = AnyField('name')
     _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
-    _chunks = ListField('chunks', ValueType.reference(SeriesChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(SeriesChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesChunk(it) for it in x] if x is not None else x)
 
@@ -932,13 +898,6 @@ class SeriesData(_BatchedFetcher, BaseSeriesData):
         dtype = dtype if dtype is not None else tensor.dtype
         return tensor.astype(dtype=dtype, order=order, copy=False)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesDef
-            return SeriesDef
-        return super().cls(provider)
-
     def iteritems(self, batch_size=10000, session=None):
         for batch_data in self.iterbatch(batch_size=batch_size, session=session):
             yield from getattr(batch_data, 'iteritems')()
@@ -950,7 +909,7 @@ class SeriesData(_BatchedFetcher, BaseSeriesData):
         return self.to_pandas(session=session, fetch_kwargs=fetch_kwargs).to_dict(into=into)
 
 
-class Series(HasShapeTileableEnity, _ToPandasMixin):
+class Series(HasShapeTileable, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (SeriesData,)
     type_name = 'Series'
@@ -1166,7 +1125,7 @@ class BaseDataFrameChunkData(ChunkData):
     __slots__ = '_dtypes_value',
 
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional fields
     _dtypes = SeriesField('dtypes')
@@ -1232,13 +1191,6 @@ class BaseDataFrameChunkData(ChunkData):
 class DataFrameChunkData(BaseDataFrameChunkData):
     type_name = 'DataFrame'
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameChunkDef
-            return DataFrameChunkDef
-        return super().cls(provider)
-
 
 class DataFrameChunk(Chunk):
     __slots__ = ()
@@ -1256,7 +1208,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     _dtypes = SeriesField('dtypes')
     _index_value = ReferenceField('index_value', IndexValue, on_deserialize=_on_deserialize_index_value)
     _columns_value = ReferenceField('columns_value', IndexValue)
-    _chunks = ListField('chunks', ValueType.reference(DataFrameChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(DataFrameChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameChunk(it) for it in x] if x is not None else x)
 
@@ -1403,13 +1355,6 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
 
         return buf.getvalue()
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameDef
-            return DataFrameDef
-        return super().cls(provider)
-
     def items(self):
         for col_name in self.dtypes.index:
             yield col_name, self[col_name]
@@ -1425,7 +1370,7 @@ class DataFrameData(_BatchedFetcher, BaseDataFrameData):
             yield from getattr(batch_data, 'itertuples')(index=index, name=name)
 
 
-class DataFrame(HasShapeTileableEnity, _ToPandasMixin):
+class DataFrame(HasShapeTileable, _ToPandasMixin):
     __slots__ = '_cache',
     _allow_data_type_ = (DataFrameData,)
     type_name = 'DataFrame'
@@ -1691,13 +1636,6 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     def __init__(self, key_dtypes=None, selection=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameGroupByChunkDef
-            return DataFrameGroupByChunkDef
-        return super().cls(provider)
-
 
 class DataFrameGroupByChunk(Chunk):
     __slots__ = ()
@@ -1726,13 +1664,6 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
     def __init__(self, key_dtypes=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesGroupByChunkDef
-            return SeriesGroupByChunkDef
-        return super().cls(provider)
-
 
 class SeriesGroupByChunk(Chunk):
     __slots__ = ()
@@ -1748,7 +1679,7 @@ class DataFrameGroupByData(BaseDataFrameData):
 
     _key_dtypes = SeriesField('key_dtypes')
     _selection = AnyField('selection')
-    _chunks = ListField('chunks', ValueType.reference(DataFrameGroupByChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(DataFrameGroupByChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [DataFrameGroupByChunk(it) for it in x] if x is not None else x)
 
@@ -1769,13 +1700,6 @@ class DataFrameGroupByData(BaseDataFrameData):
     def __init__(self, key_dtypes=None, selection=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import DataFrameGroupByDef
-            return DataFrameGroupByDef
-        return super().cls(provider)
-
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
         if is_build_mode():
@@ -1788,7 +1712,7 @@ class SeriesGroupByData(BaseSeriesData):
     type_name = 'SeriesGroupBy'
 
     _key_dtypes = AnyField('key_dtypes')
-    _chunks = ListField('chunks', ValueType.reference(SeriesGroupByChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(SeriesGroupByChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [SeriesGroupByChunk(it) for it in x] if x is not None else x)
 
@@ -1805,13 +1729,6 @@ class SeriesGroupByData(BaseSeriesData):
     def __init__(self, key_dtypes=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, **kw)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import SeriesGroupByDef
-            return SeriesGroupByDef
-        return super().cls(provider)
-
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
         if is_build_mode():
@@ -1820,7 +1737,7 @@ class SeriesGroupByData(BaseSeriesData):
             return self == o
 
 
-class GroupBy(TileableEntity, _ToPandasMixin):
+class GroupBy(Tileable, _ToPandasMixin):
     __slots__ = ()
 
 
@@ -1868,7 +1785,7 @@ class CategoricalChunkData(ChunkData):
     type_name = 'Categorical'
 
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
     # optional field
     _dtype = DataTypeField('dtype')
@@ -1879,13 +1796,6 @@ class CategoricalChunkData(ChunkData):
                  categories_value=None, **kw):
         super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype,
                          _categories_value=categories_value, **kw)
-
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import CategoricalChunkDef
-            return CategoricalChunkDef
-        return super().cls(provider)
 
     @property
     def params(self):
@@ -1927,7 +1837,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     # optional field
     _dtype = DataTypeField('dtype')
     _categories_value = ReferenceField('categories_value', IndexValue, on_deserialize=_on_deserialize_index_value)
-    _chunks = ListField('chunks', ValueType.reference(CategoricalChunkData),
+    _chunks = ListField('chunks', FieldTypes.reference(CategoricalChunkData),
                         on_serialize=lambda x: [it.data for it in x] if x is not None else x,
                         on_deserialize=lambda x: [CategoricalChunk(it) for it in x] if x is not None else x)
 
@@ -1962,13 +1872,6 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
     def __repr__(self):
         return self._to_str(representation=True)
 
-    @classmethod
-    def cls(cls, provider):
-        if provider.type == ProviderType.protobuf:
-            from ..serialize.protos.dataframe_pb2 import CategoricalDef
-            return CategoricalDef
-        return super().cls(provider)
-
     def _equal(self, o):
         # FIXME We need to implemented a true `==` operator for DataFrameGroupby
         if is_build_mode():
@@ -1992,7 +1895,7 @@ class CategoricalData(HasShapeTileableData, _ToPandasMixin):
         return super().__hash__()
 
 
-class Categorical(HasShapeTileableEnity, _ToPandasMixin):
+class Categorical(HasShapeTileable, _ToPandasMixin):
     __slots__ = ()
     _allow_data_type_ = (CategoricalData,)
     type_name = 'Categorical'

@@ -19,11 +19,11 @@ from collections import OrderedDict
 import mars.dataframe as md
 from mars import opcodes
 from mars.core import OutputType
+from mars.core.operand import OperandStage
 from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
 from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 from mars.dataframe.groupby.getitem import GroupByIndex
-from mars.operands import OperandStage
 from mars.tests.core import TestBase
 
 

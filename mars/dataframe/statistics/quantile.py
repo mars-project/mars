@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ...serialize import KeyField, AnyField, StringField, DataTypeField, \
     BoolField, Int32Field
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
@@ -298,7 +298,7 @@ def quantile_series(series, q=0.5, interpolation='linear'):
     dtype: float64
     """
 
-    if isinstance(q, (Base, Entity)):
+    if isinstance(q, ENTITY_TYPE):
         q = astensor(q)
         q_input = q
     else:
@@ -376,7 +376,7 @@ def quantile_dataframe(df, q=0.5, axis=0, numeric_only=True,
     C        1 days 12:00:00
     Name: 0.5, dtype: object
     """
-    if isinstance(q, (Base, Entity)):
+    if isinstance(q, ENTITY_TYPE):
         q = astensor(q)
         q_input = q
     else:

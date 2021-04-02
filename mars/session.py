@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import os
-import json
 import threading
 import time
 import uuid
@@ -23,13 +22,12 @@ from numbers import Integral
 
 import numpy as np
 
-from .core import Entity, Base
+from .core import ENTITY_TYPE, get_tiled
+from .core.operand import Fetch
 from .context import get_context, LocalContext
-from .operands import Fetch
-from .tiles import get_tiled
 from .executor import Executor
 from .config import options
-from .utils import classproperty, calc_nsplits
+from .utils import classproperty, calc_nsplits, serialize_graph
 try:
     from .resource import cpu_count, cuda_count
 except ImportError:  # pragma: no cover
@@ -134,7 +132,8 @@ class LocalSession(object):
         from .tensor.core import MutableTensor, MutableTensorData
         if name in self._mut_tensor:
             raise ValueError(f"The mutable tensor named '{name}' already exists.")
-        mut_tensor = MutableTensor(data=MutableTensorData(name=name, op=None, shape=shape, dtype=dtype))
+        mut_tensor = MutableTensor(data=MutableTensorData(name=name, op=None,
+                                                          shape=shape, dtype=np.dtype(dtype)))
         self._mut_tensor[name] = mut_tensor
         if fill_value is None:
             self._mut_tensor_data[name] = np.zeros(shape, dtype=dtype)
@@ -297,7 +296,7 @@ class ClusterSession(object):
 
         if len(graph) > 0:
             # submit graph to local cluster
-            self._api.submit_graph(self._session_id, json.dumps(graph.to_json(), separators=(',', ':')),
+            self._api.submit_graph(self._session_id, serialize_graph(graph),
                                    graph_key, targets, compose=compose, names=name)
 
             ctx = get_context()
@@ -501,7 +500,7 @@ class Session(object):
         elif len(tileables) > 1:
             ret_list = True
 
-        tileables = tuple(mt.tensor(t) if not isinstance(t, (Entity, Base)) else t
+        tileables = tuple(mt.tensor(t) if not isinstance(t, ENTITY_TYPE) else t
                           for t in tileables)
         result = self._sess.run(*tileables, **kw)
 

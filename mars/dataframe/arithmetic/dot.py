@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
-from ...tiles import TilesError
+from ...core import TilesError
+from ...serialize import KeyField, AnyField
 from ...utils import recursive_tile
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
@@ -31,7 +31,7 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DOT
 
     _lhs = KeyField('lhs')
-    _rhs = KeyField('rhs')
+    _rhs = AnyField('rhs')
 
     def __init__(self, output_types=None, lhs=None, rhs=None, **kw):
         super().__init__(_output_types=output_types, _lhs=lhs, _rhs=rhs, **kw)

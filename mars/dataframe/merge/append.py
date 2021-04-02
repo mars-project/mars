@@ -59,7 +59,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         for df in [first_df] + others:
             for c in df.chunks:
                 index = (c.index[0] + row_index, c.index[1])
-                iloc_op = DataFrameIlocGetItem(indexes=(slice(None),) * 2)
+                iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
                 out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
                                                     dtypes=c.dtypes,
                                                     index_value=c.index_value,

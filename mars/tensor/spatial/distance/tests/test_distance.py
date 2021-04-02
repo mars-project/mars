@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 import scipy.sparse as sps
 
+from mars.core import get_tiled
 from mars.tensor.datasource import tensor
 from mars.tensor.spatial import distance
-from mars.tiles import get_tiled
 
 
 class Test(unittest.TestCase):

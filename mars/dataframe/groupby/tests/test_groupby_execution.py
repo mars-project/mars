@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     pa = None
 
 import mars.dataframe as md
-from mars.operands import ShuffleProxy
+from mars.core.operand import ShuffleProxy
 from mars.tests.core import TestBase, ExecutorForTest, assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
 

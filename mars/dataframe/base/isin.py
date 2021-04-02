@@ -17,10 +17,9 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -51,7 +50,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(self._values, dict):
                 new_values = dict()
                 for k, v in self._values.items():
-                    if isinstance(v, (Base, Entity)):
+                    if isinstance(v, ENTITY_TYPE):
                         new_values[k] = next(inputs_iter)
                     else:
                         new_values[k] = v
@@ -61,11 +60,11 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, elements):
         inputs = [elements]
-        if isinstance(self._values, (Base, Entity)):
+        if isinstance(self._values, ENTITY_TYPE):
             inputs.append(self._values)
         elif isinstance(self._values, dict):
             for v in self._values.values():
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     inputs.append(v)
 
         if elements.ndim == 1:
@@ -130,12 +129,12 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(op.values, dict):
             values = dict()
             for k, v in op.values.items():
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     values[k] = ctx[next(inputs_iter).key]
                 else:
                     values[k] = v
         else:
-            if isinstance(op.values, (Base, Entity)):
+            if isinstance(op.values, ENTITY_TYPE):
                 values = ctx[next(inputs_iter).key]
             else:
                 values = op.values

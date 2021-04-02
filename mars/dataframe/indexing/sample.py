@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 
 from ... import opcodes
-from ...core import Base, Entity, get_output_types
+from ...core import ENTITY_TYPE, get_output_types, TilesError
 from ...serialize import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
     KeyField
 from ...tensor import searchsorted
@@ -26,7 +26,6 @@ from ...tensor.base import TensorMapChunk
 from ...tensor.merge import TensorConcatenate
 from ...tensor.random import RandomState as TensorRandomState, RandomStateField
 from ...tensor.utils import normalize_chunk_sizes, gen_random_seeds
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, recursive_tile, ceildiv
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import validate_axis, parse_index
@@ -98,9 +97,9 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         it = iter(inputs)
         next(it)
-        if isinstance(self.weights, (Base, Entity)):
+        if isinstance(self.weights, ENTITY_TYPE):
             self._weights = next(it)
-        if isinstance(self.chunk_samples, (Base, Entity)):
+        if isinstance(self.chunk_samples, ENTITY_TYPE):
             self._chunk_samples = next(it)
 
     def __call__(self, df):
@@ -117,7 +116,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         params['index_value'] = parse_index(df.index_value.to_pandas()[:0])
 
         input_dfs = [df]
-        if isinstance(self.weights, (Base, Entity)):
+        if isinstance(self.weights, ENTITY_TYPE):
             input_dfs.append(self.weights)
 
         self._output_types = get_output_types(df)
@@ -128,12 +127,12 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         input_dfs = [in_df]
-        if isinstance(weights, (Base, Entity)):
+        if isinstance(weights, ENTITY_TYPE):
             input_dfs.append(weights)
 
         params = out.params
         chunk_op = op.copy().reset_key()
-        if isinstance(weights, (Base, Entity)):
+        if isinstance(weights, ENTITY_TYPE):
             chunk_op._weights = weights
         params['index'] = (0,) * out.ndim
         chunk = chunk_op.new_chunk([c.chunks[0] for c in input_dfs], **params)
@@ -149,7 +148,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         size = op.size
 
         weight_chunks = itertools.repeat(None)
-        if isinstance(op.weights, (Base, Entity)):
+        if isinstance(op.weights, ENTITY_TYPE):
             input_dfs.append(weights)
             weight_chunks = weights.chunks
 
@@ -162,7 +161,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             probs = np.array(in_df.nsplits[op.axis])
             probs = 1.0 * probs / probs.sum()
             chunk_sizes = rs.multinomial(size, probs)
-            new_nsplits[op.axis] = tuple(s for s in chunk_sizes if s > 0)
+            new_nsplits[op.axis] = tuple(int(s) for s in chunk_sizes if s > 0)
 
             chunk_idx = 0
             for data_chunk, chunk_size, seed in zip(in_df.chunks, chunk_sizes, seeds):
@@ -239,7 +238,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         size = op.size
 
         weight_chunks = itertools.repeat(None)
-        if isinstance(weights, (Base, Entity)):
+        if isinstance(weights, ENTITY_TYPE):
             input_dfs.append(weights)
             weight_chunks = weights.chunks
 
@@ -255,7 +254,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
                 chunk_sizes[-2] += chunk_sizes[-1]
                 chunk_sizes = chunk_sizes[:-1]
             in_df = in_df.rechunk({0: tuple(chunk_sizes)})._inplace_tile()
-            if isinstance(weights, (Base, Entity)):
+            if isinstance(weights, ENTITY_TYPE):
                 weights = weights.rechunk({0: tuple(chunk_sizes)})._inplace_tile()
             if len(chunk_sizes) == 1:
                 return cls._tile_one_chunk(op, in_df, weights)
@@ -269,7 +268,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             chunk_op = op.copy().reset_key()
             chunk_op._random_state = None
             chunk_op._seed = seed
-            if isinstance(op.weights, (Base, Entity)):
+            if isinstance(op.weights, ENTITY_TYPE):
                 input_chunks.append(weights_chunk)
                 chunk_op._weights = weights_chunk
 
@@ -346,7 +345,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             op._size = int(op.frac * in_df.shape[op.axis])
 
         weights = op.weights
-        if isinstance(weights, (Base, Entity)):
+        if isinstance(weights, ENTITY_TYPE):
             weights = weights.rechunk({0: in_df.nsplits[op.axis]})._inplace_tile()
         elif in_df.ndim > 1 and weights in in_df.dtypes.index:
             weights = in_df[weights]._inplace_tile()
@@ -363,12 +362,12 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op: "DataFrameSample"):
         in_data = ctx[op.inputs[0].key]
         weights = op.weights
-        if isinstance(weights, (Base, Entity)):
+        if isinstance(weights, ENTITY_TYPE):
             weights = ctx[weights.key]
 
         size = op.size
         chunk_samples = op.chunk_samples
-        if isinstance(chunk_samples, (Base, Entity)):
+        if isinstance(chunk_samples, ENTITY_TYPE):
             chunk_samples = ctx[chunk_samples.key]
         if chunk_samples is not None:
             size = chunk_samples[op.inputs[0].index[op.axis]]

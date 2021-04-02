@@ -16,28 +16,14 @@
 
 import numpy as np
 
-from mars.tensor.random import RandomState, beta, rand, choice, multivariate_normal, \
+from mars.core import get_tiled
+from mars.tensor.random import beta, rand, choice, multivariate_normal, \
     randint, randn, permutation, TensorPermutation, shuffle
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.tests.core import TestBase
-from mars.tiles import get_tiled
 
 
 class Test(TestBase):
-    def testRandomSerialize(self):
-        arr = RandomState(0).beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
-                                  chunk_size=1, size=(3, 2, 2)).tiles()
-        chunk = arr.chunks[0]
-
-        self.assertEqual(chunk.op.dtype, np.dtype('f8'))
-
-        serials = self._pb_serial(chunk)
-        chunk2 = self._pb_deserial(serials)[chunk.data]
-
-        self.assertEqual(chunk.index, chunk2.index)
-        self.assertEqual(chunk.op.state, chunk2.op.state)
-        self.assertEqual(chunk.op.seed, chunk2.op.seed)
-
     def testRandom(self):
         arr = rand(2, 3)
 

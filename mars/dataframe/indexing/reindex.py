@@ -20,8 +20,8 @@ except ImportError:  # pragma: no cover
     sps = None
 
 from ... import opcodes
-from ...core import Base, Entity
-from ...operands import OperandStage
+from ...core import ENTITY_TYPE
+from ...core.operand import OperandStage
 from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
 from ...utils import lazy_import, recursive_tile
@@ -49,10 +49,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
     _enable_sparse = BoolField('enable_sparse')
 
     def __init__(self, index=None, index_freq=None, columns=None, method=None, level=None,
-                 fill_value=None, limit=None, enable_sparse=None, stage=None, **kw):
+                 fill_value=None, limit=None, enable_sparse=None, **kw):
         super().__init__(_index=index, _index_freq=index_freq, _columns=columns,
                          _method=method, _level=level, _fill_value=fill_value,
-                         _limit=limit, _enable_sparse=enable_sparse, _stage=stage, **kw)
+                         _limit=limit, _enable_sparse=enable_sparse, **kw)
 
     @property
     def input(self):
@@ -119,11 +119,11 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
         return True
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if self._stage == OperandStage.map and len(inputs) < len(self._inputs):
+        if self.stage == OperandStage.map and len(inputs) < len(self._inputs):
             assert len(inputs) == len(self._inputs) - 1
             inputs.append(self._fill_value.chunks[0])
 
-        if self._stage == OperandStage.agg and self._fill_value is not None:
+        if self.stage == OperandStage.agg and self._fill_value is not None:
             # fill_value is not required
             self._fill_value = None
 
@@ -134,10 +134,10 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
         inputs_iter = iter(self._inputs)
         self._input = next(inputs_iter)
         if self._index is not None and \
-                isinstance(self._index, (Base, Entity)):
+                isinstance(self._index, ENTITY_TYPE):
             self._index = next(inputs_iter)
         if self._fill_value is not None and \
-                isinstance(self._fill_value, (Base, Entity)):
+                isinstance(self._fill_value, ENTITY_TYPE):
             self._fill_value = next(inputs_iter)
 
     def __call__(self, df_or_series):
@@ -153,7 +153,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             shape[0] = self._index.shape[0]
             index_value = asindex(self._index).index_value
             self._index = astensor(self._index)
-            if isinstance(self._index, (Base, Entity)):
+            if isinstance(self._index, ENTITY_TYPE):
                 inputs.append(self._index)
         if self._columns is not None:
             shape[1] = self._columns.shape[0]
@@ -161,7 +161,7 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
                 np.dtype(np.float64))
             columns_value = parse_index(dtypes.index, store_data=True)
         if self._fill_value is not None and \
-                isinstance(self._fill_value, (Base, Entity)):
+                isinstance(self._fill_value, ENTITY_TYPE):
             inputs.append(self._fill_value)
 
         if df_or_series.ndim == 1:
@@ -677,7 +677,7 @@ def reindex(df_or_series, *args, **kwargs):
 
     index = axes.get('index')
     index_freq = None
-    if isinstance(index, (Base, Entity)):
+    if isinstance(index, ENTITY_TYPE):
         if isinstance(index, DataFrameIndexType):
             index_freq = getattr(index.index_value.value, 'freq', None)
         if not isinstance(index, INDEX_TYPE):
@@ -687,7 +687,7 @@ def reindex(df_or_series, *args, **kwargs):
         index_freq = getattr(index, 'freq', None)
 
     columns = axes.get('columns')
-    if isinstance(columns, (Base, Entity)):  # pragma: no cover
+    if isinstance(columns, ENTITY_TYPE):  # pragma: no cover
         try:
             columns = columns.fetch()
         except ValueError:
@@ -696,7 +696,7 @@ def reindex(df_or_series, *args, **kwargs):
     elif columns is not None:
         columns = np.asarray(columns)
 
-    if isinstance(fill_value, (Base, Entity)) and getattr(fill_value, 'ndim', 0) != 0:
+    if isinstance(fill_value, ENTITY_TYPE) and getattr(fill_value, 'ndim', 0) != 0:
         raise ValueError('fill_value must be a scalar')
 
     op = DataFrameReindex(index=index, index_freq=index_freq, columns=columns,

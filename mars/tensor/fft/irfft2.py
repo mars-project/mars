@@ -24,8 +24,8 @@ from .core import TensorRealIFFTNMixin, validate_fftn, TensorRealFFTN
 class TensorIRFFT2(TensorRealFFTN, TensorRealIFFTNMixin):
     _op_type_ = OperandDef.IRFFT2
 
-    def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super().__init__(_shape=shape, _axes=axes, _norm=norm, _dtype=dtype, **kw)
+    def __init__(self, shape=None, axes=None, norm=None, **kw):
+        super().__init__(_shape=shape, _axes=axes, _norm=norm, **kw)
 
 
 def irfft2(a, s=None, axes=(-2, -1), norm=None):

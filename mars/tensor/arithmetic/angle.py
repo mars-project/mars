@@ -49,7 +49,7 @@ class TensorAngle(TensorUnaryOp):
 
 
 @infer_dtype(np.angle)
-def angle(z, deg=0, **kwargs):
+def angle(z, deg=False, **kwargs):
     """
     Return the angle of the complex argument.
 

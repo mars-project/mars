@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ...core import OutputType, register_fetch_class
-from ...serialize.core import TupleField, ValueType
-from ...operands import Fetch, FetchShuffle, FetchMixin
+from ...core.operand import Fetch, FetchShuffle, FetchMixin
+from ...serialization.serializables import FieldTypes, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..operands import DataFrameOperandMixin
 
@@ -25,35 +25,32 @@ class DataFrameFetchMixin(DataFrameOperandMixin, FetchMixin):
 
 class DataFrameFetch(Fetch, DataFrameFetchMixin):
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
-    def __init__(self, to_fetch_key=None, sparse=False, output_types=None, **kw):
-        super().__init__(
-            _to_fetch_key=to_fetch_key, _sparse=sparse, _output_types=output_types, **kw)
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if '_key' in kw and self._to_fetch_key is None:
-            self._to_fetch_key = kw['_key']
+        if '_key' in kw and self.to_fetch_key is None:
+            self.to_fetch_key = kw['_key']
         if '_shape' in kw and self._shape is None:
             self._shape = kw['_shape']
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        if '_key' in kw and self._to_fetch_key is None:
-            self._to_fetch_key = kw['_key']
+        if '_key' in kw and self.to_fetch_key is None:
+            self.to_fetch_key = kw['_key']
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
 class DataFrameFetchShuffle(FetchShuffle, DataFrameFetchMixin):
     # required fields
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
-    def __init__(self, to_fetch_keys=None, to_fetch_idxes=None, output_types=None, **kw):
-        super().__init__(
-            _to_fetch_keys=to_fetch_keys, _to_fetch_idxes=to_fetch_idxes,
-            _output_types=output_types, **kw)
+    def __init__(self, output_types=None, **kw):
+        super().__init__(_output_types=output_types, **kw)
 
 
 register_fetch_class(OutputType.dataframe, DataFrameFetch, DataFrameFetchShuffle)

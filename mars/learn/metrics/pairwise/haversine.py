@@ -35,10 +35,8 @@ class HaversineDistances(PairwiseDistances):
     # for test purpose
     _use_sklearn = BoolField('use_sklearn')
 
-    def __init__(self, x=None, y=None, dtype=None, gpu=None,
-                 use_sklearn=None, **kw):
-        super().__init__(_x=x, _y=y, _dtype=dtype, _gpu=gpu,
-                         _use_sklearn=use_sklearn, **kw)
+    def __init__(self, x=None, y=None, use_sklearn=None, **kw):
+        super().__init__(_x=x, _y=y, _use_sklearn=use_sklearn, **kw)
         if self._use_sklearn is None:
             # if not set use_sklearn, will try to use sklearn by default
             self._use_sklearn = True

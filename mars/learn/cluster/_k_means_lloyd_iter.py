@@ -16,11 +16,11 @@ import numpy as np
 from sklearn.utils.extmath import row_norms as sklearn_row_norms
 
 from ... import opcodes
-from ...operands import OutputType, OperandStage
+from ...core import OutputType, TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, BoolField, Int32Field
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_common import _execute_merge_update, _relocate_empty_clusters
@@ -41,12 +41,12 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 
     def __init__(self, x=None, sample_weight=None, x_squared_norms=None,
                  centers_old=None, labels=None, update_centers=None,
-                 n_clusters=None, output_types=None, stage=None, **kw):
+                 n_clusters=None, output_types=None, **kw):
         super().__init__(_x=x, _sample_weight=sample_weight,
                          _x_squared_norms=x_squared_norms,
                          _centers_old=centers_old, _labels=labels,
                          _update_centers=update_centers, _n_clusters=n_clusters,
-                         _output_types=output_types, _stage=stage, **kw)
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 
@@ -80,7 +80,7 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 
     @property
     def output_limit(self):
-        return 3 if self._stage != OperandStage.reduce else 2
+        return 3 if self.stage != OperandStage.reduce else 2
 
     @property
     def _input_fields(self):
@@ -132,7 +132,7 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
             x_squared_norms_chunk = x_squared_norms.cix[i, ]
             labels_chunk = labels.cix[i, ]
             chunk_op = op.copy().reset_key()
-            chunk_op._stage = OperandStage.map
+            chunk_op.stage = OperandStage.map
             chunk_kws = [
                 labels_chunk.params,
                 {'index': (0, 0),
@@ -229,11 +229,11 @@ class KMeansLloydPostprocess(LearnOperand, LearnOperandMixin):
 
     def __init__(self, centers_old=None, centers_new=None,
                  center_shift=None, weight_in_clusters=None,
-                 output_types=None, stage=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_centers_old=centers_old, _centers_new=centers_new,
                          _center_shift=center_shift,
                          _weight_in_clusters=weight_in_clusters,
-                         _output_types=output_types, _stage=stage, **kw)
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
 

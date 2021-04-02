@@ -22,9 +22,9 @@ from ...config import options
 
 def arithmetic_operand(cls=None, init=True, sparse_mode=None):
     def _decorator(cls):
-        def __init__(self, casting='same_kind', err=None, dtype=None, sparse=False, **kw):
+        def __init__(self, casting='same_kind', err=None, **kw):
             err = err if err is not None else np.geterr()
-            super(cls, self).__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
+            super(cls, self).__init__(_casting=casting, _err=err, **kw)
 
         def _is_sparse_binary_and_const(x1, x2):
             if all(np.isscalar(x) for x in [x1, x2]):

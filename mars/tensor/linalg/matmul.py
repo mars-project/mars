@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import KeyField, StringField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..core import Tensor, TensorOrder
 from ..utils import broadcast_shape, check_out_param, unify_chunks, check_order
 from ..array_utils import device, as_same_device, is_sparse_module
@@ -38,8 +38,8 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
     _casting = StringField('casting')
     _order = StringField('order')
 
-    def __init__(self, dtype=None, sparse=False, casting=None, order=None,  **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, _casting=casting, _order=order, **kw)
+    def __init__(self, casting=None, order=None,  **kw):
+        super().__init__(_casting=casting, _order=order, **kw)
         if self._casting is None:
             self._casting = 'same_kind'
         if self._order is None:

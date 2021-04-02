@@ -17,11 +17,11 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import ValueType, KeyField, Int32Field, \
     StringField, ListField, BoolField, AnyField
 from ...utils import check_chunks_unknown_shape, flatten, stack_back
-from ...tiles import TilesError
-from ...core import Base, Entity, ExecutableTuple
+from ...core import ENTITY_TYPE, ExecutableTuple
 from ..operands import TensorOperand, TensorShuffleProxy
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..array_utils import as_same_device, device
@@ -387,7 +387,7 @@ class CalcPartitionsInfo(TensorOperand, TensorPSRSOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        if isinstance(self._kth, (Base, Entity)):
+        if isinstance(self._kth, ENTITY_TYPE):
             self._kth = self._inputs[0]
 
     @classmethod
@@ -438,10 +438,9 @@ class PartitionMerged(TensorOperand, TensorPSRSOperandMixin):
     _need_align = BoolField('need_align')
 
     def __init__(self, return_value=None, return_indices=None, order=None, kind=None,
-                 need_align=None, dtype=None, gpu=None, **kw):
+                 need_align=None, **kw):
         super().__init__(_return_value=return_value, _return_indices=return_indices,
-                         _order=order, _kind=kind, _need_align=need_align,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         _order=order, _kind=kind, _need_align=need_align, **kw)
 
     @property
     def return_value(self):
@@ -548,7 +547,7 @@ def _validate_partition_arguments(a, kth, axis, kind, order, kw):
         axis = 0
     else:
         axis = validate_axis(a.ndim, axis)
-    if isinstance(kth, (Base, Entity)):
+    if isinstance(kth, ENTITY_TYPE):
         kth = astensor(kth)
         _check_kth_dtype(kth.dtype)
     else:

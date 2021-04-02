@@ -19,10 +19,10 @@ from .core import DataFrameDeviceConversionBase
 class DataFrameToCPU(DataFrameDeviceConversionBase):
     _op_type_ = OperandDef.TO_CPU
 
-    def __init__(self, dtypes=None, gpu=None, sparse=None, output_types=None, **kw):
-        super().__init__(_dtypes=dtypes, _gpu=gpu, _sparse=sparse, _output_types=output_types, **kw)
-        if self._gpu or self._gpu is None:
-            self._gpu = False
+    def __init__(self, dtypes=None, output_types=None, **kw):
+        super().__init__(_dtypes=dtypes, _output_types=output_types, **kw)
+        if self.gpu or self.gpu is None:
+            self.gpu = False
 
     @classmethod
     def execute(cls, ctx, op):

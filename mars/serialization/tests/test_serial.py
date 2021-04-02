@@ -86,6 +86,19 @@ def test_nested_dict():
     assert deserialized[val] is deserialized
 
 
+class DictWithoutInitArgs(dict):
+    # dict inheritance without args in __init__
+    def __init__(self):
+        super().__init__()
+
+
+def test_dict_without_init_args():
+    val = DictWithoutInitArgs()
+    val['a'] = 'b'
+    deserialized = deserialize(*serialize(val))
+    assert deserialized == val
+
+
 @pytest.mark.parametrize(
     'val', [
         np.array(np.random.rand(100, 100)),

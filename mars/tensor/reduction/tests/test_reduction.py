@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-from mars.operands import OperandStage
+from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.merge import TensorConcatenate
 from mars.tensor.reduction import all, TensorMean, TensorArgmax, TensorArgmin

@@ -21,7 +21,7 @@ from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
 from ... import opcodes as OperandDef
-from ...core import Entity, Base, OutputType
+from ...core import ENTITY_TYPE, OutputType
 from ...config import options
 from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
@@ -68,8 +68,8 @@ def process_iloc_indexes(inp, indexes):
                             raise TypeError(f'cannot do slice indexing on {type(pd_index)} '
                                             f'with these indexers [{val}] of {type(val)}')
             new_indexes.append(index)
-        elif isinstance(index, (list, np.ndarray, pd.Series, Base, Entity)):
-            if not isinstance(index, (Base, Entity)):
+        elif isinstance(index, (list, np.ndarray, pd.Series, ENTITY_TYPE)):
+            if not isinstance(index, ENTITY_TYPE):
                 index = np.asarray(index)
             else:
                 index = asarray(index)
@@ -250,7 +250,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
         self._input = next(inputs_iter)
         indexes = []
         for index in self._indexes:
-            if isinstance(index, (Entity, Base)):
+            if isinstance(index, ENTITY_TYPE):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
@@ -273,7 +273,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
         shape0 = tuple(calc_shape((df.shape[0],), (self.indexes[0],)))
         shape1 = tuple(calc_shape((df.shape[1],), (self.indexes[1],)))
 
-        inputs = [df] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+        inputs = [df] + [index for index in self._indexes if isinstance(index, ENTITY_TYPE)]
 
         # NB: pandas only compresses the result to series when index on one of axis is integral
         if isinstance(self.indexes[1], Integral):
@@ -450,7 +450,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
 
         indexes = []
         for index in self._indexes:
-            if isinstance(index, (Entity, Base)):
+            if isinstance(index, ENTITY_TYPE):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
@@ -486,7 +486,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
         else:
             shape = tuple(calc_shape(series.shape, self.indexes))
             index_value = indexing_index_value(series.index_value, self.indexes[0])
-            inputs = [series] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+            inputs = [series] + [index for index in self._indexes if isinstance(index, ENTITY_TYPE)]
             return self.new_series(inputs, shape=shape, dtype=series.dtype,
                                    index_value=index_value, name=series.name)
 
@@ -578,7 +578,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
 
         indexes = []
         for index in self._indexes:
-            if isinstance(index, (Entity, Base)):
+            if isinstance(index, ENTITY_TYPE):
                 indexes.append(next(inputs_iter))
             else:
                 indexes.append(index)
@@ -606,7 +606,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
         else:
             shape = tuple(calc_shape(idx.shape, self.indexes))
             index_value = indexing_index_value(idx.index_value, self.indexes[0])
-            inputs = [idx] + [index for index in self._indexes if isinstance(index, (Base, Entity))]
+            inputs = [idx] + [index for index in self._indexes if isinstance(index, ENTITY_TYPE)]
             return self.new_index(inputs, shape=shape, dtype=idx.dtype,
                                   index_value=index_value, name=idx.name)
 

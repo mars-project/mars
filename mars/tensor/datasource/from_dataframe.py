@@ -28,9 +28,8 @@ class TensorFromDataFrame(TensorHasInput):
     _input = KeyField('_input')
     _extract_multi_index = BoolField('extract_multi_index')
 
-    def __init__(self, dtype=None, gpu=None, sparse=None, extract_multi_index=False, **kw):
-        super().__init__(_dtype=dtype, _gpu=gpu, _sparse=sparse,
-                         _extract_multi_index=extract_multi_index, **kw)
+    def __init__(self, extract_multi_index=False, **kw):
+        super().__init__(_extract_multi_index=extract_multi_index, **kw)
 
     @classmethod
     def execute(cls, ctx, op: 'TensorFromDataFrame'):

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialize import KeyField, Float64Field, Int64Field, BoolField
+from ...serialize import KeyField, Float64Field, Int64Field
 from ...tensor.base.rebalance import RebalanceMixin
 from ..core import INDEX_TYPE
 from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex
@@ -28,12 +28,11 @@ class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand
     _factor = Float64Field('factor')
     _axis = Int64Field('axis')
     _num_partitions = Int64Field('num_partitions')
-    _reassign_worker = BoolField('reassign_worker')
 
     def __init__(self, input=None, factor=None, axis=None,  # pylint: disable=redefined-builtin
-                 num_partitions=None, reassign_worker=None, output_types=None, **kw):
+                 num_partitions=None, output_types=None, **kw):
         super().__init__(_input=input, _factor=factor, _axis=axis, _num_partitions=num_partitions,
-                         _output_types=output_types, _reassign_worker=reassign_worker, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -50,10 +49,6 @@ class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand
     @property
     def num_partitions(self):
         return self._num_partitions
-
-    @property
-    def reassign_worker(self):
-        return self._reassign_worker
 
     def _get_input_object(self):
         in_obj = self.input

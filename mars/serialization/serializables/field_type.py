@@ -189,8 +189,8 @@ class KeyType(SingletonFieldType):
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        from ...core import HasKey
-        return HasKey,
+        from ...core.entity import ENTITY_TYPE
+        return ENTITY_TYPE
 
 
 class DatetimeType(SingletonFieldType):
@@ -265,7 +265,7 @@ class FunctionType(SingletonFieldType):
         return ()
 
     def validate(self, value):
-        if not callable(value):
+        if value is not None and not callable(value):
             raise TypeError(f'value should be a function, '
                             f'got {type(value)}')
 
@@ -356,7 +356,7 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
             return
         if not isinstance(value, self.valid_types):
             raise TypeError(f'value should be instance of {self.valid_types}, '
-                            f'got f{type(value)}')
+                            f'got {type(value)}')
         if self.is_homogeneous():
             field_type: AbstractFieldType = self._field_types[0]
             if not isinstance(field_type, AnyType):
@@ -366,7 +366,7 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
                     except TypeError:
                         raise TypeError(f'item should be instance of '
                                         f'{field_type.valid_types}, '
-                                        f'got f{type(item)}')
+                                        f'got {type(item)}')
         else:
             if len(value) != len(self._field_types):
                 raise ValueError(f'value should own {len(self._field_types)} items, '
@@ -377,7 +377,7 @@ class _CollectionType(AbstractFieldType, metaclass=ABCMeta):
                 except TypeError:
                     raise TypeError(f'item should be instance of '
                                     f'{expect_field_type.valid_types}, '
-                                    f'got f{type(item)}')
+                                    f'got {type(item)}')
 
 
 class ListType(_CollectionType):

@@ -17,9 +17,9 @@ from typing import List, Tuple
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....operands import OperandStage
+from ....core import TilesError
+from ....core.operand import OperandStage
 from ....serialize import ValueType, KeyField, AnyField, Float16Field, Int32Field, TupleField
-from ....tiles import TilesError
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
     require_module
 from ....config import options
@@ -34,7 +34,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
 
     _input = KeyField('input')
     _metric = AnyField('metric')
-    _p = Float16Field('p')
+    _p = Float16Field('p', on_serialize=lambda x: float(x) if x is not None else x)
     _w = KeyField('w')
     _v = KeyField('V')
     _vi = KeyField('VI')
@@ -49,11 +49,10 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
 
     def __init__(self, metric=None, p=None, w=None, v=None, vi=None,
                  a=None, a_offset=None, b=None, b_offset=None, out_sizes=None, n=None,
-                 aggregate_size=None, stage=None, shuffle_key=None, dtype=None, **kw):
+                 aggregate_size=None, **kw):
         super().__init__(_metric=metric, _p=p, _w=w, _v=v, _vi=vi,
                          _a=a, _a_offset=a_offset, _b=b, _b_offset=b_offset, _out_sizes=out_sizes,
-                         _n=n, _dtype=dtype, _aggregate_size=aggregate_size, _stage=stage,
-                         _shuffle_key=shuffle_key, **kw)
+                         _n=n, _aggregate_size=aggregate_size, **kw)
 
     def _set_inputs(self, inputs: List) -> None:
         super()._set_inputs(inputs)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import List, Union
+from typing import List, Optional
 
 from mars import oscar as mo
 from mars.lib.uhashring import HashRing
@@ -22,7 +22,7 @@ from mars.utils import extensible
 
 
 class SupervisorLocatorActor(mo.Actor):
-    _backend: Union[AbstractClusterBackend, None]
+    _backend: Optional[AbstractClusterBackend]
 
     def __init__(self, backend_name: str, lookup_address: str):
         self._backend_name = backend_name

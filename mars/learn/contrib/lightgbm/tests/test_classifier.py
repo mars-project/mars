@@ -21,7 +21,7 @@ import pandas as pd
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.operands import Fuse
+from mars.core.operand import Fuse
 from mars.session import new_session
 from mars.tests.core import ExecutorForTest
 

@@ -44,7 +44,7 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
                          _order=order, _psrs_kinds=psrs_kinds,
                          _need_align=need_align, _return_value=return_value,
                          _return_indices=return_indices,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         dtype=dtype, gpu=gpu, **kw)
 
     @property
     def axis(self):

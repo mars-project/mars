@@ -31,9 +31,9 @@ class TensorTriangular(TensorDistribution, TensorRandomOperandMixin):
     _right = AnyField('right')
     _func_name = 'triangular'
 
-    def __init__(self, size=None, state=None, dtype=None, gpu=None, **kw):
+    def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
 
     @property
     def left(self):

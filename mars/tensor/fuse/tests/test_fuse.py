@@ -31,7 +31,7 @@ class Test(unittest.TestCase):
         t = mt.random.rand(9, 9, chunk_size=3)
         t1 = (t + 1) * 2
 
-        g = t1.build_graph(tiled=True, compose=True)
+        g = t1.build_graph(tiled=True, fuse_enabled=True)
         graph_nodes = list(g)
         self.assertTrue(all(isinstance(n.op, TensorFuseChunk) for n in graph_nodes))
         self.assertTrue(all(n.shape == (3, 3) for n in graph_nodes))
@@ -45,7 +45,7 @@ class Test(unittest.TestCase):
 
         t2 = mt.sum((t / 2) - 1, axis=0)
 
-        g = t2.build_graph(tiled=True, compose=True)
+        g = t2.build_graph(tiled=True, fuse_enabled=True)
         graph_nodes = list(g.bfs())
         self.assertTrue(all(isinstance(n.op, TensorFuseChunk) for n in graph_nodes))
 
@@ -69,7 +69,7 @@ class Test(unittest.TestCase):
         t = mt.tensor(data, chunk_size=3)
 
         t1 = t * 2 / 3
-        g = t1.build_graph(tiled=True, compose=True)
+        g = t1.build_graph(tiled=True, fuse_enabled=True)
         graph_nodes = list(g)
         self.assertTrue(all(isinstance(n.op, TensorFuseChunk) for n in graph_nodes))
         self.assertTrue(all(n.op.sparse for n in graph_nodes))
@@ -84,7 +84,7 @@ class Test(unittest.TestCase):
         self.assertTrue(all(c.op.sparse for c in fuse_node.composed))
 
         t2 = (t * 2).todense()
-        g = t2.build_graph(tiled=True, compose=True)
+        g = t2.build_graph(tiled=True, fuse_enabled=True)
         graph_nodes = list(g)
         self.assertTrue(all([isinstance(n.op, TensorFuseChunk) for n in graph_nodes]))
         self.assertTrue(all([not n.op.sparse for n in graph_nodes]))

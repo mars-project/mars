@@ -20,12 +20,13 @@ try:
 except ImportError:  # pragma: no cover
     sps = None
 
-from .core import Serializer, serialize, deserialize
+from .core import Serializer, buffered, serialize, deserialize
 
 
 class CsrMatrixSerializer(Serializer):
     serializer_name = 'sps.csr_matrix'
 
+    @buffered
     def serialize(self, obj: Any, context: Dict):
         data_header, data_buffers = serialize(obj.data)
         idx_header, idx_buffers = serialize(obj.indices)

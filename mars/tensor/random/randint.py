@@ -32,10 +32,10 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     _func_name = 'randint'
 
     def __init__(self, state=None, size=None, dtype=None,
-                 low=None, high=None, sparse=False, density=None, gpu=None, **kw):
+                 low=None, high=None, density=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _low=low, _high=high, _dtype=dtype,
-                         _sparse=sparse, _density=density, _gpu=gpu, **kw)
+        super().__init__(_state=state, _size=size, _low=low, _high=high,
+                         _density=density, dtype=dtype, **kw)
 
     @property
     def low(self):

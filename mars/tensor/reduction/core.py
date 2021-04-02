@@ -26,8 +26,8 @@ from math import ceil, log
 import numpy as np
 
 from ...config import options
-from ...operands import OperandStage
-from ...serialize import KeyField, AnyField, DataTypeField, BoolField, Int32Field
+from ...core.operand import OperandStage
+from ...serialize import KeyField, AnyField, BoolField, Int32Field
 from ..core import Tensor, TensorOrder
 from ..array_utils import get_array_module, as_same_device, device, cp
 from ..utils import check_out_param, validate_axis
@@ -84,7 +84,7 @@ class TensorReductionMixin(TensorOperandMixin):
             shape = tuple(s if i not in axis else 1 for i, s in enumerate(a.shape)
                           if keepdims or i not in axis)
 
-        self._sparse = self._is_sparse(a.issparse(), shape)
+        self.sparse = self._is_sparse(a.issparse(), shape)
         t = self.new_tensor([a], shape, order=order)
 
         if out is None:
@@ -98,7 +98,7 @@ class TensorReductionMixin(TensorOperandMixin):
                 raise ValueError('output has too many dimensions')
             raise ValueError(f'output shape should be {t.shape}, got {out_shape}')
 
-        setattr(self, '_dtype', out_dtype)
+        setattr(self, 'dtype', out_dtype)
 
         out.data = t.data
         return out
@@ -476,7 +476,8 @@ class TensorCumReductionMixin(TensorReductionMixin):
         inter_tensor = copy.copy(in_tensor)
         inter_tensor._chunks = chunks
 
-        slc = tuple(slice(None) if i != axis else slice(-1, None) for i in range(in_tensor.ndim))
+        slc = [slice(None) if i != axis else slice(-1, None)
+               for i in range(in_tensor.ndim)]
 
         output_chunks = []
         for chunk in chunks:
@@ -524,17 +525,12 @@ class TensorReduction(TensorHasInput):
     _input = KeyField('input')
     _out = KeyField('out')
     _axis = AnyField('axis')  # can be None or int or tuple of ints, just infer the data
-    _dtype = DataTypeField('dtype')
     _keepdims = BoolField('keepdims')
     _combine_size = AnyField('combine_size')
 
     @property
     def axis(self):
         return getattr(self, '_axis', None)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)
 
     @property
     def keepdims(self):
@@ -559,7 +555,3 @@ class TensorCumReduction(TensorHasInput):
     @property
     def axis(self):
         return getattr(self, '_axis', None)
-
-    @property
-    def dtype(self):
-        return getattr(self, '_dtype', None)

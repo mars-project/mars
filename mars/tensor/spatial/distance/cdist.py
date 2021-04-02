@@ -18,9 +18,9 @@ from typing import Tuple
 import numpy as np
 
 from .... import opcodes as OperandDef
+from ....core import TilesError
 from ....serialize import KeyField, AnyField, Float16Field
 from ....utils import check_chunks_unknown_shape, require_module
-from ....tiles import TilesError
 from ...operands import TensorOperand, TensorOperandMixin
 from ...core import TensorOrder
 from ...datasource import tensor as astensor
@@ -33,15 +33,15 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
     _xa = KeyField('XA')
     _xb = KeyField('XB')
     _metric = AnyField('metric')
-    _p = Float16Field('p')
+    _p = Float16Field('p', on_serialize=lambda x: float(x) if x is not None else x)
     _w = KeyField('w')
     _v = KeyField('V')
     _vi = KeyField('VI')
 
     def __init__(self, metric=None, p=None, w=None,
-                 v=None, vi=None, dtype=None, **kw):
+                 v=None, vi=None, **kw):
         super().__init__(_metric=metric, _p=p,
-                         _w=w, _v=v, _vi=vi, _dtype=dtype, **kw)
+                         _w=w, _v=v, _vi=vi, **kw)
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)

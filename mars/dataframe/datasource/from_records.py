@@ -33,12 +33,13 @@ class DataFrameFromRecords(DataFrameOperand, DataFrameOperandMixin):
     _coerce_float = BoolField('coerce_float')
     _nrows = Int32Field('nrows')
 
-    def __init__(self, index=None, columns=None, exclude=None, coerce_float=False, nrows=None,
-                 gpu=False, sparse=False, **kw):
+    def __init__(self, index=None, columns=None, exclude=None,
+                 coerce_float=False, nrows=None, **kw):
         if index is not None or columns is not None:
             raise NotImplementedError('Specifying index value is not supported for now')
-        super().__init__(_exclude=exclude, _columns=columns, _coerce_float=coerce_float, _nrows=nrows,
-                         _gpu=gpu, _sparse=sparse, _output_types=[OutputType.dataframe], **kw)
+        super().__init__(_exclude=exclude, _columns=columns,
+                         _coerce_float=coerce_float, _nrows=nrows,
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def columns(self):

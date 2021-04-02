@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import KeyField, AnyField, Int8Field, Int64Field
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis

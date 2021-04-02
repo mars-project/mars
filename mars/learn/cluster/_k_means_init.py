@@ -16,12 +16,12 @@ import numpy as np
 
 from ... import opcodes
 from ... import tensor as mt
-from ...operands import OutputType, OperandStage
+from ...core import OutputType, TilesError
+from ...core.operand import OperandStage
 from ...serialize import KeyField, Int32Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.random import RandomStateField
-from ...tiles import TilesError
 from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..metrics import euclidean_distances
 from ..operands import LearnOperand, LearnOperandMixin
@@ -260,11 +260,11 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
     def __init__(self, x=None, n_clusters=None, x_squared_norms=None,
                  state=None, init_iter=None, oversampling_factor=None,
-                 output_types=None, stage=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_x=x, _n_clusters=n_clusters, _x_squared_norms=x_squared_norms,
                          _state=state, _init_iter=init_iter,
                          _oversampling_factor=oversampling_factor,
-                         _stage=stage, _output_types=output_types, **kw)
+                         _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
 

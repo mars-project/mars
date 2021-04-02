@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...operands import SuccessorsExclusive
+from ...core.operand import SuccessorsExclusive
 from .base import BaseOperandActor
 from .core import OperandState, register_operand_class
 

@@ -17,9 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...serialize import Int32Field, TupleField, AnyField, KeyField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -38,10 +37,9 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
     _range_on_axis = TupleField('range_on_axis')
 
     def __init__(self, index_obj=None, values=None, axis=None,
-                 range_on_axis=None, dtype=None, **kw):
+                 range_on_axis=None, **kw):
         super().__init__(_index_obj=index_obj, _values=values,
-                         _axis=axis, _range_on_axis=range_on_axis,
-                         _dtype=dtype, **kw)
+                         _axis=axis, _range_on_axis=range_on_axis, **kw)
 
     @property
     def index_obj(self):
@@ -62,9 +60,9 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
-        if isinstance(self._index_obj, (Base, Entity)):
+        if isinstance(self._index_obj, ENTITY_TYPE):
             self._index_obj = next(inputs_iter)
-        if isinstance(self._values, (Base, Entity)):
+        if isinstance(self._values, ENTITY_TYPE):
             self._values = next(inputs_iter)
 
     @classmethod
@@ -83,7 +81,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
 
         index_obj = op.index_obj
         values = op.values
-        if isinstance(values, (Base, Entity)):
+        if isinstance(values, ENTITY_TYPE):
             # if values is Mars type, we rechunk it into one chunk and
             # all insert chunks depend on it
             values = values.rechunk(values.shape)._inplace_tile()
@@ -100,7 +98,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                 if chunk.index[axis] == in_idx:
                     chunk_op = op.copy().reset_key()
                     chunk_op._index_obj = index_obj - cum_splits[in_idx]
-                    if isinstance(values, (Base, Entity)):
+                    if isinstance(values, ENTITY_TYPE):
                         chunk_values = values.chunks[0]
                     else:
                         chunk_values = values
@@ -113,14 +111,14 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                 else:
                     out_chunks.append(chunk)
                     nsplits_on_axis.append(chunk.shape[axis])
-        elif isinstance(index_obj, (Base, Entity)):
+        elif isinstance(index_obj, ENTITY_TYPE):
             index_obj = index_obj.rechunk(index_obj.shape)._inplace_tile()
             offset = 0
             out_chunks = []
             for chunk in inp.chunks:
                 chunk_op = op.copy().reset_key()
                 chunk_op._index_obj = index_obj.chunks[0]
-                if isinstance(values, (Base, Entity)):
+                if isinstance(values, ENTITY_TYPE):
                     chunk_values = values.chunks[0]
                 else:
                     chunk_values = values
@@ -166,7 +164,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                         chunk_op._index_obj = chunk_index_obj
                         out_chunks.append(chunk_op.new_chunk([chunk], shape=shape,
                                                              index=chunk.index))
-                    elif isinstance(values, (Base, Entity)):
+                    elif isinstance(values, ENTITY_TYPE):
                         chunk_op._values = values.chunks[0]
                         if chunk.index[axis] + 1 == len(inp.nsplits[axis]):
                             chunk_op._range_on_axis = (offset, offset + chunk.shape[axis] + 1)

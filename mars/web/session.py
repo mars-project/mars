@@ -25,13 +25,14 @@ from numbers import Integral
 import numpy as np
 
 from ..config import options
+from ..core.operand import Fetch
 from ..errors import ResponseMalformed, ExecutionInterrupted, ExecutionFailed, \
     ExecutionStateUnknown, ExecutionNotStopped
-from ..operands import Fetch
 from ..serialize import dataserializer
 from ..serialize.dataserializer import pyarrow
 from ..tensor.core import Indexes
-from ..utils import build_tileable_graph, sort_dataframe_result, numpy_dtype_from_descr_json
+from ..utils import build_tileable_graph, sort_dataframe_result, \
+    numpy_dtype_from_descr_json, serialize_graph, serialize_serializable
 
 logger = logging.getLogger(__name__)
 
@@ -201,9 +202,9 @@ class Session(object):
         if len(graph) > 0:
             targets_join = ','.join(targets)
             session_url = self._endpoint + '/api/session/' + self._session_id
-            graph_json = graph.to_json(data_serial_type=self._serial_type, pickle_protocol=self._pickle_protocol)
+            serialized_graph = serialize_graph(graph)
 
-            resp_json = self._submit_graph(graph_json, targets_join, names=name or '', compose=compose)
+            resp_json = self._submit_graph(serialized_graph, targets_join, names=name or '', compose=compose)
             graph_key = resp_json['graph_key']
             graph_url = f'{session_url}/graph/{graph_key}'
 
@@ -265,7 +266,8 @@ class Session(object):
                 raise ValueError('Cannot fetch the unexecuted tileable')
 
             key = to_fetch_tileable.key
-            indexes_str = json.dumps(Indexes(indexes).to_json(), separators=(',', ':'))
+            indexes_str = base64.b64encode(
+                serialize_serializable(Indexes(indexes=indexes))).decode('ascii')
 
             session_url = f'{self._endpoint}/api/session/{self._session_id}'
             compression_str = ','.join(v.value for v in dataserializer.get_supported_compressions())
@@ -364,8 +366,8 @@ class Session(object):
         from ..tensor.core import Indexes
         from ..serialize import dataserializer
 
-        index = Indexes(_indexes=index)
-        index_bytes = json.dumps(index.to_json()).encode('ascii')
+        index = Indexes(indexes=index)
+        index_bytes = base64.b64encode(serialize_serializable(index))
         bio = BytesIO()
         bio.write(np.int64(len(index_bytes)).tobytes())
         bio.write(index_bytes)
@@ -442,10 +444,10 @@ class Session(object):
             raise SystemError(f'Failed to stop graph execution. Code: {resp.status_code}, '
                               f'Reason: {resp.reason}, Content:\n{resp.text}')
 
-    def _submit_graph(self, graph_json, targets, names=None, compose=True):
+    def _submit_graph(self, serialized_graph, targets, names=None, compose=True):
         session_url = f'{self._endpoint}/api/session/{self._session_id}'
         resp = self._req_session.post(session_url + '/graph', dict(
-            graph=json.dumps(graph_json),
+            graph=base64.b64encode(serialized_graph).decode('ascii'),
             target=targets,
             names=names,
             compose='1' if compose else '0'

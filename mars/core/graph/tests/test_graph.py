@@ -13,41 +13,10 @@
 # limitations under the License.
 
 import pytest
-from typing import List, Union
 
 import mars.tensor as mt
-from mars._core.graph import DAG, GraphContainsCycleError, TileableGraph, ChunkGraph, \
-    TileableGraphBuilder, ChunkGraphBuilder
-from mars.core import Tileable
-from mars.serialization import serialize, deserialize
-from mars.serialization.serializables import Serializable, Int32Field
-from mars.utils import enter_mode
-
-
-@enter_mode(kernel=True)
-def _build_graph(tileables: List[Tileable],
-                 tiled: bool = False,
-                 fuse_enabled: bool = True,
-                 **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
-    tileable_graph = TileableGraph(tileables)
-    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
-    tileable_graph = next(tileable_graph_builder.build())
-    if not tiled:
-        return tileable_graph
-    chunk_graph_builder = ChunkGraphBuilder(
-        tileable_graph, fuse_enabled=fuse_enabled,
-        **chunk_graph_build_kwargs)
-    return next(chunk_graph_builder.build())
-
-
-class MySerializable(Serializable):
-    _id = Int32Field('id')
-
-    def __hash__(self):
-        return hash((type(self), self._id))
-
-    def __eq__(self, other):
-        return isinstance(other, MySerializable) and self._id == other._id
+from mars.core.graph import DAG, GraphContainsCycleError
+from mars.core.graph.builder import _build_graph
 
 
 def test_dag():
@@ -127,21 +96,3 @@ def test_to_dot():
 
     dot = str(graph.to_dot(trunc_key=5))
     assert all(str(n.op.key)[5] in dot for n in graph) is True
-
-
-@pytest.mark.parametrize(
-    'graph_type',
-    [TileableGraph, ChunkGraph]
-)
-def test_dag_serialization(graph_type):
-    n1 = MySerializable(_id=1)
-    n2 = MySerializable(_id=2)
-    graph = graph_type([n2])
-    graph.add_node(n1)
-    graph.add_node(n2)
-    graph.add_edge(n1, n2)
-
-    header, buffers = serialize(graph)
-    graph2 = deserialize(header, buffers)
-
-    assert len(graph) == len(graph2) > 0

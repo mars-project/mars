@@ -18,9 +18,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
+from ...core import TilesError
 from ...serialize import BoolField, KeyField
 from ...utils import check_chunks_unknown_shape
-from ...tiles import TilesError
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -36,8 +36,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
     _lower = BoolField('lower')
     _strict = BoolField('strict')
 
-    def __init__(self, lower=None, dtype=None, sparse=False, strict=None, **kw):
-        super().__init__(_lower=lower, _dtype=dtype, _sparse=sparse, _strict=strict, **kw)
+    def __init__(self, lower=None, strict=None, **kw):
+        super().__init__(_lower=lower, _strict=strict, **kw)
 
     @property
     def a(self):

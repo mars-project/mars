@@ -90,7 +90,7 @@ class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
     _header = AnyField('header')
     _index_col = Int32Field('index_col')
     _compression = StringField('compression')
-    _usecols = ListField('usecols')
+    _usecols = AnyField('usecols')
     _offset = Int64Field('offset')
     _size = Int64Field('size')
     _nrows = Int64Field('nrows')
@@ -101,18 +101,16 @@ class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
 
     def __init__(self, path=None, names=None, sep=None, header=None, index_col=None,
                  compression=None, usecols=None, offset=None, size=None, nrows=None,
-                 gpu=None, keep_usecols_order=None, incremental_index=None,
-                 use_arrow_dtype=None, storage_options=None,
-                 memory_scale=None, **kw):
+                 keep_usecols_order=None, incremental_index=None,
+                 use_arrow_dtype=None, storage_options=None, **kw):
         super().__init__(_path=path, _names=names, _sep=sep, _header=header,
                          _index_col=index_col, _compression=compression,
                          _usecols=usecols, _offset=offset, _size=size, _nrows=nrows,
-                         _gpu=gpu, _incremental_index=incremental_index,
+                         _incremental_index=incremental_index,
                          _keep_usecols_order=keep_usecols_order,
                          _use_arrow_dtype=use_arrow_dtype,
                          _storage_options=storage_options,
-                         _output_types=[OutputType.dataframe],
-                         _memory_scale=memory_scale, **kw)
+                         _output_types=[OutputType.dataframe], **kw)
 
     @property
     def path(self):

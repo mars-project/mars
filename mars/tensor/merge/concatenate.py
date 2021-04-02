@@ -62,14 +62,13 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
     _partition_slice = SliceField('partition_slice')
     _total_shape = TupleField('total_shape')
 
-    def __init__(self, axis=None, dtype=None, mmap=None, file_prefix=None, create_mmap_file=None,
-                 partition_slice=None, total_shape=None, sparse=False, gpu=None, **kw):
-        super().__init__(_axis=axis, _dtype=dtype, _mmap=mmap,
+    def __init__(self, axis=None, mmap=None, file_prefix=None, create_mmap_file=None,
+                 partition_slice=None, total_shape=None, **kw):
+        super().__init__(_axis=axis, _mmap=mmap,
                          _file_prefix=file_prefix,
                          _create_mmap_file=create_mmap_file,
                          _partition_slice=partition_slice,
-                         _total_shape=total_shape,
-                         _gpu=gpu, _sparse=sparse, **kw)
+                         _total_shape=total_shape, **kw)
 
     @property
     def axis(self):

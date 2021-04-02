@@ -14,9 +14,9 @@
 
 from ... import opcodes
 from ...context import get_context
-from ...serialize import KeyField, Float64Field, Int64Field, BoolField
+from ...core import TilesError
+from ...serialize import KeyField, Float64Field, Int64Field
 from ...tensor.datasource import tensor as astensor
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin, TensorOperand
 
@@ -63,12 +63,11 @@ class TensorRebalance(RebalanceMixin, TensorOperandMixin, TensorOperand):
     _factor = Float64Field('factor')
     _axis = Int64Field('axis')
     _num_partitions = Int64Field('num_partitions')
-    _reassign_worker = BoolField('reassign_worker')
 
     def __init__(self, input=None, factor=None, axis=None,  # pylint: disable=redefined-builtin
-                 num_partitions=None, reassign_worker=None, output_types=None, **kw):
+                 num_partitions=None, output_types=None, **kw):
         super().__init__(_input=input, _factor=factor, _axis=axis, _num_partitions=num_partitions,
-                         _output_types=output_types, _reassign_worker=reassign_worker, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -85,10 +84,6 @@ class TensorRebalance(RebalanceMixin, TensorOperandMixin, TensorOperand):
     @property
     def num_partitions(self):
         return self._num_partitions
-
-    @property
-    def reassign_worker(self):
-        return self._reassign_worker
 
     def _get_input_object(self):
         return astensor(self.inputs[0])

@@ -15,7 +15,8 @@
 import numpy as np
 
 from ... import opcodes
-from ...operands import OperandStage, OutputType
+from ...core import OutputType
+from ...core.operand import OperandStage
 from ...utils import get_shuffle_input_keys_idxes
 from ..utils import gen_unknown_index_value, hash_dataframe_on
 from ._duplicate import DuplicateOperand, validate_subset

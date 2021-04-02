@@ -17,11 +17,10 @@ import itertools
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...serialize import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..initializer import DataFrame as asdataframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
@@ -36,11 +35,9 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
     _threshold = Int32Field('threshold')
     _chunk_size_limit = Int64Field('chunk_size_limit')
 
-    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None,
-                 reassign_worker=None, **kw):
+    def __init__(self, chunk_size=None, threshold=None, chunk_size_limit=None, output_types=None, **kw):
         super().__init__(_chunk_size=chunk_size, _threshold=threshold,
-                         _chunk_size_limit=chunk_size_limit, _output_types=output_types,
-                         _reassign_worker=reassign_worker, **kw)
+                         _chunk_size_limit=chunk_size_limit, _output_types=output_types, **kw)
 
     @property
     def input(self):
@@ -96,7 +93,7 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
         if op.reassign_worker:
             for c in out.chunks:
-                c.op._reassign_worker = True
+                c.op.reassign_worker = True
 
         return [out]
 

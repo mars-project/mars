@@ -16,7 +16,6 @@
 import functools
 import itertools
 import os
-import json
 import logging
 import shutil
 import subprocess
@@ -32,8 +31,8 @@ import pandas as pd
 from mars.context import LocalContext
 from mars.core import OBJECT_TYPE
 from mars.executor import Executor, GraphExecution
-from mars.graph import SerializableGraph
 from mars.optimizes.chunk_graph.fuse import Fusion
+from mars.serialization import serialize, deserialize
 from mars.utils import lazy_import
 
 try:
@@ -115,18 +114,6 @@ def parameterized(defaults=None, **params):
 
 
 class TestBase(unittest.TestCase):
-    def setUp(self):
-        from mars.serialize import serializes, deserializes, \
-            ProtobufSerializeProvider, JsonSerializeProvider
-
-        self.pb_serialize = lambda *args, **kw: \
-            serializes(ProtobufSerializeProvider(), *args, **kw)
-        self.pb_deserialize = lambda *args, **kw: \
-            deserializes(ProtobufSerializeProvider(), *args, **kw)
-        self.json_serialize = lambda *args, **kw: \
-            serializes(JsonSerializeProvider(), *args, **kw)
-        self.json_deserialize = lambda *args, **kw: \
-            deserializes(JsonSerializeProvider(), *args, **kw)
 
     @classmethod
     def _create_test_context(cls, executor=None):
@@ -141,57 +128,6 @@ class TestBase(unittest.TestCase):
             ExecutorForTest('numpy', storage=ctx)
 
         return ctx, new_executor
-
-    @classmethod
-    def _serial(cls, obj):
-        from mars.operands import Operand
-        from mars.core import Entity, TileableData, Chunk, ChunkData
-
-        if isinstance(obj, (Entity, Chunk)):
-            obj = obj.data
-
-        to_serials = set()
-
-        def serial(ob):
-            if ob in to_serials:
-                return
-            if isinstance(ob, TileableData):
-                to_serials.add(ob)
-                [serial(i) for i in (ob.chunks or [])]
-                serial(ob.op)
-            elif isinstance(ob, ChunkData):
-                to_serials.add(ob)
-                serial(ob.op)
-            else:
-                assert isinstance(ob, Operand)
-                to_serials.add(ob)
-                [serial(i) for i in (ob.inputs or [])]
-                [serial(i) for i in (ob.outputs or []) if i is not None]
-
-        serial(obj)
-        return to_serials
-
-    def _pb_serial(self, obj):
-        to_serials = list(self._serial(obj))
-
-        return MultiGetDict(zip(to_serials, self.pb_serialize(to_serials)))
-
-    def _pb_deserial(self, serials_d):
-        objs = list(serials_d)
-        serials = list(serials_d[o] for o in objs)
-
-        return MultiGetDict(zip(objs, self.pb_deserialize([type(o) for o in objs], serials)))
-
-    def _json_serial(self, obj):
-        to_serials = list(self._serial(obj))
-
-        return MultiGetDict(zip(to_serials, self.json_serialize(to_serials)))
-
-    def _json_deserial(self, serials_d):
-        objs = list(serials_d)
-        serials = list(serials_d[o] for o in objs)
-
-        return MultiGetDict(zip(objs, self.json_deserialize([type(o) for o in objs], serials)))
 
     def base_equal(self, ob1, ob2):
         if type(ob1) != type(ob2):
@@ -209,8 +145,6 @@ class TestBase(unittest.TestCase):
                 return obj1.key == obj2.key
             elif isinstance(obj1, ReferenceType) and isinstance(obj2, ReferenceType):
                 return cmp(obj1(), obj2())
-            elif isinstance(obj1, SerializableGraph) and isinstance(obj2, SerializableGraph):
-                return cmp(obj1.nodes, obj2.nodes)
             else:
                 return obj1 == obj2
 
@@ -644,13 +578,9 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
     _graph_execution_cls = GraphExecutionWithChunkCheck
 
     def __init__(self, *args, **kwargs):
-        from mars.serialize.core import get_serializables
-
         super().__init__(*args, **kwargs)
         self._raw_chunk_shapes = dict()
         self._tileable_checked = dict()
-        if not hasattr(type(self), '_serializables_snapshot'):
-            type(self)._serializables_snapshot = get_serializables()
 
     @staticmethod
     def _extract_check_options(kw_dict):
@@ -658,7 +588,7 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
             _check_options[key] = kw_dict.pop(key, True)
 
     def _check_nsplits(self, tileable):
-        from mars.tiles import get_tiled
+        from mars.core import get_tiled
         tiled = get_tiled(tileable)
         if tiled.nsplits == () and len(tiled.chunks) == 1:
             return
@@ -695,11 +625,24 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                     raise AssertionError('Operand %r: Shape in nsplits %r does not meet shape in chunk %r'
                                          % (tiled.chunks[cid].op, shape, chunk_shape))
 
+    @staticmethod
+    def _check_graph(graph):
+        for chunk in graph:
+            for inp in chunk.inputs:
+                assert inp in graph, f'{inp} not in graph'
+        for chunk in graph.results:
+            try:
+                assert chunk in graph, f'{chunk} not in graph'
+            except AssertionError:
+                raise
+
     def execute_graph(self, graph, keys, **kw):
         if 'NO_SERIALIZE_IN_TEST_EXECUTOR' not in os.environ:
             raw_graph = graph
-            graph = type(graph).from_json(json.loads(json.dumps(graph.to_json())))
-            graph = type(graph).from_pb(graph.to_pb())
+
+            graph = deserialize(*serialize(raw_graph))
+            self._check_graph(graph)
+
             if kw.get('compose', True):
                 # decompose the raw graph
                 # due to the reason that, now after fuse,
@@ -721,16 +664,6 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                 self._tileable_checked[n.key] = True
         return super()._update_tileable_and_chunk_shape(tileable_graph, chunk_result, failed_ops)
 
-    def _check_serializable_registration(self):
-        from mars.serialize.core import get_serializables
-
-        cur_serializables = get_serializables()
-        if len(cur_serializables) == len(self._serializables_snapshot):
-            return
-        unregistered_set = set(cur_serializables.keys()) - set(self._serializables_snapshot.keys())
-        raise AssertionError('Operands %r not registered on initialization'
-                             % ([cur_serializables[k] for k in unregistered_set],))
-
     def execute_tileable(self, tileable, *args, **kwargs):
         self._extract_check_options(kwargs)
 
@@ -744,7 +677,6 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
             # check returned type
             if kwargs.get('concat', False):
                 self.assert_object_consistent(tileable, result[0])
-        self._check_serializable_registration()
         return result
 
     execute_tensor = execute_tileable
@@ -766,7 +698,6 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
                     if _check_options['check_nsplits']:
                         self._check_nsplits(tileable)
                     self.assert_object_consistent(tileable, result)
-        self._check_serializable_registration()
         return results
 
     def fetch_tileables(self, tileables, **kw):

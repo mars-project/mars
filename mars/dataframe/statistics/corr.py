@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ...serialize import BoolField, AnyField, KeyField, Int32Field
 from ...utils import recursive_tile
 from ...tensor.utils import filter_inputs
@@ -63,7 +63,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         next(inputs_iter)
-        if isinstance(self._other, (Base, Entity)):
+        if isinstance(self._other, ENTITY_TYPE):
             self._other = next(inputs_iter)
 
     def __call__(self, df_or_series):

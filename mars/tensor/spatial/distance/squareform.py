@@ -17,9 +17,9 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....operands import OperandStage
+from ....core import TilesError
+from ....core.operand import OperandStage
 from ....serialize import ValueType, KeyField, BoolField, TupleField
-from ....tiles import TilesError
 from ....config import options
 from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
     require_module, recursive_tile
@@ -42,13 +42,11 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     _reduce_sizes = TupleField('reduce_sizes', ValueType.tuple)
     _start_positions = TupleField('start_positions', ValueType.int32)
 
-    def __init__(self, stage=None, checks=None, checks_input=None, x_shape=None,
-                 reduce_sizes=None, start_positions=None, shuffle_key=None,
-                 dtype=None, gpu=None, **kw):
-        super().__init__(_stage=stage, _checks=checks, _checks_input=checks_input,
+    def __init__(self, checks=None, checks_input=None, x_shape=None,
+                 reduce_sizes=None, start_positions=None, **kw):
+        super().__init__(_checks=checks, _checks_input=checks_input,
                          _x_shape=x_shape, _reduce_sizes=reduce_sizes,
-                         _start_positions=start_positions, _shuffle_key=shuffle_key,
-                         _dtype=dtype, _gpu=gpu, **kw)
+                         _start_positions=start_positions, **kw)
 
     @property
     def input(self):

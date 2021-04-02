@@ -18,8 +18,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import TilesError
 from ...serialize import KeyField, AnyField, BoolField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, parse_index

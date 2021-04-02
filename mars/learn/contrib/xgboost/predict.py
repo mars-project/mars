@@ -18,11 +18,11 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes as OperandDef
+from ....core import TilesError
 from ....serialize import KeyField, BytesField, DictField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
-from ....tiles import TilesError
 from ....utils import register_tokenizer, check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 from .dmatrix import ToDMatrix, check_data

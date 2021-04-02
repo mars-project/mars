@@ -18,7 +18,7 @@ import copy
 import numpy as np
 import pandas as pd
 
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE
 from ...serialize import AnyField, Float64Field
 from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
@@ -534,7 +534,7 @@ class DataFrameBinOp(DataFrameOperand, DataFrameBinOpMixin):
             self._lhs = self._inputs[0]
             self._rhs = self._inputs[1]
         else:
-            if isinstance(self._lhs, (Base, Entity)):
+            if isinstance(self._lhs, ENTITY_TYPE):
                 self._lhs = self._inputs[0]
             elif pd.api.types.is_scalar(self._lhs):
                 self._rhs = self._inputs[0]

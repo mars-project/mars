@@ -19,10 +19,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, AnyField, StringField
-from ...tiles import TilesError
 from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin

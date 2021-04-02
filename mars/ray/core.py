@@ -21,9 +21,8 @@ from typing import Dict
 
 import ray
 
-from ..graph import DAG
-from ..operands import Fetch
-from ..tiles import get_tiled
+from ..core import get_tiled, ChunkGraph
+from ..serialization import serialize, deserialize
 from ..utils import build_fetch_chunk
 from ..executor import Executor, GraphExecution
 
@@ -41,7 +40,8 @@ class _OperandWrapper:
 
 
 def operand_serializer(op):
-    graph = DAG()
+    results = []
+    graph = ChunkGraph(results)
     inputs = [build_fetch_chunk(inp) for inp in op.inputs or []]
     new_op = op.copy()
 
@@ -55,16 +55,13 @@ def operand_serializer(op):
     chunks = new_op.new_chunks(inputs, kws=kws, output_limit=len(kws))
     for obj in chunks + inputs:
         graph.add_node(obj)
+    results.extend(chunks)
 
-    return graph.to_json()
+    return serialize(graph)
 
 
 def operand_deserializer(value):
-    graph = DAG.from_json(value)
-    if len(graph) == 1:
-        chunks = [list(graph)[0]]
-    else:
-        chunks = [c for c in graph if not isinstance(c.op, Fetch)]
+    chunks = deserialize(*value).results
     op = chunks[0].op
     return _OperandWrapper(op, chunks)
 

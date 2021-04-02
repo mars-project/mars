@@ -16,9 +16,8 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import Base, Entity, OutputType
+from ...core import ENTITY_TYPE, OutputType, TilesError
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
-from ...tiles import TilesError
 from ...utils import lazy_import, check_chunks_unknown_shape
 from ..utils import parse_index, build_empty_df, build_empty_series, \
     standardize_range_index, validate_axis
@@ -111,7 +110,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     index = (c.index[0], c.index[1] + cum_index)
 
-                iloc_op = DataFrameIlocGetItem(indexes=(slice(None),) * 2)
+                iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
                 out_chunks.append(iloc_op.new_chunk([c], shape=c.shape, index=index,
                                                     dtypes=c.dtypes,
                                                     index_value=c.index_value,
@@ -467,7 +466,7 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(self._groupby_params['by'], list):
             by = []
             for v in self._groupby_params['by']:
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     by.append(next(inputs_iter))
                 else:
                     by.append(v)
@@ -482,7 +481,7 @@ class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(params['by'], list):
             by = []
             for v in params['by']:
-                if isinstance(v, Base):
+                if isinstance(v, ENTITY_TYPE):
                     by.append(ctx[v.key])
                 else:
                     by.append(v)

@@ -29,9 +29,6 @@ class TensorDot(TensorOperand, TensorOperandMixin):
     _a = KeyField('a')
     _b = KeyField('b')
 
-    def __init__(self, dtype=None, sparse=False, **kw):
-        super().__init__(_dtype=dtype, _sparse=sparse, **kw)
-
     @property
     def a(self):
         return self._a

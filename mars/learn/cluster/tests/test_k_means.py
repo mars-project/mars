@@ -416,7 +416,7 @@ class Test(TestBase):
         x = mt.random.rand(1000_000, 64, chunk_size=250_000)
 
         centers = _init_centroids(x, n_cluster, init='k-means||')
-        graph = centers.build_graph(tiled=True, compose=True)
+        graph = centers.build_graph(tiled=True, fuse_enabled=True)
         for c in graph:
             nbytes = c.nbytes
             if not np.isnan(nbytes):

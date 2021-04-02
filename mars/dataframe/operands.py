@@ -17,9 +17,9 @@ from functools import reduce
 
 import pandas as pd
 
-from ..core import FuseChunkData, FuseChunk, Base, Entity, OutputType
-from ..operands import Operand, TileableOperandMixin, MapReduceOperand, Fuse
-from ..operands import ShuffleProxy, FuseChunkMixin
+from ..core import FuseChunkData, FuseChunk, ENTITY_TYPE, OutputType
+from ..core.operand import Operand, TileableOperandMixin, MapReduceOperand, Fuse, \
+    ShuffleProxy, FuseChunkMixin
 from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..utils import calc_nsplits
@@ -107,7 +107,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
         if isinstance(groupby_params['by'], list):
             by = []
             for v in groupby_params['by']:
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     by.append(cls.concat_tileable_chunks(v).chunks[0])
                 else:
                     by.append(v)
@@ -120,7 +120,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
         chunk_inputs = list(groupby.chunks)
         if isinstance(groupby_params['by'], list):
             for chunk_v, v in zip(groupby_params['by'], groupby.op.groupby_params['by']):
-                if isinstance(v, (Base, Entity)):
+                if isinstance(v, ENTITY_TYPE):
                     inputs.append(v)
                     chunk_inputs.append(chunk_v)
         return inputs, chunk_inputs
@@ -152,7 +152,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
             chunk = DataFrameConcat(output_types=[OutputType.index]).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-            return DataFrameConcat(output_types=[OutputType.index]).new_series(
+            return DataFrameConcat(output_types=[OutputType.index]).new_index(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
@@ -165,7 +165,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                   output_types=[output_type]).new_chunk(
                 chunk_inputs, **df.params)
             return GroupByConcat(groups=[df], groupby_params=df.op.groupby_params,
-                                 output_types=[output_type]).new_dataframe(
+                                 output_types=[output_type]).new_tileable(
                 inputs, chunks=[chunk], **df.params)
         elif isinstance(df, CATEGORICAL_TYPE):
             chunk = DataFrameConcat(output_types=[OutputType.categorical]).new_chunk(

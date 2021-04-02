@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import Base, Entity
+from ...core import ENTITY_TYPE, TilesError
 from ...context import get_context
 from ...serialize import AnyField, BoolField, KeyField
 from ...tensor.core import TensorOrder
-from ...tiles import TilesError
 from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ._check_targets import _check_targets
@@ -71,14 +70,14 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             self._y_pred = next(inputs_iter)
         if self._type_true is not None:
             self._type_true = next(inputs_iter)
-        if isinstance(self._sample_weight, (Base, Entity)):
+        if isinstance(self._sample_weight, ENTITY_TYPE):
             self._sample_weight = next(inputs_iter)
 
     def __call__(self, y_true, y_pred):
         type_true, y_true, y_pred = _check_targets(y_true, y_pred)
         self._type_true = type_true
         inputs = [y_true, y_pred, type_true]
-        if isinstance(self._sample_weight, (Base, Entity)):
+        if isinstance(self._sample_weight, ENTITY_TYPE):
             inputs.append(self._sample_weight)
 
         dtype = np.dtype(float) if self._normalize else np.result_type(y_true, y_pred)

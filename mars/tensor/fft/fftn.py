@@ -24,8 +24,8 @@ from .core import TensorComplexFFTNMixin, validate_fftn, TensorStandardFFTN
 class TensorFFTN(TensorStandardFFTN, TensorComplexFFTNMixin):
     _op_type_ = OperandDef.FFTN
 
-    def __init__(self, shape=None, axes=None, norm=None, dtype=None, **kw):
-        super().__init__(_shape=shape, _axes=axes, _norm=norm, _dtype=dtype, **kw)
+    def __init__(self, shape=None, axes=None, norm=None, **kw):
+        super().__init__(_shape=shape, _axes=axes, _norm=norm, **kw)
 
 
 def fftn(a, s=None, axes=None, norm=None):
