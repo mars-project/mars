@@ -158,14 +158,13 @@ class RayServerChannel(RayChannelBase):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
         await self._in_queue.put(message)
-        task = asyncio.create_task(self._out_queue.get())
-        while True:  # pragma: no cover
-            # Avoid hang when channel is closed after `self._out_queue.get()` is awaited.
-            done, _ = await asyncio.wait([task], timeout=0.1)
-            if self._closed.is_set():
-                raise ChannelClosed('Channel already closed')
-            if done:
-                return await task
+        # Avoid hang when channel is closed after `self._out_queue.get()` is awaited.
+        done, _ = await asyncio.wait([self._out_queue.get(), self._closed.wait()],
+                                     return_when=asyncio.FIRST_COMPLETED)
+        if self._closed.is_set():  # pragma: no cover
+            raise ChannelClosed('Channel already closed')
+        if done:
+            return await done.pop()
 
 
 @register_server
