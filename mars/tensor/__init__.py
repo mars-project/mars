@@ -53,7 +53,7 @@ from .reduction import sum, nansum, prod, prod as product, nanprod, \
     argmax, nanargmax, argmin, nanargmin, cumsum, cumprod, \
     var, std, nanvar, nanstd, nancumsum, nancumprod, count_nonzero, allclose, array_equal
 from .reshape import reshape
-from .merge import concatenate, stack, hstack, vstack, dstack, column_stack, union1d
+from .merge import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, block
 from .indexing import take, compress, extract, choose, unravel_index, \
     nonzero, flatnonzero, fill_diagonal
 from .rechunk import rechunk
