@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import sys
 import types
 from functools import partial, wraps
@@ -202,9 +203,23 @@ class TupleSerializer(CollectionSerializer):
 
 class DictSerializer(CollectionSerializer):
     serializer_name = 'dict'
+    _inspected_inherits = set()
 
     @buffered
     def serialize(self, obj: Dict, context: Dict):
+        obj_type = type(obj)
+        if obj_type is not dict and obj_type not in self._inspected_inherits:
+            inspect_init = inspect.getfullargspec(obj_type.__init__)
+            if inspect_init.args == ['self'] and not inspect_init.varargs \
+                    and not inspect_init.varkw:
+                # dict inheritance
+                # remove context to generate real serialized result
+                context.pop(id(obj))
+                PickleSerializer.register(obj_type)
+                return (yield obj)
+            else:
+                self._inspected_inherits.add(obj_type)
+
         key_headers, key_buffers_list = yield from self._serialize(obj.keys())
         value_headers, value_buffers_list = yield from self._serialize(obj.values())
 
@@ -285,7 +300,8 @@ def serialize(obj, context: Dict = None):
     def _wrap_headers(_obj, _serializer_name, _header, _buffers):
         if _header.get('serializer') == 'ref':
             return _header, _buffers
-        _header['serializer'] = _serializer_name
+        # if serializer already defined, do not change
+        _header['serializer'] = _header.get('serializer', _serializer_name)
         _header['buf_num'] = len(_buffers)
         _header['id'] = id(_obj)
         return _header, _buffers
