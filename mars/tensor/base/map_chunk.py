@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes
 from ...core import Base, Entity
 from ...custom_log import redirect_custom_log
-from ...serialize import FunctionField, BoolField, TupleField, \
+from ...serialize import FunctionField, BoolField, ListField, \
     DictField, StringField
 from ...tiles import TilesError
 from ...utils import enter_current_session, quiet_stdio, \
@@ -30,7 +30,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
 
     _func = FunctionField('func')
     _elementwise = BoolField('elementwise')
-    _args = TupleField('args')
+    _args = ListField('args')
     _kwargs = DictField('kwargs')
     _with_chunk_index = BoolField('with_chunk_index')
     # for chunk
@@ -38,6 +38,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
 
     def __init__(self, func=None, args=None, kwargs=None, tileable_op_key=None,
                  elementwise=None, with_chunk_index=None, **kw):
+        args = list(args) if args is not None else None
         super().__init__(_func=func, _args=args, _kwargs=kwargs, _elementwise=elementwise,
                          _with_chunk_index=with_chunk_index,
                          _tileable_op_key=tileable_op_key, **kw)
