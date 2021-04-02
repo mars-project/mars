@@ -142,7 +142,7 @@ class RayServerChannel(RayChannelBase):
         await self._out_queue.put(message)
         self._msg_sent_counter += 1
         assert self._msg_sent_counter <= self._msg_recv_counter, \
-            "One way channel doesn't support multiple replies for one message."
+            "RayServerChannel channel doesn't support send multiple replies for one message."
 
     @implements(Channel.recv)
     async def recv(self):
@@ -156,11 +156,16 @@ class RayServerChannel(RayChannelBase):
 
     async def __on_ray_recv__(self, message):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed')
         self._msg_recv_counter += 1
         await self._in_queue.put(message)
-        return await self._out_queue.get()
+        task = asyncio.create_task(self._out_queue.get())
+        while True:  # pragma: no cover
+            # Avoid hang when channel is closed after `self._out_queue.get()` is awaited.
+            done, _ = await asyncio.wait([task], timeout=0.1)
+            if self._closed.is_set():
+                raise ChannelClosed('Channel already closed')
+            if done:
+                return await task
 
 
 @register_server
