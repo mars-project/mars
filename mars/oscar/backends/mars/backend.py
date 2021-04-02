@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ...backend import BaseActorBackend, register_backend
+from ..context import MarsActorContext
 from .driver import MarsActorDriver
-from .context import MarsActorContext
 from .pool import MainActorPool
 
 
