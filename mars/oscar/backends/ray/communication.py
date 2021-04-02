@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
+from ...errors import ServerClosed
 from ....utils import implements, classproperty
 from ....utils import lazy_import
 
@@ -230,10 +231,12 @@ class RayServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        self._channels = dict()
         for task in self._tasks.values():
             task.cancel()
         self._tasks = dict()
+        for channel in self._channels.values():
+            await channel.close()
+        self._channels = dict()
 
     @property
     @implements(Server.stopped)
@@ -241,6 +244,8 @@ class RayServer(Server):
         return self._closed.is_set()
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
+        if self.stopped:
+            raise ServerClosed(f'Remote server {self.address} closed')
         channel = self._channels.get(channel_id)
         if not channel:
             _, peer_dest_address, peer_channel_index = channel_id
