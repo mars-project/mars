@@ -15,10 +15,12 @@
 import numpy as np
 
 from ... import opcodes
+from ...core import ENTITY_TYPE, CHUNK_TYPE, TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import FunctionField, BoolField, TupleField, \
     DictField, StringField
-from ...utils import enter_current_session, quiet_stdio
+from ...utils import enter_current_session, quiet_stdio, \
+    find_objects, replace_objects, check_chunks_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
 
 
@@ -63,6 +65,14 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     def with_chunk_index(self):
         return self._with_chunk_index
 
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        old_inputs = find_objects(self._args, ENTITY_TYPE) + \
+                     find_objects(self._kwargs, ENTITY_TYPE)
+        mapping = {o: n for o, n in zip(old_inputs, self._inputs[1:])}
+        self._args = replace_objects(self._args, mapping)
+        self._kwargs = replace_objects(self._kwargs, mapping)
+
     def __call__(self, t, dtype=None):
         if dtype is None:
             try:
@@ -77,12 +87,19 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
             dtype = mock_result.dtype
 
         new_shape = t.shape if self.elementwise else (np.nan,) * t.ndim
-        return self.new_tensor([t], dtype=dtype, shape=new_shape)
+        inputs = [t] + find_objects(self.args, ENTITY_TYPE) + \
+                 find_objects(self.kwargs, ENTITY_TYPE)
+        return self.new_tensor(inputs, dtype=dtype, shape=new_shape)
 
     @classmethod
     def tile(cls, op: 'TensorMapChunk'):
         inp = op.inputs[0]
         out = op.outputs[0]
+
+        new_inputs = [op.inputs[0]]
+        check_chunks_unknown_shape(op.inputs[1:], TilesError)
+        for other_inp in op.inputs[1:]:
+            new_inputs.append(other_inp.rechunk(other_inp.shape)._inplace_tile())
 
         chunks = []
         for c in inp.chunks:
@@ -93,7 +110,10 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
 
             new_op = op.copy().reset_key()
             new_op._tileable_op_key = out.key
-            chunks.append(new_op.new_chunk([c], **params))
+            chunk_inputs = [c]
+            for other_inp in new_inputs[1:]:
+                chunk_inputs.append(other_inp.chunks[0])
+            chunks.append(new_op.new_chunk(chunk_inputs, **params))
 
         new_op = op.copy().reset_key()
         params = out.params
@@ -109,10 +129,17 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         in_data = ctx[op.inputs[0].key]
         out_chunk = op.outputs[0]
 
+        args = op.args or tuple()
         kwargs = op.kwargs or dict()
         if op.with_chunk_index:
             kwargs['chunk_index'] = out_chunk.index
-        ctx[op.outputs[0].key] = op.func(in_data, *(op.args or ()), **kwargs)
+
+        chunks = find_objects(args, CHUNK_TYPE) + find_objects(kwargs, CHUNK_TYPE)
+        mapping = {chunk: ctx[chunk.key] for chunk in chunks}
+        args = replace_objects(args, mapping)
+        kwargs = replace_objects(kwargs, mapping)
+
+        ctx[op.outputs[0].key] = op.func(in_data, *args, **kwargs)
 
 
 def map_chunk(t, func, args=(), **kwargs):

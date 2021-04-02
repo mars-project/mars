@@ -25,9 +25,9 @@ from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 from ..serialize import FunctionField, ListField, DictField, \
     BoolField, Int32Field, StringField
 from ..tensor.core import TENSOR_TYPE
-from ..utils import build_fetch_tileable, calc_nsplits, enter_current_session
+from ..utils import build_fetch_tileable, calc_nsplits, \
+    enter_current_session, find_objects, replace_objects
 from .operands import RemoteOperandMixin
-from .utils import replace_inputs, find_objects
 
 
 class _TileablePlaceholder:
@@ -137,8 +137,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                         mapping[raw_inp] = _TileablePlaceholder(raw_inp)
                 else:
                     mapping[raw_inp] = next(function_inputs)
-        self._function_args = replace_inputs(self._function_args, mapping)
-        self._function_kwargs = replace_inputs(self._function_kwargs, mapping)
+        self._function_args = replace_objects(self._function_args, mapping)
+        self._function_kwargs = replace_objects(self._function_kwargs, mapping)
 
     def __call__(self):
         find_inputs = partial(find_objects, types=ENTITY_TYPE)
@@ -212,8 +212,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                 mapping[ph] = tileable
 
         function = op.function
-        function_args = replace_inputs(op.function_args, mapping)
-        function_kwargs = replace_inputs(op.function_kwargs, mapping)
+        function_args = replace_objects(op.function_args, mapping)
+        function_kwargs = replace_objects(op.function_kwargs, mapping)
 
         result = function(*function_args, **function_kwargs)
 

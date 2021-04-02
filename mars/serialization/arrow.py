@@ -12,21 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Any
 
 from .core import Serializer, buffered
 
 try:
     import pyarrow as pa
+    pa_types = Union[pa.Table, pa.RecordBatch]
 except ImportError:  # pragma: no cover
     pa = None
+    pa_types = Any
 
 
 class ArrowBatchSerializer(Serializer):
     serializer_name = 'arrow'
 
     @buffered
-    def serialize(self, obj: Union[pa.Table, pa.RecordBatch], context: Dict):
+    def serialize(self, obj: pa_types, context: Dict):
         header = {}
 
         sink = pa.BufferOutputStream()
