@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import asyncio
-import sys
 import multiprocessing
+import sys
 from typing import Union, List, Tuple, Type, Dict
 
 import numpy as np
@@ -22,13 +22,12 @@ import pandas as pd
 import pytest
 
 from mars.lib.aio import AioEvent
-from mars.oscar.backends.mars.communication import \
+from mars.oscar.backends.communication import \
     SocketChannel, SocketServer, UnixSocketServer, \
     DummyChannel, DummyServer, get_client_type, \
     SocketClient, UnixSocketClient, DummyClient, Server
-from mars.utils import get_next_port
 from mars.tests.core import require_cudf, require_cupy
-
+from mars.utils import get_next_port
 
 test_data = np.random.RandomState(0).rand(10, 10)
 port = get_next_port()

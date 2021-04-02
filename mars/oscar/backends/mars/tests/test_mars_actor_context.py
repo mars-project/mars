@@ -22,7 +22,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.oscar.backends.mars.allocate_strategy import RandomSubPool
+from mars.oscar.backends.allocate_strategy import RandomSubPool
 from mars.utils import extensible
 
 
@@ -83,7 +83,7 @@ class DummyActor(mo.Actor):
 
     async def tell(self, uid, method, *args):
         actor_ref = await mo.actor_ref(uid, address=self.address)
-        return await getattr(actor_ref, method).tell(*args)
+        await getattr(actor_ref, method).tell(*args)
 
     async def tell_delay(self, uid, method, *args, delay=None):
         actor_ref = await mo.actor_ref(uid)

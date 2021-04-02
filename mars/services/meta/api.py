@@ -16,11 +16,11 @@
 from typing import Dict, List, Tuple, Any, Union
 
 from ... import oscar as mo
-from ...oscar.backends.mars import allocate_strategy
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
+from ...oscar.backends import allocate_strategy
 from .core import get_meta_type
-from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 from .store import AbstractMetaStore
+from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 
 
 class MetaAPI:

@@ -15,7 +15,7 @@
 import asyncio
 from typing import Dict, Union
 
-from ...errors import ServerClosed
+from ..errors import ServerClosed
 from .communication import Client
 from .message import _MessageBase, ResultMessage, ErrorMessage, \
     DeserializeMessageFailed
@@ -48,11 +48,11 @@ class ActorCaller:
             try:
                 try:
                     message: _MessageBase = await client.recv()
-                except (EOFError, ConnectionError):
+                except (EOFError, ConnectionError, BrokenPipeError):
                     # remote server closed, close client and raise ServerClosed
                     try:
                         await client.close()
-                    except ConnectionError:
+                    except (ConnectionError, BrokenPipeError):
                         # close failed, ignore it
                         pass
                     raise ServerClosed(f'Remote server {client.dest_address} closed')

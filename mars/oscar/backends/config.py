@@ -59,12 +59,12 @@ class ActorPoolConfig:
     def get_process_indexes(self):
         return list(self._conf['pools'])
 
-    def get_process_index(self, external_addrress):
+    def get_process_index(self, external_address):
         for process_index, conf in self._conf['pools'].items():
-            if external_addrress in conf['external_address']:
+            if external_address in conf['external_address']:
                 return process_index
-        raise ValueError(f'Cannot get proces_index '
-                         f'for {external_addrress}')  # pragma: no cover
+        raise ValueError(f'Cannot get process_index '
+                         f'for {external_address}')  # pragma: no cover
 
     def get_external_addresses(self, label=None) -> List[str]:
         result = []

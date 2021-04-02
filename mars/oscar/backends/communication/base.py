@@ -16,13 +16,14 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Dict, Callable, Coroutine, Type
 
-from .....utils import classproperty, implements
+from ....utils import classproperty, implements
 
 
 class ChannelType(Enum):
     local = 0   # for local communication
     ipc = 1     # inproc
     remote = 2  # remote
+    ray = 3     # for ray actors communication
 
 
 class Channel(ABC):
@@ -44,7 +45,8 @@ class Channel(ABC):
     @abstractmethod
     async def send(self, message: Any):
         """
-        Send data to dest.
+        Send data to dest. There should be only one send for one recv, otherwise recv messages
+        may overlap.
 
         Parameters
         ----------
@@ -235,8 +237,7 @@ class Client(ABC):
 
     @staticmethod
     @abstractmethod
-    async def connect(dest_address: str,
-                      local_address: str = None,
+    async def connect(dest_address: str, local_address: str = None,
                       **kwargs) -> "Client":
         """
         Create a client that is able to connect to some server.

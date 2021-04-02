@@ -18,8 +18,7 @@ from typing import Dict, List
 
 import numpy as np
 
-
-from .....serialization.aio import BUFFER_SIZES_NAME
+from ....serialization.aio import BUFFER_SIZES_NAME
 
 CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 

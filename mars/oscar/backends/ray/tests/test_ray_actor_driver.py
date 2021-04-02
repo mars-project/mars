@@ -12,24 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import collections
+import os
 
 import pytest
 
-import mars.oscar as mo
-from mars.tests.core import ray
+from .....utils import lazy_import
+from ..driver import RayActorDriver
 from ..utils import (
-    address_to_placement_group_bundle,
-    placement_group_bundle_to_address,
+    node_address_to_placement,
+    process_placement_to_address,
     addresses_to_placement_group_info,
     placement_group_info_to_addresses,
+    get_placement_group,
+    process_address_to_placement,
 )
+import mars.oscar as mo
+from mars.tests.core import require_ray
+
+ray = lazy_import('ray')
 
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
 TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(TEST_PLACEMENT_GROUP_NAME,
-                                                              TEST_PLACEMENT_GROUP_BUNDLES)
+                                                      TEST_PLACEMENT_GROUP_BUNDLES)
 
 
 class DummyActor(mo.Actor):
@@ -44,9 +50,8 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ray_cluster():
-    import ray
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -62,18 +67,18 @@ def ray_cluster():
 
     yield
 
+    RayActorDriver.stop_cluster()
     ray.shutdown()
     cluster.shutdown()
 
 
-@pytest.mark.skipif(ray is None or not hasattr(ray.util, "get_placement_group"),
-                    reason="Ray does not support named placement group.")
+@require_ray
 @pytest.mark.asyncio
 async def test_create_actor_in_placement_group(ray_cluster):
     actor_refs = []
     for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
         for _ in range(r["CPU"]):
-            address = placement_group_bundle_to_address(TEST_PLACEMENT_GROUP_NAME, i)
+            address = process_placement_to_address(TEST_PLACEMENT_GROUP_NAME, i, 0)
             actor_ref = await mo.create_actor(DummyActor, i, address=address)
             actor_refs.append(actor_ref)
     results = []
@@ -87,31 +92,30 @@ async def test_create_actor_in_placement_group(ray_cluster):
     assert sorted(counter.values()) == sorted(r["CPU"] for r in TEST_PLACEMENT_GROUP_BUNDLES)
 
 
-def test_address_to_placement_group_bundle():
+def test_address_to_pg_bundle():
     # Missing bundle index.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://bundle_name")
+        node_address_to_placement("ray://bundle_name")
     # Extra path is not allowed.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://bundle_name/0/")
+        node_address_to_placement("ray://bundle_name/0/")
     # The scheme is not ray
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("http://bundle_name/0")
+        node_address_to_placement("http://bundle_name/0")
     # The bundle index is not an int string.
     with pytest.raises(ValueError):
-        address_to_placement_group_bundle("ray://abc/def")
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://bundle_name/0")
+        node_address_to_placement("ray://abc/def")
+    pg_name, bundle_index = node_address_to_placement("ray://bundle_name/0")
     assert pg_name == "bundle_name"
     assert bundle_index == 0
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://127.0.0.1/1")
+    pg_name, bundle_index = node_address_to_placement("ray://127.0.0.1/1")
     assert pg_name == "127.0.0.1"
     assert bundle_index == 1
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://127.0.0.1%2F2")
+    pg_name, bundle_index = node_address_to_placement("ray://127.0.0.1%2F2")
     assert pg_name == "127.0.0.1"
     assert bundle_index == 2
-    pg_name, bundle_index = address_to_placement_group_bundle("ray://")
-    assert pg_name == ""
-    assert bundle_index == -1
+    with pytest.raises(ValueError):
+        node_address_to_placement("ray://")
 
 
 def test_addresses_to_placement_group_info():
@@ -135,3 +139,33 @@ def test_addresses_to_placement_group_info():
     pg_name, bundles = addresses_to_placement_group_info(TEST_ADDRESS_TO_RESOURCES)
     assert pg_name == TEST_PLACEMENT_GROUP_NAME
     assert bundles == TEST_PLACEMENT_GROUP_BUNDLES
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_get_placement_group(ray_cluster):
+    pg_name = 'test_pg'
+    pg = ray.util.placement_group(name=pg_name,
+                                  bundles=[{'CPU': 1}],
+                                  strategy="SPREAD")
+    ray.get(pg.ready())
+    pg2 = get_placement_group(pg_name)
+    if hasattr(ray.util, "get_placement_group"):
+        assert pg2.bundle_specs == pg.bundle_specs
+    else:
+        assert not pg2
+
+
+def test_address_to_placement():
+    assert process_address_to_placement('ray://test_cluster/0/0') == ('test_cluster', 0, 0)
+    with pytest.raises(ValueError):
+        process_address_to_placement('ray://')
+    assert node_address_to_placement('ray://test_cluster/0') == ('test_cluster', 0)
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://')
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster')
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster/')
+    with pytest.raises(ValueError):
+        node_address_to_placement('ray://test_cluster//')

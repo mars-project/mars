@@ -17,7 +17,7 @@ import concurrent.futures as futures
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
-from .....utils import implements, classproperty
+from ....utils import implements, classproperty
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .errors import ChannelClosed

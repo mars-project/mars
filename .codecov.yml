@@ -28,6 +28,8 @@ ignore:
   - "mars/lib/tblib"
   - "mars/lib/uhashring"
   - "mars/serialize/protos"
+  - "mars/oscar/backends/ray/communication.py"
+  - "mars/oscar/backends/ray/pool.py"
   - "mars/learn/contrib/xgboost/tracker.py"
   - "mars/learn/cluster/_k_means_fast.*"
   - "mars/learn/cluster/_k_means_elkan.pyx"
