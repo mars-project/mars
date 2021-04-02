@@ -886,7 +886,7 @@ class MainActorPoolBase(ActorPoolBase):
             actor_pool_config: ActorPoolConfig,
             process_index: int,
             start_method: str = None):
-        raise NotImplementedError
+        """Start a sub actor pool"""
 
     def attach_sub_process(self,
                            external_address: str,
@@ -933,11 +933,20 @@ class MainActorPoolBase(ActorPoolBase):
 
     @abstractmethod
     def kill_sub_pool(self, process: SubProcessHandle):
-        raise NotImplementedError
+        """Kill a sub actor pool"""
 
     @abstractmethod
     async def is_sub_pool_alive(self, process: SubProcessHandle):
-        raise NotImplementedError
+        """
+        Check whether sub pool process is alive
+        Parameters
+        ----------
+        process : SubProcessHandle
+            sub pool process handle
+        Returns
+        -------
+        bool
+        """
 
     def process_sub_pool_lost(self, address: str):
         if self._auto_recover in (False, 'process'):
@@ -982,13 +991,13 @@ class MainActorPoolBase(ActorPoolBase):
     @abstractmethod
     def get_external_addresses(
             cls, address: str, n_process: int = None, ports: List[int] = None):
-        raise NotImplementedError
+        """Returns external addresses for n pool processes"""
 
     @classmethod
     @abstractmethod
     def gen_internal_address(cls, process_index: int,
                              external_address: str = None) -> str:
-        raise NotImplementedError
+        """Returns internal address for pool of specified process index"""
 
 
 async def create_actor_pool(address: str,

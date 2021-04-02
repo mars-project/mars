@@ -101,7 +101,7 @@ class RayPoolBase(ABC):
 
     @abstractmethod
     async def start(self, *args, **kwargs):
-        raise NotImplementedError
+        """Start actor pool in ray actor"""
 
     def _set_ray_server(self, actor_pool: AbstractActorPool):
         ray_servers = [server for server in actor_pool._servers if isinstance(server, RayServer)]
