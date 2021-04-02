@@ -1,0 +1,14 @@
+name: Stop Duplicated Flows
+
+on: [push, pull_request_target]
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: styfle/cancel-workflow-action@0.8.0
+        # if: github.repository == 'mars-project/mars'
+        with:
+          access_token: ${{ github.token }}
+          workflow_id: 4323040,4330052,4344508
