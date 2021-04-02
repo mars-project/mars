@@ -16,10 +16,10 @@ import logging
 from numbers import Number
 from typing import Dict
 
+from ....utils import lazy_import
+from ...driver import BaseActorDriver
 from .pool import RayMainPool
 from .utils import process_placement_to_address, addresses_to_placement_group_info
-from ...driver import BaseActorDriver
-from ....utils import lazy_import
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)

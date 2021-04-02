@@ -21,12 +21,12 @@ from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
+from ....utils import implements, classproperty
+from ....utils import lazy_import
+from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
-from ...errors import ServerClosed
-from ....utils import implements, classproperty
-from ....utils import lazy_import
 
 ray = lazy_import("ray")
 

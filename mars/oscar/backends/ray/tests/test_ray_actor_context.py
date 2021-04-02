@@ -17,12 +17,12 @@ import types
 
 import pytest
 
-from mars.tests.core import require_ray
-from ..pool import RayMainPool
-from ..utils import process_placement_to_address
+from .....utils import lazy_import
 from ...mars.tests import test_mars_actor_context
 from ...router import Router
-from .....utils import lazy_import
+from ..pool import RayMainPool
+from ..utils import process_placement_to_address
+from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
 

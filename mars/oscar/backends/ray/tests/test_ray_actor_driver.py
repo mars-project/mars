@@ -17,8 +17,7 @@ import os
 
 import pytest
 
-import mars.oscar as mo
-from mars.tests.core import require_ray
+from .....utils import lazy_import
 from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
@@ -28,7 +27,8 @@ from ..utils import (
     get_placement_group,
     process_address_to_placement,
 )
-from .....utils import lazy_import
+import mars.oscar as mo
+from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
 

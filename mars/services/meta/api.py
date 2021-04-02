@@ -15,12 +15,12 @@
 
 from typing import Dict, List, Tuple, Any, Union
 
-from .core import get_meta_type
-from .store import AbstractMetaStore
-from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 from ... import oscar as mo
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ...oscar.backends import allocate_strategy
+from .core import get_meta_type
+from .store import AbstractMetaStore
+from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 
 
 class MetaAPI:

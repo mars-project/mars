@@ -2,10 +2,10 @@ import asyncio
 
 import pytest
 
-from mars.tests.core import require_ray
-from ..communication import ChannelID, Channel, RayServer, RayClient
-from ...router import Router
 from .....utils import lazy_import
+from ...router import Router
+from ..communication import ChannelID, Channel, RayServer, RayClient
+from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
 

@@ -18,9 +18,9 @@ import multiprocessing
 import os
 from typing import List
 
-from mars.utils import get_next_port
 from ..config import ActorPoolConfig
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
+from mars.utils import get_next_port
 
 
 @_register_message_handler

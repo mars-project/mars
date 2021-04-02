@@ -19,11 +19,11 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
-from .communication import ChannelID, RayServer
-from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
+from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
-from ....utils import lazy_import
+from .communication import ChannelID, RayServer
+from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
 
 ray = lazy_import('ray')
 logger = logging.getLogger(__name__)
