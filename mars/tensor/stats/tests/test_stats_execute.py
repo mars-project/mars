@@ -203,7 +203,4 @@ class Test(TestBase):
                 else:
                     expected = sp_func(fa_raw, fb_raw)
                 np.testing.assert_almost_equal(expected[0], result[0])
-                try:
-                    np.testing.assert_almost_equal(expected[1], result[1])
-                except:
-                    raise
+                np.testing.assert_almost_equal(expected[1], result[1])
