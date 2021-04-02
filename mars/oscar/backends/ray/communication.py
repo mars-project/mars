@@ -29,8 +29,6 @@ from ....utils import lazy_import
 
 ray = lazy_import("ray")
 
-DEFAULT_DUMMY_RAY_ADDRESS = 'ray://0'
-
 
 class MessageType(Enum):
     SEND = 0
@@ -143,7 +141,7 @@ class RayServerChannel(RayChannelBase):
         # it will be taken as other message's reply.
         await self._out_queue.put(message)
         self._msg_sent_counter += 1
-        assert self._msg_sent_counter <= self._msg_recv_counter,\
+        assert self._msg_sent_counter <= self._msg_recv_counter, \
             "One way channel doesn't support multiple replies for one message."
 
     @implements(Channel.recv)
@@ -167,13 +165,12 @@ class RayServerChannel(RayChannelBase):
 
 @register_server
 class RayServer(Server):
-    __slots__ = '_closed', '_address', '_channels', '_tasks'
+    __slots__ = '_closed', '_channels', '_tasks'
 
     scheme = 'ray'
 
     def __init__(self, address, channel_handler: Callable[[Channel], Coroutine] = None):
-        super().__init__(DEFAULT_DUMMY_RAY_ADDRESS, channel_handler)
-        self._address = address
+        super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
         self._channels: Dict[ChannelID, RayServerChannel] = dict()
         self._tasks: Dict[ChannelID, asyncio.Task] = dict()
@@ -192,7 +189,7 @@ class RayServer(Server):
     @implements(Server.create)
     async def create(config: Dict) -> "RayServer":
         config = config.copy()
-        address = config.pop('address', DEFAULT_DUMMY_RAY_ADDRESS)
+        address = config.pop('address')
         handle_channel = config.pop('handle_channel')
         if urlparse(address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Address for RayServer '
