@@ -150,6 +150,9 @@ def transpose(a, axes=None):
         if len(axes) != a.ndim:
             raise ValueError("axes don't match tensor")
 
-    axes = axes or list(range(a.ndim))[::-1]
+    if not axes:
+        axes = list(range(a.ndim))[::-1]
+    else:
+        axes = list(axes)
     op = TensorTranspose(axes, dtype=a.dtype, sparse=a.issparse())
     return op(a)

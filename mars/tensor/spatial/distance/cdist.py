@@ -33,7 +33,7 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
     _xa = KeyField('XA')
     _xb = KeyField('XB')
     _metric = AnyField('metric')
-    _p = Float16Field('p')
+    _p = Float16Field('p', on_serialize=lambda x: float(x) if x is not None else x)
     _w = KeyField('w')
     _v = KeyField('V')
     _vi = KeyField('VI')

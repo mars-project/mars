@@ -44,7 +44,9 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     _psrs_kinds = ListField('psrs_kinds', ValueType.string)
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
-    _axis_offset = Int64Field('axis_offset')
+    _axis_offset = Int64Field('axis_offset',
+                              on_serialize=lambda x: -1 if x is not None and np.isnan(x) else x,
+                              on_deserialize=lambda x: np.nan if x == -1 else x)
 
     def __init__(self, k=None, axis=None, largest=None, sorted=None, order=None,
                  parallel_kind=None, psrs_kinds=None, return_value=None, return_indices=None,

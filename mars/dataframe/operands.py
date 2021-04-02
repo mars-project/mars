@@ -152,7 +152,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
             chunk = DataFrameConcat(output_types=[OutputType.index]).new_chunk(
                 df.chunks, shape=df.shape, index=(0,), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
-            return DataFrameConcat(output_types=[OutputType.index]).new_series(
+            return DataFrameConcat(output_types=[OutputType.index]).new_index(
                 [df], shape=df.shape, chunks=[chunk],
                 nsplits=tuple((s,) for s in df.shape), dtype=df.dtype,
                 index_value=df.index_value, name=df.name)
@@ -165,7 +165,7 @@ class DataFrameOperandMixin(TileableOperandMixin):
                                   output_types=[output_type]).new_chunk(
                 chunk_inputs, **df.params)
             return GroupByConcat(groups=[df], groupby_params=df.op.groupby_params,
-                                 output_types=[output_type]).new_dataframe(
+                                 output_types=[output_type]).new_tileable(
                 inputs, chunks=[chunk], **df.params)
         elif isinstance(df, CATEGORICAL_TYPE):
             chunk = DataFrameConcat(output_types=[OutputType.categorical]).new_chunk(
