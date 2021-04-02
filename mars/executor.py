@@ -413,8 +413,6 @@ class GraphExecution:
         ref_counts = dict()
 
         for chunk in self._graph:
-            if not hasattr(chunk.op, 'get_dependent_data_keys'):
-                raise
             for dep_key in chunk.op.get_dependent_data_keys():
                 if dep_key in self._key_set:
                     # only record ref count for those not in results

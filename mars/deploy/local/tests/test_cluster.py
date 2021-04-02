@@ -1008,7 +1008,7 @@ class Test(unittest.TestCase):
 
     def testIterativeDependency(self, *_):
         with self.new_cluster(scheduler_n_process=2, worker_n_process=2,
-                              shared_memory='20M', web=False):
+                              shared_memory='20M', web=True):
             with tempfile.TemporaryDirectory() as d:
                 file_path = os.path.join(d, 'test.csv')
                 df = pd.DataFrame(np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]]), columns=['a', 'b', 'c'])
