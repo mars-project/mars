@@ -15,10 +15,11 @@
 import numpy as np
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, CHUNK_TYPE, TilesError
+from ...core import Base, Entity
 from ...custom_log import redirect_custom_log
 from ...serialize import FunctionField, BoolField, TupleField, \
     DictField, StringField
+from ...tiles import TilesError
 from ...utils import enter_current_session, quiet_stdio, \
     find_objects, replace_objects, check_chunks_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
@@ -67,8 +68,8 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        old_inputs = find_objects(self._args, ENTITY_TYPE) + \
-                     find_objects(self._kwargs, ENTITY_TYPE)
+        old_inputs = find_objects(self._args, (Base, Entity)) \
+            + find_objects(self._kwargs, (Base, Entity))
         mapping = {o: n for o, n in zip(old_inputs, self._inputs[1:])}
         self._args = replace_objects(self._args, mapping)
         self._kwargs = replace_objects(self._kwargs, mapping)
@@ -87,8 +88,8 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
             dtype = mock_result.dtype
 
         new_shape = t.shape if self.elementwise else (np.nan,) * t.ndim
-        inputs = [t] + find_objects(self.args, ENTITY_TYPE) + \
-                 find_objects(self.kwargs, ENTITY_TYPE)
+        inputs = [t] + find_objects(self.args, (Base, Entity)) + \
+            find_objects(self.kwargs, (Base, Entity))
         return self.new_tensor(inputs, dtype=dtype, shape=new_shape)
 
     @classmethod
@@ -134,7 +135,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         if op.with_chunk_index:
             kwargs['chunk_index'] = out_chunk.index
 
-        chunks = find_objects(args, CHUNK_TYPE) + find_objects(kwargs, CHUNK_TYPE)
+        chunks = find_objects(args, (Base, Entity)) + find_objects(kwargs, (Base, Entity))
         mapping = {chunk: ctx[chunk.key] for chunk in chunks}
         args = replace_objects(args, mapping)
         kwargs = replace_objects(kwargs, mapping)
