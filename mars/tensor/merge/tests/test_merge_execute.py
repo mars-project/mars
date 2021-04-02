@@ -17,8 +17,8 @@
 import numpy as np
 import scipy.sparse as sps
 
-from mars.tensor.datasource import tensor, empty
-from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d
+from mars.tensor.datasource import tensor, empty, eye, ones, zeros
+from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, array, block
 from mars.tests.core import TestBase
 
 
@@ -206,3 +206,148 @@ class Test(TestBase):
         res = self.executor.execute_tensor(t, concat=True)[0]
         expected = np.union1d(raw1, raw2)
         np.testing.assert_array_equal(res, expected)
+
+    def testBlockExecution(self):
+        # arrays is a tuple.
+        with self.assertRaises(TypeError):
+            block((1, 2, 3))
+
+        # List depths are mismatched.
+        with self.assertRaises(ValueError):
+            block([[1, 2], [[3, 4]]])
+
+        # List at arrays cannot be empty.
+        with self.assertRaises(ValueError):
+            block([])
+
+        # List at arrays[1] cannot be empty.
+        with self.assertRaises(ValueError):
+            block([[1, 2], []])
+
+        # Mismatched array shapes.
+        with self.assertRaises(ValueError):
+            block([eye(512), eye(512), ones((511, 1))])
+
+        # Test large block.
+        block([eye(512), eye(512), ones((512, 1))])
+
+        # Test block inputs a single array.
+        c = block(array([1, 2, 3]))
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        np.testing.assert_array_equal(r, array([1, 2, 3]))
+
+        a = eye(2) * 2
+        b = eye(3) * 3
+        c = block([
+            [a, zeros((2, 3))],
+            [ones((3, 2)), b]
+        ])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[2., 0., 0., 0., 0.],
+                          [0., 2., 0., 0., 0.],
+                          [1., 1., 3., 0., 0.],
+                          [1., 1., 0., 3., 0.],
+                          [1., 1., 0., 0., 3.]])
+        np.testing.assert_array_equal(r, expected)
+
+        # eye with different chunk sizes
+        a = eye(5, chunk_size=2) * 2
+        b = eye(4, chunk_size=3) * 3
+        c = block([
+            [a, zeros((5, 4), chunk_size=4)],
+            [ones((4, 5), chunk_size=5), b]
+        ])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[2., 0., 0., 0., 0., 0., 0., 0., 0.],
+                          [0., 2., 0., 0., 0., 0., 0., 0., 0.],
+                          [0., 0., 2., 0., 0., 0., 0., 0., 0.],
+                          [0., 0., 0., 2., 0., 0., 0., 0., 0.],
+                          [0., 0., 0., 0., 2., 0., 0., 0., 0.],
+                          [1., 1., 1., 1., 1., 3., 0., 0., 0.],
+                          [1., 1., 1., 1., 1., 0., 3., 0., 0.],
+                          [1., 1., 1., 1., 1., 0., 0., 3., 0.],
+                          [1., 1., 1., 1., 1., 0., 0., 0., 3.]])
+        np.testing.assert_array_equal(r, expected)
+
+        # hstack([1, 2, 3])
+        c = block([1, 2, 3])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([1, 2, 3])
+        np.testing.assert_array_equal(r, expected)
+
+        # hstack([a, b, 10])
+        a = array([1, 2, 3])
+        b = array([2, 3, 4])
+        c = block([a, b, 10])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([1, 2, 3, 2, 3, 4, 10])
+        np.testing.assert_array_equal(r, expected)
+
+        # hstack([a, b, 10]) with different chunk sizes
+        a = array([1, 2, 3, 4, 5, 6, 7], chunk_size=3)
+        b = array([2, 3, 4, 5], chunk_size=4)
+        c = block([a, b, 10])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 10])
+        np.testing.assert_array_equal(r, expected)
+
+        # hstack([A, B])
+        A = ones((2, 2), int)
+        B = 2 * A
+        c = block([A, B])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[1, 1, 2, 2],
+                          [1, 1, 2, 2]])
+        np.testing.assert_array_equal(r, expected)
+
+        # vstack([a, b])
+        a = array([1, 2, 3])
+        b = array([2, 3, 4])
+        c = block([[a], [b]])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[1, 2, 3],
+                          [2, 3, 4]])
+        np.testing.assert_array_equal(r, expected)
+
+        # vstack([a, b]) with different chunk sizes
+        a = array([1, 2, 3, 4, 5, 6, 7], chunk_size=5)
+        b = array([2, 3, 4, 5, 6, 7, 8], chunk_size=6)
+        c = block([[a], [b]])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[1, 2, 3, 4, 5, 6, 7],
+                          [2, 3, 4, 5, 6, 7, 8]])
+        np.testing.assert_array_equal(r, expected)
+
+        # vstack([A, B])
+        A = ones((2, 2), int)
+        B = 2 * A
+        c = block([[A], [B]])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[1, 1],
+                          [1, 1],
+                          [2, 2],
+                          [2, 2]])
+        np.testing.assert_array_equal(r, expected)
+
+        a = array(0)
+        b = array([1])
+        # atleast_1d(a)
+        c = block([a])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([0])
+        np.testing.assert_array_equal(r, expected)
+        # atleast_1d(b)
+        c = block([b])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([1])
+        np.testing.assert_array_equal(r, expected)
+        # atleast_2d(a)
+        c = block([[a]])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[0]])
+        np.testing.assert_array_equal(r, expected)
+        # atleast_2d(b)
+        c = block([[b]])
+        r = self.executor.execute_tensor(c, concat=True)[0]
+        expected = array([[1]])
+        np.testing.assert_array_equal(r, expected)
