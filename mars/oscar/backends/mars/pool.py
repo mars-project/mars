@@ -57,6 +57,10 @@ class MainActorPool(MainActorPoolBase):
         return [f'{host}:{port}' for port in [port] + sub_ports]
 
     @classmethod
+    def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:
+        return f'unixsocket:///{process_index}'
+
+    @classmethod
     async def start_sub_pool(
             cls,
             actor_pool_config: ActorPoolConfig,

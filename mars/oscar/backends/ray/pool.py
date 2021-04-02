@@ -40,6 +40,10 @@ class RayMainActorPool(MainActorPoolBase):
         return [process_placement_to_address(pg_name, bundle_index, i) for i in range(n_process + 1)]
 
     @classmethod
+    def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:
+        return external_address
+
+    @classmethod
     async def start_sub_pool(
             cls,
             actor_pool_config: ActorPoolConfig,

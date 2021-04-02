@@ -4,7 +4,6 @@ import pytest
 
 from mars.tests.core import require_ray
 from ..communication import ChannelID, Channel, RayServer, RayClient
-from ...communication.core import gen_internal_address
 from ...router import Router
 from .....utils import lazy_import
 
@@ -83,7 +82,3 @@ async def test_actor_to_actor_channel(ray_cluster_shared):
     for i in range(10):
         assert await server_actor1.check.remote(server2_address, i)
         assert await server_actor2.check.remote(server1_address, i)
-
-
-def test_common():
-    assert gen_internal_address(0, 'ray://cluster/0/0') == 'ray://cluster/0/0'

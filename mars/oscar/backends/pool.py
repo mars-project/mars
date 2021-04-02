@@ -22,7 +22,7 @@ from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Option
 
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, \
-    get_server_type, gen_internal_address, gen_local_address
+    get_server_type, gen_local_address
 from .config import ActorPoolConfig
 from .core import result_message_type, ActorCaller
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
@@ -984,6 +984,12 @@ class MainActorPoolBase(ActorPoolBase):
             cls, address: str, n_process: int = None, ports: List[int] = None):
         raise NotImplementedError
 
+    @classmethod
+    @abstractmethod
+    def gen_internal_address(cls, process_index: int,
+                             external_address: str = None) -> str:
+        raise NotImplementedError
+
 
 async def create_actor_pool(address: str,
                             pool_cls: Type[MainActorPoolType] = None,
@@ -1015,7 +1021,7 @@ async def create_actor_pool(address: str,
     actor_pool_config.add_pool_conf(
         main_process_index,
         labels[0] if labels else None,
-        gen_internal_address(main_process_index, external_addresses[0]),
+        pool_cls.gen_internal_address(main_process_index, external_addresses[0]),
         external_addresses[0])
     # add sub configs
     for i in range(n_process):
@@ -1023,7 +1029,7 @@ async def create_actor_pool(address: str,
         actor_pool_config.add_pool_conf(
             sub_process_index,
             labels[i + 1] if labels else None,
-            gen_internal_address(sub_process_index, external_addresses[i + 1]),
+            pool_cls.gen_internal_address(sub_process_index, external_addresses[i + 1]),
             external_addresses[i + 1],
             env=envs[i] if envs else None
         )

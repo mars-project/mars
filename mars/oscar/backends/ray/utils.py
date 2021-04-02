@@ -20,7 +20,6 @@ from ....utils import lazy_import
 
 ray = lazy_import('ray')
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -35,11 +34,15 @@ def get_placement_group(pg_name):  # pragma: no cover
 
 def process_address_to_placement(address):
     """
-    Args:
-        address: The address of an actor pool which running in a ray actor. It's also
+    Parameters
+    ----------
+    address: str
+        The address of an actor pool which running in a ray actor. It's also
         the name of the ray actor. address ex: ray://${pg_name}/${bundle_index}/${process_index}
 
-    Returns:
+    Returns
+    -------
+    tuple
         A tuple consisting of placement group name, bundle index, process index.
     """
     name, parts = _address_to_placement(address)
@@ -52,10 +55,14 @@ def process_address_to_placement(address):
 
 def node_address_to_placement(address):
     """
-    Args:
-        address: The address of a node. ex: ray://${pg_name}/${bundle_index}
+    Parameters
+    ----------
+    address : str
+        The address of a node. ex: ray://${pg_name}/${bundle_index}
 
-    Returns:
+    Returns
+    -------
+    tuple
         A tuple consisting of placement group name, bundle index.
     """
     name, parts = _address_to_placement(address)
@@ -67,12 +74,16 @@ def node_address_to_placement(address):
 
 def _address_to_placement(address):
     """
-    Args:
-        address: The address of a node or an actor pool which running in a ray actor.
 
-    Returns:
+    Parameters
+    ----------
+    address : str
+        The address of a node or an actor pool which running in a ray actor.
+
+    Returns
+    -------
+    tuple
         A tuple consisting of placement group name, bundle index, process index.
-
     """
     parsed_url = urlparse(unquote(address))
     if parsed_url.scheme != "ray":

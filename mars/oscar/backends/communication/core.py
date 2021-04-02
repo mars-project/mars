@@ -60,12 +60,5 @@ def get_server_type(address: str) -> Type[Server]:
     return _scheme_to_server_types[scheme]
 
 
-def gen_internal_address(process_index: int,
-                         external_address: str = None) -> str:
-    if external_address and get_scheme(external_address) == "ray":
-        return external_address
-    return f'unixsocket:///{process_index}'
-
-
 def gen_local_address(process_index: int) -> str:
     return f'dummy://{process_index}'
