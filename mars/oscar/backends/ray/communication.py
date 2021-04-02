@@ -94,7 +94,7 @@ class RayClientChannel(RayChannelBase):
                  compression=None):
         super().__init__(None, dest_address, channel_index, channel_id, compression)
         # ray actor should be created with the address as the name.
-        self._peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address) if dest_address else None
+        self._peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address)
 
     @implements(Channel.send)
     async def send(self, message: Any):
@@ -138,7 +138,7 @@ class RayServerChannel(RayChannelBase):
     async def send(self, message: Any):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
-        # Current process is ray actor, we use ray call reply to send message to ray driver/driver.
+        # Current process is ray actor, we use ray call reply to send message to ray driver/actor.
         # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
         await self._out_queue.put(message)
@@ -219,10 +219,8 @@ class RayServer(Server):
 
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
-        channel_id = args[0]
-        _, peer_dest_address, peer_channel_index = channel_id
-        channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
-        self._channels[channel_id] = channel
+        channel = args[0]
+        assert isinstance(channel, RayServerChannel)
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
@@ -231,6 +229,10 @@ class RayServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
+        self._channels = dict()
+        for task in self._tasks.values():
+            task.cancel()
+        self._tasks = dict()
 
     @property
     @implements(Server.stopped)
@@ -240,11 +242,11 @@ class RayServer(Server):
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         channel = self._channels.get(channel_id)
         if not channel:
-            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel_id))
-        while not channel:
-            await asyncio.sleep(0.01)
-            channel = self._channels.get(channel_id)
-        return await self._channels[channel_id].__on_ray_recv__(message)
+            _, peer_dest_address, peer_channel_index = channel_id
+            channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
+            self._channels[channel_id] = channel
+            self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
+        return await channel.__on_ray_recv__(message)
 
 
 @register_client
