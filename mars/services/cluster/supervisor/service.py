@@ -19,7 +19,7 @@ from ..uploader import NodeInfoUploaderActor
 from .node_info import NodeInfoCollectorActor
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     """
     Start cluster service on supervisor
 

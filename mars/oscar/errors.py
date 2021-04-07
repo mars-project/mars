@@ -33,3 +33,7 @@ class NoIdleSlot(Exception):
 
 class ServerClosed(Exception):
     pass
+
+
+class CannotCancelTask(Exception):
+    pass

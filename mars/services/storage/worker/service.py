@@ -16,7 +16,7 @@ from .... import oscar as mo
 from ..core import StorageManagerActor
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     """
     Start cluster service on supervisor
     Parameters

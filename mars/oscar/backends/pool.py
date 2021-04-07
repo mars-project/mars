@@ -24,7 +24,7 @@ from ...utils import implements, to_binary
 from ...utils import lazy_import
 from ..api import Actor
 from ..core import ActorRef
-from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed
+from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, \
@@ -494,8 +494,8 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                              message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
             if future is None:  # pragma: no cover
-                raise ValueError('Task not exists, maybe it is done '
-                                 'or cancelled already')
+                raise CannotCancelTask('Task not exists, maybe it is done '
+                                       'or cancelled already')
             future.cancel()
             processor.result = ResultMessage(message.message_id, True,
                                              protocol=message.protocol)
@@ -957,9 +957,9 @@ class MainActorPoolBase(ActorPoolBase):
     async def recover_sub_pool(self, address: str):
         process_index = self._config.get_process_index(address)
         # process dead, restart it
+        # remember always use spawn to recover sub pool
         self.sub_processes[address] = await self.__class__.start_sub_pool(
-            self._config, process_index,
-            self._subprocess_start_method)
+            self._config, process_index, 'spawn')
 
         if self._auto_recover == 'actor':
             # need to recover all created actors

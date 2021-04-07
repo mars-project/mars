@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import inspect
 cimport cython
 import sys
 
@@ -182,7 +183,7 @@ cdef class _Actor:
         cdef bint extract_tuple = False
         cdef set dones, pending
 
-        if asyncio.iscoroutine(result):
+        if inspect.isawaitable(result):
             result = await result
         elif is_async_generator(result):
             result = (result,)

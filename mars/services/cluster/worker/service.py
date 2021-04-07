@@ -18,9 +18,9 @@ from ..locator import SupervisorLocatorActor
 from ..uploader import NodeInfoUploaderActor
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     """
-    Start cluster service on supervisor
+    Start cluster service on worker.
 
     Parameters
     ----------
@@ -31,7 +31,11 @@ async def start(config: dict, address: None):
             "cluster": {
                 "backend": "<cluster backend name>",
                 "lookup_address": "<address of master>",
-                "node_check_interval": check interval seconds for nodes
+                "node_check_interval": check interval seconds for nodes,
+                "resource": {
+                    "numa-0": 8,
+                    "gpu-0": 1
+                }
             }
         }
     address
@@ -49,5 +53,6 @@ async def start(config: dict, address: None):
         role=NodeRole.WORKER,
         dirs=config.get('disk_dirs') or [],
         interval=svc_config.get('node_check_interval'),
+        band_to_slots=svc_config.get('resource'),
         uid=NodeInfoUploaderActor.default_uid(),
         address=address)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from typing import Any, List, Type, TypeVar
 
 from ... import oscar as mo
@@ -234,8 +235,26 @@ class MockStorageApi(StorageAPI):
         from .core import StorageManagerActor
 
         storage_configs = kwargs.get('storage_configs')
+        if not storage_configs:
+            if sys.platform == 'darwin':
+                plasma_dir = '/tmp'
+            else:
+                plasma_dir = '/dev/shm'
+            plasma_setup_params = dict(
+                store_memory=10 * 1024 * 1024,
+                plasma_directory=plasma_dir,
+                check_dir_size=False)
+            storage_configs = {
+                "plasma": plasma_setup_params,
+            }
+
         await mo.create_actor(StorageManagerActor,
                               storage_configs,
                               uid=StorageManagerActor.default_uid(),
                               address=address)
         return await super().create(address=address, session_id=session_id)
+
+    @classmethod
+    async def cleanup(cls: Type[APIType], address: str):
+        await mo.destroy_actor(
+            await mo.actor_ref(address, StorageManagerActor.default_uid()))

@@ -583,3 +583,10 @@ async def test_batch_decorator(use_async):
         assert ret == [3, 3]
         assert test_inst.arg_list == [(30,), (33,), (35,)]
         assert test_inst.kwarg_list == [{'kwarg': 112}, {'kwarg': 115}, {'kwarg': 117}]
+
+        if use_async:
+            test_inst = TestClass()
+            ret = await test_inst.method2.batch(
+                test_inst.method2(12, kwarg=34),
+                test_inst.method2(10, kawarg=33))
+            assert ret == [1, 2]

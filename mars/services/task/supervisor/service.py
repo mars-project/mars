@@ -14,33 +14,24 @@
 
 from typing import Dict
 
-from .... import oscar as mo
-from .core import MetaStoreManagerActor
-
 
 async def start(config: Dict, address: str):
     """
-    Start meta service on supervisor.
+    Start task service on supervisor.
 
     Parameters
     ----------
-    config : dict
+    config
         service config.
         {
-            "meta" : {
-                "store": "<meta store name>",
-                # other config related to each store
+            "task": {
+                "bands": {
+                    "numa-0": 8,
+                    "gpu-0": 1,
+                }
             }
         }
     address : str
         Actor pool address.
     """
-    service_config = config['meta']
-    meta_store_name = service_config.get('meta', 'dict')
-    extra_config = service_config.copy()
-    extra_config.pop('meta', None)
-    await mo.create_actor(MetaStoreManagerActor,
-                          meta_store_name,
-                          extra_config,
-                          uid=MetaStoreManagerActor.default_uid(),
-                          address=address)
+    pass

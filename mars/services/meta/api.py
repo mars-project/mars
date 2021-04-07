@@ -18,6 +18,7 @@ from typing import Dict, List, Tuple, Any, Union
 from ... import oscar as mo
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ...oscar.backends import allocate_strategy
+from ...utils import extensible
 from .core import get_meta_type
 from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
@@ -35,7 +36,7 @@ class MetaAPI:
                      session_id: str,
                      address: str) -> "MetaAPI":
         """
-        Create Meta API according to config.
+        Create Meta API.
 
         Parameters
         ----------
@@ -98,6 +99,7 @@ class MetaAPI:
             address, MetaStoreActor.gen_uid(session_id))
         return await mo.destroy_actor(meta_store_ref)
 
+    @extensible
     async def set_tileable_meta(self,
                                 tileable,
                                 memory_size: int = None,
@@ -117,15 +119,18 @@ class MetaAPI:
                                              store_size=store_size)
         return await self._meta_store.set_meta(tileable.key, meta)
 
+    @extensible
     async def get_tileable_meta(self,
                                 object_id: str,
                                 fields: List[str] = None) -> Dict[str, Any]:
         return await self._meta_store.get_meta(object_id, fields=fields)
 
+    @extensible
     async def del_tileable_meta(self,
                                 object_id: str):
         return await self._meta_store.del_meta(object_id)
 
+    @extensible
     async def set_chunk_meta(self,
                              chunk,
                              memory_size: int = None,
@@ -146,15 +151,18 @@ class MetaAPI:
                                           store_size=store_size)
         return await self._meta_store.set_meta(chunk.key, meta)
 
+    @extensible
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None):
         return await self._meta_store.get_meta(object_id, fields=fields)
 
+    @extensible
     async def del_chunk_meta(self,
                              object_id: str):
         return await self._meta_store.del_meta(object_id)
 
+    @extensible
     async def add_chunk_bands(self,
                               object_id: str,
                               bands: List[Tuple[str, str]]):

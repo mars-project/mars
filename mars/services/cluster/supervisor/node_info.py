@@ -15,7 +15,7 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from .... import oscar as mo
 from ... import NodeRole
@@ -105,6 +105,20 @@ class NodeInfoCollectorActor(mo.Actor):
                 state=info.state if state else None,
             )
         return ret_infos
+
+    def get_all_bands(self) -> Dict[Tuple[str, str], int]:
+        nodes = self._role_to_nodes.get(NodeRole.WORKER, list())
+        band_slots = dict()
+        for node in nodes:
+            node_resource = self._node_infos[node].resource
+            for resource_type, info in node_resource.items():
+                if resource_type.startswith('numa'):
+                    # cpu
+                    band_slots[(node, resource_type)] = info['cpu_total']
+                else:  # pragma: no cover
+                    assert resource_type.startswith('gpu')
+                    band_slots[(node, resource_type)] = info['gpu_total']
+        return band_slots
 
     async def watch_nodes(self, role: NodeRole, env: bool = False,
                           resource: bool = False, state: bool = False):

@@ -19,7 +19,7 @@ del aio
 from .api import actor_ref, create_actor, has_actor, destroy_actor, \
     kill_actor, Actor, create_actor_pool, setup_cluster
 from .core import ActorRef
-from .errors import ActorNotExist, ActorAlreadyExist
+from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed
 from .utils import create_actor_ref
 
 # make sure methods are registered
