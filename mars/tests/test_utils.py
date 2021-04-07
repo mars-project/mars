@@ -587,6 +587,6 @@ async def test_batch_decorator(use_async):
         if use_async:
             test_inst = TestClass()
             ret = await test_inst.method2.batch(
-                test_inst.method2(12, kwarg=34),
-                test_inst.method2(10, kawarg=33))
+                test_inst.method2.delay(12, kwarg=34),
+                test_inst.method2.delay(10, kawarg=33))
             assert ret == [1, 2]

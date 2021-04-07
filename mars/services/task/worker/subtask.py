@@ -76,7 +76,7 @@ class BandSubtaskManagerActor(mo.Actor):
     async def __post_create__(self):
         strategy = IdleLabel(self._band, 'subtask_runner')
         band = (self.address, self._band)
-        for i in range(self._n_slots):
+        for _ in range(self._n_slots):
             runner = await mo.create_actor(
                 SubtaskRunnerActor,
                 self._supervisor_address, band, self.ref(),
@@ -331,7 +331,7 @@ class SubtaskProcessor:
 
             # store meta
             set_chunk_metas = []
-            for result_chunk, store_info, memory_size in \
+            for result_chunk, store_info, _ in \
                     zip(chunk_graph.result_chunks, store_infos, memory_sizes):
                 store_size = store_info.size
                 set_chunk_metas.append(
