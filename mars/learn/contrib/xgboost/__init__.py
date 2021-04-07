@@ -15,10 +15,16 @@
 from .dmatrix import MarsDMatrix
 from .train import train
 from .predict import predict
-from .classifier import XGBClassifier
-from .regressor import XGBRegressor
 
 
 def register_op():
     from .start_tracker import StartTracker
     del StartTracker
+
+
+from ..utils import config_mod_getattr as _config_mod_getattr
+
+_config_mod_getattr({
+    'XGBClassifier': '.classifier.XGBClassifier',
+    'XGBRegressor': '.regressor.XGBRegressor',
+}, globals())

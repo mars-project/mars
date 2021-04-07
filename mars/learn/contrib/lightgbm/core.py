@@ -22,11 +22,6 @@ import pandas as pd
 from ....tensor import tensor as mars_tensor
 from ....dataframe import DataFrame as MarsDataFrame, Series as MarsSeries
 
-try:
-    import lightgbm
-except ImportError:
-    lightgbm = None
-
 
 class LGBMModelType(enum.Enum):
     CLASSIFIER = 0
@@ -35,15 +30,16 @@ class LGBMModelType(enum.Enum):
 
 
 _model_type_to_model = dict()
-if lightgbm:
-    _model_type_to_model = {
-        LGBMModelType.CLASSIFIER: lightgbm.LGBMClassifier,
-        LGBMModelType.REGRESSOR: lightgbm.LGBMRegressor,
-        LGBMModelType.RANKER: lightgbm.LGBMRanker,
-    }
 
 
 def get_model_cls_from_type(model_type: LGBMModelType):
+    import lightgbm
+    if not _model_type_to_model:
+        _model_type_to_model.update({
+            LGBMModelType.CLASSIFIER: lightgbm.LGBMClassifier,
+            LGBMModelType.REGRESSOR: lightgbm.LGBMRegressor,
+            LGBMModelType.RANKER: lightgbm.LGBMRanker,
+        })
     return _model_type_to_model[model_type]
 
 

@@ -14,9 +14,14 @@
 
 from ...utils import check_consistent_length
 from ..utils import make_import_error_func
-from .core import lightgbm, LGBMScikitLearnBase, LGBMModelType
+from .core import LGBMScikitLearnBase, LGBMModelType
 from ._train import train
 from ._predict import predict_base
+
+try:
+    import lightgbm
+except ImportError:
+    lightgbm = None
 
 
 LGBMClassifier = make_import_error_func('lightgbm')
