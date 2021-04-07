@@ -59,7 +59,7 @@ def config_mod_getattr(mod_dict, globals_):
             mod = importlib.import_module(mod_name, globals_['__name__'])
             cls = globals_[name] = getattr(mod, cls_name)
             return cls
-        else:
+        else:  # pragma: no cover
             raise ImportError(f'Cannot import {name}')
 
     if sys.version_info[:2] < (3, 7):
@@ -73,4 +73,5 @@ def config_mod_getattr(mod_dict, globals_):
     globals_.update({
         '__getattr__': __getattr__,
         '__dir__': __dir__,
+        '__warningregistry__': dict(),
     })
