@@ -23,16 +23,9 @@ from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
 from ....tiles import TilesError
-from ....utils import register_tokenizer, check_chunks_unknown_shape
+from ....utils import check_chunks_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 from .dmatrix import ToDMatrix, check_data
-
-try:
-    from xgboost import Booster
-
-    register_tokenizer(Booster, pickle.dumps)
-except ImportError:
-    pass
 
 
 class XGBPredict(LearnOperand, LearnOperandMixin):
