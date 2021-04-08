@@ -92,6 +92,9 @@ async def test_storage_mock_api(storage_configs):
         get_value2 = await storage_api.get('data2')
         pd.testing.assert_frame_equal(value2, get_value2)
 
+        sliced_value = await storage_api.get('data2', conditions=[slice(3, 5), slice(None, None)])
+        pd.testing.assert_frame_equal(value2.iloc[3:5, :], sliced_value)
+
         infos = await storage_api.get_infos('data2')
         assert infos[0].size > 0
 

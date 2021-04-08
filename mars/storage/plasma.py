@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -132,6 +133,7 @@ class PlasmaStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        loop = asyncio.get_running_loop()
         store_memory = kwargs.pop('store_memory', None)
         plasma_directory = kwargs.pop('plasma_directory', None)
         check_dir_size = kwargs.pop('check_dir_size', True)
@@ -146,7 +148,7 @@ class PlasmaStorage(StorageBackend):
                            plasma_directory=plasma_directory,
                            check_dir_size=check_dir_size)
         client = plasma.connect(plasma_socket)
-        actual_capacity = get_actual_capacity(client)
+        actual_capacity = await loop.run_in_executor(None, get_actual_capacity, client)
         init_params['capacity'] = actual_capacity
         teardown_params = dict(plasma_store=plasma_store)
         return init_params, teardown_params
@@ -181,6 +183,9 @@ class PlasmaStorage(StorageBackend):
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
+        if kwargs:  # pragma: no cover
+            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
+
         plasma_file = PlasmaFileObject(self._client, object_id, mode='r')
 
         async with StorageFileObject(plasma_file, object_id) as f:

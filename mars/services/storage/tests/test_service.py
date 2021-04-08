@@ -74,6 +74,9 @@ async def test_cluster_service(actor_pools):
     get_value1 = await api2.get('data1')
     np.testing.assert_array_equal(value1, get_value1)
 
+    sliced_value = await api2.get('data1', conditions=[slice(None, None), slice(0, 4)])
+    np.testing.assert_array_equal(value1[:, :4], sliced_value)
+
     value2 = pd.DataFrame(value1)
     await api2.put('data2', value2)
 

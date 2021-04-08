@@ -141,6 +141,9 @@ class CudaStorage(StorageBackend):
         from cudf.core.buffer import Buffer
         from rmm import DeviceBuffer
 
+        if kwargs:  # pragma: no cover
+            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
+
         headers = object_id.headers
         ptrs = object_id.ptrs
         data_type = headers.pop('data_type')
