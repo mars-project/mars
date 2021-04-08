@@ -3,7 +3,10 @@ set -e
 
 java -version
 
+# remove yarnpkg to make sure hadoop yarn is called correctly
 sudo apt-get remove -yq yarn || true
+sudo npm uninstall -g yarn || true
+
 sudo apt-get install -yq ssh rsync
 
 VERSION=2.10.1

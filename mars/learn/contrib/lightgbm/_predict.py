@@ -21,14 +21,7 @@ from .... import opcodes
 from ....dataframe.utils import parse_index
 from ....serialize import BoolField, BytesField, DictField, KeyField
 from ....tensor.core import TENSOR_TYPE, TensorOrder
-from ....utils import register_tokenizer
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
-
-try:
-    from lightgbm import LGBMModel
-    register_tokenizer(LGBMModel, pickle.dumps)
-except ImportError:
-    pass
 
 
 class LGBMPredict(LearnOperand, LearnOperandMixin):
@@ -49,7 +42,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         return self._data
 
     @property
-    def model(self) -> "LGBMModel":
+    def model(self):
         return self._model
 
     @property
