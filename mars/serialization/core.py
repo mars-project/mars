@@ -18,6 +18,8 @@ import types
 from functools import partial, wraps
 from typing import Any, Dict, List
 
+import pandas as pd
+
 from ..utils import TypeDispatcher
 
 import cloudpickle
@@ -31,6 +33,7 @@ else:
 
 HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
+_PANDAS_HAS_MGR = hasattr(pd.Series([0]), '_mgr')
 
 
 _serial_dispatcher = TypeDispatcher()
@@ -89,7 +92,18 @@ def pickle_buffers(obj):
 
 
 def unpickle_buffers(buffers):
-    return cloudpickle.loads(buffers[0], buffers=buffers[1:])
+    result = cloudpickle.loads(buffers[0], buffers=buffers[1:])
+
+    # as pandas prior to 1.1.0 use _data instead of _mgr to hold BlockManager,
+    # deserializing from high versions may produce mal-functioned pandas objects,
+    # thus the patch is needed
+    if _PANDAS_HAS_MGR:
+        return result
+    else:  # pragma: no cover
+        if hasattr(result, '_mgr') and isinstance(result, (pd.DataFrame, pd.Series)):
+            result._data = getattr(result, '_mgr')
+            delattr(result, '_mgr')
+        return result
 
 
 class ScalarSerializer(Serializer):
