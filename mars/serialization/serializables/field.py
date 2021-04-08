@@ -16,7 +16,7 @@ import itertools
 import importlib
 import inspect
 from abc import ABC, ABCMeta, abstractmethod
-from typing import Any, Callable, Type, Union
+from typing import Any, Callable, Optional, Type, Union
 
 from ...utils import is_kernel_mode
 from .field_type import AbstractFieldType, FieldTypes, \
@@ -26,21 +26,27 @@ _notset = object()
 
 
 class Field(ABC):
-    __slots__ = '_tag', '_default_value', '_attr_name', \
-                '_on_serialize', '_on_deserialize'
+    __slots__ = '_tag', '_default_value', '_default_factory', \
+                '_attr_name', '_on_serialize', '_on_deserialize'
 
     _tag: str
     _default_value: Any
+    _default_factory: Optional[Callable]
     _attr_name: str  # attribute name that set to
 
     def __init__(self,
                  tag: str,
                  default: Any = _notset,
+                 default_factory: Optional[Callable] = None,
                  on_serialize: Callable[[Any], Any] = None,
                  on_deserialize: Callable[[Any], Any] = None,
                  attr_name: str = None):
+        if default is not _notset and default_factory is not None:  # pragma: no cover
+            raise ValueError('default and default_factory can not be specified both')
+
         self._tag = tag
         self._default_value = default
+        self._default_factory = default_factory
         self._on_serialize = on_serialize
         self._on_deserialize = on_deserialize
         self._attr_name = attr_name
@@ -80,6 +86,9 @@ class Field(ABC):
         except KeyError:
             if self._default_value is not _notset:
                 return self._default_value
+            elif self._default_factory is not None:
+                val = tag_to_values[self._tag] = self._default_factory()
+                return val
             else:
                 raise AttributeError(
                     f"'{type(instance)}' has no attribute {self._attr_name}")
@@ -355,10 +364,11 @@ class _CollectionField(Field, metaclass=ABCMeta):
                  tag: str,
                  field_type: AbstractFieldType = None,
                  default: Any = _notset,
+                 default_factory: Optional[Callable] = None,
                  on_serialize: Callable[[Any], Any] = None,
                  on_deserialize: Callable[[Any], Any] = None):
-        super().__init__(tag, default=default, on_serialize=on_serialize,
-                         on_deserialize=on_deserialize)
+        super().__init__(tag, default=default, default_factory=default_factory,
+                         on_serialize=on_serialize, on_deserialize=on_deserialize)
         if field_type is None:
             field_type = FieldTypes.any
         if not isinstance(field_type, ListType):

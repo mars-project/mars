@@ -263,9 +263,6 @@ class DataFrameShuffleProxy(ShuffleProxy, DataFrameOperandMixin):
         pass
 
 
-DataFrameMapReduceOperand = MapReduceOperand
-
-
 class DataFrameFuseChunkMixin(FuseChunkMixin, DataFrameOperandMixin):
     __slots__ = ()
 

@@ -80,6 +80,3 @@ class LearnShuffleProxy(ShuffleProxy, LearnOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         pass
-
-
-LearnMapReduceOperand = MapReduceOperand

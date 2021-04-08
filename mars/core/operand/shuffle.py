@@ -13,21 +13,12 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialization.serializables import BoolField, StringField
+from ...serialization.serializables import StringField
 from .base import Operand, VirtualOperand, OperandStage
 
 
 class ShuffleProxy(VirtualOperand):
     _op_type_ = opcodes.SHUFFLE_PROXY
-
-    _assign_reducers = BoolField('assign_reducers')
-
-    def __init__(self, assign_reducers=True, **kw):
-        super().__init__(_assign_reducers=assign_reducers, **kw)
-
-    @property
-    def assign_reducers(self) -> bool:
-        return self._assign_reducers
 
 
 class MapReduceOperand(Operand):

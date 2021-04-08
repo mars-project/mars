@@ -26,13 +26,13 @@ from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, Li
 from ..utils import get_shuffle_input_keys_idxes
 from .core import SERIES_CHUNK_TYPE
 from .utils import hash_dtypes, filter_dtypes
-from .operands import DataFrameMapReduceOperand, DataFrameOperandMixin, \
+from .operands import MapReduceOperand, DataFrameOperandMixin, \
     DataFrameShuffleProxy
 from .utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value, hash_index
 
 
-class DataFrameIndexAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_INDEX_ALIGN
 
     _index_min = AnyField('index_min')

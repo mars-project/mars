@@ -21,7 +21,7 @@ from ...core import OutputType
 from ...core.operand import OperandStage
 from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
 from ...utils import get_shuffle_input_keys_idxes
-from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameMapReduceOperand, \
+from ..operands import DataFrameOperand, DataFrameOperandMixin, MapReduceOperand, \
     DataFrameShuffleProxy
 from ..utils import build_concatenated_rows_frame, build_df, parse_index, hash_dataframe_on, \
     infer_index_value
@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_SHUFFLE_MERGE_ALIGN
 
     _index_shuffle_size = Int32Field('index_shuffle_size')

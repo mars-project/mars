@@ -25,7 +25,7 @@ from ...serialize import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
 from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy, \
-    DataFrameMapReduceOperand
+    MapReduceOperand
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -424,7 +424,7 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
             ctx[op.outputs[-1].key] = a.index[slc]
 
 
-class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.PSRS_SHUFFLE
 
     _sort_type = StringField('sort_type')

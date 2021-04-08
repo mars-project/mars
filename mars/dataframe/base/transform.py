@@ -37,16 +37,14 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     _convert_dtype = BoolField('convert_dtype')
     _args = TupleField('args')
     _kwds = DictField('kwds')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     _call_agg = BoolField('call_agg')
 
     def __init__(self, func=None, axis=None, convert_dtype=None, args=None, kwds=None,
-                 call_agg=None, output_types=None, tileable_op_key=None, memory_scale=None, **kw):
+                 call_agg=None, output_types=None, memory_scale=None, **kw):
         super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _args=args,
                          _kwds=kwds, _call_agg=call_agg, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, _memory_scale=memory_scale, **kw)
+                         _memory_scale=memory_scale, **kw)
 
     @property
     def func(self):
@@ -71,10 +69,6 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
     @property
     def call_agg(self):
         return self._call_agg
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @classmethod
     @redirect_custom_log
@@ -116,7 +110,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
         col_sizes = []
         for c in in_df.chunks:
             new_op = op.copy().reset_key()
-            new_op._tileable_op_key = op.key
+            new_op.tileable_op_key = op.key
             params = c.params.copy()
 
             if out_df.ndim == 2:

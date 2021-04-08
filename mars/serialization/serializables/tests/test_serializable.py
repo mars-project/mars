@@ -44,6 +44,7 @@ class MyHasKey(EntityData):
 class MySimpleSerializable(Serializable):
     _id = IdentityField('id')
     _int_val = Int64Field('int_val', default=1000)
+    _list_val = ListField('list_val', default_factory=list)
     _ref_val = ReferenceField('ref_val', 'MySimpleSerializable')
 
 
@@ -180,6 +181,7 @@ def test_fields_errors():
         _ = my_simple._id
 
     assert my_simple._int_val == 1000
+    assert my_simple._list_val == []
 
     del my_serializeble._oneof_val
     with pytest.raises(AttributeError):

@@ -29,10 +29,10 @@ from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
     build_df, build_series, parse_index
-from ..operands import DataFrameOperandMixin, DataFrameMapReduceOperand, DataFrameShuffleProxy
+from ..operands import DataFrameOperandMixin, MapReduceOperand, DataFrameShuffleProxy
 
 
-class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
     _by = AnyField('by', on_serialize=lambda x: x.data if isinstance(x, Entity) else x)

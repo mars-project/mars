@@ -30,7 +30,7 @@ from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds,
 from ...tensor.array_utils import get_array_module
 from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
 from ...core import ExecutableTuple
-from ..operands import LearnOperandMixin, OutputType, LearnMapReduceOperand, LearnShuffleProxy
+from ..operands import LearnOperandMixin, OutputType, MapReduceOperand, LearnShuffleProxy
 from ..utils import convert_to_tensor_or_dataframe
 
 
@@ -49,7 +49,7 @@ def _safe_slice(obj, slc, output_type):
         return obj.iloc[slc]
 
 
-class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
+class LearnShuffle(MapReduceOperand, LearnOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
     _axes = TupleField('axes', ValueType.int32)

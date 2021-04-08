@@ -30,7 +30,7 @@ from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
 from ...utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameMapReduceOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand, MapReduceOperand
 from ..utils import parse_index
 
 _ILOC_COL_HEADER = '_gsamp_iloc_col_'
@@ -268,7 +268,7 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
                 ])
 
 
-class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.RAND_SAMPLE
     _op_module_ = 'dataframe.groupby'
 

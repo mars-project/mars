@@ -34,14 +34,11 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, left=None, right=None, func=None, args=None, kwargs=None,
-                 output_types=None, tileable_op_key=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_left=left, _right=right, _func=func, _args=args,
-                         _kwargs=kwargs, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _kwargs=kwargs, _output_types=output_types, **kw)
         if self.memory_scale is None:
             self.memory_scale = 2.0
 
@@ -64,10 +61,6 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
     @property
     def kwargs(self):
         return self._kwargs
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -142,7 +135,7 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         for left_chunk in left.chunks:
             for right_chunk in right.chunks:
                 chunk_op = op.copy().reset_key()
-                chunk_op._tileable_op_key = op.key
+                chunk_op.tileable_op_key = op.key
                 if op.output_types[0] == OutputType.dataframe:
                     shape = (np.nan, out.shape[1])
                     index_value = parse_index(out.index_value.to_pandas(),

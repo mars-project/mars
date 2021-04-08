@@ -23,12 +23,12 @@ from ...core.operand import OperandStage
 from ...serialize import AnyField, Int32Field, StringField, KeyField
 from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
-from ..operands import DataFrameMapReduceOperand, DataFrameOperandMixin, DataFrameShuffleProxy
+from ..operands import MapReduceOperand, DataFrameOperandMixin, DataFrameShuffleProxy
 
 cudf = lazy_import('cudf', globals=globals())
 
 
-class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _subset = AnyField('subset')
     _keep = AnyField('keep')

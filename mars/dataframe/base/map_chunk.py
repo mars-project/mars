@@ -34,14 +34,11 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
     _with_chunk_index = BoolField('with_chunk_index')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, input=None, func=None, args=None, kwargs=None, output_types=None,
-                 tileable_op_key=None, with_chunk_index=None, **kw):
+                 with_chunk_index=None, **kw):
         super().__init__(_input=input, _func=func, _args=args, _kwargs=kwargs,
-                         _output_types=output_types, _tileable_op_key=tileable_op_key,
-                         _with_chunk_index=with_chunk_index, **kw)
+                         _output_types=output_types, _with_chunk_index=with_chunk_index, **kw)
 
     @property
     def input(self):
@@ -58,10 +55,6 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     @property
     def kwargs(self):
         return self._kwargs
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @property
     def with_chunk_index(self):
@@ -140,7 +133,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
         for chunk in inp.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._tileable_op_key = op.key
+            chunk_op.tileable_op_key = op.key
             if op.output_types[0] == OutputType.dataframe:
                 if np.isnan(out.shape[0]):
                     shape = (np.nan, out.shape[1])

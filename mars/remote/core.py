@@ -72,16 +72,14 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     _function_kwargs = DictField('function_kwargs')
     _retry_when_fail = BoolField('retry_when_fail')
     _n_output = Int32Field('n_output')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, function=None, function_args=None,
                  function_kwargs=None, retry_when_fail=None,
-                 n_output=None, tileable_op_key=None, **kw):
+                 n_output=None, **kw):
         super().__init__(_function=function, _function_args=function_args,
                          _function_kwargs=function_kwargs,
                          _retry_when_fail=retry_when_fail,
-                         _n_output=n_output, _tileable_op_key=tileable_op_key, **kw)
+                         _n_output=n_output, **kw)
 
     @property
     def function(self):
@@ -102,10 +100,6 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
     @property
     def n_output(self):
         return self._n_output
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @property
     def output_limit(self):
@@ -167,7 +161,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
             chunk_inputs.extend(inp.chunks)
         chunk_op._pure_depends = pure_depends
         # record tileable op key for chunk op
-        chunk_op._tileable_op_key = op.key
+        chunk_op.tileable_op_key = op.key
 
         out_chunks = [list() for _ in range(len(outs))]
         chunk_kws = []
