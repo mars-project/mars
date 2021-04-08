@@ -21,9 +21,10 @@ import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.services import start_services, NodeRole
+from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageApi
-from mars.services.meta import MockMetaAPI
-from mars.services.task import MockTaskAPI, TaskStatus
+from mars.services.meta import MetaAPI
+from mars.services.task import TaskAPI, TaskStatus
 
 
 @pytest.fixture
@@ -52,11 +53,14 @@ async def test_task_service(actor_pools):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "task"],
+        "services": ["cluster", "session", "meta", "task"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
             "resource": {"numa-0": 2}
+        },
+        "meta": {
+            "store": "dict"
         },
         "task": {}
     }
@@ -66,11 +70,13 @@ async def test_task_service(actor_pools):
         NodeRole.WORKER, config, address=worker_pool.external_address)
 
     session_id = 'test_session'
-    task_api = await MockTaskAPI.create(session_id,
-                                        sv_pool.external_address)
+    session_api = await SessionAPI.create(sv_pool.external_address)
+    await session_api.create_session(session_id)
+    task_api = await TaskAPI.create(session_id,
+                                    sv_pool.external_address)
     # create mock meta and storage APIs
-    _ = await MockMetaAPI.create(session_id,
-                                 sv_pool.external_address)
+    _ = await MetaAPI.create(session_id,
+                             sv_pool.external_address)
     storage_api = await MockStorageApi.create(session_id,
                                               worker_pool.external_address)
 

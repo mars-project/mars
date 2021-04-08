@@ -17,7 +17,6 @@ from typing import Dict, List, Tuple, Any, Union
 
 from ... import oscar as mo
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
-from ...oscar.backends import allocate_strategy
 from ...utils import extensible
 from .core import get_meta_type
 from .store import AbstractMetaStore
@@ -78,7 +77,7 @@ class MetaAPI:
         meta_store_manager_ref = await mo.actor_ref(
             address, MetaStoreManagerActor.default_uid())
         meta_store_ref = \
-            await meta_store_manager_ref.new_session_meta_store(session_id, address)
+            await meta_store_manager_ref.new_session_meta_store(session_id)
         return MetaAPI(session_id, meta_store_ref)
 
     @classmethod
@@ -174,11 +173,17 @@ class MockMetaAPI(MetaAPI):
     async def create(cls, session_id: str, address: str) -> "MetaAPI":
         # create an Actor for mock
         try:
-            await mo.create_actor(MetaStoreActor, 'dict', session_id,
-                                  address=address,
-                                  uid=MetaStoreActor.gen_uid(session_id),
-                                  allocate_strategy=allocate_strategy.ProcessIndex(1))
+            meta_store_manager_ref = await mo.create_actor(
+                MetaStoreManagerActor, 'dict', dict(),
+                address=address,
+                uid=MetaStoreManagerActor.default_uid())
         except mo.ActorAlreadyExist:
             # ignore if actor exists
+            meta_store_manager_ref = await mo.actor_ref(
+                MetaStoreManagerActor, address=address,
+                uid=MetaStoreManagerActor.default_uid())
+        try:
+            await meta_store_manager_ref.new_session_meta_store(session_id)
+        except mo.ActorAlreadyExist:
             pass
         return await super().create(session_id=session_id, address=address)

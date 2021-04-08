@@ -27,6 +27,7 @@ from mars.core.graph import TileableGraph, TileableGraphBuilder
 from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
+from mars.services.session import MockSessionAPI
 from mars.services.storage.api import MockStorageApi
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import TaskManagerActor
@@ -44,10 +45,11 @@ async def actor_pool():
 
     async with pool:
         session_id = 'test_session'
-        # create mock meta and storage APIs
+        # create mock APIs
+        await MockClusterAPI.create(pool.external_address)
+        await MockSessionAPI.create(pool.external_address, session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageApi.create(session_id, pool.external_address)
-        await MockClusterAPI.create(pool.external_address)
 
         # create task manager
         manager = await mo.create_actor(TaskManagerActor, session_id,

@@ -22,8 +22,9 @@ import psutil
 import pyarrow as pa
 from pyarrow import plasma
 
+from ..resource import virtual_memory
 from ..serialization import AioSerializer, AioDeserializer
-from ..utils import implements, dataslots
+from ..utils import implements, dataslots, calc_size_by_str
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -134,13 +135,14 @@ class PlasmaStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         loop = asyncio.get_running_loop()
-        store_memory = kwargs.pop('store_memory', None)
+        store_memory = kwargs.pop('store_memory')
         plasma_directory = kwargs.pop('plasma_directory', None)
         check_dir_size = kwargs.pop('check_dir_size', True)
 
         if kwargs:
             raise TypeError(f'PlasmaStorage got unexpected config: {",".join(kwargs)}')
 
+        store_memory = calc_size_by_str(store_memory, virtual_memory().total)
         plasma_store = plasma.start_plasma_store(store_memory,
                                                  plasma_directory=plasma_directory)
         plasma_socket = plasma_store.__enter__()[0]

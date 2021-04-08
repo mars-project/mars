@@ -24,8 +24,10 @@ import mars.oscar as mo
 import mars.tensor as mt
 import mars.remote as mr
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services.meta.api import MockMetaAPI
-from mars.services.storage.api import MockStorageApi
+from mars.services.cluster import MockClusterAPI
+from mars.services.meta import MockMetaAPI
+from mars.services.session import MockSessionAPI
+from mars.services.storage import MockStorageApi
 from mars.services.task import SubTask, SubTaskStatus, new_task_id
 from mars.services.task.worker.subtask import BandSubtaskManagerActor, SubtaskRunnerActor
 from mars.tests.core import mock
@@ -46,7 +48,10 @@ async def actor_pool():
 
         async with pool:
             session_id = 'test_session'
-            # create mock meta and storage APIs
+            # create mock APIs
+            await MockClusterAPI.create(pool.external_address)
+            await MockSessionAPI.create(
+                pool.external_address, session_id)
             meta_api = await MockMetaAPI.create(session_id, pool.external_address)
             storage_api = await MockStorageApi.create(session_id, pool.external_address)
 

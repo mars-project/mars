@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import pytest
 
 import mars.oscar as mo
 from mars.services import start_services, NodeRole
-from mars.services.session.api import SessionAPI
-from mars.services.meta.api import MetaAPI
+from mars.services.session import SessionAPI
 
 
 @pytest.mark.asyncio
@@ -38,12 +38,11 @@ async def test_meta_service():
         await start_services(
             NodeRole.SUPERVISOR, config, address=pool.external_address)
 
-        session_id = 'test_session'
         session_api = await SessionAPI.create(pool.external_address)
-        await session_api.create_session(session_id)
-        # get session store
-        await MetaAPI.create(session_id, pool.external_address)
-        # destroy session
-        await MetaAPI.destroy_session(session_id, pool.external_address)
-        with pytest.raises(mo.ActorNotExist):
-            await MetaAPI.create(session_id, pool.external_address)
+        session_id = 'test_session'
+        session_address = await session_api.create_session(session_id)
+        assert session_address == pool.external_address
+        assert await session_api.has_session(session_id) is True
+        assert await session_api.get_session_address(session_id) == session_address
+        await session_api.delete_session(session_id)
+        assert await session_api.has_session(session_id) is False

@@ -119,7 +119,7 @@ class SubTaskResult(Serializable):
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
     status: SubTaskStatus = ReferenceField('status', SubTaskStatus)
-    data_size: int = Int64Field('data_size')
+    data_size: int = Int64Field('data_size', default=None)
     error = AnyField('error', default=None)
     traceback = AnyField('traceback', default=None)
 

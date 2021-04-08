@@ -1011,7 +1011,8 @@ async def create_actor_pool(address: str,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None) \
         -> MainActorPoolType:
-    n_process = n_process or multiprocessing.cpu_count()
+    if n_process is None:
+        n_process = multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(f'`labels` should be of size {n_process + 1}, '
                          f'got {len(labels)}')

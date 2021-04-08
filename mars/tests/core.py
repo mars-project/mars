@@ -62,6 +62,9 @@ ray = lazy_import('ray', globals=globals())
 
 logger = logging.getLogger(__name__)
 
+CONFIG_TEST_FILE = os.path.join(
+    os.path.dirname(__file__), 'config_test.yml')
+
 
 class TestCase(unittest.TestCase):
     pass

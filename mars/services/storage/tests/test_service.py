@@ -52,7 +52,8 @@ async def test_cluster_service(actor_pools):
 
     config = {
         "services": ["storage"],
-        "storage_configs": {
+        "storage": {
+            "backends": ["plasma"],
             "plasma": plasma_setup_params,
         }
     }

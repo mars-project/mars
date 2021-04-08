@@ -16,7 +16,7 @@ import pytest
 from mars.oscar.utils import create_actor_ref
 
 from mars.oscar.backends.allocate_strategy import \
-    AddressSpecified, MainPool, RandomSubPool, RandomLabel, IdleLabel
+    AddressSpecified, MainPool, RandomSubPool, Random, RandomLabel, IdleLabel
 from mars.oscar.backends.config import ActorPoolConfig
 from mars.oscar.errors import NoIdleSlot
 
@@ -36,6 +36,12 @@ def test_address_specified():
 def test_main_pool():
     strategy = MainPool()
     assert strategy.get_allocated_address(config, dict()) == '127.0.0.1:1111'
+
+
+def test_random():
+    strategy = Random()
+    addresses = config.get_external_addresses()
+    assert strategy.get_allocated_address(config, dict()) in addresses
 
 
 def test_random_sub_pool():

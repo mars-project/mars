@@ -177,6 +177,8 @@ class SubtaskGraphScheduler:
         for q in self._band_queue.values():
             # put None into queue to indicate done
             q.put(None)
+        # cancel band schedules
+        _ = [schedule.cancel() for schedule in self._band_schedules]
 
     async def _run_subtask(self,
                            subtask_runner,
@@ -186,6 +188,16 @@ class SubtaskGraphScheduler:
             await subtask_runner.run_subtask(subtask)
         except mo.ServerClosed:
             pass
+        except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
+            _, err, traceback = sys.exc_info()
+            subtask_result = SubTaskResult(
+                subtask_id=subtask.subtask_id,
+                session_id=subtask.session_id,
+                task_id=subtask.task_id,
+                status=SubTaskStatus.errored,
+                error=err,
+                traceback=traceback)
+            await self.set_subtask_result(subtask_result)
         del tasks[subtask]
 
     @contextmanager
@@ -401,6 +413,8 @@ class TaskManagerActor(mo.Actor):
     async def _wait_task(self, task_id: str):
         aio_tasks = self._task_id_to_info[task_id].aio_tasks
         await asyncio.gather(*aio_tasks)
+        task_result = self._task_id_to_info[task_id].task_result
+        return task_result
 
     async def wait_task(self, task_id: str):
         # return coroutine to not block task manager
