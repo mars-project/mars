@@ -16,6 +16,7 @@ from typing import List, Union
 
 from ... import oscar as mo
 from ...core import Tileable
+from ...lib.aio import alru_cache
 from ..session import SessionAPI
 from .core import TileableGraph, TaskResult
 from .supervisor.task_manager import TaskManagerActor
@@ -29,6 +30,7 @@ class TaskAPI:
         self._task_manager_ref = task_manager_ref
 
     @classmethod
+    @alru_cache
     async def create(cls,
                      session_id: str,
                      address: str) -> "TaskAPI":

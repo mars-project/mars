@@ -18,7 +18,7 @@ from typing import Type, Dict, Tuple
 
 from ....core import ChunkGraph
 from ....utils import implements, build_fetch
-from ..core import SubtaskGraph, SubTask, Task, new_task_id
+from ..core import SubtaskGraph, Subtask, Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 
 
@@ -135,7 +135,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                     subtask_chunk_graph.add_edge(inp_fetch_chunk, copied_chunk)
 
             # gen subtask
-            subtask = SubTask(
+            subtask = Subtask(
                 subtask_id=new_task_id(),
                 session_id=self._task.session_id,
                 task_id=self._task.task_id,

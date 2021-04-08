@@ -21,6 +21,7 @@ coverage:
 ignore:
   - "mars/compat.py"
   - "mars/lib/aio/runner.py"
+  - "mars/lib/aio/lru.py"
   - "mars/lib/functools32"
   - "mars/lib/futures"
   - "mars/lib/enum.py"

@@ -51,7 +51,7 @@ async def test_meta_mock_api(obj):
         await MockClusterAPI.create(
             pool.external_address)
         await MockSessionAPI.create(
-            pool.external_address, session_id)
+            pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(
             session_id=session_id,
             address=pool.external_address)

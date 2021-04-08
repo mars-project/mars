@@ -15,6 +15,7 @@
 from typing import Union
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from .supervisor import SessionManagerActor
 
 
@@ -26,7 +27,11 @@ class SessionAPI:
         self._session_manager_ref = session_manager
 
     @classmethod
-    async def create(cls, address: str) -> "SessionAPI":
+    @alru_cache
+    async def create(cls, address: str, **kwargs) -> "SessionAPI":
+        if kwargs:
+            raise TypeError(f'SessionAPI.create '
+                            f'got unknown arguments: {list(kwargs)}')
         session_manager = await mo.actor_ref(
             address, SessionManagerActor.default_uid())
         return SessionAPI(address, session_manager)
@@ -95,8 +100,12 @@ class SessionAPI:
 class MockSessionAPI(SessionAPI):
     @classmethod
     async def create(cls,
-                     address: str,
-                     session_id: str = None) -> "SessionAPI":
+                     address: str, **kwargs) -> "SessionAPI":
+        session_id = kwargs.pop('session_id')
+        if kwargs:
+            raise TypeError(f'SessionAPI.create '
+                            f'got unknown arguments: {list(kwargs)}')
+
         session_manager = await mo.create_actor(
             SessionManagerActor, address=address,
             uid=SessionManagerActor.default_uid())

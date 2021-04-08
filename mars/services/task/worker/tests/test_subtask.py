@@ -28,7 +28,7 @@ from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageApi
-from mars.services.task import SubTask, SubTaskStatus, new_task_id
+from mars.services.task import Subtask, SubTaskStatus, new_task_id
 from mars.services.task.worker.subtask import BandSubtaskManagerActor, SubtaskRunnerActor
 from mars.tests.core import mock
 from mars.utils import Timer
@@ -51,7 +51,7 @@ async def actor_pool():
             # create mock APIs
             await MockClusterAPI.create(pool.external_address)
             await MockSessionAPI.create(
-                pool.external_address, session_id)
+                pool.external_address, session_id=session_id)
             meta_api = await MockMetaAPI.create(session_id, pool.external_address)
             storage_api = await MockStorageApi.create(session_id, pool.external_address)
 
@@ -70,7 +70,7 @@ def _gen_subtask(t, session_id):
     next(TileableGraphBuilder(graph).build())
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
-    subtask = SubTask(new_task_id(), session_id,
+    subtask = Subtask(new_task_id(), session_id,
                       new_task_id(), chunk_graph)
 
     return subtask

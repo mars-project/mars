@@ -26,7 +26,7 @@ def _load_config(filename=None):
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'config.yml')
     with open(filename) as f:
-        return yaml.load(f)
+        return yaml.safe_load(f)
 
 
 async def start_supervisor(address: str,

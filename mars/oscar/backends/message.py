@@ -316,11 +316,12 @@ class MessageSerializer(Serializer):
         message_class = type(obj)
         to_serialize = [getattr(obj, slot) for slot in self._get_slots(message_class)]
         header, buffers = yield to_serialize
-        new_header = dict()
-        new_header['message_class'] = message_class
-        new_header['message_id'] = obj.message_id
-        new_header['protocol'] = obj.protocol
-        new_header['attributes_header'] = header
+        new_header = {
+            'message_class': message_class,
+            'message_id': obj.message_id,
+            'protocol': obj.protocol,
+            'attributes_header': header
+        }
         return new_header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):

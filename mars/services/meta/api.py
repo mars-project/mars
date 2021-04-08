@@ -17,6 +17,7 @@ from typing import Dict, List, Tuple, Any, Union
 
 from ... import oscar as mo
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
+from ...lib.aio import alru_cache
 from ...utils import extensible
 from .core import get_meta_type
 from .store import AbstractMetaStore
@@ -31,6 +32,7 @@ class MetaAPI:
         self._meta_store = meta_store
 
     @classmethod
+    @alru_cache
     async def create(cls,
                      session_id: str,
                      address: str) -> "MetaAPI":

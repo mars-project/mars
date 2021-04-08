@@ -47,7 +47,7 @@ async def actor_pool():
         session_id = 'test_session'
         # create mock APIs
         await MockClusterAPI.create(pool.external_address)
-        await MockSessionAPI.create(pool.external_address, session_id)
+        await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageApi.create(session_id, pool.external_address)
 

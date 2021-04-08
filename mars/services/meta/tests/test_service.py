@@ -42,8 +42,11 @@ async def test_meta_service():
         session_api = await SessionAPI.create(pool.external_address)
         await session_api.create_session(session_id)
         # get session store
-        await MetaAPI.create(session_id, pool.external_address)
+        meta_api = await MetaAPI.create(session_id, pool.external_address)
         # destroy session
         await MetaAPI.destroy_session(session_id, pool.external_address)
         with pytest.raises(mo.ActorNotExist):
-            await MetaAPI.create(session_id, pool.external_address)
+            await MetaAPI.destroy_session(session_id, pool.external_address)
+
+        # test alru_cache
+        assert await MetaAPI.create(session_id, pool.external_address) is meta_api

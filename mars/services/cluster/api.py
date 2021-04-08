@@ -16,6 +16,7 @@ import asyncio
 from typing import List, Dict, Tuple, Union, Type, TypeVar
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from ..core import NodeRole
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -41,6 +42,7 @@ class ClusterAPI:
             [NodeInfoCollectorActor.default_uid()])
 
     @classmethod
+    @alru_cache
     async def create(cls: Type[APIType], address: str) -> APIType:
         api_obj = cls(address)
         await api_obj._init()

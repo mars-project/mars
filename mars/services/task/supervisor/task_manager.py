@@ -24,9 +24,9 @@ from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, get_tiled
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ..analyzer import GraphAnalyzer
-from ..core import Task, TaskResult, TaskStatus, SubTask, SubTaskResult, \
+from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
     SubTaskStatus, SubtaskGraph, new_task_id
-from ..errors import TaskDoesNotExist
+from ..errors import TaskNotExist
 
 
 class TaskProcessor:
@@ -58,7 +58,7 @@ class TaskProcessor:
         chunk_graph_generator: Generator
              Chunk graphs.
         """
-        # TODO(qinxuye): integrate iterative chunk grpah builder
+        # TODO(qinxuye): integrate iterative chunk graph builder
         chunk_graph_builder = ChunkGraphBuilder(
             tileable_graph, fuse_enabled=self._task.fuse_enabled)
         yield from chunk_graph_builder.build()
@@ -69,11 +69,11 @@ class BandQueue:
         self._queue = deque()
         self._has_data = asyncio.Event()
 
-    def put(self, subtask: Optional[SubTask]):
+    def put(self, subtask: Optional[Subtask]):
         self._queue.appendleft(subtask)
         self._has_data.set()
 
-    def get(self) -> SubTask:
+    def get(self) -> Subtask:
         subtask = self._queue.popleft()
         if len(self._queue) == 0:
             self._has_data.clear()
@@ -98,8 +98,8 @@ class SubtaskGraphScheduler:
         self._subtask_id_to_subtask = {subtask.subtask_id: subtask
                                        for subtask in subtask_graph}
 
-        self._subtask_to_bands: Dict[SubTask, Tuple[str, str]] = dict()
-        self._subtask_to_results: Dict[SubTask, SubTaskResult] = dict()
+        self._subtask_to_bands: Dict[Subtask, Tuple[str, str]] = dict()
+        self._subtask_to_results: Dict[Subtask, SubtaskResult] = dict()
 
         self._band_manager: Dict[Tuple[str, str], mo.ActorRef] = dict()
         self._band_queue: Dict[Tuple[str, str], BandQueue] = defaultdict(BandQueue)
@@ -120,7 +120,7 @@ class SubtaskGraphScheduler:
         self._band_manager[band] = manger_ref
         return manger_ref
 
-    def _get_subtask_band(self, subtask: SubTask):
+    def _get_subtask_band(self, subtask: Subtask):
         if subtask.expect_band is not None:
             # start, already specified band
             self._subtask_to_bands[subtask] = band = subtask.expect_band
@@ -134,20 +134,20 @@ class SubtaskGraphScheduler:
             self._subtask_to_bands[subtask] = band
             return band
 
-    async def _direct_submit_subtasks(self, subtasks: List[SubTask]):
+    async def _direct_submit_subtasks(self, subtasks: List[Subtask]):
         for subtask in subtasks[::-1]:
             band = self._get_subtask_band(subtask)
             # push subtask to queues
             self._band_queue[band].put(subtask)
 
-    async def _schedule_subtasks(self, subtasks: List[SubTask]):
+    async def _schedule_subtasks(self, subtasks: List[Subtask]):
         if self._scheduling_api is not None:
             return await self._scheduling_api.submit_subtasks(
                 subtasks, [subtask.priority for subtask in subtasks])
         else:
             return await self._direct_submit_subtasks(subtasks)
 
-    async def set_subtask_result(self, result: SubTaskResult):
+    async def set_subtask_result(self, result: SubtaskResult):
         subtask_id = result.subtask_id
         subtask = self._subtask_id_to_subtask[subtask_id]
         self._subtask_to_results[subtask] = result
@@ -178,11 +178,12 @@ class SubtaskGraphScheduler:
             # put None into queue to indicate done
             q.put(None)
         # cancel band schedules
-        _ = [schedule.cancel() for schedule in self._band_schedules]
+        if not self._cancelled.is_set():
+            _ = [schedule.cancel() for schedule in self._band_schedules]
 
     async def _run_subtask(self,
                            subtask_runner,
-                           subtask: SubTask,
+                           subtask: Subtask,
                            tasks: Dict):
         try:
             await subtask_runner.run_subtask(subtask)
@@ -190,7 +191,7 @@ class SubtaskGraphScheduler:
             pass
         except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
             _, err, traceback = sys.exc_info()
-            subtask_result = SubTaskResult(
+            subtask_result = SubtaskResult(
                 subtask_id=subtask.subtask_id,
                 session_id=subtask.session_id,
                 task_id=subtask.task_id,
@@ -298,7 +299,7 @@ class TaskInfo:
     aio_tasks: List[asyncio.Task] = None
     subtask_graphs: List[SubtaskGraph] = None
     subtask_graph_schedulers: List[SubtaskGraphScheduler] = None
-    subtask_results: Dict[str, SubTaskResult] = None
+    subtask_results: Dict[str, SubtaskResult] = None
 
     def __init__(self,
                  task_id: str,
@@ -314,7 +315,7 @@ class TaskInfo:
         self.aio_tasks = aio_tasks or list()
         self.subtask_graphs: List[SubtaskGraph] = list()
         self.subtask_graph_schedulers: List[SubtaskGraphScheduler] = list()
-        self.subtask_results: Dict[str, SubTaskResult] = dict()
+        self.subtask_results: Dict[str, SubtaskResult] = dict()
 
 
 class TaskManagerActor(mo.Actor):
@@ -429,7 +430,7 @@ class TaskManagerActor(mo.Actor):
         try:
             task_info = self._task_id_to_info[task_id]
         except KeyError:
-            raise TaskDoesNotExist(f'Task {task_id} does not exist')
+            raise TaskNotExist(f'Task {task_id} does not exist')
 
         # return coroutine to not block current actor
         return self._cancel_task(task_info)
@@ -438,13 +439,13 @@ class TaskManagerActor(mo.Actor):
         try:
             return self._task_id_to_info[task_id].task_result
         except KeyError:
-            raise TaskDoesNotExist(f'Task {task_id} does not exist')
+            raise TaskNotExist(f'Task {task_id} does not exist')
 
     def get_task_result_tileables(self, task_id: str):
         try:
             task_info = self._task_id_to_info[task_id]
         except KeyError:
-            raise TaskDoesNotExist(f'Task {task_id} does not exist')
+            raise TaskNotExist(f'Task {task_id} does not exist')
 
         tileable_graph = task_info.task_processors[-1].tileable_graph
         result = []
@@ -453,11 +454,11 @@ class TaskManagerActor(mo.Actor):
             result.append(build_fetch(tiled))
         return result
 
-    async def set_subtask_result(self, subtask_result: SubTaskResult):
+    async def set_subtask_result(self, subtask_result: SubtaskResult):
         try:
             task_info = self._task_id_to_info[subtask_result.task_id]
         except KeyError:  # pragma: no cover
-            raise TaskDoesNotExist(f'Task {subtask_result.task_id} does not exist')
+            raise TaskNotExist(f'Task {subtask_result.task_id} does not exist')
 
         task_info.subtask_results[subtask_result.subtask_id] = subtask_result
         await task_info.subtask_graph_schedulers[-1].set_subtask_result(subtask_result)

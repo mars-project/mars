@@ -13,11 +13,11 @@
 # limitations under the License.
 
 
-class TaskDoesNotExist(Exception):
+class TaskNotExist(Exception):
     pass
 
 
-class SubTaskDoesNotExist(Exception):
+class SubtaskNotExist(Exception):
     pass
 
 

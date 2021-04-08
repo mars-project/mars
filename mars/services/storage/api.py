@@ -16,6 +16,7 @@ import sys
 from typing import Any, List, Type, TypeVar
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from ...storage.base import StorageLevel, StorageFileObject
 from ...utils import extensible
 from .core import StorageHandlerActor, StorageManagerActor, DataInfo
@@ -37,6 +38,7 @@ class StorageAPI:
             self._address, StorageManagerActor.default_uid())
 
     @classmethod
+    @alru_cache
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,

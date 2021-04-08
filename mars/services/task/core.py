@@ -85,7 +85,7 @@ class TaskResult(Serializable):
                          traceback=traceback)
 
 
-class SubTask(Serializable):
+class Subtask(Serializable):
     subtask_id: str = StringField('subtask_id')
     subtask_name: str = StringField('subtask_name')
     session_id: str = StringField('session_id')
@@ -114,7 +114,7 @@ class SubTask(Serializable):
                          rerun_time=rerun_time)
 
 
-class SubTaskResult(Serializable):
+class SubtaskResult(Serializable):
     subtask_id: str = StringField('subtask_id')
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')

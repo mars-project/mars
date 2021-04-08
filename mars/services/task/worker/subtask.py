@@ -28,7 +28,7 @@ from ....utils import calc_data_size
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
-from ..core import SubTask, SubTaskStatus, SubTaskResult
+from ..core import Subtask, SubTaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
 
 
@@ -90,7 +90,7 @@ class BandSubtaskManagerActor(mo.Actor):
     def gen_uid(cls, band: str = 'numa-0'):
         return f'{band}_subtask_manager'
 
-    async def register_slot(self, subtask_runner: _SubTaskRunnerType):
+    def register_slot(self, subtask_runner: _SubTaskRunnerType):
         # when subtask runner created, it will notify subtask manager,
         # normally, no particular operation needed,
         # because subtask runner is created by manager itself,
@@ -109,10 +109,6 @@ class BandSubtaskManagerActor(mo.Actor):
     async def _free_slot(self,
                          subtask_runner: _SubTaskRunnerType,
                          timeout=5):
-        if self.is_slot_free(subtask_runner):
-            # slot is available, no action needed
-            return
-
         # otherwise, call subtask runner to cancel
         cancel_subtask = asyncio.create_task(subtask_runner.cancel_subtask())
         try:
@@ -140,14 +136,18 @@ class BandSubtaskManagerActor(mo.Actor):
             if fut:
                 await fut
 
-        # succeeded, mark slot free
-        self.mark_slot_free(subtask_runner)
-
     async def free_slot(self,
                         subtask_runner: _SubTaskRunnerType,
                         timeout=5):
+        if self.is_slot_free(subtask_runner):
+            # slot is available, no action needed
+            return
         # return coroutine to release Actor lock
-        return self._free_slot(subtask_runner, timeout)
+
+        yield self._free_slot(subtask_runner, timeout)
+
+        # succeeded, mark slot free
+        self.mark_slot_free(subtask_runner)
 
     def get_all_slots(self) -> List[_SubTaskRunnerType]:
         return self._subtask_runner_slots
@@ -163,7 +163,7 @@ class BandSubtaskManagerActor(mo.Actor):
 
 class SubtaskProcessor:
     def __init__(self,
-                 subtask: SubTask,
+                 subtask: Subtask,
                  storage_api: StorageAPI,
                  meta_api: MetaAPI,
                  band: Tuple[str, str],
@@ -175,7 +175,7 @@ class SubtaskProcessor:
         self._supervisor_address = supervisor_address
 
         # result
-        self.result = SubTaskResult(
+        self.result = SubtaskResult(
             subtask_id=subtask.subtask_id,
             session_id=subtask.session_id,
             task_id=subtask.task_id,
@@ -209,14 +209,16 @@ class SubtaskProcessor:
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
         if keys:
-            logger.info(f'Start to load input data keys: {keys}')
+            logger.info(f'Start loading input data keys: {keys}, '
+                        f'subtask id: {self.subtask.subtask_id}')
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs)})
-            logger.info(f'Finish loading input data keys: {keys}')
+            logger.info(f'Finish loading input data keys: {keys}, '
+                        f'subtask id: {self.subtask.subtask_id}')
 
     @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
-                                         result: SubTaskResult):
+                                         result: SubtaskResult):
         task_manager = await mo.actor_ref(
             supervisor_address, TaskManagerActor.gen_uid(result.session_id))
         # notify task manger
@@ -243,6 +245,7 @@ class SubtaskProcessor:
         try:
             yield
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            logger.exception(f"Error when executing subtask: {self.subtask_id}")
             _, err, tb = sys.exc_info()
             self.result.status = SubTaskStatus.errored
             self.result.error = err
@@ -276,22 +279,23 @@ class SubtaskProcessor:
                 if chunk.key not in self._datastore:
                     # since `op.execute` may be a time-consuming operation,
                     # we make it run in a thread pool to not block current thread.
-                    logger.info(f'Start to execute operand: {chunk.op},'
-                                f'chunk: {chunk}')
+                    logger.info(f'Start executing operand: {chunk.op},'
+                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
                     future = loop.run_in_executor(executor, chunk.op.execute,
                                                   self._datastore, chunk.op)
                     try:
                         await future
                         logger.info(f'Finish executing operand: {chunk.op},'
-                                    f'chunk: {chunk}')
+                                    f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
                     except asyncio.CancelledError:
                         logger.info(f'Receive cancel instruction for operand: {chunk.op},'
-                                    f'chunk: {chunk}')
+                                    f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
                         # wait for this computation to finish
                         await loop.run_in_executor(None, executor.shutdown)
                         # if cancelled, stop next computation,
                         await self.cancel()
-                        logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}')
+                        logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}, '
+                                    f'subtask id: {self.subtask.subtask_id}')
                         return
                     self._op_progress[chunk.op.key] = 1.0
                 else:
@@ -314,16 +318,20 @@ class SubtaskProcessor:
                 memory_sizes.append(calc_data_size(result_data))
                 puts.append(
                     self._storage_api.put.delay(data_key, result_data))
-            logger.info(f'Start to put data keys: {stored_keys}')
+            logger.info(f'Start putting data keys: {stored_keys}, '
+                        f'subtask id: {self.subtask.subtask_id}')
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
                 store_infos = await put_infos
-                logger.info(f'Finish putting data keys: {stored_keys}')
+                logger.info(f'Finish putting data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
             except asyncio.CancelledError:
-                logger.info(f'Cancelling put data keys: {stored_keys}')
+                logger.info(f'Cancelling put data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
                 put_infos.cancel()
                 await self.cancel()
-                logger.info(f'Cancelled put data keys: {stored_keys}')
+                logger.info(f'Cancelled put data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
                 return
 
             # clear data
@@ -337,14 +345,17 @@ class SubtaskProcessor:
                 set_chunk_metas.append(
                     self._meta_api.set_chunk_meta.delay(result_chunk, store_size,
                                                         bands=[self._band]))
-            logger.info(f'Start to store chunk metas for data keys: {stored_keys}')
+            logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
+                        f'subtask id: {self.subtask.subtask_id}')
             set_chunks_meta = asyncio.create_task(
                 self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
             try:
                 await set_chunks_meta
-                logger.info(f'Finish store chunk metas for data keys: {stored_keys}')
+                logger.info(f'Finish store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
             except asyncio.CancelledError:
-                logger.info(f'Cancelling store chunk metas for data keys: {stored_keys}')
+                logger.info(f'Cancelling store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
                 set_chunks_meta.cancel()
 
                 # remote stored data
@@ -354,7 +365,8 @@ class SubtaskProcessor:
                 await self._storage_api.delete.batch(*deletes)
 
                 await self.cancel()
-                logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}')
+                logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
                 return
 
             # set result data size
@@ -382,7 +394,7 @@ class SubtaskRunnerActor(mo.Actor):
     async def __post_create__(self):
         await self._subtask_manager.register_slot(self.ref())
 
-    async def _init_subtask_processor(self, subtask: SubTask) -> SubtaskProcessor:
+    async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
         # storage API
         storage_api = await StorageAPI.create(
             subtask.session_id, self.address)
@@ -393,7 +405,7 @@ class SubtaskRunnerActor(mo.Actor):
         return SubtaskProcessor(subtask, storage_api, meta_api,
                                 self._band, self._supervisor_address)
 
-    async def _run_subtask(self, subtask: SubTask):
+    async def _run_subtask(self, subtask: Subtask):
         processor = await self._init_subtask_processor(subtask)
         self._subtask_info.processor = processor
         try:
@@ -404,8 +416,9 @@ class SubtaskRunnerActor(mo.Actor):
             # have been enqueued so that they can be scheduled first.
             await self._subtask_manager.mark_slot_free(self.ref())
 
-    async def run_subtask(self, subtask: SubTask):
+    async def run_subtask(self, subtask: Subtask):
         if self._subtask_info is not None and \
+                getattr(self._subtask_info, 'processor', None) is not None and \
                 not self._subtask_info.processor.status.is_done:
             # current subtask is still running
             raise SlotOccupiedAlready(f'There is subtask(id: '
@@ -414,14 +427,13 @@ class SubtaskRunnerActor(mo.Actor):
 
         logger.info(f'Start to run subtask: {subtask.subtask_id}')
         aio_task = asyncio.create_task(self._run_subtask(subtask))
-        await asyncio.sleep(0)
         self._subtask_info = _SubtaskRunningInfo(task=aio_task)
         return aio_task
 
     async def wait_subtask(self):
         await self._subtask_info.task
 
-    async def get_subtask_result(self) -> SubTaskResult:
+    async def get_subtask_result(self) -> SubtaskResult:
         return self._subtask_info.processor.result
 
     async def cancel_subtask(self):

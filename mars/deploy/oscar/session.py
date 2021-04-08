@@ -63,13 +63,13 @@ class Session(AbstractSession):
 
     @classmethod
     @implements(AbstractSession.init)
-    async def init(self,
+    async def init(cls,
                    address: str,
                    session_id: str,
                    **kwargs) -> "Session":
         session_api = await SessionAPI.create(address)
         # create new session
-        self._session_ref = await session_api.create_session(session_id)
+        await session_api.create_session(session_id)
         meta_api = await MetaAPI.create(session_id, address)
         task_api = await TaskAPI.create(session_id, address)
 
@@ -95,9 +95,9 @@ class Session(AbstractSession):
 
     async def execute(self,
                       *tileables,
-                      fuse_enabled: bool = False,
-                      task_name: str = None,
                       **kwargs) -> ExectionInfo:
+        fuse_enabled: bool = kwargs.pop('fuse_enabled', False)
+        task_name: str = kwargs.pop('task_name', None)
         if kwargs:
             raise TypeError(f'run got unexpected key arguments {list(kwargs)!r}')
 

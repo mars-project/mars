@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from .api import TaskAPI, MockTaskAPI
-from .core import Task, TaskStatus, TaskResult, SubTask, \
-    SubTaskStatus, SubTaskResult, new_task_id
-from .errors import TaskDoesNotExist, SubTaskDoesNotExist, SlotOccupiedAlready
+from .core import Task, TaskStatus, TaskResult, Subtask, \
+    SubTaskStatus, SubtaskResult, new_task_id
+from .errors import TaskNotExist, SubtaskNotExist, SlotOccupiedAlready
