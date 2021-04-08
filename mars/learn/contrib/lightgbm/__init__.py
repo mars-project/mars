@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .classifier import LGBMClassifier
-from .regressor import LGBMRegressor
-from .ranker import LGBMRanker
-
 from ._predict import predict, predict_proba
 
 
@@ -24,3 +20,12 @@ def register_op():
     from ._align import align_data_set
 
     del train, align_data_set
+
+
+from ..utils import config_mod_getattr as _config_mod_getattr
+
+_config_mod_getattr({
+    'LGBMClassifier': '.classifier.LGBMClassifier',
+    'LGBMRegressor': '.regressor.LGBMRegressor',
+    'LGBMRanker': '.ranker.LGBMRanker',
+}, globals())
