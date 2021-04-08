@@ -22,15 +22,15 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, TilesError
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...serialize import BoolField, DictField, Float32Field, KeyField, \
     Int32Field, Int64Field, NDArrayField, StringField
 from ...tensor.operands import TensorShuffleProxy
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
-from ...utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes
+from ...utils import check_chunks_unknown_shape
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperandMixin, DataFrameOperand, MapReduceOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
 _ILOC_COL_HEADER = '_gsamp_iloc_col_'
@@ -471,10 +471,7 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
             for idx, (left, right) in enumerate(zip(poses, poses[1:])):
                 ctx[(op.outputs[0].key, str(idx))] = in_data[left:right]
         elif op.stage == OperandStage.reduce:
-            in_indexes = []
-            input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-            for input_key in input_keys:
-                in_indexes.append(ctx[(input_key, op.shuffle_key)])
+            in_indexes = list(op.iter_mapper_data(ctx))
             idx = np.sort(np.concatenate(in_indexes))
             if op.outputs[0].index[0] > 0:
                 acc_nsplits = np.cumsum(op.input_nsplits)

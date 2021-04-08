@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core.operand import OperandStage
 from ...serialize import BoolField
-from ...utils import get_shuffle_input_keys_idxes, lazy_import
+from ...utils import lazy_import
 from ..operands import OutputType
 from ..utils import parse_index, hash_dataframe_on, gen_unknown_index_value, standardize_range_index
 from ._duplicate import DuplicateOperand, validate_subset
@@ -33,13 +33,12 @@ class DataFrameDropDuplicates(DuplicateOperand):
 
     def __init__(self, subset=None, keep=None, ignore_index=None,
                  output_types=None, method=None, subset_chunk=None,
-                 shuffle_size=None, shuffle_phase=None, shuffle_key=None, **kw):
+                 shuffle_size=None, shuffle_phase=None, **kw):
         super().__init__(_subset=subset, _keep=keep, _ignore_index=ignore_index,
                          _output_types=output_types, _method=method,
                          _subset_chunk=subset_chunk,
                          _shuffle_size=shuffle_size,
-                         _shuffle_phase=shuffle_phase,
-                         _shuffle_key=shuffle_key, **kw)
+                         _shuffle_phase=shuffle_phase, **kw)
 
     @property
     def ignore_index(self):
@@ -134,14 +133,14 @@ class DataFrameDropDuplicates(DuplicateOperand):
         dropped['_i_'] = np.arange(dropped.shape[0])
         hashed = hash_dataframe_on(dropped, subset, shuffle_size)
         for i, data in enumerate(hashed):
-            ctx[(out.key, str(i))] = dropped.loc[data]
+            idx = ','.join(str(x) for x in (i,) + out.index[1:])
+            ctx[(out.key, idx)] = dropped.loc[data]
 
     @classmethod
-    def _execute_shuffle_reduce(cls, ctx, op):
+    def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDropDuplicates"):
         out = op.outputs[0]
+        inputs = list(op.iter_mapper_data(ctx))
 
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         dropped = cls._drop_duplicates(inp, op,
@@ -154,11 +153,10 @@ class DataFrameDropDuplicates(DuplicateOperand):
             ctx[(out.key, str(i))] = filtered
 
     @classmethod
-    def _execute_shuffle_put_back(cls, ctx, op):
+    def _execute_shuffle_put_back(cls, ctx, op: "DataFrameDropDuplicates"):
         out = op.outputs[0]
+        inputs = list(op.iter_mapper_data(ctx))
 
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         inp.sort_values('_i_', inplace=True)
@@ -175,7 +173,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
 
         if op.ignore_index:
             ret.reset_index(drop=True, inplace=True)
-        ctx[op.outputs[0].key] = ret
+        ctx[out.key] = ret
 
     @classmethod
     def execute(cls, ctx, op):

@@ -18,7 +18,7 @@ from ... import opcodes
 from ...core import ENTITY_TYPE, CHUNK_TYPE, TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import FunctionField, BoolField, TupleField, \
-    DictField, StringField
+    DictField
 from ...utils import enter_current_session, quiet_stdio, \
     find_objects, replace_objects, check_chunks_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin

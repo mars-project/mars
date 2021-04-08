@@ -18,7 +18,7 @@ from functools import reduce
 import pandas as pd
 
 from ..core import FuseChunkData, FuseChunk, ENTITY_TYPE, OutputType
-from ..core.operand import Operand, TileableOperandMixin, MapReduceOperand, Fuse, \
+from ..core.operand import Operand, TileableOperandMixin, Fuse, \
     ShuffleProxy, FuseChunkMixin
 from ..tensor.core import TENSOR_TYPE
 from ..tensor.operands import TensorOperandMixin

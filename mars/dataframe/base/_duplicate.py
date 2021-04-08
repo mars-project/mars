@@ -19,11 +19,11 @@ from pandas.api.types import is_list_like
 from ...config import options
 from ...context import get_context, RunningMode
 from ...core import OutputType, TilesError
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...serialize import AnyField, Int32Field, StringField, KeyField
 from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
-from ..operands import MapReduceOperand, DataFrameOperandMixin, DataFrameShuffleProxy
+from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -215,7 +215,6 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op._method = 'shuffle'
             reduce_op.stage = OperandStage.reduce
             reduce_op._shuffle_phase = 'drop_duplicates'
-            reduce_op.shuffle_key = str(i)
             reduce_op._shuffle_size = inp.chunk_shape[0]
             reduce_op._output_types = [OutputType.dataframe]
             reduce_chunk_params = map_chunks[0].params

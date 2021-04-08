@@ -23,7 +23,7 @@ from ..core.operand import ObjectOperand
 from ..custom_log import redirect_custom_log
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 from ..serialize import FunctionField, ListField, DictField, \
-    BoolField, Int32Field, StringField
+    BoolField, Int32Field
 from ..tensor.core import TENSOR_TYPE
 from ..utils import build_fetch_tileable, calc_nsplits, \
     enter_current_session, find_objects, replace_objects

@@ -17,7 +17,6 @@ import numpy as np
 from ... import opcodes
 from ...core import OutputType
 from ...core.operand import OperandStage
-from ...utils import get_shuffle_input_keys_idxes
 from ..utils import gen_unknown_index_value, hash_dataframe_on
 from ._duplicate import DuplicateOperand, validate_subset
 
@@ -27,13 +26,12 @@ class DataFrameDuplicated(DuplicateOperand):
 
     def __init__(self, subset=None, keep=None, output_types=None,
                  method=None, subset_chunk=None, shuffle_size=None,
-                 shuffle_phase=None, shuffle_key=None, **kw):
+                 shuffle_phase=None, **kw):
         super().__init__(_subset=subset, _keep=keep,
                          _output_types=output_types, _method=method,
                          _subset_chunk=subset_chunk,
                          _shuffle_size=shuffle_size,
-                         _shuffle_phase=shuffle_phase,
-                         _shuffle_key=shuffle_key, **kw)
+                         _shuffle_phase=shuffle_phase, **kw)
 
     @classmethod
     def _get_shape(cls, input_shape):
@@ -196,14 +194,14 @@ class DataFrameDuplicated(DuplicateOperand):
         result['_i_'] = np.arange(result.shape[0])
         hashed = hash_dataframe_on(result, subset, shuffle_size)
         for i, data in enumerate(hashed):
-            ctx[(out.key, str(i))] = result.loc[data]
+            idx = ','.join(str(x) for x in (i,) + out.index[1:])
+            ctx[(out.key, idx)] = result.loc[data]
 
     @classmethod
-    def _execute_shuffle_reduce(cls, ctx, op):
+    def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDuplicated"):
         out = op.outputs[0]
+        inputs = list(op.iter_mapper_data(ctx))
 
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         subset = [c for c in inp.columns
@@ -220,10 +218,9 @@ class DataFrameDuplicated(DuplicateOperand):
             ctx[(out.key, str(i))] = filtered
 
     @classmethod
-    def _execute_shuffle_put_back(cls, ctx, op):
-        out = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
+    def _execute_shuffle_put_back(cls, ctx, op: "DataFrameDuplicated"):
+        inputs = list(op.iter_mapper_data(ctx))
+
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         inp.sort_values('_i_', inplace=True)

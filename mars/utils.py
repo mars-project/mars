@@ -354,15 +354,6 @@ def calc_data_size(dt, shape=None):
     return sys.getsizeof(dt)
 
 
-def get_shuffle_input_keys_idxes(chunk):
-    from .core.operand import ShuffleProxy
-
-    if isinstance(chunk.op, ShuffleProxy):
-        return [inp.key for inp in chunk.inputs], [inp.index for inp in chunk.inputs]
-    else:
-        return chunk.op.to_fetch_keys, chunk.op.to_fetch_idxes
-
-
 def _get_mod_logger():
     mod_logger = None
     cur_frame = inspect.currentframe()

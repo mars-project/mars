@@ -19,13 +19,13 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...context import RunningMode
-from ...core.operand import OperandStage
-from ...utils import lazy_import, get_shuffle_input_keys_idxes
+from ...core.operand import OperandStage, MapReduceOperand
+from ...utils import lazy_import
 from ...serialize import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy, \
-    MapReduceOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand, \
+    DataFrameShuffleProxy
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -596,13 +596,10 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             cls._execute_sort_index_map(ctx, op)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):
         out_chunk = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
-            raw_inputs = [ctx.pop((input_key, op.shuffle_key)) for input_key in input_keys]
-        else:
-            raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+        raw_inputs = list(op.iter_mapper_data(
+            ctx, pop=getattr(ctx, 'running_mode', None) == RunningMode.distributed))
 
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         if xdf is pd:

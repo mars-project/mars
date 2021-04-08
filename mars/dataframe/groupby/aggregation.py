@@ -246,8 +246,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
             reduce_op = DataFrameGroupByOperand(
-                stage=OperandStage.reduce, shuffle_key=','.join(str(idx) for idx in out_idx),
-                output_types=[OutputType.dataframe_groupby])
+                stage=OperandStage.reduce, output_types=[OutputType.dataframe_groupby])
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx,
                                     index_value=None))

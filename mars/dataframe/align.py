@@ -21,13 +21,11 @@ import pandas as pd
 
 from .. import opcodes as OperandDef
 from ..core import OutputType
-from ..core.operand import OperandStage
+from ..core.operand import OperandStage, MapReduceOperand
 from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
-from ..utils import get_shuffle_input_keys_idxes
 from .core import SERIES_CHUNK_TYPE
 from .utils import hash_dtypes, filter_dtypes
-from .operands import MapReduceOperand, DataFrameOperandMixin, \
-    DataFrameShuffleProxy
+from .operands import DataFrameOperandMixin, DataFrameShuffleProxy
 from .utils import parse_index, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value, hash_index
 
@@ -267,11 +265,9 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
                 ctx[(chunk.key, group_key)] = df.loc[index_filter, column_filter]
 
     @classmethod
-    def execute_reduce(cls, ctx, op):
+    def execute_reduce(cls, ctx, op: "DataFrameIndexAlign"):
         chunk = op.outputs[0]
-        input_keys, input_idxes = get_shuffle_input_keys_idxes(op.inputs[0])
-        input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
-                           for inp_key, idx in zip(input_keys, input_idxes)}
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
         if chunk.ndim == 2:
             col_idxes = sorted({idx[1] for idx in input_idx_to_df})
@@ -546,7 +542,7 @@ def _gen_series_chunks(splits, out_shape, left_or_right, series):
         # gen reduce chunks
         for out_idx in range(out_shape[0]):
             reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=out_idx,
-                                            sparse=proxy_chunk.issparse(), shuffle_key=str(out_idx),
+                                            sparse=proxy_chunk.issparse(),
                                             output_types=[OutputType.series])
             out_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan,), index=(out_idx,)))
@@ -633,7 +629,6 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
                         if splits[1].isdummy() else None
                 reduce_idx = (align_axis_idx, j) if align_axis == 0 else (j, align_axis_idx)
                 reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=j, sparse=proxy_chunk.issparse(),
-                                                shuffle_key=','.join(str(idx) for idx in reduce_idx),
                                                 output_types=[OutputType.dataframe])
                 out_chunks.append(
                     reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=reduce_idx, **chunk_kw))
@@ -657,7 +652,6 @@ def _gen_dataframe_chunks(splits, out_shape, left_or_right, df):
         for out_idx in itertools.product(*(range(s) for s in out_shape)):
             reduce_op = DataFrameIndexAlign(stage=OperandStage.reduce, i=out_idx,
                                             sparse=proxy_chunk.issparse(),
-                                            shuffle_key=','.join(str(idx) for idx in out_idx),
                                             output_types=[OutputType.dataframe])
             out_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))

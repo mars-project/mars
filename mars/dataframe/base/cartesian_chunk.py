@@ -18,8 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import TilesError
 from ...custom_log import redirect_custom_log
-from ...serialize import KeyField, FunctionField, TupleField, \
-    DictField, StringField
+from ...serialize import KeyField, FunctionField, TupleField, DictField
 from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_series, build_empty_df, parse_index, \

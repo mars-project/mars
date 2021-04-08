@@ -23,7 +23,7 @@ from ...core.operand import OperandStage
 from ...lib import sparse
 from ...lib.sparse.core import get_array_module as get_sparse_array_module
 from ...serialize import BoolField, Int32Field, Int64Field
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -308,12 +308,10 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 ctx[(op.outputs[0].key, str(reducer))] = tuple(res)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
-        input_keys, input_indexes = get_shuffle_input_keys_idxes(in_chunk)
+    def _execute_reduce(cls, ctx, op: "TensorUnique"):
+        input_indexes, input_data = zip(*list(op.iter_mapper_data_with_index(ctx)))
 
-        inputs = list(zip(*(ctx[(input_key, str(op.aggregate_id))]
-                            for input_key in input_keys)))
+        inputs = list(zip(*input_data))
         flatten, device_id, xp = as_same_device(
             list(itertools.chain(*inputs)), device=op.device, ret_extra=True)
         n_ret = len(inputs[0])
@@ -420,10 +418,9 @@ class TensorUniqueInverseReduce(TensorMapReduceOperand, TensorOperandMixin):
         super().__init__(stage=OperandStage.reduce, **kw)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "TensorUniqueInverseReduce"):
         out = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, op.shuffle_key)] for inp_key in input_keys]
+        inputs = list(op.iter_mapper_data(ctx))
         unique_sizes = [inp[0] for inp in inputs]
         cum_unique_sizes = np.cumsum([0] + unique_sizes)
         invs, device_id, xp = as_same_device([inp[1] for inp in inputs],

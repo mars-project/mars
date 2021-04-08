@@ -23,7 +23,7 @@ from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...core.operand import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
@@ -378,25 +378,15 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             ctx[(chunk.key, group_key)] = group_indices + (group_data,)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op: "TensorReshape"):
         chunk = op.outputs[0]
         try:
             result_array = ctx[chunk.key]
         except KeyError:
             result_array = np.zeros(chunk.shape, dtype=chunk.dtype,
                                     order=chunk.order.value)
-
-        in_chunk = chunk.inputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
-
-        shuffle_key = chunk.op.shuffle_key
-        for input_key in input_keys:
-            key = (input_key, shuffle_key)
-            if ctx.get(key) is not None:
-                data_tuple = ctx[key]
-                result_array[data_tuple[:-1]] = data_tuple[-1]
-            else:
-                ctx[key] = None
+        for data_tuple in op.iter_mapper_data(ctx, skip_none=True):
+            result_array[data_tuple[:-1]] = data_tuple[-1]
         ctx[chunk.key] = result_array
 
     @classmethod

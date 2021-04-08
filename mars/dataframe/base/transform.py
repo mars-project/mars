@@ -21,7 +21,7 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType
 from ...custom_log import redirect_custom_log
-from ...serialize import AnyField, BoolField, TupleField, DictField, StringField
+from ...serialize import AnyField, BoolField, TupleField, DictField
 from ...utils import enter_current_session, quiet_stdio
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand

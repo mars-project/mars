@@ -14,7 +14,7 @@
 
 from ..core import OutputType
 from ..core.operand import Operand, TileableOperandMixin, Fuse, FuseChunkMixin, \
-    MapReduceOperand, ShuffleProxy
+    ShuffleProxy
 from ..tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..tensor.operands import TensorOperandMixin
 from ..tensor.fuse import TensorFuseChunk
