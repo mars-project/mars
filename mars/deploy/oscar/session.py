@@ -69,9 +69,9 @@ class Session(AbstractSession):
                    **kwargs) -> "Session":
         session_api = await SessionAPI.create(address)
         # create new session
-        await session_api.create_session(session_id)
-        meta_api = await MetaAPI.create(session_id, address)
-        task_api = await TaskAPI.create(session_id, address)
+        session_address = await session_api.create_session(session_id)
+        meta_api = await MetaAPI.create(session_id, session_address)
+        task_api = await TaskAPI.create(session_id, session_address)
 
         if kwargs:
             unexpected_keys = ', '.join(list(kwargs.keys()))
