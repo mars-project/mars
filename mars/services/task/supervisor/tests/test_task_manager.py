@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import asyncio
+import os
+import sys
 import time
 
 import numpy as np
@@ -35,9 +37,11 @@ from mars.utils import Timer
 
 @pytest.fixture
 async def actor_pool():
+    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+        if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
                                       labels=[None] + ['numa-0'] * 2,
-                                      subprocess_start_method='spawn')
+                                      subprocess_start_method=start_method)
 
     async with pool:
         session_id = 'test_session'

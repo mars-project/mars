@@ -33,10 +33,12 @@ async def actor_pools():
         if is_worker:
             kw = dict(
                 n_process=2,
-                labels=['main'] + ['numa-0'] * 2
+                labels=['main'] + ['numa-0'] * 2,
+                subprocess_start_method='spawn'
             )
         else:
-            kw = dict(n_process=0)
+            kw = dict(n_process=0,
+                      subprocess_start_method='spawn')
         pool = await mo.create_actor_pool('127.0.0.1', **kw)
         await pool.start()
         return pool

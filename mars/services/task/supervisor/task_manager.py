@@ -87,11 +87,11 @@ class SubtaskGraphScheduler:
     def __init__(self,
                  subtask_graph: SubtaskGraph,
                  bands: List[Tuple[str, str]],
-                 task_info: "TaskInfo",
+                 task_stage_info: "TaskStageInfo",
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
         self._bands = bands
-        self._task_info = task_info
+        self._task_stage_info = task_stage_info
         self._scheduling_api = scheduling_api
 
         # gen subtask_id to subtask
@@ -187,8 +187,6 @@ class SubtaskGraphScheduler:
                            tasks: Dict):
         try:
             await subtask_runner.run_subtask(subtask)
-        except mo.ServerClosed:
-            pass
         except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
             _, err, traceback = sys.exc_info()
             subtask_result = SubtaskResult(
@@ -285,37 +283,62 @@ class SubtaskGraphScheduler:
         self._done.set()
 
     def set_task_info(self, error=None, traceback=None):
-        self._task_info.task_result = TaskResult(
-            self._task_info.task_id, self._task_info.task.session_id,
+        self._task_stage_info.task_result = TaskResult(
+            self._task_stage_info.task_id, self._task_stage_info.task.session_id,
             TaskStatus.terminated, error=error, traceback=traceback)
 
 
 @dataclass
 class TaskInfo:
     task_id: str
+    task_name: str
+    session_id: str
+    tasks: List[Task]
+    task_processors: List[TaskProcessor]
+    aio_tasks: List[asyncio.Task]
+    task_stage_infos: List["TaskStageInfo"]
+
+    def __init__(self,
+                 task_id: str,
+                 task_name: str,
+                 session_id: str):
+        self.task_id = task_id
+        self.task_name = task_name
+        self.session_id = session_id
+        self.tasks = []
+        self.task_processors = []
+        self.aio_tasks = []
+        self.task_stage_infos = []
+
+    @property
+    def task_result(self):
+        for task_stage in self.task_stage_infos:
+            if task_stage.task_result.error is not None:
+                return task_stage.task_result
+        # all succeeded, return the last task result
+        return self.task_stage_infos[-1].task_result
+
+
+@dataclass
+class TaskStageInfo:
+    task_id: str
+    task_info: TaskInfo
     task: Task
     task_result: TaskResult = None
-    task_processors: List[TaskProcessor] = None
-    aio_tasks: List[asyncio.Task] = None
-    subtask_graphs: List[SubtaskGraph] = None
-    subtask_graph_schedulers: List[SubtaskGraphScheduler] = None
+    subtask_graph: SubtaskGraph = None
+    subtask_graph_scheduler: SubtaskGraphScheduler = None
     subtask_results: Dict[str, SubtaskResult] = None
 
     def __init__(self,
                  task_id: str,
-                 task: Task,
-                 task_processors: List[TaskProcessor] = None,
-                 aio_tasks: List[asyncio.Task] = None):
+                 task_info: TaskInfo,
+                 task: Task):
         self.task_id = task_id
+        self.task_info = task_info
         self.task = task
         self.task_result = TaskResult(
-            task_id, task.session_id,
-            status=TaskStatus.pending)
-        self.task_processors = task_processors or list()
-        self.aio_tasks = aio_tasks or list()
-        self.subtask_graphs: List[SubtaskGraph] = list()
-        self.subtask_graph_schedulers: List[SubtaskGraphScheduler] = list()
-        self.subtask_results: Dict[str, SubtaskResult] = dict()
+            task_id, task_info.session_id, TaskStatus.pending)
+        self.subtask_results = dict()
 
 
 class TaskManagerActor(mo.Actor):
@@ -323,8 +346,11 @@ class TaskManagerActor(mo.Actor):
                  session_id,
                  use_scheduling=True):
         self._session_id = session_id
-        self._task_id_to_info: Dict[str, TaskInfo] = dict()
-        self._task_name_to_task_ids: Dict[str, List[str]] = dict()
+
+        self._task_name_to_task_info: Dict[str, TaskInfo] = dict()
+        self._task_id_to_task_info: Dict[str, TaskInfo] = dict()
+        self._task_id_to_task_stage_info: Dict[str, TaskStageInfo] = dict()
+
         self._cluster_api = None
         self._use_scheduling = use_scheduling
 
@@ -342,36 +368,43 @@ class TaskManagerActor(mo.Actor):
                                     graph: TileableGraph,
                                     task_name: str = None,
                                     fuse_enabled: bool = True) -> str:
-        task_id = new_task_id()
+
         if task_name is None:
-            # if task_name not specified, just name it task_id
-            task_name = task_id
-        try:
-            task_ids = self._task_name_to_task_ids[task_name]
-        except KeyError:
-            task_ids = self._task_name_to_task_ids[task_name] = list()
-        task_ids.append(task_id)
+            task_id = task_name = new_task_id()
+        elif task_name in self._task_name_to_main_task_info:
+            # task with the same name submitted before
+            task_id = self._task_name_to_main_task_info[task_name].task_id
+        else:
+            task_id = new_task_id()
+
+        if task_name not in self._task_name_to_task_info:
+            # gen main task which mean each submission from user
+            task_info = TaskInfo(task_id, task_name, self._session_id)
+            self._task_name_to_task_info[task_name] = task_info
+            self._task_id_to_task_info[task_id] = task_info
+        else:
+            task_info = self._task_name_to_main_task_info[task_name]
 
         # gen task
         task = Task(task_id, self._session_id,
                     graph, task_name,
                     fuse_enabled=fuse_enabled)
-        # gen task_info
-        task_info = TaskInfo(task_id, task)
+        task_info.tasks.append(task)
         # gen task processor
         task_processor = TaskProcessor(task)
         task_info.task_processors.append(task_processor)
+        # start to run main task
         aio_task = asyncio.create_task(
-            self._process_task(task_processor, task_info))
-        task_info.aio_tasks.append(aio_task)
+            self._process_task(task_processor, task_info, task))
         await asyncio.sleep(0)
-        self._task_id_to_info[task_id] = task_info
+        task_info.aio_tasks.append(aio_task)
 
         return task_id
 
     async def _process_task(self,
                             task_processor: TaskProcessor,
-                            task_info: TaskInfo):
+                            task_info: TaskInfo,
+                            task: Task):
         loop = asyncio.get_running_loop()
 
         # optimization, run it in executor,
@@ -380,6 +413,9 @@ class TaskManagerActor(mo.Actor):
 
         chunk_graph_iter = task_processor.tile(tileable_graph)
         while True:
+            task_stage_info = TaskStageInfo(
+                new_task_id(), task_info, task)
+
             def next_chunk_graph():
                 try:
                     return next(chunk_graph_iter)
@@ -391,44 +427,60 @@ class TaskManagerActor(mo.Actor):
                 chunk_graph = await future
                 if chunk_graph is None:
                     break
+
+                task_info.task_stage_infos.append(task_stage_info)
+                task_id = task_stage_info.task_id
+                self._task_id_to_task_stage_info[task_id] = task_stage_info
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                # something wrong while tiling
                 _, err, tb = sys.exc_info()
-                task_info.task_result.status = TaskStatus.terminated
-                task_info.task_result.error = err
-                task_info.task_result.traceback = tb
+                task_stage_info.task_result.status = TaskStatus.terminated
+                task_stage_info.task_result.error = err
+                task_stage_info.task_result.traceback = tb
+
+                task_info.task_stage_infos.append(task_stage_info)
+                task_id = task_stage_info.task_id
+                self._task_id_to_task_stage_info[task_id] = task_stage_info
+
                 break
 
             # get subtask graph
             available_bands = await self._get_available_band_slots()
-            analyzer = GraphAnalyzer(chunk_graph, available_bands, task_info.task)
+            analyzer = GraphAnalyzer(chunk_graph, available_bands,
+                                     task_stage_info)
             subtask_graph = analyzer.gen_subtask_graph()
-            task_info.subtask_graphs.append(subtask_graph)
+            task_stage_info.subtask_graph = subtask_graph
 
             # schedule subtask graph
             # TODO(qinxuye): pass scheduling API to scheduler when it's ready
             subtask_scheduler = SubtaskGraphScheduler(
-                subtask_graph, list(available_bands), task_info)
-            task_info.subtask_graph_schedulers.append(subtask_scheduler)
+                subtask_graph, list(available_bands), task_stage_info)
+            task_stage_info.subtask_graph_scheduler = subtask_scheduler
             await subtask_scheduler.schedule()
 
     async def _wait_task(self, task_id: str):
-        aio_tasks = self._task_id_to_info[task_id].aio_tasks
+        try:
+            task_info = self._task_id_to_task_info[task_id]
+        except KeyError:
+            raise TaskNotExist(f'Task {task_id} does not exist')
+
+        aio_tasks = task_info.aio_tasks
         await asyncio.gather(*aio_tasks)
-        task_result = self._task_id_to_info[task_id].task_result
-        return task_result
+        return task_info.task_result
 
     async def wait_task(self, task_id: str):
         # return coroutine to not block task manager
         return self._wait_task(task_id)
 
-    async def _cancel_task(self, task_info):
-        schedulers = task_info.subtask_graph_schedulers
-        coros = [scheduler.cancel() for scheduler in schedulers]
+    async def _cancel_task(self, task_info: TaskInfo):
+        # cancel all stages
+        coros = [task_stage_info.subtask_graph_scheduler.cancel()
+                 for task_stage_info in task_info.task_stage_infos]
         await asyncio.gather(*coros)
 
     async def cancel_task(self, task_id: str):
         try:
-            task_info = self._task_id_to_info[task_id]
+            task_info = self._task_id_to_task_info[task_id]
         except KeyError:
             raise TaskNotExist(f'Task {task_id} does not exist')
 
@@ -437,13 +489,13 @@ class TaskManagerActor(mo.Actor):
 
     def get_task_result(self, task_id: str):
         try:
-            return self._task_id_to_info[task_id].task_result
+            return self._task_id_to_task_info[task_id].task_result
         except KeyError:
             raise TaskNotExist(f'Task {task_id} does not exist')
 
     def get_task_result_tileables(self, task_id: str):
         try:
-            task_info = self._task_id_to_info[task_id]
+            task_info = self._task_id_to_task_info[task_id]
         except KeyError:
             raise TaskNotExist(f'Task {task_id} does not exist')
 
@@ -456,9 +508,9 @@ class TaskManagerActor(mo.Actor):
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         try:
-            task_info = self._task_id_to_info[subtask_result.task_id]
+            task_stage_info = self._task_id_to_task_stage_info[subtask_result.task_id]
         except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {subtask_result.task_id} does not exist')
 
-        task_info.subtask_results[subtask_result.subtask_id] = subtask_result
-        await task_info.subtask_graph_schedulers[-1].set_subtask_result(subtask_result)
+        task_stage_info.subtask_results[subtask_result.subtask_id] = subtask_result
+        await task_stage_info.subtask_graph_scheduler.set_subtask_result(subtask_result)

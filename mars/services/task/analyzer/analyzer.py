@@ -18,7 +18,7 @@ from typing import Type, Dict, Tuple
 
 from ....core import ChunkGraph
 from ....utils import implements, build_fetch
-from ..core import SubtaskGraph, Subtask, Task, new_task_id
+from ..core import SubtaskGraph, Subtask, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 
 
@@ -26,11 +26,11 @@ class AbstractGraphAnalyzer(ABC):
     def __init__(self,
                  chunk_graph: ChunkGraph,
                  band_slots: Dict[Tuple[str, str], int],
-                 task: Task,
+                 task_stage_info,
                  graph_assigner_cls: Type[AbstractGraphAssigner] = None):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
-        self._task = task
+        self._task_stage_info = task_stage_info
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
@@ -137,8 +137,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             # gen subtask
             subtask = Subtask(
                 subtask_id=new_task_id(),
-                session_id=self._task.session_id,
-                task_id=self._task.task_id,
+                session_id=self._task_stage_info.task_info.session_id,
+                task_id=self._task_stage_info.task_id,
                 chunk_graph=subtask_chunk_graph,
                 expect_band=band,
                 priority=priority)

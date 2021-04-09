@@ -281,15 +281,20 @@ class AbstractActorPool(ABC):
     def _run_coro(self, message_id: bytes, coro: Coroutine):
         future = asyncio.create_task(coro)
         self._process_messages[message_id] = future
-        yield future
-        self._process_messages.pop(message_id, None)
+        try:
+            yield future
+        finally:
+            self._process_messages.pop(message_id, None)
 
     async def process_message(self,
                               message: _MessageBase,
                               channel: Channel):
         handler = self._message_handler[message.message_type]
-        with self._run_coro(message.message_id, handler(self, message)) as future:
-            await channel.send(await future)
+        with _ErrorProcessor(message.message_id,
+                             message.protocol) as processor:
+            with self._run_coro(message.message_id, handler(self, message)) as future:
+                processor.result = await future
+        await channel.send(processor.result)
 
     async def call(self,
                    dest_address: str,
