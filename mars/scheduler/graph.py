@@ -860,12 +860,15 @@ class GraphActor(SchedulerActor):
         shared_input_chunk_keys = set()
         pure_dep_chunk_keys = set()
         chunk_keys = set()
+        virtual_chunk_keys = set()
         shuffle_keys = dict()
         predecessors_to_successors = dict()
 
         for c in chunks:
             # handling predecessor args
             for pn in graph.iter_predecessors(c):
+                if isinstance(pn.op, VirtualOperand):
+                    virtual_chunk_keys.add(pn.key)
                 if not isinstance(pn.op, Fetch):
                     predecessor_keys.add(pn.op.key)
                 input_chunk_keys.add(pn.key)
@@ -896,6 +899,8 @@ class GraphActor(SchedulerActor):
             shared_input_chunks=list(shared_input_chunk_keys),
             chunks=list(chunk_keys),
         )
+        if virtual_chunk_keys:
+            io_meta['virtual_chunk_keys'] = list(virtual_chunk_keys)
         if shuffle_keys:
             io_meta['shuffle_keys'] = [shuffle_keys.get(k) for k in io_meta['successors']]
         if predecessors_to_successors:
