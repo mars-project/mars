@@ -25,7 +25,7 @@ from .session import Session
 
 
 async def new_cluster(address: str = '0.0.0.0',
-                      n_cpu: int = 'auto',
+                      n_cpu: Union[int, str] = 'auto',
                       n_gpu: Union[int, str] = 'auto',
                       subprocess_start_method: str = 'spawn',
                       config: Union[str, Dict] = None):

@@ -6,7 +6,7 @@ if [ -n "$WITH_CYTHON" ]; then
     --ignore mars/tests/test_mutable.py mars/serialize mars/optimizes mars/tests
   mv .coverage build/.coverage.non-fork.file
 
-  export POOL_START_METHOD=fork
+  export POOL_START_METHOD=forkserver
 
   retry -n 20 pytest $PYTEST_CONFIG --cov-config .coveragerc mars/oscar
   mv .coverage build/.coverage.oscar_ctx.file

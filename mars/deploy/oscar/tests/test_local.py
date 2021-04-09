@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
+
 import numpy as np
 import pytest
 
@@ -22,9 +25,11 @@ from mars.tests.core import CONFIG_TEST_FILE
 
 @pytest.mark.asyncio
 async def test_execute():
-    client = await new_cluster(subprocess_start_method='spawn',
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    client = await new_cluster(subprocess_start_method=start_method,
                                config=CONFIG_TEST_FILE,
-                               n_cpu=2)
+                               n_cpu=8)
 
     async with client:
         raw = np.random.RandomState(0).rand(10, 10)

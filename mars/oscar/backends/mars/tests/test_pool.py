@@ -328,7 +328,7 @@ async def test_main_actor_pool():
 
 @pytest.mark.asyncio
 async def test_create_actor_pool():
-    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
     pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                    subprocess_start_method=start_method)
@@ -415,7 +415,7 @@ async def test_errors():
 
 @pytest.mark.asyncio
 async def test_server_closed():
-    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
     pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                    subprocess_start_method=start_method,
@@ -457,7 +457,7 @@ async def test_server_closed():
     [False, True, 'actor', 'process']
 )
 async def test_auto_recover(auto_recover):
-    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
     recovered = asyncio.Event()
 
@@ -501,7 +501,7 @@ async def test_auto_recover(auto_recover):
 
 @pytest.mark.asyncio
 async def test_two_pools():
-    start_method = os.environ.get('POOL_START_METHOD', 'fork') \
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
 
     ctx = get_context()

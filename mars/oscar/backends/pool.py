@@ -853,8 +853,8 @@ class MainActorPoolBase(ActorPoolBase):
             for process_index in process_indexes:
                 if process_index == curr_process_index:
                     continue
-                create_pool_task = cls.start_sub_pool(
-                    actor_pool_config, process_index, start_method)
+                create_pool_task = asyncio.create_task(cls.start_sub_pool(
+                    actor_pool_config, process_index, start_method))
                 await asyncio.sleep(0)
                 # await create_pool_task
                 tasks.append(create_pool_task)
@@ -864,7 +864,8 @@ class MainActorPoolBase(ActorPoolBase):
         pool: MainActorPoolType = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
 
-        assert len(addresses) == len(processes), f"addresses {addresses}, processes {processes}"
+        assert len(addresses) == len(processes), \
+            f"addresses {addresses}, processes {processes}"
         for addr, proc in zip(addresses, processes):
             pool.attach_sub_process(addr, proc)
         return pool

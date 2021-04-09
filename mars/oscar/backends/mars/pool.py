@@ -14,13 +14,23 @@
 
 import asyncio
 import concurrent.futures as futures
+import sys
 import multiprocessing
 import os
 from typing import List
 
+from ....utils import get_next_port
 from ..config import ActorPoolConfig
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
-from mars.utils import get_next_port
+
+if sys.version_info[:2] == (3, 9):
+    # fix for Python 3.9, see https://bugs.python.org/issue43517
+    if sys.platform == 'win32':
+        from multiprocessing import popen_spawn_win32 as popen_spawn
+    else:
+        from multiprocessing import popen_spawn_posix as popen_spawn
+    from multiprocessing import popen_forkserver, popen_fork, synchronize
+    _ = popen_spawn, popen_forkserver, popen_fork, synchronize
 
 
 @_register_message_handler

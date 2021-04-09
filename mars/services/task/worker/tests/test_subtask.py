@@ -28,41 +28,46 @@ from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageApi
-from mars.services.task import Subtask, SubTaskStatus, new_task_id
+from mars.services.task import Subtask, SubTaskStatus, SubtaskResult, new_task_id
+from mars.services.task.supervisor.task_manager import TaskManagerActor
 from mars.services.task.worker.subtask import BandSubtaskManagerActor, SubtaskRunnerActor
-from mars.tests.core import mock
 from mars.utils import Timer
+
+
+class FakeTaskManager(TaskManagerActor):
+    def set_subtask_result(self, subtask_result: SubtaskResult):
+        return
 
 
 @pytest.fixture
 async def actor_pool():
-    notify = 'mars.services.task.worker.subtask.SubtaskProcessor.notify_task_manager_result'
-    with mock.patch(notify) as notify_task_manager:
-        notify_task_manager.return_value = None
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
+                                      labels=[None] + ['numa-0'] * 2,
+                                      subprocess_start_method=start_method)
 
-        start_method = os.environ.get('POOL_START_METHOD', 'fork') \
-            if sys.platform != 'win32' else None
-        pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                          labels=[None] + ['numa-0'] * 2,
-                                          subprocess_start_method=start_method)
+    async with pool:
+        session_id = 'test_session'
+        # create mock APIs
+        await MockClusterAPI.create(pool.external_address)
+        await MockSessionAPI.create(
+            pool.external_address, session_id=session_id)
+        meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        storage_api = await MockStorageApi.create(session_id, pool.external_address)
 
-        async with pool:
-            session_id = 'test_session'
-            # create mock APIs
-            await MockClusterAPI.create(pool.external_address)
-            await MockSessionAPI.create(
-                pool.external_address, session_id=session_id)
-            meta_api = await MockMetaAPI.create(session_id, pool.external_address)
-            storage_api = await MockStorageApi.create(session_id, pool.external_address)
+        await mo.create_actor(
+            FakeTaskManager, session_id,
+            uid=FakeTaskManager.gen_uid(session_id),
+            address=pool.external_address)
+        manager = await mo.create_actor(
+            BandSubtaskManagerActor, pool.external_address, 2,
+            uid=BandSubtaskManagerActor.gen_uid('numa-0'),
+            address=pool.external_address)
 
-            manager = await mo.create_actor(
-                BandSubtaskManagerActor, pool.external_address, 2,
-                uid=BandSubtaskManagerActor.gen_uid('numa-0'),
-                address=pool.external_address)
+        yield pool, session_id, meta_api, storage_api, manager
 
-            yield pool, session_id, meta_api, storage_api, manager
-
-            await MockStorageApi.cleanup(pool.external_address)
+        await MockStorageApi.cleanup(pool.external_address)
 
 
 def _gen_subtask(t, session_id):
@@ -155,6 +160,6 @@ async def test_cancel_subtask(actor_pool):
         assert await manager.is_slot_free(subtask_runner) is False
         await aio_task
     # need 1 sec to reach timeout, then killing actor and wait for auto recovering
-    # the time would not be over 4 sec
-    assert timer.duration < 4
+    # the time would not be over 5 sec
+    assert timer.duration < 5
     assert await manager.is_slot_free(subtask_runner) is True
