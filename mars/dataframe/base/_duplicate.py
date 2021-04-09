@@ -19,16 +19,16 @@ from pandas.api.types import is_list_like
 from ...config import options
 from ...context import get_context, RunningMode
 from ...core import OutputType, TilesError
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...serialize import AnyField, Int32Field, StringField, KeyField
 from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
-from ..operands import DataFrameMapReduceOperand, DataFrameOperandMixin, DataFrameShuffleProxy
+from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
 cudf = lazy_import('cudf', globals=globals())
 
 
-class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _subset = AnyField('subset')
     _keep = AnyField('keep')
@@ -38,7 +38,6 @@ class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     _subset_chunk = KeyField('subset_chunk')
     # shuffle phase, used in shuffle method
     _shuffle_size = Int32Field('shuffle_size')
-    _shuffle_phase = StringField('shuffle_phase')
 
     @property
     def input(self):
@@ -63,10 +62,6 @@ class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
     @property
     def shuffle_size(self):
         return self._shuffle_size
-
-    @property
-    def shuffle_phase(self):
-        return self._shuffle_phase
 
     @classmethod
     def _get_shape(cls, input_shape):  # pragma: no cover
@@ -214,8 +209,7 @@ class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             reduce_op = op.copy().reset_key()
             reduce_op._method = 'shuffle'
             reduce_op.stage = OperandStage.reduce
-            reduce_op._shuffle_phase = 'drop_duplicates'
-            reduce_op.shuffle_key = str(i)
+            reduce_op.reducer_phase = 'drop_duplicates'
             reduce_op._shuffle_size = inp.chunk_shape[0]
             reduce_op._output_types = [OutputType.dataframe]
             reduce_chunk_params = map_chunks[0].params
@@ -230,8 +224,8 @@ class DuplicateOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             put_back_op = op.copy().reset_key()
             put_back_op._method = 'shuffle'
             put_back_op.stage = OperandStage.reduce
-            put_back_op._shuffle_phase = 'put_back'
-            put_back_op.shuffle_key = str(i)
+            put_back_op.reducer_phase = 'put_back'
+            put_back_op.reducer_index = (i,)
             put_back_chunk_params = map_chunks[i].params
             if out.ndim == 1:
                 put_back_chunk_params['index'] = (i,)

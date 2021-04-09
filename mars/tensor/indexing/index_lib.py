@@ -737,10 +737,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         chunk_index_to_raw_positions = OrderedDict()
         for chunk_index in itertools.product(
                 *(range(tileable.chunk_shape[ax]) for ax in axes)):
-            shuffle_key = ','.join(str(i) for i in chunk_index)
             reduce_op = FancyIndexingDistribute(
-                stage=OperandStage.reduce, axes=axes, dtype=proxy_chunk.dtype,
-                shuffle_key=shuffle_key)
+                stage=OperandStage.reduce, axes=axes, dtype=proxy_chunk.dtype)
             # chunks of fancy indexes on each axis
             kws = [{'axis': ax, 'shape': (np.nan,), 'index': chunk_index,
                     'order': context.op.outputs[0].order}
@@ -848,7 +846,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     stage=OperandStage.reduce, fancy_index_axis=to_concat_axis,
                     fancy_index_shape=fancy_index_chunk.shape,
                     dtype=proxy_chunk.dtype, sparse=to_shuffle_chunks[0].issparse(),
-                    shuffle_key=str(next(it)))
+                    reducer_index=(next(it),))
                 reduce_chunk_shape = other_shape[:to_concat_axis] + \
                     fancy_index_chunk.shape + other_shape[to_concat_axis:]
                 reduce_chunk_index = chunk_index[:to_concat_axis] + \

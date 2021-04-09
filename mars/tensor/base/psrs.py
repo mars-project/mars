@@ -22,7 +22,7 @@ from ...core import TilesError
 from ...core.operand import OperandStage
 from ...serialize import ValueType, Int32Field, \
     ListField, StringField, BoolField, AnyField
-from ...utils import get_shuffle_input_keys_idxes, flatten, stack_back
+from ...utils import flatten, stack_back
 from ..core import TensorOrder
 from ..operands import TensorOperand, TensorMapReduceOperand, \
     TensorShuffleProxy, TensorOperandMixin
@@ -209,7 +209,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                                                    stage=OperandStage.reduce,
                                                    axis=op.axis, order=op.order,
                                                    kind=kind,
-                                                   shuffle_key=str(i),
+                                                   reducer_index=(i,),
                                                    dtype=partition_chunk.dtype,
                                                    gpu=partition_chunk.op.gpu,
                                                    need_align=need_align)
@@ -283,7 +283,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
         for i, align_map_chunk in enumerate(align_map_chunks):
             align_reduce_op = PSRSAlign(return_value=return_value, return_indices=return_indices,
                                         stage=OperandStage.reduce, axis=op.axis,
-                                        shuffle_key=str(i), dtype=align_map_chunk.dtype,
+                                        reducer_index=(i,), dtype=align_map_chunk.dtype,
                                         gpu=align_map_chunk.op.gpu)
             idx = list(out_idx)
             idx.insert(op.axis, i)
@@ -601,12 +601,11 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
                             reduce_out.append(indices)
                         reduce_outputs[i][idx] = tuple(reduce_out)
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = tuple(reduce_outputs[i].ravel())
+                ctx[out.key, (i,)] = tuple(reduce_outputs[i].ravel())
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+    def _execute_reduce(cls, ctx, op: "PSRSShuffle"):
+        raw_inputs = list(op.iter_mapper_data(ctx))
         # flatten inputs
         flatten_inputs = flatten(raw_inputs)
         inputs, device_id, xp = as_same_device(flatten_inputs, device=op.device, ret_extra=True)
@@ -775,14 +774,12 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                         ret.append(tuple(item))
                     else:
                         ret.append(ar)
-                ctx[(op.outputs[0].key, str(idx))] = tuple(ret)
+                ctx[op.outputs[0].key, (idx,)] = tuple(ret)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
+    def _execute_reduce(cls, ctx, op: "PSRSAlign"):
         axis = op.axis
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+        raw_inputs = list(op.iter_mapper_data(ctx))
         flatten_inputs = flatten(raw_inputs)
         inputs, device_id, xp = as_same_device(flatten_inputs, device=op.device, ret_extra=True)
         inputs = stack_back(flatten_inputs, raw_inputs)

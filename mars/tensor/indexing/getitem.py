@@ -20,7 +20,6 @@ from ... import opcodes as OperandDef
 from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
-from ...utils import get_shuffle_input_keys_idxes
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import split_indexes_into_chunks, calc_pos, filter_inputs
 from ..operands import TensorHasInput, TensorOperandMixin, TensorMapReduceOperand
@@ -155,22 +154,14 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
         idx_to_fancy_indexes, idx_to_poses = \
             split_indexes_into_chunks(fancy_index_nsplits, flatten_indexes, False)
         for idx in idx_to_fancy_indexes:
-            group_key = ','.join(str(i) for i in idx)
-            ctx[(op.outputs[0].key, group_key)] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
+            ctx[op.outputs[0].key, idx] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
-
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
-
+    def _execute_reduce(cls, ctx, op: "FancyIndexingDistribute"):
         fancy_indexes = []
         poses = []
-        shuffle_key = op.shuffle_key
         xp = None
-        for input_key in input_keys:
-            key = (input_key, shuffle_key)
-            fancy_index, pos = ctx[key]
+        for fancy_index, pos in op.iter_mapper_data(ctx):
             if xp is None:
                 xp = get_array_module(fancy_index)
             if fancy_index.size == 0:
@@ -241,20 +232,16 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             start = 0 if i == 0 else acc_sizes[i - 1]
             end = acc_sizes[i]
             select = (slice(None),) * fancy_index_axis + (slice(start, end),)
-            ctx[(op.outputs[0].key, str(i))] = (indexed_array[select], pos[start: end])
+            ctx[op.outputs[0].key, (i,)] = (indexed_array[select], pos[start: end])
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
+    def _execute_reduce(cls, ctx, op: "FancyIndexingConcat"):
         fancy_index_axis = op.fancy_index_axis
         fancy_index_shape = op.fancy_index_shape
 
         indexed_arrays = []
         poses = []
-        shuffle_key = op.shuffle_key
-        for input_key in input_keys:
-            index_array, pos = ctx[(input_key, shuffle_key)]
+        for index_array, pos in op.iter_mapper_data(ctx):
             indexed_arrays.append(index_array)
             poses.append(pos)
 

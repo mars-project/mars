@@ -18,19 +18,19 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...core.operand import OperandStage
-from ...serialize import AnyField, BoolField, StringField, TupleField, KeyField, Int32Field
-from ...utils import get_shuffle_input_keys_idxes
-from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameMapReduceOperand, \
+from ...core.operand import OperandStage, MapReduceOperand
+from ...serialize import AnyField, BoolField, StringField, TupleField, \
+    KeyField, Int32Field
+from ..operands import DataFrameOperand, DataFrameOperandMixin, \
     DataFrameShuffleProxy
-from ..utils import build_concatenated_rows_frame, build_df, parse_index, hash_dataframe_on, \
-    infer_index_value
+from ..utils import build_concatenated_rows_frame, build_df, parse_index, \
+    hash_dataframe_on, infer_index_value
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_SHUFFLE_MERGE_ALIGN
 
     _index_shuffle_size = Int32Field('index_shuffle_size')
@@ -78,18 +78,16 @@ class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         # shuffle on index
         for index_idx, index_filter in enumerate(filters):
-            group_key = ','.join([str(index_idx), str(chunk.index[1])])
+            reducer_index = (index_idx, chunk.index[1])
             if index_filter is not None and index_filter is not list():
-                ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                ctx[chunk.key, reducer_index] = df.loc[index_filter]
             else:
-                ctx[(chunk.key, group_key)] = None
+                ctx[chunk.key, reducer_index] = None
 
     @classmethod
-    def execute_reduce(cls, ctx, op):
+    def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):
         chunk = op.outputs[0]
-        input_keys, input_idxes = get_shuffle_input_keys_idxes(op.inputs[0])
-        input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
-                           for inp_key, idx in zip(input_keys, input_idxes)}
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
         row_idxes = sorted({idx[0] for idx in input_idx_to_df})
 
         res = []
@@ -213,8 +211,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
         # gen reduce chunks
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in out_shape)):
-            reduce_op = DataFrameMergeAlign(stage=OperandStage.reduce, sparse=proxy_chunk.issparse(),
-                                            shuffle_key=','.join(str(idx) for idx in out_idx))
+            reduce_op = DataFrameMergeAlign(stage=OperandStage.reduce, sparse=proxy_chunk.issparse())
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), dtypes=proxy_chunk.dtypes, index=out_idx,
                                     index_value=proxy_chunk.index_value, columns_value=proxy_chunk.columns_value))

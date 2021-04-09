@@ -22,23 +22,23 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import get_output_types, TilesError
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...dataframe.utils import parse_index
 from ...lib import sparse
 from ...serialize import ValueType, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
-from ...utils import tokenize, get_shuffle_input_keys_idxes, lazy_import, check_chunks_unknown_shape
+from ...utils import tokenize, lazy_import, check_chunks_unknown_shape
 from ...core import ExecutableTuple
-from ..operands import LearnOperandMixin, OutputType, LearnMapReduceOperand, LearnShuffleProxy
+from ..operands import LearnOperandMixin, OutputType, LearnShuffleProxy
 from ..utils import convert_to_tensor_or_dataframe
 
 
 cudf = lazy_import('cudf')
 
 
-def _shuffle_index_value(op, index_value):
-    key = tokenize((op._values_, index_value.key))
+def _shuffle_index_value(op, index_value, chunk_index=None):
+    key = tokenize((op._values_, chunk_index, index_value.key))
     return parse_index(pd.Index([], index_value.to_pandas().dtype), key=key)
 
 
@@ -49,7 +49,7 @@ def _safe_slice(obj, slc, output_type):
         return obj.iloc[slc]
 
 
-class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
+class LearnShuffle(MapReduceOperand, LearnOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
     _axes = TupleField('axes', ValueType.int32)
@@ -153,7 +153,7 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             else:
                 params['dtypes'] = output.dtypes
                 params['columns_value'] = output.columns_value
-            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
+            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value, in_chunk.index)
         else:
             assert output_type == OutputType.series
             if no_shuffle:
@@ -161,7 +161,7 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             else:
                 params['shape'] = (np.nan,)
             params['name'] = in_chunk.name
-            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value)
+            params['index_value'] = _shuffle_index_value(chunk_op, in_chunk.index_value, in_chunk.index)
             params['dtype'] = in_chunk.dtype
         return params
 
@@ -256,14 +256,12 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
                 reduce_axes = tuple(ax for j, ax in enumerate(inp_axes) if reduce_sizes[j] > 1)
                 reduce_sizes_ = tuple(rs for rs in reduce_sizes if rs > 1)
                 for c in map_chunks:
-                    shuffle_key = ','.join(str(idx) for idx in c.index)
                     chunk_op = LearnShuffle(
                         stage=OperandStage.reduce,
                         output_types=output_types, axes=reduce_axes,
                         seeds=tuple(reducer_seeds[j][c.index[ax]] for j, ax in enumerate(inp_axes)
                                     if reduce_sizes[j] > 1),
-                        reduce_sizes=reduce_sizes_,
-                        shuffle_key=shuffle_key)
+                        reduce_sizes=reduce_sizes_)
                     params = cls._calc_chunk_params(c, inp_axes, inp.chunk_shape, oup,
                                                     output_type, chunk_op, False)
                     reduce_chunk = chunk_op.new_chunk([proxy_chunk], kws=[params])
@@ -335,20 +333,16 @@ class LearnShuffle(LearnMapReduceOperand, LearnOperandMixin):
             index = list(out.index)
             for ax, ind in zip(axes, reduce_index):
                 index[ax] = ind
-            group_key = ','.join(str(i) for i in index)
             selected = x
             for ax, to_hash_ind in zip(axes, to_hash_inds):
                 slc = (slice(None),) * ax + (to_hash_ind == index[ax],)
                 selected = _safe_slice(selected, slc, op.output_types[0])
-            ctx[(out.key, group_key)] = selected
+            ctx[out.key, tuple(index)] = selected
 
     @classmethod
-    def execute_reduce(cls, ctx, op):
-        in_chunk = op.input
-        input_keys, input_indexes = get_shuffle_input_keys_idxes(in_chunk)
-        inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+    def execute_reduce(cls, ctx, op: "LearnShuffle"):
         inputs_grid = np.empty(op.reduce_sizes, dtype=object)
-        for input_index, inp in zip(input_indexes, inputs):
+        for input_index, inp in op.iter_mapper_data_with_index(ctx):
             reduce_index = tuple(input_index[ax] for ax in op.axes)
             inputs_grid[reduce_index] = inp
         ret = cls._concat_grid(inputs_grid, op.axes, op.output_types[0])

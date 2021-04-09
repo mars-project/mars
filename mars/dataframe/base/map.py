@@ -34,14 +34,11 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     _input = KeyField('input')
     _arg = AnyField('arg')
     _na_action = StringField('na_action')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, arg=None, na_action=None, output_types=None,
-                 tileable_op_key=None, memory_scale=None, **kw):
-        super().__init__(
-            _arg=arg, _na_action=na_action, _output_types=output_types,
-            _tileable_op_key=tileable_op_key, _memory_scale=memory_scale, **kw)
+                 memory_scale=None, **kw):
+        super().__init__(_arg=arg, _na_action=na_action, _output_types=output_types,
+                         _memory_scale=memory_scale, **kw)
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -56,10 +53,6 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
     @property
     def na_action(self):
         return self._na_action
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -131,7 +124,7 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for chunk in in_series.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._tileable_op_key = op.key
+            chunk_op.tileable_op_key = op.key
             chunk_inputs = [chunk]
             if len(op.inputs) == 2:
                 chunk_inputs.append(arg.chunks[0])

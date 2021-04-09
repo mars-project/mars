@@ -17,7 +17,6 @@ import numpy as np
 from ... import opcodes
 from ...core import OutputType
 from ...core.operand import OperandStage
-from ...utils import get_shuffle_input_keys_idxes
 from ..utils import gen_unknown_index_value, hash_dataframe_on
 from ._duplicate import DuplicateOperand, validate_subset
 
@@ -26,14 +25,11 @@ class DataFrameDuplicated(DuplicateOperand):
     _op_type_ = opcodes.DUPLICATED
 
     def __init__(self, subset=None, keep=None, output_types=None,
-                 method=None, subset_chunk=None, shuffle_size=None,
-                 shuffle_phase=None, shuffle_key=None, **kw):
+                 method=None, subset_chunk=None, shuffle_size=None, **kw):
         super().__init__(_subset=subset, _keep=keep,
                          _output_types=output_types, _method=method,
                          _subset_chunk=subset_chunk,
-                         _shuffle_size=shuffle_size,
-                         _shuffle_phase=shuffle_phase,
-                         _shuffle_key=shuffle_key, **kw)
+                         _shuffle_size=shuffle_size, **kw)
 
     @classmethod
     def _get_shape(cls, input_shape):
@@ -95,7 +91,7 @@ class DataFrameDuplicated(DuplicateOperand):
             is_terminal_chunk = True
         elif op.method == 'tree' and op.stage == OperandStage.agg:
             is_terminal_chunk = True
-        elif op.method == 'shuffle' and op.shuffle_phase == 'put_back':
+        elif op.method == 'shuffle' and op.reducer_phase == 'put_back':
             is_terminal_chunk = True
 
         if is_terminal_chunk:
@@ -196,14 +192,14 @@ class DataFrameDuplicated(DuplicateOperand):
         result['_i_'] = np.arange(result.shape[0])
         hashed = hash_dataframe_on(result, subset, shuffle_size)
         for i, data in enumerate(hashed):
-            ctx[(out.key, str(i))] = result.loc[data]
+            reducer_idx = (i,) + out.index[1:]
+            ctx[out.key, reducer_idx] = result.loc[data]
 
     @classmethod
-    def _execute_shuffle_reduce(cls, ctx, op):
+    def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDuplicated"):
         out = op.outputs[0]
+        inputs = list(op.iter_mapper_data(ctx))
 
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         subset = [c for c in inp.columns
@@ -217,13 +213,12 @@ class DataFrameDuplicated(DuplicateOperand):
                 filtered.columns = ['_duplicated_'] + filtered.columns[1:].tolist()
             else:
                 filtered.columns = [subset[0]] + filtered.columns[1:].tolist()
-            ctx[(out.key, str(i))] = filtered
+            ctx[out.key, (i,)] = filtered
 
     @classmethod
-    def _execute_shuffle_put_back(cls, ctx, op):
-        out = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, str(out.index[0]))] for inp_key in input_keys]
+    def _execute_shuffle_put_back(cls, ctx, op: "DataFrameDuplicated"):
+        inputs = list(op.iter_mapper_data(ctx))
+
         xdf = cls._get_xdf(inputs[0])
         inp = xdf.concat(inputs)
         inp.sort_values('_i_', inplace=True)
@@ -234,7 +229,7 @@ class DataFrameDuplicated(DuplicateOperand):
         ctx[op.outputs[0].key] = duplicated
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameDuplicated"):
         if op.method is None:
             # one chunk
             cls._execute_chunk(ctx, op)
@@ -262,10 +257,10 @@ class DataFrameDuplicated(DuplicateOperand):
             assert op.method == 'shuffle'
             if op.stage == OperandStage.map:
                 cls._execute_shuffle_map(ctx, op)
-            elif op.shuffle_phase == 'drop_duplicates':
+            elif op.reducer_phase == 'drop_duplicates':
                 cls._execute_shuffle_reduce(ctx, op)
             else:
-                assert op.shuffle_phase == 'put_back'
+                assert op.reducer_phase == 'put_back'
                 cls._execute_shuffle_put_back(ctx, op)
 
 

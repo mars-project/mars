@@ -20,19 +20,18 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, Entity, OutputType
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...lib.groupby_wrapper import wrapped_groupby
 from ...serialize import BoolField, Int32Field, AnyField
-from ...utils import get_shuffle_input_keys_idxes
 from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
     build_df, build_series, parse_index
-from ..operands import DataFrameOperandMixin, DataFrameMapReduceOperand, DataFrameShuffleProxy
+from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
 
-class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY
 
     _by = AnyField('by', on_serialize=lambda x: x.data if isinstance(x, Entity) else x)
@@ -234,11 +233,9 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         # generate reduce chunks
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
-            shuffle_key = ','.join(str(idx) for idx in out_idx)
             reduce_op = op.copy().reset_key()
             reduce_op._by = None
             reduce_op.stage = OperandStage.reduce
-            reduce_op.shuffle_key = shuffle_key
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))
 
@@ -307,9 +304,9 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
 
         for index_idx, index_filter in enumerate(filters):
             if is_dataframe_obj:
-                group_key = ','.join([str(index_idx), str(chunk.index[1])])
+                reducer_index = (index_idx, chunk.index[1])
             else:
-                group_key = str(index_idx)
+                reducer_index = (index_idx,)
 
             if deliver_by:
                 filtered_by = []
@@ -319,31 +316,25 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
                     else:
                         filtered_by.append(v)
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) \
+                    ctx[chunk.key, reducer_index] = tuple(_take_index(x, index_filter) for x in df) \
                         + (filtered_by, deliver_by)
                 else:
-                    ctx[(chunk.key, group_key)] = (_take_index(df, index_filter), filtered_by, deliver_by)
+                    ctx[chunk.key, reducer_index] = (_take_index(df, index_filter), filtered_by, deliver_by)
             else:
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) + (deliver_by,)
+                    ctx[chunk.key, reducer_index] = tuple(_take_index(x, index_filter) for x in df) + (deliver_by,)
                 else:
-                    ctx[(chunk.key, group_key)] = _take_index(df, index_filter)
+                    ctx[chunk.key, reducer_index] = _take_index(df, index_filter)
 
     @classmethod
-    def execute_reduce(cls, ctx, op):
-        is_dataframe_obj = op.inputs[0].op.output_types[0] == OutputType.dataframe
+    def execute_reduce(cls, ctx, op: "DataFrameGroupByOperand"):
         chunk = op.outputs[0]
-        input_keys, input_idxes = get_shuffle_input_keys_idxes(op.inputs[0])
-        input_idx_to_df = {idx: ctx[inp_key, ','.join(str(ix) for ix in chunk.index)]
-                           for inp_key, idx in zip(input_keys, input_idxes)}
-        row_idxes = sorted({idx[0] for idx in input_idx_to_df})
+        input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
+        row_idxes = sorted(input_idx_to_df.keys())
 
         res = []
         for row_idx in row_idxes:
-            if is_dataframe_obj:
-                row_df = input_idx_to_df.get((row_idx, 0), None)
-            else:
-                row_df = input_idx_to_df.get((row_idx,), None)
+            row_df = input_idx_to_df.get(row_idx, None)
             if row_df is not None:
                 res.append(row_df)
         by = None

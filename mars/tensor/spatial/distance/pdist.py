@@ -20,8 +20,7 @@ from .... import opcodes as OperandDef
 from ....core import TilesError
 from ....core.operand import OperandStage
 from ....serialize import ValueType, KeyField, AnyField, Float16Field, Int32Field, TupleField
-from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
-    require_module
+from ....utils import check_chunks_unknown_shape, require_module
 from ....config import options
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...array_utils import as_same_device, device, cp
@@ -213,7 +212,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         reduce_chunks = []
         for p in range(aggregate_size):
             reduce_chunk_op = TensorPdist(
-                stage=OperandStage.reduce, shuffle_key=str(p), dtype=out_tensor.dtype)
+                stage=OperandStage.reduce, dtype=out_tensor.dtype)
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=(out_sizes[p],), order=out_tensor.order,
                 index=(p,))
@@ -306,7 +305,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 to_filter = (indices >= start_index) & (indices < end_index)
                 downside_indices = indices[to_filter] - start_index
                 downside_dists = dists[to_filter]
-                ctx[out.key, str(i)] = (downside_indices, downside_dists)
+                ctx[out.key, (i,)] = (downside_indices, downside_dists)
 
     @classmethod
     def _execute_single(cls, ctx, op):
@@ -334,9 +333,8 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
         ctx[op.outputs[0].key] = pdist(x, metric=op.metric, **kw)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+    def _execute_reduce(cls, ctx, op: "TensorPdist"):
+        raw_inputs = list(op.iter_mapper_data(ctx))
         raw_indices = [inp[0] for inp in raw_inputs]
         raw_dists = [inp[1] for inp in raw_inputs]
         inputs, device_id, xp = as_same_device(

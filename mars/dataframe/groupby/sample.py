@@ -22,15 +22,15 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, TilesError
-from ...core.operand import OperandStage
+from ...core.operand import OperandStage, MapReduceOperand
 from ...serialize import BoolField, DictField, Float32Field, KeyField, \
     Int32Field, Int64Field, NDArrayField, StringField
 from ...tensor.operands import TensorShuffleProxy
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
-from ...utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes
+from ...utils import check_chunks_unknown_shape
 from ..initializer import Series as asseries
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameMapReduceOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
 _ILOC_COL_HEADER = '_gsamp_iloc_col_'
@@ -268,7 +268,7 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
                 ])
 
 
-class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     _op_code_ = opcodes.RAND_SAMPLE
     _op_module_ = 'dataframe.groupby'
 
@@ -410,7 +410,7 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.reduce
             new_op._weights = None
-            new_op.shuffle_key = str(src_chunk.index[0])
+            new_op.reducer_index = (src_chunk.index[0],)
             new_op._input_nsplits = np.array(in_df.nsplits[0])
 
             reduce_chunks.append(new_op.new_chunk(
@@ -469,12 +469,9 @@ class GroupBySample(DataFrameMapReduceOperand, DataFrameOperandMixin):
             pos_array = np.cumsum([0] + input_nsplits)
             poses = np.searchsorted(in_data, pos_array).tolist()
             for idx, (left, right) in enumerate(zip(poses, poses[1:])):
-                ctx[(op.outputs[0].key, str(idx))] = in_data[left:right]
+                ctx[op.outputs[0].key, (idx,)] = in_data[left:right]
         elif op.stage == OperandStage.reduce:
-            in_indexes = []
-            input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-            for input_key in input_keys:
-                in_indexes.append(ctx[(input_key, op.shuffle_key)])
+            in_indexes = list(op.iter_mapper_data(ctx))
             idx = np.sort(np.concatenate(in_indexes))
             if op.outputs[0].index[0] > 0:
                 acc_nsplits = np.cumsum(op.input_nsplits)

@@ -23,7 +23,7 @@ from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...core.operand import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape, recursive_tile
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
@@ -215,9 +215,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
 
         for chunk_shape, chunk_idx in zip(itertools.product(*out_nsplits),
                                           itertools.product(*chunk_size_idxes)):
-            shuffle_key = ','.join(str(o) for o in chunk_idx)
-            chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype,
-                                     shuffle_key=shuffle_key)
+            chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype)
             shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
                                                       order=tensor.order, index=chunk_idx))
 
@@ -297,7 +295,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         elif op.stage == OperandStage.reduce:
             sum_size = 0
             for shuffle_input in chunk.inputs[0].inputs or ():
-                key = (shuffle_input.key, chunk.op.shuffle_key)
+                key = (shuffle_input.key, chunk.index)
                 if ctx.get(key) is not None:
                     sum_size += ctx[key][0]
                 else:
@@ -373,30 +371,19 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             for idx, dim_chunk_count in enumerate(reversed(dim_chunk_counts)):
                 t, target_chunk_idx[idx] = divmod(t, dim_chunk_count)
             target_chunk_idx.reverse()
-            group_key = ','.join(str(v) for v in target_chunk_idx)
 
-            ctx[(chunk.key, group_key)] = group_indices + (group_data,)
+            ctx[chunk.key, tuple(target_chunk_idx)] = group_indices + (group_data,)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op: "TensorReshape"):
         chunk = op.outputs[0]
         try:
             result_array = ctx[chunk.key]
         except KeyError:
             result_array = np.zeros(chunk.shape, dtype=chunk.dtype,
                                     order=chunk.order.value)
-
-        in_chunk = chunk.inputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
-
-        shuffle_key = chunk.op.shuffle_key
-        for input_key in input_keys:
-            key = (input_key, shuffle_key)
-            if ctx.get(key) is not None:
-                data_tuple = ctx[key]
-                result_array[data_tuple[:-1]] = data_tuple[-1]
-            else:
-                ctx[key] = None
+        for data_tuple in op.iter_mapper_data(ctx, skip_none=True):
+            result_array[data_tuple[:-1]] = data_tuple[-1]
         ctx[chunk.key] = result_array
 
     @classmethod

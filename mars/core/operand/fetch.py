@@ -21,7 +21,7 @@ from .core import TileableOperandMixin
 class Fetch(Operand):
     _op_type_ = opcodes.FETCH
 
-    to_fetch_key = StringField('to_fetch_key', default=None)
+    source_key = StringField('source_key', default=None)
 
 
 class FetchMixin(TileableOperandMixin):
@@ -44,5 +44,6 @@ class FetchMixin(TileableOperandMixin):
 class FetchShuffle(Operand):
     _op_type_ = opcodes.FETCH_SHUFFLE
 
-    to_fetch_keys = ListField('to_fetch_keys', FieldTypes.string)
-    to_fetch_idxes = ListField('to_fetch_idxes', FieldTypes.tuple(FieldTypes.uint64))
+    source_keys = ListField('source_keys', FieldTypes.string)
+    source_idxes = ListField('source_idxes', FieldTypes.tuple(FieldTypes.uint64))
+    source_mappers = ListField('source_mappers', FieldTypes.uint16)

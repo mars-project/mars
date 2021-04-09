@@ -71,7 +71,7 @@ class Test(WorkerCase):
         inputs = []
         for idx, d in enumerate(data_list):
             chunk_key = f'chunk-{random.randint(0, 999)}-{idx}'
-            fetch_chunk = TensorFetch(to_fetch_key=chunk_key, dtype=d.dtype) \
+            fetch_chunk = TensorFetch(source_key=chunk_key, dtype=d.dtype) \
                 .new_chunk([], shape=d.shape, _key=chunk_key)
             inputs.append(fetch_chunk)
         add_chunk = TensorTreeAdd(args=inputs, dtype=data_list[0].dtype) \

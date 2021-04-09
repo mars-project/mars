@@ -40,17 +40,14 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     _elementwise = BoolField('elementwise')
     _args = TupleField('args')
     _kwds = DictField('kwds')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, func=None, axis=None, convert_dtype=None, raw=None, result_type=None,
-                 args=None, kwds=None, output_type=None, elementwise=None,
-                 tileable_op_key=None, **kw):
+                 args=None, kwds=None, output_type=None, elementwise=None, **kw):
         if output_type:
             kw['_output_types'] = [output_type]
         super().__init__(_func=func, _axis=axis, _convert_dtype=convert_dtype, _raw=raw,
                          _result_type=result_type, _args=args, _kwds=kwds,
-                         _elementwise=elementwise, _tileable_op_key=tileable_op_key, **kw)
+                         _elementwise=elementwise, **kw)
 
     @property
     def func(self):
@@ -83,10 +80,6 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     @property
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @classmethod
     @redirect_custom_log
@@ -139,7 +132,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                     new_dtypes = out_df.dtypes
 
                 new_op = op.copy().reset_key()
-                new_op._tileable_op_key = op.key
+                new_op.tileable_op_key = op.key
                 chunks.append(new_op.new_chunk([c], shape=tuple(new_shape), index=c.index, dtypes=new_dtypes,
                                                index_value=new_index_value, columns_value=new_columns_value))
 
@@ -152,7 +145,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                 new_index_value = c.index_value if axis == 1 else c.columns_value
                 new_index = (c.index[1 - axis],)
                 new_op = op.copy().reset_key()
-                new_op._tileable_op_key = op.key
+                new_op.tileable_op_key = op.key
                 chunks.append(new_op.new_chunk([c], shape=(shape_len,), index=new_index, dtype=out_df.dtype,
                                                index_value=new_index_value))
             new_nsplits = (in_df.nsplits[1 - axis],)
@@ -170,7 +163,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         chunks = []
         for c in in_series.chunks:
             new_op = op.copy().reset_key()
-            new_op._tileable_op_key = op.key
+            new_op.tileable_op_key = op.key
             kw = c.params.copy()
             if out_series.ndim == 1:
                 kw['dtype'] = out_series.dtype

@@ -19,13 +19,13 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...context import RunningMode
-from ...core.operand import OperandStage
-from ...utils import lazy_import, get_shuffle_input_keys_idxes
+from ...core.operand import OperandStage, MapReduceOperand
+from ...utils import lazy_import
 from ...serialize import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..utils import standardize_range_index
-from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy, \
-    DataFrameMapReduceOperand
+from ..operands import DataFrameOperandMixin, DataFrameOperand, \
+    DataFrameShuffleProxy
 
 
 cudf = lazy_import('cudf', globals=globals())
@@ -147,7 +147,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         for i, partition_chunk in enumerate(partition_chunks):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
             partition_shuffle_reduce = DataFramePSRSShuffle(
-                stage=OperandStage.reduce, kind=kind, shuffle_key=str(i),
+                stage=OperandStage.reduce, kind=kind, reducer_index=(i,),
                 output_types=op.output_types, **cls._collect_op_properties(op))
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
@@ -424,7 +424,7 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
             ctx[op.outputs[-1].key] = a.index[slc]
 
 
-class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
+class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.PSRS_SHUFFLE
 
     _sort_type = StringField('sort_type')
@@ -515,7 +515,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if len(a) == 0:
             # when the chunk is empty, no slices can be produced
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = a
+                ctx[out.key, (i,)] = a
             return
 
         # use numpy.searchsorted to find split positions.
@@ -535,7 +535,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
-            ctx[(out.key, str(i))] = values
+            ctx[out.key, (i,)] = values
 
     @classmethod
     def _calc_series_poses(cls, s, pivots, ascending=True):
@@ -553,7 +553,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if len(a) == 0:
             # when the chunk is empty, no slices can be produced
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = a
+                ctx[out.key, (i,)] = a
             return
 
         if isinstance(a, pd.Series):
@@ -566,7 +566,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i]: poses[i + 1]]
-                ctx[(out.key, str(i))] = values
+                ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_sort_index_map(cls, ctx, op):
@@ -580,7 +580,7 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
-            ctx[(out.key, str(i))] = values
+            ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -596,13 +596,10 @@ class DataFramePSRSShuffle(DataFrameMapReduceOperand, DataFrameOperandMixin):
             cls._execute_sort_index_map(ctx, op)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
+    def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):
         out_chunk = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
-            raw_inputs = [ctx.pop((input_key, op.shuffle_key)) for input_key in input_keys]
-        else:
-            raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+        raw_inputs = list(op.iter_mapper_data(
+            ctx, pop=getattr(ctx, 'running_mode', None) == RunningMode.distributed))
 
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         if xdf is pd:

@@ -23,7 +23,7 @@ from ...core.operand import OperandStage
 from ...lib import sparse
 from ...lib.sparse.core import get_array_module as get_sparse_array_module
 from ...serialize import BoolField, Int32Field, Int64Field
-from ...utils import get_shuffle_input_keys_idxes, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -39,14 +39,13 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
     _aggregate_size = Int32Field('aggregate_size')
 
-    _aggregate_id = Int32Field('aggregate_id')
     _start_pos = Int64Field('start_pos')
 
     def __init__(self, return_index=None, return_inverse=None, return_counts=None,
-                 axis=None, start_pos=None, aggregate_id=None, aggregate_size=None, **kw):
+                 axis=None, start_pos=None, aggregate_size=None, **kw):
         super().__init__(_return_index=return_index, _return_inverse=return_inverse,
                          _return_counts=return_counts, _axis=axis, _start_pos=start_pos,
-                         _aggregate_id=aggregate_id, _aggregate_size=aggregate_size, **kw)
+                         _aggregate_size=aggregate_size, **kw)
 
     @property
     def output_limit(self):
@@ -74,10 +73,6 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     @property
     def aggregate_size(self):
         return self._aggregate_size
-
-    @property
-    def aggregate_id(self):
-        return self._aggregate_id
 
     @property
     def start_pos(self):
@@ -207,8 +202,9 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                                      return_index=op.return_index,
                                      return_inverse=op.return_inverse,
                                      return_counts=op.return_counts,
-                                     axis=op.axis, aggregate_id=i,
-                                     shuffle_key=str(i))
+                                     axis=op.axis,
+                                     reducer_index=(i,),
+                                     reducer_phase='agg')
             kws = cls._gen_kws(op, inp, chunk=True, chunk_index=i)
             chunks = reduce_op.new_chunks([shuffle_chunk], kws=kws,
                                           order=op.outputs[0].order)
@@ -222,8 +218,10 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 dtype=map_inverse_chunks[0].dtype).new_chunk(map_inverse_chunks, shape=())
             inverse_chunks = []
             for j, cs in enumerate(unique_on_chunk_sizes):
-                chunk_op = TensorUniqueInverseReduce(dtype=map_inverse_chunks[0].dtype,
-                                                     shuffle_key=str(j))
+                chunk_op = TensorUnique(stage=OperandStage.reduce,
+                                        dtype=map_inverse_chunks[0].dtype,
+                                        reducer_index=(j,),
+                                        reducer_phase='inverse')
                 inverse_chunk = chunk_op.new_chunk([inverse_shuffle_chunk], shape=(cs,),
                                                    index=(j,))
                 inverse_chunks.append(inverse_chunk)
@@ -249,14 +247,14 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         return new_op.new_tensors(op.inputs, kws=kws)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "TensorUnique"):
         if len(op.inputs[0].chunks) == 1:
             return cls._tile_one_chunk(op)
         else:
             return cls._tile_via_shuffle(op)
 
     @classmethod
-    def _execute_map(cls, ctx, op):
+    def _execute_map(cls, ctx, op: "TensorUnique"):
         (ar,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
         n_reducer = op.aggregate_size
@@ -305,15 +303,13 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 # counts
                 if counts_ar is not None:
                     res.append(counts_ar[cond])
-                ctx[(op.outputs[0].key, str(reducer))] = tuple(res)
+                ctx[op.outputs[0].key, (reducer,)] = tuple(res)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
-        input_keys, input_indexes = get_shuffle_input_keys_idxes(in_chunk)
+    def _execute_agg_reduce(cls, ctx, op: "TensorUnique"):
+        input_indexes, input_data = zip(*list(op.iter_mapper_data_with_index(ctx)))
 
-        inputs = list(zip(*(ctx[(input_key, str(op.aggregate_id))]
-                            for input_key in input_keys)))
+        inputs = list(zip(*input_data))
         flatten, device_id, xp = as_same_device(
             list(itertools.chain(*inputs)), device=op.device, ret_extra=True)
         n_ret = len(inputs[0])
@@ -369,7 +365,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                             r[0] = inverse_array[0]
                             r[1] = p[inverse_array[1]]
                         # return unique length and
-                        ctx[(indices_out_key, str(input_indexes[i][op.axis]))] = \
+                        ctx[indices_out_key, (input_indexes[i][op.axis],)] = \
                             results[0].shape[op.axis], r
                 # calc counts
                 if op.return_counts:
@@ -386,11 +382,29 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 pass
 
     @classmethod
-    def execute(cls, ctx, op):
+    def _execute_inverse_reduce(cls, ctx, op: "TensorUnique"):
+        out = op.outputs[0]
+        inputs = list(op.iter_mapper_data(ctx))
+        unique_sizes = [inp[0] for inp in inputs]
+        cum_unique_sizes = np.cumsum([0] + unique_sizes)
+        invs, device_id, xp = as_same_device([inp[1] for inp in inputs],
+                                             device=op.device, ret_extra=True)
+        with device(device_id):
+            ret = xp.empty(out.shape, dtype=out.dtype)
+            for i, inv in enumerate(invs):
+                ret[inv[0]] = cum_unique_sizes[i] + inv[1]
+            ctx[out.key] = ret
+
+    @classmethod
+    def execute(cls, ctx, op: "TensorUnique"):
         if op.stage == OperandStage.map:
             cls._execute_map(ctx, op)
         elif op.stage == OperandStage.reduce:
-            cls._execute_reduce(ctx, op)
+            if op.reducer_phase == 'agg':
+                cls._execute_agg_reduce(ctx, op)
+            else:
+                assert op.reducer_phase == 'inverse'
+                cls._execute_inverse_reduce(ctx, op)
         else:
             (ar,), device_id, xp = as_same_device(
                 [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
@@ -411,28 +425,6 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 assert len(outs) == len(results)
                 for out, result in zip(outs, results):
                     ctx[out.key] = result
-
-
-class TensorUniqueInverseReduce(TensorMapReduceOperand, TensorOperandMixin):
-    _op_type_ = OperandDef.UNIQUE_INVERSE_REDUCE
-
-    def __init__(self, **kw):
-        super().__init__(stage=OperandStage.reduce, **kw)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        out = op.outputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        inputs = [ctx[(inp_key, op.shuffle_key)] for inp_key in input_keys]
-        unique_sizes = [inp[0] for inp in inputs]
-        cum_unique_sizes = np.cumsum([0] + unique_sizes)
-        invs, device_id, xp = as_same_device([inp[1] for inp in inputs],
-                                             device=op.device, ret_extra=True)
-        with device(device_id):
-            ret = xp.empty(out.shape, dtype=out.dtype)
-            for i, inv in enumerate(invs):
-                ret[inv[0]] = cum_unique_sizes[i] + inv[1]
-            ctx[out.key] = ret
 
 
 def unique(ar, return_index=False, return_inverse=False, return_counts=False,

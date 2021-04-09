@@ -20,7 +20,6 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage
 from ...serialize import KeyField, Int32Field
-from ...utils import get_shuffle_input_keys_idxes
 from ..operands import TensorOperandMixin, TensorShuffleProxy
 from ..utils import gen_random_seeds, validate_axis
 from ..datasource import tensor as astensor
@@ -113,9 +112,8 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                 .new_chunk(map_chunks, shape=())
 
             for c in map_chunks:
-                shuffle_key = ','.join(str(idx) for idx in c.index)
-                chunk_op = TensorPermutation(stage=OperandStage.reduce, seed=reduce_seeds[c.index[op.axis]],
-                                             axis=op.axis, shuffle_key=shuffle_key)
+                chunk_op = TensorPermutation(stage=OperandStage.reduce,
+                                             seed=reduce_seeds[c.index[op.axis]], axis=op.axis)
                 chunk_shape = list(c.shape)
                 chunk_shape[op.axis] = np.nan
                 reduce_chunk = chunk_op.new_chunk([proxy_chunk], shape=tuple(chunk_shape),
@@ -141,16 +139,12 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             for to_reduce_idx in range(reduce_size):
                 reduce_idx = out_chunk.index[:op.axis] + (to_reduce_idx,) + \
                              out_chunk.index[op.axis + 1:]
-                group_key = ','.join(str(i) for i in reduce_idx)
                 slc = (slice(None),) * op.axis + (to_reduce_idxes == to_reduce_idx,)
-                ctx[(out_chunk.key, group_key)] = x[slc]
+                ctx[out_chunk.key, reduce_idx] = x[slc]
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        in_chunk = op.inputs[0]
-        input_keys, _ = get_shuffle_input_keys_idxes(in_chunk)
-        shuffle_key = op.shuffle_key
-        inputs = [ctx[(input_key, shuffle_key)] for input_key in input_keys]
+    def _execute_reduce(cls, ctx, op: "TensorPermutation"):
+        inputs = list(op.iter_mapper_data(ctx))
         inputs, device_id, xp = as_same_device(inputs, device=op.device, ret_extra=True)
 
         with device(device_id):

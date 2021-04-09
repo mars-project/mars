@@ -98,18 +98,15 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _pre_funcs = ListField('pre_funcs')
     _agg_funcs = ListField('agg_funcs')
     _post_funcs = ListField('post_funcs')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, raw_func=None, raw_func_kw=None, func=None, func_rename=None,
                  method=None, groupby_params=None, use_inf_as_na=None, combine_size=None,
-                 pre_funcs=None, agg_funcs=None, post_funcs=None,
-                 output_types=None, tileable_op_key=None, **kw):
+                 pre_funcs=None, agg_funcs=None, post_funcs=None, output_types=None, **kw):
         super().__init__(_raw_func=raw_func, _raw_func_kw=raw_func_kw, _func=func,
                          _func_rename=func_rename, _method=method, _groupby_params=groupby_params,
                          _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
                          _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
-                         _output_types=output_types, _tileable_op_key=tileable_op_key, **kw)
+                         _output_types=output_types, **kw)
 
     @property
     def raw_func(self):
@@ -154,10 +151,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @property
     def post_funcs(self) -> List[ReductionPostStep]:
         return self._post_funcs
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -253,8 +246,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         reduce_chunks = []
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
             reduce_op = DataFrameGroupByOperand(
-                stage=OperandStage.reduce, shuffle_key=','.join(str(idx) for idx in out_idx),
-                output_types=[OutputType.dataframe_groupby])
+                stage=OperandStage.reduce, output_types=[OutputType.dataframe_groupby])
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx,
                                     index_value=None))
@@ -339,7 +331,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         agg_chunks = []
         for chunk in reduce_chunks:
             agg_op = op.copy().reset_key()
-            agg_op._tileable_op_key = op.key
+            agg_op.tileable_op_key = op.key
             agg_op._groupby_params = agg_op.groupby_params.copy()
             agg_op._groupby_params.pop('selection', None)
             # use levels instead of by for reducer
@@ -393,7 +385,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                         c._index = (j, 0)
                     chk = concat_op.new_chunk(chks, dtypes=chks[0].dtypes)
                 chunk_op = op.copy().reset_key()
-                chunk_op._tileable_op_key = None
+                chunk_op.tileable_op_key = None
                 chunk_op.output_types = [OutputType.dataframe]
                 chunk_op.stage = OperandStage.combine
                 chunk_op._groupby_params = chunk_op.groupby_params.copy()
@@ -413,7 +405,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         concat_op = DataFrameConcat(output_types=[OutputType.dataframe])
         chk = concat_op.new_chunk(chunks, dtypes=chunks[0].dtypes)
         chunk_op = op.copy().reset_key()
-        chunk_op._tileable_op_key = op.key
+        chunk_op.tileable_op_key = op.key
         chunk_op.stage = OperandStage.agg
         chunk_op._groupby_params = chunk_op.groupby_params.copy()
         chunk_op._groupby_params.pop('selection', None)

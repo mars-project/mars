@@ -21,7 +21,7 @@ from ..config import options
 from ..executor import Executor
 from ..serialize import dataserializer
 from ..utils import to_str, deserialize_graph, log_unhandled, calc_data_size, \
-    get_chunk_shuffle_key, build_exc_info
+    get_chunk_reducer_index, build_exc_info
 from ..context import DistributedDictContext
 from .events import EventContext, EventCategory, EventLevel, ProcedureEventType
 from .storage import DataStorageDevice
@@ -95,11 +95,11 @@ class BaseCalcActor(WorkerActor):
         exclude_fetch_keys = set()
         for chunk in graph:
             if isinstance(chunk.op, Fetch):
-                fetch_keys.add(chunk.op.to_fetch_key or chunk.key)
+                fetch_keys.add(chunk.op.source_key or chunk.key)
             elif isinstance(chunk.op, FetchShuffle):
-                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
-                for k in chunk.op.to_fetch_keys:
-                    fetch_keys.add((k, shuffle_key))
+                reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
+                for k in chunk.op.source_keys:
+                    fetch_keys.add((k, reducer_index))
             else:
                 for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):
                     if is_pure_dep:
@@ -208,7 +208,7 @@ class BaseCalcActor(WorkerActor):
         for k in list(local_context_dict.keys()):
             v = local_context_dict[k]
             if isinstance(k, tuple):
-                k = tuple(to_str(i) for i in k)
+                k = tuple(i if isinstance(i, tuple) else to_str(i) for i in k)
             else:
                 k = to_str(k)
 

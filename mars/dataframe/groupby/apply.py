@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType
 from ...custom_log import redirect_custom_log
-from ...serialize import TupleField, DictField, FunctionField, StringField
+from ...serialize import TupleField, DictField, FunctionField
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index, \
@@ -32,13 +32,9 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     _func = FunctionField('func')
     _args = TupleField('args')
     _kwds = DictField('kwds')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, func=None, args=None, kwds=None, output_types=None,
-                 tileable_op_key=None, **kw):
-        super().__init__(_func=func, _args=args, _kwds=kwds, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+    def __init__(self, func=None, args=None, kwds=None, output_types=None, **kw):
+        super().__init__(_func=func, _args=args, _kwds=kwds, _output_types=output_types, **kw)
 
     @property
     def func(self):
@@ -51,10 +47,6 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     @property
     def kwds(self):
         return getattr(self, '_kwds', None) or dict()
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @classmethod
     @redirect_custom_log
@@ -90,7 +82,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             inp_chunks = [c]
 
             new_op = op.copy().reset_key()
-            new_op._tileable_op_key = op.key
+            new_op.tileable_op_key = op.key
             if op.output_types[0] == OutputType.dataframe:
                 chunks.append(new_op.new_chunk(
                     inp_chunks, index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,

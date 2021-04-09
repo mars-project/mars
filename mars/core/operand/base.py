@@ -79,8 +79,8 @@ class Operand(Base, metaclass=OperandMetaclass):
     reassign_worker = BoolField('reassign_worker', default=False)
     stage = ReferenceField('stage', OperandStage, default=None)
     memory_scale = Float32Field('memory_scale', default=None)
-    extra_params = DictField('extra_params',
-                             key_type=FieldTypes.string)
+    tileable_op_key = StringField('tileable_op_key', default=None)
+    extra_params = DictField('extra_params', key_type=FieldTypes.string)
 
     _inputs = ListField('inputs', FieldTypes.reference(EntityData))
     _pure_depends = ListField('pure_depends', FieldTypes.bool)

@@ -18,7 +18,7 @@ from ... import opcodes
 from ...core import ENTITY_TYPE, CHUNK_TYPE, TilesError
 from ...custom_log import redirect_custom_log
 from ...serialize import FunctionField, BoolField, TupleField, \
-    DictField, StringField
+    DictField
 from ...utils import enter_current_session, quiet_stdio, \
     find_objects, replace_objects, check_chunks_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
@@ -32,14 +32,11 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     _args = TupleField('args')
     _kwargs = DictField('kwargs')
     _with_chunk_index = BoolField('with_chunk_index')
-    # for chunk
-    _tileable_op_key = StringField('tileable_op_key')
 
-    def __init__(self, func=None, args=None, kwargs=None, tileable_op_key=None,
-                 elementwise=None, with_chunk_index=None, **kw):
+    def __init__(self, func=None, args=None, kwargs=None, elementwise=None,
+                 with_chunk_index=None, **kw):
         super().__init__(_func=func, _args=args, _kwargs=kwargs, _elementwise=elementwise,
-                         _with_chunk_index=with_chunk_index,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _with_chunk_index=with_chunk_index, **kw)
 
     @property
     def func(self):
@@ -56,10 +53,6 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     @property
     def kwargs(self):
         return self._kwargs
-
-    @property
-    def tileable_op_key(self):
-        return self._tileable_op_key
 
     @property
     def with_chunk_index(self):
@@ -109,7 +102,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
                 params['shape'] = (np.nan,) * c.ndim
 
             new_op = op.copy().reset_key()
-            new_op._tileable_op_key = out.key
+            new_op.tileable_op_key = out.key
             chunk_inputs = [c]
             for other_inp in new_inputs[1:]:
                 chunk_inputs.append(other_inp.chunks[0])

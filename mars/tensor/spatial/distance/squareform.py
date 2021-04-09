@@ -21,8 +21,7 @@ from ....core import TilesError
 from ....core.operand import OperandStage
 from ....serialize import ValueType, KeyField, BoolField, TupleField
 from ....config import options
-from ....utils import check_chunks_unknown_shape, get_shuffle_input_keys_idxes, \
-    require_module, recursive_tile
+from ....utils import check_chunks_unknown_shape, require_module, recursive_tile
 from ...core import TensorOrder
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...datasource import ascontiguousarray, array, zeros
@@ -197,7 +196,6 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         for out_idx, out_shape in zip(out_idx_iter, out_shape_iter):
             reduce_chunk_op = TensorSquareform(
                 stage=OperandStage.reduce,
-                shuffle_key=','.join(str(i) for i in out_idx),
                 dtype=out.dtype)
             reduce_chunk = reduce_chunk_op.new_chunk(
                 [proxy_chunk], shape=out_shape, index=out_idx, order=out.order)
@@ -234,7 +232,6 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
 
         cum_sizes = [[0] + np.cumsum(cs).tolist() for cs in out_chunk_size]
         for idx in itertools.product(*(range(len(ns)) for ns in out_chunk_size)):
-            shuffle_key = ','.join(str(p) for p in idx)
             i, j = idx
             row_range = cum_sizes[0][i], cum_sizes[0][i + 1]
             col_range = cum_sizes[1][j], cum_sizes[1][j + 1]
@@ -254,7 +251,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             inds = xp.concatenate([upper_inds, lower_inds])
             values = xp.concatenate([upper_values, lower_values])
 
-            ctx[op.outputs[0].key, shuffle_key] = inds, values
+            ctx[op.outputs[0].key, idx] = inds, values
 
     @classmethod
     def _to_vector(cls, ctx, xp, x, op):
@@ -281,7 +278,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             index_range = cum_chunk_size[i], cum_chunk_size[i + 1]
             filtered = (to_indices >= index_range[0]) & (to_indices < index_range[1])
             out_indices = to_indices[filtered] - cum_chunk_size[i]
-            ctx[op.outputs[0].key, str(i)] = out_indices, x[filtered]
+            ctx[op.outputs[0].key, (i,)] = out_indices, x[filtered]
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -303,9 +300,8 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
                 cls._to_vector(ctx, xp, x, op)
 
     @classmethod
-    def _execute_reduce(cls, ctx, op):
-        input_keys, _ = get_shuffle_input_keys_idxes(op.inputs[0])
-        raw_inputs = [ctx[(input_key, op.shuffle_key)] for input_key in input_keys]
+    def _execute_reduce(cls, ctx, op: "TensorSquareform"):
+        raw_inputs = list(op.iter_mapper_data(ctx))
         raw_indices = [inp[0] for inp in raw_inputs]
         raw_dists = [inp[1] for inp in raw_inputs]
         inputs, device_id, xp = as_same_device(
