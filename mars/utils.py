@@ -578,10 +578,16 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
     if isinstance(chunk_op, ShuffleProxy):
         # for shuffle nodes, we build FetchShuffle chunks
         # to replace ShuffleProxy
-        to_fetch_keys = [pinp.key for pinp in chunk.inputs
-                         if input_chunk_keys is None or pinp.key in input_chunk_keys]
-        to_fetch_idxes = [pinp.index for pinp in chunk.inputs]
-        op = chunk_op.get_fetch_op_cls(chunk)(to_fetch_keys=to_fetch_keys, to_fetch_idxes=to_fetch_idxes)
+        source_keys, source_idxes, source_mappers = [], [], []
+        for pinp in chunk.inputs:
+            if input_chunk_keys is not None and pinp.key not in input_chunk_keys:
+                continue
+            source_keys.append(pinp.key)
+            source_idxes.append(pinp.index)
+            source_mappers.append(get_chunk_mapper_id(pinp))
+        op = chunk_op.get_fetch_op_cls(chunk)(
+            source_keys=source_keys, source_idxes=source_idxes,
+            source_mappers=source_mappers)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
@@ -614,6 +620,18 @@ def build_fetch(entity):
         return build_fetch_tileable(entity)
     else:
         raise TypeError(f'Type {type(entity)} not supported')
+
+
+def get_chunk_mapper_id(chunk):
+    op = chunk.op
+    try:
+        return op.mapper_id
+    except AttributeError:
+        from .core.operand import Fuse
+        if isinstance(op, Fuse):
+            return chunk.composed[-1].op.mapper_id
+        else:  # pragma: no cover
+            raise
 
 
 def get_chunk_reducer_index(chunk):

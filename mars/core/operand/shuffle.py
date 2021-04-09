@@ -23,8 +23,8 @@ class ShuffleProxy(VirtualOperand):
 
 
 class MapReduceOperand(Operand):
-    reducer_index = TupleField('reducer_index', FieldTypes.int32)
-    map_input_id = Int32Field('map_input_id', default=0)
+    reducer_index = TupleField('reducer_index', FieldTypes.uint64)
+    mapper_id = Int32Field('mapper_id', default=0)
     reducer_phase = StringField('reducer_phase', default=None)
 
     def _new_chunks(self, inputs, kws=None, **kw):
@@ -46,25 +46,34 @@ class MapReduceOperand(Operand):
                 if isinstance(inp.op, ShuffleProxy):
                     deps.extend([(chunk.key, self.reducer_index) for chunk in inp.inputs or ()])
                 elif isinstance(inp.op, FetchShuffle):
-                    deps.extend([(k, self.reducer_index) for k in inp.op.to_fetch_keys])
+                    deps.extend([(k, self.reducer_index) for k in inp.op.source_keys])
                 else:
                     deps.append(inp.key)
             return deps
         return super().get_dependent_data_keys()
 
-    def _get_mapper_key_idx_pairs(self, input_id=0):
+    def _iter_mapper_key_idx_pairs(self, input_id=0, mapper_id=None):
         input_chunk = self.inputs[input_id]
         if isinstance(input_chunk.op, ShuffleProxy):
             keys = [inp.key for inp in input_chunk.inputs]
             idxes = [inp.index for inp in input_chunk.inputs]
+            mappers = [inp.op.mapper_id for inp in input_chunk.inputs] \
+                if mapper_id is not None else None
         else:
-            keys = input_chunk.op.to_fetch_keys
-            idxes = input_chunk.op.to_fetch_idxes
-        key_idx_pairs = zip(keys, idxes)
+            keys = input_chunk.op.source_keys
+            idxes = input_chunk.op.source_idxes
+            mappers = input_chunk.op.source_mappers
+
+        if mapper_id is None:
+            key_idx_pairs = zip(keys, idxes)
+        else:
+            key_idx_pairs = ((key, idx) for key, idx, mapper in zip(keys, idxes, mappers)
+                             if mapper == mapper_id)
         return key_idx_pairs
 
-    def iter_mapper_data_with_index(self, ctx, input_id=0, pop=False, skip_none=False):
-        for key, idx in self._get_mapper_key_idx_pairs(input_id):
+    def iter_mapper_data_with_index(self, ctx, input_id=0, mapper_id=None,
+                                    pop=False, skip_none=False):
+        for key, idx in self._iter_mapper_key_idx_pairs(input_id, mapper_id):
             try:
                 if pop:
                     yield idx, ctx.pop((key, self.reducer_index))
@@ -76,7 +85,8 @@ class MapReduceOperand(Operand):
                 if not pop:
                     ctx[key, self.reducer_index] = None
 
-    def iter_mapper_data(self, ctx, input_id=0, pop=False, skip_none=False):
+    def iter_mapper_data(self, ctx, input_id=0, mapper_id=0,
+                         pop=False, skip_none=False):
         for _idx, data in self.iter_mapper_data_with_index(
-                ctx, input_id, pop=pop, skip_none=skip_none):
+                ctx, input_id, mapper_id, pop=pop, skip_none=skip_none):
             yield data

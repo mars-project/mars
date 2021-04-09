@@ -205,9 +205,9 @@ class ExecutionActor(WorkerActor):
                     pass
             elif isinstance(n.op, FetchShuffle):
                 reducer_index = get_chunk_reducer_index(graph_record.graph.successors(n)[0])
-                shapes = [data_metas.get((k, reducer_index)).chunk_shape for k in n.op.to_fetch_keys]
+                shapes = [data_metas.get((k, reducer_index)).chunk_shape for k in n.op.source_keys]
                 n.extra_params['_shapes'] = \
-                    dict(((k, reducer_index), v) for k, v in zip(n.op.to_fetch_keys, shapes))
+                    dict(((k, reducer_index), v) for k, v in zip(n.op.source_keys, shapes))
 
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
@@ -265,7 +265,7 @@ class ExecutionActor(WorkerActor):
             elif isinstance(op, FetchShuffle):
                 reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
                 overhead_keys_and_shapes = chunk.extra_params.get('_shapes', dict()).items()
-                for k in op.to_fetch_keys:
+                for k in op.source_keys:
                     part_key = (k, reducer_index)
                     try:
                         input_chunk_keys[part_key] = input_data_sizes[part_key]
@@ -620,10 +620,10 @@ class ExecutionActor(WorkerActor):
             if isinstance(op, Fetch):
                 if chunk.key in graph_record.pure_dep_chunk_keys:
                     continue
-                input_keys.add(op.to_fetch_key or chunk.key)
+                input_keys.add(op.source_key or chunk.key)
             elif isinstance(op, FetchShuffle):
                 reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
-                for input_key in op.to_fetch_keys:
+                for input_key in op.source_keys:
                     part_key = (input_key, reducer_index)
                     input_keys.add(part_key)
                     reducer_indexes.add(part_key)

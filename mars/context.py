@@ -494,16 +494,16 @@ class DistributedContext(ContextBase):
 
             chunk_datas = dict()
             for endpoint, chunks in chunk_workers.items():
-                to_fetch_keys = []
+                source_keys = []
                 to_fetch_indexes = []
                 to_fetch_idx = []
                 for r_chunk, (chunk_index, index_obj) in result_chunks.items():
                     if r_chunk in chunks:
-                        to_fetch_keys.append(r_chunk)
+                        source_keys.append(r_chunk)
                         to_fetch_indexes.append(index_obj)
                         to_fetch_idx.append(chunk_index)
-                if to_fetch_keys:
-                    datas = self.get_chunks_data(endpoint, to_fetch_keys, indexes=to_fetch_indexes,
+                if source_keys:
+                    datas = self.get_chunks_data(endpoint, source_keys, indexes=to_fetch_indexes,
                                                  compression_types=compression_types)
                     chunk_datas[tuple(to_fetch_idx)] = datas
             chunk_datas = dict((k, v.result()) for k, v in chunk_datas.items())

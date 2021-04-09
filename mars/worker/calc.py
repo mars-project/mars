@@ -95,10 +95,10 @@ class BaseCalcActor(WorkerActor):
         exclude_fetch_keys = set()
         for chunk in graph:
             if isinstance(chunk.op, Fetch):
-                fetch_keys.add(chunk.op.to_fetch_key or chunk.key)
+                fetch_keys.add(chunk.op.source_key or chunk.key)
             elif isinstance(chunk.op, FetchShuffle):
                 reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
-                for k in chunk.op.to_fetch_keys:
+                for k in chunk.op.source_keys:
                     fetch_keys.add((k, reducer_index))
             else:
                 for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):

@@ -32,13 +32,13 @@ class TensorFetch(TensorFetchMixin, Fetch):
         super().__init__(**kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.to_fetch_key is None:
-            self.to_fetch_key = kw['_key']
+        if '_key' in kw and self.source_key is None:
+            self.source_key = kw['_key']
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.to_fetch_key is None:
-            self.to_fetch_key = kw['_key']
+        if '_key' in kw and self.source_key is None:
+            self.source_key = kw['_key']
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
