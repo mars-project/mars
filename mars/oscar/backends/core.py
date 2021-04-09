@@ -95,7 +95,10 @@ class ActorCaller:
             return await wait_response
 
     async def stop(self):
-        await asyncio.gather(*[client.close() for client in self._clients])
+        try:
+            await asyncio.gather(*[client.close() for client in self._clients])
+        except (ConnectionError, ServerClosed):
+            pass
         self.cancel_tasks()
 
     def cancel_tasks(self):

@@ -495,7 +495,7 @@ async def test_auto_recover(auto_recover):
             expect_has_actor = True if auto_recover in ['actor', True] else False
             assert await ctx.has_actor(actor_ref) is expect_has_actor
         else:
-            with pytest.raises(ServerClosed):
+            with pytest.raises((ServerClosed, ConnectionError)):
                 await ctx.has_actor(actor_ref)
 
 
