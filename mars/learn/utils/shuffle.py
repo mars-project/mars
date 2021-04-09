@@ -333,12 +333,11 @@ class LearnShuffle(MapReduceOperand, LearnOperandMixin):
             index = list(out.index)
             for ax, ind in zip(axes, reduce_index):
                 index[ax] = ind
-            group_key = ','.join(str(i) for i in index)
             selected = x
             for ax, to_hash_ind in zip(axes, to_hash_inds):
                 slc = (slice(None),) * ax + (to_hash_ind == index[ax],)
                 selected = _safe_slice(selected, slc, op.output_types[0])
-            ctx[(out.key, group_key)] = selected
+            ctx[out.key, tuple(index)] = selected
 
     @classmethod
     def execute_reduce(cls, ctx, op: "LearnShuffle"):

@@ -410,7 +410,7 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
             new_op = op.copy().reset_key()
             new_op.stage = OperandStage.reduce
             new_op._weights = None
-            new_op.shuffle_key = str(src_chunk.index[0])
+            new_op.reducer_index = (src_chunk.index[0],)
             new_op._input_nsplits = np.array(in_df.nsplits[0])
 
             reduce_chunks.append(new_op.new_chunk(
@@ -469,7 +469,7 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
             pos_array = np.cumsum([0] + input_nsplits)
             poses = np.searchsorted(in_data, pos_array).tolist()
             for idx, (left, right) in enumerate(zip(poses, poses[1:])):
-                ctx[(op.outputs[0].key, str(idx))] = in_data[left:right]
+                ctx[op.outputs[0].key, (idx,)] = in_data[left:right]
         elif op.stage == OperandStage.reduce:
             in_indexes = list(op.iter_mapper_data(ctx))
             idx = np.sort(np.concatenate(in_indexes))

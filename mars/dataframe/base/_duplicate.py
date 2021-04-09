@@ -230,7 +230,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             put_back_op._method = 'shuffle'
             put_back_op.stage = OperandStage.reduce
             put_back_op._shuffle_phase = 'put_back'
-            put_back_op.shuffle_key = str(i)
+            put_back_op.reducer_index = (i,)
             put_back_chunk_params = map_chunks[i].params
             if out.ndim == 1:
                 put_back_chunk_params['index'] = (i,)

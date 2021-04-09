@@ -133,8 +133,8 @@ class DataFrameDropDuplicates(DuplicateOperand):
         dropped['_i_'] = np.arange(dropped.shape[0])
         hashed = hash_dataframe_on(dropped, subset, shuffle_size)
         for i, data in enumerate(hashed):
-            idx = ','.join(str(x) for x in (i,) + out.index[1:])
-            ctx[(out.key, idx)] = dropped.loc[data]
+            reducer_idx = (i,) + out.index[1:]
+            ctx[out.key, reducer_idx] = dropped.loc[data]
 
     @classmethod
     def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDropDuplicates"):
@@ -150,7 +150,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
         for i in range(op.shuffle_size):
             filtered = dropped[dropped['_chunk_index_'] == i]
             del filtered['_chunk_index_']
-            ctx[(out.key, str(i))] = filtered
+            ctx[out.key, (i,)] = filtered
 
     @classmethod
     def _execute_shuffle_put_back(cls, ctx, op: "DataFrameDropDuplicates"):

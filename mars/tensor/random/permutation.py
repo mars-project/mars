@@ -139,9 +139,8 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
             for to_reduce_idx in range(reduce_size):
                 reduce_idx = out_chunk.index[:op.axis] + (to_reduce_idx,) + \
                              out_chunk.index[op.axis + 1:]
-                group_key = ','.join(str(i) for i in reduce_idx)
                 slc = (slice(None),) * op.axis + (to_reduce_idxes == to_reduce_idx,)
-                ctx[(out_chunk.key, group_key)] = x[slc]
+                ctx[out_chunk.key, reduce_idx] = x[slc]
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorPermutation"):

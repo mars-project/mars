@@ -846,7 +846,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
                     stage=OperandStage.reduce, fancy_index_axis=to_concat_axis,
                     fancy_index_shape=fancy_index_chunk.shape,
                     dtype=proxy_chunk.dtype, sparse=to_shuffle_chunks[0].issparse(),
-                    shuffle_key=str(next(it)))
+                    reducer_index=(next(it),))
                 reduce_chunk_shape = other_shape[:to_concat_axis] + \
                     fancy_index_chunk.shape + other_shape[to_concat_axis:]
                 reduce_chunk_index = chunk_index[:to_concat_axis] + \

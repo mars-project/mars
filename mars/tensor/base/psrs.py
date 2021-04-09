@@ -209,7 +209,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
                                                    stage=OperandStage.reduce,
                                                    axis=op.axis, order=op.order,
                                                    kind=kind,
-                                                   shuffle_key=str(i),
+                                                   reducer_index=(i,),
                                                    dtype=partition_chunk.dtype,
                                                    gpu=partition_chunk.op.gpu,
                                                    need_align=need_align)
@@ -283,7 +283,7 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
         for i, align_map_chunk in enumerate(align_map_chunks):
             align_reduce_op = PSRSAlign(return_value=return_value, return_indices=return_indices,
                                         stage=OperandStage.reduce, axis=op.axis,
-                                        shuffle_key=str(i), dtype=align_map_chunk.dtype,
+                                        reducer_index=(i,), dtype=align_map_chunk.dtype,
                                         gpu=align_map_chunk.op.gpu)
             idx = list(out_idx)
             idx.insert(op.axis, i)
@@ -601,7 +601,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
                             reduce_out.append(indices)
                         reduce_outputs[i][idx] = tuple(reduce_out)
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = tuple(reduce_outputs[i].ravel())
+                ctx[out.key, (i,)] = tuple(reduce_outputs[i].ravel())
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "PSRSShuffle"):
@@ -774,7 +774,7 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                         ret.append(tuple(item))
                     else:
                         ret.append(ar)
-                ctx[(op.outputs[0].key, str(idx))] = tuple(ret)
+                ctx[op.outputs[0].key, (idx,)] = tuple(ret)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "PSRSAlign"):

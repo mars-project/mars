@@ -304,9 +304,9 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
 
         for index_idx, index_filter in enumerate(filters):
             if is_dataframe_obj:
-                group_key = ','.join([str(index_idx), str(chunk.index[1])])
+                reducer_index = (index_idx, chunk.index[1])
             else:
-                group_key = str(index_idx)
+                reducer_index = (index_idx,)
 
             if deliver_by:
                 filtered_by = []
@@ -316,15 +316,15 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
                     else:
                         filtered_by.append(v)
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) \
+                    ctx[chunk.key, reducer_index] = tuple(_take_index(x, index_filter) for x in df) \
                         + (filtered_by, deliver_by)
                 else:
-                    ctx[(chunk.key, group_key)] = (_take_index(df, index_filter), filtered_by, deliver_by)
+                    ctx[chunk.key, reducer_index] = (_take_index(df, index_filter), filtered_by, deliver_by)
             else:
                 if isinstance(df, tuple):
-                    ctx[(chunk.key, group_key)] = tuple(_take_index(x, index_filter) for x in df) + (deliver_by,)
+                    ctx[chunk.key, reducer_index] = tuple(_take_index(x, index_filter) for x in df) + (deliver_by,)
                 else:
-                    ctx[(chunk.key, group_key)] = _take_index(df, index_filter)
+                    ctx[chunk.key, reducer_index] = _take_index(df, index_filter)
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameGroupByOperand"):

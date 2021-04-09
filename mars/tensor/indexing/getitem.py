@@ -154,8 +154,7 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
         idx_to_fancy_indexes, idx_to_poses = \
             split_indexes_into_chunks(fancy_index_nsplits, flatten_indexes, False)
         for idx in idx_to_fancy_indexes:
-            group_key = ','.join(str(i) for i in idx)
-            ctx[(op.outputs[0].key, group_key)] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
+            ctx[op.outputs[0].key, idx] = (idx_to_fancy_indexes[idx], idx_to_poses[idx])
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "FancyIndexingDistribute"):
@@ -233,7 +232,7 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
             start = 0 if i == 0 else acc_sizes[i - 1]
             end = acc_sizes[i]
             select = (slice(None),) * fancy_index_axis + (slice(start, end),)
-            ctx[(op.outputs[0].key, str(i))] = (indexed_array[select], pos[start: end])
+            ctx[op.outputs[0].key, (i,)] = (indexed_array[select], pos[start: end])
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "FancyIndexingConcat"):

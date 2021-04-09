@@ -616,14 +616,14 @@ def build_fetch(entity):
         raise TypeError(f'Type {type(entity)} not supported')
 
 
-def get_chunk_shuffle_key(chunk):
+def get_chunk_reducer_index(chunk):
     op = chunk.op
     try:
-        return op.shuffle_key
+        return op.reducer_index
     except AttributeError:
         from .core.operand import Fuse
         if isinstance(op, Fuse):
-            return chunk.composed[0].op.shuffle_key
+            return chunk.composed[0].op.reducer_index
         else:  # pragma: no cover
             raise
 

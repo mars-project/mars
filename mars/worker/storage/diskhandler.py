@@ -43,7 +43,8 @@ def _build_file_name_by_key(session_id, data_key):
     :param data_key: chunk key
     """
     if isinstance(data_key, tuple):
-        data_key = '@'.join(data_key)
+        data_key = '@'.join(','.join(str(i) for i in k) if isinstance(k, tuple) else k
+                            for k in data_key)
     dirs = options.worker.spill_directory
     spill_dir = os.path.join(dirs[_get_file_dir_id(session_id, data_key)], str(session_id))
     if not os.path.exists(spill_dir):

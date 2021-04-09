@@ -147,7 +147,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         for i, partition_chunk in enumerate(partition_chunks):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
             partition_shuffle_reduce = DataFramePSRSShuffle(
-                stage=OperandStage.reduce, kind=kind, shuffle_key=str(i),
+                stage=OperandStage.reduce, kind=kind, reducer_index=(i,),
                 output_types=op.output_types, **cls._collect_op_properties(op))
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
@@ -515,7 +515,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         if len(a) == 0:
             # when the chunk is empty, no slices can be produced
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = a
+                ctx[out.key, (i,)] = a
             return
 
         # use numpy.searchsorted to find split positions.
@@ -535,7 +535,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
-            ctx[(out.key, str(i))] = values
+            ctx[out.key, (i,)] = values
 
     @classmethod
     def _calc_series_poses(cls, s, pivots, ascending=True):
@@ -553,7 +553,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         if len(a) == 0:
             # when the chunk is empty, no slices can be produced
             for i in range(op.n_partition):
-                ctx[(out.key, str(i))] = a
+                ctx[out.key, (i,)] = a
             return
 
         if isinstance(a, pd.Series):
@@ -566,7 +566,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
                 values = a.iloc[poses[i]: poses[i + 1]]
-                ctx[(out.key, str(i))] = values
+                ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_sort_index_map(cls, ctx, op):
@@ -580,7 +580,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
-            ctx[(out.key, str(i))] = values
+            ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_map(cls, ctx, op):

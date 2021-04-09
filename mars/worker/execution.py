@@ -25,7 +25,7 @@ from ..errors import PinDataKeyFailed, WorkerProcessStopped, WorkerDead, \
     ExecutionInterrupted, DependencyMissing
 from ..executor import Executor
 from ..utils import BlacklistSet, deserialize_graph, log_unhandled, build_exc_info, \
-    calc_data_size, get_chunk_shuffle_key, calc_object_overhead
+    calc_data_size, get_chunk_reducer_index, calc_object_overhead
 from .storage import DataStorageDevice
 from .transfer import ReceiverManagerActor
 from .utils import WorkerActor, ExpiringCache, ExecutionState, concat_operand_keys, \
@@ -204,10 +204,10 @@ class ExecutionActor(WorkerActor):
                 except KeyError:
                     pass
             elif isinstance(n.op, FetchShuffle):
-                shuffle_key = get_chunk_shuffle_key(graph_record.graph.successors(n)[0])
-                shapes = [data_metas.get((k, shuffle_key)).chunk_shape for k in n.op.to_fetch_keys]
+                reducer_index = get_chunk_reducer_index(graph_record.graph.successors(n)[0])
+                shapes = [data_metas.get((k, reducer_index)).chunk_shape for k in n.op.to_fetch_keys]
                 n.extra_params['_shapes'] = \
-                    dict(((k, shuffle_key), v) for k, v in zip(n.op.to_fetch_keys, shapes))
+                    dict(((k, reducer_index), v) for k, v in zip(n.op.to_fetch_keys, shapes))
 
         executor = Executor(storage=size_ctx, sync_provider_type=Executor.SyncProviderType.MOCK)
         res = executor.execute_graph(graph_record.graph, graph_record.chunk_targets, mock=True)
@@ -263,10 +263,10 @@ class ExecutionActor(WorkerActor):
                 input_chunk_keys[chunk.key] = input_data_sizes.get(chunk.key) or calc_data_size(chunk)
                 overhead_keys_and_shapes = [(chunk.key, getattr(chunk, 'shape', None))]
             elif isinstance(op, FetchShuffle):
-                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
+                reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
                 overhead_keys_and_shapes = chunk.extra_params.get('_shapes', dict()).items()
                 for k in op.to_fetch_keys:
-                    part_key = (k, shuffle_key)
+                    part_key = (k, reducer_index)
                     try:
                         input_chunk_keys[part_key] = input_data_sizes[part_key]
                     except KeyError:
@@ -614,7 +614,7 @@ class ExecutionActor(WorkerActor):
         prepare_promises = []
 
         input_keys = set()
-        shuffle_keys = set()
+        reducer_indexes = set()
         for chunk in graph:
             op = chunk.op
             if isinstance(op, Fetch):
@@ -622,11 +622,11 @@ class ExecutionActor(WorkerActor):
                     continue
                 input_keys.add(op.to_fetch_key or chunk.key)
             elif isinstance(op, FetchShuffle):
-                shuffle_key = get_chunk_shuffle_key(graph.successors(chunk)[0])
+                reducer_index = get_chunk_reducer_index(graph.successors(chunk)[0])
                 for input_key in op.to_fetch_keys:
-                    part_key = (input_key, shuffle_key)
+                    part_key = (input_key, reducer_index)
                     input_keys.add(part_key)
-                    shuffle_keys.add(part_key)
+                    reducer_indexes.add(part_key)
 
         local_keys = graph_record.pinned_keys & set(input_keys)
         non_local_keys = [k for k in input_keys if k not in local_keys]

@@ -305,7 +305,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
                 to_filter = (indices >= start_index) & (indices < end_index)
                 downside_indices = indices[to_filter] - start_index
                 downside_dists = dists[to_filter]
-                ctx[out.key, str(i)] = (downside_indices, downside_dists)
+                ctx[out.key, (i,)] = (downside_indices, downside_dists)
 
     @classmethod
     def _execute_single(cls, ctx, op):

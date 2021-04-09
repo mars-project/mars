@@ -194,8 +194,8 @@ class DataFrameDuplicated(DuplicateOperand):
         result['_i_'] = np.arange(result.shape[0])
         hashed = hash_dataframe_on(result, subset, shuffle_size)
         for i, data in enumerate(hashed):
-            idx = ','.join(str(x) for x in (i,) + out.index[1:])
-            ctx[(out.key, idx)] = result.loc[data]
+            reducer_idx = (i,) + out.index[1:]
+            ctx[out.key, reducer_idx] = result.loc[data]
 
     @classmethod
     def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDuplicated"):
@@ -215,7 +215,7 @@ class DataFrameDuplicated(DuplicateOperand):
                 filtered.columns = ['_duplicated_'] + filtered.columns[1:].tolist()
             else:
                 filtered.columns = [subset[0]] + filtered.columns[1:].tolist()
-            ctx[(out.key, str(i))] = filtered
+            ctx[out.key, (i,)] = filtered
 
     @classmethod
     def _execute_shuffle_put_back(cls, ctx, op: "DataFrameDuplicated"):

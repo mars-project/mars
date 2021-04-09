@@ -215,9 +215,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
 
         for chunk_shape, chunk_idx in zip(itertools.product(*out_nsplits),
                                           itertools.product(*chunk_size_idxes)):
-            shuffle_key = ','.join(str(o) for o in chunk_idx)
-            chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype,
-                                     shuffle_key=shuffle_key)
+            chunk_op = TensorReshape(stage=OperandStage.reduce, dtype=tensor.dtype)
             shuffle_outputs.append(chunk_op.new_chunk([proxy_chunk], shape=chunk_shape,
                                                       order=tensor.order, index=chunk_idx))
 
@@ -297,7 +295,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         elif op.stage == OperandStage.reduce:
             sum_size = 0
             for shuffle_input in chunk.inputs[0].inputs or ():
-                key = (shuffle_input.key, chunk.op.shuffle_key)
+                key = (shuffle_input.key, chunk.index)
                 if ctx.get(key) is not None:
                     sum_size += ctx[key][0]
                 else:
@@ -373,9 +371,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             for idx, dim_chunk_count in enumerate(reversed(dim_chunk_counts)):
                 t, target_chunk_idx[idx] = divmod(t, dim_chunk_count)
             target_chunk_idx.reverse()
-            group_key = ','.join(str(v) for v in target_chunk_idx)
 
-            ctx[(chunk.key, group_key)] = group_indices + (group_data,)
+            ctx[chunk.key, tuple(target_chunk_idx)] = group_indices + (group_data,)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorReshape"):

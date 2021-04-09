@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialization.serializables import Int32Field, StringField
+from ...serialization.serializables import Int32Field, TupleField, FieldTypes
 from .base import Operand, VirtualOperand, OperandStage
 
 
@@ -22,17 +22,15 @@ class ShuffleProxy(VirtualOperand):
 
 
 class MapReduceOperand(Operand):
-    shuffle_key = StringField('shuffle_key', default=None)
+    reducer_index = TupleField('reducer_index', FieldTypes.int32, default=None)
     map_input_id = Int32Field('map_input_id', default=0)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if getattr(self, 'shuffle_key', None) is None:
+        if getattr(self, 'reducer_index', None) is None:
             index = None
             if kws:
                 index = kws[0].get('index')
-            index = index or kw.get('index')
-
-            self.shuffle_key = ','.join(str(i) for i in index)
+            self.reducer_index = index or kw.get('index')
 
         return super()._new_chunks(inputs, kws, **kw)
 
@@ -44,9 +42,9 @@ class MapReduceOperand(Operand):
             deps = []
             for inp in inputs:
                 if isinstance(inp.op, ShuffleProxy):
-                    deps.extend([(chunk.key, self.shuffle_key) for chunk in inp.inputs or ()])
+                    deps.extend([(chunk.key, self.reducer_index) for chunk in inp.inputs or ()])
                 elif isinstance(inp.op, FetchShuffle):
-                    deps.extend([(k, self.shuffle_key) for k in inp.op.to_fetch_keys])
+                    deps.extend([(k, self.reducer_index) for k in inp.op.to_fetch_keys])
                 else:
                     deps.append(inp.key)
             return deps
@@ -69,14 +67,14 @@ class MapReduceOperand(Operand):
         for key, idx in self._get_mapper_key_idx_pairs(sort_index):
             try:
                 if pop:
-                    yield idx, ctx.pop((key, self.shuffle_key))
+                    yield idx, ctx.pop((key, self.reducer_index))
                 else:
-                    yield idx, ctx[key, self.shuffle_key]
+                    yield idx, ctx[key, self.reducer_index]
             except KeyError:
                 if not skip_none:
                     raise
                 if not pop:
-                    ctx[key, self.shuffle_key] = None
+                    ctx[key, self.reducer_index] = None
 
     def iter_mapper_data(self, ctx, sort_index=False, pop=False, skip_none=False):
         for _idx, data in self.iter_mapper_data_with_index(

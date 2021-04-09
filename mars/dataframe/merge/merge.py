@@ -78,11 +78,11 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
 
         # shuffle on index
         for index_idx, index_filter in enumerate(filters):
-            group_key = ','.join([str(index_idx), str(chunk.index[1])])
+            reducer_index = (index_idx, chunk.index[1])
             if index_filter is not None and index_filter is not list():
-                ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                ctx[chunk.key, reducer_index] = df.loc[index_filter]
             else:
-                ctx[(chunk.key, group_key)] = None
+                ctx[chunk.key, reducer_index] = None
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameMergeAlign"):

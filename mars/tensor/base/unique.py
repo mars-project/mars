@@ -208,7 +208,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                                      return_inverse=op.return_inverse,
                                      return_counts=op.return_counts,
                                      axis=op.axis, aggregate_id=i,
-                                     shuffle_key=str(i))
+                                     reducer_index=(i,))
             kws = cls._gen_kws(op, inp, chunk=True, chunk_index=i)
             chunks = reduce_op.new_chunks([shuffle_chunk], kws=kws,
                                           order=op.outputs[0].order)
@@ -223,7 +223,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
             inverse_chunks = []
             for j, cs in enumerate(unique_on_chunk_sizes):
                 chunk_op = TensorUniqueInverseReduce(dtype=map_inverse_chunks[0].dtype,
-                                                     shuffle_key=str(j))
+                                                     reducer_index=(j,))
                 inverse_chunk = chunk_op.new_chunk([inverse_shuffle_chunk], shape=(cs,),
                                                    index=(j,))
                 inverse_chunks.append(inverse_chunk)
@@ -305,7 +305,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                 # counts
                 if counts_ar is not None:
                     res.append(counts_ar[cond])
-                ctx[(op.outputs[0].key, str(reducer))] = tuple(res)
+                ctx[op.outputs[0].key, (reducer,)] = tuple(res)
 
     @classmethod
     def _execute_reduce(cls, ctx, op: "TensorUnique"):
@@ -367,7 +367,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
                             r[0] = inverse_array[0]
                             r[1] = p[inverse_array[1]]
                         # return unique length and
-                        ctx[(indices_out_key, str(input_indexes[i][op.axis]))] = \
+                        ctx[indices_out_key, (input_indexes[i][op.axis],)] = \
                             results[0].shape[op.axis], r
                 # calc counts
                 if op.return_counts:

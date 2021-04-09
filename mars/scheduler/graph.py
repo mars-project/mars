@@ -37,7 +37,7 @@ from ..optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
 from ..serialize import dataserializer
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_shuffle_key, enter_mode, has_unknown_shape
+    get_chunk_reducer_index, enter_mode, has_unknown_shape
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor
@@ -861,7 +861,7 @@ class GraphActor(SchedulerActor):
         pure_dep_chunk_keys = set()
         chunk_keys = set()
         virtual_chunk_keys = set()
-        shuffle_keys = dict()
+        reducer_indexes = dict()
         predecessors_to_successors = dict()
 
         for c in chunks:
@@ -884,7 +884,7 @@ class GraphActor(SchedulerActor):
                 successor_keys.add(sn.op.key)
             if isinstance(c.op, ShuffleProxy):
                 for sn in graph.iter_successors(c):
-                    shuffle_keys[sn.op.key] = get_chunk_shuffle_key(sn)
+                    reducer_indexes[sn.op.key] = get_chunk_reducer_index(sn)
             if isinstance(c.op, SuccessorsExclusive):
                 for sn in graph.iter_successors(c):
                     predecessors_to_successors[sn.inputs[0].op.key] = sn.op.key
@@ -901,8 +901,8 @@ class GraphActor(SchedulerActor):
         )
         if virtual_chunk_keys:
             io_meta['virtual_chunk_keys'] = list(virtual_chunk_keys)
-        if shuffle_keys:
-            io_meta['shuffle_keys'] = [shuffle_keys.get(k) for k in io_meta['successors']]
+        if reducer_indexes:
+            io_meta['reducer_indexes'] = [reducer_indexes.get(k) for k in io_meta['successors']]
         if predecessors_to_successors:
             io_meta['predecessors_to_successors'] = predecessors_to_successors
         return io_meta

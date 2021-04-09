@@ -221,8 +221,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
                 ctx[chunk.key] = df.loc[filters[0][0]]
             else:
                 for index_idx, index_filter in enumerate(filters[0]):
-                    group_key = str(index_idx)
-                    ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                    ctx[chunk.key, (index_idx,)] = df.loc[index_filter]
             return
 
         if op.column_shuffle_size == -1:
@@ -246,13 +245,13 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
         elif len(filters[0]) == 1:
             # shuffle on columns
             for column_idx, column_filter in enumerate(filters[1]):
-                group_key = ','.join([str(chunk.index[0]), str(column_idx)])
-                ctx[(chunk.key, group_key)] = df.loc[filters[0][0], column_filter]
+                shuffle_index = (chunk.index[0], column_idx)
+                ctx[chunk.key, shuffle_index] = df.loc[filters[0][0], column_filter]
         elif len(filters[1]) == 1:
             # shuffle on index
             for index_idx, index_filter in enumerate(filters[0]):
-                group_key = ','.join([str(index_idx), str(chunk.index[1])])
-                ctx[(chunk.key, group_key)] = df.loc[index_filter, filters[1][0]]
+                shuffle_index = (index_idx, chunk.index[1])
+                ctx[chunk.key, shuffle_index] = df.loc[index_filter, filters[1][0]]
         else:
             # full shuffle
             shuffle_index_size = op.index_shuffle_size
@@ -261,8 +260,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             out_index_columns = itertools.product(*filters)
             for out_idx, out_index_column in zip(out_idxes, out_index_columns):
                 index_filter, column_filter = out_index_column
-                group_key = ','.join(str(i) for i in out_idx)
-                ctx[(chunk.key, group_key)] = df.loc[index_filter, column_filter]
+                ctx[chunk.key, out_idx] = df.loc[index_filter, column_filter]
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameIndexAlign"):

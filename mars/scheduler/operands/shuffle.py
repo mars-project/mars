@@ -31,8 +31,8 @@ class ShuffleProxyActor(BaseOperandActor):
         self._op_key = op_key
 
         io_meta = self._io_meta
-        self._shuffle_keys_to_op = dict(zip(io_meta['shuffle_keys'], io_meta['successors']))
-        self._op_to_shuffle_keys = dict(zip(io_meta['successors'], io_meta['shuffle_keys']))
+        self._reducer_indexes_to_op = dict(zip(io_meta['reducer_indexes'], io_meta['successors']))
+        self._op_to_reducer_indexes = dict(zip(io_meta['successors'], io_meta['reducer_indexes']))
 
         self._worker_to_mappers = defaultdict(set)
         self._reducer_workers = dict()
@@ -52,7 +52,7 @@ class ShuffleProxyActor(BaseOperandActor):
             self._worker_to_mappers[worker].add(op_key)
             self.chunk_meta.add_worker(self._session_id, chunk_key, worker, _tell=True)
 
-        shuffle_keys_to_op = self._shuffle_keys_to_op
+        reducer_indexes_to_op = self._reducer_indexes_to_op
 
         if not self._reducer_workers:
             self._reducer_workers = self._graph_refs[0].assign_operand_workers(
@@ -62,19 +62,19 @@ class ShuffleProxyActor(BaseOperandActor):
 
         unused_keys = []
 
-        for (chunk_key, shuffle_key), data_size in output_sizes.items() or ():
-            if shuffle_key not in shuffle_keys_to_op:
+        for (chunk_key, reducer_index), data_size in output_sizes.items() or ():
+            if reducer_index not in reducer_indexes_to_op:
                 # outputs may be pruned, hence those keys become useless
-                unused_keys.append((chunk_key, shuffle_key))
+                unused_keys.append((chunk_key, reducer_index))
                 continue
 
-            succ_op_key = shuffle_keys_to_op[shuffle_key]
+            succ_op_key = reducer_indexes_to_op[reducer_index]
             meta = self._reducer_to_mapper[succ_op_key][op_key] = \
                 WorkerMeta(chunk_size=data_size, workers=(worker,),
-                           chunk_shape=output_shapes.get((chunk_key, shuffle_key)))
+                           chunk_shape=output_shapes.get((chunk_key, reducer_index)))
             reducer_worker = reducer_workers.get(succ_op_key)
             if reducer_worker and reducer_worker != worker:
-                data_to_addresses[(chunk_key, shuffle_key)] = [reducer_worker]
+                data_to_addresses[(chunk_key, reducer_index)] = [reducer_worker]
                 meta.workers += (reducer_worker,)
 
         if unused_keys:
@@ -95,8 +95,8 @@ class ShuffleProxyActor(BaseOperandActor):
         super().append_graph(graph_key, op_info)
 
         io_meta = op_info['io_meta']
-        self._shuffle_keys_to_op = dict(zip(io_meta['shuffle_keys'], io_meta['successors']))
-        self._op_to_shuffle_keys = dict(zip(io_meta['successors'], io_meta['shuffle_keys']))
+        self._reducer_indexes_to_op = dict(zip(io_meta['reducer_indexes'], io_meta['successors']))
+        self._op_to_reducer_indexes = dict(zip(io_meta['successors'], io_meta['reducer_indexes']))
 
     def _start_successors(self):
         self._all_deps_built = True
@@ -107,8 +107,8 @@ class ShuffleProxyActor(BaseOperandActor):
             if succ_key in self._finish_succs:
                 continue
 
-            shuffle_key = self._op_to_shuffle_keys[succ_key]
-            input_data_metas = dict(((self._mapper_op_to_chunk[k], shuffle_key), meta)
+            reducer_index = self._op_to_reducer_indexes[succ_key]
+            input_data_metas = dict(((self._mapper_op_to_chunk[k], reducer_index), meta)
                                     for k, meta in self._reducer_to_mapper[succ_key].items())
 
             futures.append(self._get_operand_actor(succ_key).start_operand(
@@ -121,13 +121,13 @@ class ShuffleProxyActor(BaseOperandActor):
 
     def add_finished_successor(self, op_key, worker):
         super().add_finished_successor(op_key, worker)
-        shuffle_key = self._op_to_shuffle_keys[op_key]
+        reducer_index = self._op_to_reducer_indexes[op_key]
 
         # input data in reduce nodes can be freed safely
         data_keys = []
         workers_list = []
         for pred_key, meta in self._reducer_to_mapper[op_key].items():
-            data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
+            data_keys.append((self._mapper_op_to_chunk[pred_key], reducer_index))
             workers_list.append((self._reducer_workers[op_key],))
         self._free_data_in_worker(data_keys, workers_list)
 
@@ -151,9 +151,9 @@ class ShuffleProxyActor(BaseOperandActor):
         data_keys = []
         workers_list = []
         for op_key in self._succ_keys:
-            shuffle_key = self._op_to_shuffle_keys[op_key]
+            reducer_index = self._op_to_reducer_indexes[op_key]
             for pred_key, meta in self._reducer_to_mapper[op_key].items():
-                data_keys.append((self._mapper_op_to_chunk[pred_key], shuffle_key))
+                data_keys.append((self._mapper_op_to_chunk[pred_key], reducer_index))
                 workers_list.append(tuple(set(meta.workers + (self._reducer_workers[op_key],))))
         self._free_data_in_worker(data_keys, workers_list)
 

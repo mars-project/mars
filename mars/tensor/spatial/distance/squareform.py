@@ -232,7 +232,6 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
 
         cum_sizes = [[0] + np.cumsum(cs).tolist() for cs in out_chunk_size]
         for idx in itertools.product(*(range(len(ns)) for ns in out_chunk_size)):
-            shuffle_key = ','.join(str(p) for p in idx)
             i, j = idx
             row_range = cum_sizes[0][i], cum_sizes[0][i + 1]
             col_range = cum_sizes[1][j], cum_sizes[1][j + 1]
@@ -252,7 +251,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             inds = xp.concatenate([upper_inds, lower_inds])
             values = xp.concatenate([upper_values, lower_values])
 
-            ctx[op.outputs[0].key, shuffle_key] = inds, values
+            ctx[op.outputs[0].key, idx] = inds, values
 
     @classmethod
     def _to_vector(cls, ctx, xp, x, op):
@@ -279,7 +278,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             index_range = cum_chunk_size[i], cum_chunk_size[i + 1]
             filtered = (to_indices >= index_range[0]) & (to_indices < index_range[1])
             out_indices = to_indices[filtered] - cum_chunk_size[i]
-            ctx[op.outputs[0].key, str(i)] = out_indices, x[filtered]
+            ctx[op.outputs[0].key, (i,)] = out_indices, x[filtered]
 
     @classmethod
     def _execute_map(cls, ctx, op):
