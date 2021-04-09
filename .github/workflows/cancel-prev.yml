@@ -6,7 +6,6 @@ jobs:
   cancel:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
       - uses: styfle/cancel-workflow-action@0.8.0
         with:
           access_token: ${{ github.token }}

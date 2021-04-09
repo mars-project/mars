@@ -38,7 +38,6 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
     _subset_chunk = KeyField('subset_chunk')
     # shuffle phase, used in shuffle method
     _shuffle_size = Int32Field('shuffle_size')
-    _shuffle_phase = StringField('shuffle_phase')
 
     @property
     def input(self):
@@ -63,10 +62,6 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
     @property
     def shuffle_size(self):
         return self._shuffle_size
-
-    @property
-    def shuffle_phase(self):
-        return self._shuffle_phase
 
     @classmethod
     def _get_shape(cls, input_shape):  # pragma: no cover
@@ -214,7 +209,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             reduce_op = op.copy().reset_key()
             reduce_op._method = 'shuffle'
             reduce_op.stage = OperandStage.reduce
-            reduce_op._shuffle_phase = 'drop_duplicates'
+            reduce_op.reducer_phase = 'drop_duplicates'
             reduce_op._shuffle_size = inp.chunk_shape[0]
             reduce_op._output_types = [OutputType.dataframe]
             reduce_chunk_params = map_chunks[0].params
@@ -229,7 +224,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             put_back_op = op.copy().reset_key()
             put_back_op._method = 'shuffle'
             put_back_op.stage = OperandStage.reduce
-            put_back_op._shuffle_phase = 'put_back'
+            put_back_op.reducer_phase = 'put_back'
             put_back_op.reducer_index = (i,)
             put_back_chunk_params = map_chunks[i].params
             if out.ndim == 1:

@@ -25,13 +25,11 @@ class DataFrameDuplicated(DuplicateOperand):
     _op_type_ = opcodes.DUPLICATED
 
     def __init__(self, subset=None, keep=None, output_types=None,
-                 method=None, subset_chunk=None, shuffle_size=None,
-                 shuffle_phase=None, **kw):
+                 method=None, subset_chunk=None, shuffle_size=None, **kw):
         super().__init__(_subset=subset, _keep=keep,
                          _output_types=output_types, _method=method,
                          _subset_chunk=subset_chunk,
-                         _shuffle_size=shuffle_size,
-                         _shuffle_phase=shuffle_phase, **kw)
+                         _shuffle_size=shuffle_size, **kw)
 
     @classmethod
     def _get_shape(cls, input_shape):
@@ -93,7 +91,7 @@ class DataFrameDuplicated(DuplicateOperand):
             is_terminal_chunk = True
         elif op.method == 'tree' and op.stage == OperandStage.agg:
             is_terminal_chunk = True
-        elif op.method == 'shuffle' and op.shuffle_phase == 'put_back':
+        elif op.method == 'shuffle' and op.reducer_phase == 'put_back':
             is_terminal_chunk = True
 
         if is_terminal_chunk:
@@ -231,7 +229,7 @@ class DataFrameDuplicated(DuplicateOperand):
         ctx[op.outputs[0].key] = duplicated
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameDuplicated"):
         if op.method is None:
             # one chunk
             cls._execute_chunk(ctx, op)
@@ -259,10 +257,10 @@ class DataFrameDuplicated(DuplicateOperand):
             assert op.method == 'shuffle'
             if op.stage == OperandStage.map:
                 cls._execute_shuffle_map(ctx, op)
-            elif op.shuffle_phase == 'drop_duplicates':
+            elif op.reducer_phase == 'drop_duplicates':
                 cls._execute_shuffle_reduce(ctx, op)
             else:
-                assert op.shuffle_phase == 'put_back'
+                assert op.reducer_phase == 'put_back'
                 cls._execute_shuffle_put_back(ctx, op)
 
 
