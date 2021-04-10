@@ -29,7 +29,7 @@ class SessionAPI:
     @classmethod
     @alru_cache
     async def create(cls, address: str, **kwargs) -> "SessionAPI":
-        if kwargs:
+        if kwargs:  # pragma: no cover
             raise TypeError(f'SessionAPI.create '
                             f'got unknown arguments: {list(kwargs)}')
         session_manager = await mo.actor_ref(
@@ -102,7 +102,7 @@ class MockSessionAPI(SessionAPI):
     async def create(cls,
                      address: str, **kwargs) -> "SessionAPI":
         session_id = kwargs.pop('session_id')
-        if kwargs:
+        if kwargs:  # pragma: no cover
             raise TypeError(f'SessionAPI.create '
                             f'got unknown arguments: {list(kwargs)}')
 

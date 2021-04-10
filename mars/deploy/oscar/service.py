@@ -22,7 +22,7 @@ from ...services import start_services, NodeRole
 
 def _load_config(filename=None):
     # use default config
-    if not filename:
+    if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'config.yml')
     with open(filename) as f:
@@ -32,9 +32,7 @@ def _load_config(filename=None):
 async def start_supervisor(address: str,
                            modules: Union[List, str, None] = None,
                            config: Dict = None):
-    if not config:
-        config = _load_config()
-    elif isinstance(config, str):
+    if not config or isinstance(config, str):
         config = _load_config(config)
     await start_services(NodeRole.SUPERVISOR, config,
                          modules=modules, address=address)
@@ -45,9 +43,7 @@ async def start_worker(address: str,
                        band_to_slots: Dict[str, int],
                        modules: Union[List, str, None] = None,
                        config: Dict = None):
-    if not config:
-        config = _load_config()
-    elif isinstance(config, str):
+    if not config or isinstance(config, str):
         config = _load_config(config)
     if config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address

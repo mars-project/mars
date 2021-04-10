@@ -461,7 +461,7 @@ class TaskManagerActor(mo.Actor):
     async def _wait_task(self, task_id: str):
         try:
             task_info = self._task_id_to_task_info[task_id]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
         aio_tasks = task_info.aio_tasks
@@ -481,7 +481,7 @@ class TaskManagerActor(mo.Actor):
     async def cancel_task(self, task_id: str):
         try:
             task_info = self._task_id_to_task_info[task_id]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
         # return coroutine to not block current actor
@@ -490,13 +490,13 @@ class TaskManagerActor(mo.Actor):
     def get_task_result(self, task_id: str):
         try:
             return self._task_id_to_task_info[task_id].task_result
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
     def get_task_result_tileables(self, task_id: str):
         try:
             task_info = self._task_id_to_task_info[task_id]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
         tileable_graph = task_info.task_processors[-1].tileable_graph

@@ -37,7 +37,7 @@ async def create_worker_actor_pool(
     labels = ['main']
     i_gpu = count()
     for band, slot in band_to_slots.items():
-        if band.startswith('gpu'):
+        if band.startswith('gpu'):  # pragma: no cover
             envs.append({'CUDA_VISIBLE_DEVICES': str(next(i_gpu))})
             labels.append(band)
         else:

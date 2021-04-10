@@ -32,11 +32,21 @@ async def test_execute():
                                n_cpu=8)
 
     async with client:
+        assert client.address is not None
+
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)
         b = a + 1
 
         info = await client.session.execute(b)
         await info
+        assert info.result() is None
+        assert info.exception() is None
         assert info.progress() == 1
         np.testing.assert_equal(raw + 1, (await client.session.fetch(b))[0])
+
+        with pytest.raises(ValueError):
+            await client.session.fetch(b + 1)
+
+        with pytest.raises(ValueError):
+            await client.session.fetch(b[b < 0.6])

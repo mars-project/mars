@@ -14,8 +14,6 @@
 
 from typing import Union, Dict
 
-import asyncio
-
 from ... import oscar as mo
 from ...core.session import new_session
 from ...resource import cpu_count, cuda_count
@@ -33,13 +31,13 @@ async def new_cluster(address: str = '0.0.0.0',
     supervisor_pool = await create_supervisor_actor_pool(
         address, n_process=0,
         subprocess_start_method=subprocess_start_method)
+
+    # create worker actor pool
     band_to_slot = dict()
-    if n_cpu == 'auto':
-        n_cpu = cpu_count()
+    n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
     band_to_slot['numa-0'] = n_cpu
-    if n_gpu == 'auto':
-        n_gpu = cuda_count()
-    for i in range(n_gpu):
+    n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
+    for i in range(n_gpu):  # pragma: no cover
         band_to_slot[f'gpu-{i}'] = 1
     worker_pool = await create_worker_actor_pool(
         address, band_to_slot,
@@ -84,21 +82,13 @@ class LocalClient:
     def session(self):
         return self._session
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_):
-        self.stop()
-
     async def __aenter__(self):
         return self
 
     async def __aexit__(self, *_):
-        await self._stop()
+        await self.stop()
 
-    async def _stop(self):
+    async def stop(self):
+        await self._session.destroy()
         await self._worker_pool.stop()
         await self._supervisor_pool.stop()
-
-    def stop(self):
-        asyncio.run(self._stop())

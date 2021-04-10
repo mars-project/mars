@@ -16,7 +16,6 @@ import asyncio
 from numbers import Integral
 from weakref import WeakKeyDictionary
 
-from ... import oscar as mo
 from ...core import Tileable, TileableGraph, TileableGraphBuilder
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo
@@ -37,10 +36,7 @@ class ExectionInfo(AbstractExectionInfo):
         self._task_id = task_id
 
     def progress(self) -> float:
-        if self.done():
-            return 1.0
-        else:
-            return 0.0
+        return 1.0 if self.done() else 0.0
 
 
 @register_session_cls
@@ -58,7 +54,6 @@ class Session(AbstractSession):
         self._task_api = task_api
         self._meta_api = meta_api
 
-        self._session_ref = None
         self._tileable_to_fetch = WeakKeyDictionary()
 
     @classmethod
@@ -73,7 +68,7 @@ class Session(AbstractSession):
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
 
-        if kwargs:
+        if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError(f'Oscar session got unexpected '
                             f'arguments: {unexpected_keys}')
@@ -98,7 +93,7 @@ class Session(AbstractSession):
                       **kwargs) -> ExectionInfo:
         fuse_enabled: bool = kwargs.pop('fuse_enabled', False)
         task_name: str = kwargs.pop('task_name', None)
-        if kwargs:
+        if kwargs:  # pragma: no cover
             raise TypeError(f'run got unexpected key arguments {list(kwargs)!r}')
 
         tileables = [tileable.data if hasattr(tileable, 'data') else tileable
@@ -132,8 +127,8 @@ class Session(AbstractSession):
         while tileable not in self._tileable_to_fetch:
             # if tileable's op is slice, try to check input
             if isinstance(tileable.op, slice_op_types):
-                tileable = tileable.inputs[0]
                 indexes = tileable.op.indexes
+                tileable = tileable.inputs[0]
                 if not all(isinstance(index, (slice, Integral))
                            for index in indexes):
                     raise ValueError('Only support fetch data slices')
@@ -164,4 +159,4 @@ class Session(AbstractSession):
         return data
 
     async def destroy(self):
-        await mo.destroy_actor(self._session_ref)
+        await self._session_api.delete_session(self._session_id)
