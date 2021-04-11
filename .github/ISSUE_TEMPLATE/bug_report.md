@@ -19,7 +19,7 @@ A clear and concise description of what the bug is.
 To help us reproducing this bug, please provide information below:
 1. Your Python version
 2. The version of Mars you use
-3. Versions of crucial packages, such as numpy, scipy and protobuf
+3. Versions of crucial packages, such as numpy, scipy and pandas
 4. Full stack of the error.
 5. Minimized code to reproduce the error.
 

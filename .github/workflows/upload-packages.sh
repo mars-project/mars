@@ -14,12 +14,9 @@ else
     conda activate wheel
 
     docker pull $DOCKER_IMAGE
-    pip install "$(cat requirements-wheel.txt | grep protobuf)"
-
     pyabis=$(echo $PYABI | tr ":" "\n")
     for abi in $pyabis; do
       git clean -f -x
-      python bin/build-protos.py
       docker run --rm -e "PYABI=$abi" -e "GIT_TAG=$GIT_TAG" -v `pwd`:/io \
         $DOCKER_IMAGE $PRE_CMD /io/.github/workflows/build-wheels.sh
       sudo chown -R $(id -u):$(id -g) ./*

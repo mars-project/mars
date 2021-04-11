@@ -131,31 +131,6 @@ msgstr ""
 "Mars 使用 Cython 加速代码执行。当你改变了 Cython 代码，你需要使用下面的"
 "命令将它们重新编译为二进制文件："
 
-#: ../../source/development/contributing.rst:79
-msgid "Rebuilding Protobufs"
-msgstr "重新编译 Protobuf"
-
-#: ../../source/development/contributing.rst:80
-msgid ""
-"Mars uses Protobuf to serialize operands internally. After you change "
-"protobuf files in Mars, you need to compile them into Python source codes"
-" by running the command below on the root of Mars project:"
-msgstr ""
-"Mars 内部使用 Protobuf 序列化操作符。当你修改了 Mars 中的 Protobuf 文件后"
-"，需要在 Mars 项目的根目录运行下面的命令将它们编译为 Python 源代码："
-
-#: ../../source/development/contributing.rst:88
-msgid ""
-"Mars will download ``protoc`` for Win32, MacOS x64 and Linux x64 from "
-"Github if ``protoc`` cannot be found. If you need to specify a customized"
-" version of ``protoc``, you can use the environment variable ``PROTOC`` "
-"to specify its path before calling the above command."
-msgstr ""
-"如果 ``protoc`` 可执行文件无法被找到，Mars 将会从 Github 为 Win32、MacOS "
-"x64 和 Linux x64 下载 ``protoc`` 可执行文件。如果你希望指定一个自定义的 `"
-"`protoc`` 可执行文件，可以在调用上述命令前将环境变量 ``PROTOC`` 配置为"
-"可执行文件的路径。"
-
 #: ../../source/development/contributing.rst:94
 msgid "Running Tests"
 msgstr "运行测试用例"

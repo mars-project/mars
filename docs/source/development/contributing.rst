@@ -46,7 +46,7 @@ development, use the following steps:
 .. code-block:: bash
 
     pip install --upgrade setuptools pip
-    pip install cython protobuf
+    pip install cython
     git clone https://github.com/mars-project/mars.git
     cd mars
     pip install -e ".[dev]"
@@ -74,21 +74,6 @@ the root of Mars project:
 .. code-block:: bash
 
     python setup.py build_ext -i
-
-Rebuilding Protobufs
-````````````````````
-Mars uses Protobuf to serialize operands internally. After you change protobuf
-files in Mars, you need to compile them into Python source codes by running the
-command below on the root of Mars project:
-
-.. code-block:: bash
-
-    python setup.py build_proto
-
-Mars will download ``protoc`` for Win32, MacOS x64 and Linux x64 from Github if
-``protoc`` cannot be found. If you need to specify a customized version of
-``protoc``, you can use the environment variable ``PROTOC`` to specify its path
-before calling the above command.
 
 Running Tests
 -------------
