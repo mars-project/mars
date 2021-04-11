@@ -134,7 +134,10 @@ class VineyardStorage(StorageBackend):
         return self._size
 
     @implements(StorageBackend.get)
-    async def get(self, object_id, **kwarg) -> object:
+    async def get(self, object_id, **kwargs) -> object:
+        if kwargs:  # pragma: no cover
+            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
+
         return self._client.get(object_id)
 
     @implements(StorageBackend.put)

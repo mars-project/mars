@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, Tuple
+
 from ... import oscar as mo
 from .core import NodeInfo
 from .gather import gather_node_env, gather_node_resource, gather_node_states
@@ -20,11 +22,13 @@ DEFAULT_INFO_UPLOAD_INTERVAL = 1
 
 
 class NodeInfoUploaderActor(mo.Actor):
-    def __init__(self, role=None, dirs=None, interval=None):
+    def __init__(self, role=None, dirs=None, interval=None,
+                 band_to_slots=None):
         self._info = NodeInfo(role=role)
 
         self._env_uploaded = False
         self._dirs = dirs
+        self._band_to_slots = band_to_slots
 
         self._locator_ref = None
         self._node_info_ref = None
@@ -51,7 +55,7 @@ class NodeInfoUploaderActor(mo.Actor):
     async def upload_node_info(self, call_next: bool = True):
         if not self._info.env:
             self._info.env = gather_node_env()
-        self._info.resource = gather_node_resource()
+        self._info.resource = gather_node_resource(self._band_to_slots)
         self._info.state.update(gather_node_states(dirs=self._dirs))
 
         await self._node_info_ref.update_node_info(
@@ -63,6 +67,17 @@ class NodeInfoUploaderActor(mo.Actor):
 
         if call_next:
             self._upload_task = self.ref().upload_node_info.tell_delay(delay=self._interval)
+
+    def get_bands(self) -> Dict[Tuple[str, str], int]:
+        band_slots = dict()
+        for resource_type, info in self._info.resource.items():
+            if resource_type.startswith('numa'):
+                # cpu
+                band_slots[(self.address, resource_type)] = info['cpu_total']
+            else:  # pragma: no cover
+                assert resource_type.startswith('gpu')
+                band_slots[(self.address, resource_type)] = info['gpu_total']
+        return band_slots
 
     def set_state_value(self, key, value):
         self._info.state[key] = value

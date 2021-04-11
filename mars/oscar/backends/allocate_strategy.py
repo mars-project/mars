@@ -77,6 +77,16 @@ class MainPool(AllocateStrategy):
         return config.get_external_address(main_process_index)
 
 
+class Random(AllocateStrategy):
+    __slots__ = ()
+
+    @implements(AllocateStrategy.get_allocated_address)
+    def get_allocated_address(self,
+                              config: ActorPoolConfig,
+                              allocated: allocated_type) -> str:
+        return choice(config.get_external_addresses())
+
+
 class RandomSubPool(AllocateStrategy):
     __slots__ = ()
 

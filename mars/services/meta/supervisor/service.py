@@ -18,7 +18,7 @@ from .... import oscar as mo
 from .core import MetaStoreManagerActor
 
 
-async def start(config: Dict, address: None):
+async def start(config: Dict, address: str):
     """
     Start meta service on supervisor.
 

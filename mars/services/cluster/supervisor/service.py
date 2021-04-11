@@ -19,7 +19,7 @@ from ..uploader import NodeInfoUploaderActor
 from .node_info import NodeInfoCollectorActor
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     """
     Start cluster service on supervisor
 
@@ -42,7 +42,7 @@ async def start(config: dict, address: None):
     await mo.create_actor(
         SupervisorLocatorActor,
         backend_name=svc_config.get('backend', 'fixed'),
-        lookup_address=svc_config.get('lookup_address'),
+        lookup_address=svc_config.get('lookup_address', address),
         uid=SupervisorLocatorActor.default_uid(),
         address=address)
     await mo.create_actor(

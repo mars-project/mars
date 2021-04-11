@@ -2,7 +2,6 @@ scipy>=1.0.0
 scikit-learn>=0.20
 numexpr>=2.6.4
 pyarrow>=0.11.0,!=0.16.*
-psutil>=4.0.0
 lz4>=1.0.0
 protobuf>=3.6
 gevent>=1.2.0,<21.1.0

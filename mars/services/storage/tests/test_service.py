@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 
 import numpy as np
@@ -26,7 +27,8 @@ from mars.services.storage import StorageAPI
 @pytest.fixture
 async def actor_pools():
     async def start_pool():
-        start_method = 'spawn' if sys.platform != 'win32' else None
+        start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+            if sys.platform != 'win32' else None
         pool = await mo.create_actor_pool('127.0.0.1', n_process=1,
                                           subprocess_start_method=start_method)
         await pool.start()
@@ -52,7 +54,8 @@ async def test_cluster_service(actor_pools):
 
     config = {
         "services": ["storage"],
-        "storage_configs": {
+        "storage": {
+            "backends": ["plasma"],
             "plasma": plasma_setup_params,
         }
     }
@@ -73,6 +76,9 @@ async def test_cluster_service(actor_pools):
 
     get_value1 = await api2.get('data1')
     np.testing.assert_array_equal(value1, get_value1)
+
+    sliced_value = await api2.get('data1', conditions=[slice(None, None), slice(0, 4)])
+    np.testing.assert_array_equal(value1[:, :4], sliced_value)
 
     value2 = pd.DataFrame(value1)
     await api2.put('data2', value2)

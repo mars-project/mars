@@ -19,6 +19,7 @@ comment: off
 ignore:
   - "mars/compat.py"
   - "mars/lib/aio/_runners.py"
+  - "mars/lib/aio/lru.py"
   - "mars/lib/functools32"
   - "mars/lib/futures"
   - "mars/lib/enum.py"

@@ -16,7 +16,7 @@ from .... import oscar as mo
 from ..core import StorageManagerActor
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     """
     Start cluster service on supervisor
     Parameters
@@ -24,17 +24,21 @@ async def start(config: dict, address: None):
     config
         storage service config.
         {
-            "storage_configs":
+            "storage":
                 {
+                    "backends": ["plasma"],
                     "<storage backend name>"： "<setup params>",
                 }
         }
     address
         address of actor pool
     """
-    storage_configs = config['storage_configs']
+    storage_configs = config['storage']
+    backends = storage_configs.get('backends')
+    backend_config = {backend: storage_configs.get(backend)
+                      for backend in backends}
 
     await mo.create_actor(StorageManagerActor,
-                          storage_configs,
+                          backend_config,
                           uid=StorageManagerActor.default_uid(),
                           address=address)

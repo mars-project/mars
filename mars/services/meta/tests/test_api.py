@@ -20,7 +20,9 @@ import mars.dataframe as md
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
-from mars.services.meta.api import MockMetaAPI
+from mars.services.cluster import MockClusterAPI
+from mars.services.session import MockSessionAPI
+from mars.services.meta import MockMetaAPI
 
 
 t = mt.random.rand(10, 10)
@@ -46,6 +48,10 @@ async def test_meta_mock_api(obj):
     async with pool:
         session_id = 'mock_session_id'
 
+        await MockClusterAPI.create(
+            pool.external_address)
+        await MockSessionAPI.create(
+            pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(
             session_id=session_id,
             address=pool.external_address)

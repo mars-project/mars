@@ -134,8 +134,21 @@ class StorageHandlerActor(mo.Actor):
                   conditions: List = None):
         data_info = await self._storage_manager_ref.get_data_info(
             session_id, data_key)
-        return await self._clients[data_info.level].get(
-            data_info.object_id, conditions=conditions)
+        if conditions is None:
+            return await self._clients[data_info.level].get(
+                data_info.object_id)
+        else:
+            try:
+                return await self._clients[data_info.level].get(
+                    data_info.object_id, conditions=conditions)
+            except NotImplementedError:
+                data = await self._clients[data_info.level].get(
+                    data_info.object_id)
+                try:
+                    sliced_value = data.iloc[tuple(conditions)]
+                except AttributeError:
+                    sliced_value = data[tuple(conditions)]
+                return sliced_value
 
     async def put(self,
                   session_id: str,

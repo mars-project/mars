@@ -43,20 +43,21 @@ def gather_node_env():
     return info
 
 
-def gather_node_resource():
+def gather_node_resource(band_to_slots=None):
     # todo numa can be supported by adding more bands
     res = dict()
+    band_to_slots = band_to_slots or dict()
     mem_info = mars_resource.virtual_memory()
     res['numa-0'] = {
         'cpu_avail': mars_resource.cpu_count() - mars_resource.cpu_percent() / 100.0,
-        'cpu_total': mars_resource.cpu_count(),
+        'cpu_total': band_to_slots.get('numa-0', mars_resource.cpu_count()),
         'memory_avail': mem_info.available,
         'memory_total': mem_info.total,
     }
     for idx, gpu_card_stat in enumerate(mars_resource.cuda_card_stats()):  # pragma: no cover
         res[f'gpu-{idx}'] = {
             'gpu_avail': 1 - gpu_card_stat.gpu_usage,
-            'gpu_total': 1,
+            'gpu_total': band_to_slots.get(f'gpu-{idx}', 1),
             'memory_avail': gpu_card_stat.fb_mem_info.available,
             'memory_total': gpu_card_stat.fb_mem_info.total,
         }

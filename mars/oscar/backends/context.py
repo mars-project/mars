@@ -19,6 +19,7 @@ from ...utils import to_binary
 from ..api import Actor
 from ..core import ActorRef
 from ..context import BaseActorContext
+from ..errors import CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import AllocateStrategy, AddressSpecified
 from .core import ActorCaller
@@ -63,7 +64,11 @@ class MarsActorContext(BaseActorContext):
         try:
             await asyncio.wait([future])
         except asyncio.CancelledError:
-            await self.cancel(address, message.message_id)
+            try:
+                await self.cancel(address, message.message_id)
+            except CannotCancelTask:
+                # cancel failed, already finished
+                pass
         return await future
 
     async def create_actor(self, actor_cls: Type[Actor], *args, uid=None,

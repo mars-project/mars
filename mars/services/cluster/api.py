@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import asyncio
-from typing import List, Dict, Union, Type, TypeVar
+from typing import List, Dict, Tuple, Union, Type, TypeVar
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from ..core import NodeRole
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -41,6 +42,7 @@ class ClusterAPI:
             [NodeInfoCollectorActor.default_uid()])
 
     @classmethod
+    @alru_cache
     async def create(cls: Type[APIType], address: str) -> APIType:
         api_obj = cls(address)
         await api_obj._init()
@@ -143,6 +145,28 @@ class ClusterAPI:
         """
         return await self._node_info_ref.get_nodes_info(
             nodes=nodes, role=role, env=env, resource=resource, state=state)
+
+    async def get_all_bands(self) -> Dict[Tuple[str, str], int]:
+        """
+        Get all bands that can be used for computation.
+
+        Returns
+        -------
+        band_to_slots : dict
+            Band to n_slot.
+        """
+        return await self._node_info_ref.get_all_bands()
+
+    async def get_bands(self):
+        """
+        Get bands that can be used for computation on current node.
+
+        Returns
+        -------
+        band_to_slots : dict
+            Band to n_slot.
+        """
+        return await self._uploader_ref.get_bands()
 
     async def set_state_value(self, key: str, value: Union[List, Dict]):
         await self._uploader_ref.set_state_value(key, value)

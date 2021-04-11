@@ -14,13 +14,14 @@
 
 from abc import ABC, abstractmethod
 from enum import Enum
+from functools import lru_cache
 from types import TracebackType
 from typing import Any, Type, Tuple, Dict, List
 
 import numpy as np
 
 from ...lib.tblib import pickling_support
-from ...serialization.core import Serializer, pickle, pickle_buffers, unpickle_buffers
+from ...serialization.core import Serializer, pickle, buffered
 from ...utils import classproperty, implements
 from ..core import ActorRef
 
@@ -299,18 +300,41 @@ class DeserializeMessageFailed(Exception):
 class MessageSerializer(Serializer):
     serializer_name = 'actor_message'
 
+    @staticmethod
+    @lru_cache(20)
+    def _get_slots(message_cls: Type[_MessageBase]):
+        slots = []
+        for tp in message_cls.__mro__:
+            if issubclass(tp, _MessageBase):
+                slots.extend(tp.__slots__)
+        return slots
+
+    @buffered
     def serialize(self, obj: _MessageBase, context: Dict):
         assert obj.protocol == 0, 'only support protocol 0 for now'
-        # use pickle for protocol 0
-        return {'protocol': 0, 'message_id': obj.message_id}, \
-            pickle_buffers(obj)
+
+        message_class = type(obj)
+        to_serialize = [getattr(obj, slot) for slot in self._get_slots(message_class)]
+        header, buffers = yield to_serialize
+        new_header = {
+            'message_class': message_class,
+            'message_id': obj.message_id,
+            'protocol': obj.protocol,
+            'attributes_header': header
+        }
+        return new_header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         protocol = header['protocol']
         assert protocol == 0, 'only support protocol 0 for now'
         message_id = header['message_id']
+        message_class = header['message_class']
         try:
-            return unpickle_buffers(buffers)
+            serialized = yield header['attributes_header'], buffers
+            message = object.__new__(message_class)
+            for slot, val in zip(self._get_slots(message_class), serialized):
+                setattr(message, slot, val)
+            return message
         except pickle.UnpicklingError as e:  # pragma: no cover
             raise DeserializeMessageFailed(message_id) from e
 

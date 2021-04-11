@@ -24,7 +24,7 @@ from ...utils import implements, to_binary
 from ...utils import lazy_import
 from ..api import Actor
 from ..core import ActorRef
-from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed
+from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, \
@@ -281,15 +281,20 @@ class AbstractActorPool(ABC):
     def _run_coro(self, message_id: bytes, coro: Coroutine):
         future = asyncio.create_task(coro)
         self._process_messages[message_id] = future
-        yield future
-        self._process_messages.pop(message_id, None)
+        try:
+            yield future
+        finally:
+            self._process_messages.pop(message_id, None)
 
     async def process_message(self,
                               message: _MessageBase,
                               channel: Channel):
         handler = self._message_handler[message.message_type]
-        with self._run_coro(message.message_id, handler(self, message)) as future:
-            await channel.send(await future)
+        with _ErrorProcessor(message.message_id,
+                             message.protocol) as processor:
+            with self._run_coro(message.message_id, handler(self, message)) as future:
+                processor.result = await future
+        await channel.send(processor.result)
 
     async def call(self,
                    dest_address: str,
@@ -494,8 +499,8 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
                              message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
             if future is None:  # pragma: no cover
-                raise ValueError('Task not exists, maybe it is done '
-                                 'or cancelled already')
+                raise CannotCancelTask('Task not exists, maybe it is done '
+                                       'or cancelled already')
             future.cancel()
             processor.result = ResultMessage(message.message_id, True,
                                              protocol=message.protocol)
@@ -848,8 +853,8 @@ class MainActorPoolBase(ActorPoolBase):
             for process_index in process_indexes:
                 if process_index == curr_process_index:
                     continue
-                create_pool_task = cls.start_sub_pool(
-                    actor_pool_config, process_index, start_method)
+                create_pool_task = asyncio.create_task(cls.start_sub_pool(
+                    actor_pool_config, process_index, start_method))
                 await asyncio.sleep(0)
                 # await create_pool_task
                 tasks.append(create_pool_task)
@@ -859,7 +864,8 @@ class MainActorPoolBase(ActorPoolBase):
         pool: MainActorPoolType = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
 
-        assert len(addresses) == len(processes), f"addresses {addresses}, processes {processes}"
+        assert len(addresses) == len(processes), \
+            f"addresses {addresses}, processes {processes}"
         for addr, proc in zip(addresses, processes):
             pool.attach_sub_process(addr, proc)
         return pool
@@ -957,9 +963,9 @@ class MainActorPoolBase(ActorPoolBase):
     async def recover_sub_pool(self, address: str):
         process_index = self._config.get_process_index(address)
         # process dead, restart it
+        # remember always use spawn to recover sub pool
         self.sub_processes[address] = await self.__class__.start_sub_pool(
-            self._config, process_index,
-            self._subprocess_start_method)
+            self._config, process_index, 'spawn')
 
         if self._auto_recover == 'actor':
             # need to recover all created actors
@@ -1011,7 +1017,8 @@ async def create_actor_pool(address: str,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None) \
         -> MainActorPoolType:
-    n_process = n_process or multiprocessing.cpu_count()
+    if n_process is None:
+        n_process = multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
         raise ValueError(f'`labels` should be of size {n_process + 1}, '
                          f'got {len(labels)}')

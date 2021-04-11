@@ -16,6 +16,7 @@ import asyncio
 import sys
 
 from .file import AioFileObject, AioFilesystem
+from .lru import alru_cache
 from .parallelism import AioEvent
 
 
