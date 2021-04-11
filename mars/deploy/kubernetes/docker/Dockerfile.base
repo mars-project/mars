@@ -15,7 +15,6 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     numexpr \
     numpy\>=1.14.0 \
     pandas\>=1.0.0 \
-    protobuf \
     psutil \
     scikit-learn \
     scipy \

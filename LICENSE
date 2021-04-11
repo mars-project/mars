@@ -236,7 +236,6 @@ BSD 3-Clause
 - bokeh:1.0.1
 - jinja2:2.10
 - psutil:5.4.7
-- protobuf:3.6.0
 - uhashring:1.1
 - skein:0.8.0
 

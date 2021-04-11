@@ -23,7 +23,6 @@ omit =
     mars/lib/nvutils.py
     mars/lib/tblib/*
     mars/lib/uhashring/*
-    mars/serialize/protos/*
     mars/oscar/backends/ray/communication.py
     mars/oscar/backends/ray/pool.py
     mars/learn/contrib/xgboost/tracker.py
