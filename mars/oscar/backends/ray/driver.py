@@ -50,7 +50,9 @@ class RayActorDriver(BaseActorDriver):
                 num_cpus=0,  # main pool doesn't do horse work, mark it use no cpu.
                 name=address, placement_group=pg, placement_group_bundle_index=index).remote()
             n_process = bundle_spec["CPU"]
-            ray.get(actor_handle.start.remote(address, n_process))
+            # TODO move this to a function
+            labels = ['main'] + ['numa-0'] * n_process
+            ray.get(actor_handle.start.remote(address, n_process, labels=labels))
             cluster_info['main_pool_handles'].append(actor_handle)
         logger.info('Create cluster success.')
         cls._cluster_info = cluster_info
