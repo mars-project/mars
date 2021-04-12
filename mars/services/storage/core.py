@@ -15,15 +15,54 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from ... import oscar as mo
+from ...lib.aio import AioFileObject
+from ...oscar import ActorRef
 from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
-from ...storage.base import ObjectInfo, StorageFileObject
+from ...storage.base import ObjectInfo, StorageBackend
+from ...storage.core import StorageFileObject
 from ...utils import calc_data_size, dataslots
+from .errors import DataNotExist
 
 logger = logging.getLogger(__name__)
+
+
+class _WrappedStorageFileObject(AioFileObject):
+    """
+    Wrap to hold ref after write close
+    """
+    def __init__(self,
+                 file: StorageFileObject,
+                 level: StorageLevel,
+                 size: int,
+                 session_id: str,
+                 data_key: str,
+                 storage_manager: Union[ActorRef, "StorageManagerActor"],
+                 storage_handler: StorageBackend
+                 ):
+        super().__init__(file)
+        self._size = size
+        self._level = level
+        self._session_id = session_id
+        self._data_key = data_key
+        self._storage_manager = storage_manager
+        self._storage_handler = storage_handler
+
+    def __getattr__(self, item):
+        return getattr(self._file, item)
+
+    async def close(self):
+        self._file.close()
+        if 'w' in self._file._mode:
+            data_info = DataInfo(self._file._object_id,
+                                 self._level,
+                                 self._size)
+            object_info = await self._storage_handler.object_info(self._file._object_id)
+            await self._storage_manager.put_data_info(
+                self._session_id, self._data_key, data_info, object_info)
 
 
 class StorageQuota:
@@ -70,25 +109,33 @@ class DataManager:
     def __init__(self):
         # mapping key is (session_id, data_key)
         # mapping value is list of DataInfo
-        self._mapping = defaultdict(list)
+        self._data_key_to_info = defaultdict(list)
+        # hold to ref the data
+        self._data_key_to_object_info = defaultdict(list)
 
     def put(self,
             session_id: str,
             data_key: str,
-            data_info: DataInfo):
-        self._mapping[(session_id, data_key)].append(data_info)
+            data_info: DataInfo,
+            object_info: ObjectInfo):
+        self._data_key_to_info[(session_id, data_key)].append(data_info)
+        self._data_key_to_object_info[(session_id, data_key)].append(object_info)
 
     def get_infos(self,
                   session_id: str,
                   data_key: str) -> List[DataInfo]:
-        return self._mapping.get((session_id, data_key))
+        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
+            raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+        return self._data_key_to_info.get((session_id, data_key))
 
     def get_info(self,
                  session_id: str,
                  data_key: str) -> DataInfo:
         # if the data is stored in multiply levels,
         # return the lowest level info
-        infos = sorted(self._mapping.get((session_id, data_key)),
+        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
+            raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+        infos = sorted(self._data_key_to_info.get((session_id, data_key)),
                        key=lambda x: x.level)
         return infos[0]
 
@@ -96,19 +143,19 @@ class DataManager:
                session_id: str,
                data_key: str,
                level: StorageLevel):
-        if (session_id, data_key) in self._mapping:
-            infos = self._mapping[(session_id, data_key)]
+        if (session_id, data_key) in self._data_key_to_info:
+            infos = self._data_key_to_info[(session_id, data_key)]
             rest = [info for info in infos if info.level != level]
             if len(rest) == 0:
-                del self._mapping[(session_id, data_key)]
+                del self._data_key_to_info[(session_id, data_key)]
             else:  # pragma: no cover
-                self._mapping[(session_id, data_key)] = rest
+                self._data_key_to_info[(session_id, data_key)] = rest
 
 
 class StorageHandlerActor(mo.Actor):
     def __init__(self,
                  storage_init_params: Dict,
-                 storage_manager_ref: "StorageManagerActor"):
+                 storage_manager_ref: mo.ActorRef):
         self._storage_init_params = storage_init_params
         self._storage_manager_ref = storage_manager_ref
 
@@ -163,7 +210,7 @@ class StorageHandlerActor(mo.Actor):
                 object_info.size - size, level=level)
         data_info = self._build_data_info(object_info, level, size)
         await self._storage_manager_ref.put_data_info(
-            session_id, data_key, data_info)
+            session_id, data_key, data_info, object_info)
         return data_info
 
     async def delete(self,
@@ -191,13 +238,19 @@ class StorageHandlerActor(mo.Actor):
                           session_id: str,
                           data_key: str,
                           size: int,
-                          level: StorageLevel) -> StorageFileObject:
+                          level: StorageLevel) -> _WrappedStorageFileObject:
         await self._storage_manager_ref.allocate_size(size, level=level)
         writer = await self._clients[level].open_writer(size)
-        data_info = DataInfo(writer.object_id, level, size)
-        await self._storage_manager_ref.put_data_info(
-            session_id, data_key, data_info)
-        return writer
+        return _WrappedStorageFileObject(writer, level, size, session_id, data_key,
+                                         self._storage_manager_ref, self._clients[level])
+
+    async def object_info(self,
+                          session_id: str,
+                          data_key: str,):
+        data_info = await self._storage_manager_ref.get_data_info(
+            session_id, data_key)
+        return await self._clients[data_info.level].object_info(
+                    data_info.object_id)
 
     async def list(self, level: StorageLevel) -> List:
         return await self._clients[level].list()
@@ -298,8 +351,9 @@ class StorageManagerActor(mo.Actor):
     def put_data_info(self,
                       session_id: str,
                       data_key: str,
-                      data_info: DataInfo):
-        self._data_manager.put(session_id, data_key, data_info)
+                      data_info: DataInfo,
+                      object_info: ObjectInfo):
+        self._data_manager.put(session_id, data_key, data_info, object_info)
 
     def delete_data_info(self,
                          session_id: str,
