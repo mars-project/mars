@@ -168,7 +168,7 @@ class DataFrameReadSQL(DataFrameOperand, ColumnPruneSupportedDataSourceMixin):
     def get_columns(self):
         return self._columns
 
-    def set_pruned_columns(self, columns):
+    def set_pruned_columns(self, columns, *, keep_order=None):
         self._columns = columns
 
     def _get_selectable(self, engine_or_conn, columns=None):
@@ -490,7 +490,11 @@ class DataFrameReadSQL(DataFrameOperand, ColumnPruneSupportedDataSourceMixin):
                     if isinstance(dtype, ArrowStringDtype):
                         df.iloc[:, i] = df.iloc[:, i].astype(dtype)
 
-            ctx[out.key] = df
+            if out.ndim == 2:
+                ctx[out.key] = df
+            else:
+                # this happens when column pruning results in one single series
+                ctx[out.key] = df.iloc[:, 0]
         finally:
             engine.dispose()
 

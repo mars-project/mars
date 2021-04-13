@@ -86,7 +86,7 @@ class DataSourceGetitemRule(DataFrameRuntimeOptimizeRule):
     @classmethod
     def apply(cls, chunk, graph, keys):
         data_source_chunk = graph.predecessors(chunk)[0]
-        data_source_usecols = data_source_chunk.op.usecols or []
+        data_source_usecols = data_source_chunk.op.get_columns() or []
         if isinstance(chunk.op.col_names, list):
             usecols = chunk.op.col_names
         else:
@@ -98,12 +98,11 @@ class DataSourceGetitemRule(DataFrameRuntimeOptimizeRule):
         graph.remove_node(data_source_chunk)
 
         getitem_data_source_chunk_op = data_source_chunk.op.copy().reset_key()
-        getitem_data_source_chunk_op._keep_usecols_order = True
         getitem_data_source_chunk_params = data_source_chunk.params
         dtypes = getitem_data_source_chunk_params.pop('dtypes')
         getitem_data_source_chunk_params['_key'] = chunk.key
         if chunk.ndim == 1:
-            getitem_data_source_chunk_op._usecols = usecols[0]
+            getitem_data_source_chunk_op.set_pruned_columns(usecols[0], keep_order=True)
             name = usecols[0]
             getitem_data_source_chunk_params['shape'] = (data_source_chunk.shape[0],)
             getitem_data_source_chunk_params['name'] = name
@@ -112,7 +111,7 @@ class DataSourceGetitemRule(DataFrameRuntimeOptimizeRule):
                 data_source_chunk.inputs, kws=[getitem_data_source_chunk_params],
                 output_type=OutputType.series).data
         else:
-            getitem_data_source_chunk_op._usecols = usecols
+            getitem_data_source_chunk_op.set_pruned_columns(usecols, keep_order=True)
             dtypes = dtypes[usecols]
             getitem_data_source_chunk_params['shape'] = (data_source_chunk.shape[0], len(usecols))
             getitem_data_source_chunk_params['dtypes'] = dtypes
