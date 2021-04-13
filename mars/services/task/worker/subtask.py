@@ -309,13 +309,11 @@ class SubtaskProcessor:
             # store data into storage
             puts = []
             stored_keys = []
-            memory_sizes = []
             for result_chunk in chunk_graph.result_chunks:
                 data_key = result_chunk.key
                 stored_keys.append(data_key)
                 result_data = self._datastore[data_key]
                 # TODO(qinxuye): update meta if unknown shape stuff exists
-                memory_sizes.append(calc_data_size(result_data))
                 puts.append(
                     self._storage_api.put.delay(data_key, result_data))
             logger.info(f'Start putting data keys: {stored_keys}, '
@@ -339,11 +337,14 @@ class SubtaskProcessor:
 
             # store meta
             set_chunk_metas = []
-            for result_chunk, store_info, _ in \
-                    zip(chunk_graph.result_chunks, store_infos, memory_sizes):
-                store_size = store_info.size
+            memory_sizes = []
+            for result_chunk, store_info in \
+                    zip(chunk_graph.result_chunks, store_infos):
+                store_size = store_info.store_size
+                memory_size = store_info.memory_size
+                memory_sizes.append(memory_size)
                 set_chunk_metas.append(
-                    self._meta_api.set_chunk_meta.delay(result_chunk, store_size,
+                    self._meta_api.set_chunk_meta.delay(result_chunk, memory_size, store_size,
                                                         bands=[self._band]))
             logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
                         f'subtask id: {self.subtask.subtask_id}')

@@ -30,6 +30,13 @@ from .errors import DataNotExist
 logger = logging.getLogger(__name__)
 
 
+def _build_data_info(storage_info: ObjectInfo, level, size):
+    # todo handle multiple
+    band = 'numa-0' if storage_info.device is not None \
+        else f'gpu-{storage_info.device}'
+    return DataInfo(storage_info.object_id, level, size, storage_info.size, band)
+
+
 class _WrappedStorageFileObject(AioFileObject):
     """
     Wrap to hold ref after write close
@@ -57,10 +64,8 @@ class _WrappedStorageFileObject(AioFileObject):
     async def close(self):
         self._file.close()
         if 'w' in self._file._mode:
-            data_info = DataInfo(self._file._object_id,
-                                 self._level,
-                                 self._size)
             object_info = await self._storage_handler.object_info(self._file._object_id)
+            data_info = _build_data_info(object_info, self._level, self._size)
             await self._storage_manager.put_data_info(
                 self._session_id, self._data_key, data_info, object_info)
 
@@ -101,7 +106,8 @@ class StorageQuota:
 class DataInfo:
     object_id: object
     level: StorageLevel
-    size: int
+    memory_size: int
+    store_size: int
     band: str = None
 
 
@@ -159,13 +165,6 @@ class StorageHandlerActor(mo.Actor):
         self._storage_init_params = storage_init_params
         self._storage_manager_ref = storage_manager_ref
 
-    @staticmethod
-    def _build_data_info(storage_info: ObjectInfo, level, size):
-        # todo handle multiple
-        band = 'numa-0' if storage_info.device is not None \
-            else f'gpu-{storage_info.device}'
-        return DataInfo(storage_info.object_id, level, size, band)
-
     async def __post_create__(self):
         self._clients = clients = dict()
         for backend, init_params in self._storage_init_params.items():
@@ -208,7 +207,7 @@ class StorageHandlerActor(mo.Actor):
         if object_info.size is not None and size != object_info.size:
             await self._storage_manager_ref.update_quota(
                 object_info.size - size, level=level)
-        data_info = self._build_data_info(object_info, level, size)
+        data_info = _build_data_info(object_info, level, size)
         await self._storage_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
         return data_info
@@ -223,7 +222,7 @@ class StorageHandlerActor(mo.Actor):
             await self._storage_manager_ref.delete_data_info(
                 session_id, data_key, level)
             await self._clients[level].delete(info.object_id)
-            await self._storage_manager_ref.release_size(info.size, level)
+            await self._storage_manager_ref.release_size(info.store_size, level)
 
     async def open_reader(self,
                           session_id: str,
