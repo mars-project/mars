@@ -16,7 +16,10 @@
 
 import os
 import tempfile
+import time
+from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
 import mars.dataframe as md
@@ -147,6 +150,27 @@ class Test(TestBase):
 
             optimized_df = tileable_optimized[df1.data]
             self.assertEqual(optimized_df.inputs[0].inputs[0].op.columns, ['b', 'c'])
+
+    def testPruneReadSQL(self):
+        test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                                'b': [f's{i}' for i in range(10)],
+                                'c': np.random.rand(10),
+                                'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
+                                      for i in range(10)]})
+
+        with tempfile.TemporaryDirectory() as d:
+            table_name = 'test'
+            uri = 'sqlite:///' + os.path.join(d, 'test.db')
+
+            test_df.to_sql(table_name, uri, index=False)
+
+            # test read df with columns
+            r = md.read_sql_table('test', uri, chunk_size=4)[['a', 'b']]
+            pd.testing.assert_frame_equal(r.to_pandas(), test_df[['a', 'b']])
+
+            # test read series with columns
+            r = md.read_sql_table('test', uri, chunk_size=4)['a']
+            pd.testing.assert_series_equal(r.to_pandas(), test_df['a'])
 
     def testExecutedPruning(self):
         with tempfile.TemporaryDirectory() as tempdir:
