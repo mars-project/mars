@@ -91,5 +91,5 @@ class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
     def get_columns(self):  # pragma: no cover
         raise NotImplementedError
 
-    def set_pruned_columns(self, columns):  # pragma: no cover
+    def set_pruned_columns(self, columns, *, keep_order=None):  # pragma: no cover
         raise NotImplementedError

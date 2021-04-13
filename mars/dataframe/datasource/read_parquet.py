@@ -253,7 +253,7 @@ class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSour
     def get_columns(self):
         return self._columns
 
-    def set_pruned_columns(self, columns):
+    def set_pruned_columns(self, columns, *, keep_order=None):
         self._columns = columns
 
     @classmethod
