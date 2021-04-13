@@ -24,7 +24,6 @@ from typing import List, Dict, Union, Tuple, Optional
 from .... import oscar as mo
 from ....core.operand import Fetch
 from ....oscar.backends.allocate_strategy import IdleLabel
-from ....utils import calc_data_size
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
