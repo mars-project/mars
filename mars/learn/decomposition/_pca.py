@@ -466,7 +466,7 @@ class PCA(_BasePCA):
         if n_components == 'mle':
             n_components = mr.spawn(_infer_dimension, args=(explained_variance_, n_samples))
             ExecutableTuple([n_components, U, V]).execute(session=session, **(run_kwargs or dict()))
-            n_components = n_components.fetch()
+            n_components = n_components.fetch(session=session)
         elif 0 < n_components < 1.0:
             # number of components for which the cumulated explained
             # variance percentage is superior to the desired threshold
