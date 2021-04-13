@@ -23,7 +23,7 @@ import ray
 
 from ..core import get_tiled, ChunkGraph
 from ..serialization import serialize, deserialize
-from ..utils import build_fetch_chunk
+from ..utils import build_fetch_chunk, register_ray_serializer
 from ..executor import Executor, GraphExecution
 
 
@@ -69,23 +69,7 @@ def operand_deserializer(value):
 @lru_cache(500)
 def _register_ray_serializer(op):
     # register a custom serializer for Mars operand
-    try:
-        ray.register_custom_serializer(
-            type(op), serializer=operand_serializer,
-            deserializer=operand_deserializer)
-    except AttributeError:  # ray >= 1.0
-        try:
-            from ray.worker import global_worker
-
-            global_worker.check_connected()
-            context = global_worker.get_serialization_context()
-            context.register_custom_serializer(
-                type(op), serializer=operand_serializer,
-                deserializer=operand_deserializer)
-        except AttributeError:  # ray >= 1.2.0
-            ray.util.register_serializer(
-                type(op), serializer=operand_serializer,
-                deserializer=operand_deserializer)
+    register_ray_serializer(type(op), serializer=operand_serializer, deserializer=operand_deserializer)
 
 
 class GraphExecutionForRay(GraphExecution):

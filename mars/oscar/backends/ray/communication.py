@@ -27,6 +27,7 @@ from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
+from mars.serialization import serialize, deserialize
 
 ray = lazy_import("ray")
 
@@ -100,7 +101,8 @@ class RayClientChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         # Put ray object ref to queue
-        await self._in_queue.put(self._peer_actor.__on_ray_recv__.remote(self.channel_id, message))
+        await self._in_queue.put(self._peer_actor.__on_ray_recv__.remote(
+            self.channel_id, serialize(message)))
 
     @implements(Channel.recv)
     async def recv(self):
@@ -109,7 +111,7 @@ class RayClientChannel(RayChannelBase):
         try:
             # Wait on ray object ref
             object_ref = await self._in_queue.get()
-            return await object_ref
+            return deserialize(*(await object_ref))
         except RuntimeError as e:
             if not self._closed.is_set():
                 raise e
@@ -140,7 +142,7 @@ class RayServerChannel(RayChannelBase):
         # Current process is ray actor, we use ray call reply to send message to ray driver/actor.
         # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
-        await self._out_queue.put(message)
+        await self._out_queue.put(serialize(message))
         self._msg_sent_counter += 1
         assert self._msg_sent_counter <= self._msg_recv_counter, \
             "RayServerChannel channel doesn't support send multiple replies for one message."
@@ -158,7 +160,7 @@ class RayServerChannel(RayChannelBase):
     async def __on_ray_recv__(self, message):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
         self._msg_recv_counter += 1
-        await self._in_queue.put(message)
+        await self._in_queue.put(deserialize(*message))
         # Avoid hang when channel is closed after `self._out_queue.get()` is awaited.
         done, _ = await asyncio.wait([self._out_queue.get(), self._closed.wait()],
                                      return_when=asyncio.FIRST_COMPLETED)
