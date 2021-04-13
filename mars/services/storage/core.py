@@ -34,7 +34,11 @@ def _build_data_info(storage_info: ObjectInfo, level, size):
     # todo handle multiple
     band = 'numa-0' if storage_info.device is not None \
         else f'gpu-{storage_info.device}'
-    return DataInfo(storage_info.object_id, level, size, storage_info.size, band)
+    if storage_info.size is None:
+        store_size = size
+    else:
+        store_size = storage_info.size
+    return DataInfo(storage_info.object_id, level, size, store_size, band)
 
 
 class _WrappedStorageFileObject(AioFileObject):
