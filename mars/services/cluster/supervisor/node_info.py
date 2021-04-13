@@ -15,10 +15,10 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from .... import oscar as mo
-from ... import NodeRole
+from ...core import NodeRole, BandType
 from ..core import NodeInfo
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
@@ -106,7 +106,7 @@ class NodeInfoCollectorActor(mo.Actor):
             )
         return ret_infos
 
-    def get_all_bands(self) -> Dict[Tuple[str, str], int]:
+    def get_all_bands(self) -> Dict[BandType, int]:
         nodes = self._role_to_nodes.get(NodeRole.WORKER, list())
         band_slots = dict()
         for node in nodes:

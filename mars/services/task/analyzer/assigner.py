@@ -15,16 +15,14 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from operator import itemgetter
-from typing import List, Tuple, Dict, Set
+from typing import List, Dict, Set
 
 import numpy as np
 
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
 from ....utils import implements
-
-
-band_type = Tuple[str, str]
+from ...core import BandType
 
 
 class AbstractGraphAssigner(ABC):
@@ -35,13 +33,13 @@ class AbstractGraphAssigner(ABC):
     def __init__(self,
                  chunk_graph: ChunkGraph,
                  start_ops: List[Operand],
-                 band_slots: Dict[band_type, int]):
+                 band_slots: Dict[BandType, int]):
         self._chunk_graph = chunk_graph
         self._start_ops = start_ops
         self._band_slots = band_slots
 
     @abstractmethod
-    def assign(self) -> Dict[ChunkData, band_type]:
+    def assign(self) -> Dict[ChunkData, BandType]:
         """
         Assign start nodes to bands.
 
@@ -56,15 +54,15 @@ class GraphAssigner(AbstractGraphAssigner):
     def __init__(self,
                  chunk_graph: ChunkGraph,
                  start_ops: List[Operand],
-                 band_slots: Dict[band_type, int]):
+                 band_slots: Dict[BandType, int]):
         super().__init__(chunk_graph, start_ops, band_slots)
         self._undirected_chunk_graph = None
         self._op_keys: Set[str] = {start_op.key for start_op in start_ops}
 
     def _calc_band_assign_limits(self,
                                  initial_count: int,
-                                 occupied: Dict[band_type, int]) \
-            -> Dict[band_type, int]:
+                                 occupied: Dict[BandType, int]) \
+            -> Dict[BandType, int]:
         """
         Calculate limitation of number of initial operands for bands.
 
@@ -82,7 +80,7 @@ class GraphAssigner(AbstractGraphAssigner):
         """
         actual_count: int = initial_count - sum(occupied.values())
         band_slots = sorted(self._band_slots.items(), key=itemgetter(1), reverse=True)
-        bands: List[band_type] = [it[0] for it in band_slots]
+        bands: List[BandType] = [it[0] for it in band_slots]
         slots = np.asarray([it[1] for it in band_slots], dtype=np.float32)
 
         # remove assigned nodes from limitatins
@@ -106,9 +104,9 @@ class GraphAssigner(AbstractGraphAssigner):
 
     def _assign_by_dfs(self,
                        start: ChunkData,
-                       band: band_type,
-                       initial_sizes: Dict[band_type, int],
-                       spread_limits: Dict[band_type, float],
+                       band: BandType,
+                       initial_sizes: Dict[BandType, int],
+                       spread_limits: Dict[BandType, float],
                        key_to_assign: Set[str],
                        assigned_record: Dict[str, int]):
         """
@@ -142,7 +140,7 @@ class GraphAssigner(AbstractGraphAssigner):
         initial_sizes[band] -= assigned
 
     @implements(AbstractGraphAssigner.assign)
-    def assign(self) -> Dict[ChunkData, band_type]:
+    def assign(self) -> Dict[ChunkData, BandType]:
         graph = self._chunk_graph
         assign_result = dict()
         cur_assigns = dict()

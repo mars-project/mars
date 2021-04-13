@@ -15,11 +15,12 @@
 import random
 from enum import Enum
 from string import ascii_letters, digits
-from typing import Any, Tuple
+from typing import Any
 
 from ...core import TileableGraph, ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, Int32Field, Int64Field, BoolField, AnyField, TupleField
+from ..core import BandType
 
 
 class TaskStatus(Enum):
@@ -91,7 +92,7 @@ class Subtask(Serializable):
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
     chunk_graph: ChunkGraph = ReferenceField('chunk_graph', ChunkGraph)
-    expect_band: Tuple[str, str] = TupleField('expect_band')
+    expect_band: BandType = TupleField('expect_band')
     priority: int = Int32Field('priority')
     rerun_time: int = Int32Field('rerun_time')
 
@@ -101,7 +102,7 @@ class Subtask(Serializable):
                  task_id: str = None,
                  chunk_graph: ChunkGraph = None,
                  subtask_name: str = None,
-                 expect_band: Tuple[str, str] = None,
+                 expect_band: BandType = None,
                  priority: int = None,
                  rerun_time: int = 0):
         super().__init__(subtask_id=subtask_id,

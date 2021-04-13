@@ -14,10 +14,11 @@
 
 from abc import ABC, abstractmethod
 from collections import deque
-from typing import Type, Dict, Tuple
+from typing import Type, Dict
 
 from ....core import ChunkGraph
 from ....utils import implements, build_fetch
+from ...core import BandType
 from ..core import SubtaskGraph, Subtask, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 
@@ -25,7 +26,7 @@ from .assigner import AbstractGraphAssigner, GraphAssigner
 class AbstractGraphAnalyzer(ABC):
     def __init__(self,
                  chunk_graph: ChunkGraph,
-                 band_slots: Dict[Tuple[str, str], int],
+                 band_slots: Dict[BandType, int],
                  task_stage_info,
                  graph_assigner_cls: Type[AbstractGraphAssigner] = None):
         self._chunk_graph = chunk_graph

@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Type
 
+from ...core import BandType
 from ..core import _CommonMeta
 
 
@@ -91,7 +92,7 @@ class AbstractMetaStore(ABC):
 
     async def add_chunk_bands(self,
                               object_id: str,
-                              bands: List[Tuple[str, str]]):
+                              bands: List[BandType]):
         """
         Add band to chunk.
 
@@ -99,7 +100,7 @@ class AbstractMetaStore(ABC):
         ----------
         object_id : str
             Object ID.
-        bands : List[Tuple[str, str]]
+        bands : List[BandType]
             Band of chunk to add, shall be tuple of (worker, band).
         """
 

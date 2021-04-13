@@ -19,11 +19,12 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Dict, Union, Tuple, Optional
+from typing import List, Dict, Union, Optional
 
 from .... import oscar as mo
 from ....core.operand import Fetch
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
@@ -165,7 +166,7 @@ class SubtaskProcessor:
                  subtask: Subtask,
                  storage_api: StorageAPI,
                  meta_api: MetaAPI,
-                 band: Tuple[str, str],
+                 band: BandType,
                  supervisor_address: str):
         self.subtask = subtask
         self._session_id = self.subtask.session_id
@@ -384,7 +385,7 @@ class _SubtaskRunningInfo:
 class SubtaskRunnerActor(mo.Actor):
     def __init__(self,
                  supervisor_address: str,
-                 band: Tuple[str, str],
+                 band: BandType,
                  subtask_manager: Union[BandSubtaskManagerActor, mo.ActorRef]):
         self._supervisor_address = supervisor_address
         self._band = band

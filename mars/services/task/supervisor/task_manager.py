@@ -17,12 +17,13 @@ import sys
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, List, Tuple, Iterable, Optional
+from typing import Dict, Iterable, List, Optional
 
 from .... import oscar as mo
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, get_tiled
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
+from ...core import BandType
 from ..analyzer import GraphAnalyzer
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
     SubTaskStatus, SubtaskGraph, new_task_id
@@ -30,7 +31,7 @@ from ..errors import TaskNotExist
 
 
 class TaskProcessor:
-    __slots__  = '_task', 'tileable_graph'
+    __slots__ = '_task', 'tileable_graph'
 
     def __init__(self,
                  task: Task):
@@ -86,7 +87,7 @@ class BandQueue:
 class SubtaskGraphScheduler:
     def __init__(self,
                  subtask_graph: SubtaskGraph,
-                 bands: List[Tuple[str, str]],
+                 bands: List[BandType],
                  task_stage_info: "TaskStageInfo",
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
@@ -98,18 +99,18 @@ class SubtaskGraphScheduler:
         self._subtask_id_to_subtask = {subtask.subtask_id: subtask
                                        for subtask in subtask_graph}
 
-        self._subtask_to_bands: Dict[Subtask, Tuple[str, str]] = dict()
+        self._subtask_to_bands: Dict[Subtask, BandType] = dict()
         self._subtask_to_results: Dict[Subtask, SubtaskResult] = dict()
 
-        self._band_manager: Dict[Tuple[str, str], mo.ActorRef] = dict()
-        self._band_queue: Dict[Tuple[str, str], BandQueue] = defaultdict(BandQueue)
+        self._band_manager: Dict[BandType, mo.ActorRef] = dict()
+        self._band_queue: Dict[BandType, BandQueue] = defaultdict(BandQueue)
 
         self._band_schedules = []
 
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
 
-    async def _get_band_subtask_manager(self, band: Tuple[str, str]):
+    async def _get_band_subtask_manager(self, band: BandType):
         from ..worker.subtask import BandSubtaskManagerActor
 
         if band in self._band_manager:
@@ -206,7 +207,7 @@ class SubtaskGraphScheduler:
         finally:
             self._done.set()
 
-    async def _schedule_band(self, band: Tuple[str, str]):
+    async def _schedule_band(self, band: BandType):
         with self._ensure_done_set():
             manager_ref = await self._get_band_subtask_manager(band)
             tasks = dict()
@@ -357,7 +358,7 @@ class TaskManagerActor(mo.Actor):
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
 
-    async def _get_available_band_slots(self) -> Dict[Tuple[str, str], int]:
+    async def _get_available_band_slots(self) -> Dict[BandType, int]:
         return await self._cluster_api.get_all_bands()
 
     @staticmethod
