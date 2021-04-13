@@ -167,8 +167,9 @@ class DataFrameReadCSV(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
     def get_columns(self):
         return self._usecols
 
-    def set_pruned_columns(self, columns):
+    def set_pruned_columns(self, columns, *, keep_order=None):
         self._usecols = columns
+        self._keep_usecols_order = keep_order
 
     @classmethod
     def _tile_compressed(cls, op):
