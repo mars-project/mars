@@ -86,6 +86,10 @@ class _MessageBase(ABC):
             message type.
         """
 
+    def __repr__(self):
+        values = ', '.join(['{}={!r}'.format(slot, getattr(self, slot)) for slot in self.__slots__])
+        return '{}({})'.format(self.__class__.__name__, values)
+
 
 class ControlMessage(_MessageBase):
     __slots__ = 'address', 'control_message_type', 'content'
