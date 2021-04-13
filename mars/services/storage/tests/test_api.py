@@ -20,7 +20,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.serialize import dataserializer
-from mars.services.storage.api import MockStorageApi
+from mars.services.storage.api import MockStorageAPI
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
 
@@ -74,7 +74,7 @@ async def test_storage_mock_api(storage_configs):
                                       subprocess_start_method=start_method)
     async with pool:
         session_id = 'mock_session_id'
-        storage_api = await MockStorageApi.create(
+        storage_api = await MockStorageAPI.create(
             address=pool.external_address,
             session_id=session_id,
             storage_configs=storage_configs)

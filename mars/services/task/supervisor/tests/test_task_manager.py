@@ -28,7 +28,7 @@ from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import MockStorageApi
+from mars.services.storage.api import MockStorageAPI
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import TaskManagerActor
 from mars.services.task.worker.subtask import BandSubtaskManagerActor
@@ -49,7 +49,7 @@ async def actor_pool():
         await MockClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
-        storage_api = await MockStorageApi.create(session_id, pool.external_address)
+        storage_api = await MockStorageAPI.create(session_id, pool.external_address)
 
         # create task manager
         manager = await mo.create_actor(TaskManagerActor, session_id,
@@ -65,7 +65,7 @@ async def actor_pool():
 
         yield pool, session_id, meta_api, storage_api, manager
 
-        await MockStorageApi.cleanup(pool.external_address)
+        await MockStorageAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio

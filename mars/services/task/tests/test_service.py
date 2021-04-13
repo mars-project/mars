@@ -22,7 +22,7 @@ import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI
-from mars.services.storage import MockStorageApi
+from mars.services.storage import MockStorageAPI
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus
 
@@ -79,7 +79,7 @@ async def test_task_service(actor_pools):
     # create mock meta and storage APIs
     _ = await MetaAPI.create(session_id,
                              sv_pool.external_address)
-    storage_api = await MockStorageApi.create(session_id,
+    storage_api = await MockStorageAPI.create(session_id,
                                               worker_pool.external_address)
 
     def f1():
@@ -111,4 +111,4 @@ async def test_task_service(actor_pools):
     data_key = result_tileable.chunks[0].key
     assert await storage_api.get(data_key) == 45
 
-    await MockStorageApi.cleanup(worker_pool.external_address)
+    await MockStorageAPI.cleanup(worker_pool.external_address)
