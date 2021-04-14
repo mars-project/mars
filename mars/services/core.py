@@ -103,4 +103,3 @@ async def stop_services(node_role: NodeRole,
         node_role, service_names, modules, 'stop')
     for entries in svc_entries_list:
         await asyncio.gather(*[entry(pool) for entry in entries])
-
