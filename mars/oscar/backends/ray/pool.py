@@ -63,7 +63,7 @@ class RayMainActorPool(MainActorPoolBase):
             bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
         actor_handle = ray.remote(RaySubPool).options(
-            name=external_address, placement_group=pg,
+            num_cpus=1, name=external_address, placement_group=pg,
             placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle
@@ -122,8 +122,7 @@ class RayMainPool(RayPoolBase):
     async def start(self, *args, **kwargs):
         address, n_process = args
         self._actor_pool = await create_actor_pool(
-            address, n_process=n_process, pool_cls=RayMainActorPool,
-            subprocess_start_method="ray", **kwargs)
+            address, n_process=n_process, pool_cls=RayMainActorPool, **kwargs)
         self._set_ray_server(self._actor_pool)
 
 

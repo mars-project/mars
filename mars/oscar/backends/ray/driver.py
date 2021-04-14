@@ -18,7 +18,6 @@ from typing import Dict
 
 from ....utils import lazy_import
 from ...driver import BaseActorDriver
-from .pool import RayMainPool
 from .utils import process_placement_to_address, addresses_to_placement_group_info
 
 ray = lazy_import("ray")
@@ -44,17 +43,6 @@ class RayActorDriver(BaseActorDriver):
             'main_pool_handles': []  # Hold actor_handle to avoid actor being freed.
         }
         logger.info("Create placement group success.")
-        for index, bundle_spec in enumerate(bundles):
-            address = process_placement_to_address(pg_name, index, process_index=0)
-            actor_handle = ray.remote(RayMainPool).options(
-                num_cpus=0,  # main pool doesn't do horse work, mark it use no cpu.
-                name=address, placement_group=pg, placement_group_bundle_index=index).remote()
-            n_process = bundle_spec["CPU"]
-            # TODO move this to a function
-            labels = ['main'] + ['numa-0'] * n_process
-            ray.get(actor_handle.start.remote(address, n_process, labels=labels))
-            cluster_info['main_pool_handles'].append(actor_handle)
-        logger.info('Create cluster success.')
         cls._cluster_info = cluster_info
 
     @classmethod
