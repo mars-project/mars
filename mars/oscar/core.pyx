@@ -76,6 +76,9 @@ cdef class ActorRef:
                other.address == self.address and \
                other.uid == self.uid
 
+    def __repr__(self):
+        return 'ActorRef(uid={!r}, address={!r})'.format(self.uid, self.address)
+
 
 cdef class _DelayedArgument:
     cdef readonly tuple arguments

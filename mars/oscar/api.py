@@ -79,7 +79,7 @@ def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
 class Actor(_Actor):
     @classmethod
     def default_uid(cls):
-        return cls.__name__
+        return cls.__name__.encode()
 
     def __new__(cls, *args, **kwargs):
         try:
