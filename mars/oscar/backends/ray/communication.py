@@ -37,7 +37,7 @@ class MessageType(Enum):
     RECV = 1
 
 
-ChannelID = namedtuple("ChannelID", ["local_address", "dest_address", "channel_index"])
+ChannelID = namedtuple("ChannelID", ["client_id", "channel_index", "dest_address"])
 
 
 class RayChannelBase(Channel, ABC):
@@ -59,7 +59,7 @@ class RayChannelBase(Channel, ABC):
                          dest_address=dest_address,
                          compression=compression)
         self._channel_index = channel_index or next(self._channel_index_gen)
-        self._channel_id = channel_id or ChannelID(local_address, dest_address, self._channel_index)
+        self._channel_id = channel_id or ChannelID(_gen_client_id(), self._channel_index, dest_address)
         self._in_queue = asyncio.Queue()
         self._closed = asyncio.Event()
 
@@ -250,7 +250,7 @@ class RayServer(Server):
             raise ServerClosed(f'Remote server {self.address} closed')
         channel = self._channels.get(channel_id)
         if not channel:
-            _, peer_dest_address, peer_channel_index = channel_id
+            _, peer_channel_index, peer_dest_address = channel_id
             channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
             self._channels[channel_id] = channel
             self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
@@ -286,3 +286,10 @@ class RayClient(Client):
     @implements(Client.close)
     async def close(self):
         await super().close()
+
+
+def _gen_client_id():
+    import socket
+    import os
+    import time
+    return f"{socket.gethostname()}:{os.getpid()}:{time.time_ns()}"
