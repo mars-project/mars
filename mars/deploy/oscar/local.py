@@ -18,7 +18,7 @@ from ... import oscar as mo
 from ...core.session import new_session
 from ...resource import cpu_count, cuda_count
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
-from .service import start_supervisor, start_worker
+from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
 
 
@@ -52,27 +52,31 @@ async def new_cluster(address: str = '0.0.0.0',
         band_to_slot,
         config=config)
 
-    return await LocalClient.create(supervisor_pool, worker_pool)
+    return await LocalClient.create(supervisor_pool, worker_pool, config)
 
 
 class LocalClient:
     def __init__(self,
                  supervisor_pool: mo.MainActorPoolType,
                  worker_pool: mo.MainActorPoolType,
-                 session: Session):
+                 session: Session,
+                 config: Dict):
         self._supervisor_pool = supervisor_pool
         self._worker_pool = worker_pool
         self._session = session
         self._address = self._supervisor_pool.external_address
+        self._config = config
 
     @classmethod
     async def create(cls,
                      supervisor_pool: mo.MainActorPoolType,
-                     worker_pool: mo.MainActorPoolType) -> "LocalClient":
+                     worker_pool: mo.MainActorPoolType,
+                     config: Dict) -> "LocalClient":
         session = await new_session(
             supervisor_pool.external_address,
             backend=Session.name, default=True)
-        return LocalClient(supervisor_pool, worker_pool, session)
+        return LocalClient(supervisor_pool, worker_pool,
+                           session, config)
 
     @property
     def address(self):
@@ -90,5 +94,7 @@ class LocalClient:
 
     async def stop(self):
         await self._session.destroy()
+        await stop_worker(self._worker_pool, self._config)
+        await stop_supervisor(self._supervisor_pool, self._config)
         await self._worker_pool.stop()
         await self._supervisor_pool.stop()

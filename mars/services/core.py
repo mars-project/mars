@@ -17,6 +17,8 @@ import enum
 import importlib
 from typing import Dict, List, Tuple, Union
 
+from .. import oscar as mo
+
 BandType = Tuple[str, str]
 
 
@@ -25,26 +27,17 @@ class NodeRole(enum.Enum):
     WORKER = 1
 
 
-async def start_services(node_role: NodeRole, config: Dict,
-                         modules: Union[List, str, None] = None,
-                         address: str = None):
-    if modules is None:
-        modules = []
-    elif isinstance(modules, str):
-        modules = [modules]
-    modules.append('mars.services')
-
-    # discover services
+def _find_service_entries(node_role: NodeRole,
+                          services: List,
+                          modules: List,
+                          method: str):
     svc_entries_list = []
-    service_names = []
 
     web_handlers = {}
     bokeh_apps = {}
-    for svc_names in config['services']:
+    for svc_names in services:
         if isinstance(svc_names, str):
             svc_names = [svc_names]
-        service_names.extend(svc_names)
-
         svc_entries = []
         for svc_name in svc_names:
             svc_mod = None
@@ -52,7 +45,10 @@ async def start_services(node_role: NodeRole, config: Dict,
                 try:
                     svc_mod = importlib.import_module(
                         mod_name + '.' + svc_name + '.' + node_role.name.lower())
-                    svc_entries.append(getattr(svc_mod, 'start'))
+                    try:
+                        svc_entries.append(getattr(svc_mod, method))
+                    except AttributeError:
+                        pass
 
                     try:
                         web_mod = importlib.import_module(
@@ -67,6 +63,24 @@ async def start_services(node_role: NodeRole, config: Dict,
                 raise ImportError(f'Cannot discover {node_role} for service {svc_name}')
         svc_entries_list.append(svc_entries)
 
+    return svc_entries_list, web_handlers, bokeh_apps
+
+
+async def start_services(node_role: NodeRole, config: Dict,
+                         modules: Union[List, str, None] = None,
+                         address: str = None):
+    if modules is None:
+        modules = []
+    elif isinstance(modules, str):
+        modules = [modules]
+    modules.append('mars.services')
+
+    # discover services
+    service_names = config['services']
+
+    svc_entries_list, web_handlers, bokeh_apps = _find_service_entries(
+        node_role, service_names, modules, 'start')
+
     if 'web' in service_names:
         try:
             web_config = config['web']
@@ -78,3 +92,15 @@ async def start_services(node_role: NodeRole, config: Dict,
 
     for entries in svc_entries_list:
         await asyncio.gather(*[entry(config, address=address) for entry in entries])
+
+
+async def stop_services(node_role: NodeRole,
+                        pool: mo.MainActorPoolType,
+                        config: Dict = None):
+    service_names = config['services']
+    modules = ['mars.services']
+    svc_entries_list, _, _ = _find_service_entries(
+        node_role, service_names, modules, 'stop')
+    for entries in svc_entries_list:
+        await asyncio.gather(*[entry(pool) for entry in entries])
+
