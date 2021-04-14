@@ -190,7 +190,6 @@ class PromiseTestActor(mo.Actor):
         ) + (asyncio.sleep(delay), 'PlainString')
 
     async def async_raiser_func(self):
-        print('enter async_raiser_func')
         yield asyncio.sleep(0.1)
         raise ValueError
 
