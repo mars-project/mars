@@ -815,11 +815,13 @@ class MainActorPoolBase(ActorPoolBase):
                 else:
                     processor.result = await super().handle_control_command(message)
             elif message.control_message_type == ControlMessageType.stop:
-                timeout = message.content
+                timeout, force = message.content if message.content is not None \
+                    else (None, None)
                 await self.stop_sub_pool(
                     message.address,
                     self.sub_processes[message.address],
-                    timeout=timeout)
+                    timeout=timeout,
+                    force=force)
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             else:
@@ -915,7 +917,12 @@ class MainActorPoolBase(ActorPoolBase):
             self,
             address: str,
             process: multiprocessing.Process,
-            timeout: float = None):
+            timeout: float = None,
+            force: bool = False):
+        if force:
+            await self.kill_sub_pool(process, force=True)
+            return
+
         stop_message = ControlMessage(
             new_message_id(), address, ControlMessageType.stop,
             None, protocol=DEFAULT_PROTOCOL)
@@ -930,15 +937,15 @@ class MainActorPoolBase(ActorPoolBase):
                     await asyncio.wait_for(call, timeout)
                 except (futures.TimeoutError, asyncio.TimeoutError):  # pragma: no cover
                     # timeout, just let kill to finish it
-                    pass
+                    force = True
         except (ConnectionError, ServerClosed):  # pragma: no cover
             # process dead maybe, ignore it
             pass
         # kill process
-        self.kill_sub_pool(process)
+        await self.kill_sub_pool(process, force=force)
 
     @abstractmethod
-    def kill_sub_pool(self, process: SubProcessHandle):
+    async def kill_sub_pool(self, process: SubProcessHandle, force: bool = False):
         """Kill a sub actor pool"""
 
     @abstractmethod

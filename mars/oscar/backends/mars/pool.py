@@ -14,9 +14,10 @@
 
 import asyncio
 import concurrent.futures as futures
-import sys
 import multiprocessing
 import os
+import signal
+import sys
 from typing import List
 
 from ....utils import get_next_port
@@ -102,6 +103,14 @@ class MainActorPool(MainActorPoolBase):
             actor_config: ActorPoolConfig,
             process_index: int,
             started: multiprocessing.Event):
+        try:
+            # register coverage hooks on SIGTERM
+            from pytest_cov.embed import cleanup_on_sigterm
+            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                cleanup_on_sigterm()
+        except ImportError:  # pragma: no cover
+            pass
+
         asyncio.set_event_loop(asyncio.new_event_loop())
         coro = cls._create_sub_pool(actor_config, process_index, started)
         asyncio.run(coro)
@@ -125,7 +134,18 @@ class MainActorPool(MainActorPoolBase):
             started.set()
         await pool.join()
 
-    def kill_sub_pool(self, process: multiprocessing.Process):
+    async def kill_sub_pool(self, process: multiprocessing.Process,
+                            force: bool = False):
+        if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
+            # must shutdown gracefully, or coverage info lost
+            try:
+                os.kill(process.pid, signal.SIGINT)
+            except OSError:  # pragma: no cover
+                pass
+            process.terminate()
+            wait_pool = futures.ThreadPoolExecutor(1)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(wait_pool, process.join, 3)
         process.kill()
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):

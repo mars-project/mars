@@ -106,7 +106,7 @@ class MarsActorContext(BaseActorContext):
         result = await self._wait(future, actor_ref.address, message)
         return self._process_result_message(result)
 
-    async def kill_actor(self, actor_ref: ActorRef):
+    async def kill_actor(self, actor_ref: ActorRef, force: bool = True):
         # get main_pool_address
         control_message = ControlMessage(
             new_message_id(), actor_ref.address,
@@ -121,8 +121,8 @@ class MarsActorContext(BaseActorContext):
         stop_message = ControlMessage(
             new_message_id(), real_actor_ref.address,
             ControlMessageType.stop,
-            # wait for 3 sec at most
-            3., protocol=DEFAULT_PROTOCOL)
+            # default timeout (3 secs) and force
+            (3., force), protocol=DEFAULT_PROTOCOL)
         # stop server
         result = await self._call(main_address, stop_message)
         return self._process_result_message(result)
