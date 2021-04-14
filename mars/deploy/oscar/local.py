@@ -14,7 +14,6 @@
 
 from typing import Union, Dict
 
-from ... import oscar as mo
 from ...core.session import new_session
 from ...resource import cpu_count, cuda_count
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
@@ -27,64 +26,82 @@ async def new_cluster(address: str = '0.0.0.0',
                       n_gpu: Union[int, str] = 'auto',
                       subprocess_start_method: str = 'spawn',
                       config: Union[str, Dict] = None):
-    # create supervisor actor pool
-    supervisor_pool = await create_supervisor_actor_pool(
-        address, n_process=0,
-        subprocess_start_method=subprocess_start_method)
+    cluster = LocalCluster(address, n_cpu, n_gpu,
+                           subprocess_start_method, config)
+    await cluster.start()
+    return await LocalClient.create(cluster)
 
-    # create worker actor pool
-    band_to_slot = dict()
-    n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
-    band_to_slot['numa-0'] = n_cpu
-    n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
-    for i in range(n_gpu):  # pragma: no cover
-        band_to_slot[f'gpu-{i}'] = 1
-    worker_pool = await create_worker_actor_pool(
-        address, band_to_slot,
-        subprocess_start_method=subprocess_start_method)
 
-    # start service
-    await start_supervisor(
-        supervisor_pool.external_address, config=config)
-    await start_worker(
-        worker_pool.external_address,
-        supervisor_pool.external_address,
-        band_to_slot,
-        config=config)
+class LocalCluster:
+    def __init__(self,
+                 address: str = '0.0.0.0',
+                 n_cpu: Union[int, str] = 'auto',
+                 n_gpu: Union[int, str] = 'auto',
+                 subprocess_start_method: str = 'spawn',
+                 config: Union[str, Dict] = None):
+        self._address = address
+        self._subprocess_start_method = subprocess_start_method
+        self._config = config
+        self._n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
+        self._n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
+        self._band_to_slot = band_to_slot = dict()
+        band_to_slot['numa-0'] = n_cpu
+        for i in range(self._n_gpu):  # pragma: no cover
+            band_to_slot[f'gpu-{i}'] = 1
+        self._supervisor_pool = None
+        self._worker_pool = None
 
-    return await LocalClient.create(supervisor_pool, worker_pool, config)
+    async def start(self):
+        self._supervisor_pool = await create_supervisor_actor_pool(
+            self._address, n_process=0,
+            subprocess_start_method=self._subprocess_start_method)
+        self._worker_pool = await create_worker_actor_pool(
+            self._address, self._band_to_slot,
+            subprocess_start_method=self._subprocess_start_method)
+        # start service
+        await start_supervisor(
+            self._supervisor_pool.external_address, config=self._config)
+        await start_worker(
+            self._worker_pool.external_address,
+            self._supervisor_pool.external_address,
+            self._band_to_slot,
+            config=self._config)
+
+    async def stop(self):
+        await stop_worker(self._worker_pool, self._config)
+        await stop_supervisor(self._supervisor_pool, self._config)
+        await self._worker_pool.stop()
+        await self._supervisor_pool.stop()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        await self.stop()
 
 
 class LocalClient:
     def __init__(self,
-                 supervisor_pool: mo.MainActorPoolType,
-                 worker_pool: mo.MainActorPoolType,
-                 session: Session,
-                 config: Dict):
-        self._supervisor_pool = supervisor_pool
-        self._worker_pool = worker_pool
+                 cluster: LocalCluster,
+                 session: Session):
+        self._cluster = cluster
         self._session = session
-        self._address = self._supervisor_pool.external_address
-        self._config = config
 
     @classmethod
     async def create(cls,
-                     supervisor_pool: mo.MainActorPoolType,
-                     worker_pool: mo.MainActorPoolType,
-                     config: Dict) -> "LocalClient":
+                     cluster: LocalCluster) -> "LocalClient":
         session = await new_session(
-            supervisor_pool.external_address,
+            cluster._supervisor_pool.external_address,
             backend=Session.name, default=True)
-        return LocalClient(supervisor_pool, worker_pool,
-                           session, config)
-
-    @property
-    def address(self):
-        return self._session
+        return LocalClient(cluster, session)
 
     @property
     def session(self):
         return self._session
+
+    @property
+    def cluster(self):
+        return self._cluster
 
     async def __aenter__(self):
         return self
@@ -94,7 +111,4 @@ class LocalClient:
 
     async def stop(self):
         await self._session.destroy()
-        await stop_worker(self._worker_pool, self._config)
-        await stop_supervisor(self._supervisor_pool, self._config)
-        await self._worker_pool.stop()
-        await self._supervisor_pool.stop()
+        await self._cluster.stop()

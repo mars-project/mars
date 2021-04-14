@@ -115,28 +115,34 @@ class DataInfo:
     band: str = None
 
 
+@dataslots
+@dataclass
+class InternalDataInfo:
+    data_info: DataInfo
+    object_info: ObjectInfo
+
+
 class DataManager:
     def __init__(self):
         # mapping key is (session_id, data_key)
-        # mapping value is list of DataInfo
-        self._data_key_to_info = defaultdict(list)
-        # hold to ref the data
-        self._data_key_to_object_info = defaultdict(list)
+        # mapping value is list of InternalDataInfo
+        self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
 
     def put(self,
             session_id: str,
             data_key: str,
             data_info: DataInfo,
             object_info: ObjectInfo):
-        self._data_key_to_info[(session_id, data_key)].append(data_info)
-        self._data_key_to_object_info[(session_id, data_key)].append(object_info)
+        info = InternalDataInfo(data_info, object_info)
+        self._data_key_to_info[(session_id, data_key)].append(info)
 
     def get_infos(self,
                   session_id: str,
                   data_key: str) -> List[DataInfo]:
         if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
             raise DataNotExist(f'Data key {session_id, data_key} not exists.')
-        return self._data_key_to_info.get((session_id, data_key))
+        return [info.data_info for info in
+                self._data_key_to_info.get((session_id, data_key))]
 
     def get_info(self,
                  session_id: str,
@@ -146,8 +152,8 @@ class DataManager:
         if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
             raise DataNotExist(f'Data key {session_id, data_key} not exists.')
         infos = sorted(self._data_key_to_info.get((session_id, data_key)),
-                       key=lambda x: x.level)
-        return infos[0]
+                       key=lambda x: x.data_info.level)
+        return infos[0].data_info
 
     def delete(self,
                session_id: str,
@@ -155,7 +161,7 @@ class DataManager:
                level: StorageLevel):
         if (session_id, data_key) in self._data_key_to_info:
             infos = self._data_key_to_info[(session_id, data_key)]
-            rest = [info for info in infos if info.level != level]
+            rest = [info for info in infos if info.data_info.level != level]
             if len(rest) == 0:
                 del self._data_key_to_info[(session_id, data_key)]
             else:  # pragma: no cover

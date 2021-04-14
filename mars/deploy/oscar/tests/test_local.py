@@ -32,7 +32,7 @@ async def test_execute():
                                n_cpu=8)
 
     async with client:
-        assert client.address is not None
+        assert client.cluster is not None
 
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)
