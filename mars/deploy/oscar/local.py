@@ -45,7 +45,7 @@ class LocalCluster:
         self._n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
         self._n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
         self._band_to_slot = band_to_slot = dict()
-        band_to_slot['numa-0'] = n_cpu
+        band_to_slot['numa-0'] = self._n_cpu
         for i in range(self._n_gpu):  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1
         self._supervisor_pool = None
@@ -73,12 +73,6 @@ class LocalCluster:
         await self._worker_pool.stop()
         await self._supervisor_pool.stop()
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *_):
-        await self.stop()
-
 
 class LocalClient:
     def __init__(self,
@@ -98,10 +92,6 @@ class LocalClient:
     @property
     def session(self):
         return self._session
-
-    @property
-    def cluster(self):
-        return self._cluster
 
     async def __aenter__(self):
         return self
