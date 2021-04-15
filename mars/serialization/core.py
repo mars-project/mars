@@ -311,6 +311,11 @@ class Placeholder:
 
 
 def serialize(obj, context: Dict = None):
+    # todo remove this when gevent dependency removed
+    # workaround for traceback pickling error
+    from ..lib.tblib import pickling_support
+    pickling_support.install()
+
     def _wrap_headers(_obj, _serializer_name, _header, _buffers):
         if _header.get('serializer') == 'ref':
             return _header, _buffers
