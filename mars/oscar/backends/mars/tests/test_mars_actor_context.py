@@ -209,7 +209,14 @@ class PromiseTestActor(mo.Actor):
         raise KeyError
 
     async def test_cancel(self, delay):
+        async def intermediate_error():
+            raise ValueError
+
         async def task_fun():
+            try:
+                yield intermediate_error()
+            except ValueError:
+                pass
             try:
                 yield asyncio.sleep(delay)
             except asyncio.CancelledError:
