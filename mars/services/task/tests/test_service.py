@@ -107,7 +107,7 @@ async def test_task_service(actor_pools):
     assert task_result.status == TaskStatus.terminated
     assert task_result.error is None
 
-    result_tileable = (await task_api.get_fetch_tileable(task_id))[0]
+    result_tileable = (await task_api.get_fetch_tileables(task_id))[0]
     data_key = result_tileable.chunks[0].key
     assert await storage_api.get(data_key) == 45
 

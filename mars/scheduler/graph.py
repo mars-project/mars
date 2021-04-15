@@ -28,16 +28,17 @@ import numpy as np
 from ..actors.errors import ActorAlreadyExist
 from ..config import options
 from ..context import DistributedContext
-from ..core import get_tiled, TileableGraph, ChunkGraph
+from ..core import get_tiled, TileableGraph, ChunkGraph, enter_mode
 from ..core.entity.tileables import handler
-from ..core.graph import DAG, IterativeChunkGraphBuilder, TileableGraphBuilder
+from ..core.graph import DAG
+from ..core.graph.builder.legacy import IterativeChunkGraphBuilder, TileableGraphBuilder
 from ..core.operand import Fetch, ShuffleProxy, VirtualOperand, SuccessorsExclusive
 from ..errors import ExecutionInterrupted, GraphNotExists, WorkerDead
 from ..optimizes.tileable_graph import OptimizeIntegratedTileableGraphBuilder
 from ..serialize import dataserializer
 from ..utils import serialize_graph, deserialize_graph, log_unhandled, \
     build_exc_info, build_fetch_chunk, build_fetch_tileable, calc_nsplits, \
-    get_chunk_reducer_index, enter_mode, has_unknown_shape
+    get_chunk_reducer_index, has_unknown_shape
 from .analyzer import GraphAnalyzer
 from .assigner import AssignerActor
 from .kvstore import KVStoreActor

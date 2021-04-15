@@ -53,6 +53,12 @@ class FuseChunkData(ChunkData):
         except AttributeError:
             return object.__getattribute__(self, attr)
 
+    def __setattr__(self, attr, value):
+        if attr == 'params':
+            self._chunk.params = value
+        else:
+            super().__setattr__(attr, value)
+
     @property
     def nbytes(self):
         return np.prod(self.shape) * self.dtype.itemsize

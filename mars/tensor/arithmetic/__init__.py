@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...utils import is_build_mode
+from ...core import is_build_mode
 from .add import add, tree_add, TensorAdd, TensorTreeAdd
 from .subtract import subtract, TensorSubtract
 from .multiply import multiply, tree_multiply, TensorMultiply, TensorTreeMultiply

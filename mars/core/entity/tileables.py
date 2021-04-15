@@ -14,7 +14,6 @@
 
 import builtins
 import itertools
-from concurrent.futures import ThreadPoolExecutor
 from operator import attrgetter
 from typing import List, Callable
 from weakref import WeakSet, WeakKeyDictionary
@@ -22,16 +21,16 @@ from weakref import WeakSet, WeakKeyDictionary
 import numpy as np
 
 from ...serialization.serializables import FieldTypes, TupleField
-from ...utils import enter_mode, is_build_mode
 from ..base import Base
-from ..typing import OperandType, TileableType
+from ..mode import enter_mode, is_build_mode
+from ..typing import OperandType, TileableType, ChunkType
 from .chunks import Chunk
 from .core import EntityData, Entity
 from .executable import _ExecutableMixin
 
 
 class TilesError(Exception):
-    pass
+    partial_tiled_chunks: List[ChunkType]
 
 
 class NotSupportTile(Exception):
@@ -48,8 +47,15 @@ class OperandTilesHandler:
         return type(op)
 
     @classmethod
-    def register(cls, op: OperandType, tile_handler: Callable[[OperandType], "Tileable"]):
+    def register(cls,
+                 op: OperandType,
+                 tile_handler: Callable[[OperandType], TileableType]):
         cls._handlers[cls._get_op_cls(op)] = tile_handler
+
+    @classmethod
+    def get_handler(cls, op: OperandType) -> Callable[[OperandType], List[TileableType]]:
+        op_cls = cls._get_op_cls(op)
+        return cls._handlers.get(op_cls, op_cls.tile)
 
     @classmethod
     def _assign_to(cls,
@@ -99,7 +105,7 @@ class OperandTilesHandler:
 
     @classmethod
     def tiles(cls, to_tile: TileableType):
-        from ..graph.builder import _build_graph, get_tiled
+        from ..graph.builder.legacy import _build_graph, get_tiled
 
         _build_graph([to_tile], tiled=True, fuse_enabled=False)
         return get_tiled(to_tile)
@@ -107,6 +113,29 @@ class OperandTilesHandler:
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register
+
+
+def tile(tileable, *tileables: TileableType):
+    from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+
+    target_tileables = [tileable] + list(tileables)
+    target_tileables = [t.data if hasattr(t, 'data') else t
+                        for t in target_tileables]
+
+    tileable_graph = TileableGraph(tileables)
+    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
+    next(tileable_graph_builder.build())
+
+    # tile
+    tile_context = dict()
+    chunk_graph_builder = ChunkGraphBuilder(
+        tileable_graph, fuse_enabled=False, tile_context=tile_context)
+    next(chunk_graph_builder.build())
+
+    if len(tileables) == 1:
+        return tile_context[tileables[0]]
+    else:
+        return [tile_context[t] for t in tileables]
 
 
 def on_serialize_nsplits(value):
@@ -437,14 +466,8 @@ class HasShapeTileable(Tileable):
         return self._data.size
 
     def execute(self, session=None, **kw):
-        wait = kw.pop('wait', True)
-
-        def run():
-            self.data.execute(session, **kw)
+        result = self.data.execute(session=session, **kw)
+        if isinstance(result, TILEABLE_TYPE):
             return self
-
-        if wait:
-            return run()
         else:
-            thread_executor = ThreadPoolExecutor(1)
-            return thread_executor.submit(run)
+            return result

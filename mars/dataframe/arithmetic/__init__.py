@@ -14,8 +14,7 @@
 
 import functools
 
-from ...utils import is_build_mode
-from ..core import DATAFRAME_TYPE
+from ..core import DATAFRAME_TYPE, is_build_mode
 from ..utils import wrap_notimplemented_exception
 from ..ufunc.tensor import register_tensor_ufunc
 from .abs import abs_, DataFrameAbs

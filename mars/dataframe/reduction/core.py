@@ -19,9 +19,9 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 import numpy as np
 import pandas as pd
 
-from ...core import OutputType, ENTITY_TYPE
+from ...core import OutputType, ENTITY_TYPE, is_build_mode, is_kernel_mode, enter_mode
 from ...core.operand import OperandStage
-from ...utils import tokenize, is_build_mode, is_kernel_mode, enter_mode, recursive_tile
+from ...utils import tokenize, recursive_tile
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..core import SERIES_TYPE
 from ..utils import parse_index, build_df, build_empty_df, build_series, \

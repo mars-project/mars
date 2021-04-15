@@ -20,7 +20,8 @@ from .entity import Entity, EntityData, ENTITY_TYPE, \
     OutputType, register_output_types, get_output_types, \
     register_fetch_class, get_fetch_class, get_tileable_types, get_chunk_types, \
     HasShapeTileable, HasShapeTileableData, ExecutableTuple, _ExecuteAndFetchMixin, \
-    TilesError, NotSupportTile, register
+    TilesError, NotSupportTile, register, tile
 from .graph import DirectedGraph, DAG, GraphContainsCycleError, \
-    TileableGraph, ChunkGraph, TileableGraphBuilder, \
-    ChunkGraphBuilder, IterativeChunkGraphBuilder, get_tiled
+    TileableGraph, ChunkGraph, TileableGraphBuilder, ChunkGraphBuilder
+from .graph.builder.legacy import get_tiled
+from .mode import enter_mode, is_build_mode, is_eager_mode, is_kernel_mode

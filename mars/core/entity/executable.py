@@ -15,7 +15,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from weakref import WeakKeyDictionary, ref
 
-from ...utils import enter_mode
+from ..mode import enter_mode
 
 
 class _TileableSession:
@@ -47,10 +47,25 @@ class _TileableDataCleaner:
 _cleaner = _TileableDataCleaner()
 
 
+def _get_session(executable, session=None):
+    from ...session import Session as LagacySession
+    from ..session import get_default_session
+
+    if session is None and len(executable._executed_sessions) > 0:
+        session = executable._executed_sessions[-1]
+    if session is None:
+        session = get_default_session()
+    # TODO(qinxuye): remove when old session removed
+    if session is None:
+        session = LagacySession.default_or_local()
+
+    return session
+
+
 class _ExecutableMixin:
     __slots__ = ()
 
-    def execute(self, session=None, **kw):
+    def _legacy_execute(self, session=None, **kw):
         from ...session import Session
 
         if 'fetch' in kw and kw['fetch']:
@@ -78,15 +93,22 @@ class _ExecutableMixin:
             thread_executor = ThreadPoolExecutor(1)
             return thread_executor.submit(run)
 
-    def _get_session(self, session=None):
-        from ...session import Session
+    def _execute(self, session=None, **kw):
+        from ..session import execute
 
-        if session is None and len(self._executed_sessions) > 0:
-            session = self._executed_sessions[-1]
-        if session is None:
-            session = Session.default
+        wait = kw.pop('wait', True)
+        return execute(self, session=session, wait=wait, **kw)
 
-        return session
+    def execute(self, session=None, **kw):
+        from ..session import AbstractSession
+
+        session = _get_session(self, session)
+        if isinstance(session, AbstractSession):
+            # new-style execute
+            return self._execute(session=session, **kw)
+        else:
+            # old-style execute
+            return self._legacy_execute(session=session, **kw)
 
     def _check_session(self, session, action):
         if session is None:
@@ -98,9 +120,15 @@ class _ExecutableMixin:
                 f'Tileable object {key} must be executed first before {action}')
 
     def _fetch(self, session=None, **kw):
-        session = self._get_session(session)
+        from ..session import AbstractSession, fetch
+
+        session = _get_session(self, session)
         self._check_session(session, 'fetch')
-        return session.fetch(self, **kw)
+        if isinstance(session, AbstractSession):
+            # new-style
+            return fetch(self, session=session, **kw)
+        else:
+            return session.fetch(self, **kw)
 
     def fetch(self, session=None, **kw):
         return self._fetch(session=session, **kw)
@@ -119,9 +147,14 @@ class _ExecuteAndFetchMixin:
     __slots__ = ()
 
     def _execute_and_fetch(self, session=None, **kw):
-        if session is None and len(self._executed_sessions) > 0:
-            session = self._executed_sessions[-1]
+        from ..session import AbstractSession
+        session = _get_session(self, session)
+        if isinstance(session, AbstractSession):
+            return self.execute(session=session, **kw).fetch(session=session)
+        else:
+            return self._legacy_execute_and_fetch(session=session, **kw)
 
+    def _legacy_execute_and_fetch(self, session=None, **kw):
         wait = kw.pop('wait', True)
 
         def run():

@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.core import get_tiled
+from mars.core.graph.builder.legacy import get_tiled
 from mars.executor import register, Executor
 from mars.tensor.core import TensorOrder
 from mars.tensor.datasource import ArrayDataSource

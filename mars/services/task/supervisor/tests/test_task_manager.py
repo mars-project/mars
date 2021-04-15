@@ -23,16 +23,16 @@ import pytest
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
-from mars.core.graph import TileableGraph, TileableGraphBuilder
+from mars.core import Tileable, TileableGraph, TileableGraphBuilder
 from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import MockStorageAPI
+from mars.services.storage.api import StorageAPI, MockStorageAPI
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import TaskManagerActor
 from mars.services.task.worker.subtask import BandSubtaskManagerActor
-from mars.utils import Timer
+from mars.utils import Timer, merge_chunks
 
 
 @pytest.fixture
@@ -68,6 +68,17 @@ async def actor_pool():
         await MockStorageAPI.cleanup(pool.external_address)
 
 
+async def _merge_data(fetch_tileable: Tileable,
+                      storage_api: StorageAPI):
+    gets = []
+    for i, chunk in enumerate(fetch_tileable.chunks):
+        gets.append(storage_api.get.delay(chunk.key))
+    data = await storage_api.get.batch(*gets)
+    index_data = [(c.index, d) for c, d
+                  in zip(fetch_tileable.chunks, data)]
+    return merge_chunks(index_data)
+
+
 @pytest.mark.asyncio
 async def test_run_task(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
@@ -87,19 +98,33 @@ async def test_run_task(actor_pool):
 
     assert task_result.status == TaskStatus.terminated
     assert task_result.error is None
+    assert await manager.get_task_progress(task_id) == 1.0
 
     result_tileables = (await manager.get_task_result_tileables(task_id))[0]
-    for i, chunk in enumerate(result_tileables.chunks):
-        result = await storage_api.get(chunk.key)
-        if i == 0:
-            expect = raw[:5, :5] + 1
-        elif i == 1:
-            expect = raw[:5, 5:] + 1
-        elif i == 2:
-            expect = raw[5:, :5] + 1
-        else:
-            expect = raw[5:, 5:] + 1
-        np.testing.assert_array_equal(result, expect)
+    result = await _merge_data(result_tileables, storage_api)
+    np.testing.assert_array_equal(result, raw + 1)
+
+
+@pytest.mark.asyncio
+async def test_error_task(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    with mt.errstate(divide='raise'):
+        a = mt.ones((10, 10), chunk_size=10)
+        c = a / 0
+
+    graph = TileableGraph([c.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph, fuse_enabled=False)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    assert task_result.error is not None
+    assert isinstance(task_result.error, FloatingPointError)
 
 
 @pytest.mark.asyncio
@@ -125,3 +150,62 @@ async def test_cancel_task(actor_pool):
         assert result.status == TaskStatus.terminated
 
     assert timer.duration < 15
+
+
+@pytest.mark.asyncio
+async def test_iterative_tiling(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    rs = np.random.RandomState(0)
+    raw_a = rs.rand(10, 10)
+    raw_b = rs.rand(10, 10)
+    a = mt.tensor(raw_a, chunk_size=5)
+    b = mt.tensor(raw_b, chunk_size=5)
+
+    d = a[a[:, 0] < 3] + b[b[:, 0] < 3]
+    graph = TileableGraph([d.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph, fuse_enabled=False)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    assert task_result.error is None
+    assert await manager.get_task_progress(task_id) == 1.0
+
+    expect = raw_a[raw_a[:, 0] < 3] + raw_b[raw_b[:, 0] < 3]
+    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileables, storage_api)
+    np.testing.assert_array_equal(result, expect)
+
+
+@pytest.mark.asyncio
+async def test_shuffle(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    raw = np.random.rand(10, 10)
+    raw2 = np.random.randint(10, size=(10,))
+    a = mt.tensor(raw, chunk_size=5)
+    b = mt.tensor(raw2, chunk_size=5)
+    c = a[b]
+
+    graph = TileableGraph([c.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph, fuse_enabled=False)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    assert task_result.error is None
+    assert await manager.get_task_progress(task_id) == 1.0
+
+    expect = raw[raw2]
+    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileables, storage_api)
+    np.testing.assert_array_equal(result, expect)

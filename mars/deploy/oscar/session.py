@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+from dataclasses import dataclass
 from numbers import Integral
 from weakref import WeakKeyDictionary
 
@@ -26,17 +27,24 @@ from ...services.task import TaskAPI, TaskResult
 from ...utils import implements, merge_chunks
 
 
+@dataclass
+class Progress:
+    value: float = 0.0
+
+
 class ExectionInfo(AbstractExectionInfo):
     def __init__(self,
                  task_id: str,
                  task_api: TaskAPI,
-                 aio_task: asyncio.Task):
+                 aio_task: asyncio.Task,
+                 progress: Progress):
         super().__init__(aio_task)
         self._task_api = task_api
         self._task_id = task_id
+        self._progress = progress
 
     def progress(self) -> float:
-        return 1.0 if self.done() else 0.0
+        return self._progress.value
 
 
 @register_session_cls
@@ -62,6 +70,10 @@ class Session(AbstractSession):
                    address: str,
                    session_id: str,
                    **kwargs) -> "Session":
+        if kwargs.pop('init_local', False):
+            from .local import new_cluster
+            return (await new_cluster(address, **kwargs)).session
+
         session_api = await SessionAPI.create(address)
         # create new session
         session_address = await session_api.create_session(session_id)
@@ -78,15 +90,26 @@ class Session(AbstractSession):
 
     async def _run_in_background(self,
                                  tileables: list,
-                                 task_id: str):
+                                 task_id: str,
+                                 progress: Progress):
         # wait for task to finish
-        task_result: TaskResult = await self._task_api.wait_task(task_id)
+        while True:
+            task_result: TaskResult = await self._task_api.wait_task(
+                task_id, timeout=0.5)
+            if task_result is None:
+                # not finished, set progress
+                progress.value = await self._task_api.get_task_progress(task_id)
+            else:
+                progress.value = 1.0
+                break
         if task_result.error:
             raise task_result.error.with_traceback(task_result.traceback)
-        fetch_tileables = await self._task_api.get_fetch_tileable(task_id)
+        fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
         assert len(tileables) == len(fetch_tileables)
-        for tieable, fetch_tileable in zip(tileables, fetch_tileables):
-            self._tileable_to_fetch[tieable] = fetch_tileable
+        for tileable, fetch_tileable in zip(tileables, fetch_tileables):
+            self._tileable_to_fetch[tileable] = fetch_tileable
+            # update meta, e.g. unknown shape
+            tileable.params = fetch_tileable.params
 
     async def execute(self,
                       *tileables,
@@ -107,10 +130,11 @@ class Session(AbstractSession):
         task_id = await self._task_api.submit_tileable_graph(
             tileable_graph, task_name=task_name, fuse_enabled=fuse_enabled)
 
+        progress = Progress()
         # create asyncio.Task
         future = asyncio.create_task(
-            self._run_in_background(tileables, task_id))
-        return ExectionInfo(task_id, self._task_api, future)
+            self._run_in_background(tileables, task_id, progress))
+        return ExectionInfo(task_id, self._task_api, future, progress)
 
     def _get_to_fetch_tileable(self, tileable: Tileable):
         from ...tensor.indexing import TensorIndex

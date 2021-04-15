@@ -39,7 +39,7 @@ except ImportError:  # pragma: no cover
     pa_null = None
 
 from ..config import options
-from ..utils import is_kernel_mode
+from ..core import is_kernel_mode
 
 
 class ArrowDtype(ExtensionDtype):

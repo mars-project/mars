@@ -142,9 +142,8 @@ class MetaAPI:
         params = chunk.params.copy()
         if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
             # dataframe chunk needs some special process for now
-            del params['columns_value']
-            del params['dtypes']
-            params['dtypes_value'] = chunk.dtypes_value
+            params.pop('columns_value', None)
+            params.pop('dtypes', None)
         params.update(extra)
         meta = get_meta_type(type(chunk))(object_id=chunk.key,
                                           **params,

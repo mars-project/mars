@@ -143,14 +143,16 @@ class PlasmaStorage(StorageBackend):
             raise TypeError(f'PlasmaStorage got unexpected config: {",".join(kwargs)}')
 
         store_memory = calc_size_by_str(store_memory, virtual_memory().total)
-        plasma_store = plasma.start_plasma_store(store_memory,
-                                                 plasma_directory=plasma_directory)
-        plasma_socket = plasma_store.__enter__()[0]
+        plasma_store = plasma.start_plasma_store(
+            store_memory, plasma_directory=plasma_directory)
+        plasma_socket = (await loop.run_in_executor(
+            None, plasma_store.__enter__))[0]
         init_params = dict(plasma_socket=plasma_socket,
                            plasma_directory=plasma_directory,
                            check_dir_size=check_dir_size)
         client = plasma.connect(plasma_socket)
-        actual_capacity = await loop.run_in_executor(None, get_actual_capacity, client)
+        actual_capacity = await loop.run_in_executor(
+            None, get_actual_capacity, client)
         init_params['capacity'] = actual_capacity
         teardown_params = dict(plasma_store=plasma_store)
         return init_params, teardown_params

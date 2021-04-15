@@ -19,7 +19,8 @@ from typing import Any
 
 from ...core import TileableGraph, ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
-    ReferenceField, Int32Field, Int64Field, BoolField, AnyField, TupleField
+    ReferenceField, Int32Field, Int64Field, Float64Field, \
+    BoolField, AnyField, TupleField
 from ..core import BandType
 
 
@@ -120,6 +121,7 @@ class SubtaskResult(Serializable):
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
     status: SubTaskStatus = ReferenceField('status', SubTaskStatus)
+    progress: float = Float64Field('progress')
     data_size: int = Int64Field('data_size', default=None)
     error = AnyField('error', default=None)
     traceback = AnyField('traceback', default=None)
