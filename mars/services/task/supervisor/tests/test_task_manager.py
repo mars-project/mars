@@ -124,4 +124,4 @@ async def test_cancel_task(actor_pool):
         result = await manager.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
 
-    assert timer.duration < 10
+    assert timer.duration < 15

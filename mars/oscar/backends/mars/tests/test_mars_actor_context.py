@@ -189,6 +189,14 @@ class PromiseTestActor(mo.Actor):
             self._apply_step(idx, delay) for idx in range(4)
         ) + (asyncio.sleep(delay), 'PlainString')
 
+    async def async_raiser_func(self):
+        yield asyncio.sleep(0.1)
+        raise ValueError
+
+    async def test_yield_exceptions(self):
+        task = asyncio.create_task(self.ref().async_raiser_func())
+        return task
+
     async def test_exceptions(self):
         async def async_raiser():
             yield asyncio.sleep(0.1)
@@ -457,6 +465,8 @@ async def test_promise_chain(actor_pool_context):
 
     with pytest.raises(ValueError):
         await promise_test_ref.test_exceptions()
+    with pytest.raises(ValueError):
+        await promise_test_ref.test_yield_exceptions()
 
     with pytest.raises(asyncio.CancelledError):
         task = asyncio.create_task(promise_test_ref.test_cancel(5))

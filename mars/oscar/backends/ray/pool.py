@@ -68,7 +68,7 @@ class RayMainActorPool(MainActorPoolBase):
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle
 
-    def kill_sub_pool(self, process: 'ray.actor.ActorHandle'):
+    async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         ray.kill(process)
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
