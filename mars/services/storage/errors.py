@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import NodeRole, start_services, stop_services
+
+class DataNotExist(Exception):
+    pass

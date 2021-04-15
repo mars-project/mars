@@ -24,6 +24,7 @@ from ...dataframe.core import DtypesValue, IndexValue, \
     DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...utils import dataslots
+from ..core import BandType
 
 PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 
@@ -117,7 +118,7 @@ class ObjectMeta(_TileableMeta):
 @dataclass
 class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
-    bands: List[Tuple[str, str]] = None
+    bands: List[BandType] = None
 
 
 @_register_type(TENSOR_CHUNK_TYPE)

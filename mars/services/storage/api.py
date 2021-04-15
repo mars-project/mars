@@ -228,7 +228,7 @@ class StorageAPI:
         return await self._storage_handler_ref.list(level=level)
 
 
-class MockStorageApi(StorageAPI):
+class MockStorageAPI(StorageAPI):
     @classmethod
     async def create(cls: Type[APIType],
                      session_id: str,

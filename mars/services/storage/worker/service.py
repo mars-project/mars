@@ -18,7 +18,7 @@ from ..core import StorageManagerActor
 
 async def start(config: dict, address: str):
     """
-    Start cluster service on supervisor
+    Start storage service on supervisor
     Parameters
     ----------
     config
@@ -42,3 +42,16 @@ async def start(config: dict, address: str):
                           backend_config,
                           uid=StorageManagerActor.default_uid(),
                           address=address)
+
+
+async def stop(pool: mo.MainActorPoolType):
+    """
+    Stop storage service on supervisor
+    Parameters
+    ----------
+    pool:
+        main pool on supervisor
+    """
+    storage_manager_ref = await mo.actor_ref(
+        address=pool.external_address, uid=StorageManagerActor.default_uid())
+    await mo.destroy_actor(storage_manager_ref)

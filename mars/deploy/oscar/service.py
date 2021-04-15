@@ -17,7 +17,8 @@ from typing import List, Dict, Union
 
 import yaml
 
-from ...services import start_services, NodeRole
+from ... import oscar as mo
+from ...services import start_services, stop_services, NodeRole
 
 
 def _load_config(filename=None):
@@ -38,6 +39,13 @@ async def start_supervisor(address: str,
                          modules=modules, address=address)
 
 
+async def stop_supervisor(pool: mo.MainActorPoolType,
+                          config: Dict = None):
+    if not config or isinstance(config, str):
+        config = _load_config(config)
+    await stop_services(NodeRole.SUPERVISOR, pool, config)
+
+
 async def start_worker(address: str,
                        lookup_address: str,
                        band_to_slots: Dict[str, int],
@@ -51,3 +59,10 @@ async def start_worker(address: str,
         config['cluster']['resource'] = band_to_slots
     await start_services(NodeRole.WORKER, config,
                          modules=modules, address=address)
+
+
+async def stop_worker(pool: mo.MainActorPoolType,
+                      config: Dict = None):
+    if not config or isinstance(config, str):
+        config = _load_config(config)
+    await stop_services(NodeRole.WORKER, pool, config)

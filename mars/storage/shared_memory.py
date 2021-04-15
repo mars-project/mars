@@ -155,12 +155,8 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
-        shm_file = SharedMemoryFileObject(object_id, mode='r')
-
-        async with StorageFileObject(shm_file, object_id) as f:
-            deserializer = AioDeserializer(f)
-            size = await deserializer.get_size()
-        return ObjectInfo(size=size, object_id=object_id)
+        shm_file = SharedMemory(name=object_id)
+        return ObjectInfo(size=shm_file.size, object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

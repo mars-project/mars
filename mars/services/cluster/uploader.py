@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Tuple
+from typing import Dict
 
 from ... import oscar as mo
+from ..core import BandType
 from .core import NodeInfo
 from .gather import gather_node_env, gather_node_resource, gather_node_states
 
@@ -68,7 +69,7 @@ class NodeInfoUploaderActor(mo.Actor):
         if call_next:
             self._upload_task = self.ref().upload_node_info.tell_delay(delay=self._interval)
 
-    def get_bands(self) -> Dict[Tuple[str, str], int]:
+    def get_bands(self) -> Dict[BandType, int]:
         band_slots = dict()
         for resource_type, info in self._info.resource.items():
             if resource_type.startswith('numa'):

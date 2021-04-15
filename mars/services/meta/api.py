@@ -13,12 +13,13 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Tuple, Any, Union
+from typing import Dict, List, Any, Union
 
 from ... import oscar as mo
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ...lib.aio import alru_cache
 from ...utils import extensible
+from ..core import BandType
 from .core import get_meta_type
 from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
@@ -136,7 +137,7 @@ class MetaAPI:
                              chunk,
                              memory_size: int = None,
                              store_size: int = None,
-                             bands: List[Tuple[str, str]] = None,
+                             bands: List[BandType] = None,
                              **extra):
         params = chunk.params.copy()
         if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
@@ -166,7 +167,7 @@ class MetaAPI:
     @extensible
     async def add_chunk_bands(self,
                               object_id: str,
-                              bands: List[Tuple[str, str]]):
+                              bands: List[BandType]):
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
 

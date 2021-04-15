@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import asyncio
-from typing import List, Dict, Tuple, Union, Type, TypeVar
+from typing import List, Dict, Union, Type, TypeVar
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ..core import NodeRole
+from ..core import NodeRole, BandType
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
 
@@ -146,7 +146,7 @@ class ClusterAPI:
         return await self._node_info_ref.get_nodes_info(
             nodes=nodes, role=role, env=env, resource=resource, state=state)
 
-    async def get_all_bands(self) -> Dict[Tuple[str, str], int]:
+    async def get_all_bands(self) -> Dict[BandType, int]:
         """
         Get all bands that can be used for computation.
 

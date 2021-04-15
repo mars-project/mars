@@ -13,9 +13,10 @@
 # limitations under the License.
 
 from dataclasses import asdict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from ....utils import implements
+from ...core import BandType
 from ..core import _CommonMeta, _ChunkMeta
 from .base import AbstractMetaStore, register_meta_store
 
@@ -60,7 +61,7 @@ class DictMetaStore(AbstractMetaStore):
     @implements(AbstractMetaStore.add_chunk_bands)
     async def add_chunk_bands(self,
                               object_id: str,
-                              bands: List[Tuple[str, str]]):
+                              bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) | set(bands))

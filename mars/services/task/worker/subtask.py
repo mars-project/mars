@@ -19,12 +19,12 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Dict, Union, Tuple, Optional
+from typing import List, Dict, Union, Optional
 
 from .... import oscar as mo
 from ....core.operand import Fetch
 from ....oscar.backends.allocate_strategy import IdleLabel
-from ....utils import calc_data_size
+from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
@@ -166,7 +166,7 @@ class SubtaskProcessor:
                  subtask: Subtask,
                  storage_api: StorageAPI,
                  meta_api: MetaAPI,
-                 band: Tuple[str, str],
+                 band: BandType,
                  supervisor_address: str):
         self.subtask = subtask
         self._session_id = self.subtask.session_id
@@ -309,13 +309,11 @@ class SubtaskProcessor:
             # store data into storage
             puts = []
             stored_keys = []
-            memory_sizes = []
             for result_chunk in chunk_graph.result_chunks:
                 data_key = result_chunk.key
                 stored_keys.append(data_key)
                 result_data = self._datastore[data_key]
                 # TODO(qinxuye): update meta if unknown shape stuff exists
-                memory_sizes.append(calc_data_size(result_data))
                 puts.append(
                     self._storage_api.put.delay(data_key, result_data))
             logger.info(f'Start putting data keys: {stored_keys}, '
@@ -339,11 +337,14 @@ class SubtaskProcessor:
 
             # store meta
             set_chunk_metas = []
-            for result_chunk, store_info, _ in \
-                    zip(chunk_graph.result_chunks, store_infos, memory_sizes):
-                store_size = store_info.size
+            memory_sizes = []
+            for result_chunk, store_info in \
+                    zip(chunk_graph.result_chunks, store_infos):
+                store_size = store_info.store_size
+                memory_size = store_info.memory_size
+                memory_sizes.append(memory_size)
                 set_chunk_metas.append(
-                    self._meta_api.set_chunk_meta.delay(result_chunk, store_size,
+                    self._meta_api.set_chunk_meta.delay(result_chunk, memory_size, store_size,
                                                         bands=[self._band]))
             logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
@@ -384,7 +385,7 @@ class _SubtaskRunningInfo:
 class SubtaskRunnerActor(mo.Actor):
     def __init__(self,
                  supervisor_address: str,
-                 band: Tuple[str, str],
+                 band: BandType,
                  subtask_manager: Union[BandSubtaskManagerActor, mo.ActorRef]):
         self._supervisor_address = supervisor_address
         self._band = band
