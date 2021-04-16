@@ -236,11 +236,13 @@ async def _execute(*tileables: Tuple[TileableType],
         if show_progress:  # pragma: no cover
             try:
                 progress = _new_progress()
+                progress.send(None)
             except ImportError:
                 if show_progress != 'auto':
                     raise
+                else:
+                    await execution_info
             else:
-                progress.send(None)
                 while True:
                     try:
                         await asyncio.wait_for(asyncio.shield(execution_info),
@@ -263,7 +265,7 @@ def execute(tileable: TileableType,
             wait: bool = True,
             backend: str = 'oscar',
             new_session_kwargs: dict = None,
-            show_progress: bool = True,
+            show_progress: Union[bool, str] = 'auto',
             progress_update_interval=1, **kwargs):
     _loop.run_until_complete(_execute(
         tileable, *tileables, session=session, wait=wait,
