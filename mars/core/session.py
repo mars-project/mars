@@ -272,10 +272,8 @@ def execute(tileable: TileableType,
         backend=backend, new_session_kwargs=new_session_kwargs,
         show_progress=show_progress,
         progress_update_interval=progress_update_interval, **kwargs))
-    if len(tileables) == 0:
-        return tileable
-    else:
-        return [tileable] + list(tileables)
+    return tileable if len(tileables) == 0 else \
+        [tileable] + list(tileables)
 
 
 async def _fetch(tileable: TileableType,
@@ -287,10 +285,7 @@ async def _fetch(tileable: TileableType,
             raise ValueError('No session found')
 
     data = await session.fetch(tileable, *tileables)
-    if len(tileables) == 0:
-        return data[0]
-    else:
-        return data
+    return data[0] if len(tileables) == 0 else data
 
 
 def fetch(*tileables, session: AbstractSession = None):

@@ -21,7 +21,8 @@ import pytest
 
 import mars.dataframe as md
 import mars.tensor as mt
-from mars.core.session import get_default_session, new_session
+from mars.core.session import get_default_session, \
+    new_session, execute, fetch
 from mars.deploy.oscar.local import new_cluster
 from mars.tests.core import CONFIG_TEST_FILE
 
@@ -40,6 +41,7 @@ async def create_cluster():
 @pytest.mark.asyncio
 async def test_execute(create_cluster):
     session = get_default_session()
+    assert session.address is not None
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -103,3 +105,14 @@ def test_sync_execute():
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
     assert get_default_session() is None
+
+
+def test_no_default_session():
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+
+    with pytest.warns(Warning):
+        execute(b, show_progress=False)
+
+    np.testing.assert_array_equal(fetch(b), raw + 1)

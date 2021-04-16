@@ -66,6 +66,7 @@ def test_series_params():
 
 def test_index_params():
     raw = pd.Series([1, 2, 3], name='a')
+    raw.index.name = 'b'
     series = Series(raw)
     series = series[series < 2]
     index = series.index
