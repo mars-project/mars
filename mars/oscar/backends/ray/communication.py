@@ -17,7 +17,6 @@ import concurrent.futures as futures
 import itertools
 from abc import ABC
 from collections import namedtuple
-from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
@@ -30,11 +29,6 @@ from ..communication.errors import ChannelClosed
 from mars.serialization import serialize, deserialize
 
 ray = lazy_import("ray")
-
-
-class MessageType(Enum):
-    SEND = 0
-    RECV = 1
 
 
 ChannelID = namedtuple("ChannelID", ["client_id", "channel_index", "dest_address"])
@@ -289,7 +283,5 @@ class RayClient(Client):
 
 
 def _gen_client_id():
-    import socket
-    import os
-    import time
-    return f"{socket.gethostname()}:{os.getpid()}:{time.time_ns()}"
+    import uuid
+    return uuid.uuid4().hex
