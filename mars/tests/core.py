@@ -279,6 +279,34 @@ def patch_method(method, *args, **kwargs):
         return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
 
 
+def print_entrance(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            print(f"Start to execute function {func} with args {args} and kwargs {kwargs}")
+            result = func(*args, **kwargs)
+            print(f"Finished executing function {func} with args {args} and kwargs {kwargs}")
+            return result
+        except NotImplementedError:
+            return NotImplemented
+
+    return wrapper
+
+
+def print_async_entrance(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            print(f"Start to execute function {func} with args {args} and kwargs {kwargs}")
+            result = await func(*args, **kwargs)
+            print(f"Finished executing function {func} with args {args} and kwargs {kwargs}")
+            return result
+        except NotImplementedError:
+            return NotImplemented
+
+    return wrapper
+
+
 def require_cupy(func):
     if pytest:
         func = pytest.mark.cuda(func)

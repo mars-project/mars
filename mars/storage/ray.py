@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
-from ..utils import lazy_import, implements, register_ray_serializer, debug, async_debug
+from ..utils import lazy_import, implements, register_ray_serializer
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -89,7 +89,6 @@ class RayStorage(StorageBackend):
 
     @classmethod
     @implements(StorageBackend.setup)
-    @async_debug
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         ray.init(ignore_reinit_error=True)
         _register_sparse_matrix_serializer()
