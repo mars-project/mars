@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import logging
+import os
+import yaml
 from typing import Union, Dict, List
 
 from mars.oscar.backends.ray.driver import RayActorDriver
@@ -27,12 +29,22 @@ ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
 
+def _load_config(filename=None):
+    # use default config
+    if not filename:  # pragma: no cover
+        d = os.path.dirname(os.path.abspath(__file__))
+        filename = os.path.join(d, 'rayconfig.yml')
+    with open(filename) as f:
+        return yaml.safe_load(f)
+
+
 async def new_cluster(cluster_name: str,
                       supervisor_mem: int = 4 * 1024 ** 3,
                       worker_num: int = 1,
                       worker_cpu: int = 16,
                       worker_mem: int = 32 * 1024 ** 3,
                       config: Union[str, Dict] = None):
+    config = config or _load_config()
     cluster = RayCluster(cluster_name, supervisor_mem, worker_num,
                          worker_cpu, worker_mem, config)
     await cluster.start()

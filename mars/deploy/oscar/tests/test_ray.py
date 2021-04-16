@@ -17,7 +17,6 @@ import pytest
 
 import mars.tensor as mt
 from mars.deploy.oscar.ray import new_cluster
-from mars.tests.core import CONFIG_TEST_FILE
 from mars.tests.core import require_ray
 from ....utils import lazy_import
 
@@ -47,8 +46,7 @@ async def test_execute(ray_cluster):
     client = await new_cluster('test_cluster',
                                worker_num=3,
                                worker_cpu=4,
-                               worker_mem=1 * 1024 ** 3,
-                               config=CONFIG_TEST_FILE)
+                               worker_mem=1 * 1024 ** 3)
     async with client:
         assert client.address is not None
 

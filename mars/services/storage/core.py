@@ -311,6 +311,7 @@ class StorageManagerActor(mo.Actor):
                              storage_backend: str,
                              storage_config: Dict):
         backend = get_storage_backend(storage_backend)
+        storage_config = storage_config or dict()
         init_params, teardown_params = await backend.setup(**storage_config)
         client = backend(**init_params)
         self._init_params[storage_backend] = init_params
