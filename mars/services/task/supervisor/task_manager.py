@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import asyncio
+import functools
 import sys
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Tuple, Optional
 
 from .... import oscar as mo
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, Tileable
@@ -147,6 +148,22 @@ class SubtaskGraphScheduler:
         self._band_manager[band] = manger_ref
         return manger_ref
 
+    @functools.lru_cache(30)
+    def _calc_expect_band(self, inp_subtasks: Tuple[Subtask]):
+        if len(inp_subtasks) == 1 and inp_subtasks[0].virtual:
+            # virtual node, get predecessors of virtual node
+            calc_subtasks = self._subtask_graph.predecessors(inp_subtasks[0])
+        else:
+            calc_subtasks = inp_subtasks
+
+        # calculate a expect band
+        sorted_size_inp_subtask = sorted(
+            calc_subtasks, key=lambda st: self._subtask_to_results[st].data_size,
+            reverse=True)
+        expect_bands = [self._subtask_to_bands[subtask]
+                        for subtask in sorted_size_inp_subtask]
+        return expect_bands
+
     def _get_subtask_band(self, subtask: Subtask):
         if subtask.expect_band is not None:
             # start, already specified band
@@ -155,10 +172,9 @@ class SubtaskGraphScheduler:
         else:
             inp_subtasks = self._subtask_graph.predecessors(subtask)
             # calculate a expect band
-            max_size_inp_subtask = max(
-                inp_subtasks, key=lambda st: self._subtask_to_results[st].data_size)
-            band = self._subtask_to_bands[max_size_inp_subtask]
-            self._subtask_to_bands[subtask] = band
+            expect_bands = self._calc_expect_band(tuple(inp_subtasks))
+            subtask.expect_bands = expect_bands
+            self._subtask_to_bands[subtask] = band = subtask.expect_band
             return band
 
     async def _direct_submit_subtasks(self, subtasks: List[Subtask]):

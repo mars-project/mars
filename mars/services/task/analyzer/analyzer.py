@@ -96,6 +96,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             if chunk in visited:
                 continue
 
+            virtual = isinstance(chunk.op, VirtualOperand)
             inp_chunks = self._chunk_graph.predecessors(chunk)
 
             # calculate priority
@@ -133,7 +134,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                 visited.add(out)
                 result_chunks.append(copied_chunk)
                 subtask_chunk_graph.add_node(copied_chunk)
-                if not isinstance(out.op, VirtualOperand):
+                if not virtual:
                     # skip adding fetch chunk to chunk graph when op is virtual operand
                     for inp_fetch_chunk in inp_fetch_chunks:
                         subtask_chunk_graph.add_node(inp_fetch_chunk)
@@ -145,7 +146,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                 session_id=self._task_stage_info.task_info.session_id,
                 task_id=self._task_stage_info.task_id,
                 chunk_graph=subtask_chunk_graph,
-                expect_band=band,
+                expect_bands=[band],
+                virtual=virtual,
                 priority=priority)
             for out in outs:
                 chunk_to_subtask[out] = subtask
