@@ -842,8 +842,7 @@ class BaseSeriesChunkData(ChunkData):
         super().__init__(_op=op, _shape=shape, _index=index, _dtype=dtype, _name=name,
                          _index_value=index_value, **kw)
 
-    @property
-    def params(self) -> Dict[str, Any]:
+    def _get_params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
             'shape': self.shape,
@@ -853,8 +852,7 @@ class BaseSeriesChunkData(ChunkData):
             'name': self.name
         }
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         params.pop('index', None)  # index not needed to update
         new_shape = params.pop('shape', None)
@@ -871,6 +869,8 @@ class BaseSeriesChunkData(ChunkData):
             self._name = name
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
+
+    params = property(_get_params, _set_params)
 
     @classmethod
     def get_params_from_data(cls, data: pd.Series) -> Dict[str, Any]:
@@ -929,8 +929,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
                          _index_value=index_value, _chunks=chunks, **kw)
         self._accessors = dict()
 
-    @property
-    def params(self) -> Dict[str, Any]:
+    def _get_params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new tileable object
         return {
             'shape': self.shape,
@@ -939,8 +938,7 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
             'index_value': self.index_value,
         }
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         new_shape = params.pop('shape', None)
         if new_shape is not None:
@@ -956,6 +954,8 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
             self._name = name
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
+
+    params = property(_get_params, _set_params)
 
     def refresh_params(self):
         # refresh params when chunks updated
@@ -1280,8 +1280,7 @@ class BaseDataFrameChunkData(ChunkData):
     def __len__(self):
         return self.shape[0]
 
-    @property
-    def params(self) -> Dict[str, Any]:
+    def _get_params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
             'shape': self.shape,
@@ -1291,8 +1290,7 @@ class BaseDataFrameChunkData(ChunkData):
             'columns_value': self.columns_value,
         }
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         params.pop('index', None)  # index not needed to update
         new_shape = params.pop('shape', None)
@@ -1306,6 +1304,8 @@ class BaseDataFrameChunkData(ChunkData):
             self._dtypes_value = dtypes_value
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
+
+    params = property(_get_params, _set_params)
 
     @classmethod
     def get_params_from_data(cls, data: pd.DataFrame) -> Dict[str, Any]:
@@ -1384,8 +1384,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         self._accessors = dict()
         self._dtypes_value = None
 
-    @property
-    def params(self) -> Dict[str, Any]:
+    def _get_params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new tileable object
         return {
             'shape': self.shape,
@@ -1394,8 +1393,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             'columns_value': self.columns_value
         }
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         new_shape = params.pop('shape', None)
         if new_shape is not None:
@@ -1414,6 +1412,8 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             self._columns_value = columns_value
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
+
+    params = property(_get_params, _set_params)
 
     def refresh_params(self):
         # refresh params when chunks updated
@@ -1818,14 +1818,12 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     def selection(self):
         return self._selection
 
-    @property
-    def params(self) -> Dict[str, Any]:
-        p = super().params
+    def _get_params(self) -> Dict[str, Any]:
+        p = super()._get_params()
         p.update(dict(key_dtypes=self.key_dtypes, selection=self.selection))
         return p
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         key_dtypes = params.pop('key_dtypes', None)
         if key_dtypes is not None:
@@ -1833,7 +1831,9 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
         selection = params.pop('selection', None)
         if selection is not None:
             self._selection = selection
-        super().params = params
+        super()._set_params(params)
+
+    params = property(_get_params, _set_params)
 
     @classmethod
     def get_params_from_data(cls, data: GroupByWrapper) -> Dict[str, Any]:
@@ -1861,19 +1861,19 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
     def key_dtypes(self):
         return self._key_dtypes
 
-    @property
-    def params(self) -> Dict[str, Any]:
-        p = super().params
+    def _get_params(self) -> Dict[str, Any]:
+        p = super()._get_params()
         p['key_dtypes'] = self.key_dtypes
         return p
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         key_dtypes = params.pop('key_dtypes', None)
         if key_dtypes is not None:
             self._key_dtypes = key_dtypes
-        super().params = new_params
+        super()._set_params(new_params)
+
+    params = property(_get_params, _set_params)
 
     @classmethod
     def get_params_from_data(cls, data: GroupByWrapper):
@@ -1909,14 +1909,12 @@ class DataFrameGroupByData(BaseDataFrameData):
     def selection(self):
         return self._selection
 
-    @property
-    def params(self) -> Dict[str, Any]:
-        p = super().params
+    def _get_params(self) -> Dict[str, Any]:
+        p = super()._get_params()
         p.update(dict(key_dtypes=self.key_dtypes, selection=self.selection))
         return p
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         key_dtypes = params.pop('key_dtypes', None)
         if key_dtypes is not None:
@@ -1924,7 +1922,9 @@ class DataFrameGroupByData(BaseDataFrameData):
         selection = params.pop('selection', None)
         if selection is not None:
             self._selection = selection
-        super().params = params
+        super()._set_params(params)
+
+    params = property(_get_params, _set_params)
 
     def __init__(self, key_dtypes=None, selection=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
@@ -1949,19 +1949,19 @@ class SeriesGroupByData(BaseSeriesData):
     def key_dtypes(self):
         return self._key_dtypes
 
-    @property
-    def params(self) -> Dict[str, Any]:
-        p = super().params
+    def _get_params(self) -> Dict[str, Any]:
+        p = super()._get_params()
         p['key_dtypes'] = self.key_dtypes
         return p
 
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         key_dtypes = params.pop('key_dtypes', None)
         if key_dtypes:
             self._key_dtypes = key_dtypes
-        super().params = params
+        super()._set_params(params)
+
+    params = property(_get_params, _set_params)
 
     def __init__(self, key_dtypes=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, **kw)

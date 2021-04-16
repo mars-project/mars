@@ -705,7 +705,7 @@ class MutableTensorData(TensorData):
         }
 
     @params.setter
-    def params(self, new_params: Dict[str, Any]):
+    def params(self, new_params: Dict[str, Any]):  # pragma: no cover
         params = new_params.copy()
         shape = params.pop('shape', None)
         if shape is not None:

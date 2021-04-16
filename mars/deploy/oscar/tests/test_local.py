@@ -97,4 +97,9 @@ def test_sync_execute():
         result = a.fetch()
         np.testing.assert_array_equal(result, raw.sum(axis=1))
 
+        c = mt.tensor(raw, chunk_size=5).sum()
+        d = session.execute(c)
+        assert d is c
+        assert abs(session.fetch(d) - raw.sum()) < 0.001
+
     assert get_default_session() is None

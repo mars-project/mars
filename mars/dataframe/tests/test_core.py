@@ -15,8 +15,116 @@
 import numpy as np
 import pandas as pd
 
+from mars.core import tile
+from mars.dataframe import cut
 from mars.dataframe.initializer import DataFrame, Series, Index
+from mars.lib.groupby_wrapper import wrapped_groupby
 from mars.tests.core import TestBase
+
+
+def test_dataframe_params():
+    raw = pd.DataFrame({'a': [1, 2, 3]})
+    df = DataFrame(raw)
+    df = df[df['a'] < 2]
+    df = tile(df)
+    c = df.chunks[0]
+
+    assert any(np.isnan(s) for s in c.params['shape'])
+    assert np.isnan(c.params['index_value'].min_val)
+    c.params = c.get_params_from_data(raw[raw['a'] < 2])
+    # shape and index_value updated
+    assert not any(np.isnan(s) for s in c.params['shape'])
+    assert not np.isnan(c.params['index_value'].min_val)
+
+    params = c.params.copy()
+    params.pop('index', None)
+    df.params = params
+    assert np.prod(df.shape) > 0
+    df.refresh_params()
+
+
+def test_series_params():
+    raw = pd.Series([1, 2, 3], name='a')
+    series = Series(raw)
+    series = series[series < 2]
+    series = tile(series)
+    c = series.chunks[0]
+
+    assert any(np.isnan(s) for s in c.params['shape'])
+    assert np.isnan(c.params['index_value'].min_val)
+    c.params = c.get_params_from_data(raw[raw < 2])
+    # shape and index_value updated
+    assert not any(np.isnan(s) for s in c.params['shape'])
+    assert not np.isnan(c.params['index_value'].min_val)
+
+    params = c.params.copy()
+    params.pop('index', None)
+    series.params = params
+    assert np.prod(series.shape) > 0
+    series.refresh_params()
+
+
+def test_index_params():
+    raw = pd.Series([1, 2, 3], name='a')
+    series = Series(raw)
+    series = series[series < 2]
+    index = series.index
+    index = tile(index)
+    c = index.chunks[0]
+
+    assert any(np.isnan(s) for s in c.params['shape'])
+    assert np.isnan(c.params['index_value'].min_val)
+    c.params = c.get_params_from_data(raw[raw < 2].index)
+    # shape and index_value updated
+    assert not any(np.isnan(s) for s in c.params['shape'])
+    assert not np.isnan(c.params['index_value'].min_val)
+
+    params = c.params.copy()
+    params.pop('index', None)
+    index.params = params
+    assert np.prod(index.shape) > 0
+    index.refresh_params()
+
+
+def test_categorical_params():
+    raw = np.random.rand(10)
+    cate = cut(raw, [0.3, 0.5, 0.7])
+    cate = tile(cate)
+    c = cate.chunks[0]
+
+    c.params = c.get_params_from_data(pd.cut(raw, [0.3, 0.5, 0.7]))
+    assert len(c.params['categories_value'].to_pandas()) > 0
+
+    params = c.params.copy()
+    params.pop('index', None)
+    cate.params = params
+    assert len(cate.params['categories_value'].to_pandas()) > 0
+    cate.refresh_params()
+
+
+def test_groupby_params():
+    raw = pd.DataFrame({'a': [1, 2, 3]})
+    df = DataFrame(raw)
+    grouped = df.groupby('a')
+    grouped = tile(grouped)
+    c = grouped.chunks[0]
+
+    c.params = c.get_params_from_data(wrapped_groupby(raw, by='a'))
+    params = c.params.copy()
+    params.pop('index', None)
+    grouped.params = params
+
+    raw = pd.Series([1, 2, 3], name='a')
+    series = Series(raw)
+    grouped = series.groupby(level=0)
+    grouped = tile(grouped)
+    c = grouped.chunks[0]
+
+    c.params = c.get_params_from_data(wrapped_groupby(raw, level=0))
+    params = c.params.copy()
+    params.pop('index', None)
+    grouped.params = params
+    grouped.refresh_params()
 
 
 class Test(TestBase):

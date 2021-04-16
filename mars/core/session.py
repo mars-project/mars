@@ -303,13 +303,11 @@ class SyncSession:
 
     def execute(self,
                 *tileables,
-                **kwargs) -> ExecutionInfo:
-        return _loop.run_until_complete(
-            self._session.execute(*tileables, **kwargs))
+                **kwargs):
+        return execute(*tileables, session=self._session, **kwargs)
 
-    def fetch(self, *tileables) -> list:
-        return _loop.run_until_complete(
-            self._session.fetch(*tileables))
+    def fetch(self, *tileables):
+        return fetch(*tileables, session=self._session)
 
     def destroy(self):
         return _loop.run_until_complete(

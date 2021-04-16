@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from numbers import Integral
 from weakref import WeakKeyDictionary
 
-from ...core import Tileable, TileableGraph, TileableGraphBuilder
+from ...core import Tileable, TileableGraph, TileableGraphBuilder, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo
 from ...services.meta import MetaAPI
@@ -136,6 +136,7 @@ class Session(AbstractSession):
             self._run_in_background(tileables, task_id, progress))
         return ExectionInfo(task_id, self._task_api, future, progress)
 
+    @enter_mode(build=True)
     def _get_to_fetch_tileable(self, tileable: Tileable):
         from ...tensor.indexing import TensorIndex
         from ...dataframe.indexing.iloc import \
