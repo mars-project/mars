@@ -1382,6 +1382,7 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
                          _index_value=index_value, _columns_value=columns_value,
                          _chunks=chunks, **kw)
         self._accessors = dict()
+        self._dtypes_value = None
 
     @property
     def params(self) -> Dict[str, Any]:

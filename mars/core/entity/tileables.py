@@ -122,7 +122,7 @@ def tile(tileable, *tileables: TileableType):
     target_tileables = [t.data if hasattr(t, 'data') else t
                         for t in target_tileables]
 
-    tileable_graph = TileableGraph(tileables)
+    tileable_graph = TileableGraph(target_tileables)
     tileable_graph_builder = TileableGraphBuilder(tileable_graph)
     next(tileable_graph_builder.build())
 
@@ -132,10 +132,10 @@ def tile(tileable, *tileables: TileableType):
         tileable_graph, fuse_enabled=False, tile_context=tile_context)
     next(chunk_graph_builder.build())
 
-    if len(tileables) == 1:
-        return tile_context[tileables[0]]
+    if len(tileables) == 0:
+        return tile_context[target_tileables[0]]
     else:
-        return [tile_context[t] for t in tileables]
+        return [tile_context[t] for t in target_tileables]
 
 
 def on_serialize_nsplits(value):

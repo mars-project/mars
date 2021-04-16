@@ -57,7 +57,7 @@ def _get_session(executable, session=None):
         session = get_default_session()
     # TODO(qinxuye): remove when old session removed
     if session is None:
-        session = LagacySession.default_or_local()
+        session = LagacySession.default
 
     return session
 
@@ -231,10 +231,9 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         return session.fetch_log(self, offsets=offsets, sizes=sizes)
 
     def _get_session(self, session=None):
-        session = super()._get_session(session=session)
         if session is None:
             for item in self:
-                session = item._get_session()
+                session = _get_session(item, session)
                 if session is not None:
                     return session
         return session
