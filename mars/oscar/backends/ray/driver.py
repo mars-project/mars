@@ -16,6 +16,7 @@ import logging
 from numbers import Number
 from typing import Dict
 
+from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ...driver import BaseActorDriver
 from .utils import process_placement_to_address, addresses_to_placement_group_info
@@ -44,6 +45,7 @@ class RayActorDriver(BaseActorDriver):
         }
         logger.info("Create placement group success.")
         cls._cluster_info = cluster_info
+        register_ray_serializers()
 
     @classmethod
     def stop_cluster(cls):

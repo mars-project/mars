@@ -15,5 +15,5 @@
 from .aio import AioSerializer, AioDeserializer
 from .core import serialize, deserialize
 
-from . import arrow, cuda, numpy, scipy, mars_objects
-del arrow, cuda, numpy, scipy, mars_objects
+from . import arrow, cuda, numpy, scipy, mars_objects, ray
+del arrow, cuda, numpy, scipy, mars_objects, ray

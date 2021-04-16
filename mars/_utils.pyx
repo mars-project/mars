@@ -95,6 +95,18 @@ cdef class TypeDispatcher:
         else:
             self._handlers[type_] = handler
 
+    cpdef list get_registered_types(self):
+        registered_types = set()
+        registered_types.update(self._lazy_handlers.keys())
+        registered_types.update(self._handlers.keys())
+        return registered_types
+
+    cpdef void unregister(self, object type_):
+        if isinstance(type_, str):
+            del self._lazy_handlers[type_]
+        else:
+            del self._handlers[type_]
+
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
             mod_name, obj_name = k.rsplit('.', 1)

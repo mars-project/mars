@@ -21,6 +21,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
+from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
@@ -135,6 +136,7 @@ class RayMainPool(RayPoolBase):
         self._actor_pool = await create_actor_pool(
             address, n_process=n_process, pool_cls=RayMainActorPool, **kwargs)
         self._set_ray_server(self._actor_pool)
+        register_ray_serializers()
 
 
 class RaySubPool(RayPoolBase):
@@ -150,5 +152,6 @@ class RaySubPool(RayPoolBase):
             'process_index': process_index
         })
         self._set_ray_server(self._actor_pool)
+        register_ray_serializers()
         await self._actor_pool.start()
         asyncio.create_task(self._actor_pool.join())
