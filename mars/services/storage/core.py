@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def _build_data_info(storage_info: ObjectInfo, level, size):
     # todo handle multiple
-    band = 'numa-0' if storage_info.device is not None \
+    band = 'numa-0' if storage_info.device is None \
         else f'gpu-{storage_info.device}'
     if storage_info.size is None:
         store_size = size
