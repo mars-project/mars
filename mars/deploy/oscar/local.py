@@ -68,8 +68,8 @@ class LocalCluster:
             config=self._config)
 
     async def stop(self):
-        await stop_worker(self._worker_pool, self._config)
-        await stop_supervisor(self._supervisor_pool, self._config)
+        await stop_worker(self._worker_pool.external_address, self._config)
+        await stop_supervisor(self._supervisor_pool.external_address, self._config)
         await self._worker_pool.stop()
         await self._supervisor_pool.stop()
 

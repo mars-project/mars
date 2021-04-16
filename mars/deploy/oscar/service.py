@@ -39,11 +39,11 @@ async def start_supervisor(address: str,
                          modules=modules, address=address)
 
 
-async def stop_supervisor(pool: mo.MainActorPoolType,
+async def stop_supervisor(address: str,
                           config: Dict = None):
     if not config or isinstance(config, str):
         config = _load_config(config)
-    await stop_services(NodeRole.SUPERVISOR, pool, config)
+    await stop_services(NodeRole.SUPERVISOR, address, config)
 
 
 async def start_worker(address: str,
@@ -61,8 +61,8 @@ async def start_worker(address: str,
                          modules=modules, address=address)
 
 
-async def stop_worker(pool: mo.MainActorPoolType,
+async def stop_worker(address: str,
                       config: Dict = None):
     if not config or isinstance(config, str):
         config = _load_config(config)
-    await stop_services(NodeRole.WORKER, pool, config)
+    await stop_services(NodeRole.WORKER, address, config)
