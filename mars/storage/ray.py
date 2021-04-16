@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
-from ..utils import lazy_import, implements, register_ray_serializer
+from ..utils import lazy_import, implements, register_ray_serializer, debug, async_debug
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -89,6 +89,7 @@ class RayStorage(StorageBackend):
 
     @classmethod
     @implements(StorageBackend.setup)
+    @async_debug
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         ray.init(ignore_reinit_error=True)
         _register_sparse_matrix_serializer()
@@ -106,39 +107,47 @@ class RayStorage(StorageBackend):
         # if object spilling is available.
         return StorageLevel.MEMORY
 
+    @async_debug
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
-            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
-
+            raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
         return await object_id
 
+    @async_debug
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
         object_id = ray.put(obj)
+        print(f"Put object {obj} with id {object_id}")
         # We can't get the serialized bytes length from ray.put
+        print(f"Get object with id {object_id}", await object_id)
         return ObjectInfo(object_id=object_id)
 
+    @async_debug
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
         ray.internal.free(object_id)
 
+    @async_debug
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
         # The performance of obtaining the object size is poor.
         return ObjectInfo(object_id=object_id)
 
+    @async_debug
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
         new_id = ray.ObjectRef.from_random()
         ray_writer = RayFileObject(new_id, mode='w')
         return StorageFileObject(ray_writer, object_id=new_id)
 
+    @async_debug
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         ray_reader = RayFileObject(object_id, mode='r')
         return StorageFileObject(ray_reader, object_id=object_id)
 
+    @async_debug
     @implements(StorageBackend.list)
     async def list(self) -> List:
         raise NotImplementedError("Ray storage does not support list")

@@ -264,6 +264,32 @@ class classproperty(object):
         return self.f(owner)
 
 
+def debug(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            print(f"execute function {func} with args {args} and kwargs {kwargs}")
+            return func(*args, **kwargs)
+        except NotImplementedError:
+            return NotImplemented
+
+    return wrapper
+
+
+def async_debug(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            print(f"Start to execute function {func} with args {args} and kwargs {kwargs}")
+            result = await func(*args, **kwargs)
+            print(f"Finished executing function {func} with args {args} and kwargs {kwargs}")
+            return result
+        except NotImplementedError:
+            return NotImplemented
+
+    return wrapper
+
+
 def lazy_import(name, package=None, globals=None, locals=None, rename=None):
     rename = rename or name
     prefix_name = name.split('.', 1)[0]
@@ -336,6 +362,7 @@ def register_mars_serializer_on_ray(obj_type):
 def register_ray_serializer(obj_type, serializer=None, deserializer=None):
     ray = lazy_import("ray")
     if ray:
+        print(f"register {obj_type}")
         try:
             ray.register_custom_serializer(
                 obj_type, serializer=serializer, deserializer=deserializer)

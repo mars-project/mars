@@ -31,7 +31,7 @@ def ray_cluster():
         from ray._private.cluster_utils import Cluster
     cluster = Cluster()
     remote_nodes = []
-    num_nodes = 3
+    num_nodes = 1
     for i in range(num_nodes):
         remote_nodes.append(cluster.add_node(num_cpus=10))
         if len(remote_nodes) == 1:
@@ -44,8 +44,8 @@ def ray_cluster():
 @pytest.mark.asyncio
 async def test_execute(ray_cluster):
     client = await new_cluster('test_cluster',
-                               worker_num=3,
-                               worker_cpu=4,
+                               worker_num=1,
+                               worker_cpu=2,
                                worker_mem=1 * 1024 ** 3)
     async with client:
         assert client.address is not None
