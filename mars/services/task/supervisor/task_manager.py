@@ -78,6 +78,8 @@ class TaskProcessor:
     def done(self, is_done: bool):
         if is_done:
             self._done.set()
+        else:  # pragma: no cover
+            self._done.clear()
 
     def get_tiled(self, tileable):
         tileable = tileable.data if hasattr(tileable, 'data') else tileable

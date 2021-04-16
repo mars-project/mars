@@ -208,64 +208,6 @@ def test_build_tileable_graph():
     assert len(graph) == 1
 
 
-def test_enter_mode():
-    from mars.config import option_context, options
-
-    @utils.enter_mode(kernel=True)
-    def wrapped():
-        return utils.is_eager_mode()
-
-    assert not options.eager_mode
-    assert not wrapped()
-
-    with option_context({'eager_mode': True}):
-        assert options.eager_mode
-        assert not wrapped()
-
-    @utils.enter_mode(kernel=True)
-    def wrapped2():
-        wrapped()
-        with option_context({'eager_mode': True}):
-            assert options.eager_mode
-            assert not utils.is_eager_mode()
-            with utils.enter_mode(kernel=False):
-                assert not utils.is_kernel_mode()
-            assert utils.is_kernel_mode()
-
-    wrapped2()
-
-    assert not utils.is_kernel_mode()
-    assert not utils.is_build_mode()
-
-    @utils.enter_mode(kernel=False)
-    def wrapped3():
-        wrapped()
-        with option_context({'eager_mode': True}):
-            assert options.eager_mode
-            assert not utils.is_kernel_mode()
-            with utils.enter_mode(kernel=True, build=True):
-                assert utils.is_kernel_mode()
-                assert utils.is_build_mode()
-            assert not utils.is_kernel_mode()
-            assert not utils.is_build_mode()
-            with pytest.raises(ValueError):
-                with utils.enter_mode(kernel=True, build=True):
-                    raise ValueError('meant to raise error')
-            assert not utils.is_kernel_mode()
-            assert not utils.is_build_mode()
-
-            @utils.enter_mode(kernel=True)
-            def wrapped4():
-                raise ValueError('meant to raise error')
-
-            with pytest.raises(ValueError):
-                wrapped4()
-            assert not utils.is_kernel_mode()
-            assert not utils.is_build_mode()
-
-    wrapped3()
-
-
 def test_blacklist_set():
     blset = utils.BlacklistSet(0.1)
     blset.update([1, 2])

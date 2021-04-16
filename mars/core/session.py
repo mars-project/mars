@@ -24,6 +24,7 @@ from .typing import TileableType
 
 
 _loop = asyncio.new_event_loop()
+_get_session_lock = asyncio.Lock(loop=_loop)
 
 
 class ExecutionInfo(ABC):
@@ -171,9 +172,6 @@ async def _new_session(address: str,
 
 def get_default_session() -> AbstractSession:
     return AbstractSession.default
-
-
-_get_session_lock = asyncio.Lock()
 
 
 warning_msg = """No session found, local session \

@@ -134,7 +134,7 @@ class _ExecutableMixin:
         return self._fetch(session=session, **kw)
 
     def fetch_log(self, session=None, offsets=None, sizes=None):
-        session = self._get_session(session)
+        session = _get_session(self, session)
         self._check_session(session, 'fetch_log')
         return session.fetch_log([self], offsets=offsets, sizes=sizes)[0]
 
