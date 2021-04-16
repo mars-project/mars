@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import asyncio
+import inspect
 import logging
 import os
+import types
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
@@ -114,6 +116,15 @@ class RayPoolBase(ABC):
 
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY
+
+    async def __proxy_call__(self, attribute, *args, **kwargs):
+        attr = getattr(self._actor_pool, attribute)
+        if isinstance(attr, types.MethodType):
+            if inspect.iscoroutinefunction(attr):
+                return await attr(*args, **kwargs)
+            return attr(*args, **kwargs)
+        else:
+            return attr
 
 
 class RayMainPool(RayPoolBase):

@@ -17,7 +17,6 @@ from typing import List, Dict, Union
 
 import yaml
 
-from ... import oscar as mo
 from ...services import start_services, stop_services, NodeRole
 
 

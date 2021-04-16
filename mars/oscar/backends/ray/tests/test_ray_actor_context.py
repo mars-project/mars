@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import inspect
-import types
 
 import pytest
 
@@ -50,18 +49,6 @@ def ray_start_regular_shared():
     ray.shutdown()
 
 
-class MainPool(RayMainPool):
-
-    async def __proxy_call__(self, attribute, *args, **kwargs):
-        attr = getattr(self._actor_pool, attribute)
-        if isinstance(attr, types.MethodType):
-            if inspect.iscoroutinefunction(attr):
-                return await attr(*args, **kwargs)
-            return attr(*args, **kwargs)
-        else:
-            return attr
-
-
 @pytest.fixture
 def actor_pool_context():
     address = process_placement_to_address(pg_name, 0, process_index=0)
@@ -70,7 +57,7 @@ def actor_pool_context():
         pg, bundle_index = ray.util.get_placement_group(pg_name), 0
     else:
         pg, bundle_index = None, -1
-    actor_handle = ray.remote(MainPool).options(
+    actor_handle = ray.remote(RayMainPool).options(
         name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
     ray.get(actor_handle.start.remote(address, n_process))
 
