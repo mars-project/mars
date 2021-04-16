@@ -9,7 +9,7 @@ cluster:
   node_timeout: 120
   node_check_interval: 1
 storage:
-  backends: [ray]
+  backends: [plasma]
   plasma:
     store_memory: 20%
 meta:
