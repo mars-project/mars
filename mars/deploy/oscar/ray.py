@@ -116,8 +116,8 @@ class RayCluster:
             await stop_worker(worker_address, self._config)
         await stop_supervisor(self.supervisor_address, self._config)
         for pool in self._worker_pools:
-            await pool.__proxy_call__.remote('stop')
-        await self._supervisor_pool.__proxy_call__.remote('stop')
+            await pool.call_pool.remote('stop')
+        await self._supervisor_pool.call_pool.remote('stop')
 
 
 class RayClient:

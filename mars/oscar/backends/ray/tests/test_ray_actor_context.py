@@ -69,10 +69,10 @@ def actor_pool_context():
         def __getattr__(self, item):
             if hasattr(RayMainPool, item) and inspect.isfunction(getattr(RayMainPool, item)):
                 def call(*args, **kwargs):
-                    ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item, *args, **kwargs))
+                    ray.get(self.ray_pool_actor_handle.call_pool.remote(item, *args, **kwargs))
                 return call
 
-            return ray.get(self.ray_pool_actor_handle.__proxy_call__.remote(item))
+            return ray.get(self.ray_pool_actor_handle.call_pool.remote(item))
 
     yield ProxyPool(actor_handle)
     for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(n_process)]:
