@@ -118,7 +118,7 @@ class RayPoolBase(ABC):
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY
 
-    async def call_pool(self, attribute, *args, **kwargs):
+    async def actor_pool(self, attribute, *args, **kwargs):
         attr = getattr(self._actor_pool, attribute)
         if isinstance(attr, types.MethodType):
             if inspect.iscoroutinefunction(attr):
