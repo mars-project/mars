@@ -16,6 +16,7 @@
 
 import sys
 import tempfile
+import pkgutil
 import pytest
 
 import numpy as np
@@ -45,14 +46,14 @@ except ImportError:
 
 
 require_lib = lambda x: x
-params = ['filesystem', 'plasma']
-if vineyard:
+params = ['filesystem', 'shared_memory']
+if pkgutil.find_loader('pyarrow.plasma') is not None:
+    params.append('plasma')
+if vineyard is not None:
     params.append('vineyard')
-if ray:
+if ray is not None:
     params.append('ray')
     require_lib = require_ray
-if sys.version_info[:2] >= (3, 8):
-    params.append('shared_memory')
 
 
 @pytest.fixture(params=params)

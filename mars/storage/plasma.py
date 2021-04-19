@@ -20,21 +20,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 import pyarrow as pa
-from pyarrow import plasma
 
 from ..resource import virtual_memory
 from ..serialization import AioSerializer, AioDeserializer
-from ..utils import implements, dataslots, calc_size_by_str
+from ..utils import implements, dataslots, calc_size_by_str, lazy_import
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
+plasma = lazy_import('pyarrow.plasma', globals=globals(), rename='plasma')
 
 PAGE_SIZE = 64 * 1024
 
 
 class PlasmaFileObject(BufferWrappedFileObject):
     def __init__(self,
-                 plasma_client: plasma.PlasmaClient,
+                 plasma_client: "plasma.PlasmaClient",
                  object_id: Any,
                  mode: str,
                  size: Optional[int] = None):
@@ -83,7 +83,7 @@ class PlasmaObjectInfo(ObjectInfo):
         self.buffer = client.get_buffers([self.object_id])[0]
 
 
-def get_actual_capacity(plasma_client: plasma.PlasmaClient) -> int:
+def get_actual_capacity(plasma_client: "plasma.PlasmaClient") -> int:
     """
     Get actual capacity of plasma store
 

@@ -14,15 +14,19 @@
 
 import asyncio
 import random
+import sys
 import weakref
 from string import ascii_letters, digits
 from typing import Any, Dict, List, Tuple, Optional
 try:
-    from multiprocessing.shared_memory import SharedMemory
+    if sys.version_info[:2] >= (3, 8):
+        # builtin package for Python 3.8+
+        from multiprocessing.shared_memory import SharedMemory
+    else:
+        # backport package for Python 3.7-
+        from shared_memory import SharedMemory
 except ImportError:  # pragma: no cover
-    # shared_memory is available for Python 3.8+
-    # until we decide to backport this module
-    # we just let it go for python<3.8
+    # allow shared_memory package to be absent
     SharedMemory = None
 
 from ..serialization import AioSerializer, AioDeserializer

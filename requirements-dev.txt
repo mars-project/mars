@@ -15,3 +15,4 @@ scipy>=1.0.0
 mock>=4.0.0; python_version<'3.8'
 pickle5; python_version<'3.8'
 dataclasses; python_version<'3.7'
+shared-memory38; python_version<'3.8'
