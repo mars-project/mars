@@ -22,10 +22,10 @@ except ImportError:
     pa = None
 
 from mars.config import option_context
+from mars.core import enter_mode
 from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 from mars.dataframe.utils import arrow_table_to_pandas_dataframe
 from mars.serialize import dataserializer
-from mars.utils import enter_mode
 
 
 @unittest.skipIf(pa is None, 'pyarrow not installed')

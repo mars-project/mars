@@ -14,7 +14,7 @@
 
 from typing import Union, Dict
 
-from ...core.session import new_session
+from ...core.session import _new_session
 from ...resource import cpu_count, cuda_count
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
@@ -25,7 +25,7 @@ async def new_cluster(address: str = '0.0.0.0',
                       n_cpu: Union[int, str] = 'auto',
                       n_gpu: Union[int, str] = 'auto',
                       subprocess_start_method: str = 'spawn',
-                      config: Union[str, Dict] = None):
+                      config: Union[str, Dict] = None) -> "LocalClient":
     cluster = LocalCluster(address, n_cpu, n_gpu,
                            subprocess_start_method, config)
     await cluster.start()
@@ -84,7 +84,7 @@ class LocalClient:
     @classmethod
     async def create(cls,
                      cluster: LocalCluster) -> "LocalClient":
-        session = await new_session(
+        session = await _new_session(
             cluster._supervisor_pool.external_address,
             backend=Session.name, default=True)
         return LocalClient(cluster, session)

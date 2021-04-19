@@ -12,12 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 import numpy as np
 
-from ...utils import is_eager_mode, calc_object_overhead, calc_data_size
+from ...utils import calc_object_overhead, calc_data_size
+from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
+from ..typing import TileableType, ChunkType
 
 
 class TileableOperandMixin:
@@ -36,7 +40,7 @@ class TileableOperandMixin:
             elif all(inp.op.gpu is False for inp in inputs):
                 return False
 
-    def _create_chunk(self, output_idx, index, **kw):
+    def _create_chunk(self, output_idx, index, **kw) -> ChunkType:
         output_type = kw.pop('output_type', self._get_output_type(output_idx))
         if not output_type:
             raise ValueError('output_type should be specified')
@@ -53,7 +57,7 @@ class TileableOperandMixin:
         data = chunk_data_type(**kw)
         return chunk_type(data)
 
-    def _new_chunks(self, inputs, kws=None, **kw):
+    def _new_chunks(self, inputs, kws=None, **kw) -> List[ChunkType]:
         output_limit = kw.pop('output_limit', None)
         if output_limit is None:
             output_limit = getattr(self, 'output_limit')
@@ -82,7 +86,7 @@ class TileableOperandMixin:
                 t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
         return chunks
 
-    def new_chunks(self, inputs, kws=None, **kwargs):
+    def new_chunks(self, inputs, kws=None, **kwargs) -> List[ChunkType]:
         """
         Create chunks.
         A chunk is a node in a fine grained graph, all the chunk objects are created by
@@ -99,7 +103,7 @@ class TileableOperandMixin:
         """
         return self._new_chunks(inputs, kws=kws, **kwargs)
 
-    def new_chunk(self, inputs, kws=None, **kw):
+    def new_chunk(self, inputs, kws=None, **kw) -> ChunkType:
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new chunk with more than 1 outputs')
 
@@ -122,7 +126,7 @@ class TileableOperandMixin:
             kw['nsplits'] = nsplits
         return kw
 
-    def _create_tileable(self, output_idx, **kw):
+    def _create_tileable(self, output_idx, **kw) -> TileableType:
         output_type = kw.pop('output_type', self._get_output_type(output_idx))
         if output_type is None:
             raise ValueError('output_type should be specified')
@@ -140,7 +144,7 @@ class TileableOperandMixin:
         data = tileable_data_type(**kw)
         return tileable_type(data)
 
-    def _new_tileables(self, inputs, kws=None, **kw):
+    def _new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
         output_limit = kw.pop('output_limit', None)
         if output_limit is None:
             output_limit = getattr(self, 'output_limit')
@@ -168,7 +172,7 @@ class TileableOperandMixin:
                 t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
         return tileables
 
-    def new_tileables(self, inputs, kws=None, **kw):
+    def new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
         """
         Create tileable objects(Tensors or DataFrames).
         This is a base function for create tileable objects like tensors or dataframes,
@@ -188,7 +192,7 @@ class TileableOperandMixin:
             ExecutableTuple(tileables).execute(fetch=False)
         return tileables
 
-    def new_tileable(self, inputs, kws=None, **kw):
+    def new_tileable(self, inputs, kws=None, **kw) -> TileableType:
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new chunk with more than 1 outputs')
 

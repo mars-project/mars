@@ -13,17 +13,20 @@
 # limitations under the License.
 
 import asyncio
+import functools
 import sys
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Tuple, Optional
 
 from .... import oscar as mo
-from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, get_tiled
+from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, Tileable
+from ....dataframe.core import DATAFRAME_CHUNK_TYPE
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
+from ...meta.api import MetaAPI
 from ..analyzer import GraphAnalyzer
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
     SubTaskStatus, SubtaskGraph, new_task_id
@@ -31,12 +34,15 @@ from ..errors import TaskNotExist
 
 
 class TaskProcessor:
-    __slots__ = '_task', 'tileable_graph'
+    __slots__ = '_task', 'tileable_graph', 'tile_context', '_done'
 
     def __init__(self,
                  task: Task):
         self._task = task
         self.tileable_graph = task.tileable_graph
+
+        self.tile_context: Dict[Tileable, Tileable] = dict()
+        self._done = asyncio.Event()
 
     def optimize(self) -> TileableGraph:
         """
@@ -61,8 +67,27 @@ class TaskProcessor:
         """
         # TODO(qinxuye): integrate iterative chunk graph builder
         chunk_graph_builder = ChunkGraphBuilder(
-            tileable_graph, fuse_enabled=self._task.fuse_enabled)
+            tileable_graph, fuse_enabled=self._task.fuse_enabled,
+            tile_context=self.tile_context)
         yield from chunk_graph_builder.build()
+
+    @property
+    def done(self) -> bool:
+        return self._done.is_set()
+
+    @done.setter
+    def done(self, is_done: bool):
+        if is_done:
+            self._done.set()
+        else:  # pragma: no cover
+            self._done.clear()
+
+    def get_tiled(self, tileable):
+        tileable = tileable.data if hasattr(tileable, 'data') else tileable
+        return self.tile_context[tileable]
+
+    def __await__(self):
+        return self._done.wait().__await__()
 
 
 class BandQueue:
@@ -89,10 +114,12 @@ class SubtaskGraphScheduler:
                  subtask_graph: SubtaskGraph,
                  bands: List[BandType],
                  task_stage_info: "TaskStageInfo",
+                 meta_api: MetaAPI,
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
         self._bands = bands
         self._task_stage_info = task_stage_info
+        self._meta_api = meta_api
         self._scheduling_api = scheduling_api
 
         # gen subtask_id to subtask
@@ -121,6 +148,22 @@ class SubtaskGraphScheduler:
         self._band_manager[band] = manger_ref
         return manger_ref
 
+    @functools.lru_cache(30)
+    def _calc_expect_band(self, inp_subtasks: Tuple[Subtask]):
+        if len(inp_subtasks) == 1 and inp_subtasks[0].virtual:
+            # virtual node, get predecessors of virtual node
+            calc_subtasks = self._subtask_graph.predecessors(inp_subtasks[0])
+        else:
+            calc_subtasks = inp_subtasks
+
+        # calculate a expect band
+        sorted_size_inp_subtask = sorted(
+            calc_subtasks, key=lambda st: self._subtask_to_results[st].data_size,
+            reverse=True)
+        expect_bands = [self._subtask_to_bands[subtask]
+                        for subtask in sorted_size_inp_subtask]
+        return expect_bands
+
     def _get_subtask_band(self, subtask: Subtask):
         if subtask.expect_band is not None:
             # start, already specified band
@@ -129,10 +172,9 @@ class SubtaskGraphScheduler:
         else:
             inp_subtasks = self._subtask_graph.predecessors(subtask)
             # calculate a expect band
-            max_size_inp_subtask = max(
-                inp_subtasks, key=lambda st: self._subtask_to_results[st].data_size)
-            band = self._subtask_to_bands[max_size_inp_subtask]
-            self._subtask_to_bands[subtask] = band
+            expect_bands = self._calc_expect_band(tuple(inp_subtasks))
+            subtask.expect_bands = expect_bands
+            self._subtask_to_bands[subtask] = band = subtask.expect_band
             return band
 
     async def _direct_submit_subtasks(self, subtasks: List[Subtask]):
@@ -148,6 +190,20 @@ class SubtaskGraphScheduler:
         else:
             return await self._direct_submit_subtasks(subtasks)
 
+    async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
+        get_meta = []
+        chunks = chunk_graph.result_chunks
+        for chunk in chunks:
+            fields = list(chunk.params)
+            if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
+                fields.remove('dtypes')
+                fields.remove('columns_value')
+            get_meta.append(self._meta_api.get_chunk_meta.delay(
+                chunk.key, fields=fields))
+        metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
+        for chunk, meta in zip(chunks, metas):
+            chunk.params = meta
+
     async def set_subtask_result(self, result: SubtaskResult):
         subtask_id = result.subtask_id
         subtask = self._subtask_id_to_subtask[subtask_id]
@@ -157,6 +213,10 @@ class SubtaskGraphScheduler:
         error_or_cancelled = result.status in (SubTaskStatus.errored, SubTaskStatus.cancelled)
 
         if all_done or error_or_cancelled:
+            if all_done and not error_or_cancelled:
+                # subtask graph finished, update result chunks' meta
+                await self._update_chunks_meta(
+                    self._task_stage_info.chunk_graph)
             self._schedule_done()
             self.set_task_info(result.error, result.traceback)
             return
@@ -325,6 +385,7 @@ class TaskStageInfo:
     task_id: str
     task_info: TaskInfo
     task: Task
+    chunk_graph: ChunkGraph = None
     task_result: TaskResult = None
     subtask_graph: SubtaskGraph = None
     subtask_graph_scheduler: SubtaskGraphScheduler = None
@@ -352,10 +413,12 @@ class TaskManagerActor(mo.Actor):
         self._task_id_to_task_info: Dict[str, TaskInfo] = dict()
         self._task_id_to_task_stage_info: Dict[str, TaskStageInfo] = dict()
 
+        self._meta_api = None
         self._cluster_api = None
         self._use_scheduling = use_scheduling
 
     async def __post_create__(self):
+        self._meta_api = await MetaAPI.create(self._session_id, self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
@@ -369,7 +432,6 @@ class TaskManagerActor(mo.Actor):
                                     graph: TileableGraph,
                                     task_name: str = None,
                                     fuse_enabled: bool = True) -> str:
-
         if task_name is None:
             task_id = task_name = new_task_id()
         elif task_name in self._task_name_to_main_task_info:
@@ -445,6 +507,7 @@ class TaskManagerActor(mo.Actor):
 
                 break
 
+            task_stage_info.chunk_graph = chunk_graph
             # get subtask graph
             available_bands = await self._get_available_band_slots()
             analyzer = GraphAnalyzer(chunk_graph, available_bands,
@@ -455,23 +518,53 @@ class TaskManagerActor(mo.Actor):
             # schedule subtask graph
             # TODO(qinxuye): pass scheduling API to scheduler when it's ready
             subtask_scheduler = SubtaskGraphScheduler(
-                subtask_graph, list(available_bands), task_stage_info)
+                subtask_graph, list(available_bands), task_stage_info,
+                self._meta_api)
             task_stage_info.subtask_graph_scheduler = subtask_scheduler
             await subtask_scheduler.schedule()
 
-    async def _wait_task(self, task_id: str):
+        # iterative tiling and execution finished,
+        # set task processor done
+        task_processor.done = True
+
+    @classmethod
+    async def _wait_for(cls, task_info: TaskInfo):
+        processors = task_info.task_processors
+        aio_tasks = task_info.aio_tasks
+        await asyncio.gather(*processors, *aio_tasks)
+        return task_info.task_result
+
+    async def _wait_task(self, task_id: str, timeout=None):
         try:
             task_info = self._task_id_to_task_info[task_id]
         except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
-        aio_tasks = task_info.aio_tasks
-        await asyncio.gather(*aio_tasks)
-        return task_info.task_result
+        if timeout is None:
+            return await self._wait_for(task_info)
 
-    async def wait_task(self, task_id: str):
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        task = asyncio.create_task(self._wait_for(task_info))
+
+        def cb(_):
+            try:
+                future.set_result(None)
+            except asyncio.InvalidStateError:  # pragma: no cover
+                pass
+
+        task.add_done_callback(cb)
+        try:
+            await asyncio.wait_for(future, timeout)
+            return await task
+        except asyncio.TimeoutError:
+            return
+
+    async def wait_task(self,
+                        task_id: str,
+                        timeout: int = None):
         # return coroutine to not block task manager
-        return self._wait_task(task_id)
+        return self._wait_task(task_id, timeout=timeout)
 
     async def _cancel_task(self, task_info: TaskInfo):
         # cancel all stages
@@ -500,10 +593,11 @@ class TaskManagerActor(mo.Actor):
         except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {task_id} does not exist')
 
-        tileable_graph = task_info.task_processors[-1].tileable_graph
+        processor = task_info.task_processors[-1]
+        tileable_graph = processor.tileable_graph
         result = []
         for result_tilable in tileable_graph.result_tileables:
-            tiled = get_tiled(result_tilable)
+            tiled = processor.get_tiled(result_tilable)
             result.append(build_fetch(tiled))
         return result
 
@@ -514,4 +608,31 @@ class TaskManagerActor(mo.Actor):
             raise TaskNotExist(f'Task {subtask_result.task_id} does not exist')
 
         task_stage_info.subtask_results[subtask_result.subtask_id] = subtask_result
-        await task_stage_info.subtask_graph_scheduler.set_subtask_result(subtask_result)
+        if subtask_result.status.is_done:
+            await task_stage_info.subtask_graph_scheduler.set_subtask_result(subtask_result)
+
+    def get_task_progress(self, task_id: str) -> float:
+        # first get all processors
+        try:
+            task_info = self._task_id_to_task_info[task_id]
+        except KeyError:  # pragma: no cover
+            raise TaskNotExist(f'Task {task_id} does not exist')
+
+        tiled_percentage = 0.0
+        for task_processor in task_info.task_processors:
+            # get tileable proportion that is tiled
+            tileable_graph = task_processor.tileable_graph
+            tileable_context = task_processor.tile_context
+            tiled_percentage += len(tileable_context) / len(tileable_graph)
+        tiled_percentage /= len(task_info.task_processors)
+
+        # get progress of stages
+        subtask_progress = 0.0
+        for stage in task_info.task_stage_infos:
+            n_subtask = len(stage.subtask_graph)
+            progress = sum(result.progress for result
+                           in stage.subtask_results.values())
+            subtask_progress += progress / n_subtask
+        subtask_progress /= len(task_info.task_stage_infos)
+
+        return subtask_progress * tiled_percentage

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict
+
 from ...serialization.serializables import FieldTypes, ListField
 from .chunks import ChunkData, Chunk
 from .core import Entity
@@ -28,11 +30,22 @@ class ObjectChunkData(ChunkData):
         super().__init__(_op=op, _index=index, **kw)
 
     @property
-    def params(self):
+    def params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
             'index': self.index,
         }
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        params = new_params.copy()
+        params.pop('index', None)  # index not needed to update
+        if params:  # pragma: no cover
+            raise TypeError(f'Unknown params: {list(params)}')
+
+    @classmethod
+    def get_params_from_data(cls, data: Any) -> Dict[str, Any]:
+        return dict()
 
 
 class ObjectChunk(Chunk):
@@ -59,8 +72,18 @@ class ObjectData(TileableData, _ToObjectMixin):
     @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
-        return {
-        }
+        return dict()
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        params = new_params.copy()
+        if params:  # pragma: no cover
+            raise TypeError(f'Unknown params: {list(params)}')
+
+    def refresh_params(self):
+        # refresh params when chunks updated
+        # nothing needs to do for Object
+        pass
 
 
 class Object(Entity, _ToObjectMixin):

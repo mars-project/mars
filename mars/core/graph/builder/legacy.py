@@ -18,10 +18,11 @@ import weakref
 from abc import ABC, abstractmethod
 from typing import Callable, List, Set, Union, Tuple, Iterable
 
-from ...utils import enter_mode, copy_tileables
-from ..typing import OperandType, TileableType, EntityType
-from ..entity import TilesError
-from .entity import EntityGraph, TileableGraph, ChunkGraph
+from ....utils import copy_tileables
+from ...mode import enter_mode
+from ...typing import OperandType, TileableType, EntityType
+from ...entity import TilesError
+from ..entity import EntityGraph, TileableGraph, ChunkGraph
 
 
 def _default_inputs_selector(inputs: List[EntityType]) -> List[EntityType]:

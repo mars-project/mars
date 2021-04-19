@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar
+from ...utils import has_unknown_shape, calc_nsplits
 
-OperandType = TypeVar('OperandType')
-TileableType = TypeVar('TileableType')
-ChunkType = TypeVar('ChunkType')
-EntityType = TypeVar('EntityType')
+
+def refresh_tileable_shape(tileable):
+    if has_unknown_shape(tileable):
+        # update shape
+        nsplits = calc_nsplits(
+            {c.index: c.shape for c in tileable.chunks})
+        shape = tuple(sum(ns) for ns in nsplits)
+        tileable._nsplits = nsplits
+        tileable._shape = shape

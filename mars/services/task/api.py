@@ -123,16 +123,19 @@ class TaskAPI:
         return await self._task_manager_ref.submit_tileable_graph(
             graph, task_name, fuse_enabled=fuse_enabled)
 
-    async def wait_task(self, task_id: str):
+    async def wait_task(self, task_id: str, timeout: float = None):
         """
-        Wait for a task to finsih.
+        Wait for a task to finish.
 
         Parameters
         ----------
         task_id : str
             Task ID
+        timeout: float
+            Second to timeout
         """
-        return await self._task_manager_ref.wait_task(task_id)
+        return await self._task_manager_ref.wait_task(
+            task_id, timeout=timeout)
 
     async def get_task_result(self, task_id: str) -> TaskResult:
         """
@@ -165,7 +168,7 @@ class TaskAPI:
         progress : float
             Get task progress.
         """
-        raise NotImplementedError
+        return await self._task_manager_ref.get_task_progress(task_id)
 
     async def cancel_task(self, task_id: str):
         """
@@ -178,7 +181,7 @@ class TaskAPI:
         """
         return await self._task_manager_ref.cancel_task(task_id)
 
-    async def get_fetch_tileable(self, task_id: str) -> List[Tileable]:
+    async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         """
         Get fetch tileable for a task.
 

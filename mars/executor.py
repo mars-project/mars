@@ -27,14 +27,15 @@ from numbers import Integral
 
 import numpy as np
 
+from .core import enter_mode
 from .core.operand import Fetch, FetchShuffle
-from .core.graph import TileableGraphBuilder, IterativeChunkGraphBuilder, \
+from .core.graph.builder.legacy import TileableGraphBuilder, IterativeChunkGraphBuilder, \
     ChunkGraphBuilder, TileableGraph, get_tiled
 from .config import options
 from .optimizes.runtime.core import RuntimeOptimizer
 from .optimizes.tileable_graph import tileable_optimized, OptimizeIntegratedTileableGraphBuilder
 from .context import LocalContext
-from .utils import enter_mode, build_fetch, calc_nsplits, has_unknown_shape, prune_chunk_graph
+from .utils import build_fetch, calc_nsplits, has_unknown_shape, prune_chunk_graph
 
 try:
     from numpy.core._exceptions import UFuncTypeError

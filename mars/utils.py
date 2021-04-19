@@ -401,77 +401,9 @@ def log_unhandled(func):
     return _wrapped
 
 
-_internal_mode = threading.local()
-
-
-def is_eager_mode():
-    in_kernel = is_kernel_mode()
-    if not in_kernel:
-        return options.eager_mode
-    else:
-        # in kernel, eager mode always False
-        return False
-
-
-def is_kernel_mode():
-    try:
-        return bool(_internal_mode.kernel)
-    except AttributeError:
-        _internal_mode.kernel = None
-        return bool(_internal_mode)
-
-
-def is_build_mode():
-    return bool(getattr(_internal_mode, 'build', False))
-
-
-class _EnterModeFuncWrapper:
-    def __init__(self, mode_name_to_value):
-        self.mode_name_to_value = mode_name_to_value
-
-        # as the wrapper may enter for many times
-        # record old values for each time
-        self.mode_name_to_value_list = list()
-
-    def __enter__(self):
-        mode_name_to_old_value = dict()
-        for mode_name, value in self.mode_name_to_value.items():
-            # record mode's old values
-            mode_name_to_old_value[mode_name] = \
-                getattr(_internal_mode, mode_name, None)
-            if value is None:
-                continue
-            # set value
-            setattr(_internal_mode, mode_name, value)
-        self.mode_name_to_value_list.append(mode_name_to_old_value)
-
-    def __exit__(self, *_):
-        mode_name_to_old_value = self.mode_name_to_value_list.pop()
-        for mode_name in self.mode_name_to_value.keys():
-            # set back old values
-            setattr(_internal_mode, mode_name,
-                    mode_name_to_old_value[mode_name])
-
-    def __call__(self, func):
-        @functools.wraps(func)
-        def _inner(*args, **kwargs):
-            with self:
-                return func(*args, **kwargs)
-
-        return _inner
-
-
-def enter_mode(kernel=None, build=None):
-    mode_name_to_value = {
-        'kernel': kernel,
-        'build': build,
-    }
-
-    return _EnterModeFuncWrapper(mode_name_to_value)
-
-
 def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
-    from .core import TileableGraph, TileableGraphBuilder
+    from .core import TileableGraph, enter_mode
+    from .core.graph.builder.legacy import TileableGraphBuilder
     from .core.operand import Fetch
 
     with enter_mode(build=True):

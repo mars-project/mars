@@ -17,6 +17,7 @@ from collections import deque
 from typing import Type, Dict
 
 from ....core import ChunkGraph
+from ....core.operand import VirtualOperand
 from ....utils import implements, build_fetch
 from ...core import BandType
 from ..core import SubtaskGraph, Subtask, new_task_id
@@ -95,6 +96,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             if chunk in visited:
                 continue
 
+            virtual = isinstance(chunk.op, VirtualOperand)
             inp_chunks = self._chunk_graph.predecessors(chunk)
 
             # calculate priority
@@ -103,7 +105,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                                for inp_chunk in inp_chunks) + 1
             else:
                 priority = 0
-            chunk_to_priorities[chunk] = priority
+            for out in chunk.op.outputs:
+                chunk_to_priorities[out] = priority
 
             band = chunk_to_bands.get(chunk)
 
@@ -131,9 +134,11 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                 visited.add(out)
                 result_chunks.append(copied_chunk)
                 subtask_chunk_graph.add_node(copied_chunk)
-                for inp_fetch_chunk in inp_fetch_chunks:
-                    subtask_chunk_graph.add_node(inp_fetch_chunk)
-                    subtask_chunk_graph.add_edge(inp_fetch_chunk, copied_chunk)
+                if not virtual:
+                    # skip adding fetch chunk to chunk graph when op is virtual operand
+                    for inp_fetch_chunk in inp_fetch_chunks:
+                        subtask_chunk_graph.add_node(inp_fetch_chunk)
+                        subtask_chunk_graph.add_edge(inp_fetch_chunk, copied_chunk)
 
             # gen subtask
             subtask = Subtask(
@@ -141,7 +146,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                 session_id=self._task_stage_info.task_info.session_id,
                 task_id=self._task_stage_info.task_id,
                 chunk_graph=subtask_chunk_graph,
-                expect_band=band,
+                expect_bands=[band],
+                virtual=virtual,
                 priority=priority)
             for out in outs:
                 chunk_to_subtask[out] = subtask

@@ -22,4 +22,4 @@ from .output_types import OutputType, register_output_types, get_output_types, \
     register_fetch_class, get_fetch_class, get_tileable_types, get_chunk_types
 from .tileables import Tileable, TileableData, TILEABLE_TYPE, \
     HasShapeTileable, HasShapeTileableData, \
-    TilesError, NotSupportTile, register
+    TilesError, NotSupportTile, register, tile

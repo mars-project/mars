@@ -56,7 +56,7 @@ class EntityData(Base):
 
     def build_graph(self, tiled=False, fuse_enabled=True,
                     **build_chunk_graph_kwargs):
-        from ..graph.builder import _build_graph
+        from ..graph.builder.legacy import _build_graph
 
         return _build_graph([self], tiled=tiled, fuse_enabled=fuse_enabled,
                             **build_chunk_graph_kwargs)

@@ -20,14 +20,16 @@ from collections.abc import Iterable
 from datetime import datetime
 from enum import Enum
 from operator import attrgetter
+from typing import Any, Dict
 
 import numpy as np
 
 from ..core import Entity, HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
-    OutputType, register_output_types, _ExecuteAndFetchMixin
+    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode
+from ..core.entity.utils import refresh_tileable_shape
 from ..serialization.serializables import Serializable, FieldTypes, \
     DataTypeField, ListField, TupleField, BoolField, StringField, AnyField, ReferenceField
-from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape, is_build_mode
+from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices, fetch_corner_data
 
 logger = logging.getLogger(__name__)
@@ -66,7 +68,7 @@ class TensorChunkData(ChunkData):
                 self._order = TensorOrder.C_ORDER
 
     @property
-    def params(self):
+    def params(self) -> Dict[str, Any]:
         # params return the properties which useful to rebuild a new chunk
         return {
             'shape': self.shape,
@@ -74,6 +76,31 @@ class TensorChunkData(ChunkData):
             'order': self.order,
             'index': self.index,
         }
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        params = new_params.copy()
+        params.pop('index', None)  # index not needed to update
+        new_shape = params.pop('shape', None)
+        if new_shape is not None:
+            self._shape = new_shape
+        dtype = params.pop('dtype', None)
+        if dtype is not None:
+            self._dtype = dtype
+        order = params.pop('order', None)
+        if order is not None:
+            self._order = order
+        if params:  # pragma: no cover
+            raise TypeError(f'Unknown params: {list(params)}')
+
+    @classmethod
+    def get_params_from_data(cls, data: np.ndarray) -> Dict[str, Any]:
+        order = TensorOrder.C_ORDER \
+            if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
+        return {
+            'shape': data.shape,
+            'dtype': data.dtype,
+            'order': order}
 
     def __len__(self):
         try:
@@ -176,6 +203,26 @@ class TensorData(HasShapeTileableData, _ExecuteAndFetchMixin):
             'dtype': self.dtype,
             'order': self.order
         }
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):
+        params = new_params.copy()
+        shape = params.pop('shape', None)
+        if shape is not None:
+            self._shape = shape
+        dtype = params.pop('dtype', None)
+        if dtype is not None:
+            self._dtype = dtype
+        order = params.pop('order', None)
+        if order is not None:
+            self._order = order
+        if params:  # pragma: no cover
+            raise TypeError(f'Unknown params: {list(params)}')
+
+    def refresh_params(self):
+        refresh_tileable_shape(self)
+        if self._dtype is None:
+            self._dtype = self.chunks[0].dtype
 
     @property
     def flags(self):
@@ -654,8 +701,29 @@ class MutableTensorData(TensorData):
             'dtype': self.dtype,
             'name': self.name,
             'compression': self.compression,
-            "chunk_eps": self.chunk_eps,
+            'chunk_eps': self.chunk_eps,
         }
+
+    @params.setter
+    def params(self, new_params: Dict[str, Any]):  # pragma: no cover
+        params = new_params.copy()
+        shape = params.pop('shape', None)
+        if shape is not None:
+            self._shape = shape
+        dtype = params.pop('dtype', None)
+        if dtype is not None:
+            self._dtype = dtype
+        name = params.pop('name', None)
+        if name is not None:
+            self._name = name
+        compression = params.pop('compression', None)
+        if compression is not None:
+            self._compression = compression
+        chunk_eps = params.pop('chunk_eps', None)
+        if chunk_eps is not None:
+            self._chunk_eps = chunk_eps
+        if params:  # pragma: no cover
+            raise TypeError(f'Unknown params: {list(params)}')
 
     @property
     def name(self):

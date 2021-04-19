@@ -23,12 +23,13 @@ from ...serialization.serializables import SerializableMeta, FieldTypes, \
     ListField, DictField, ReferenceField
 from ...serialization.core import Placeholder
 from ...serialization.serializables.core import SerializableSerializer
-from ...utils import AttributeDict, enter_mode
+from ...utils import AttributeDict
 from ..base import Base
 from ..entity.core import Entity, EntityData
 from ..entity.chunks import Chunk
 from ..entity.tileables import Tileable
 from ..entity.output_types import OutputType
+from ..mode import enter_mode
 from ..typing import OperandType
 
 
@@ -87,7 +88,7 @@ class Operand(Base, metaclass=OperandMetaclass):
     _outputs = ListField('outputs')
     _output_types = ListField('output_type', FieldTypes.reference(OutputType))
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self: OperandType, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
         kwargs['extra_params'] = kwargs.pop('extra_params', extras)
         super().__init__(*args, **kwargs)

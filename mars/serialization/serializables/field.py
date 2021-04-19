@@ -18,7 +18,6 @@ import inspect
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Any, Callable, Optional, Type, Union
 
-from ...utils import is_kernel_mode
 from .field_type import AbstractFieldType, FieldTypes, \
     ListType, TupleType, DictType, ReferenceType
 
@@ -94,6 +93,8 @@ class Field(ABC):
                     f"'{type(instance)}' has no attribute {self._attr_name}")
 
     def __set__(self, instance, value):
+        from ...core import is_kernel_mode
+
         if not is_kernel_mode():
             field_type = self.field_type
             try:
@@ -465,6 +466,8 @@ class ReferenceField(Field):
         return self._field_type
 
     def __set__(self, instance, value):
+        from ...core import is_kernel_mode
+
         if self._field_type is None:
             if not is_kernel_mode():
                 field_type = self.get_field_type(instance)

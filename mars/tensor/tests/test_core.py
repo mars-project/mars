@@ -12,9 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar
+import numpy as np
 
-OperandType = TypeVar('OperandType')
-TileableType = TypeVar('TileableType')
-ChunkType = TypeVar('ChunkType')
-EntityType = TypeVar('EntityType')
+import mars.tensor as mt
+from mars.core import tile
+
+
+def test_params():
+    raw = np.random.rand(10, 10)
+    a = mt.tensor(raw)
+    a = a[a[0] < 0.5]
+    a = tile(a)
+    c = a.chunks[0]
+
+    assert any(np.isnan(s) for s in c.params['shape'])
+    c.params = c.get_params_from_data(raw[raw[0] < 0.5])
+    assert not any(np.isnan(s) for s in c.params['shape'])
+
+    params = c.params.copy()
+    params.pop('index', None)
+    a.params = params
+    assert np.prod(a.shape) > 0
+    a.refresh_params()
