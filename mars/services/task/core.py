@@ -15,11 +15,12 @@
 import random
 from enum import Enum
 from string import ascii_letters, digits
-from typing import Any
+from typing import Any, List
 
 from ...core import TileableGraph, ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
-    ReferenceField, Int32Field, Int64Field, BoolField, AnyField, TupleField
+    ReferenceField, Int32Field, Int64Field, Float64Field, \
+    BoolField, AnyField, ListField
 from ..core import BandType
 
 
@@ -92,7 +93,8 @@ class Subtask(Serializable):
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
     chunk_graph: ChunkGraph = ReferenceField('chunk_graph', ChunkGraph)
-    expect_band: BandType = TupleField('expect_band')
+    expect_bands: List[BandType] = ListField('expect_bands')
+    virtual: bool = BoolField('virtual')
     priority: int = Int32Field('priority')
     rerun_time: int = Int32Field('rerun_time')
 
@@ -102,17 +104,24 @@ class Subtask(Serializable):
                  task_id: str = None,
                  chunk_graph: ChunkGraph = None,
                  subtask_name: str = None,
-                 expect_band: BandType = None,
+                 expect_bands: List[BandType] = None,
                  priority: int = None,
+                 virtual: bool = False,
                  rerun_time: int = 0):
         super().__init__(subtask_id=subtask_id,
                          subtask_name=subtask_name,
                          session_id=session_id,
                          task_id=task_id,
                          chunk_graph=chunk_graph,
-                         expect_band=expect_band,
+                         expect_bands=expect_bands,
                          priority=priority,
+                         virtual=virtual,
                          rerun_time=rerun_time)
+
+    @property
+    def expect_band(self):
+        if self.expect_bands:
+            return self.expect_bands[0]
 
 
 class SubtaskResult(Serializable):
@@ -120,6 +129,7 @@ class SubtaskResult(Serializable):
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
     status: SubTaskStatus = ReferenceField('status', SubTaskStatus)
+    progress: float = Float64Field('progress')
     data_size: int = Int64Field('data_size', default=None)
     error = AnyField('error', default=None)
     traceback = AnyField('traceback', default=None)

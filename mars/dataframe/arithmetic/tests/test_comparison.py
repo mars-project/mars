@@ -19,8 +19,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+from mars.core import enter_mode
 from mars.dataframe.initializer import DataFrame
-from mars.utils import enter_mode
 
 
 class Test(unittest.TestCase):

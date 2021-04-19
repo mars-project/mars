@@ -22,7 +22,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Union, Optional
 
 from .... import oscar as mo
-from ....core.operand import Fetch
+from ....core import ChunkGraph
+from ....core.operand import Fetch, FetchShuffle, \
+    MapReduceOperand, VirtualOperand, OperandStage
+from ....lib.aio import alru_cache
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ...core import BandType
 from ...meta.api import MetaAPI
@@ -162,6 +165,8 @@ class BandSubtaskManagerActor(mo.Actor):
 
 
 class SubtaskProcessor:
+    _chunk_graph: ChunkGraph
+
     def __init__(self,
                  subtask: Subtask,
                  storage_api: StorageAPI,
@@ -179,15 +184,16 @@ class SubtaskProcessor:
             subtask_id=subtask.subtask_id,
             session_id=subtask.session_id,
             task_id=subtask.task_id,
-            status=SubTaskStatus.pending)
+            status=SubTaskStatus.pending,
+            progress=0.0)
 
         # status and intermediate states
         # operand progress, from op key to progress
         self._op_progress: Dict[str, float] = defaultdict(lambda: 0.0)
         # temp data store that holds chunk data during computation
         self._datastore = dict()
-        # chunk keys that are required as input
-        self._input_chunk_keys = set()
+        # chunk key to real data keys
+        self._chunk_key_to_data_keys = dict()
 
         # other service APIs
         self._storage_api = storage_api
@@ -201,6 +207,22 @@ class SubtaskProcessor:
     def subtask_id(self):
         return self.subtask.subtask_id
 
+    def _gen_chunk_key_to_data_keys(self):
+        for chunk in self._chunk_graph:
+            if chunk.key in self._chunk_key_to_data_keys:
+                continue
+            if not isinstance(chunk.op, FetchShuffle):
+                self._chunk_key_to_data_keys[chunk.key] = [chunk.key]
+            else:
+                keys = []
+                for succ in self._chunk_graph.iter_successors(chunk):
+                    if isinstance(succ.op, MapReduceOperand) and \
+                            succ.op.stage == OperandStage.reduce:
+                        for key in succ.op.get_dependent_data_keys():
+                            if key not in keys:
+                                keys.append(key)
+                self._chunk_key_to_data_keys[chunk.key] = keys
+
     async def _load_input_data(self):
         keys = []
         gets = []
@@ -208,24 +230,34 @@ class SubtaskProcessor:
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
+            elif isinstance(chunk.op, FetchShuffle):
+                for key in self._chunk_key_to_data_keys[chunk.key]:
+                    keys.append(key)
+                    gets.append(self._storage_api.get.delay(key))
         if keys:
-            logger.info(f'Start loading input data keys: {keys}, '
+            logger.info(f'Start getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs)})
-            logger.info(f'Finish loading input data keys: {keys}, '
+            logger.info(f'Finish getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
+
+    @staticmethod
+    @alru_cache
+    async def _get_task_manager(supervisor_address: str, uid: str) -> mo.ActorRef:
+        return await mo.actor_ref(supervisor_address, uid)
 
     @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
                                          result: SubtaskResult):
-        task_manager = await mo.actor_ref(
+        task_manager = await SubtaskProcessor._get_task_manager(
             supervisor_address, TaskManagerActor.gen_uid(result.session_id))
         # notify task manger
         await task_manager.set_subtask_result(result)
 
     async def cancel(self):
         self.result.status = SubTaskStatus.cancelled
+        self.result.progress = 1.0
         # notify task manager
         fut = self.notify_task_manager_result(
             self._supervisor_address, self.result)
@@ -235,6 +267,7 @@ class SubtaskProcessor:
     async def done(self):
         if self.result.status == SubTaskStatus.running:
             self.result.status = SubTaskStatus.succeeded
+        self.result.progress = 1.0
         fut = self.notify_task_manager_result(
             self._supervisor_address, self.result)
         if fut:
@@ -265,13 +298,17 @@ class SubtaskProcessor:
     async def run(self):
         self.result.status = SubTaskStatus.running
 
-        loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
-
-        chunk_graph = self._chunk_graph
-        ref_counts = self._init_ref_counts()
-
         with self._catch_error():
+            loop = asyncio.get_running_loop()
+            executor = futures.ThreadPoolExecutor(1)
+
+            chunk_graph = self._chunk_graph
+            self._gen_chunk_key_to_data_keys()
+            ref_counts = self._init_ref_counts()
+
+            report_progress = asyncio.create_task(
+                self.report_progress_periodically())
+
             await self._load_input_data()
 
             # from data_key to results
@@ -304,18 +341,36 @@ class SubtaskProcessor:
                     ref_counts[inp] -= 1
                     if ref_counts[inp] == 0:
                         # ref count reaches 0, remove it
-                        del self._datastore[inp.key]
+                        for key in self._chunk_key_to_data_keys[inp.key]:
+                            del self._datastore[key]
+
+            # skip virtual operands for result chunks
+            result_chunks = [c for c in chunk_graph.result_chunks
+                             if not isinstance(c.op, VirtualOperand)]
 
             # store data into storage
             puts = []
             stored_keys = []
-            for result_chunk in chunk_graph.result_chunks:
+            for result_chunk in result_chunks:
                 data_key = result_chunk.key
-                stored_keys.append(data_key)
-                result_data = self._datastore[data_key]
-                # TODO(qinxuye): update meta if unknown shape stuff exists
-                puts.append(
-                    self._storage_api.put.delay(data_key, result_data))
+                if data_key in self._datastore:
+                    # non shuffle op
+                    stored_keys.append(data_key)
+                    result_data = self._datastore[data_key]
+                    # update meta
+                    if not isinstance(result_data, tuple):
+                        result_chunk.params = result_chunk.get_params_from_data(result_data)
+
+                    puts.append(
+                        self._storage_api.put.delay(data_key, result_data))
+                else:
+                    assert isinstance(result_chunk.op, MapReduceOperand)
+                    keys = [store_key for store_key in self._datastore
+                            if isinstance(store_key, tuple) and store_key[0] == data_key]
+                    for key in keys:
+                        stored_keys.append(key)
+                        result_data = self._datastore[key]
+                        puts.append(self._storage_api.put.delay(key, result_data))
             logger.info(f'Start putting data keys: {stored_keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
@@ -344,8 +399,9 @@ class SubtaskProcessor:
                 memory_size = store_info.memory_size
                 memory_sizes.append(memory_size)
                 set_chunk_metas.append(
-                    self._meta_api.set_chunk_meta.delay(result_chunk, memory_size, store_size,
-                                                        bands=[self._band]))
+                    self._meta_api.set_chunk_meta.delay(
+                        result_chunk, memory_size=memory_size,
+                        store_size=store_size, bands=[self._band]))
             logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
             set_chunks_meta = asyncio.create_task(
@@ -374,6 +430,23 @@ class SubtaskProcessor:
             self.result.data_size = sum(memory_sizes)
 
         await self.done()
+        await report_progress
+
+    async def report_progress_periodically(self, interval=.5, eps=0.001):
+        last_progress = self.result.progress
+        while not self.result.status.is_done:
+            size = len(self._chunk_graph)
+            progress = sum(self._op_progress.values()) / size
+            assert progress <= 1
+            self.result.progress = progress
+            if abs(last_progress - progress) >= eps:
+                # report progress
+                fut = self.notify_task_manager_result(
+                    self._supervisor_address, self.result)
+                if fut:
+                    await fut
+            await asyncio.sleep(interval)
+            last_progress = progress
 
 
 @dataclass
@@ -422,9 +495,10 @@ class SubtaskRunnerActor(mo.Actor):
                 getattr(self._subtask_info, 'processor', None) is not None and \
                 not self._subtask_info.processor.status.is_done:
             # current subtask is still running
-            raise SlotOccupiedAlready(f'There is subtask(id: '
-                                      f'{self._subtask_info.processor}) running, '
-                                      f'cannot run another subtask')
+            raise SlotOccupiedAlready(
+                f'There is subtask(id: '
+                f'{self._subtask_info.processor.subtask_id}) running, '
+                f'cannot run another subtask')
 
         logger.info(f'Start to run subtask: {subtask.subtask_id}')
         aio_task = asyncio.create_task(self._run_subtask(subtask))

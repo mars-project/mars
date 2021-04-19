@@ -22,7 +22,7 @@ from numbers import Integral
 
 import numpy as np
 
-from .core import ENTITY_TYPE, get_tiled
+from .core import ENTITY_TYPE
 from .core.operand import Fetch
 from .context import get_context, LocalContext
 from .executor import Executor
@@ -110,6 +110,7 @@ class LocalSession(object):
             return res
 
     def _update_tileable_shape(self, tileable):
+        from .core.graph.builder.legacy import get_tiled
         from .optimizes.tileable_graph import tileable_optimized
 
         new_nsplits = self._executor.get_tileable_nsplits(tileable)

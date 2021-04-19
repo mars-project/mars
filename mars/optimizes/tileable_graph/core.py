@@ -17,8 +17,9 @@
 import weakref
 from collections import defaultdict
 
-from ...core.graph import TileableGraphBuilder, TileableGraph
-from ...utils import copy_tileables, enter_mode
+from ...core import enter_mode
+from ...core.graph.builder.legacy import TileableGraphBuilder, TileableGraph
+from ...utils import copy_tileables
 
 _rules = defaultdict(list)
 

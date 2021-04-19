@@ -15,6 +15,7 @@
 import pytest
 
 import mars.tensor as mt
+from mars.core import tile
 from mars.services.meta import TensorMeta
 from mars.services.meta.store import get_meta_store
 
@@ -24,7 +25,7 @@ async def test_mock_meta_store():
     meta_store = get_meta_store('dict')('mock_session_id')
 
     t = mt.random.rand(10, 10)
-    t = t.tiles()
+    t = tile(t)
 
     await meta_store.set_meta(t.key, TensorMeta(
         object_id=t.key, shape=t.shape, dtype=t.dtype,

@@ -19,11 +19,28 @@ import pandas as pd
 
 from mars import dataframe as md
 from mars import tensor as mt
+from mars.core import tile
 from mars.learn.utils import shuffle
 from mars.remote import spawn, ExecutableTuple
 from mars.session import new_session, Session
 from mars.lib.mmh3 import hash as mmh3_hash
 from mars.tests.core import TestBase, ExecutorForTest
+
+
+def test_params():
+    def f(x):
+        return x + 1
+
+    r = spawn(f, args=(1,))
+    c = tile(r).chunks[0]
+    assert isinstance(c.params, dict)
+    c.params = c.get_params_from_data(2)
+    assert isinstance(c.params, dict)
+
+    params = c.params
+    params.pop('index', None)
+    r.params = params
+    r.refresh_params()
 
 
 class Test(TestBase):

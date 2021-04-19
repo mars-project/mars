@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABCMeta, abstractmethod
 from typing import List, Dict, Union, Iterable
 
 from ...core import Tileable, Chunk
@@ -21,8 +22,22 @@ from ...serialization.serializables.core import SerializableSerializer
 from .core import DAG
 
 
-class EntityGraph(DAG):
-    pass
+class EntityGraph(DAG, metaclass=ABCMeta):
+    @property
+    @abstractmethod
+    def results(self):
+        """
+        Return result tileables or chunks.
+
+        Returns
+        -------
+        results
+        """
+
+    def copy(self) -> "EntityGraph":
+        graph = super().copy()
+        graph.results = self.results.copy()
+        return graph
 
 
 class TileableGraph(EntityGraph, Iterable[Tileable]):
