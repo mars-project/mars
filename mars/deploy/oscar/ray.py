@@ -22,7 +22,7 @@ from .service import start_supervisor, start_worker, stop_supervisor, stop_worke
 from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from ... import oscar as mo
-from ...core.session import new_session
+from ...core.session import _new_session, AbstractSession
 from ...utils import lazy_import
 
 ray = lazy_import("ray")
@@ -123,19 +123,19 @@ class RayCluster:
 class RayClient:
     def __init__(self,
                  cluster: RayCluster,
-                 session: Session):
+                 session: AbstractSession):
         self._cluster = cluster
         self._address = cluster.supervisor_address
         self._session = session
 
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
-        session = await new_session(cluster.supervisor_address, backend=Session.name, default=True)
+        session = await _new_session(cluster.supervisor_address, backend=Session.name, default=True)
         return RayClient(cluster, session)
 
     @property
     def address(self):
-        return self._session
+        return self._session.address
 
     @property
     def session(self):
