@@ -398,16 +398,12 @@ class StorageManagerActor(mo.Actor):
                               session_id: str,
                               data_key: str) -> DataInfo:
         meta_api = await self._get_meta_api(session_id)
-
         address = (await meta_api.get_chunk_meta(
             data_key, fields=['bands']))['bands'][0][0]
-
         remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
                                                 address=address)
-        data_info = await remote_manager_ref.get_data_info(session_id, data_key)
-
+        data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
         self.put_data_info(session_id, data_key, data_info, None)
-        return data_info
 
     def delete_data_info(self,
                          session_id: str,

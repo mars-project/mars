@@ -60,7 +60,7 @@ class LocalCluster:
         self._supervisor_pool = await create_supervisor_actor_pool(
             self._address, n_process=0,
             subprocess_start_method=self._subprocess_start_method)
-        for i in range(self._n_worker):
+        for _ in range(self._n_worker):
             worker_pool = await create_worker_actor_pool(
                 self._address, self._band_to_slot,
                 subprocess_start_method=self._subprocess_start_method)

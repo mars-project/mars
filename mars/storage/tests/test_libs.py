@@ -109,7 +109,7 @@ async def storage_context(request):
     elif request.param == 'ray':
         params, teardown_params = await RayStorage.setup()
         storage = RayStorage(**params)
-        assert storage.level == StorageLevel.MEMORY
+        assert storage.level == StorageLevel.MEMORY | StorageLevel.REMOTE
 
         yield storage
 

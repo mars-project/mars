@@ -339,7 +339,6 @@ def serialize(obj, context: Dict = None):
     serializer = _serial_dispatcher.get_handler(type(obj))
     result = serializer.serialize(obj, context)
 
-
     if not isinstance(result, types.GeneratorType):
         # result is not a generator, return directly
         header, buffers = result
