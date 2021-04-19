@@ -511,7 +511,7 @@ class TaskManagerActor(mo.Actor):
             # get subtask graph
             available_bands = await self._get_available_band_slots()
             analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                     task_stage_info)
+                                     task.fuse_enabled, task_stage_info)
             subtask_graph = analyzer.gen_subtask_graph()
             task_stage_info.subtask_graph = subtask_graph
 

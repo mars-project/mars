@@ -22,16 +22,19 @@ from ....utils import implements, build_fetch
 from ...core import BandType
 from ..core import SubtaskGraph, Subtask, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
+from .fusion import Fusion
 
 
 class AbstractGraphAnalyzer(ABC):
     def __init__(self,
                  chunk_graph: ChunkGraph,
                  band_slots: Dict[BandType, int],
+                 fuse_enabled: bool,
                  task_stage_info,
                  graph_assigner_cls: Type[AbstractGraphAssigner] = None):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
+        self._fuse_enabled = fuse_enabled
         self._task_stage_info = task_stage_info
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
@@ -86,6 +89,24 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
         assigner = self._graph_assigner_cls(
             self._chunk_graph, start_ops, self._band_slots)
         chunk_to_bands = assigner.assign()
+
+        # fuse node
+        if self._fuse_enabled:
+            fusion = Fusion(self._chunk_graph)
+            to_fuse_nodes_list, fused_nodes = fusion.fuse()
+            assert len(to_fuse_nodes_list) == len(fused_nodes)
+            fuse_to_fused = dict()
+            for to_fuse_nodes, fused_node in zip(to_fuse_nodes_list, fused_nodes):
+                for to_fuse_node in to_fuse_nodes:
+                    fuse_to_fused[to_fuse_node] = fused_node
+            # modify chunk_to_bands if some chunk fused
+            new_chunk_to_bands = dict()
+            for chunk, band in chunk_to_bands.items():
+                if chunk in fuse_to_fused:
+                    new_chunk_to_bands[fuse_to_fused[chunk]] = band
+                else:
+                    new_chunk_to_bands[chunk] = band
+            chunk_to_bands = new_chunk_to_bands
 
         subtask_graph = SubtaskGraph()
         chunk_to_priorities = dict()
