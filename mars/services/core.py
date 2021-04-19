@@ -17,8 +17,6 @@ import enum
 import importlib
 from typing import Dict, List, Tuple, Union
 
-from .. import oscar as mo
-
 BandType = Tuple[str, str]
 
 
