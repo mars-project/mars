@@ -55,15 +55,14 @@ class Serializer:
         _serial_dispatcher.register(obj_type, inst)
         _deserializers[cls.serializer_name] = inst
 
-    @staticmethod
-    def unregister(obj_type):
-        handler = _serial_dispatcher.get_handler(obj_type)
+    @classmethod
+    def unregister(cls, obj_type):
         _serial_dispatcher.unregister(obj_type)
-        _deserializers.pop(handler.__class__.serializer_name, None)
+        _deserializers.pop(cls.serializer_name, None)
 
     @classmethod
-    def get_registered_types(cls):
-        return _serial_dispatcher.get_registered_types()
+    def get_registered_handlers(cls):
+        return _serial_dispatcher.get_registered_handlers()
 
 
 def buffered(func):

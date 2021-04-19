@@ -101,6 +101,7 @@ class RayPoolBase(ABC):
     def __init__(self):
         self._actor_pool = None
         self._ray_server = None
+        register_ray_serializers()
 
     @abstractmethod
     async def start(self, *args, **kwargs):
@@ -136,7 +137,6 @@ class RayMainPool(RayPoolBase):
         self._actor_pool = await create_actor_pool(
             address, n_process=n_process, pool_cls=RayMainActorPool, **kwargs)
         self._set_ray_server(self._actor_pool)
-        register_ray_serializers()
 
 
 class RaySubPool(RayPoolBase):
@@ -152,6 +152,5 @@ class RaySubPool(RayPoolBase):
             'process_index': process_index
         })
         self._set_ray_server(self._actor_pool)
-        register_ray_serializers()
         await self._actor_pool.start()
         asyncio.create_task(self._actor_pool.join())

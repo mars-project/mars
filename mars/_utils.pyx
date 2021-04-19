@@ -84,10 +84,12 @@ cpdef unicode to_text(s, encoding='utf-8'):
 cdef class TypeDispatcher:
     cdef dict _handlers
     cdef dict _lazy_handlers
+    cdef dict _dynamic_added_handlers
 
     def __init__(self):
         self._handlers = dict()
         self._lazy_handlers = dict()
+        self._dynamic_added_handlers = dict()
 
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
@@ -95,10 +97,10 @@ cdef class TypeDispatcher:
         else:
             self._handlers[type_] = handler
 
-    cpdef list get_registered_types(self):
-        registered_types = set()
-        registered_types.update(self._lazy_handlers.keys())
-        registered_types.update(self._handlers.keys())
+    cpdef dict get_registered_handlers(self):
+        registered_types = dict()
+        registered_types.update(self._lazy_handlers)
+        registered_types.update(self._handlers)
         return registered_types
 
     cpdef void unregister(self, object type_):
@@ -106,6 +108,7 @@ cdef class TypeDispatcher:
             del self._lazy_handlers[type_]
         else:
             del self._handlers[type_]
+        self.clear_dynamic_added_handlers()
 
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
@@ -123,8 +126,13 @@ cdef class TypeDispatcher:
             for clz in type_.__mro__:
                 if clz in self._handlers:
                     handler = self._handlers[type_] = self._handlers[clz]
+                    self._dynamic_added_handlers[type_] = handler
                     return handler
             raise KeyError(f'Cannot dispatch type {type_}')
+
+    cpdef clear_dynamic_added_handlers(self):
+        for _type in self._dynamic_added_handlers.keys():
+            self._handlers.pop(_type, None)
 
     def __call__(self, object obj, *args, **kwargs):
         return self.get_handler(type(obj))(obj, *args, **kwargs)

@@ -51,6 +51,8 @@ def ray_start_regular_shared():
 
 @pytest.fixture
 def actor_pool_context():
+    from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
+    register_ray_serializers()
     address = process_placement_to_address(pg_name, 0, process_index=0)
     # Hold actor_handle to avoid actor being freed.
     if hasattr(ray.util, "get_placement_group"):
@@ -81,6 +83,7 @@ def actor_pool_context():
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
     Router.set_instance(None)
+    unregister_ray_serializers()
 
 
 @require_ray
