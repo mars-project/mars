@@ -104,7 +104,7 @@ class RayStorage(StorageBackend):
     def level(self) -> StorageLevel:
         # TODO(fyrestone): return StorageLevel.MEMORY & StorageLevel.DISK
         # if object spilling is available.
-        return StorageLevel.MEMORY
+        return StorageLevel.MEMORY | StorageLevel.REMOTE
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
@@ -141,3 +141,7 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:
         raise NotImplementedError("Ray storage does not support list")
+
+    @implements(StorageBackend.prefetch)
+    async def prefetch(self, object_id):
+        pass

@@ -226,17 +226,21 @@ class SubtaskProcessor:
     async def _load_input_data(self):
         keys = []
         gets = []
+        prefetches = []
         for chunk in self._chunk_graph.iter_indep():
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
+                prefetches.append(self._storage_api.prefetch.delay(chunk.key))
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
                     gets.append(self._storage_api.get.delay(key))
+                    prefetches.append(self._storage_api.prefetch.delay(key))
         if keys:
             logger.info(f'Start getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
+            await self._storage_api.prefetch.batch(*prefetches)
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs)})
             logger.info(f'Finish getting input data keys: {keys}, '
