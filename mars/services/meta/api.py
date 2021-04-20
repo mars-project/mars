@@ -16,6 +16,7 @@
 from typing import Dict, List, Any, Union
 
 from ... import oscar as mo
+from ...core.operand import Fuse
 from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ...lib.aio import alru_cache
 from ...utils import extensible
@@ -139,6 +140,9 @@ class MetaAPI:
                              store_size: int = None,
                              bands: List[BandType] = None,
                              **extra):
+        if isinstance(chunk.op, Fuse):
+            # fuse op
+            chunk = chunk.chunk
         params = chunk.params.copy()
         if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
             # dataframe chunk needs some special process for now

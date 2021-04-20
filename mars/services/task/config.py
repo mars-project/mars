@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import TensorFuseChunk
-from .cupy import TensorCpFuseChunk
-from .numexpr import TensorNeFuseChunk
+from ...config import Config, is_bool, is_list
+
+
+task_options = Config()
+
+# supervisor
+task_options.register_option('optimize_tileable_graph', True,
+                             validator=is_bool)
+task_options.register_option('optimize_chunk_graph', True,
+                             validator=is_bool)
+task_options.register_option('fuse_enabled', True,
+                             validator=is_bool)
+
+# worker
+task_options.register_option('runtime_engines', ['numexpr', 'cupy'],
+                             validator=is_list)

@@ -118,6 +118,7 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
         data_source_params['dtypes'] = dtypes = dtypes[selected_columns]
         data_source_params['columns_value'] = \
             parse_index(dtypes.index, store_data=True)
+        data_source_params.update(data_source_node.extra_params)
         data_source_node_op = data_source_node.op.copy()
         data_source_node_op._key = data_source_node.op.key
         data_source_node_op.set_pruned_columns(selected_columns)
@@ -131,8 +132,13 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
 
         new_op = op.copy()
         new_op._key = op.key
+        kws = []
+        for out in op.outputs:
+            params = out.params.copy()
+            params.update(out.extra_params)
+            kws.append(params)
         new_outputs = new_op.new_tileables(
-            [new_data_source_node], kws=[out.params for out in op.outputs])
+            [new_data_source_node], kws=kws)
         for out, new_out in zip(op.outputs, new_outputs):
             new_out = new_out.data
             new_out._id = out.id

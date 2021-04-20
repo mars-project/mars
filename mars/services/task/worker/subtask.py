@@ -23,16 +23,18 @@ from typing import List, Dict, Union, Optional
 
 from .... import oscar as mo
 from ....core import ChunkGraph
-from ....core.operand import Fetch, FetchShuffle, \
-    MapReduceOperand, VirtualOperand, OperandStage
+from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
+    VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
+from ..config import task_options
 from ..core import Subtask, SubTaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
+from .optimization import optimize
 
 
 logger = logging.getLogger(__name__)
@@ -172,12 +174,15 @@ class SubtaskProcessor:
                  storage_api: StorageAPI,
                  meta_api: MetaAPI,
                  band: BandType,
-                 supervisor_address: str):
+                 supervisor_address: str,
+                 engines: List[str] = None):
         self.subtask = subtask
         self._session_id = self.subtask.session_id
         self._chunk_graph = subtask.chunk_graph
         self._band = band
         self._supervisor_address = supervisor_address
+        self._engines = engines if engines is not None else \
+            task_options.runtime_engines
 
         # result
         self.result = SubtaskResult(
@@ -303,6 +308,7 @@ class SubtaskProcessor:
             executor = futures.ThreadPoolExecutor(1)
 
             chunk_graph = self._chunk_graph
+            chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
             ref_counts = self._init_ref_counts()
 
@@ -318,7 +324,7 @@ class SubtaskProcessor:
                     # we make it run in a thread pool to not block current thread.
                     logger.info(f'Start executing operand: {chunk.op},'
                                 f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                    future = loop.run_in_executor(executor, chunk.op.execute,
+                    future = loop.run_in_executor(executor, execute,
                                                   self._datastore, chunk.op)
                     try:
                         await future

@@ -71,6 +71,7 @@ class HeadPushDown(OptimizationRule):
         new_input_params['shape'] = (nrows,) + input_node.shape[1:]
         pandas_index = node.index_value.to_pandas()[:nrows]
         new_input_params['index_value'] = parse_index(pandas_index, node)
+        new_input_params.update(input_node.extra_params)
         new_input_node = new_input_op.new_tileable(
             op.inputs, kws=[new_input_params]).data
         new_input_node._key = node.key
@@ -100,8 +101,10 @@ class HeadPushDown(OptimizationRule):
             self._replace_node(input_node, new_input_node)
             new_op = op.copy()
             new_op._key = op.key
+            params = node.params.copy()
+            params.update(node.extra_params)
             new_node = new_op.new_tileable(
-                [new_input_node], kws=[node.params.copy()]).data
+                [new_input_node], kws=[params]).data
             self._replace_node(node, new_node)
 
             # mark optimization record

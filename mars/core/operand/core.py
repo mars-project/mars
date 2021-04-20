@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+import sys
+from typing import List, Dict, Type, Callable, Any
 
 import numpy as np
+try:
+    from numpy.core._exceptions import UFuncTypeError
+except ImportError:  # pragma: no cover
+    UFuncTypeError = None
 
 from ...utils import calc_object_overhead, calc_data_size
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
-from ..typing import TileableType, ChunkType
+from ..typing import TileableType, ChunkType, OperandType
+
+
+_op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
+_op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
 
 
 class TileableOperandMixin:
@@ -302,3 +311,62 @@ class TileableOperandMixin:
 
     def get_fuse_op_cls(self, obj):
         raise NotImplementedError
+
+    @classmethod
+    def register_executor(cls, executor: Callable):
+        _op_type_to_executor[cls] = executor
+
+    @classmethod
+    def unregister_executor(cls):
+        del _op_type_to_executor[cls]
+
+    @classmethod
+    def register_size_estimator(cls, size_estimator: Callable):
+        _op_type_to_size_estimator[cls] = size_estimator
+
+    @classmethod
+    def unregister_size_estimator(cls):
+        del _op_type_to_size_estimator[cls]
+
+
+def execute(results: Dict[str, Any], op: OperandType):
+    try:
+        executor = _op_type_to_executor[type(op)]
+    except KeyError:
+        executor = type(op).execute
+
+    try:
+        if UFuncTypeError is None:
+            return executor(results, op)
+        else:
+            # Cast `UFuncTypeError` to `TypeError` since subclasses of the former is unpickleable.
+            # The `UFuncTypeError` was introduced by numpy#12593 since v1.17.0.
+            try:
+                return executor(results, op)
+            except UFuncTypeError as e:
+                raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None
+    except NotImplementedError:
+        for op_cls in type(op).__mro__:
+            if op_cls in _op_type_to_executor:
+                executor = _op_type_to_executor[op_cls]
+                _op_type_to_executor[type(op)] = executor
+                return executor(results, op)
+        raise KeyError(f'No handler found for op: {op}')
+
+
+def estimate_size(results: Dict[str, Any], op: OperandType):
+    try:
+        size_estimator = _op_type_to_size_estimator[type(op)]
+    except KeyError:
+        size_estimator = type(op).estimate_size
+
+    try:
+        return size_estimator(results, op)
+    except NotImplementedError:
+        for op_cls in type(op).__mro__:
+            if op_cls in _op_type_to_size_estimator:
+                size_estimator = _op_type_to_size_estimator[op_cls]
+                _op_type_to_size_estimator[type(op)] = size_estimator
+                return size_estimator(results, op)
+        raise KeyError(f'No handler found for op: '
+                       f'{op} to estimate size')
