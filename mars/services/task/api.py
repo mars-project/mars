@@ -197,6 +197,17 @@ class TaskAPI:
         """
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
+    async def last_idle_time(self) -> Union[float, None]:
+        """
+        Get last idle time from task manager.
+
+        Returns
+        -------
+        last_idle_time: float
+            The last idle time if the task manager is idle else None.
+        """
+        return await self._task_manager_ref.last_idle_time()
+
 
 class MockTaskAPI(TaskAPI):
     @classmethod

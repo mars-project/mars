@@ -15,6 +15,7 @@
 import asyncio
 import functools
 import sys
+import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -416,6 +417,7 @@ class TaskManagerActor(mo.Actor):
         self._meta_api = None
         self._cluster_api = None
         self._use_scheduling = use_scheduling
+        self._last_idle_time = None
 
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
@@ -432,6 +434,7 @@ class TaskManagerActor(mo.Actor):
                                     graph: TileableGraph,
                                     task_name: str = None,
                                     fuse_enabled: bool = True) -> str:
+        self._last_idle_time = None
         if task_name is None:
             task_id = task_name = new_task_id()
         elif task_name in self._task_name_to_main_task_info:
@@ -636,3 +639,10 @@ class TaskManagerActor(mo.Actor):
         subtask_progress /= len(task_info.task_stage_infos)
 
         return subtask_progress * tiled_percentage
+
+    def last_idle_time(self):
+        if self._last_idle_time is None:
+            if all(task_info.task_result and task_info.task_result.status == TaskStatus.terminated
+                    for task_info in self._task_id_to_task_info.values()):
+                self._last_idle_time = time.time()
+        return self._last_idle_time

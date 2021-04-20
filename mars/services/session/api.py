@@ -96,6 +96,17 @@ class SessionAPI:
         """
         return (await self._session_manager_ref.get_session_ref(session_id)).address
 
+    async def last_idle_time(self) -> Union[float, None]:
+        """
+        Get session last idle time.
+
+        Returns
+        -------
+        last_idle_time: str
+            The last idle time if the session is idle else None.
+        """
+        return await self._session_manager_ref.last_idle_time()
+
 
 class MockSessionAPI(SessionAPI):
     @classmethod
