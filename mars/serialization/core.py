@@ -60,10 +60,6 @@ class Serializer:
         _serial_dispatcher.unregister(obj_type)
         _deserializers.pop(cls.serializer_name, None)
 
-    @classmethod
-    def get_registered_handlers(cls):
-        return _serial_dispatcher.get_registered_handlers()
-
 
 def buffered(func):
     @wraps(func)
