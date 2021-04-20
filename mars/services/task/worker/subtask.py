@@ -27,6 +27,7 @@ from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
     VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ....optimization.physical import optimize
 from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
@@ -34,7 +35,6 @@ from ..supervisor.task_manager import TaskManagerActor
 from ..config import task_options
 from ..core import Subtask, SubTaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
-from .optimization import optimize
 
 
 logger = logging.getLogger(__name__)

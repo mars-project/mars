@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .....core import ChunkType
-from .....tensor import arithmetic
-from .....tensor import reduction
-from .....tensor.fuse import TensorNeFuseChunk
-from .....tensor.fuse.numexpr import NUMEXPR_INSTALLED
+from ...core import ChunkType
+from ...tensor import arithmetic
+from ...tensor import reduction
+from ...tensor.fuse import TensorNeFuseChunk
+from ...tensor.fuse.numexpr import NUMEXPR_INSTALLED
 from .core import RuntimeOptimizer, register_optimizer
 
 

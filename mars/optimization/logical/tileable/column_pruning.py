@@ -14,10 +14,10 @@
 
 from typing import List
 
-from ......core import OperandType
-from ......dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
-from ......dataframe.groupby.aggregation import DataFrameGroupByAgg
-from ......dataframe.indexing.getitem import DataFrameIndex
+from ....core import OperandType
+from ....dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
+from ....dataframe.groupby.aggregation import DataFrameGroupByAgg
+from ....dataframe.indexing.getitem import DataFrameIndex
 from ..common.column_pruning import PruneDataSource, GetitemPruneDataSource
 from .core import register_tileable_optimization_rule
 

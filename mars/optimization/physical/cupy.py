@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .....tensor import arithmetic
-from .....tensor.fuse import TensorCpFuseChunk
-from .....utils import lazy_import
+from ...tensor import arithmetic
+from ...tensor.fuse import TensorCpFuseChunk
+from ...utils import lazy_import
 from .core import RuntimeOptimizer, register_optimizer
 
 

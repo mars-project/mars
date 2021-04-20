@@ -12,28 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from typing import List, Type
 
-from ......core import OperandType, TileableGraph
+from ....core import OperandType, ChunkGraph
 from ..core import Optimizer, OptimizationRule, OptimizationRecords
 
 
-class TileableOptimizer(Optimizer):
+class ChunkOptimizer(Optimizer):
     """
     Tileable Optimizer
     """
 
 
-def register_tileable_optimization_rule(op_types: List[Type[OperandType]]):
+def register_chunk_optimization_rule(op_types: List[Type[OperandType]]):
     def wrap(rule_type: Type[OptimizationRule]):
-        TileableOptimizer.register_rule(op_types, rule_type)
+        ChunkOptimizer.register_rule(op_types, rule_type)
         return rule_type
     return wrap
 
 
-def optimize(tileable_graph: TileableGraph) -> OptimizationRecords:
-    return TileableOptimizer.optimize(tileable_graph)
-
-
-def get_rule_types(op_type: Type[OperandType]):
-    return TileableOptimizer.get_rule_types(op_type)
+def optimize(tileable_graph: ChunkGraph) -> OptimizationRecords:
+    return ChunkOptimizer.optimize(tileable_graph)

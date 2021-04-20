@@ -25,6 +25,8 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, Tileable
 from ....core.operand import Fuse
 from ....dataframe.core import DATAFRAME_CHUNK_TYPE
+from ....optimization.logical.chunk import optimize as optimize_chunk_graph
+from ....optimization.logical.tileable import optimize as optimize_tileable_graph
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
@@ -34,8 +36,6 @@ from ..config import task_options
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
     SubTaskStatus, SubtaskGraph, new_task_id
 from ..errors import TaskNotExist
-from .optimization.chunk import optimize as optimize_chunk_graph
-from .optimization.tileable import optimize as optimize_tileable_graph
 
 
 class TaskProcessor:

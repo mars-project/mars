@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Tuple, Type
 
-from .....core import OperandType, ChunkType, EntityType, enter_mode
-from .....core.graph import EntityGraph
+from ...core import OperandType, ChunkType, EntityType, enter_mode
+from ...core.graph import EntityGraph
 
 
 class OptimizationRecordType(Enum):
@@ -206,7 +206,7 @@ class Optimizer(ABC):
             rules = [rule_type(graph, records, cls)
                      for rule_type in rule_types]
             for rule in rules:
-                if entity not in graph:
+                if entity not in graph:  # pragma: no cover
                     # maybe removed during optimization
                     continue
                 if rule.match(op):

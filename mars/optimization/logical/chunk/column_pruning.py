@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ......dataframe.indexing.getitem import DataFrameIndex
+from ....dataframe.indexing.getitem import DataFrameIndex
 from ..common.column_pruning import GetitemPruneDataSource
 from .core import register_chunk_optimization_rule
 

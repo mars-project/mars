@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 import tempfile
 
@@ -22,7 +21,7 @@ import pytest
 import mars.dataframe as md
 from mars.core import enter_mode, TileableGraph, \
     TileableGraphBuilder, ChunkGraphBuilder
-from mars.services.task.supervisor.optimization.chunk import optimize
+from mars.optimization.logical.chunk import optimize
 
 
 @pytest.fixture(scope='module')
@@ -36,13 +35,13 @@ def gen_data1():
 
 
 @enter_mode(build=True)
-def test_read_csv_head(gen_data1):
+def test_groupby_read_csv(gen_data1):
     pdf, tempdir = gen_data1
     file_path = os.path.join(tempdir, 'test.csv')
     pdf.to_csv(file_path)
 
     df1 = md.read_csv(file_path)
-    df2 = df1.head(5)
+    df2 = df1[['a', 'b']]
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())
     context = dict()
@@ -53,8 +52,10 @@ def test_read_csv_head(gen_data1):
     chunk1 = context[df1.data].chunks[0].data
     chunk2 = context[df2.data].chunks[0].data
     records = optimize(chunk_graph)
-    assert records.get_optimization_result(chunk1) is None
+    opt_chunk1 = records.get_optimization_result(chunk1)
+    assert opt_chunk1 is not None
     opt_chunk2 = records.get_optimization_result(chunk2)
-    assert opt_chunk2.op.nrows == 5
-    assert len(chunk_graph) == 1
-    assert opt_chunk2 in chunk_graph.results
+    assert opt_chunk2 is not None
+    assert opt_chunk1.op.usecols == ['a', 'b']
+    # original tileable should not be modified
+    assert chunk2.inputs[0] is chunk1

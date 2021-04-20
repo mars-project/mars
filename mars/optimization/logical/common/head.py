@@ -14,12 +14,12 @@
 
 from typing import List
 
-from ......core import OperandType, TileableType
-from ......dataframe.base.value_counts import DataFrameValueCounts
-from ......dataframe.datasource.core import HeadOptimizedDataSource
-from ......dataframe.sort.core import DataFrameSortOperand
-from ......dataframe.utils import parse_index
-from ......utils import implements
+from ....core import OperandType, TileableType
+from ....dataframe.base.value_counts import DataFrameValueCounts
+from ....dataframe.datasource.core import HeadOptimizedDataSource
+from ....dataframe.sort.core import DataFrameSortOperand
+from ....dataframe.utils import parse_index
+from ....utils import implements
 from ..core import OptimizationRule, OptimizationRecord, OptimizationRecordType
 
 

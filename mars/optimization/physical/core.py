@@ -15,8 +15,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict, Type
 
-from .....core import ChunkGraph, ChunkType, OperandType
-from .....utils import build_fuse_chunk
+from ...core import ChunkGraph, ChunkType, OperandType
+from ...utils import build_fuse_chunk
 
 
 class RuntimeOptimizer(ABC):

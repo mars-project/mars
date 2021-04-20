@@ -21,7 +21,7 @@ import pytest
 
 import mars.dataframe as md
 from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
-from mars.services.task.supervisor.optimization.tileable import optimize
+from mars.optimization.logical.tileable import optimize
 
 
 @pytest.fixture(scope='module')
@@ -69,6 +69,18 @@ def test_read_csv_head(prepare_data):
     assert opt_df3 is not None
     assert graph.predecessors(opt_df3)[0] is opt_df1
     assert opt_df3.inputs[0] is opt_df1
+
+    # test head with successor
+    df1 = md.read_csv(file_path, chunk_bytes=size)
+    df2 = df1.head(5)
+    df3 = df2 + 1
+    graph = TileableGraph([df3.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    assert records.get_optimization_result(df1.data) is None
+    opt_df2 = records.get_optimization_result(df2.data)
+    assert opt_df2.op.nrows == 5
+    assert len(graph) == 2
 
 
 @enter_mode(build=True)
@@ -139,3 +151,30 @@ def test_value_counts_head(prepare_data, chunk_size):
     assert opt_df2.op.nrows == 3
     assert len(graph) == 3
     assert opt_df2 in graph.results
+
+
+@enter_mode(build=True)
+def test_no_head(prepare_data):
+    tempdir, pdf = prepare_data
+    file_path = os.path.join(tempdir, 'test.csv')
+    pdf.to_csv(file_path, index=False)
+
+    size = os.stat(file_path).st_size / 2
+    df1 = md.read_csv(file_path, chunk_bytes=size)
+    df2 = df1.iloc[1:10]
+
+    graph = TileableGraph([df2.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    assert records.get_optimization_result(df1.data) is None
+    assert records.get_optimization_result(df2.data) is None
+
+    df2 = df1.head(3)
+    df3 = df1 + 1
+
+    graph = TileableGraph([df2.data, df3.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    assert records.get_optimization_result(df1.data) is None
+    assert records.get_optimization_result(df2.data) is None
+    assert records.get_optimization_result(df3.data) is None

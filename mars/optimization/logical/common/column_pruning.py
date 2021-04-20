@@ -16,10 +16,10 @@
 from abc import ABCMeta, abstractmethod
 from typing import Any, List
 
-from ......core import OperandType, TileableType
-from ......dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
-from ......dataframe.utils import parse_index
-from ......utils import implements
+from ....core import OperandType, TileableType
+from ....dataframe.datasource.core import ColumnPruneSupportedDataSourceMixin
+from ....dataframe.utils import parse_index
+from ....utils import implements
 from ..core import OptimizationRule, OptimizationRecord, OptimizationRecordType
 
 
@@ -92,12 +92,11 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
             original_pruned_columns = input_node.op.get_columns()
             pruned_columns_set = set(selected_columns) | \
                                  set(original_pruned_columns)
-            if pruned_columns_set != set(original_all_columns):
-                # pruned
-                return [c for c in original_all_columns
-                        if c in pruned_columns_set]
-            else:
-                return []
+            # pruned before, cannot revert it,
+            # so we just return pruned columns
+            # even though no columns pruned
+            return [c for c in original_all_columns
+                    if c in pruned_columns_set]
 
     @implements(OptimizationRule.apply)
     def apply(self, op: OperandType):
@@ -165,6 +164,10 @@ class GetitemPruneDataSource(PruneDataSource):
         if input_can_be_pruned and \
                 data_source_node not in self._graph.results and \
                 op.col_names is not None:
+            selected_columns = self._get_selected_columns(op)
+            if not selected_columns:
+                # no columns selected, skip
+                return False
             return True
         return False
 

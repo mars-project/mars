@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ......core import ChunkGraph
-from ......tensor.arithmetic import TensorTreeAdd
-from ......tensor.indexing import TensorSlice
+from ....core import ChunkGraph
+from ....tensor.arithmetic import TensorTreeAdd
+from ....tensor.indexing import TensorSlice
 from ..numexpr import NumexprRuntimeOptimizer
 
 

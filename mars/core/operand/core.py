@@ -336,14 +336,14 @@ def execute(results: Dict[str, Any], op: OperandType):
         executor = type(op).execute
 
     try:
-        if UFuncTypeError is None:
+        if UFuncTypeError is None:  # pragma: no cover
             return executor(results, op)
         else:
             # Cast `UFuncTypeError` to `TypeError` since subclasses of the former is unpickleable.
             # The `UFuncTypeError` was introduced by numpy#12593 since v1.17.0.
             try:
                 return executor(results, op)
-            except UFuncTypeError as e:
+            except UFuncTypeError as e:  # pragma: no cover
                 raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None
     except NotImplementedError:
         for op_cls in type(op).__mro__:

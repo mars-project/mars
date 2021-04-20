@@ -23,7 +23,7 @@ import pytest
 
 import mars.dataframe as md
 from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
-from mars.services.task.supervisor.optimization.tileable import optimize
+from mars.optimization.logical.tileable import optimize
 
 
 @pytest.fixture(scope='module')
@@ -239,3 +239,28 @@ def test_cannot_prune(gen_data1):
     assert opt_df2 is None
     opt_df3 = records.get_optimization_result(df3.data)
     assert opt_df3 is None
+
+    df1 = md.read_csv(file_path)
+    df2 = df1.groupby('c').agg({'a': 'sum'})
+    # does not support prune, another rule
+    df3 = df1.head(3)
+    graph = TileableGraph([df2.data, df3.data])
+    next(TileableGraphBuilder(graph).build())
+    records = optimize(graph)
+    opt_df1 = records.get_optimization_result(df1.data)
+    assert opt_df1 is None
+    opt_df2 = records.get_optimization_result(df2.data)
+    assert opt_df2 is None
+    opt_df3 = records.get_optimization_result(df3.data)
+    assert opt_df3 is None
+
+    df1 = md.read_csv(file_path)
+    df2 = df1[df1.dtypes.index.tolist()]
+    graph = TileableGraph([df2.data])
+    next(TileableGraphBuilder(graph).build())
+    # all columns selected
+    records = optimize(graph)
+    opt_df1 = records.get_optimization_result(df1.data)
+    assert opt_df1 is None
+    opt_df2 = records.get_optimization_result(df2.data)
+    assert opt_df2 is None
