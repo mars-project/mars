@@ -159,7 +159,7 @@ jobs:
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray --ignore-glob "mars/oscar/*"
             mv .coverage build/.coverage.non-aio.file
-            retry pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
+            retry -g INTERNALERROR pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
             mv .coverage build/.coverage.aio.file
             coverage combine build/ && coverage report
           fi

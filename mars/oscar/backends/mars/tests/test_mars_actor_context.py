@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import os
 import sys
 import time
@@ -24,6 +25,8 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import RandomSubPool
 from mars.utils import extensible
+
+logger = logging.getLogger(__name__)
 
 
 class DummyActor(mo.Actor):
@@ -443,18 +446,17 @@ async def test_promise_chain(actor_pool_context):
     start_time = time.time()
     tasks = [asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=0.1))
              for idx in range(4)]
-    dones, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-    [t.result() for t in dones]
+    await asyncio.gather(*tasks)
 
     logs = pd.DataFrame(await promise_test_ref.get_call_log(), columns=['group', 'idx', 'time'])
     logs.time -= start_time
     assert logs.query('group == "A"').time.max() < 0.05
     max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_apply_time > 0.1
+    assert max_apply_time > 0.05
     max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_delay_time > 0.1
+    assert max_delay_time > 0.05
 
     start_time = time.time()
     ret = await promise_test_ref.test_yield_tuple()
@@ -465,10 +467,10 @@ async def test_promise_chain(actor_pool_context):
     assert logs.query('group == "A"').time.max() < 0.05
     max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_apply_time > 0.1
+    assert max_apply_time > 0.05
     max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_delay_time > 0.1
+    assert max_delay_time > 0.05
 
     with pytest.raises(ValueError):
         await promise_test_ref.test_exceptions()
