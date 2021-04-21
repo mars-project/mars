@@ -50,7 +50,7 @@ def _find_service_entries(node_role: NodeRole,
 
                     try:
                         web_mod = importlib.import_module(
-                            mod_name + '.' + svc_name + '.api.web')
+                            mod_name + '.' + svc_name + '.web')
                         web_handlers.update(getattr(web_mod, 'web_handlers', {}))
                         bokeh_apps.update(getattr(web_mod, 'bokeh_apps', {}))
                     except ImportError:
