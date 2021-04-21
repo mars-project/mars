@@ -20,10 +20,10 @@ from weakref import WeakKeyDictionary
 from ...core import Tileable, TileableGraph, TileableGraphBuilder, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo
-from ...services.meta import MetaAPI
-from ...services.session import SessionAPI
+from ...services.meta import MetaAPI, MetaWebAPI
+from ...services.session import SessionAPI, SessionWebAPI
 from ...services.storage import StorageAPI
-from ...services.task import TaskAPI, TaskResult
+from ...services.task import TaskAPI, TaskWebAPI, TaskResult
 from ...utils import implements, merge_chunks
 
 
@@ -50,14 +50,20 @@ class ExectionInfo(AbstractExectionInfo):
 @register_session_cls
 class Session(AbstractSession):
     name = 'oscar'
+    MetaAPI = MetaAPI
+    SessionAPI = SessionAPI
+    StorageAPI = StorageAPI
+    TaskAPI = TaskAPI
 
     def __init__(self,
                  address: str,
                  session_id: str,
                  session_api: SessionAPI,
                  meta_api: MetaAPI,
-                 task_api: TaskAPI):
+                 task_api: TaskAPI,
+                 web_api: bool = False):
         super().__init__(address, session_id)
+        self._web_api = web_api
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
@@ -74,11 +80,12 @@ class Session(AbstractSession):
             from .local import new_cluster
             return (await new_cluster(address, **kwargs)).session
 
-        session_api = await SessionAPI.create(address)
+        web_api = kwargs.pop('web_api', False)
+        session_api = await (SessionWebAPI if web_api else SessionAPI).create(address)
         # create new session
         session_address = await session_api.create_session(session_id)
-        meta_api = await MetaAPI.create(session_id, session_address)
-        task_api = await TaskAPI.create(session_id, session_address)
+        meta_api = await (MetaWebAPI if web_api else MetaAPI).create(session_id, session_address)
+        task_api = await (TaskWebAPI if web_api else TaskAPI).create(session_id, session_address)
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -174,7 +181,7 @@ class Session(AbstractSession):
                 # TODO: use batch API to fetch data
                 band = (await self._meta_api.get_chunk_meta(
                     chunk.key, fields=['bands']))['bands'][0]
-                storage_api = await StorageAPI.create(
+                storage_api = await (SessionWebAPI if self._web_api else StorageAPI).create(
                     self._session_id, band[0])
                 index_to_data.append(
                     (chunk.index, await storage_api.get(chunk.key)))
