@@ -51,5 +51,5 @@ async def test_start_service(actor_pool_context):
                              address=pool.external_address)
 
     http_client = AsyncHTTPClient()
-    resp = await http_client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api/aa/bb', method="POST", body=b"dfdf")
+    resp = await http_client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
     assert resp.body.decode() == 'val1'
