@@ -33,8 +33,9 @@ class TaskWebHandler(ServiceWebHandlerBase):
         return await TaskAPI.destroy_session(session_id, address)
 
 
+_service_name = 'task'
 web_handlers = {
-    '/api/service/task/(.*)': TaskWebHandler,
+    f'/api/service/{_service_name}/(.*)': TaskWebHandler,
 }
 
 
@@ -43,23 +44,23 @@ class TaskWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/task/create',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, 'task', api_id)
+        return TaskWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def create_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/task/create_session',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, 'task', api_id)
+        return TaskWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def destroy_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/task/destroy_session',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/destroy_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, 'task', api_id)
+        return TaskWebAPI(http_client, _service_name, api_id)

@@ -13,5 +13,6 @@
 # limitations under the License.
 
 from .api import MetaAPI, MockMetaAPI
+from .web import MetaWebAPI
 from .core import TensorMeta, DataFrameMeta, SeriesMeta, IndexMeta, ObjectMeta, \
     TensorChunkMeta, DataFrameChunkMeta, SeriesChunkMeta, IndexChunkMeta, ObjectChunkMeta

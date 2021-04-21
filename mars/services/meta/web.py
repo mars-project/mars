@@ -33,34 +33,35 @@ class MetaWebHandler(ServiceWebHandlerBase):
         return await MetaAPI.destroy_session(session_id, address)
 
 
+_service_name = 'meta'
 web_handlers = {
-    '/api/service/meta/(.*)': MetaWebHandler,
+    f'/api/service/{_service_name}/(.*)': MetaWebHandler,
 }
 
 
-class WebTaskAPI(ServiceWebAPIBase):
+class MetaWebAPI(ServiceWebAPIBase):
 
     @classmethod
     async def create(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/meta/create',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return WebTaskAPI(http_client, 'meta', api_id)
+        return MetaWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def create_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/meta/create_session',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return WebTaskAPI(http_client, 'meta', api_id)
+        return MetaWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def destroy_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/meta/destroy_session',
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/destroy_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return WebTaskAPI(http_client, 'meta', api_id)
+        return MetaWebAPI(http_client, _service_name, api_id)
 

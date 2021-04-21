@@ -14,29 +14,29 @@
 
 from mars.services.web.core import serialize, deserialize, get_web_address, ServiceWebHandlerBase, ServiceWebAPIBase
 from tornado.httpclient import AsyncHTTPClient
-from .api import SessionAPI
+from .api import StorageAPI
 
 
-class SessionWebHandler(ServiceWebHandlerBase):
+class StorageWebHandler(ServiceWebHandlerBase):
 
-    async def create(self, address: str, **kwargs):
-        api_instance = await SessionAPI.create(address, **kwargs)
+    async def create(self, session_id: str, address: str, **kwargs):
+        api_instance = await StorageAPI.create(session_id, address, **kwargs)
         self._api_instances[id(api_instance)] = api_instance
         return id(api_instance)
 
 
-_service_name = 'session'
+_service_name = 'service'
 web_handlers = {
-    f'/api/service/{_service_name}/(.*)': SessionWebHandler,
+    f'/api/service/{_service_name}/(.*)': StorageWebHandler,
 }
 
 
-class SessionWebAPI(ServiceWebAPIBase):
+class StorageWebAPI(ServiceWebAPIBase):
 
     @classmethod
-    async def create(cls, address: str, **kwargs):
+    async def create(cls, session_id: str, address: str, **kwargs):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
-                                       method="POST", body=serialize((address, kwargs)))
+        resp = await http_client.fetch(f'{get_web_address()}/api/storage/{_service_name}/create',
+                                       method="POST", body=serialize((session_id, address, kwargs)))
         api_id = deserialize(resp.body)
-        return SessionWebAPI(http_client, _service_name, api_id)
+        return StorageWebAPI(http_client, _service_name, api_id)

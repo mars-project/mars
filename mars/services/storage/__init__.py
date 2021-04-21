@@ -13,4 +13,5 @@
 # limitations under the License.
 
 from .api import StorageAPI, MockStorageAPI
+from .web import StorageWebAPI
 from .core import DataInfo
