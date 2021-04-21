@@ -17,7 +17,6 @@ import concurrent.futures as futures
 import itertools
 from abc import ABC
 from collections import namedtuple
-from enum import Enum
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
@@ -27,16 +26,12 @@ from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
+from mars.serialization import serialize, deserialize
 
 ray = lazy_import("ray")
 
 
-class MessageType(Enum):
-    SEND = 0
-    RECV = 1
-
-
-ChannelID = namedtuple("ChannelID", ["local_address", "dest_address", "channel_index"])
+ChannelID = namedtuple("ChannelID", ["client_id", "channel_index", "dest_address"])
 
 
 class RayChannelBase(Channel, ABC):
@@ -58,7 +53,7 @@ class RayChannelBase(Channel, ABC):
                          dest_address=dest_address,
                          compression=compression)
         self._channel_index = channel_index or next(self._channel_index_gen)
-        self._channel_id = channel_id or ChannelID(local_address, dest_address, self._channel_index)
+        self._channel_id = channel_id or ChannelID(_gen_client_id(), self._channel_index, dest_address)
         self._in_queue = asyncio.Queue()
         self._closed = asyncio.Event()
 
@@ -100,7 +95,8 @@ class RayClientChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         # Put ray object ref to queue
-        await self._in_queue.put(self._peer_actor.__on_ray_recv__.remote(self.channel_id, message))
+        await self._in_queue.put(self._peer_actor.__on_ray_recv__.remote(
+            self.channel_id, serialize(message)))
 
     @implements(Channel.recv)
     async def recv(self):
@@ -109,7 +105,7 @@ class RayClientChannel(RayChannelBase):
         try:
             # Wait on ray object ref
             object_ref = await self._in_queue.get()
-            return await object_ref
+            return deserialize(*(await object_ref))
         except RuntimeError as e:
             if not self._closed.is_set():
                 raise e
@@ -140,7 +136,7 @@ class RayServerChannel(RayChannelBase):
         # Current process is ray actor, we use ray call reply to send message to ray driver/actor.
         # Not that we can only send once for every read message in channel, otherwise
         # it will be taken as other message's reply.
-        await self._out_queue.put(message)
+        await self._out_queue.put(serialize(message))
         self._msg_sent_counter += 1
         assert self._msg_sent_counter <= self._msg_recv_counter, \
             "RayServerChannel channel doesn't support send multiple replies for one message."
@@ -150,10 +146,10 @@ class RayServerChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot write message')
         try:
-            return await self._in_queue.get()
+            return deserialize(*(await self._in_queue.get()))
         except RuntimeError:
-            if self._closed.is_set():
-                pass
+            if not self._closed.is_set():
+                raise
 
     async def __on_ray_recv__(self, message):
         """This method will be invoked when current process is a ray actor rather than a ray driver"""
@@ -248,7 +244,7 @@ class RayServer(Server):
             raise ServerClosed(f'Remote server {self.address} closed')
         channel = self._channels.get(channel_id)
         if not channel:
-            _, peer_dest_address, peer_channel_index = channel_id
+            _, peer_channel_index, peer_dest_address = channel_id
             channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
             self._channels[channel_id] = channel
             self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
@@ -284,3 +280,8 @@ class RayClient(Client):
     @implements(Client.close)
     async def close(self):
         await super().close()
+
+
+def _gen_client_id():
+    import uuid
+    return uuid.uuid4().hex

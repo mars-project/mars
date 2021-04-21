@@ -34,18 +34,53 @@ export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.versio
 
 function retry {
   retrial=5
-  if [ $1 == "-n" ]; then
-    retrial=$2
-    shift; shift
-  fi
+  unset grep_err_str
+  # parse parameters
+  while true; do
+    if [ $1 == "-n" ]; then
+      retrial=$2
+      shift; shift
+    elif [ $1 == "-g" ]; then
+      grep_err_str=$2
+      shift; shift
+    else
+      break
+    fi
+  done
+
+  # do retry
   r=0
+  std_tmp_dir=$(mktemp -d -t retry_log.XXXXX)
   while true; do
     r=$((r+1))
-    if [ "$r" -ge $retrial ]; then
-      $@
-      return $?
+    stdout_file_name="$std_tmp_dir/stdout.$r.log"
+    stderr_file_name="$std_tmp_dir/stderr.$r.log"
+
+    unset ret
+    if [ -z $grep_err_str ]; then
+      "$@" || ret=$?
     else
-      $@ && break || true
+      touch "$stdout_file_name"
+      touch "$stderr_file_name"
+      "$@" > >(tee "$stdout_file_name") 2> >(tee "$stderr_file_name" >&2) || ret=$?
+    fi
+    if [ -z $ret ]; then ret=0; fi
+
+    if [ "$r" -ge $retrial ]; then
+      rm -rf "$std_tmp_dir" || true
+      return $ret
+    else
+      if [ $ret -eq 0 ]; then
+        rm -rf "$std_tmp_dir" || true
+        return 0
+      elif [ -n $grep_err_str ]; then
+        if grep -q $grep_err_str "$stdout_file_name" || grep -q $grep_err_str "$stderr_file_name"; then
+          :
+        else
+          rm -rf "$std_tmp_dir" || true
+          return $ret
+        fi
+      fi
       sleep 1
     fi
   done

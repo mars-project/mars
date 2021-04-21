@@ -363,6 +363,10 @@ def test_type_dispatcher():
     assert 'DataFrame' == dispatcher(pd.DataFrame())
     assert 'Object' == dispatcher(type3())
 
+    dispatcher.unregister(object)
+    with pytest.raises(KeyError):
+        dispatcher(type3())
+
 
 def test_fixed_size_file_object():
     arr = [str(i).encode() * 20 for i in range(10)]

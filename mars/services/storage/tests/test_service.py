@@ -40,7 +40,7 @@ async def actor_pools():
 
 
 @pytest.mark.asyncio
-async def test_cluster_service(actor_pools):
+async def test_storage_service(actor_pools):
     worker_pool = actor_pools
 
     if sys.platform == 'darwin':

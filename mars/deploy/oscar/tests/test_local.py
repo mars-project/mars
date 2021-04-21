@@ -33,6 +33,7 @@ async def create_cluster():
         if sys.platform != 'win32' else None
     client = await new_cluster(subprocess_start_method=start_method,
                                config=CONFIG_TEST_FILE,
+                               n_worker=1,
                                n_cpu=2)
     async with client:
         yield

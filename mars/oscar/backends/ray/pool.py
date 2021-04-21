@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import asyncio
+import inspect
 import logging
 import os
+import types
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
+from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
@@ -63,7 +66,7 @@ class RayMainActorPool(MainActorPoolBase):
             bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
         actor_handle = ray.remote(RaySubPool).options(
-            name=external_address, placement_group=pg,
+            num_cpus=1, name=external_address, placement_group=pg,
             placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle
@@ -98,6 +101,7 @@ class RayPoolBase(ABC):
     def __init__(self):
         self._actor_pool = None
         self._ray_server = None
+        register_ray_serializers()
 
     @abstractmethod
     async def start(self, *args, **kwargs):
@@ -115,6 +119,15 @@ class RayPoolBase(ABC):
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY
 
+    async def actor_pool(self, attribute, *args, **kwargs):
+        attr = getattr(self._actor_pool, attribute)
+        if isinstance(attr, types.MethodType):
+            if inspect.iscoroutinefunction(attr):
+                return await attr(*args, **kwargs)
+            return attr(*args, **kwargs)
+        else:
+            return attr
+
 
 class RayMainPool(RayPoolBase):
     _actor_pool: RayMainActorPool
@@ -122,8 +135,7 @@ class RayMainPool(RayPoolBase):
     async def start(self, *args, **kwargs):
         address, n_process = args
         self._actor_pool = await create_actor_pool(
-            address, n_process=n_process, pool_cls=RayMainActorPool,
-            subprocess_start_method="ray", **kwargs)
+            address, n_process=n_process, pool_cls=RayMainActorPool, **kwargs)
         self._set_ray_server(self._actor_pool)
 
 

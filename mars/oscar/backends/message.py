@@ -86,6 +86,11 @@ class _MessageBase(ABC):
             message type.
         """
 
+    def __repr__(self):
+        slots = _get_slots(self.__class__)
+        values = ', '.join(['{}={!r}'.format(slot, getattr(self, slot)) for slot in slots])
+        return '{}({})'.format(self.__class__.__name__, values)
+
 
 class ControlMessage(_MessageBase):
     __slots__ = 'address', 'control_message_type', 'content'
@@ -300,21 +305,12 @@ class DeserializeMessageFailed(Exception):
 class MessageSerializer(Serializer):
     serializer_name = 'actor_message'
 
-    @staticmethod
-    @lru_cache(20)
-    def _get_slots(message_cls: Type[_MessageBase]):
-        slots = []
-        for tp in message_cls.__mro__:
-            if issubclass(tp, _MessageBase):
-                slots.extend(tp.__slots__)
-        return slots
-
     @buffered
     def serialize(self, obj: _MessageBase, context: Dict):
         assert obj.protocol == 0, 'only support protocol 0 for now'
 
         message_class = type(obj)
-        to_serialize = [getattr(obj, slot) for slot in self._get_slots(message_class)]
+        to_serialize = [getattr(obj, slot) for slot in _get_slots(message_class)]
         header, buffers = yield to_serialize
         new_header = {
             'message_class': message_class,
@@ -332,7 +328,7 @@ class MessageSerializer(Serializer):
         try:
             serialized = yield header['attributes_header'], buffers
             message = object.__new__(message_class)
-            for slot, val in zip(self._get_slots(message_class), serialized):
+            for slot, val in zip(_get_slots(message_class), serialized):
                 setattr(message, slot, val)
             return message
         except pickle.UnpicklingError as e:  # pragma: no cover
@@ -341,6 +337,15 @@ class MessageSerializer(Serializer):
 
 # register message serializer
 MessageSerializer.register(_MessageBase)
+
+
+@lru_cache(20)
+def _get_slots(message_cls: Type[_MessageBase]):
+    slots = []
+    for tp in message_cls.__mro__:
+        if issubclass(tp, _MessageBase):
+            slots.extend(tp.__slots__)
+    return slots
 
 
 def new_message_id():

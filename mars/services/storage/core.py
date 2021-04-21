@@ -25,6 +25,8 @@ from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
 from ...utils import calc_data_size, dataslots
+from ..cluster import ClusterAPI
+from ..meta import MetaAPI
 from .errors import DataNotExist
 
 logger = logging.getLogger(__name__)
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 def _build_data_info(storage_info: ObjectInfo, level, size):
     # todo handle multiple
-    band = 'numa-0' if storage_info.device is not None \
+    band = 'numa-0' if storage_info.device is None \
         else f'gpu-{storage_info.device}'
     if storage_info.size is None:
         store_size = size
@@ -191,8 +193,9 @@ class StorageHandlerActor(mo.Actor):
         data_info = await self._storage_manager_ref.get_data_info(
             session_id, data_key)
         if conditions is None:
-            return await self._clients[data_info.level].get(
+            data = await self._clients[data_info.level].get(
                 data_info.object_id)
+            return data
         else:
             try:
                 return await self._clients[data_info.level].get(
@@ -264,6 +267,16 @@ class StorageHandlerActor(mo.Actor):
     async def list(self, level: StorageLevel) -> List:
         return await self._clients[level].list()
 
+    async def prefetch(self,
+                       session_id: str,
+                       data_key: str):
+        if StorageLevel.REMOTE not in self._clients:  # pragma: no cover
+            raise NotImplementedError
+        else:
+            data_info = yield self._storage_manager_ref.fetch_data_info(
+                session_id, data_key)
+            await self._clients[StorageLevel.REMOTE].prefetch(data_info.object_id)
+
 
 class StorageManagerActor(mo.Actor):
     def __init__(self,
@@ -277,6 +290,7 @@ class StorageManagerActor(mo.Actor):
         self._pinned_keys = []
         # stores the mapping from data key to storage info
         self._data_manager = DataManager()
+        self._supervisor_address = None
 
     async def __post_create__(self):
         # setup storage backend
@@ -301,6 +315,8 @@ class StorageManagerActor(mo.Actor):
                 break
 
         self._quotas = quotas
+        self._storage_handler = await mo.actor_ref(address=self.address,
+                                                   uid=StorageHandlerActor.default_uid())
 
     async def __pre_destroy__(self):
         for backend, teardown_params in self._teardown_params.items():
@@ -311,11 +327,19 @@ class StorageManagerActor(mo.Actor):
                              storage_backend: str,
                              storage_config: Dict):
         backend = get_storage_backend(storage_backend)
+        storage_config = storage_config or dict()
         init_params, teardown_params = await backend.setup(**storage_config)
         client = backend(**init_params)
         self._init_params[storage_backend] = init_params
         self._teardown_params[storage_backend] = teardown_params
         return client
+
+    async def _get_meta_api(self, session_id: str):
+        if self._supervisor_address is None:
+            cluster_api = await ClusterAPI.create(self.address)
+            self._supervisor_address = (await cluster_api.get_supervisors())[0]
+        return await MetaAPI.create(session_id=session_id,
+                                    address=self._supervisor_address)
 
     def get_client_params(self):
         return self._init_params
@@ -332,9 +356,15 @@ class StorageManagerActor(mo.Actor):
                        session_id: str,
                        data_key: str,
                        level: StorageLevel):
-        infos = self._data_manager.get_infos(session_id, data_key)
-        infos = sorted(infos, key=lambda x: x.level)
-        self.pin(infos[0].object_id)
+        try:
+            info = self._data_manager.get_info(session_id, data_key)
+            self.pin(info.object_id)
+        except DataNotExist:  # pragma: no cover
+            # Not exist in local, fetch from remote worker
+            try:
+                yield self._storage_handler.prefetch(session_id, data_key)
+            except NotImplementedError:  # pragma: no cover
+                raise
 
     def update_quota(self,
                      size: int,
@@ -361,8 +391,19 @@ class StorageManagerActor(mo.Actor):
                       session_id: str,
                       data_key: str,
                       data_info: DataInfo,
-                      object_info: ObjectInfo):
+                      object_info: Union[ObjectInfo] = None):
         self._data_manager.put(session_id, data_key, data_info, object_info)
+
+    async def fetch_data_info(self,
+                              session_id: str,
+                              data_key: str) -> DataInfo:
+        meta_api = await self._get_meta_api(session_id)
+        address = (await meta_api.get_chunk_meta(
+            data_key, fields=['bands']))['bands'][0][0]
+        remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
+                                                address=address)
+        data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
+        self.put_data_info(session_id, data_key, data_info, None)
 
     def delete_data_info(self,
                          session_id: str,

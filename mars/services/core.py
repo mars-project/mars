@@ -17,8 +17,6 @@ import enum
 import importlib
 from typing import Dict, List, Tuple, Union
 
-from .. import oscar as mo
-
 BandType = Tuple[str, str]
 
 
@@ -95,11 +93,11 @@ async def start_services(node_role: NodeRole, config: Dict,
 
 
 async def stop_services(node_role: NodeRole,
-                        pool: mo.MainActorPoolType,
+                        address: str,
                         config: Dict = None):
     service_names = config['services']
     modules = ['mars.services']
     svc_entries_list, _, _ = _find_service_entries(
         node_role, service_names, modules, 'stop')
     for entries in svc_entries_list:
-        await asyncio.gather(*[entry(pool) for entry in entries])
+        await asyncio.gather(*[entry(address=address) for entry in entries])

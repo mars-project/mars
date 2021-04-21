@@ -84,16 +84,24 @@ cpdef unicode to_text(s, encoding='utf-8'):
 cdef class TypeDispatcher:
     cdef dict _handlers
     cdef dict _lazy_handlers
+    cdef dict _inherit_handlers
 
     def __init__(self):
         self._handlers = dict()
         self._lazy_handlers = dict()
+        # store inherited handlers to facilitate unregistering
+        self._inherit_handlers = dict()
 
     cpdef void register(self, object type_, object handler):
         if isinstance(type_, str):
             self._lazy_handlers[type_] = handler
         else:
             self._handlers[type_] = handler
+
+    cpdef void unregister(self, object type_):
+        self._lazy_handlers.pop(type_, None)
+        self._handlers.pop(type_, None)
+        self._inherit_handlers.clear()
 
     cdef _reload_lazy_handlers(self):
         for k, v in self._lazy_handlers.items():
@@ -104,13 +112,24 @@ cdef class TypeDispatcher:
 
     cpdef get_handler(self, object type_):
         cdef object clz, handler
+        cdef dict d
         try:
             return self._handlers[type_]
+        except KeyError:
+            pass
+
+        try:
+            return self._inherit_handlers[type_]
         except KeyError:
             self._reload_lazy_handlers()
             for clz in type_.__mro__:
                 if clz in self._handlers:
-                    handler = self._handlers[type_] = self._handlers[clz]
+                    d = self._handlers
+                elif clz in self._inherit_handlers:
+                    d = self._inherit_handlers
+
+                if clz in self._handlers:
+                    handler = self._inherit_handlers[type_] = d[clz]
                     return handler
             raise KeyError(f'Cannot dispatch type {type_}')
 

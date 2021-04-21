@@ -55,6 +55,11 @@ class Serializer:
         _serial_dispatcher.register(obj_type, inst)
         _deserializers[cls.serializer_name] = inst
 
+    @classmethod
+    def unregister(cls, obj_type):
+        _serial_dispatcher.unregister(obj_type)
+        _deserializers.pop(cls.serializer_name, None)
+
 
 def buffered(func):
     @wraps(func)

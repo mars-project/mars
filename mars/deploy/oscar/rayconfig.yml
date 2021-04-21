@@ -1,0 +1,14 @@
+services:
+  - cluster
+  - session
+  - storage
+  - meta
+  - task
+cluster:
+  backend: fixed
+  node_timeout: 120
+  node_check_interval: 1
+storage:
+  backends: [ray]
+meta:
+  store: dict

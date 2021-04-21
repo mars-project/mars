@@ -21,6 +21,7 @@ from .....utils import lazy_import
 from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
+    node_placement_to_address,
     process_placement_to_address,
     addresses_to_placement_group_info,
     placement_group_info_to_addresses,
@@ -63,18 +64,28 @@ def ray_cluster():
         remote_nodes.append(cluster.add_node(num_cpus=10))
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
-    mo.setup_cluster(address_to_resources=TEST_ADDRESS_TO_RESOURCES)
-
     yield
-
-    RayActorDriver.stop_cluster()
     ray.shutdown()
     cluster.shutdown()
 
 
+@pytest.fixture
+async def mars_cluster():
+    mo.setup_cluster(address_to_resources=TEST_ADDRESS_TO_RESOURCES)
+    main_pool_handles = []  # Hold actor_handle to avoid actor being freed.
+    for index, bundle_spec in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
+        address = node_placement_to_address(TEST_PLACEMENT_GROUP_NAME, index)
+        actor_handle = await mo.create_actor_pool(address, bundle_spec["CPU"])
+        main_pool_handles.append(actor_handle)
+
+    yield
+
+    RayActorDriver.stop_cluster()
+
+
 @require_ray
 @pytest.mark.asyncio
-async def test_create_actor_in_placement_group(ray_cluster):
+async def test_create_actor_in_placement_group(ray_cluster, mars_cluster):
     actor_refs = []
     for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
         for _ in range(r["CPU"]):

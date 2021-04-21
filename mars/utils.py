@@ -324,6 +324,34 @@ def deserialize_serializable(ser_serializable):
 deserialize_graph = deserialize_serializable
 
 
+def register_mars_serializer_on_ray(obj_type):
+    from mars.serialization import serialize, deserialize
+
+    def deserializer(to_deserialize):
+        return deserialize(*to_deserialize)
+
+    register_ray_serializer(obj_type, serializer=serialize, deserializer=deserializer)
+
+
+def register_ray_serializer(obj_type, serializer=None, deserializer=None):
+    ray = lazy_import("ray")
+    if ray:
+        try:
+            ray.register_custom_serializer(
+                obj_type, serializer=serializer, deserializer=deserializer)
+        except AttributeError:  # ray >= 1.0
+            try:
+                from ray.worker import global_worker
+
+                global_worker.check_connected()
+                context = global_worker.get_serialization_context()
+                context.register_custom_serializer(
+                    obj_type, serializer=serializer, deserializer=deserializer)
+            except AttributeError:  # ray >= 1.2.0
+                ray.util.register_serializer(
+                    obj_type, serializer=serializer, deserializer=deserializer)
+
+
 def calc_data_size(dt, shape=None):
     if dt is None:
         return 0

@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
-from ..utils import lazy_import, implements
+from ..utils import lazy_import, implements, register_ray_serializer
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
@@ -20,26 +20,9 @@ def _mars_sparse_matrix_deserializer(obj) -> sparse.SparseNDArray:
 
 def _register_sparse_matrix_serializer():
     # register a custom serializer for Mars SparseMatrix
-    try:
-        ray.register_custom_serializer(
-                sparse.matrix.SparseMatrix,
-                serializer=_mars_sparse_matrix_serializer,
-                deserializer=_mars_sparse_matrix_deserializer)
-    except AttributeError:  # ray >= 1.0
-        try:
-            from ray.worker import global_worker
-
-            global_worker.check_connected()
-            context = global_worker.get_serialization_context()
-            context.register_custom_serializer(
-                    sparse.matrix.SparseMatrix,
-                    serializer=_mars_sparse_matrix_serializer,
-                    deserializer=_mars_sparse_matrix_deserializer)
-        except AttributeError:  # ray >= 1.2.0
-            ray.util.register_serializer(
-                    sparse.matrix.SparseMatrix,
-                    serializer=_mars_sparse_matrix_serializer,
-                    deserializer=_mars_sparse_matrix_deserializer)
+    register_ray_serializer(sparse.matrix.SparseMatrix,
+                            serializer=_mars_sparse_matrix_serializer,
+                            deserializer=_mars_sparse_matrix_deserializer)
 
 
 class RayFileLikeObject:
@@ -121,13 +104,12 @@ class RayStorage(StorageBackend):
     def level(self) -> StorageLevel:
         # TODO(fyrestone): return StorageLevel.MEMORY & StorageLevel.DISK
         # if object spilling is available.
-        return StorageLevel.MEMORY
+        return StorageLevel.MEMORY | StorageLevel.REMOTE
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
-            raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
-
+            raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
         return await object_id
 
     @implements(StorageBackend.put)
@@ -159,3 +141,7 @@ class RayStorage(StorageBackend):
     @implements(StorageBackend.list)
     async def list(self) -> List:
         raise NotImplementedError("Ray storage does not support list")
+
+    @implements(StorageBackend.prefetch)
+    async def prefetch(self, object_id):
+        pass

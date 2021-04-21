@@ -66,6 +66,10 @@ class Serializable(metaclass=SerializableMeta):
         for key, val in kwargs.items():
             object.__setattr__(self, key, val)
 
+    def __repr__(self):
+        values = ', '.join(['{}={!r}'.format(slot, getattr(self, slot, None)) for slot in self.__slots__])
+        return '{}({})'.format(self.__class__.__name__, values)
+
 
 class SerializableSerializer(Serializer):
     """

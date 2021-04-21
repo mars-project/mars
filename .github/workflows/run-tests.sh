@@ -8,7 +8,7 @@ if [ -n "$WITH_CYTHON" ]; then
 
   export POOL_START_METHOD=forkserver
 
-  retry -n 20 pytest $PYTEST_CONFIG --cov-config .coveragerc mars/oscar
+  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --cov-config .coveragerc mars/oscar
   mv .coverage build/.coverage.oscar_ctx.file
 
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/actors mars/deploy/local \
