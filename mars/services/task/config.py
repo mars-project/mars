@@ -12,7 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .builder import TileableGraphBuilder, ChunkGraphBuilder
-from .builder.legacy import get_tiled
-from .core import DirectedGraph, DAG, GraphContainsCycleError
-from .entity import TileableGraph, ChunkGraph, EntityGraph
+from ...config import Config, is_bool, is_list
+
+
+task_options = Config()
+
+# supervisor
+task_options.register_option('optimize_tileable_graph', True,
+                             validator=is_bool)
+task_options.register_option('optimize_chunk_graph', True,
+                             validator=is_bool)
+task_options.register_option('fuse_enabled', True,
+                             validator=is_bool)
+
+# worker
+task_options.register_option('runtime_engines', ['numexpr', 'cupy'],
+                             validator=is_list)

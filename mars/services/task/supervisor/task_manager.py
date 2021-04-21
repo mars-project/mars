@@ -21,27 +21,38 @@ from dataclasses import dataclass
 from typing import Dict, Iterable, List, Tuple, Optional
 
 from .... import oscar as mo
+from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, Tileable
+from ....core.operand import Fuse
 from ....dataframe.core import DATAFRAME_CHUNK_TYPE
+from ....optimization.logical.chunk import optimize as optimize_chunk_graph
+from ....optimization.logical.tileable import optimize as optimize_tileable_graph
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
 from ...meta.api import MetaAPI
 from ..analyzer import GraphAnalyzer
+from ..config import task_options
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
     SubTaskStatus, SubtaskGraph, new_task_id
 from ..errors import TaskNotExist
 
 
 class TaskProcessor:
-    __slots__ = '_task', 'tileable_graph', 'tile_context', '_done'
+    __slots__ = '_task', 'tileable_graph', 'tile_context', \
+                '_config', 'tileable_optimization_records', \
+                'chunk_optimization_records_list', '_done'
 
     def __init__(self,
-                 task: Task):
+                 task: Task,
+                 config: Config = None):
         self._task = task
         self.tileable_graph = task.tileable_graph
+        self._config = config
 
         self.tile_context: Dict[Tileable, Tileable] = dict()
+        self.tileable_optimization_records = None
+        self.chunk_optimization_records_list = []
         self._done = asyncio.Event()
 
     def optimize(self) -> TileableGraph:
@@ -53,7 +64,10 @@ class TaskProcessor:
         optimized_graph: TileableGraph
 
         """
-        # TODO(qinxuye): enable optimization
+        if self._config.optimize_tileable_graph:
+            # enable optimization
+            self.tileable_optimization_records = \
+                optimize_tileable_graph(self.tileable_graph)
         return self.tileable_graph
 
     def tile(self, tileable_graph: TileableGraph) -> Iterable[ChunkGraph]:
@@ -65,11 +79,17 @@ class TaskProcessor:
         chunk_graph_generator: Generator
              Chunk graphs.
         """
-        # TODO(qinxuye): integrate iterative chunk graph builder
+        # iterative chunk graph builder
         chunk_graph_builder = ChunkGraphBuilder(
             tileable_graph, fuse_enabled=self._task.fuse_enabled,
             tile_context=self.tile_context)
-        yield from chunk_graph_builder.build()
+        optimize = self._config.optimize_chunk_graph
+        for chunk_graph in chunk_graph_builder.build():
+            # optimize chunk graph
+            if optimize:
+                self.chunk_optimization_records_list.append(
+                    optimize_chunk_graph(chunk_graph))
+            yield chunk_graph
 
     @property
     def done(self) -> bool:
@@ -194,6 +214,8 @@ class SubtaskGraphScheduler:
         get_meta = []
         chunks = chunk_graph.result_chunks
         for chunk in chunks:
+            if isinstance(chunk.op, Fuse):
+                chunk = chunk.chunk
             fields = list(chunk.params)
             if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
                 fields.remove('dtypes')
@@ -406,8 +428,10 @@ class TaskStageInfo:
 class TaskManagerActor(mo.Actor):
     def __init__(self,
                  session_id,
-                 use_scheduling=True):
+                 use_scheduling=True,
+                 config: Config = None):
         self._session_id = session_id
+        self._config = config if config is not None else task_options
 
         self._task_name_to_task_info: Dict[str, TaskInfo] = dict()
         self._task_id_to_task_info: Dict[str, TaskInfo] = dict()
@@ -431,7 +455,7 @@ class TaskManagerActor(mo.Actor):
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
-                                    fuse_enabled: bool = True) -> str:
+                                    fuse_enabled: bool = None) -> str:
         if task_name is None:
             task_id = task_name = new_task_id()
         elif task_name in self._task_name_to_main_task_info:
@@ -448,13 +472,15 @@ class TaskManagerActor(mo.Actor):
         else:
             task_info = self._task_name_to_main_task_info[task_name]
 
+        if fuse_enabled is None:
+            fuse_enabled = self._config.fuse_enabled
         # gen task
         task = Task(task_id, self._session_id,
                     graph, task_name,
                     fuse_enabled=fuse_enabled)
         task_info.tasks.append(task)
         # gen task processor
-        task_processor = TaskProcessor(task)
+        task_processor = TaskProcessor(task, config=self._config)
         task_info.task_processors.append(task_processor)
         # start to run main task
         aio_task = asyncio.create_task(
@@ -511,7 +537,7 @@ class TaskManagerActor(mo.Actor):
             # get subtask graph
             available_bands = await self._get_available_band_slots()
             analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                     task_stage_info)
+                                     task.fuse_enabled, task_stage_info)
             subtask_graph = analyzer.gen_subtask_graph()
             task_stage_info.subtask_graph = subtask_graph
 

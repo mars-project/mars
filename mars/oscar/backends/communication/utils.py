@@ -82,5 +82,5 @@ async def read_buffers(header: Dict,
         return buffers
     else:
         buffer_sizes = header.pop(BUFFER_SIZES_NAME)
-        buffers = [await reader.read(size) for size in buffer_sizes]
+        buffers = [await reader.readexactly(size) for size in buffer_sizes]
         return buffers

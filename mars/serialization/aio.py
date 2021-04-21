@@ -63,6 +63,13 @@ class AioDeserializer:
     def __init__(self, file):
         self._file = file
 
+    def _readexactly(self, n: int):
+        # asyncio StreamReader may not guarantee to read n bytes
+        # for it we need to call `readexactly` instead
+        read = self._file.readexactly \
+            if hasattr(self._file, 'readexactly') else self._file.read
+        return read(n)
+
     async def _get_obj_header_bytes(self):
         header_bytes = bytes(await self._file.read(11))
         if len(header_bytes) == 0:
@@ -74,14 +81,14 @@ class AioDeserializer:
         header_length = struct.unpack('<Q', header_bytes[1:9])[0]
         # compress
         _ = struct.unpack('<H', header_bytes[9:])[0]
-        return await self._file.read(header_length)
+        return await self._readexactly(header_length)
 
     async def _get_obj(self):
         header = pickle.loads(await self._get_obj_header_bytes())
         # get buffer size
         buffer_sizes = header.pop(BUFFER_SIZES_NAME)
         # get buffers
-        buffers = [await self._file.read(size) for size in buffer_sizes]
+        buffers = [await self._readexactly(size) for size in buffer_sizes]
 
         return deserialize(header, buffers)
 

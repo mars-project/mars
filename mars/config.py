@@ -24,7 +24,8 @@ from copy import deepcopy
 from typing import Union, Dict
 
 
-_DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and might be removed in a future release.'
+_DEFAULT_REDIRECT_WARN = 'Option {source} has been replaced by {target} and ' \
+                         'might be removed in a future release.'
 
 
 class OptionError(Exception):

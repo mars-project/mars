@@ -12,7 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .builder import TileableGraphBuilder, ChunkGraphBuilder
-from .builder.legacy import get_tiled
-from .core import DirectedGraph, DAG, GraphContainsCycleError
-from .entity import TileableGraph, ChunkGraph, EntityGraph
+from typing import List, Type
+
+from ....core import OperandType, TileableGraph
+from ..core import Optimizer, OptimizationRule, OptimizationRecords
+
+
+class TileableOptimizer(Optimizer):
+    """
+    Tileable Optimizer
+    """
+
+
+def register_tileable_optimization_rule(op_types: List[Type[OperandType]]):
+    def wrap(rule_type: Type[OptimizationRule]):
+        TileableOptimizer.register_rule(op_types, rule_type)
+        return rule_type
+    return wrap
+
+
+def optimize(tileable_graph: TileableGraph) -> OptimizationRecords:
+    return TileableOptimizer.optimize(tileable_graph)

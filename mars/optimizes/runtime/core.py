@@ -28,7 +28,7 @@ class RuntimeOptimizer:
     }
 
     def __init__(self, graph, engine=None):
-        # conver to DAG first if graph is not a DAG
+        # convert to DAG first if graph is not a DAG
         self._dag = graph.to_dag()
         self._graph = graph
         if engine is None:
