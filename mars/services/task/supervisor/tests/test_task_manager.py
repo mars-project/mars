@@ -15,11 +15,14 @@
 import asyncio
 import os
 import sys
+import tempfile
 import time
 
 import numpy as np
+import pandas as pd
 import pytest
 
+import mars.dataframe as md
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
@@ -209,3 +212,73 @@ async def test_shuffle(actor_pool):
     result_tileables = (await manager.get_task_result_tileables(task_id))[0]
     result = await _merge_data(result_tileables, storage_api)
     np.testing.assert_array_equal(result, expect)
+
+
+@pytest.mark.asyncio
+async def test_numexpr(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    raw = np.random.rand(10, 10)
+    t = mt.tensor(raw, chunk_size=5)
+    t2 = (t + 1) * 2 - 0.3
+
+    graph = TileableGraph([t2.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await manager.submit_tileable_graph(graph,
+                                                  fuse_enabled=True)
+    assert isinstance(task_id, str)
+
+    await manager.wait_task(task_id)
+    task_result: TaskResult = await manager.get_task_result(task_id)
+
+    assert task_result.status == TaskStatus.terminated
+    assert task_result.error is None
+    assert await manager.get_task_progress(task_id) == 1.0
+
+    expect = (raw + 1) * 2 - 0.3
+    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileables, storage_api)
+    np.testing.assert_array_equal(result, expect)
+
+
+@pytest.mark.asyncio
+async def test_optimization(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        file_path = os.path.join(tempdir, 'test.csv')
+
+        pdf = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
+                           'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                           'c': list('aabaaddce'),
+                           'd': list('abaaaddce')})
+        pdf.to_csv(file_path, index=False)
+
+        df = md.read_csv(file_path)
+        df2 = df.groupby('c').agg({'a': 'sum'})
+        df3 = df[['b', 'a']]
+
+        graph = TileableGraph([df2.data, df3.data])
+        next(TileableGraphBuilder(graph).build())
+
+        task_id = await manager.submit_tileable_graph(graph)
+        assert isinstance(task_id, str)
+
+        await manager.wait_task(task_id)
+        task_result: TaskResult = await manager.get_task_result(task_id)
+
+        assert task_result.status == TaskStatus.terminated
+        assert task_result.error is None
+        assert await manager.get_task_progress(task_id) == 1.0
+
+        expect = pdf.groupby('c').agg({'a': 'sum'})
+        result_tileables = (await manager.get_task_result_tileables(task_id))
+        result1 = result_tileables[0]
+        result = await _merge_data(result1, storage_api)
+        np.testing.assert_array_equal(result, expect)
+
+        expect = pdf[['b', 'a']]
+        result2 = result_tileables[1]
+        result = await _merge_data(result2, storage_api)
+        np.testing.assert_array_equal(result, expect)

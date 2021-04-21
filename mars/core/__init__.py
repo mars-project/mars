@@ -25,3 +25,4 @@ from .graph import DirectedGraph, DAG, GraphContainsCycleError, \
     TileableGraph, ChunkGraph, TileableGraphBuilder, ChunkGraphBuilder
 from .graph.builder.legacy import get_tiled
 from .mode import enter_mode, is_build_mode, is_eager_mode, is_kernel_mode
+from .typing import ChunkType, TileableType, EntityType, OperandType

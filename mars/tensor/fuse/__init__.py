@@ -15,5 +15,5 @@
 # limitations under the License.
 
 from .core import TensorFuseChunk
-from .ne import TensorNeFuseChunk
-from .cp import TensorCpFuseChunk
+from .cupy import TensorCpFuseChunk
+from .numexpr import TensorNeFuseChunk

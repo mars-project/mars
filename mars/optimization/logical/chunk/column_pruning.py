@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .builder import TileableGraphBuilder, ChunkGraphBuilder
-from .builder.legacy import get_tiled
-from .core import DirectedGraph, DAG, GraphContainsCycleError
-from .entity import TileableGraph, ChunkGraph, EntityGraph
+from ....dataframe.indexing.getitem import DataFrameIndex
+from ..common.column_pruning import GetitemPruneDataSource
+from .core import register_chunk_optimization_rule
+
+
+@register_chunk_optimization_rule([DataFrameIndex])
+class ChunkGetitemPruneDataSource(GetitemPruneDataSource):
+    """
+    Prune data source via getitem.
+    """
