@@ -668,7 +668,17 @@ class TaskManagerActor(mo.Actor):
 
     def last_idle_time(self):
         if self._last_idle_time is None:
-            if all(task_info.task_result and task_info.task_result.status == TaskStatus.terminated
-                    for task_info in self._task_id_to_task_info.values()):
+            for task_info in self._task_id_to_task_info.values():
+                for task_processor in task_info.task_processors:
+                    if not task_processor.done:
+                        break
+                else:
+                    for stage in task_info.task_stage_infos:
+                        if stage.task_result.status != TaskStatus.terminated:
+                            break
+                    else:
+                        continue
+                break
+            else:
                 self._last_idle_time = time.time()
         return self._last_idle_time
