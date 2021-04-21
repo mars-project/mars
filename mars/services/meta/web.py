@@ -47,7 +47,7 @@ class MetaWebAPI(ServiceWebAPIBase):
         resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return MetaWebAPI(http_client, _service_name, api_id)
+        return MetaWebAPI(http_client, _service_name, MetaAPI, api_id)
 
     @classmethod
     async def create_session(cls, session_id: str, address: str):
@@ -55,7 +55,7 @@ class MetaWebAPI(ServiceWebAPIBase):
         resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return MetaWebAPI(http_client, _service_name, api_id)
+        return MetaWebAPI(http_client, _service_name, MetaAPI, api_id)
 
     @classmethod
     async def destroy_session(cls, session_id: str, address: str):
@@ -63,5 +63,5 @@ class MetaWebAPI(ServiceWebAPIBase):
         resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/destroy_session',
                                        method="POST", body=serialize((session_id, address)))
         api_id = deserialize(resp.body)
-        return MetaWebAPI(http_client, _service_name, api_id)
+        return MetaWebAPI(http_client, _service_name, MetaAPI, api_id)
 

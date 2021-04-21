@@ -20,8 +20,10 @@ from .api import SessionAPI
 class SessionWebHandler(ServiceWebHandlerBase):
 
     async def create(self, address: str, **kwargs):
+        print(f"===address, **kwargs {address, kwargs}")
         api_instance = await SessionAPI.create(address, **kwargs)
         self._api_instances[id(api_instance)] = api_instance
+        print(f"===id(api_instance) {id(api_instance), api_instance}")
         return id(api_instance)
 
 
@@ -39,4 +41,4 @@ class SessionWebAPI(ServiceWebAPIBase):
         resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
                                        method="POST", body=serialize((address, kwargs)))
         api_id = deserialize(resp.body)
-        return SessionWebAPI(http_client, _service_name, api_id)
+        return SessionWebAPI(http_client, _service_name, SessionAPI, api_id)

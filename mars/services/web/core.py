@@ -14,13 +14,18 @@
 
 import cloudpickle
 import inspect
+import logging
 import threading
+import traceback
 
 from tornado.httpclient import AsyncHTTPClient
 from .supervisor import MarsRequestHandler
 
 
-def serialize(*obj):
+logger = logging.getLogger(__name__)
+
+
+def serialize(obj):
     from mars.serialization import serialize
     return cloudpickle.dumps(serialize(obj))
 
@@ -43,39 +48,51 @@ def get_web_address():
 
 
 class ServiceWebHandlerBase(MarsRequestHandler):
-
-    def initialize(self, supervisor_addr):
-        super().initialize(supervisor_addr)
-        self._api_instances = dict()
+    _api_instances = dict()
 
     async def post(self, path, **kwargs):
-        api_method = path
+        api_method_name = path
         params = deserialize(self.request.body)
-        if hasattr(self, api_method):
-            result = getattr(self, api_method)(*params)
+        try:
+            if hasattr(self, api_method_name):
+                method = getattr(self, api_method_name)
+            else:
+                api_id, params = params[0], params[1:]
+                method = getattr(self._api_instances[api_id], api_method_name)
+            arg_spec = inspect.getfullargspec(method)
+            if arg_spec.varkw:
+                result = method(*params[:-1], **params[-1])
+            else:
+                result = method(*params)
             if inspect.iscoroutine(result):
                 result = await result
             self.write(serialize(result))
-        else:
-            api_id = params[0]
-            result = getattr(self._api_instances[api_id], api_method)(*params[1:])
-            if inspect.iscoroutine(result):
-                result = await result
-            self.write(serialize(result))
+        except:
+            logger.info(f'Execute method {api_method_name} with {params} failed')
+            traceback.print_exc()
+            raise
 
 
 class ServiceWebAPIBase:
 
-    def __init__(self, http_client: AsyncHTTPClient, service_name: str, api_id: int):
+    def __init__(self, http_client: AsyncHTTPClient, service_name: str, api_cls, api_id: int):
         self._http_client = http_client
         self._service_name = service_name
+        self._api_cls = api_cls
         self._api_id = api_id
 
     def __getattr__(self, method_name):
         async def _func(*args, **kwargs):
+            method = getattr(self._api_cls, method_name)
+            arg_spec = inspect.getfullargspec(method)
+            if arg_spec.varkw:
+                body = serialize((self._api_id, args, kwargs))
+            else:
+                assert not kwargs, f'''Method {method} doesn't allow kwargs, but got {kwargs}'''
+                body = serialize((self._api_id, args))
             resp = await self._http_client.fetch(
-                f'{get_web_address()}//api/service/{self._service_name}/{method_name}',
-                method="POST", body=serialize((self._api_id, args, kwargs)))
+                f'{get_web_address()}/api/service/{self._service_name}/{method_name}',
+                method="POST", body=body)
             return deserialize(resp.body)
 
         return _func

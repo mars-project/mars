@@ -39,4 +39,4 @@ class StorageWebAPI(ServiceWebAPIBase):
         resp = await http_client.fetch(f'{get_web_address()}/api/storage/{_service_name}/create',
                                        method="POST", body=serialize((session_id, address, kwargs)))
         api_id = deserialize(resp.body)
-        return StorageWebAPI(http_client, _service_name, api_id)
+        return StorageWebAPI(http_client, _service_name, StorageAPI, api_id)

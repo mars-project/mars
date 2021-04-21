@@ -24,6 +24,7 @@ from ...services.meta import MetaAPI, MetaWebAPI
 from ...services.session import SessionAPI, SessionWebAPI
 from ...services.storage import StorageAPI
 from ...services.task import TaskAPI, TaskWebAPI, TaskResult
+from ...services.web.core import set_web_address
 from ...utils import implements, merge_chunks
 
 
@@ -50,10 +51,6 @@ class ExectionInfo(AbstractExectionInfo):
 @register_session_cls
 class Session(AbstractSession):
     name = 'oscar'
-    MetaAPI = MetaAPI
-    SessionAPI = SessionAPI
-    StorageAPI = StorageAPI
-    TaskAPI = TaskAPI
 
     def __init__(self,
                  address: str,
@@ -81,6 +78,9 @@ class Session(AbstractSession):
             return (await new_cluster(address, **kwargs)).session
 
         web_api = kwargs.pop('web_api', False)
+        if web_api:
+            web_address = kwargs.pop('web_address')
+            set_web_address(web_address)
         session_api = await (SessionWebAPI if web_api else SessionAPI).create(address)
         # create new session
         session_address = await session_api.create_session(session_id)
