@@ -270,7 +270,7 @@ class StorageHandlerActor(mo.Actor):
     async def prefetch(self,
                        session_id: str,
                        data_key: str):
-        if StorageLevel.REMOTE not in self._clients:
+        if StorageLevel.REMOTE not in self._clients:  # pragma: no cover
             raise NotImplementedError
         else:
             data_info = yield self._storage_manager_ref.fetch_data_info(
@@ -359,7 +359,7 @@ class StorageManagerActor(mo.Actor):
         try:
             info = self._data_manager.get_info(session_id, data_key)
             self.pin(info.object_id)
-        except DataNotExist:
+        except DataNotExist:  # pragma: no cover
             # Not exist in local, fetch from remote worker
             try:
                 yield self._storage_handler.prefetch(session_id, data_key)

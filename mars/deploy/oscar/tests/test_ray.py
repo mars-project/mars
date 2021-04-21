@@ -67,6 +67,7 @@ async def test_iterative_tiling(ray_cluster, mars_cluster):
 @require_ray
 @pytest.mark.asyncio
 def test_sync_execute(ray_cluster, mars_cluster):
+    assert mars_cluster.session
     session = new_session(address=mars_cluster.address, backend='oscar', default=True)
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
