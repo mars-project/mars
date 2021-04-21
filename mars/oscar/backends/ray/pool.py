@@ -98,6 +98,16 @@ class RayPoolBase(ABC):
 
     _actor_pool: Optional['AbstractActorPool']
 
+    def __new__(cls, *args, **kwargs):
+        try:
+            # register coverage hooks on SIGTERM
+            from pytest_cov.embed import cleanup_on_sigterm
+            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                cleanup_on_sigterm()
+        except ImportError:  # pragma: no cover
+            pass
+        return super().__new__(cls, *args, **kwargs)
+
     def __init__(self):
         self._actor_pool = None
         self._ray_server = None
