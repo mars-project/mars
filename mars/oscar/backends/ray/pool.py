@@ -16,6 +16,7 @@ import asyncio
 import inspect
 import logging
 import os
+import sys
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -72,7 +73,13 @@ class RayMainActorPool(MainActorPoolBase):
         return actor_handle
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
-        ray.kill(process)
+        if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
+            # must shutdown gracefully, or coverage info lost
+            process.exit.remote()
+            while await self.is_sub_pool_alive(process):
+                await asyncio.sleep(0.1)
+        else:
+            ray.kill(process)
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
@@ -100,9 +107,9 @@ class RayPoolBase(ABC):
 
     def __new__(cls, *args, **kwargs):
         try:
-            # register coverage hooks on SIGTERM
-            from pytest_cov.embed import cleanup_on_sigterm
             if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                # register coverage hooks on SIGTERM
+                from pytest_cov.embed import cleanup_on_sigterm
                 cleanup_on_sigterm()
         except ImportError:  # pragma: no cover
             pass
@@ -137,6 +144,9 @@ class RayPoolBase(ABC):
             return attr(*args, **kwargs)
         else:
             return attr
+
+    def exit(self):
+        sys.exit(0)
 
 
 class RayMainPool(RayPoolBase):
