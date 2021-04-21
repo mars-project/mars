@@ -114,3 +114,14 @@ async def test_last_idle_time():
         assert new_last_idle_time != last_idle_time
         assert await session_api.last_idle_time() == new_last_idle_time
         assert new_last_idle_time > last_idle_time
+
+        # blocking task.
+        def f4():
+            import time
+            time.sleep(10)
+
+        r4 = mr.spawn(f4)
+        graph = TileableGraph([r4.data])
+        next(TileableGraphBuilder(graph).build())
+        await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+        assert await session_api.last_idle_time() is None
