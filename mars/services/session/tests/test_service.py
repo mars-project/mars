@@ -80,9 +80,9 @@ async def test_last_idle_time():
         session_id = 'test_session'
         await session_api.create_session(session_id)
         # check last idle time is not None
-        last_idle_time = await session_api.last_idle_time()
+        last_idle_time = await session_api.last_idle_time(session_id)
         assert last_idle_time is not None
-        assert await session_api.last_idle_time() == last_idle_time
+        assert await session_api.last_idle_time(session_id) == last_idle_time
         # submit a task
         task_api = await TaskAPI.create(session_id, sv_pool.external_address)
 
