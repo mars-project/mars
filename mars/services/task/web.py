@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import serialize, deserialize, get_web_address, ServiceWebHandlerBase, ServiceWebAPIBase
+from mars.services.web.core import ServiceWebHandlerBase, ServiceWebAPIBase
 from tornado.httpclient import AsyncHTTPClient
 from .api import TaskAPI
 
 
 class TaskWebHandler(ServiceWebHandlerBase):
+    _api_cls = TaskAPI
 
     async def create(self, session_id: str, address: str):
         api_instance = await TaskAPI.create(session_id, address)
@@ -28,9 +29,6 @@ class TaskWebHandler(ServiceWebHandlerBase):
         api_instance = await TaskAPI.create(session_id, address)
         self._api_instances[id(api_instance)] = api_instance
         return id(api_instance)
-
-    async def destroy_session(self, session_id: str, address: str):
-        return await TaskAPI.destroy_session(session_id, address)
 
 
 _service_name = 'task'
@@ -44,23 +42,16 @@ class TaskWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
-                                       method="POST", body=serialize((session_id, address)))
-        api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, _service_name, TaskAPI, api_id)
+        api_id = await cls._post(http_client, f'{_service_name}/create', session_id, address)
+        return TaskWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def create_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create_session',
-                                       method="POST", body=serialize((session_id, address)))
-        api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, _service_name, TaskAPI, api_id)
+        api_id = await cls._post(http_client, f'{_service_name}/create_session', session_id, address)
+        return TaskWebAPI(http_client, _service_name, api_id)
 
     @classmethod
     async def destroy_session(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/destroy_session',
-                                       method="POST", body=serialize((session_id, address)))
-        api_id = deserialize(resp.body)
-        return TaskWebAPI(http_client, _service_name, TaskAPI, api_id)
+        return await cls._post(http_client, f'{_service_name}/destroy_session', session_id, address)

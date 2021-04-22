@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import serialize, deserialize, get_web_address, ServiceWebHandlerBase, ServiceWebAPIBase
+from mars.services.web.core import ServiceWebHandlerBase, ServiceWebAPIBase
 from tornado.httpclient import AsyncHTTPClient
 from .api import SessionAPI
 
 
 class SessionWebHandler(ServiceWebHandlerBase):
+    _api_cls = SessionAPI
 
     async def create(self, address: str, **kwargs):
-        print(f"===address, **kwargs {address, kwargs}")
         api_instance = await SessionAPI.create(address, **kwargs)
         self._api_instances[id(api_instance)] = api_instance
-        print(f"===id(api_instance) {id(api_instance), api_instance}")
         return id(api_instance)
 
 
@@ -38,7 +37,5 @@ class SessionWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, address: str, **kwargs):
         http_client = AsyncHTTPClient()
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{_service_name}/create',
-                                       method="POST", body=serialize((address, kwargs)))
-        api_id = deserialize(resp.body)
-        return SessionWebAPI(http_client, _service_name, SessionAPI, api_id)
+        api_id = await cls._post(http_client, f'{_service_name}/create', address, **kwargs)
+        return SessionWebAPI(http_client, _service_name, api_id)
