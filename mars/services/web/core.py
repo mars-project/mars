@@ -15,13 +15,13 @@
 import cloudpickle
 import inspect
 import logging
+import requests
 import sys
 import threading
 import traceback
 
 from tornado.httpclient import AsyncHTTPClient
 from .supervisor import MarsRequestHandler
-
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +62,17 @@ class ServiceWebHandlerBase(MarsRequestHandler):
 
     async def post(self, path, **_):
         api_method_name = path
-        # params format: [api_id], args, kwargs
-        params = deserialize(self.request.body)
+        # params format: api_id[None], args, kwargs
+        api_id, args, kwargs = deserialize(self.request.body)
         try:
-            if len(params) == 2:
+            if not api_id:
                 if hasattr(self, api_method_name):
                     method = getattr(self, api_method_name)
                 else:
                     method = getattr(self._api_cls, api_method_name)
             else:
                 # call method of api instance
-                assert len(params) == 3
-                api_id, params = params[0], params[1:]
                 method = getattr(self._api_instances[api_id], api_method_name)
-            args, kwargs = params
             if kwargs:
                 # Some methods are decorated with @alru_cache, which doesn't support dict as part of cache key.
                 result = method(*args, **kwargs)
@@ -85,38 +82,60 @@ class ServiceWebHandlerBase(MarsRequestHandler):
                 result = await result
             self.write(serialize(result))
         except Exception as e:
-            logger.info(f'Execute method {api_method_name} with {params} failed, got exception {e}')
+            logger.info(f'Execute method {api_method_name} with {api_id, args, kwargs} failed, got exception {e}')
             traceback.format_exc()
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.write(serialize(_HandlerException(exc_type, exc_value, exc_traceback)))
 
+    def __destroy_api__(self, api_id):
+        api = self._api_instances.pop(api_id, None)
+        print('Destroyed api %s', api)
+
 
 class ServiceWebAPIBase:
+    _service_name = None
 
-    def __init__(self, http_client: AsyncHTTPClient, service_name: str, api_id: int):
+    def __init__(self, http_client: AsyncHTTPClient, api_id: int):
         self._http_client = http_client
-        self._service_name = service_name
         self._api_id = api_id
 
     def __getattr__(self, method_name):
         async def _func(*args, **kwargs):
-            body = serialize((self._api_id, args, kwargs))
-            resp = await self._http_client.fetch(
-                f'{get_web_address()}/api/service/{self._service_name}/{method_name}',
-                method="POST", body=body)
-            return deserialize(resp.body)
+            return await self._post(self._http_client, method_name, *args, api_id=self._api_id, **kwargs)
 
         return _func
 
+    def __del__(self):
+        try:
+            self._sync_post('__destroy_api__', api_id=self._api_id, req_config=dict(timeout=(0.1, 0.5)))
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            # server is closed
+            pass
+
     @classmethod
-    async def _post(cls, http_client, endpoint: str, *args, **kwarg):
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{endpoint}',
-                                       method="POST", body=cls._serialize_args(*args, **kwarg))
+    async def _post(cls, http_client: AsyncHTTPClient, api_method_name: str,
+                    *args, api_id=None, req_config=None, **kwarg):
+        req_config = req_config or dict()
+        if 'request_timeout' not in req_config:
+            req_config['request_timeout'] = 2 * 60 * 60  # timeout for two hours
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{cls._service_name}/{api_method_name}',
+                                       method="POST", body=cls._serialize_args(api_id, args, kwarg),
+                                       **(req_config or dict()))
         return cls._deserialize_result(resp.body)
 
     @classmethod
-    def _serialize_args(cls, *args, **kwargs):
-        return serialize((args, kwargs))
+    def _sync_post(cls, api_method_name: str,
+                   *args, api_id=None, req_config=None, **kwarg):
+        req_config = req_config or dict()
+        if 'timeout' not in req_config:
+            req_config['timeout'] = 2 * 60 * 60  # timeout for two hours
+        r = requests.post(f'{get_web_address()}/api/service/{cls._service_name}/{api_method_name}',
+                          data=cls._serialize_args(api_id, args, kwarg), **req_config)
+        return cls._deserialize_result(r.content)
+
+    @classmethod
+    def _serialize_args(cls, *args):
+        return serialize(args)
 
     @classmethod
     def _deserialize_result(cls, binary):

@@ -33,9 +33,10 @@ web_handlers = {
 
 
 class SessionWebAPI(ServiceWebAPIBase):
+    _service_name = _service_name
 
     @classmethod
     async def create(cls, address: str, **kwargs):
         http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, f'{_service_name}/create', address, **kwargs)
-        return SessionWebAPI(http_client, _service_name, api_id)
+        api_id = await cls._post(http_client, f'create', address, **kwargs)
+        return SessionWebAPI(http_client, api_id)
