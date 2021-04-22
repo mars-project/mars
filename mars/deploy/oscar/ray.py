@@ -23,6 +23,7 @@ from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from ... import oscar as mo
 from ...core.session import _new_session, AbstractSession
+from ...services.web.supervisor import WebActor
 from ...utils import lazy_import
 
 ray = lazy_import("ray")
@@ -76,6 +77,7 @@ class RayCluster:
         self._supervisor_pool = None
         self._worker_addresses = []
         self._worker_pools = []
+        self.web_address = None
 
     async def start(self):
         address_to_resources = dict()
@@ -111,6 +113,9 @@ class RayCluster:
                                self._band_to_slot,
                                config=self._config)
 
+        web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
+        self.web_address = await web_actor.get_web_address()
+
     async def stop(self):
         for worker_address in self._worker_addresses:
             await stop_worker(worker_address, self._config)
@@ -124,7 +129,7 @@ class RayClient:
     def __init__(self,
                  cluster: RayCluster,
                  session: AbstractSession):
-        self._cluster = cluster
+        self.cluster = cluster
         self._address = cluster.supervisor_address
         self._session = session
 
