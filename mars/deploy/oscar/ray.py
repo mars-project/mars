@@ -146,6 +146,14 @@ class RayClient:
     def session(self):
         return self._session
 
+    @property
+    def supervisor_address(self):
+        return self.cluster.supervisor_address
+
+    @property
+    def web_address(self):
+        return self.cluster.web_address
+
     async def __aenter__(self):
         return self
 

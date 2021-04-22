@@ -24,6 +24,7 @@ import mars.tensor as mt
 from mars.core.session import get_default_session, \
     new_session, execute, fetch
 from mars.deploy.oscar.local import new_cluster
+from mars.deploy.oscar.session import Session
 from mars.tests.core import CONFIG_TEST_FILE
 
 
@@ -36,7 +37,7 @@ async def create_cluster():
                                n_worker=1,
                                n_cpu=2)
     async with client:
-        yield
+        yield client
 
 
 @pytest.mark.asyncio
@@ -117,3 +118,36 @@ def test_no_default_session():
         execute(b, show_progress=False)
 
     np.testing.assert_array_equal(fetch(b), raw + 1)
+
+
+@pytest.mark.asyncio
+async def test_web_session(create_cluster):
+    import uuid
+    session_id = str(uuid.uuid4())
+    supervisor_address, web_address = create_cluster.supervisor_address, create_cluster.web_address
+    session = await Session.init(supervisor_address, session_id, web_api=True, web_address=web_address)
+    session.as_default()
+    await test_execute(create_cluster)
+    await test_iterative_tiling(create_cluster)
+    Session.reset_default()
+    await session.destroy()
+    await web_session_test(supervisor_address, web_address)
+
+
+async def web_session_test(supervisor_address, web_address):
+    import uuid
+    session_id = str(uuid.uuid4())
+    session = await Session.init(supervisor_address, session_id, web_api=True, web_address=web_address)
+    session.as_default()
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+
+    info = await session.execute(b)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
+    Session.reset_default()
+    await session.destroy()

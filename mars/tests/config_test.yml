@@ -4,6 +4,7 @@ services:
   - storage
   - meta
   - task
+  - web
 cluster:
   backend: fixed
   node_timeout: 120

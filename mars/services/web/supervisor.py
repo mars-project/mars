@@ -133,6 +133,9 @@ class WebActor(mo.Actor):
                 if retrial == 0:
                     raise
 
+    async def stop(self, wait=True):
+        self._web_server.stop(wait=wait)
+
     def get_web_address(self):
         return self._web_address
 
@@ -141,3 +144,8 @@ async def start(config: dict, address: str = None):
     ref = await mo.create_actor(WebActor, uid=WebActor.default_uid(),
                                 config=config.get('web', {}), address=address)
     await ref.start()
+
+
+async def stop(address: str):
+    ref = await mo.actor_ref(WebActor.default_uid(), address=address)
+    await ref.stop()

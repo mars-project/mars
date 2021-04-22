@@ -18,7 +18,6 @@ import pytest
 import mars.tensor as mt
 from mars.core.session import get_default_session, new_session
 from mars.deploy.oscar.ray import new_cluster
-from mars.deploy.oscar.session import Session
 from mars.serialization.ray import register_ray_serializers
 from mars.tests.core import require_ray
 from ....utils import lazy_import
@@ -45,7 +44,7 @@ def ray_cluster():
 
 
 @pytest.fixture
-async def mars_cluster():
+async def create_cluster():
     client = await new_cluster('test_cluster',
                                worker_num=2,
                                worker_cpu=2,
@@ -56,21 +55,21 @@ async def mars_cluster():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute(ray_cluster, mars_cluster):
-    await test_local.test_execute(mars_cluster)
+async def test_execute(ray_cluster, create_cluster):
+    await test_local.test_execute(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_iterative_tiling(ray_cluster, mars_cluster):
-    await test_local.test_iterative_tiling(mars_cluster)
+async def test_iterative_tiling(ray_cluster, create_cluster):
+    await test_local.test_iterative_tiling(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-def test_sync_execute(ray_cluster, mars_cluster):
-    assert mars_cluster.session
-    session = new_session(address=mars_cluster.address, backend='oscar', default=True)
+def test_sync_execute(ray_cluster, create_cluster):
+    assert create_cluster.session
+    session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
         a = mt.tensor(raw, chunk_size=5).sum(axis=1)
@@ -89,41 +88,13 @@ def test_sync_execute(ray_cluster, mars_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_web_session(ray_cluster, mars_cluster):
-    import uuid
-    session_id = str(uuid.uuid4())
-    supervisor_address, web_address = mars_cluster.cluster.supervisor_address, mars_cluster.cluster.web_address
-    session = await Session.init(supervisor_address, session_id, web_api=True, web_address=web_address)
-    session.as_default()
-    await test_local.test_execute(mars_cluster)
-    await test_local.test_iterative_tiling(mars_cluster)
-    Session.reset_default()
-    await session.destroy()
-
-    await _web_session_test(supervisor_address, web_address)
+async def test_web_session(ray_cluster, create_cluster):
+    await test_local.test_web_session(create_cluster)
+    supervisor_address, web_address = create_cluster.supervisor_address, create_cluster.web_address
     await ray.remote(_run_web_session).remote(supervisor_address, web_address)
 
 
 def _run_web_session(supervisor_address, web_address):
     register_ray_serializers()
     import asyncio
-    asyncio.new_event_loop().run_until_complete(_web_session_test(supervisor_address, web_address))
-
-
-async def _web_session_test(supervisor_address, web_address):
-    import uuid
-    session_id = str(uuid.uuid4())
-    session = await Session.init(supervisor_address, session_id, web_api=True, web_address=web_address)
-    session.as_default()
-    raw = np.random.RandomState(0).rand(10, 10)
-    a = mt.tensor(raw, chunk_size=5)
-    b = a + 1
-
-    info = await session.execute(b)
-    await info
-    assert info.result() is None
-    assert info.exception() is None
-    assert info.progress() == 1
-    np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
-    Session.reset_default()
-    await session.destroy()
+    asyncio.new_event_loop().run_until_complete(test_local.web_session_test(supervisor_address, web_address))
