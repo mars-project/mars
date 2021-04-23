@@ -38,5 +38,5 @@ class StorageWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, session_id: str, address: str, **kwargs):
         http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, 'create', session_id, address, **kwargs)
+        api_id = await cls._post(http_client, 'create',  None, {}, session_id, address, **kwargs)
         return StorageWebAPI(http_client, api_id)

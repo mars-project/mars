@@ -101,20 +101,19 @@ class ServiceWebAPIBase:
 
     def __getattr__(self, method_name):
         async def _func(*args, **kwargs):
-            return await self._post(self._http_client, method_name, *args, api_id=self._api_id, **kwargs)
+            return await self._post(self._http_client, method_name, self._api_id, {}, *args, **kwargs)
 
         return _func
 
     def __del__(self):
         try:
-            self._sync_post('__destroy_api__', api_id=self._api_id, req_config=dict(timeout=(0.1, 1)))
+            self._sync_post('__destroy_api__', self._api_id, dict(timeout=(0.1, 1)))
         except Exception:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             # server is closed
             pass
 
     @classmethod
-    async def _post(cls, http_client: AsyncHTTPClient, api_method_name: str,
-                    *args, api_id=None, req_config=None, **kwarg):
+    async def _post(cls, http_client: AsyncHTTPClient, api_method_name: str, api_id, req_config, *args, **kwarg):
         req_config = req_config or dict()
         if 'request_timeout' not in req_config:
             req_config['request_timeout'] = 2 * 60 * 60  # timeout for two hours
@@ -124,8 +123,7 @@ class ServiceWebAPIBase:
         return cls._deserialize_result(resp.body)
 
     @classmethod
-    def _sync_post(cls, api_method_name: str,
-                   *args, api_id=None, req_config=None, **kwarg):
+    def _sync_post(cls, api_method_name: str, api_id, req_config, *args, **kwarg):
         req_config = req_config or dict()
         if 'timeout' not in req_config:
             req_config['timeout'] = 2 * 60 * 60  # timeout for two hours
