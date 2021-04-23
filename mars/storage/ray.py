@@ -73,8 +73,12 @@ class RayFileObject(BufferWrappedFileObject):
     def _write_close(self):
         worker = ray.worker.global_worker
         metadata = ray.ray_constants.OBJECT_METADATA_TYPE_RAW
-        worker.core_worker.put_file_like_object(metadata, self._buffer.tell(), self._buffer,
-                                                self._object_id)
+        args = [metadata, self._buffer.tell(), self._buffer, self._object_id]
+        try:
+            worker.core_worker.put_file_like_object(*args)
+        except TypeError:
+            args.append(None)  # owner_address for ray >= 1.3.0
+            worker.core_worker.put_file_like_object(*args)
 
     def _read_close(self):
         pass
