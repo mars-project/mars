@@ -19,6 +19,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type, Tuple, Union
 
+from ..config import options
 from ..core import TileableGraph, enter_mode
 from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
@@ -123,7 +124,7 @@ class AbstractSession(ABC):
     def address(self):
         return self._address
 
-    @staticmethod
+    @classmethod
     @abstractmethod
     async def init(cls,
                    address: str,
@@ -323,8 +324,10 @@ def execute(tileable: TileableType,
             wait: bool = True,
             backend: str = 'oscar',
             new_session_kwargs: dict = None,
-            show_progress: Union[bool, str] = 'auto',
+            show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
+    if show_progress is None:
+        show_progress = options.show_progress
     _loop.run_until_complete(_execute(
         tileable, *tileables, session=session, wait=wait,
         backend=backend, new_session_kwargs=new_session_kwargs,

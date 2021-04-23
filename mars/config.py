@@ -315,6 +315,7 @@ default_options.register_option('tcp_timeout', 30, validator=is_integer)
 default_options.register_option('verbose', False, validator=is_bool)
 default_options.register_option('kv_store', ':inproc:', validator=is_string)
 default_options.register_option('check_interval', 20, validator=is_integer)
+default_options.register_option('show_progress', 'auto', validator=any_validator(is_bool, is_string))
 default_options.register_option('serialize_method', 'pickle')
 
 # dataframe-related options

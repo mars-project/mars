@@ -29,6 +29,7 @@ async def new_cluster(address: str = '0.0.0.0',
                       n_cpu: Union[int, str] = 'auto',
                       n_gpu: Union[int, str] = 'auto',
                       subprocess_start_method: str = None,
+                      backend: str = None,
                       config: Union[str, Dict] = None) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = \
@@ -36,7 +37,7 @@ async def new_cluster(address: str = '0.0.0.0',
     cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
                            subprocess_start_method, config)
     await cluster.start()
-    return await LocalClient.create(cluster)
+    return await LocalClient.create(cluster, backend)
 
 
 class LocalCluster:
@@ -103,10 +104,12 @@ class LocalClient:
 
     @classmethod
     async def create(cls,
-                     cluster: LocalCluster) -> ClientType:
+                     cluster: LocalCluster,
+                     backend: str = None) -> ClientType:
+        backend = Session.name if backend is None else backend
         session = await _new_session(
             cluster._supervisor_pool.external_address,
-            backend=Session.name, default=True)
+            backend=backend, default=True)
         client = LocalClient(cluster, session)
         session.client = client
         return client

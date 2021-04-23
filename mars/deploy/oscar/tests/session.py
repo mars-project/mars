@@ -16,6 +16,7 @@ import os
 import uuid
 
 from ....core import OBJECT_TYPE
+from ....core.session import register_session_cls
 from ....core.session import AbstractSession, SyncSession, _loop
 from ....oscar.backends.router import Router
 from ....tests.core import _check_args, ObjectCheckMixin
@@ -26,6 +27,7 @@ CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), 'check_enabled_config.yml')
 
 
+@register_session_cls
 class CheckedSession(ObjectCheckMixin, Session):
     name = 'test'
 
@@ -33,17 +35,24 @@ class CheckedSession(ObjectCheckMixin, Session):
         super().__init__(*args, **kwargs)
         self._tileable_checked = dict()
 
+        check_options = dict()
+        for key in _check_args:
+            check_options[key] = kwargs.get(key, True)
+        self._check_options = check_options
+
     @classmethod
     async def init(cls,
                    address: str,
                    session_id: str,
                    **kwargs) -> "Session":
-        if 'n_cpu' not in kwargs:
-            # limit to 2 cpu each worker
-            kwargs['n_cpu'] = 2 * kwargs.get('n_worker', 1)
-        if 'config' not in kwargs:
-            # enable check for task and subtask processor
-            kwargs['config'] = CONFIG_FILE
+        init_local = kwargs.get('init_local', False)
+        if init_local:
+            if 'n_cpu' not in kwargs:
+                # limit to 2 cpu each worker
+                kwargs['n_cpu'] = 2 * kwargs.get('n_worker', 1)
+            if 'config' not in kwargs:
+                # enable check for task and subtask processor
+                kwargs['config'] = CONFIG_FILE
         session = await super().init(address, session_id, **kwargs)
         # reset global router
         Router.set_instance(Router(list(), None))
@@ -77,7 +86,6 @@ async def _new_test_session(address: str,
     if session_id is None:
         session_id = str(uuid.uuid4())
 
-    kwargs.pop('backend', None)
     session = await CheckedSession.init(
         address, session_id=session_id, **kwargs)
     if default:
@@ -87,7 +95,7 @@ async def _new_test_session(address: str,
 
 def new_test_session(address: str = None,
                      session_id: str = None,
-                     backend: str = 'oscar',
+                     backend: str = 'test',
                      default: bool = False,
                      **kwargs):
     if address is None:

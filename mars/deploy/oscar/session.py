@@ -89,8 +89,8 @@ class Session(AbstractSession):
             raise TypeError(f'Oscar session got unexpected '
                             f'arguments: {unexpected_keys}')
 
-        return Session(address, session_id,
-                       session_api, meta_api, task_api)
+        return cls(address, session_id,
+                   session_api, meta_api, task_api)
 
     async def _run_in_background(self,
                                  tileables: list,

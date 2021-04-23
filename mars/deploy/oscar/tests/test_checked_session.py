@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 
 import mars.tensor as mt
+from mars.config import option_context
 from mars.core import TileableType, OperandType
 from mars.deploy.oscar.service import _load_config
 from mars.deploy.oscar.tests.session import new_test_session, CONFIG_FILE
@@ -40,7 +41,13 @@ class FakeCheckedSubtaskProcessor(CheckedSubtaskProcessor):
             return super()._execute_operand(ctx, op)
 
 
-def test_checked_session():
+@pytest.fixture(scope='module')
+def setup():
+    with option_context({'show_progress': False}):
+        yield
+
+
+def test_checked_session(setup):
     sess = new_test_session(default=True)
 
     a = mt.ones((10, 10))
@@ -52,7 +59,7 @@ def test_checked_session():
     sess.stop_server()
 
 
-def test_check_task_processor():
+def test_check_task_processor(setup):
     config = _load_config(CONFIG_FILE)
     config['task']['task_processor_cls'] = \
         'mars.deploy.oscar.tests.' \
@@ -64,16 +71,15 @@ def test_check_task_processor():
     b = a + 1
 
     with pytest.raises(RuntimeError, match='Premeditated'):
-        b.execute(show_progress=False)
+        b.execute()
 
     # test test config
-    b.execute(show_progress=False,
-              extra_config={'check_nsplits': False})
+    b.execute(extra_config={'check_nsplits': False})
 
     sess.stop_server()
 
 
-def test_check_subtask_processor():
+def test_check_subtask_processor(setup):
     config = _load_config(CONFIG_FILE)
     config['task']['subtask_processor_cls'] = \
         'mars.deploy.oscar.tests.' \
@@ -85,10 +91,9 @@ def test_check_subtask_processor():
     b = a + 1
 
     with pytest.raises(RuntimeError, match='Premeditated'):
-        b.execute(show_progress=False)
+        b.execute()
 
     # test test config
-    b.execute(show_progress=False,
-              extra_config={'check_all': False})
+    b.execute(extra_config={'check_all': False})
 
     sess.stop_server()
