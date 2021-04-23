@@ -14,5 +14,5 @@
 
 from .api import TaskAPI, MockTaskAPI
 from .core import Task, TaskStatus, TaskResult, Subtask, \
-    SubTaskStatus, SubtaskResult, new_task_id
+    SubtaskStatus, SubtaskResult, new_task_id
 from .errors import TaskNotExist, SubtaskNotExist, SlotOccupiedAlready

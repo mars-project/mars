@@ -11,12 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import sys
-
-import pytest
-
-from .task_processor import CheckedTaskProcessor
-
-if sys.version_info < (3, 7):
-    pytest.skip("skipping tests for python 3.6", allow_module_level=True)

@@ -22,15 +22,17 @@ import pytest
 import mars.dataframe as md
 import mars.tensor as mt
 from mars.core.session import get_default_session, \
-    new_session, execute, fetch
+    new_session, execute, fetch, stop_server
 from mars.deploy.oscar.local import new_cluster
-from mars.tests.core import CONFIG_TEST_FILE
+
+
+CONFIG_TEST_FILE = os.path.join(
+    os.path.dirname(__file__), 'local_test_config.yml')
 
 
 @pytest.fixture()
 async def create_cluster():
-    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
-        if sys.platform != 'win32' else None
+    start_method = os.environ.get('POOL_START_METHOD', None)
     client = await new_cluster(subprocess_start_method=start_method,
                                config=CONFIG_TEST_FILE,
                                n_worker=1,
@@ -100,11 +102,17 @@ def test_sync_execute():
         result = a.fetch()
         np.testing.assert_array_equal(result, raw.sum(axis=1))
 
+        c = b + 1
+        c.execute(show_progress=False)
+        result = c.fetch()
+        np.testing.assert_array_equal(result, raw.sum(axis=1) + 1)
+
         c = mt.tensor(raw, chunk_size=5).sum()
         d = session.execute(c)
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
 
+    session.stop_server()
     assert get_default_session() is None
 
 
@@ -117,3 +125,4 @@ def test_no_default_session():
         execute(b, show_progress=False)
 
     np.testing.assert_array_equal(fetch(b), raw + 1)
+    stop_server()

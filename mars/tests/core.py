@@ -24,6 +24,7 @@ import time
 import unittest
 from collections.abc import Iterable
 from weakref import ReferenceType
+from typing import Dict
 
 import numpy as np
 import pandas as pd
@@ -61,9 +62,6 @@ cudf = lazy_import('cudf', globals=globals())
 ray = lazy_import('ray', globals=globals())
 
 logger = logging.getLogger(__name__)
-
-CONFIG_TEST_FILE = os.path.join(
-    os.path.dirname(__file__), 'config_test.yml')
 
 
 class TestCase(unittest.TestCase):
@@ -743,3 +741,177 @@ class ExecutorForTest(MarsObjectCheckMixin, Executor):
 
     execute_tensors = execute_tileables
     execute_dataframes = execute_tileables
+
+
+class ObjectCheckMixin:
+    _check_options: Dict
+
+    @staticmethod
+    def adapt_index_value(value):
+        if hasattr(value, 'to_pandas'):
+            return value.to_pandas()
+        return value
+
+    def assert_shape_consistent(self, expected_shape, real_shape):
+        if not self._check_options['check_shape']:
+            return
+
+        if len(expected_shape) != len(real_shape):
+            raise AssertionError('ndim in metadata %r is not consistent with real ndim %r'
+                                 % (len(expected_shape), len(real_shape)))
+        for e, r in zip(expected_shape, real_shape):
+            if not np.isnan(e) and e != r:
+                raise AssertionError('shape in metadata %r is not consistent with real shape %r'
+                                     % (expected_shape, real_shape))
+
+    @staticmethod
+    def assert_dtype_consistent(expected_dtype, real_dtype):
+        if isinstance(real_dtype, pd.DatetimeTZDtype):
+            real_dtype = real_dtype.base
+        if expected_dtype != real_dtype:
+            if expected_dtype == np.dtype('O') and real_dtype.type is np.str_:
+                # real dtype is string, this matches expectation
+                return
+            if expected_dtype is None:
+                raise AssertionError('Expected dtype cannot be None')
+            if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(expected_dtype, real_dtype):
+                raise AssertionError('cannot cast between dtype of real dtype %r and dtype %r defined in metadata'
+                                     % (real_dtype, expected_dtype))
+
+    def assert_tensor_consistent(self, expected, real):
+        from mars.lib.sparse import SparseNDArray
+        np_types = (np.generic, np.ndarray, SparseNDArray)
+        if cupy is not None:
+            np_types += (cupy.ndarray,)
+
+        if isinstance(real, (str, int, bool, float, complex)):
+            real = np.array([real])[0]
+        if not isinstance(real, np_types):
+            raise AssertionError(f'Type of real value ({type(real)}) not one of {np_types!r}')
+        if not hasattr(expected, 'dtype'):
+            return
+        self.assert_dtype_consistent(expected.dtype, real.dtype)
+        self.assert_shape_consistent(expected.shape, real.shape)
+
+    @classmethod
+    def assert_index_value_consistent(cls, expected_index_value, real_index):
+        if expected_index_value.has_value():
+            expected_index = expected_index_value.to_pandas()
+            try:
+                pd.testing.assert_index_equal(expected_index, cls.adapt_index_value(real_index))
+            except AssertionError as e:
+                raise AssertionError(
+                    f'Index of real value ({expected_index}) not equal to ({real_index})') from e
+
+    def assert_dataframe_consistent(self, expected, real):
+        dataframe_types = (pd.DataFrame,)
+        if cudf is not None:
+            dataframe_types += (cudf.DataFrame,)
+
+        if not isinstance(real, dataframe_types):
+            raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
+        self.assert_shape_consistent(expected.shape, real.shape)
+        if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
+            pd.testing.assert_index_equal(expected.dtypes.index, self.adapt_index_value(real.dtypes.index))
+
+            if self._check_options['check_dtypes']:
+                try:
+                    for expected_dtype, real_dtype in zip(expected.dtypes, real.dtypes):
+                        self.assert_dtype_consistent(expected_dtype, real_dtype)
+                except AssertionError:
+                    raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
+                                         % (expected.dtypes, real.dtypes))
+
+        self.assert_index_value_consistent(expected.columns_value, real.columns)
+        self.assert_index_value_consistent(expected.index_value, real.index)
+
+    def assert_series_consistent(self, expected, real):
+        series_types = (pd.Series,)
+        if cudf is not None:
+            series_types += (cudf.Series,)
+
+        if not isinstance(real, series_types):
+            raise AssertionError(f'Type of real value ({type(real)}) not Series')
+        self.assert_shape_consistent(expected.shape, real.shape)
+
+        if self._check_options['check_series_name'] and expected.name != real.name:
+            raise AssertionError(f'series name in metadata {expected.name} '
+                                 f'is not equal to real name {real.name}')
+
+        self.assert_dtype_consistent(expected.dtype, real.dtype)
+        self.assert_index_value_consistent(expected.index_value, real.index)
+
+    def assert_groupby_consistent(self, expected, real):
+        from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+        from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
+        from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+
+        df_groupby_types = (DataFrameGroupBy,)
+        series_groupby_types = (SeriesGroupBy,)
+
+        try:
+            from cudf.core.groupby.groupby import DataFrameGroupBy as CUDataFrameGroupBy, \
+                SeriesGroupBy as CUSeriesGroupBy
+            df_groupby_types += (CUDataFrameGroupBy,)
+            series_groupby_types += (CUSeriesGroupBy,)
+        except ImportError:
+            pass
+
+        if isinstance(expected, (DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE)) \
+                and isinstance(real, df_groupby_types):
+            selection = getattr(real, '_selection', None)
+            if not selection:
+                self.assert_dataframe_consistent(expected, real.obj)
+            else:
+                self.assert_dataframe_consistent(expected, real.obj[selection])
+        elif isinstance(expected, (SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE)) \
+                and isinstance(real, series_groupby_types):
+            self.assert_series_consistent(expected, real.obj)
+        else:
+            raise AssertionError('GroupBy type not consistent. Expecting %r but receive %r'
+                                 % (type(expected), type(real)))
+
+    def assert_index_consistent(self, expected, real):
+        index_types = (pd.Index,)
+        if cudf is not None:
+            index_types += (cudf.Index,)
+
+        if not isinstance(real, index_types):
+            raise AssertionError(f'Type of real value ({type(real)}) not Index')
+        self.assert_shape_consistent(expected.shape, real.shape)
+
+        if self._check_options['check_series_name'] and expected.name != real.name:
+            raise AssertionError('series name in metadata %r is not equal to real name %r'
+                                 % (expected.name, real.name))
+
+        self.assert_dtype_consistent(expected.dtype, real.dtype)
+        self.assert_index_value_consistent(expected.index_value, real)
+
+    def assert_categorical_consistent(self, expected, real):
+        if not isinstance(real, pd.Categorical):
+            raise AssertionError(f'Type of real value ({type(real)}) not Categorical')
+        self.assert_dtype_consistent(expected.dtype, real.dtype)
+        self.assert_shape_consistent(expected.shape, real.shape)
+        self.assert_index_value_consistent(expected.categories_value, real.categories)
+
+    def assert_object_consistent(self, expected, real):
+        from mars.tensor.core import TENSOR_TYPE
+        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
+            INDEX_TYPE, CATEGORICAL_TYPE
+
+        from mars.tensor.core import TENSOR_CHUNK_TYPE
+        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
+            GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
+
+        if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
+            self.assert_tensor_consistent(expected, real)
+        elif isinstance(expected, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)):
+            self.assert_dataframe_consistent(expected, real)
+        elif isinstance(expected, (SERIES_TYPE, SERIES_CHUNK_TYPE)):
+            self.assert_series_consistent(expected, real)
+        elif isinstance(expected, (GROUPBY_TYPE, GROUPBY_CHUNK_TYPE)):
+            self.assert_groupby_consistent(expected, real)
+        elif isinstance(expected, (INDEX_TYPE, INDEX_CHUNK_TYPE)):
+            self.assert_index_consistent(expected, real)
+        elif isinstance(expected, (CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE)):
+            self.assert_categorical_consistent(expected, real)
