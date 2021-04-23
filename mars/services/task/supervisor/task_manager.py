@@ -571,11 +571,10 @@ class TaskManagerActor(mo.Actor):
         return tiled_context
 
     def _get_task_processor_cls(self):
-        if isinstance(self._task_processor_cls, str):
+        if self._task_processor_cls is not None:
+            assert isinstance(self._task_processor_cls, str)
             module, name = self._task_processor_cls.rsplit('.', 1)
             return getattr(importlib.import_module(module), name)
-        elif self._task_processor_cls is not None:
-            return self._task_processor_cls
         else:
             return TaskProcessor
 

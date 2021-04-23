@@ -453,7 +453,11 @@ class SubtaskProcessor:
             self.result.data_size = sum(memory_sizes)
 
         await self.done()
-        await report_progress
+        report_progress.cancel()
+        try:
+            await report_progress
+        except asyncio.CancelledError:
+            pass
 
     async def report_progress_periodically(self, interval=.5, eps=0.001):
         last_progress = self.result.progress
@@ -498,11 +502,10 @@ class SubtaskRunnerActor(mo.Actor):
     def _get_subtask_process_cls(cls, subtask_processor_cls):
         if subtask_processor_cls is None:
             return SubtaskProcessor
-        elif isinstance(subtask_processor_cls, str):
+        else:
+            assert isinstance(subtask_processor_cls, str)
             module, class_name = subtask_processor_cls.rsplit('.', 1)
             return getattr(importlib.import_module(module), class_name)
-        else:
-            return subtask_processor_cls
 
     async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
         # storage API

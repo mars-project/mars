@@ -19,7 +19,7 @@ from ...core import Tileable
 from ...lib.aio import alru_cache
 from ..session import SessionAPI
 from .core import TileableGraph, TaskResult
-from .supervisor.task_manager import TaskConfigurationActor, TaskManagerActor
+from .supervisor.task_manager import TaskManagerActor
 
 
 class TaskAPI:
@@ -211,14 +211,3 @@ class TaskAPI:
             The last idle time if the task manager is idle else None.
         """
         return await self._task_manager_ref.last_idle_time()
-
-
-class MockTaskAPI(TaskAPI):
-    @classmethod
-    async def create(cls,
-                     session_id: str,
-                     address: str) -> "TaskAPI":
-        await mo.create_actor(TaskConfigurationActor, dict(),
-                              uid=TaskConfigurationActor.default_uid(),
-                              address=address)
-        return await super().create_session(session_id, address)
