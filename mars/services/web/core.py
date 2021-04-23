@@ -107,8 +107,8 @@ class ServiceWebAPIBase:
 
     def __del__(self):
         try:
-            self._sync_post('__destroy_api__', api_id=self._api_id, req_config=dict(timeout=(0.1, 0.5)))
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            self._sync_post('__destroy_api__', api_id=self._api_id, req_config=dict(timeout=(0.1, 1)))
+        except Exception:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             # server is closed
             pass
 
