@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import weakref
 from typing import Union, Dict
 
 from ...core.session import _new_session
@@ -19,27 +21,32 @@ from ...resource import cpu_count, cuda_count
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
+from .typing import ClusterType, ClientType
 
 
 async def new_cluster(address: str = '0.0.0.0',
                       n_worker: int = 1,
                       n_cpu: Union[int, str] = 'auto',
                       n_gpu: Union[int, str] = 'auto',
-                      subprocess_start_method: str = 'spawn',
-                      config: Union[str, Dict] = None) -> "LocalClient":
+                      subprocess_start_method: str = None,
+                      backend: str = None,
+                      config: Union[str, Dict] = None) -> ClientType:
+    if subprocess_start_method is None:
+        subprocess_start_method = \
+            'spawn' if sys.platform == 'win32' else 'forkserver'
     cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
                            subprocess_start_method, config)
     await cluster.start()
-    return await LocalClient.create(cluster)
+    return await LocalClient.create(cluster, backend)
 
 
 class LocalCluster:
-    def __init__(self,
+    def __init__(self: ClusterType,
                  address: str = '0.0.0.0',
                  n_worker: int = 1,
                  n_cpu: Union[int, str] = 'auto',
                  n_gpu: Union[int, str] = 'auto',
-                 subprocess_start_method: str = 'spawn',
+                 subprocess_start_method: str = None,
                  config: Union[str, Dict] = None):
         self._address = address
         self._subprocess_start_method = subprocess_start_method
@@ -85,23 +92,27 @@ class LocalCluster:
 
 
 class LocalClient:
-    def __init__(self,
-                 cluster: LocalCluster,
+    def __init__(self: ClientType,
+                 cluster: ClusterType,
                  session: Session):
         self._cluster = cluster
-        self._session = session
-
-    @classmethod
-    async def create(cls,
-                     cluster: LocalCluster) -> "LocalClient":
-        session = await _new_session(
-            cluster._supervisor_pool.external_address,
-            backend=Session.name, default=True)
-        return LocalClient(cluster, session)
+        self._session = weakref.ref(session)
 
     @property
     def session(self):
-        return self._session
+        return self._session()
+
+    @classmethod
+    async def create(cls,
+                     cluster: LocalCluster,
+                     backend: str = None) -> ClientType:
+        backend = Session.name if backend is None else backend
+        session = await _new_session(
+            cluster._supervisor_pool.external_address,
+            backend=backend, default=True)
+        client = LocalClient(cluster, session)
+        session.client = client
+        return client
 
     async def __aenter__(self):
         return self
@@ -110,5 +121,4 @@ class LocalClient:
         await self.stop()
 
     async def stop(self):
-        await self._session.destroy()
         await self._cluster.stop()

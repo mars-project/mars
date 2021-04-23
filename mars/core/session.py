@@ -17,9 +17,11 @@ import threading
 import uuid
 import warnings
 from abc import ABC, abstractmethod
-from typing import Dict, Type, Tuple, Union
+from typing import Dict, List, Type, Tuple, Union
 
-from ..utils import classproperty
+from ..config import options
+from ..core import TileableGraph, enter_mode
+from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
 
 
@@ -61,6 +63,53 @@ class ExecutionInfo(ABC):
         return self._future.__await__()
 
 
+@enter_mode(build=True)
+def gen_submit_tileable_graph(
+        session: "AbstractSession",
+        result_tileables: List[TileableType]):
+    tileable_to_copied = dict()
+    result = []
+    graph = TileableGraph(result)
+
+    q = list(result_tileables)
+    while q:
+        tileable = q.pop()
+        if tileable in tileable_to_copied:
+            continue
+        outputs = tileable.op.outputs
+        inputs = tileable.inputs
+        new_inputs = []
+        all_inputs_processed = True
+        for inp in inputs:
+            if inp in tileable_to_copied:
+                new_inputs.append(tileable_to_copied[inp])
+            elif session in inp._executed_sessions:
+                # executed, gen fetch
+                fetch_input = build_fetch(inp).data
+                tileable_to_copied[inp] = fetch_input
+                graph.add_node(fetch_input)
+                new_inputs.append(fetch_input)
+            else:
+                # some input not processed before
+                all_inputs_processed = False
+                # put back tileable
+                q.append(tileable)
+                q.append(inp)
+                break
+        if all_inputs_processed:
+            new_outputs = [t.data for t
+                           in copy_tileables(outputs, inputs=new_inputs)]
+            for out, new_out in zip(outputs, new_outputs):
+                tileable_to_copied[out] = new_out
+                if out in result_tileables:
+                    result.append(new_out)
+                graph.add_node(new_out)
+                for new_inp in new_inputs:
+                    graph.add_edge(new_inp, new_out)
+
+    return graph
+
+
 class AbstractSession(ABC):
     name = None
     _default_session_local = threading.local()
@@ -75,7 +124,7 @@ class AbstractSession(ABC):
     def address(self):
         return self._address
 
-    @staticmethod
+    @classmethod
     @abstractmethod
     async def init(cls,
                    address: str,
@@ -118,7 +167,7 @@ class AbstractSession(ABC):
         """
 
     @abstractmethod
-    async def fetch(self, *tileables) -> list:
+    async def fetch(self, *tileables, **kwargs) -> list:
         """
         Fetch tileables' data.
 
@@ -130,6 +179,11 @@ class AbstractSession(ABC):
         Returns
         -------
         data
+        """
+
+    async def stop_server(self):
+        """
+        Stop server.
         """
 
     def as_default(self):
@@ -172,6 +226,11 @@ async def _new_session(address: str,
 
 def get_default_session() -> AbstractSession:
     return AbstractSession.default
+
+
+def stop_server():
+    if AbstractSession.default:
+        SyncSession(AbstractSession.default).stop_server()
 
 
 warning_msg = """No session found, local session \
@@ -265,8 +324,10 @@ def execute(tileable: TileableType,
             wait: bool = True,
             backend: str = 'oscar',
             new_session_kwargs: dict = None,
-            show_progress: Union[bool, str] = 'auto',
+            show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
+    if show_progress is None:
+        show_progress = options.show_progress
     _loop.run_until_complete(_execute(
         tileable, *tileables, session=session, wait=wait,
         backend=backend, new_session_kwargs=new_session_kwargs,
@@ -309,6 +370,10 @@ class SyncSession:
     def destroy(self):
         return _loop.run_until_complete(
             self._session.destroy())
+
+    def stop_server(self):
+        return _loop.run_until_complete(
+            self._session.stop_server())
 
     def __enter__(self):
         return self

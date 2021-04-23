@@ -14,15 +14,16 @@
 
 import asyncio
 import concurrent.futures as futures
+import importlib
 import logging
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Dict, Union, Optional
+from typing import Any, Dict, List, Optional, Type, Union
 
 from .... import oscar as mo
-from ....core import ChunkGraph
+from ....core import ChunkGraph, OperandType
 from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
     VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
@@ -33,7 +34,7 @@ from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
 from ..config import task_options
-from ..core import Subtask, SubTaskStatus, SubtaskResult
+from ..core import Subtask, SubtaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
 
 
@@ -43,7 +44,10 @@ _SubTaskRunnerType = Union["SubtaskRunnerActor", mo.ActorRef]
 
 
 class SubtaskManagerActor(mo.Actor):
-    def __init__(self):
+    def __init__(self, subtask_processor_cls: Type):
+        # specify subtask process class
+        # for test purpose
+        self._subtask_processor_cls = subtask_processor_cls
         self._cluster_api = None
 
     async def __post_create__(self):
@@ -57,7 +61,9 @@ class SubtaskManagerActor(mo.Actor):
         supervisor_address = (await self._cluster_api.get_supervisors())[0]
         for band, n_slot in band_to_slots.items():
             await mo.create_actor(BandSubtaskManagerActor, supervisor_address,
-                                  n_slot, band[1], address=self.address,
+                                  n_slot, band[1],
+                                  subtask_processor_cls=self._subtask_processor_cls,
+                                  address=self.address,
                                   uid=BandSubtaskManagerActor.gen_uid(band[1]))
 
 
@@ -68,10 +74,12 @@ class BandSubtaskManagerActor(mo.Actor):
     def __init__(self,
                  supervisor_address: str,
                  n_slots: int,
-                 band: str = 'numa-0'):
+                 band: str = 'numa-0',
+                 subtask_processor_cls = None):
         self._supervisor_address = supervisor_address
         self._n_slots = n_slots
         self._band = band
+        self._subtask_processor_cls = subtask_processor_cls
 
         self._subtask_runner_slots = list()
         self._free_slots = set()
@@ -85,6 +93,7 @@ class BandSubtaskManagerActor(mo.Actor):
             runner = await mo.create_actor(
                 SubtaskRunnerActor,
                 self._supervisor_address, band, self.ref(),
+                subtask_processor_cls=self._subtask_processor_cls,
                 uid=SubtaskRunnerActor.default_uid(),
                 address=self.address,
                 allocate_strategy=strategy)
@@ -126,7 +135,7 @@ class BandSubtaskManagerActor(mo.Actor):
 
             # get subtask result and set it to cancelled
             result = await subtask_runner.get_subtask_result()
-            result.status = SubTaskStatus.cancelled
+            result.status = SubtaskStatus.cancelled
 
             event = self._cancelled_subtask_runners[subtask_runner] = asyncio.Event()
             await mo.kill_actor(subtask_runner)
@@ -189,7 +198,7 @@ class SubtaskProcessor:
             subtask_id=subtask.subtask_id,
             session_id=subtask.session_id,
             task_id=subtask.task_id,
-            status=SubTaskStatus.pending,
+            status=SubtaskStatus.pending,
             progress=0.0)
 
         # status and intermediate states
@@ -265,7 +274,7 @@ class SubtaskProcessor:
         await task_manager.set_subtask_result(result)
 
     async def cancel(self):
-        self.result.status = SubTaskStatus.cancelled
+        self.result.status = SubtaskStatus.cancelled
         self.result.progress = 1.0
         # notify task manager
         fut = self.notify_task_manager_result(
@@ -274,8 +283,8 @@ class SubtaskProcessor:
             await fut
 
     async def done(self):
-        if self.result.status == SubTaskStatus.running:
-            self.result.status = SubTaskStatus.succeeded
+        if self.result.status == SubtaskStatus.running:
+            self.result.status = SubtaskStatus.succeeded
         self.result.progress = 1.0
         fut = self.notify_task_manager_result(
             self._supervisor_address, self.result)
@@ -289,7 +298,7 @@ class SubtaskProcessor:
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             logger.exception(f"Error when executing subtask: {self.subtask_id}")
             _, err, tb = sys.exc_info()
-            self.result.status = SubTaskStatus.errored
+            self.result.status = SubtaskStatus.errored
             self.result.error = err
             self.result.traceback = tb
 
@@ -304,14 +313,18 @@ class SubtaskProcessor:
             ref_counts[chunk] += chunk_graph.count_successors(chunk)
         return ref_counts
 
+    def _execute_operand(self,
+                         ctx: Dict[str, Any],
+                         op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
+        return execute(ctx, op)
+
     async def run(self):
-        self.result.status = SubTaskStatus.running
+        self.result.status = SubtaskStatus.running
 
         with self._catch_error():
             loop = asyncio.get_running_loop()
             executor = futures.ThreadPoolExecutor(1)
 
-            chunk_graph = self._chunk_graph
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
             ref_counts = self._init_ref_counts()
@@ -328,7 +341,7 @@ class SubtaskProcessor:
                     # we make it run in a thread pool to not block current thread.
                     logger.info(f'Start executing operand: {chunk.op},'
                                 f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                    future = loop.run_in_executor(executor, execute,
+                    future = loop.run_in_executor(executor, self._execute_operand,
                                                   self._datastore, chunk.op)
                     try:
                         await future
@@ -440,7 +453,11 @@ class SubtaskProcessor:
             self.result.data_size = sum(memory_sizes)
 
         await self.done()
-        await report_progress
+        report_progress.cancel()
+        try:
+            await report_progress
+        except asyncio.CancelledError:
+            pass
 
     async def report_progress_periodically(self, interval=.5, eps=0.001):
         last_progress = self.result.progress
@@ -469,14 +486,26 @@ class SubtaskRunnerActor(mo.Actor):
     def __init__(self,
                  supervisor_address: str,
                  band: BandType,
-                 subtask_manager: Union[BandSubtaskManagerActor, mo.ActorRef]):
+                 subtask_manager: Union[BandSubtaskManagerActor, mo.ActorRef],
+                 subtask_processor_cls: Type = None):
         self._supervisor_address = supervisor_address
         self._band = band
         self._subtask_info: Optional[_SubtaskRunningInfo] = None
         self._subtask_manager = subtask_manager
+        self._subtask_processor_cls = \
+            self._get_subtask_process_cls(subtask_processor_cls)
 
     async def __post_create__(self):
         await self._subtask_manager.register_slot(self.ref())
+
+    @classmethod
+    def _get_subtask_process_cls(cls, subtask_processor_cls):
+        if subtask_processor_cls is None:
+            return SubtaskProcessor
+        else:
+            assert isinstance(subtask_processor_cls, str)
+            module, class_name = subtask_processor_cls.rsplit('.', 1)
+            return getattr(importlib.import_module(module), class_name)
 
     async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
         # storage API
@@ -486,8 +515,9 @@ class SubtaskRunnerActor(mo.Actor):
         meta_api = await MetaAPI.create(
             subtask.session_id, self._supervisor_address)
 
-        return SubtaskProcessor(subtask, storage_api, meta_api,
-                                self._band, self._supervisor_address)
+        processor_cls = self._subtask_processor_cls
+        return processor_cls(subtask, storage_api, meta_api,
+                             self._band, self._supervisor_address)
 
     async def _run_subtask(self, subtask: Subtask):
         processor = await self._init_subtask_processor(subtask)

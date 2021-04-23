@@ -16,5 +16,7 @@ import sys
 
 import pytest
 
+from .task_processor import CheckedTaskProcessor
+
 if sys.version_info < (3, 7):
     pytest.skip("skipping tests for python 3.6", allow_module_level=True)

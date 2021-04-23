@@ -14,6 +14,9 @@
 
 from typing import Dict
 
+from .... import oscar as mo
+from .task_manager import TaskConfigurationActor
+
 
 async def start(config: Dict, address: str):
     """
@@ -25,13 +28,20 @@ async def start(config: Dict, address: str):
         service config.
         {
             "task": {
-                "bands": {
-                    "numa-0": 8,
-                    "gpu-0": 1,
+                "default_config": {
+                    "optimize_tileable_graph": True,
+                    "optimize_chunk_graph": True,
+                    "fuse_enabled": True
                 }
             }
         }
     address : str
         Actor pool address.
     """
-    pass
+    task_config = config.get('task', dict())
+    options = task_config.get('default_config', dict())
+    task_processor_cls = task_config.get('task_processor_cls')
+    await mo.create_actor(TaskConfigurationActor, options,
+                          task_processor_cls=task_processor_cls,
+                          address=address,
+                          uid=TaskConfigurationActor.default_uid())
