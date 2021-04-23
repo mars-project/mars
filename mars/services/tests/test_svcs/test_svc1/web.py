@@ -18,13 +18,11 @@ import mars.oscar as mo
 
 
 class TestWebHandler(MarsRequestHandler):
-    async def post(self, *args, **kwargs):
-        import traceback
-        traceback.print_stack()
+    async def get(self):
         ref = await mo.actor_ref('TestActor1', address=self._supervisor_addr)
         self.write(str(await ref.get_arg()))
 
 
 web_handlers = {
-    '/test_actor1/test_api/(a.*)/(b+)': TestWebHandler,
+    '/test_actor1/test_api': TestWebHandler,
 }
