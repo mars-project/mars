@@ -166,7 +166,7 @@ class AbstractSession(ABC):
         """
 
     @abstractmethod
-    async def fetch(self, *tileables) -> list:
+    async def fetch(self, *tileables, **kwargs) -> list:
         """
         Fetch tileables' data.
 

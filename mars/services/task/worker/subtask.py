@@ -315,7 +315,7 @@ class SubtaskProcessor:
 
     def _execute_operand(self,
                          ctx: Dict[str, Any],
-                         op: OperandType):
+                         op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
         return execute(ctx, op)
 
     async def run(self):
