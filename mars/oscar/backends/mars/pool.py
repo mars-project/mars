@@ -146,7 +146,10 @@ class MainActorPool(MainActorPoolBase):
             wait_pool = futures.ThreadPoolExecutor(1)
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(wait_pool, process.join, 3)
-        process.kill()
+        try:  # pragma: no cover
+            os.kill(process.pid, signal.SIGKILL)
+        except OSError:
+            pass
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
         return process.is_alive()

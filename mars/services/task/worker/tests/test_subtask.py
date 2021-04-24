@@ -165,5 +165,5 @@ async def test_cancel_subtask(actor_pool):
         await aio_task
     # need 1 sec to reach timeout, then killing actor and wait for auto recovering
     # the time would not be over 5 sec
-    assert timer.duration < 5
+    assert timer.duration < 6
     assert await manager.is_slot_free(subtask_runner) is True

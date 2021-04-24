@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import asyncio
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,6 +29,8 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 plasma = lazy_import('pyarrow.plasma', globals=globals(), rename='plasma')
+if sys.platform.startswith('win'):
+    plasma = None
 
 PAGE_SIZE = 64 * 1024
 

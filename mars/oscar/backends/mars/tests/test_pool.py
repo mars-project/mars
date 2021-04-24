@@ -14,6 +14,7 @@
 
 import asyncio
 import os
+import signal
 import sys
 import time
 
@@ -434,7 +435,8 @@ async def test_server_closed():
 
         # kill subprocess 1
         process = list(pool._sub_processes.values())[0]
-        process.kill()
+        os.kill(process.pid, signal.SIGKILL)
+        # process.join()
 
         with pytest.raises(ServerClosed):
             # process already been killed,
