@@ -83,7 +83,7 @@ class ServiceWebHandlerBase(MarsRequestHandler):
             self.write(serialize(result))
         except Exception as e:
             logger.info(f'Execute method {api_method_name} with {api_id, args, kwargs} failed, got exception {e}')
-            traceback.format_exc()
+            traceback.print_exc()
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.write(serialize(_HandlerException(exc_type, exc_value, exc_traceback)))
 
