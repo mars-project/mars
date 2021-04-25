@@ -55,4 +55,3 @@ class MetaWebAPI(ServiceWebAPIBase):
     @classmethod
     async def destroy_session(cls, session_id: str, address: str):
         return await cls._post(AsyncHTTPClient(), 'destroy_session',  None, {}, session_id, address)
-
