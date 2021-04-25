@@ -91,10 +91,22 @@ def test_sync_execute(ray_cluster, create_cluster):
 async def test_web_session(ray_cluster, create_cluster):
     await test_local.test_web_session(create_cluster)
     supervisor_address, web_address = create_cluster.supervisor_address, create_cluster.web_address
-    await ray.remote(_run_web_session).remote(supervisor_address, web_address)
+    assert await ray.remote(_run_web_session).remote(supervisor_address, web_address)
+    assert await ray.remote(_sync_web_session_test).remote(supervisor_address, web_address)
 
 
 def _run_web_session(supervisor_address, web_address):
     register_ray_serializers()
     import asyncio
     asyncio.new_event_loop().run_until_complete(test_local.web_session_test(supervisor_address, web_address))
+    return True
+
+
+def _sync_web_session_test(supervisor_address, web_address):
+    register_ray_serializers()
+    new_session(supervisor_address, backend='oscar', default=True, web_address=web_address)
+    raw = np.random.RandomState(0).rand(10, 5)
+    a = mt.tensor(raw, chunk_size=5).sum(axis=1)
+    b = a.execute(show_progress=False)
+    assert b is a
+    return True
