@@ -16,7 +16,6 @@ import asyncio
 import inspect
 import logging
 import os
-import sys
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -26,6 +25,7 @@ from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
+from ..router import Router
 from .communication import ChannelID, RayServer
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
 
@@ -75,9 +75,16 @@ class RayMainActorPool(MainActorPoolBase):
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
             # must shutdown gracefully, or coverage info lost
-            process.exit.remote()
+            process.exit_actor.remote()
+            waited_time, wait_time = 0, 3
             while await self.is_sub_pool_alive(process):
+                if waited_time > wait_time:
+                    logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
+                    ray.kill(process)
+                    return
                 await asyncio.sleep(0.1)
+                wait_time += 0.1
+
         else:
             ray.kill(process)
 
@@ -92,7 +99,15 @@ class RayMainActorPool(MainActorPoolBase):
 
 @_register_message_handler
 class RaySubActorPool(SubActorPoolBase):
-    pass
+
+    async def stop(self):
+        try:
+            # clean global router
+            Router.get_instance().remove_router(self._router)
+            await self._caller.stop()
+            self._servers = []
+        finally:
+            self._stopped.set()
 
 
 class PoolStatus(Enum):
@@ -145,8 +160,10 @@ class RayPoolBase(ABC):
         else:
             return attr
 
-    def exit(self):
-        sys.exit(0)
+    def exit_actor(self):
+        """Exiting current process gracefully."""
+        logger.info('Exiting %s now', os.getpid())
+        ray.actor.exit_actor()
 
 
 class RayMainPool(RayPoolBase):
