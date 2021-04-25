@@ -162,7 +162,7 @@ class RayPoolBase(ABC):
 
     def exit_actor(self):
         """Exiting current process gracefully."""
-        logger.info('Exiting %s now', os.getpid())
+        logger.info('Exiting %s of process %s now', self, os.getpid())
         ray.actor.exit_actor()
 
 
