@@ -62,7 +62,10 @@ class Router:
 
     def remove_router(self, router: "Router"):
         for external_address in router._curr_external_addresses:
-            self._curr_external_addresses.remove(external_address)
+            try:
+                self._curr_external_addresses.remove(external_address)
+            except ValueError:
+                pass
         for addr in router._local_mapping:
             self._local_mapping.pop(addr, None)
         for addr in router._mapping:

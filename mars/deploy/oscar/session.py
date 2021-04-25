@@ -17,15 +17,16 @@ from dataclasses import dataclass
 from numbers import Integral
 from weakref import WeakKeyDictionary
 
-from ...core import Tileable, TileableGraph, TileableGraphBuilder, enter_mode
+from ...core import Tileable, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
-    ExecutionInfo as AbstractExectionInfo
+    ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
 from ...services.meta import MetaAPI, MetaWebAPI
 from ...services.session import SessionAPI, SessionWebAPI
-from ...services.storage import StorageAPI
+from ...services.storage import StorageAPI, StorageWebAPI
 from ...services.task import TaskAPI, TaskWebAPI, TaskResult
 from ...services.web.core import set_web_address
 from ...utils import implements, merge_chunks
+from .typing import ClientType
 
 
 @dataclass
@@ -58,12 +59,14 @@ class Session(AbstractSession):
                  session_api: SessionAPI,
                  meta_api: MetaAPI,
                  task_api: TaskAPI,
-                 web_api: bool = False):
+                 web_api: bool = False,
+                 client: ClientType = None):
         super().__init__(address, session_id)
         self._web_api = web_api
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
+        self.client = client
 
         self._tileable_to_fetch = WeakKeyDictionary()
 
@@ -73,7 +76,8 @@ class Session(AbstractSession):
                    address: str,
                    session_id: str,
                    **kwargs) -> "Session":
-        if kwargs.pop('init_local', False):
+        init_local = kwargs.pop('init_local', False)
+        if init_local:
             from .local import new_cluster
             return (await new_cluster(address, **kwargs)).session
 
@@ -92,8 +96,8 @@ class Session(AbstractSession):
             raise TypeError(f'Oscar session got unexpected '
                             f'arguments: {unexpected_keys}')
 
-        return Session(address, session_id,
-                       session_api, meta_api, task_api)
+        return cls(address, session_id,
+                   session_api, meta_api, task_api)
 
     async def _run_in_background(self,
                                  tileables: list,
@@ -123,6 +127,7 @@ class Session(AbstractSession):
                       **kwargs) -> ExectionInfo:
         fuse_enabled: bool = kwargs.pop('fuse_enabled', False)
         task_name: str = kwargs.pop('task_name', None)
+        extra_config: dict = kwargs.pop('extra_config', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'run got unexpected key arguments {list(kwargs)!r}')
 
@@ -130,12 +135,12 @@ class Session(AbstractSession):
                      for tileable in tileables]
 
         # build tileable graph
-        tileable_graph = TileableGraph(tileables)
-        next(TileableGraphBuilder(tileable_graph).build())
+        tileable_graph = gen_submit_tileable_graph(self, tileables)
 
         # submit task
         task_id = await self._task_api.submit_tileable_graph(
-            tileable_graph, task_name=task_name, fuse_enabled=fuse_enabled)
+            tileable_graph, task_name=task_name, fuse_enabled=fuse_enabled,
+            extra_config=extra_config)
 
         progress = Progress()
         # create asyncio.Task
@@ -170,7 +175,12 @@ class Session(AbstractSession):
 
         return self._tileable_to_fetch[tileable], indexes
 
-    async def fetch(self, *tileables):
+    async def fetch(self, *tileables, **kwargs):
+        if kwargs:  # pragma: no cover
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError(f'`fetch` got unexpected '
+                            f'arguments: {unexpected_keys}')
+
         data = []
         for tileable in tileables:
             fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
@@ -181,7 +191,7 @@ class Session(AbstractSession):
                 # TODO: use batch API to fetch data
                 band = (await self._meta_api.get_chunk_meta(
                     chunk.key, fields=['bands']))['bands'][0]
-                storage_api = await (SessionWebAPI if self._web_api else StorageAPI).create(
+                storage_api = await (StorageWebAPI if self._web_api else StorageAPI).create(
                     self._session_id, band[0])
                 index_to_data.append(
                     (chunk.index, await storage_api.get(chunk.key)))
@@ -192,3 +202,7 @@ class Session(AbstractSession):
 
     async def destroy(self):
         await self._session_api.delete_session(self._session_id)
+
+    async def stop_server(self):
+        if self.client:
+            await self.client.stop()

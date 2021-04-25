@@ -20,7 +20,7 @@ from typing import Any, List
 from ...core import TileableGraph, ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, Int32Field, Int64Field, Float64Field, \
-    BoolField, AnyField, ListField
+    BoolField, AnyField, ListField, DictField
 from ..core import BandType
 
 
@@ -30,7 +30,7 @@ class TaskStatus(Enum):
     terminated = 2
 
 
-class SubTaskStatus(Enum):
+class SubtaskStatus(Enum):
     pending = 0
     running = 1
     succeeded = 2
@@ -39,9 +39,9 @@ class SubTaskStatus(Enum):
 
     @property
     def is_done(self) -> bool:
-        return self in (SubTaskStatus.succeeded,
-                        SubTaskStatus.errored,
-                        SubTaskStatus.cancelled)
+        return self in (SubtaskStatus.succeeded,
+                        SubtaskStatus.errored,
+                        SubtaskStatus.cancelled)
 
 
 class Task(Serializable):
@@ -52,6 +52,7 @@ class Task(Serializable):
         'tileable_graph', TileableGraph)
     fuse_enabled: bool = BoolField('fuse_enabled')
     rerun_time: int = Int32Field('rerun_time')
+    extra_config: dict = DictField('extra_config')
 
     def __init__(self,
                  task_id: str = None,
@@ -59,12 +60,14 @@ class Task(Serializable):
                  tileable_graph: TileableGraph = None,
                  task_name: str = None,
                  fuse_enabled: bool = True,
-                 rerun_time: int = 0):
+                 rerun_time: int = 0,
+                 extra_config: dict = None):
         super().__init__(task_id=task_id, task_name=task_name,
                          session_id=session_id,
                          tileable_graph=tileable_graph,
                          fuse_enabled=fuse_enabled,
-                         rerun_time=rerun_time)
+                         rerun_time=rerun_time,
+                         extra_config=extra_config)
 
 
 class TaskResult(Serializable):
@@ -97,6 +100,7 @@ class Subtask(Serializable):
     virtual: bool = BoolField('virtual')
     priority: int = Int32Field('priority')
     rerun_time: int = Int32Field('rerun_time')
+    extra_config: dict = DictField('extra_config')
 
     def __init__(self,
                  subtask_id: str = None,
@@ -107,7 +111,8 @@ class Subtask(Serializable):
                  expect_bands: List[BandType] = None,
                  priority: int = None,
                  virtual: bool = False,
-                 rerun_time: int = 0):
+                 rerun_time: int = 0,
+                 extra_config: dict = None):
         super().__init__(subtask_id=subtask_id,
                          subtask_name=subtask_name,
                          session_id=session_id,
@@ -116,7 +121,8 @@ class Subtask(Serializable):
                          expect_bands=expect_bands,
                          priority=priority,
                          virtual=virtual,
-                         rerun_time=rerun_time)
+                         rerun_time=rerun_time,
+                         extra_config=extra_config)
 
     @property
     def expect_band(self):
@@ -128,7 +134,7 @@ class SubtaskResult(Serializable):
     subtask_id: str = StringField('subtask_id')
     session_id: str = StringField('session_id')
     task_id: str = StringField('task_id')
-    status: SubTaskStatus = ReferenceField('status', SubTaskStatus)
+    status: SubtaskStatus = ReferenceField('status', SubtaskStatus)
     progress: float = Float64Field('progress')
     data_size: int = Int64Field('data_size', default=None)
     error = AnyField('error', default=None)

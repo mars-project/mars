@@ -33,7 +33,8 @@ from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage.api import StorageAPI, MockStorageAPI
 from mars.services.task.core import TaskStatus, TaskResult
-from mars.services.task.supervisor.task_manager import TaskManagerActor
+from mars.services.task.supervisor.task_manager import \
+    TaskConfigurationActor, TaskManagerActor
 from mars.services.task.worker.subtask import BandSubtaskManagerActor
 from mars.utils import Timer, merge_chunks
 
@@ -54,6 +55,10 @@ async def actor_pool():
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
 
+        # create configuration
+        await mo.create_actor(TaskConfigurationActor, dict(),
+                              uid=TaskConfigurationActor.default_uid(),
+                              address=pool.external_address)
         # create task manager
         manager = await mo.create_actor(TaskManagerActor, session_id,
                                         uid=TaskManagerActor.gen_uid(session_id),

@@ -102,7 +102,8 @@ class TaskAPI:
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
-                                    fuse_enabled: bool = True) -> str:
+                                    fuse_enabled: bool = True,
+                                    extra_config: dict = None) -> str:
         """
         Submit a tileable graph
 
@@ -114,6 +115,8 @@ class TaskAPI:
             Task name
         fuse_enabled : bool
             Enable fuse optimization
+        extra_config : dict
+            Extra config.
 
         Returns
         -------
@@ -121,7 +124,8 @@ class TaskAPI:
             Task ID.
         """
         return await self._task_manager_ref.submit_tileable_graph(
-            graph, task_name, fuse_enabled=fuse_enabled)
+            graph, task_name, fuse_enabled=fuse_enabled,
+            extra_config=extra_config)
 
     async def wait_task(self, task_id: str, timeout: float = None):
         """
@@ -197,10 +201,13 @@ class TaskAPI:
         """
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
+    async def last_idle_time(self) -> Union[float, None]:
+        """
+        Get last idle time from task manager.
 
-class MockTaskAPI(TaskAPI):
-    @classmethod
-    async def create(cls,
-                     session_id: str,
-                     address: str) -> "TaskAPI":
-        return await super().create_session(session_id, address)
+        Returns
+        -------
+        last_idle_time: float
+            The last idle time if the task manager is idle else None.
+        """
+        return await self._task_manager_ref.last_idle_time()

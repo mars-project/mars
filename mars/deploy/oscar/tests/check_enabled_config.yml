@@ -4,13 +4,14 @@ services:
   - storage
   - meta
   - task
-  - web
 cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
 storage:
-  backends: [ray]
+  backends: [plasma]
+  plasma:
+    store_memory: 20M
 meta:
   store: dict
 task:
@@ -18,3 +19,5 @@ task:
     optimize_tileable_graph: yes
     optimize_chunk_graph: yes
     fuse_enabled: yes
+  task_processor_cls: mars.services.task.supervisor.tests.CheckedTaskProcessor
+  subtask_processor_cls: mars.services.task.worker.tests.CheckedSubtaskProcessor

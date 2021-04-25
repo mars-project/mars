@@ -15,3 +15,8 @@ storage:
     store_memory: 20M
 meta:
   store: dict
+task:
+  default_config:
+    optimize_tileable_graph: yes
+    optimize_chunk_graph: yes
+    fuse_enabled: yes

@@ -108,7 +108,6 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             (tileable, self._tile(tileable))
             for tileable in tileable_graph.topological_iter())
         visited = set()
-        meta_updated = set()
         chunk_graph = None
         while True:
             if chunk_graph is not None:
@@ -177,20 +176,8 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
 
             yield chunk_graph
 
-            self._update_tileables_params(tileable_graph, meta_updated)
             if not need_process_tiles:
                 break
-
-    def _update_tileables_params(self, tileable_graph: TileableGraph,
-                                 updated: Set[TileableType]):
-        for tileable in tileable_graph:
-            if tileable in updated:
-                continue
-            tiled_tileable = self.tile_context.get(tileable)
-            if tiled_tileable is not None:
-                tiled_tileable.refresh_params()
-                tileable.params = tiled_tileable.params
-                updated.add(tileable)
 
     def build(self) -> Generator[Union[TileableGraph, ChunkGraph], None, None]:
         with enter_mode(build=True, kernel=True):

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import TaskAPI, MockTaskAPI
+from .api import TaskAPI
 from .web import TaskWebAPI
 from .core import Task, TaskStatus, TaskResult, Subtask, \
-    SubTaskStatus, SubtaskResult, new_task_id
+    SubtaskStatus, SubtaskResult, new_task_id
 from .errors import TaskNotExist, SubtaskNotExist, SlotOccupiedAlready

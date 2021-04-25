@@ -14,16 +14,19 @@
 
 import asyncio
 import functools
+import importlib
 import sys
+import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Tuple, Optional
+from typing import Any, Dict, Iterable, List, Set, Tuple, Type, Optional
 
 from .... import oscar as mo
 from ....config import Config
-from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, Tileable
-from ....core.operand import Fuse
+from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
+    Tileable, TileableType
+from ....core.operand import Fetch, Fuse
 from ....dataframe.core import DATAFRAME_CHUNK_TYPE
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -34,8 +37,23 @@ from ...meta.api import MetaAPI
 from ..analyzer import GraphAnalyzer
 from ..config import task_options
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
-    SubTaskStatus, SubtaskGraph, new_task_id
+    SubtaskStatus, SubtaskGraph, new_task_id
 from ..errors import TaskNotExist
+
+
+class TaskConfigurationActor(mo.Actor):
+    def __init__(self,
+                 task_conf: Dict[str, Any],
+                 task_processor_cls: Type["TaskProcessor"] = None):
+        for name, value in task_conf.items():
+            setattr(task_options, name, value)
+        self._task_processor_cls = task_processor_cls
+
+    def get_config(self):
+        return {
+            'task_options': task_options,
+            'task_processor_cls': self._task_processor_cls
+        }
 
 
 class TaskProcessor:
@@ -43,14 +61,17 @@ class TaskProcessor:
                 '_config', 'tileable_optimization_records', \
                 'chunk_optimization_records_list', '_done'
 
+    tile_context: Dict[Tileable, Tileable]
+
     def __init__(self,
                  task: Task,
+                 tiled_context: Dict[Tileable, Tileable] = None,
                  config: Config = None):
         self._task = task
         self.tileable_graph = task.tileable_graph
         self._config = config
 
-        self.tile_context: Dict[Tileable, Tileable] = dict()
+        self.tile_context = tiled_context
         self.tileable_optimization_records = None
         self.chunk_optimization_records_list = []
         self._done = asyncio.Event()
@@ -84,12 +105,15 @@ class TaskProcessor:
             tileable_graph, fuse_enabled=self._task.fuse_enabled,
             tile_context=self.tile_context)
         optimize = self._config.optimize_chunk_graph
+        meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
             # optimize chunk graph
             if optimize:
                 self.chunk_optimization_records_list.append(
                     optimize_chunk_graph(chunk_graph))
             yield chunk_graph
+            # update tileables' meta
+            self._update_tileables_params(tileable_graph, meta_updated)
 
     @property
     def done(self) -> bool:
@@ -105,6 +129,24 @@ class TaskProcessor:
     def get_tiled(self, tileable):
         tileable = tileable.data if hasattr(tileable, 'data') else tileable
         return self.tile_context[tileable]
+
+    @classmethod
+    def _update_tileable_params(cls,
+                                tileable: TileableType,
+                                tiled: TileableType):
+        tiled.refresh_params()
+        tileable.params = tiled.params
+
+    def _update_tileables_params(self,
+                                 tileable_graph: TileableGraph,
+                                 updated: Set[TileableType]):
+        for tileable in tileable_graph:
+            if tileable in updated:
+                continue
+            tiled_tileable = self.tile_context.get(tileable)
+            if tiled_tileable is not None:
+                self._update_tileable_params(tileable, tiled_tileable)
+                updated.add(tileable)
 
     def __await__(self):
         return self._done.wait().__await__()
@@ -232,7 +274,7 @@ class SubtaskGraphScheduler:
         self._subtask_to_results[subtask] = result
 
         all_done = len(self._subtask_to_results) == len(self._subtask_graph)
-        error_or_cancelled = result.status in (SubTaskStatus.errored, SubTaskStatus.cancelled)
+        error_or_cancelled = result.status in (SubtaskStatus.errored, SubtaskStatus.cancelled)
 
         if all_done or error_or_cancelled:
             if all_done and not error_or_cancelled:
@@ -276,7 +318,7 @@ class SubtaskGraphScheduler:
                 subtask_id=subtask.subtask_id,
                 session_id=subtask.session_id,
                 task_id=subtask.task_id,
-                status=SubTaskStatus.errored,
+                status=SubtaskStatus.errored,
                 error=err,
                 traceback=traceback)
             await self.set_subtask_result(subtask_result)
@@ -425,25 +467,47 @@ class TaskStageInfo:
         self.subtask_results = dict()
 
 
+@dataclass
+class ResultTileableInfo:
+    tileable: Tileable
+    processor: TaskProcessor
+
+
 class TaskManagerActor(mo.Actor):
+    _task_name_to_task_info: Dict[str, TaskInfo]
+    _task_id_to_task_info: Dict[str, TaskInfo]
+    _task_id_to_task_stage_info: Dict[str, TaskStageInfo]
+    _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
+
     def __init__(self,
                  session_id,
-                 use_scheduling=True,
-                 config: Config = None):
+                 use_scheduling=True):
         self._session_id = session_id
-        self._config = config if config is not None else task_options
+        self._config = None
+        self._task_processor_cls = None
 
-        self._task_name_to_task_info: Dict[str, TaskInfo] = dict()
-        self._task_id_to_task_info: Dict[str, TaskInfo] = dict()
-        self._task_id_to_task_stage_info: Dict[str, TaskStageInfo] = dict()
+        self._task_name_to_task_info = dict()
+        self._task_id_to_task_info = dict()
+        self._task_id_to_task_stage_info = dict()
+        self._tileable_key_to_info = defaultdict(list)
 
         self._meta_api = None
         self._cluster_api = None
         self._use_scheduling = use_scheduling
+        self._last_idle_time = None
 
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
+
+        # get config
+        configuration_ref = await mo.actor_ref(
+            TaskConfigurationActor.default_uid(),
+            address=self.address)
+        task_conf = await configuration_ref.get_config()
+        self._config, self._task_processor_cls = \
+            task_conf['task_options'], task_conf['task_processor_cls']
+        self._task_processor_cls = self._get_task_processor_cls()
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
         return await self._cluster_api.get_all_bands()
@@ -455,7 +519,9 @@ class TaskManagerActor(mo.Actor):
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
-                                    fuse_enabled: bool = None) -> str:
+                                    fuse_enabled: bool = None,
+                                    extra_config: dict = None) -> str:
+        self._last_idle_time = None
         if task_name is None:
             task_id = task_name = new_task_id()
         elif task_name in self._task_name_to_main_task_info:
@@ -477,10 +543,14 @@ class TaskManagerActor(mo.Actor):
         # gen task
         task = Task(task_id, self._session_id,
                     graph, task_name,
-                    fuse_enabled=fuse_enabled)
+                    fuse_enabled=fuse_enabled,
+                    extra_config=extra_config)
         task_info.tasks.append(task)
         # gen task processor
-        task_processor = TaskProcessor(task, config=self._config)
+        tiled_context = self._gen_tiled_context(graph)
+        task_processor = self._task_processor_cls(
+            task, tiled_context=tiled_context,
+            config=self._config)
         task_info.task_processors.append(task_processor)
         # start to run main task
         aio_task = asyncio.create_task(
@@ -489,6 +559,24 @@ class TaskManagerActor(mo.Actor):
         task_info.aio_tasks.append(aio_task)
 
         return task_id
+
+    def _gen_tiled_context(self, graph: TileableGraph):
+        # process graph, add fetch node to tiled context
+        tiled_context = dict()
+        for tileable in graph:
+            if isinstance(tileable.op, Fetch):
+                info = self._tileable_key_to_info[tileable.key][0]
+                tiled = info.processor.tile_context[info.tileable]
+                tiled_context[tileable] = build_fetch(tiled).data
+        return tiled_context
+
+    def _get_task_processor_cls(self):
+        if self._task_processor_cls is not None:
+            assert isinstance(self._task_processor_cls, str)
+            module, name = self._task_processor_cls.rsplit('.', 1)
+            return getattr(importlib.import_module(module), name)
+        else:
+            return TaskProcessor
 
     async def _process_task(self,
                             task_processor: TaskProcessor,
@@ -537,7 +625,8 @@ class TaskManagerActor(mo.Actor):
             # get subtask graph
             available_bands = await self._get_available_band_slots()
             analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                     task.fuse_enabled, task_stage_info)
+                                     task.fuse_enabled, task.extra_config,
+                                     task_stage_info)
             subtask_graph = analyzer.gen_subtask_graph()
             task_stage_info.subtask_graph = subtask_graph
 
@@ -551,6 +640,10 @@ class TaskManagerActor(mo.Actor):
 
         # iterative tiling and execution finished,
         # set task processor done
+        for tileable in tileable_graph.result_tileables:
+            info = ResultTileableInfo(tileable=tileable,
+                                      processor=task_processor)
+            self._tileable_key_to_info[tileable.key].append(info)
         task_processor.done = True
 
     @classmethod
@@ -662,3 +755,20 @@ class TaskManagerActor(mo.Actor):
         subtask_progress /= len(task_info.task_stage_infos)
 
         return subtask_progress * tiled_percentage
+
+    def last_idle_time(self):
+        if self._last_idle_time is None:
+            for task_info in self._task_id_to_task_info.values():
+                for task_processor in task_info.task_processors:
+                    if not task_processor.done:
+                        break
+                else:
+                    for stage in task_info.task_stage_infos:
+                        if stage.task_result.status != TaskStatus.terminated:
+                            break
+                    else:
+                        continue
+                break
+            else:
+                self._last_idle_time = time.time()
+        return self._last_idle_time

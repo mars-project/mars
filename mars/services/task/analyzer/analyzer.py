@@ -30,11 +30,13 @@ class AbstractGraphAnalyzer(ABC):
                  chunk_graph: ChunkGraph,
                  band_slots: Dict[BandType, int],
                  fuse_enabled: bool,
+                 extra_config: dict,
                  task_stage_info,
                  graph_assigner_cls: Type[AbstractGraphAssigner] = None):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
         self._fuse_enabled = fuse_enabled
+        self._extra_config = extra_config
         self._task_stage_info = task_stage_info
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
@@ -214,7 +216,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             chunk_graph=subtask_chunk_graph,
             expect_bands=[band],
             virtual=virtual,
-            priority=priority)
+            priority=priority,
+            extra_config=self._extra_config)
         return subtask
 
     @implements(AbstractGraphAnalyzer.gen_subtask_graph)
