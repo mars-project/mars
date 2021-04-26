@@ -916,7 +916,7 @@ class MainActorPoolBase(ActorPoolBase):
     async def stop_sub_pool(
             self,
             address: str,
-            process: multiprocessing.Process,
+            process: SubProcessHandle,
             timeout: float = None,
             force: bool = False):
         if force:

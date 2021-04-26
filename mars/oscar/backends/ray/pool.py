@@ -78,13 +78,12 @@ class RayMainActorPool(MainActorPoolBase):
             process.exit_actor.remote()
             waited_time, wait_time = 0, 3
             while await self.is_sub_pool_alive(process):
-                if waited_time > wait_time:
+                if waited_time > wait_time:  # pragma: no cover
                     logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
                     ray.kill(process)
                     return
                 await asyncio.sleep(0.1)
                 wait_time += 0.1
-
         else:
             ray.kill(process)
 
