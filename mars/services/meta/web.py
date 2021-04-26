@@ -24,7 +24,7 @@ class MetaWebHandler(ServiceWebHandlerBase):
         return self._api_registry.add_instance(await MetaAPI.create(session_id, address))
 
     async def create_session(self, session_id: str, address: str):
-        return self._api_registry.add_instance(await MetaAPI.create(session_id, address))
+        return self._api_registry.add_instance(await MetaAPI.create_session(session_id, address))
 
 
 _service_name = 'meta'

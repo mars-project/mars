@@ -16,11 +16,9 @@ import asyncio
 import cloudpickle
 import inspect
 import logging
-import requests
 import sys
 import threading
 import time
-import traceback
 
 from collections import OrderedDict
 from tornado.httpclient import AsyncHTTPClient
@@ -126,8 +124,7 @@ class ServiceWebHandlerBase(MarsRequestHandler):
                 result = await result
             self.write(serialize(result))
         except Exception as e:
-            logger.info(f'Execute method {api_method_name} with {api_id, args, kwargs} failed, got exception {e}')
-            traceback.print_exc()
+            logger.exception(f'Execute method {api_method_name} with {api_id, args, kwargs} failed, got exception {e}')
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.write(serialize(_HandlerException(exc_type, exc_value, exc_traceback)))
 
@@ -165,15 +162,6 @@ class ServiceWebAPIBase:
                                        method="POST", body=cls._serialize_args(api_id, args, kwarg),
                                        **(req_config or dict()))
         return cls._deserialize_result(resp.body)
-
-    @classmethod
-    def _sync_post(cls, api_method_name: str, api_id, req_config, *args, **kwarg):
-        req_config = req_config or dict()
-        if 'timeout' not in req_config:
-            req_config['timeout'] = 2 * 60 * 60  # timeout for two hours
-        r = requests.post(f'{get_web_address()}/api/service/{cls._service_name}/{api_method_name}',
-                          data=cls._serialize_args(api_id, args, kwarg), **req_config)
-        return cls._deserialize_result(r.content)
 
     @classmethod
     def _serialize_args(cls, *args):
