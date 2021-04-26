@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import concurrent.futures
 import threading
 import uuid
 import warnings
@@ -27,6 +28,7 @@ from .typing import TileableType
 
 _loop = asyncio.new_event_loop()
 _get_session_lock = asyncio.Lock(loop=_loop)
+_pool = concurrent.futures.ThreadPoolExecutor(1)
 
 
 def _wrap_in_thread(func: Callable):
@@ -37,27 +39,23 @@ def _wrap_in_thread(func: Callable):
     so we wrap them to run in a thread.
     """
 
+    def sync_default_session(sess: "AbstractSession"):
+        if sess:
+            sess.as_default()
+        else:
+            AbstractSession.reset_default()
+
     def inner(*args, **kwargs):
-        result = None
-        default_session_in_thread = None
         default_session = get_default_session()
 
         def run_in_thread():
-            nonlocal result, default_session_in_thread, default_session
+            # set default session in this thread
+            sync_default_session(default_session)
+            return func(*args, **kwargs), get_default_session()
 
-            if default_session:
-                # set default session in this thread
-                default_session.as_default()
-
-            result = func(*args, **kwargs)
-            default_session_in_thread = get_default_session()
-
-        t = threading.Thread(target=run_in_thread)
-        t.start()
-        t.join()
-
-        if default_session_in_thread:
-            default_session_in_thread.as_default()
+        fut = _pool.submit(run_in_thread)
+        result, default_session_in_thread = fut.result()
+        sync_default_session(default_session_in_thread)
 
         return result
     return inner
@@ -273,7 +271,6 @@ def get_default_session() -> AbstractSession:
     return AbstractSession.default
 
 
-@_wrap_in_thread
 def stop_server():
     if AbstractSession.default:
         SyncSession(AbstractSession.default).stop_server()
