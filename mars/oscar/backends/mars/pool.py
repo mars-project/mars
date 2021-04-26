@@ -32,6 +32,18 @@ if sys.version_info[:2] == (3, 9):
         from multiprocessing import popen_spawn_posix as popen_spawn
     from multiprocessing import popen_forkserver, popen_fork, synchronize
     _ = popen_spawn, popen_forkserver, popen_fork, synchronize
+elif sys.version_info[:2] == (3, 6):
+    # define kill method for multiprocessing
+    _kill_sig = getattr(signal, 'SIGKILL', signal.SIGTERM)
+
+    def _mp_kill(self):
+        try:  # pragma: no cover
+            os.kill(self.pid, _kill_sig)
+        except OSError:
+            pass
+
+    from multiprocessing.process import BaseProcess
+    BaseProcess.kill = _mp_kill
 
 
 @_register_message_handler
@@ -69,7 +81,10 @@ class MainActorPool(MainActorPoolBase):
 
     @classmethod
     def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:
-        return f'unixsocket:///{process_index}'
+        if hasattr(asyncio, 'start_unix_server'):
+            return f'unixsocket:///{process_index}'
+        else:
+            return external_address
 
     @classmethod
     async def start_sub_pool(

@@ -14,9 +14,10 @@
 
 import asyncio
 import inspect
-cimport cython
 import sys
+cimport cython
 
+from .errors import Return
 from .utils cimport is_async_generator
 from .utils import create_actor_ref
 
@@ -245,9 +246,10 @@ cdef class _Actor:
                 except:
                     res = sys.exc_info()
                     is_exception = True
-        except StopAsyncIteration:
-            pass
-        return res
+        except Return as ex:
+            return ex.value
+        except StopAsyncIteration as ex:
+            return res
 
     async def __post_create__(self):
         """

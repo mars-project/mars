@@ -21,7 +21,7 @@ from .api import actor_ref, create_actor, has_actor, destroy_actor, \
 from .backends import allocate_strategy
 from .backends.pool import MainActorPoolType
 from .core import ActorRef
-from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed
+from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
 from .utils import create_actor_ref
 
 # make sure methods are registered
