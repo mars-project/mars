@@ -14,7 +14,6 @@
 
 import asyncio
 import os
-import signal
 import sys
 import time
 
@@ -78,8 +77,14 @@ async def test_sub_actor_pool(notify_main_pool):
     notify_main_pool.return_value = None
 
     config = ActorPoolConfig()
-    config.add_pool_conf(0, 'main', 'unixsocket:///0', f'127.0.0.1:{get_next_port()}')
-    config.add_pool_conf(1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
+    ext_address0 = f'127.0.0.1:{get_next_port()}'
+    ext_address1 = f'127.0.0.1:{get_next_port()}'
+    if sys.platform.startswith('win'):
+        config.add_pool_conf(0, 'main', ext_address0, ext_address0)
+        config.add_pool_conf(1, 'sub', ext_address1, ext_address1)
+    else:
+        config.add_pool_conf(0, 'main', 'unixsocket:///0', ext_address0)
+        config.add_pool_conf(1, 'sub', 'unixsocket:///1', ext_address1)
 
     pool = await SubActorPool.create({
         'actor_pool_config': config,
@@ -435,8 +440,7 @@ async def test_server_closed():
 
         # kill subprocess 1
         process = list(pool._sub_processes.values())[0]
-        os.kill(process.pid, signal.SIGKILL)
-        # process.join()
+        process.kill()
 
         with pytest.raises(ServerClosed):
             # process already been killed,
