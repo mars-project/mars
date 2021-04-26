@@ -18,7 +18,7 @@ from mars.serialization.ray import register_ray_serializers, unregister_ray_seri
 from mars.tests.core import require_ray
 from .....utils import lazy_import
 from ...router import Router
-from ..pool import RayMainPool
+from ..pool import RayMainPool, RayMainActorPool
 from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
@@ -31,6 +31,15 @@ def ray_start_regular_shared():
     ray.shutdown()
     unregister_ray_serializers()
     Router.set_instance(None)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_main_pool(ray_start_regular_shared):
+    external_address = 'ray://bundle_name/0/0'
+    addresses = RayMainActorPool.get_external_addresses(external_address, 3)
+    assert addresses == [external_address] + [f'ray://bundle_name/0/{i + 1}' for i in range(3)]
+    assert RayMainActorPool.gen_internal_address(1, external_address) == external_address
 
 
 @require_ray
