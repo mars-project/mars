@@ -17,7 +17,7 @@ import threading
 import uuid
 import warnings
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type, Tuple, Union
+from typing import Callable, Dict, List, Type, Tuple, Union
 
 from ..config import options
 from ..core import TileableGraph, enter_mode
@@ -27,6 +27,40 @@ from .typing import TileableType
 
 _loop = asyncio.new_event_loop()
 _get_session_lock = asyncio.Lock(loop=_loop)
+
+
+def _wrap_in_thread(func: Callable):
+    """
+    Function is those wrapping async function,
+    when there is a running event loop,
+    error will raise (see GH#2108),
+    so we wrap them to run in a thread.
+    """
+
+    def inner(*args, **kwargs):
+        result = None
+        default_session_in_thread = None
+        default_session = get_default_session()
+
+        def run_in_thread():
+            nonlocal result, default_session_in_thread, default_session
+
+            if default_session:
+                # set default session in this thread
+                default_session.as_default()
+
+            result = func(*args, **kwargs)
+            default_session_in_thread = get_default_session()
+
+        t = threading.Thread(target=run_in_thread)
+        t.start()
+        t.join()
+
+        if default_session_in_thread:
+            default_session_in_thread.as_default()
+
+        return result
+    return inner
 
 
 class ExecutionInfo(ABC):
@@ -181,6 +215,17 @@ class AbstractSession(ABC):
         data
         """
 
+    def decref(self, *tileables):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        """
+        # TODO(qinxuye): implement this function when lifecycle service ready.
+
     async def stop_server(self):
         """
         Stop server.
@@ -228,6 +273,7 @@ def get_default_session() -> AbstractSession:
     return AbstractSession.default
 
 
+@_wrap_in_thread
 def stop_server():
     if AbstractSession.default:
         SyncSession(AbstractSession.default).stop_server()
@@ -318,6 +364,7 @@ async def _execute(*tileables: Tuple[TileableType],
         return execution_info
 
 
+@_wrap_in_thread
 def execute(tileable: TileableType,
             *tileables: Tuple[TileableType],
             session: AbstractSession = None,
@@ -349,6 +396,7 @@ async def _fetch(tileable: TileableType,
     return data[0] if len(tileables) == 0 else data
 
 
+@_wrap_in_thread
 def fetch(*tileables, session: AbstractSession = None):
     return _loop.run_until_complete(
         _fetch(*tileables, session=session))
@@ -367,10 +415,12 @@ class SyncSession:
     def fetch(self, *tileables):
         return fetch(*tileables, session=self._session)
 
+    @_wrap_in_thread
     def destroy(self):
         return _loop.run_until_complete(
             self._session.destroy())
 
+    @_wrap_in_thread
     def stop_server(self):
         return _loop.run_until_complete(
             self._session.stop_server())
@@ -384,6 +434,7 @@ class SyncSession:
             AbstractSession.reset_default()
 
 
+@_wrap_in_thread
 def new_session(address: str = None,
                 session_id: str = None,
                 backend: str = 'oscar',
