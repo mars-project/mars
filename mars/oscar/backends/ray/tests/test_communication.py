@@ -1,8 +1,11 @@
 import asyncio
+import inspect
 
 import pytest
 
 from .....utils import lazy_import
+from ....errors import ServerClosed
+from ...communication.base import ChannelType
 from ...router import Router
 from ..communication import ChannelID, Channel, RayServer, RayClient
 from mars.tests.core import require_ray
@@ -43,6 +46,12 @@ class ServerActor:
         """Method for communication based on ray actors"""
         return await self.server.__on_ray_recv__(channel_id, message)
 
+    async def server(self, method_name, *args, **kwargs):
+        result = getattr(self.server, method_name)(*args, **kwargs)
+        if inspect.iscoroutine(result):
+            result = await result
+        return result
+
 
 class ServerCallActor(ServerActor):
 
@@ -62,9 +71,14 @@ async def test_driver_to_actor_channel(ray_cluster_shared):
     server_actor = ray.remote(ServerActor).options(name=dest_address).remote(dest_address)
     await server_actor.start.remote()
     client = await RayClient.connect(dest_address, None)
+    assert client.channel_type == ChannelType.ray
     for i in range(10):
         await client.send(i)
         assert await client.recv() == i
+    await server_actor.server.remote('stop')
+    with pytest.raises(ServerClosed):
+        await client.send(1)
+        await client.recv()
 
 
 @require_ray
