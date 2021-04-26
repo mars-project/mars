@@ -16,7 +16,15 @@
 
 from .base import StorageLevel, get_storage_backend
 from .filesystem import FileSystemStorage
-from .plasma import PlasmaStorage
 from .ray import RayStorage
 from .shared_memory import SharedMemoryStorage
-from .vineyard import VineyardStorage
+try:
+    # require vineyard, pyarrow
+    from .vineyard import VineyardStorage
+except ImportError:
+    pass
+try:
+    # require pyarrow
+    from .plasma import PlasmaStorage
+except ImportError:
+    pass
