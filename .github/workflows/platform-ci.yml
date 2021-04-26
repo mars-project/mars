@@ -18,7 +18,7 @@ jobs:
           - { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
-              no-deploy: 1, with-ray: "with ray", with-cython: 1 }
+              no-deploy: 1, with-ray: "with ray" }
 
     steps:
       - name: Check out code
@@ -159,7 +159,7 @@ jobs:
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray --ignore-glob "mars/oscar/*"
             mv .coverage build/.coverage.non-aio.file
-            retry -g INTERNALERROR pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
             mv .coverage build/.coverage.aio.file
             coverage combine build/ && coverage report
           fi
