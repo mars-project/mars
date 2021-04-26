@@ -14,9 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from .base import StorageLevel, get_storage_backend
 from .filesystem import FileSystemStorage
-from .plasma import PlasmaStorage
 from .ray import RayStorage
 from .shared_memory import SharedMemoryStorage
 from .vineyard import VineyardStorage
+if sys.platform != 'win32':
+    # plasma does not support windows
+    from .plasma import PlasmaStorage
