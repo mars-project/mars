@@ -21,9 +21,7 @@ class SessionWebHandler(ServiceWebHandlerBase):
     _api_cls = SessionAPI
 
     async def create(self, address: str, **kwargs):
-        api_instance = await SessionAPI.create(address, **kwargs)
-        self._api_instances[id(api_instance)] = api_instance
-        return id(api_instance)
+        return self._api_registry.add_instance(await SessionAPI.create(address, **kwargs))
 
 
 _service_name = 'session'

@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import cloudpickle
 import inspect
 import logging
 import requests
 import sys
 import threading
+import time
 import traceback
 
+from collections import OrderedDict
 from tornado.httpclient import AsyncHTTPClient
 from .supervisor import MarsRequestHandler
 
@@ -56,8 +59,49 @@ class _HandlerException(Exception):
         self.exc_traceback = exc_traceback
 
 
+_expired_sec = 60
+_keep_alive_interval = 3
+
+
+class ApiRegistry:
+
+    def __init__(self, expired_sec):
+        self._apis = dict()
+        self._apis_access_time = OrderedDict()
+        self._expired_sec = expired_sec
+
+    def add_instance(self, instance):
+        api_id = id(instance)
+        self._apis[api_id] = instance
+        self.keep_alive_api(api_id)
+        self.remove_expired_api()
+        return api_id
+
+    def get_instance(self, api_id):
+        return self._apis[api_id]
+
+    def keep_alive_api(self, api_id):
+        assert api_id in self._apis, f'API of {api_id} is expired.'
+        self._apis_access_time[api_id] = time.time()
+        # Make order consistent with access time so that iteration can exit early.
+        self._apis_access_time.move_to_end(api_id)
+
+    def remove_expired_api(self):
+        current_time = time.time()
+        expired_api = []
+        for api_id, last_access_time in self._apis_access_time.items():
+            if current_time - last_access_time > self._expired_sec:
+                expired_api.append(api_id)
+            else:
+                # Later last_access_time will be greater so that we can exit early
+                break
+        for api_id in expired_api:
+            self._apis.pop(api_id)
+            self._apis_access_time.pop(api_id)
+
+
 class ServiceWebHandlerBase(MarsRequestHandler):
-    _api_instances = dict()
+    _api_registry = ApiRegistry(_expired_sec)
     _api_cls = None
 
     async def post(self, path, **_):
@@ -72,7 +116,7 @@ class ServiceWebHandlerBase(MarsRequestHandler):
                     method = getattr(self._api_cls, api_method_name)
             else:
                 # call method of api instance
-                method = getattr(self._api_instances[api_id], api_method_name)
+                method = getattr(self._api_registry.get_instance(api_id), api_method_name)
             if kwargs:
                 # Some methods are decorated with @alru_cache, which doesn't support dict as part of cache key.
                 result = method(*args, **kwargs)
@@ -87,9 +131,9 @@ class ServiceWebHandlerBase(MarsRequestHandler):
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.write(serialize(_HandlerException(exc_type, exc_value, exc_traceback)))
 
-    def __destroy_api__(self, api_id):
-        api = self._api_instances.pop(api_id, None)
-        print('Destroyed api %s', api)
+    def _keep_alive_api(self, api_id):
+        self._api_registry.keep_alive_api(api_id)
+        self._api_registry.remove_expired_api()
 
 
 class ServiceWebAPIBase:
@@ -98,19 +142,19 @@ class ServiceWebAPIBase:
     def __init__(self, http_client: AsyncHTTPClient, api_id: int):
         self._http_client = http_client
         self._api_id = api_id
+        # TODO(chaokunyang) how to cancel this task
+        self._keep_api_alive_task = asyncio.create_task(self._keep_api_alive())
+
+    async def _keep_api_alive(self):
+        while True:
+            await asyncio.sleep(_keep_alive_interval)
+            await self._post(self._http_client, '_keep_alive_api', None, {}, self._api_id)
 
     def __getattr__(self, method_name):
         async def _func(*args, **kwargs):
             return await self._post(self._http_client, method_name, self._api_id, {}, *args, **kwargs)
 
         return _func
-
-    def __del__(self):
-        try:
-            self._sync_post('__destroy_api__', self._api_id, dict(timeout=(0.1, 1)))
-        except Exception:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-            # server is closed
-            pass
 
     @classmethod
     async def _post(cls, http_client: AsyncHTTPClient, api_method_name: str, api_id, req_config, *args, **kwarg):

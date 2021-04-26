@@ -21,9 +21,7 @@ class StorageWebHandler(ServiceWebHandlerBase):
     _api_cls = StorageAPI
 
     async def create(self, session_id: str, address: str, **kwargs):
-        api_instance = await StorageAPI.create(session_id, address, **kwargs)
-        self._api_instances[id(api_instance)] = api_instance
-        return id(api_instance)
+        return self._api_registry.add_instance(await StorageAPI.create(session_id, address, **kwargs))
 
 
 _service_name = 'service'
