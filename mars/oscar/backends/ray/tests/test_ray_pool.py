@@ -23,8 +23,6 @@ from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
 
-pg_name, n_process = 'ray_cluster', 2
-
 
 @pytest.fixture(scope="module")
 def ray_start_regular_shared():
@@ -39,9 +37,10 @@ def ray_start_regular_shared():
 @pytest.mark.asyncio
 async def test_shutdown_sub_pool(ray_start_regular_shared):
     import ray
-    # Hold actor_handle to avoid actor being freed.
+    pg_name, n_process = 'ray_cluster', 2
     if hasattr(ray.util, "get_placement_group"):
-        pg, bundle_index = ray.util.get_placement_group(pg_name), 0
+        pg, bundle_index = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}]), 0
+        ray.get(pg.ready())
     else:
         pg, bundle_index = None, -1
     address = process_placement_to_address(pg_name, 0, process_index=0)
