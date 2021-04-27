@@ -13,8 +13,8 @@ from mars.tests.core import require_ray
 ray = lazy_import('ray')
 
 
-@pytest.fixture(scope="module")
-def ray_cluster_shared():
+@pytest.fixture
+def ray_cluster():
     ray.init()
     yield
     ray.shutdown()
@@ -66,7 +66,7 @@ class ServerCallActor(ServerActor):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_driver_to_actor_channel(ray_cluster_shared):
+async def test_driver_to_actor_channel(ray_cluster):
     dest_address = 'ray://test_cluster/0/0'
     server_actor = ray.remote(ServerActor).options(name=dest_address).remote(dest_address)
     await server_actor.start.remote()
@@ -83,7 +83,7 @@ async def test_driver_to_actor_channel(ray_cluster_shared):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_actor_to_actor_channel(ray_cluster_shared):
+async def test_actor_to_actor_channel(ray_cluster):
     server1_address, server2_address = 'ray://test_cluster/0/0', 'ray://test_cluster/0/1'
     server_actor1 = ray.remote(ServerCallActor).options(name=server1_address).remote(server1_address)
     server_actor2 = ray.remote(ServerCallActor).options(name=server2_address).remote(server2_address)
