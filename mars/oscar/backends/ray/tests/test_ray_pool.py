@@ -18,14 +18,14 @@ from mars.serialization.ray import register_ray_serializers, unregister_ray_seri
 from mars.tests.core import require_ray
 from .....utils import lazy_import
 from ...router import Router
-from ..pool import RayMainPool, RayMainActorPool
+from ..pool import RayMainPool, RayMainActorPool, create_actor_pool
 from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
 
 
-@pytest.fixture(scope="module")
-def ray_start_regular_shared():
+@pytest.fixture
+def ray_start_regular():
     register_ray_serializers()
     yield ray.init()
     ray.shutdown()
@@ -35,16 +35,29 @@ def ray_start_regular_shared():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_main_pool(ray_start_regular_shared):
-    external_address = 'ray://bundle_name/0/0'
-    addresses = RayMainActorPool.get_external_addresses(external_address, 3)
-    assert addresses == [external_address] + [f'ray://bundle_name/0/{i + 1}' for i in range(3)]
-    assert RayMainActorPool.gen_internal_address(1, external_address) == external_address
+async def test_main_pool(ray_start_regular):
+    pg_name, n_process = 'ray_cluster', 3
+    if hasattr(ray.util, "get_placement_group"):
+        pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
+        ray.get(pg.ready())
+    address = process_placement_to_address(pg_name, 0, process_index=0)
+    addresses = RayMainActorPool.get_external_addresses(address, n_process)
+    assert addresses == [address] + [process_placement_to_address(pg_name, 0, process_index=i + 1) for i in range(3)]
+    assert RayMainActorPool.gen_internal_address(1, address) == address
+
+    main_actor_pool = await create_actor_pool(
+        address, n_process=n_process, pool_cls=RayMainActorPool)
+    sub_processes = list(main_actor_pool.sub_processes.values())
+    assert len(sub_processes) == n_process
+    await main_actor_pool.kill_sub_pool(sub_processes[0], force=True)
+    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[0]))
+    await main_actor_pool.kill_sub_pool(sub_processes[1], force=False)
+    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[1]))
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_shutdown_sub_pool(ray_start_regular_shared):
+async def test_shutdown_sub_pool(ray_start_regular):
     import ray
     pg_name, n_process = 'ray_cluster', 2
     if hasattr(ray.util, "get_placement_group"):
