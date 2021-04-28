@@ -198,27 +198,25 @@ def _get_ports_from_netstat():
     while True:
         p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
         try:
-            p.wait(5)
-            break
-        except subprocess.TimeoutExpired:
-            p.terminate()
-            continue
-    occupied = set()
-    for line in p.stdout:
-        line = to_str(line)
-        if '.' not in line:
-            continue
-        for part in line.split():
-            if '.' in part:
-                _, port_str = part.rsplit('.', 1)
-                if port_str == '*':
+            outs, _ = p.communicate(timeout=5)
+            outs = to_str(outs).split('\n')
+            occupied = set()
+            for line in outs:
+                if '.' not in line:
                     continue
-                port = int(port_str)
-                if LOW_PORT_BOUND <= port <= HIGH_PORT_BOUND:
-                    occupied.add(int(port_str))
-                break
-    p.stdout.close()
-    return occupied
+                for part in line.split():
+                    if '.' in part:
+                        _, port_str = part.rsplit('.', 1)
+                        if port_str == '*':
+                            continue
+                        port = int(port_str)
+                        if LOW_PORT_BOUND <= port <= HIGH_PORT_BOUND:
+                            occupied.add(int(port_str))
+                        break
+            return occupied
+        except subprocess.TimeoutExpired:
+            p.kill()
+            continue
 
 
 def get_next_port(typ=None, occupy=True):
