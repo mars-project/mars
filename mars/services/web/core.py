@@ -102,10 +102,9 @@ class ServiceWebHandlerBase(MarsRequestHandler):
     _api_registry = ApiRegistry(_expired_sec)
     _api_cls = None
 
-    async def post(self, path, **_):
-        api_method_name = path
-        # params format: api_id[None], args, kwargs
-        api_id, args, kwargs = deserialize(self.request.body)
+    async def post(self):
+        # params format: api_id[None], api_method_name, args, kwargs
+        api_id, api_method_name, args, kwargs = deserialize(self.request.body)
         try:
             if not api_id:
                 if hasattr(self, api_method_name):
@@ -145,21 +144,21 @@ class ServiceWebAPIBase:
     async def _keep_api_alive(self):
         while True:
             await asyncio.sleep(_keep_alive_interval)
-            await self._post(self._http_client, '_keep_alive_api', None, {}, self._api_id)
+            await self._post(self._http_client, {}, '_keep_alive_api', None, self._api_id)
 
     def __getattr__(self, method_name):
         async def _func(*args, **kwargs):
-            return await self._post(self._http_client, method_name, self._api_id, {}, *args, **kwargs)
+            return await self._post(self._http_client, {}, method_name, self._api_id, *args, **kwargs)
 
         return _func
 
     @classmethod
-    async def _post(cls, http_client: AsyncHTTPClient, api_method_name: str, api_id, req_config, *args, **kwarg):
+    async def _post(cls, http_client: AsyncHTTPClient, req_config, api_method_name: str, api_id, *args, **kwarg):
         req_config = req_config or dict()
         if 'request_timeout' not in req_config:
             req_config['request_timeout'] = 2 * 60 * 60  # timeout for two hours
-        resp = await http_client.fetch(f'{get_web_address()}/api/service/{cls._service_name}/{api_method_name}',
-                                       method="POST", body=cls._serialize_args(api_id, args, kwarg),
+        resp = await http_client.fetch(f'{get_web_address()}/api/service/{cls._service_name}/rpc',
+                                       method="POST", body=cls._serialize_args(api_id, api_method_name, args, kwarg),
                                        **(req_config or dict()))
         return cls._deserialize_result(resp.body)
 

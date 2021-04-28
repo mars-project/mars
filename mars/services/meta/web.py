@@ -29,7 +29,7 @@ class MetaWebHandler(ServiceWebHandlerBase):
 
 _service_name = 'meta'
 web_handlers = {
-    f'/api/service/{_service_name}/(.*)': MetaWebHandler,
+    f'/api/service/{_service_name}/rpc': MetaWebHandler,
 }
 
 

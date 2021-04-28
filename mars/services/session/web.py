@@ -26,7 +26,7 @@ class SessionWebHandler(ServiceWebHandlerBase):
 
 _service_name = 'session'
 web_handlers = {
-    f'/api/service/{_service_name}/(.*)': SessionWebHandler,
+    f'/api/service/{_service_name}/rpc': SessionWebHandler,
 }
 
 
@@ -36,5 +36,5 @@ class SessionWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, address: str, **kwargs):
         http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, f'create',  None, {}, address, **kwargs)
+        api_id = await cls._post(http_client, {}, f'create',  None, address, **kwargs)
         return SessionWebAPI(http_client, api_id)

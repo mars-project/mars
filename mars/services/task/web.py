@@ -23,13 +23,10 @@ class TaskWebHandler(ServiceWebHandlerBase):
     async def create(self, session_id: str, address: str):
         return self._api_registry.add_instance(await TaskAPI.create(session_id, address))
 
-    async def create_session(self, session_id: str, address: str):
-        return self._api_registry.add_instance(await TaskAPI.create(session_id, address))
-
 
 _service_name = 'task'
 web_handlers = {
-    f'/api/service/{_service_name}/(.*)': TaskWebHandler,
+    f'/api/service/{_service_name}/rpc': TaskWebHandler,
 }
 
 
@@ -39,15 +36,5 @@ class TaskWebAPI(ServiceWebAPIBase):
     @classmethod
     async def create(cls, session_id: str, address: str):
         http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, 'create',  None, {}, session_id, address)
+        api_id = await cls._post(http_client, {}, 'create',  None, session_id, address)
         return TaskWebAPI(http_client, api_id)
-
-    @classmethod
-    async def create_session(cls, session_id: str, address: str):
-        http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, 'create_session',  None, {}, session_id, address)
-        return TaskWebAPI(http_client, api_id)
-
-    @classmethod
-    async def destroy_session(cls, session_id: str, address: str):
-        return await cls._post(AsyncHTTPClient(), 'destroy_session',  None, {}, session_id, address)
