@@ -46,6 +46,10 @@ class PlasmaFileObject(BufferWrappedFileObject):
         self._file = None
         super().__init__(mode, size=size)
 
+    @property
+    def buffer(self):
+        return getattr(self, '_buffer', None)
+
     def _write_init(self):
         self._buffer = buf = self._plasma_client.create(self._object_id, self._size)
         file = self._file = pa.FixedSizeBufferWriter(buf)
@@ -69,6 +73,16 @@ class PlasmaFileObject(BufferWrappedFileObject):
 
     def _read_close(self):
         pass
+
+
+class PlasmaStorageFileObject(StorageFileObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._buffer = None
+
+    async def close(self):
+        self._buffer = self._file.buffer
+        await super().close()
 
 
 @dataslots
@@ -235,12 +249,12 @@ class PlasmaStorage(StorageBackend):
 
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
-        return StorageFileObject(plasma_writer, object_id=new_id)
+        return PlasmaStorageFileObject(plasma_writer, object_id=new_id)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
-        return StorageFileObject(plasma_reader, object_id=object_id)
+        return PlasmaStorageFileObject(plasma_reader, object_id=object_id)
 
     @implements(StorageBackend.list)
     async def list(self) -> List:

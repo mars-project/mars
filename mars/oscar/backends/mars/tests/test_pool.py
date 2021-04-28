@@ -14,6 +14,7 @@
 
 import asyncio
 import os
+import re
 import sys
 import time
 
@@ -71,20 +72,27 @@ class TestActor(Actor):
         return _CannotBeUnpickled()
 
 
+def _add_pool_conf(config: ActorPoolConfig, process_index: int, label: str,
+                   internal_address: str, external_address: str,
+                   env: dict = None):
+    if sys.platform.startswith('win'):
+        config.add_pool_conf(process_index, label, external_address,
+                             external_address, env=env)
+    else:
+        config.add_pool_conf(process_index, label, internal_address,
+                             external_address, env=env)
+
+
 @pytest.mark.asyncio
 @mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
 async def test_sub_actor_pool(notify_main_pool):
     notify_main_pool.return_value = None
-
     config = ActorPoolConfig()
+
     ext_address0 = f'127.0.0.1:{get_next_port()}'
     ext_address1 = f'127.0.0.1:{get_next_port()}'
-    if sys.platform.startswith('win'):
-        config.add_pool_conf(0, 'main', ext_address0, ext_address0)
-        config.add_pool_conf(1, 'sub', ext_address1, ext_address1)
-    else:
-        config.add_pool_conf(0, 'main', 'unixsocket:///0', ext_address0)
-        config.add_pool_conf(1, 'sub', 'unixsocket:///1', ext_address1)
+    _add_pool_conf(config, 0, 'main', 'unixsocket:///0', ext_address0)
+    _add_pool_conf(config, 1, 'sub', 'unixsocket:///1', ext_address1)
 
     pool = await SubActorPool.create({
         'actor_pool_config': config,
@@ -179,7 +187,7 @@ async def test_sub_actor_pool(notify_main_pool):
     assert not message.result
 
     # test sync config
-    config.add_pool_conf(1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
+    _add_pool_conf(config, 1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
     sync_config_message = ControlMessage(
         new_message_id(), '', ControlMessageType.sync_config, config)
     message = await pool.handle_control_command(sync_config_message)
@@ -210,10 +218,10 @@ async def test_main_actor_pool():
     config = ActorPoolConfig()
     my_label = 'computation'
     main_address = f'127.0.0.1:{get_next_port()}'
-    config.add_pool_conf(0, 'main', 'unixsocket:///0', main_address)
-    config.add_pool_conf(1, my_label, 'unixsocket:///1', f'127.0.0.1:{get_next_port()}',
-                         env={'my_env': '1'})
-    config.add_pool_conf(2, my_label, 'unixsocket:///2', f'127.0.0.1:{get_next_port()}')
+    _add_pool_conf(config, 0, 'main', 'unixsocket:///0', main_address)
+    _add_pool_conf(config, 1, my_label, 'unixsocket:///1', f'127.0.0.1:{get_next_port()}',
+                   env={'my_env': '1'})
+    _add_pool_conf(config, 2, my_label, 'unixsocket:///2', f'127.0.0.1:{get_next_port()}')
 
     strategy = IdleLabel(my_label, 'my_test')
 
@@ -441,6 +449,7 @@ async def test_server_closed():
         # kill subprocess 1
         process = list(pool._sub_processes.values())[0]
         process.kill()
+        process.join()
 
         with pytest.raises(ServerClosed):
             # process already been killed,
@@ -458,6 +467,7 @@ async def test_server_closed():
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(sys.platform.startswith('win'), reason='skip under Windows')
 @pytest.mark.parametrize(
     'auto_recover',
     [False, True, 'actor', 'process']
@@ -517,6 +527,12 @@ async def test_two_pools():
     pool2 = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
                                     subprocess_start_method=start_method)
 
+    def is_interprocess_address(addr):
+        if sys.platform.startswith('win'):
+            return re.match(r'127\.0\.0\.1:\d+', addr)
+        else:
+            return addr.startswith('unixsocket://')
+
     async with pool1, pool2:
         actor_ref1 = await ctx.create_actor(
             TestActor, address=pool1.external_address,
@@ -531,8 +547,8 @@ async def test_two_pools():
             allocate_strategy=RandomSubPool())
         assert actor_ref2.address in pool1._config.get_external_addresses()[1:]
         assert await actor_ref2.add(3) == 3
-        assert Router.get_instance().get_internal_address(
-            actor_ref2.address).startswith('unixsocket://')
+        assert is_interprocess_address(
+            Router.get_instance().get_internal_address(actor_ref2.address))
 
         actor_ref3 = await ctx.create_actor(
             TestActor, address=pool2.external_address,
@@ -547,7 +563,7 @@ async def test_two_pools():
             allocate_strategy=RandomSubPool())
         assert actor_ref4.address in pool2._config.get_external_addresses()[1:]
         assert await actor_ref4.add(7) == 7
-        assert Router.get_instance().get_internal_address(
-            actor_ref4.address).startswith('unixsocket://')
+        assert is_interprocess_address(
+            Router.get_instance().get_internal_address(actor_ref4.address))
 
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
