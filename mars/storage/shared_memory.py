@@ -18,6 +18,7 @@ import sys
 import weakref
 from string import ascii_letters, digits
 from typing import Any, Dict, List, Tuple, Optional
+from dataclasses import dataclass
 try:
     if sys.version_info[:2] >= (3, 8):
         # builtin package for Python 3.8+
@@ -30,9 +31,17 @@ except ImportError:  # pragma: no cover
     SharedMemory = None
 
 from ..serialization import AioSerializer, AioDeserializer
-from ..utils import implements
+from ..utils import implements, dataslots
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
+
+_is_windows: bool = sys.platform.startswith('win')
+
+
+@dataslots
+@dataclass
+class WinShmObjectInfo(ObjectInfo):
+    shm: Any = None
 
 
 class SharedMemoryFileObject(BufferWrappedFileObject):
@@ -51,6 +60,7 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
 
     def _read_init(self):
         self.shm = shm = SharedMemory(name=self._object_id)
+        _shared_memory_manager.register(self._object_id, shm)
         self._buffer = self._mv = buf = shm.buf
         self._size = buf.nbytes
 
@@ -59,6 +69,17 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
 
     def _read_close(self):
         pass
+
+
+class ShmStorageFileObject(StorageFileObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._shm = None
+
+    async def close(self):
+        if _is_windows:
+            self._shm = self._file.shm
+        await super().close()
 
 
 class _SharedMemoryManager:
@@ -149,7 +170,10 @@ class SharedMemoryStorage(StorageBackend):
                 await f.write(buffer)
 
         self._object_ids.add(object_id)
-        return ObjectInfo(size=buffer_size, object_id=object_id)
+        if _is_windows:
+            return WinShmObjectInfo(size=buffer_size, object_id=object_id, shm=shm_file.shm)
+        else:
+            return ObjectInfo(size=buffer_size, object_id=object_id)
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
@@ -159,8 +183,11 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
-        shm_file = SharedMemory(name=object_id)
-        return ObjectInfo(size=shm_file.size, object_id=object_id)
+        shm = SharedMemory(name=object_id)
+        if _is_windows:
+            return WinShmObjectInfo(size=shm.size, object_id=object_id, shm=shm)
+        else:
+            return ObjectInfo(size=shm.size, object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
@@ -169,12 +196,12 @@ class SharedMemoryStorage(StorageBackend):
 
         new_id = self._generate_object_id()
         shm_file = SharedMemoryFileObject(new_id, size=size, mode='w')
-        return StorageFileObject(shm_file, object_id=new_id)
+        return ShmStorageFileObject(shm_file, object_id=new_id)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         shm_file = SharedMemoryFileObject(object_id, mode='r')
-        return StorageFileObject(shm_file, object_id=object_id)
+        return ShmStorageFileObject(shm_file, object_id=object_id)
 
     @implements(StorageBackend.list)
     async def list(self) -> List:  # pragma: no cover
