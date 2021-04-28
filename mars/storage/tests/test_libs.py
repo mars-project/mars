@@ -45,7 +45,10 @@ except ImportError:
     ray = None
 
 require_lib = lambda x: x
-params = ['filesystem', 'shared_memory']
+params = [
+    'filesystem',
+    'shared_memory',
+]
 if not sys.platform.startswith('win') and \
         pkgutil.find_loader('pyarrow.plasma') is not None:
     params.append('plasma')

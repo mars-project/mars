@@ -536,9 +536,10 @@ class Test(TestBase):
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testReadCSVUseArrowDtype(self):
+        rs = np.random.RandomState(0)
         df = pd.DataFrame({
-            'col1': np.random.rand(100),
-            'col2': np.random.choice(['a' * 2, 'b' * 3, 'c' * 4], (100,)),
+            'col1': rs.rand(100),
+            'col2': rs.choice(['a' * 2, 'b' * 3, 'c' * 4], (100,)),
             'col3': np.arange(100)
         })
         with tempfile.TemporaryDirectory() as tempdir:
@@ -616,9 +617,10 @@ class Test(TestBase):
     def testReadSQLExecution(self):
         import sqlalchemy as sa
 
+        rs = np.random.RandomState(0)
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': [f's{i}' for i in range(10)],
-                                'c': np.random.rand(10),
+                                'c': rs.rand(10),
                                 'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
                                       for i in range(10)]})
 
@@ -716,9 +718,10 @@ class Test(TestBase):
 
     @unittest.skipIf(pa is None, 'pyarrow not installed')
     def testReadSQLUseArrowDtype(self):
+        rs = np.random.RandomState(0)
         test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                                 'b': [f's{i}' for i in range(10)],
-                                'c': np.random.rand(10),
+                                'c': rs.rand(10),
                                 'd': [datetime.fromtimestamp(time.time() + 3600 * (i - 5))
                                       for i in range(10)]})
 
