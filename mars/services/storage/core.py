@@ -394,12 +394,9 @@ class StorageManagerActor(mo.Actor):
                        session_id: str,
                        data_key: str,
                        level: StorageLevel,
-                       band: str,
-                       address: str):
+                       address: str,
+                       band: str):
         from .transfer import SenderManagerActor
-
-        if band is not None:
-            raise NotImplementedError(f'Not supported band: {band}')
 
         try:
             info = self._data_manager.get_info(session_id, data_key)
@@ -409,14 +406,15 @@ class StorageManagerActor(mo.Actor):
             try:
                 yield self._storage_handler.prefetch(session_id, data_key)
             except NotImplementedError:  # pragma: no cover
+                meta_api = await self._get_meta_api(session_id)
                 if address is None:
-                    meta_api = await self._get_meta_api(session_id)
                     address = (await meta_api.get_chunk_meta(
                         data_key, fields=['bands']))['bands'][0][0]
                 sender_ref = await mo.actor_ref(
                     address=address, uid=SenderManagerActor.default_uid())
                 yield sender_ref.send_data(session_id, data_key,
                                            address, level)
+                await meta_api.add_chunk_bands(data_key, [(address, band or 'numa-0')])
 
     def update_quota(self,
                      size: int,
