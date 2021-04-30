@@ -169,8 +169,17 @@ class OscarMetaAPI(MetaAPI):
     @extensible
     async def get_chunk_meta(self,
                              object_id: str,
-                             fields: List[str] = None):
-        return await self._meta_store.get_meta(object_id, fields=fields)
+                             fields: List[str] = None,
+                             error='raise'):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+        try:
+            return await self._meta_store.get_meta(object_id, fields=fields)
+        except KeyError:
+            if error == 'raise':
+                raise
+            else:
+                return
 
     @extensible
     async def del_chunk_meta(self,

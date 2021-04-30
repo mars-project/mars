@@ -18,6 +18,7 @@ from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
 from ....utils import implements, classproperty
+from ...errors import ServerClosed
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .errors import ChannelClosed
@@ -36,6 +37,7 @@ class DummyChannel(Channel):
     def __init__(self,
                  in_queue: asyncio.Queue,
                  out_queue: asyncio.Queue,
+                 closed: asyncio.Event,
                  local_address: str = None,
                  dest_address: str = None,
                  compression=None):
@@ -44,7 +46,7 @@ class DummyChannel(Channel):
                          compression=compression)
         self._in_queue = in_queue
         self._out_queue = out_queue
-        self._closed = asyncio.Event()
+        self._closed = closed
 
     @property
     @implements(Channel.type)
@@ -80,7 +82,7 @@ class DummyChannel(Channel):
 
 @register_server
 class DummyServer(Server):
-    __slots__ = '_closed',
+    __slots__ = '_closed', '_channels'
 
     _address_to_instances: Dict[str, "DummyServer"] = dict()
     scheme = 'dummy'
@@ -90,6 +92,7 @@ class DummyServer(Server):
                  channel_handler: Callable[[Channel], Coroutine] = None):
         super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
+        self._channels = []
 
     @classmethod
     def get_instance(cls, address: str):
@@ -120,7 +123,9 @@ class DummyServer(Server):
                             f'arguments: {",".join(config)}')
 
         try:
-            return DummyServer.get_instance(address)
+            server = DummyServer.get_instance(address)
+            if server.stopped:
+                raise KeyError('server closed')
         except KeyError:
             server = DummyServer(address, handle_channel)
             DummyServer._address_to_instances[address] = server
@@ -141,17 +146,22 @@ class DummyServer(Server):
 
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
+        if self._closed.is_set():
+            raise ServerClosed('Dummy server already closed')
+
         channel = args[0]
         assert isinstance(channel, DummyChannel)
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
+        self._channels.append(channel)
         await self.channel_handler(channel)
 
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
-        del DummyServer._address_to_instances[self.address]
+        await asyncio.gather(
+            *(channel.close() for channel in self._channels))
 
     @property
     @implements(Server.stopped)
@@ -186,10 +196,13 @@ class DummyClient(Client):
         if server is None:  # pragma: no cover
             raise RuntimeError('DummyServer needs to be created '
                                'first before DummyClient')
+        if server.stopped:
+            raise ConnectionError('Dummy server closed')
 
         q1, q2 = asyncio.Queue(), asyncio.Queue()
-        client_channel = DummyChannel(q1, q2)
-        server_channel = DummyChannel(q2, q1)
+        closed = asyncio.Event()
+        client_channel = DummyChannel(q1, q2, closed)
+        server_channel = DummyChannel(q2, q1, closed)
 
         conn_coro = server.on_connected(server_channel)
         task = asyncio.create_task(conn_coro)

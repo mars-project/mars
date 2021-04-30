@@ -18,7 +18,6 @@ from typing import List, Union
 from ... import oscar as mo
 from ...core import Tileable
 from ...lib.aio import alru_cache
-from ..session import OscarSessionAPI
 from .core import TileableGraph, TaskResult
 from .supervisor.task_manager import TaskManagerActor
 
@@ -163,13 +162,9 @@ class OscarTaskAPI(TaskAPI):
         task_api
             Task API
         """
-        session_api = await OscarSessionAPI.create(address)
-        session_address = await session_api.get_session_address(session_id)
-        allocate_strategy = mo.allocate_strategy.AddressSpecified(session_address)
         task_manager_ref = await mo.create_actor(
             TaskManagerActor, session_id, address=address,
-            uid=TaskManagerActor.gen_uid(session_id),
-            allocate_strategy=allocate_strategy)
+            uid=TaskManagerActor.gen_uid(session_id))
         return OscarTaskAPI(session_id, task_manager_ref)
 
     @classmethod

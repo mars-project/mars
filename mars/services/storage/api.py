@@ -143,7 +143,7 @@ class OscarStorageAPI(StorageAPI):
         )
 
     @extensible
-    async def delete(self, data_key: str):
+    async def delete(self, data_key: str, error: str = 'raise'):
         """
         Delete object.
 
@@ -151,9 +151,11 @@ class OscarStorageAPI(StorageAPI):
         ----------
         data_key: str
             object key to delete
+        error: str
+            raise or ignore
         """
         await self._storage_handler_ref.delete(
-            self._session_id, data_key)
+            self._session_id, data_key, error=error)
 
     @extensible
     async def prefetch(self,

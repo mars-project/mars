@@ -227,9 +227,18 @@ class StorageHandlerActor(mo.Actor):
 
     async def delete(self,
                      session_id: str,
-                     data_key: str):
-        infos = await self._storage_manager_ref.get_data_infos(
-            session_id, data_key)
+                     data_key: str,
+                     error='raise'):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+        try:
+            infos = await self._storage_manager_ref.get_data_infos(
+                session_id, data_key)
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
         for info in infos or []:
             level = info.level
             await self._storage_manager_ref.delete_data_info(

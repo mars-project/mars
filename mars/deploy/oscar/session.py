@@ -17,10 +17,12 @@ from dataclasses import dataclass
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
+from typing import Dict
 
 from ...core import Tileable, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
+from ...services.lifecycle import LifecycleAPI
 from ...services.meta import MetaAPI, OscarMetaAPI
 from ...services.session import SessionAPI, OscarSessionAPI
 from ...services.storage import OscarStorageAPI
@@ -58,12 +60,14 @@ class Session(AbstractSession):
                  session_id: str,
                  session_api: SessionAPI,
                  meta_api: MetaAPI,
+                 lifecycle_api: LifecycleAPI,
                  task_api: TaskAPI,
                  client: ClientType = None):
         super().__init__(address, session_id)
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
+        self._lifecycle_api = lifecycle_api
         self.client = client
 
         self._tileable_to_fetch = WeakKeyDictionary()
@@ -87,6 +91,7 @@ class Session(AbstractSession):
             session_api = await OscarSessionAPI.create(address)
         # create new session
         session_address = await session_api.create_session(session_id)
+        lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         if use_web_api:
             from ...services.meta.web import WebMetaAPI
             meta_api = await WebMetaAPI.create(address, session_id, session_address)
@@ -103,7 +108,7 @@ class Session(AbstractSession):
             raise TypeError(f'Oscar session got unexpected '
                             f'arguments: {unexpected_keys}')
 
-        return cls(address, session_id, session_api, meta_api, task_api)
+        return cls(address, session_id, session_api, meta_api, lifecycle_api, task_api)
 
     async def _run_in_background(self,
                                  tileables: list,
@@ -208,6 +213,12 @@ class Session(AbstractSession):
             data.append(merge_chunks(index_to_data))
 
         return data
+
+    async def decref(self, *tileable_keys):
+        return await self._lifecycle_api.decref_tileables(tileable_keys)
+
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        return await self._lifecycle_api.get_all_chunk_ref_counts()
 
     async def destroy(self):
         await self._session_api.delete_session(self._session_id)

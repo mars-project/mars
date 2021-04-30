@@ -14,3 +14,4 @@
 
 from .api import StorageAPI, OscarStorageAPI, MockStorageAPI
 from .core import DataInfo
+from .errors import DataNotExist

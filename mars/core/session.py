@@ -156,6 +156,10 @@ class AbstractSession(ABC):
     def address(self):
         return self._address
 
+    @property
+    def session_id(self):
+        return self._session_id
+
     @classmethod
     @abstractmethod
     async def init(cls,
@@ -213,16 +217,26 @@ class AbstractSession(ABC):
         data
         """
 
-    def decref(self, *tileables):
+    @abstractmethod
+    async def decref(self, *tileable_keys):
         """
         Decref tileables.
 
         Parameters
         ----------
-        tileables
-            Tileables.
+        tileable_keys
+            Tileable keys.
         """
-        # TODO(qinxuye): implement this function when lifecycle service ready.
+
+    @abstractmethod
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        """
+        Get all ref counts
+
+        Returns
+        -------
+        ref_counts
+        """
 
     async def stop_server(self):
         """
@@ -411,6 +425,16 @@ class SyncSession:
 
     def fetch(self, *tileables):
         return fetch(*tileables, session=self._session)
+
+    @_wrap_in_thread
+    def decref(self, *tileables_keys):
+        return _loop.run_until_complete(
+            self._session.decref(*tileables_keys))
+
+    @_wrap_in_thread
+    def _get_ref_counts(self) -> Dict[str, int]:
+        return _loop.run_until_complete(
+            self._session._get_ref_counts())
 
     @_wrap_in_thread
     def destroy(self):

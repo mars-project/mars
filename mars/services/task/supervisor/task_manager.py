@@ -25,7 +25,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple, Type, Optional
 from .... import oscar as mo
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
-    Tileable, TileableType
+    Tileable, TileableType, ChunkType
 from ....core.operand import Fetch, Fuse
 from ....dataframe.core import DATAFRAME_CHUNK_TYPE
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
@@ -33,6 +33,7 @@ from ....optimization.logical.tileable import optimize as optimize_tileable_grap
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
+from ...lifecycle.api import LifecycleAPI
 from ...meta.api import OscarMetaAPI
 from ..analyzer import GraphAnalyzer
 from ..config import task_options
@@ -185,8 +186,8 @@ class SubtaskGraphScheduler:
         self._scheduling_api = scheduling_api
 
         # gen subtask_id to subtask
-        self._subtask_id_to_subtask = {subtask.subtask_id: subtask
-                                       for subtask in subtask_graph}
+        self.subtask_id_to_subtask = {subtask.subtask_id: subtask
+                                      for subtask in subtask_graph}
 
         self._subtask_to_bands: Dict[Subtask, BandType] = dict()
         self._subtask_to_results: Dict[Subtask, SubtaskResult] = dict()
@@ -198,6 +199,9 @@ class SubtaskGraphScheduler:
 
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
+
+    def is_cancelled(self):
+        return self._cancelled.is_set()
 
     async def _get_band_subtask_manager(self, band: BandType):
         from ..worker.subtask import BandSubtaskManagerActor
@@ -270,7 +274,7 @@ class SubtaskGraphScheduler:
 
     async def set_subtask_result(self, result: SubtaskResult):
         subtask_id = result.subtask_id
-        subtask = self._subtask_id_to_subtask[subtask_id]
+        subtask = self.subtask_id_to_subtask[subtask_id]
         self._subtask_to_results[subtask] = result
 
         all_done = len(self._subtask_to_results) == len(self._subtask_graph)
@@ -479,8 +483,12 @@ class TaskManagerActor(mo.Actor):
     _task_id_to_task_stage_info: Dict[str, TaskStageInfo]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
+    _cluster_api: ClusterAPI
+    _meta_api: MetaAPI
+    _lifecycle_api: LifecycleAPI
+
     def __init__(self,
-                 session_id,
+                 session_id: str,
                  use_scheduling=True):
         self._session_id = session_id
         self._config = None
@@ -491,14 +499,17 @@ class TaskManagerActor(mo.Actor):
         self._task_id_to_task_stage_info = dict()
         self._tileable_key_to_info = defaultdict(list)
 
-        self._meta_api = None
         self._cluster_api = None
+        self._meta_api = None
+        self._lifecycle_api = None
         self._use_scheduling = use_scheduling
         self._last_idle_time = None
 
     async def __post_create__(self):
-        self._meta_api = await OscarMetaAPI.create(self._session_id, self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
+        self._meta_api = await MetaAPI.create(self._session_id, self.address)
+        self._lifecycle_api = await LifecycleAPI.create(
+            self._session_id, self.address)
 
         # get config
         configuration_ref = await mo.actor_ref(
@@ -584,67 +595,138 @@ class TaskManagerActor(mo.Actor):
                             task: Task):
         loop = asyncio.get_running_loop()
 
-        # optimization, run it in executor,
-        # since optimization may be a CPU intensive operation
-        tileable_graph = await loop.run_in_executor(None, task_processor.optimize)
+        try:
+            # optimization, run it in executor,
+            # since optimization may be a CPU intensive operation
+            tileable_graph = await loop.run_in_executor(None, task_processor.optimize)
 
-        chunk_graph_iter = task_processor.tile(tileable_graph)
-        while True:
-            task_stage_info = TaskStageInfo(
-                new_task_id(), task_info, task)
+            chunk_graph_iter = task_processor.tile(tileable_graph)
+            lifecycle_processed_tileables = set()
+            stages = []
+            while True:
+                task_stage_info = TaskStageInfo(
+                    new_task_id(), task_info, task)
 
-            def next_chunk_graph():
+                def next_chunk_graph():
+                    try:
+                        return next(chunk_graph_iter)
+                    except StopIteration:
+                        return
+
+                future = loop.run_in_executor(None, next_chunk_graph)
                 try:
-                    return next(chunk_graph_iter)
-                except StopIteration:
-                    return
+                    chunk_graph = await future
+                    if chunk_graph is None:
+                        break
 
-            future = loop.run_in_executor(None, next_chunk_graph)
-            try:
-                chunk_graph = await future
-                if chunk_graph is None:
+                    task_info.task_stage_infos.append(task_stage_info)
+                    stages.append(task_stage_info)
+                    task_id = task_stage_info.task_id
+                    self._task_id_to_task_stage_info[task_id] = task_stage_info
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                    # something wrong while tiling
+                    _, err, tb = sys.exc_info()
+                    task_stage_info.task_result.status = TaskStatus.terminated
+                    task_stage_info.task_result.error = err
+                    task_stage_info.task_result.traceback = tb
+
+                    task_info.task_stage_infos.append(task_stage_info)
+                    stages.append(task_stage_info)
+                    task_id = task_stage_info.task_id
+                    self._task_id_to_task_stage_info[task_id] = task_stage_info
+
                     break
 
-                task_info.task_stage_infos.append(task_stage_info)
-                task_id = task_stage_info.task_id
-                self._task_id_to_task_stage_info[task_id] = task_stage_info
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-                # something wrong while tiling
-                _, err, tb = sys.exc_info()
-                task_stage_info.task_result.status = TaskStatus.terminated
-                task_stage_info.task_result.error = err
-                task_stage_info.task_result.traceback = tb
+                # track and incref result tileables
+                await self._track_and_incref_result_tileables(
+                    tileable_graph, task_processor,
+                    lifecycle_processed_tileables)
 
-                task_info.task_stage_infos.append(task_stage_info)
-                task_id = task_stage_info.task_id
-                self._task_id_to_task_stage_info[task_id] = task_stage_info
+                task_stage_info.chunk_graph = chunk_graph
+                # get subtask graph
+                available_bands = await self._get_available_band_slots()
+                analyzer = GraphAnalyzer(chunk_graph, available_bands,
+                                         task.fuse_enabled, task.extra_config,
+                                         task_stage_info)
+                subtask_graph = analyzer.gen_subtask_graph()
+                task_stage_info.subtask_graph = subtask_graph
+                await self._incref_after_analyze(subtask_graph, chunk_graph.results)
 
-                break
+                # schedule subtask graph
+                # TODO(qinxuye): pass scheduling API to scheduler when it's ready
+                subtask_scheduler = SubtaskGraphScheduler(
+                    subtask_graph, list(available_bands), task_stage_info,
+                    self._meta_api)
+                task_stage_info.subtask_graph_scheduler = subtask_scheduler
+                await subtask_scheduler.schedule()
 
-            task_stage_info.chunk_graph = chunk_graph
-            # get subtask graph
-            available_bands = await self._get_available_band_slots()
-            analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                     task.fuse_enabled, task.extra_config,
-                                     task_stage_info)
-            subtask_graph = analyzer.gen_subtask_graph()
-            task_stage_info.subtask_graph = subtask_graph
+            # iterative tiling and execution finished,
+            # set task processor done
+            for tileable in tileable_graph.result_tileables:
+                info = ResultTileableInfo(tileable=tileable,
+                                          processor=task_processor)
+                self._tileable_key_to_info[tileable.key].append(info)
+            await self._decref_when_finish(
+                stages, lifecycle_processed_tileables)
+        finally:
+            task_processor.done = True
 
-            # schedule subtask graph
-            # TODO(qinxuye): pass scheduling API to scheduler when it's ready
-            subtask_scheduler = SubtaskGraphScheduler(
-                subtask_graph, list(available_bands), task_stage_info,
-                self._meta_api)
-            task_stage_info.subtask_graph_scheduler = subtask_scheduler
-            await subtask_scheduler.schedule()
+    async def _track_and_incref_result_tileables(self,
+                                                 tileable_graph: TileableGraph,
+                                                 task_processor: TaskProcessor,
+                                                 processed: Set):
+        # track and incref result tileables if tiled
+        tracks = [], []
+        for result_tileable in tileable_graph.result_tileables:
+            if result_tileable in processed:
+                continue
+            try:
+                tiled_tileable = task_processor.get_tiled(result_tileable)
+                tracks[0].append(result_tileable.key)
+                tracks[1].append(self._lifecycle_api.track.delay(
+                    result_tileable.key, [c.key for c in tiled_tileable.chunks]))
+                processed.add(result_tileable)
+            except KeyError:
+                # not tiled, skip
+                pass
+        if tracks:
+            await self._lifecycle_api.track.batch(*tracks[1])
+            await self._lifecycle_api.incref_tileables(tracks[0])
 
-        # iterative tiling and execution finished,
-        # set task processor done
-        for tileable in tileable_graph.result_tileables:
-            info = ResultTileableInfo(tileable=tileable,
-                                      processor=task_processor)
-            self._tileable_key_to_info[tileable.key].append(info)
-        task_processor.done = True
+    async def _incref_after_analyze(self,
+                                    subtask_graph: SubtaskGraph,
+                                    chunk_results: List[ChunkType]):
+        incref_chunk_keys = []
+        for subtask in subtask_graph:
+            # for subtask has successors, incref number of successors
+            n = subtask_graph.count_successors(subtask)
+            incref_chunk_keys.extend(
+                [c.key for c in subtask.chunk_graph.results] * n)
+        incref_chunk_keys.extend([c.key for c in chunk_results])
+        await self._lifecycle_api.incref_chunks(incref_chunk_keys)
+
+    async def _decref_when_finish(self,
+                                  stages: List[TaskStageInfo],
+                                  result_tileables: Set[TileableType]):
+        # decref chunks in subtask that has no successors
+        decref_chunks = []
+        error_or_cancelled = False
+        for stage in stages:
+            # decref result of chunk graphs
+            decref_chunks.extend(stage.chunk_graph.results)
+            if stage.task_result.error is not None:
+                # error happened
+                error_or_cancelled = True
+            elif stage.subtask_graph_scheduler.is_cancelled():
+                # cancelled
+                error_or_cancelled = True
+        await self._lifecycle_api.decref_chunks(
+            [c.key for c in decref_chunks])
+
+        # if task failed, roll back tileable incref
+        if error_or_cancelled:
+            await self._lifecycle_api.decref_tileables(
+                [r.key for r in result_tileables])
 
     @classmethod
     async def _wait_for(cls, task_info: TaskInfo):
@@ -728,7 +810,18 @@ class TaskManagerActor(mo.Actor):
 
         task_stage_info.subtask_results[subtask_result.subtask_id] = subtask_result
         if subtask_result.status.is_done:
+            subtask = task_stage_info.subtask_graph_scheduler.subtask_id_to_subtask[
+                subtask_result.subtask_id]
+            await self._decref_input_subtasks(subtask, task_stage_info.subtask_graph)
             await task_stage_info.subtask_graph_scheduler.set_subtask_result(subtask_result)
+
+    async def _decref_input_subtasks(self,
+                                     subtask: Subtask,
+                                     subtask_graph: SubtaskGraph):
+        decref_chunks = []
+        for in_subtask in subtask_graph.iter_predecessors(subtask):
+            decref_chunks.extend(in_subtask.chunk_graph.results)
+        await self._lifecycle_api.decref_chunks([c.key for c in decref_chunks])
 
     def get_task_progress(self, task_id: str) -> float:
         # first get all processors
