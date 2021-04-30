@@ -45,8 +45,8 @@ from mars.utils import Timer, merge_chunks
 async def actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                      labels=[None] + ['numa-0'] * 2,
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
+                                      labels=['main'] + ['numa-0'] * 2 + ['io'],
                                       subprocess_start_method=start_method)
 
     async with pool:

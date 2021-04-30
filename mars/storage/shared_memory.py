@@ -68,7 +68,7 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
         pass
 
     def _read_close(self):
-        pass
+        _shared_memory_manager.register(self._object_id, self.shm)
 
 
 class ShmStorageFileObject(StorageFileObject):
@@ -183,11 +183,15 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
-        shm = SharedMemory(name=object_id)
+        shm_file = SharedMemoryFileObject(object_id, mode='r')
+
+        async with ShmStorageFileObject(shm_file, object_id) as f:
+            deserializer = AioDeserializer(f)
+            size = await deserializer.get_size()
         if _is_windows:
-            return WinShmObjectInfo(size=shm.size, object_id=object_id, shm=shm)
+            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
         else:
-            return ObjectInfo(size=shm.size, object_id=object_id)
+            return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

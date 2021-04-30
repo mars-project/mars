@@ -20,8 +20,10 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.services import start_services, NodeRole
+from mars.serialization import AioDeserializer, AioSerializer
+from mars.services import start_services, stop_services, NodeRole
 from mars.services.storage import StorageAPI
+from mars.storage import StorageLevel
 
 
 @pytest.fixture
@@ -29,8 +31,9 @@ async def actor_pools():
     async def start_pool():
         start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
             if sys.platform != 'win32' else None
-        pool = await mo.create_actor_pool('127.0.0.1', n_process=1,
-                                          subprocess_start_method=start_method)
+        pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
+                                          subprocess_start_method=start_method,
+                                          labels=['main', 'sub', 'io'])
         await pool.start()
         return pool
 
@@ -85,3 +88,21 @@ async def test_storage_service(actor_pools):
 
     get_value2 = await api.get('data2')
     pd.testing.assert_frame_equal(value2, get_value2)
+
+    # test writer and read
+    buffers = await AioSerializer(value2).run()
+    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+    # test open_reader and open_writer
+    writer = await api.open_writer('write_key', size,
+                                   StorageLevel.MEMORY)
+    async with writer:
+        for buf in buffers:
+            await writer.write(buf)
+
+    reader = await api.open_reader('write_key')
+    async with reader:
+        read_value = await AioDeserializer(reader).run()
+
+    pd.testing.assert_frame_equal(value2, read_value)
+
+    await stop_services(NodeRole.WORKER, worker_pool.external_address, config)

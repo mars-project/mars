@@ -44,7 +44,12 @@ async def create_worker_actor_pool(
             assert band.startswith('numa')
             labels.extend([band] * slot)
 
+    # one sub-pool for IO(transfer and spill)
+    if envs:
+        envs.append(dict())
+    labels.append('io')
+
     return await mo.create_actor_pool(
-        address, n_process=n_process,
+        address, n_process=n_process + 1,
         labels=labels, envs=envs,
         subprocess_start_method=subprocess_start_method)
