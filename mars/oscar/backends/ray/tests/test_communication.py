@@ -15,7 +15,7 @@ ray = lazy_import('ray')
 
 @pytest.fixture
 def ray_cluster():
-    ray.init()
+    ray.init(num_cpus=10)
     yield
     ray.shutdown()
     Router.set_instance(None)

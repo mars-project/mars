@@ -77,8 +77,8 @@ class RayMainActorPool(MainActorPoolBase):
             # must shutdown gracefully, or coverage info lost
             process.exit_actor.remote()
             wait_time, waited_time = 30, 0
-            while await self.is_sub_pool_alive(process):
-                if waited_time > wait_time:  # pragma: no cover
+            while await self.is_sub_pool_alive(process):  # pragma: no cover
+                if waited_time > wait_time:
                     logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
                     await self._kill_actor_forcibly(process)
                     return
@@ -90,8 +90,8 @@ class RayMainActorPool(MainActorPoolBase):
     async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
         ray.kill(process)
         wait_time, waited_time = 30, 0
-        while await self.is_sub_pool_alive(process):
-            if waited_time > wait_time:  # pragma: no cover
+        while await self.is_sub_pool_alive(process):  # pragma: no cover
+            if waited_time > wait_time:
                 raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
             await asyncio.sleep(1)
             logger.info(f'Waited {waited_time} seconds for {process} to be killed.')

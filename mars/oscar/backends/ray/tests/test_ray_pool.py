@@ -27,7 +27,7 @@ ray = lazy_import('ray')
 @pytest.fixture
 def ray_start_regular():
     register_ray_serializers()
-    yield ray.init()
+    yield ray.init(num_cpus=10)
     ray.shutdown()
     unregister_ray_serializers()
     Router.set_instance(None)
@@ -36,13 +36,14 @@ def ray_start_regular():
 @require_ray
 @pytest.mark.asyncio
 async def test_main_pool(ray_start_regular):
-    pg_name, n_process = 'ray_cluster', 3
+    pg_name, n_process = 'ray_cluster', 2
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
         ray.get(pg.ready())
     address = process_placement_to_address(pg_name, 0, process_index=0)
     addresses = RayMainActorPool.get_external_addresses(address, n_process)
-    assert addresses == [address] + [process_placement_to_address(pg_name, 0, process_index=i + 1) for i in range(3)]
+    assert addresses == [address] + [process_placement_to_address(pg_name, 0, process_index=i + 1)
+                                     for i in range(n_process)]
     assert RayMainActorPool.gen_internal_address(0, address) == address
 
     main_actor_pool = await create_actor_pool(
