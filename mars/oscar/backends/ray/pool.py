@@ -76,16 +76,25 @@ class RayMainActorPool(MainActorPoolBase):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
             # must shutdown gracefully, or coverage info lost
             process.exit_actor.remote()
-            waited_time, wait_time = 0, 3
+            wait_time, waited_time = 30, 0
             while await self.is_sub_pool_alive(process):
                 if waited_time > wait_time:  # pragma: no cover
                     logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
-                    ray.kill(process)
+                    await self._kill_actor_forcibly(process)
                     return
                 await asyncio.sleep(0.1)
                 wait_time += 0.1
         else:
-            ray.kill(process)
+            await self._kill_actor_forcibly(process)
+
+    async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
+        ray.kill(process)
+        wait_time, waited_time = 30, 0
+        while await self.is_sub_pool_alive(process):
+            if waited_time > wait_time:  # pragma: no cover
+                raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
+            await asyncio.sleep(1)
+            logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:

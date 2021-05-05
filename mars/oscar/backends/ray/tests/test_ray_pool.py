@@ -43,7 +43,7 @@ async def test_main_pool(ray_start_regular):
     address = process_placement_to_address(pg_name, 0, process_index=0)
     addresses = RayMainActorPool.get_external_addresses(address, n_process)
     assert addresses == [address] + [process_placement_to_address(pg_name, 0, process_index=i + 1) for i in range(3)]
-    assert RayMainActorPool.gen_internal_address(1, address) == address
+    assert RayMainActorPool.gen_internal_address(0, address) == address
 
     main_actor_pool = await create_actor_pool(
         address, n_process=n_process, pool_cls=RayMainActorPool)
