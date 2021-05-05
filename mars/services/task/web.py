@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import ServiceWebHandlerBase, ServiceWebAPIBase
-from tornado.httpclient import AsyncHTTPClient
+from mars.services.web.core import ServiceProxyHandlerBase, ServiceWebAPIBase, get_service_proxy_endpoint
 from .api import TaskAPI
 
 
-class TaskWebHandler(ServiceWebHandlerBase):
+class TaskAPIProxyHandler(ServiceProxyHandlerBase):
     _api_cls = TaskAPI
 
     async def create(self, session_id: str, address: str):
-        return self._api_registry.add_instance(await TaskAPI.create(session_id, address))
+        return await TaskAPI.create(session_id, address)
 
 
 _service_name = 'task'
 web_handlers = {
-    f'/api/service/{_service_name}/rpc': TaskWebHandler,
+    get_service_proxy_endpoint(_service_name): TaskAPIProxyHandler,
 }
 
 
@@ -34,7 +33,5 @@ class TaskWebAPI(ServiceWebAPIBase):
     _service_name = _service_name
 
     @classmethod
-    async def create(cls, session_id: str, address: str):
-        http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, {}, 'create',  None, session_id, address)
-        return TaskWebAPI(http_client, api_id)
+    async def create(cls, web_address: str, session_id: str, address: str):
+        return TaskWebAPI(web_address, 'create', (session_id, address), {})

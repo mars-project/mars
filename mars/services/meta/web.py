@@ -12,24 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import ServiceWebHandlerBase, ServiceWebAPIBase
-from tornado.httpclient import AsyncHTTPClient
+from mars.services.web.core import ServiceProxyHandlerBase, ServiceWebAPIBase, get_service_proxy_endpoint
 from .api import MetaAPI
 
 
-class MetaWebHandler(ServiceWebHandlerBase):
+class MetaAPIProxyHandler(ServiceProxyHandlerBase):
     _api_cls = MetaAPI
 
     async def create(self, session_id: str, address: str):
-        return self._api_registry.add_instance(await MetaAPI.create(session_id, address))
-
-    async def create_session(self, session_id: str, address: str):
-        return self._api_registry.add_instance(await MetaAPI.create_session(session_id, address))
+        return await MetaAPI.create(session_id, address)
 
 
 _service_name = 'meta'
 web_handlers = {
-    f'/api/service/{_service_name}/rpc': MetaWebHandler,
+    get_service_proxy_endpoint(_service_name): MetaAPIProxyHandler,
 }
 
 
@@ -37,7 +33,5 @@ class MetaWebAPI(ServiceWebAPIBase):
     _service_name = _service_name
 
     @classmethod
-    async def create(cls, session_id: str, address: str):
-        http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, {}, 'create', None, session_id, address)
-        return MetaWebAPI(http_client, api_id)
+    async def create(cls, web_address: str, session_id: str, address: str):
+        return MetaWebAPI(web_address, 'create', (session_id, address), {})

@@ -12,21 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import ServiceWebHandlerBase, ServiceWebAPIBase
-from tornado.httpclient import AsyncHTTPClient
+from typing import Any, List
+
+from mars.services.web.core import ServiceProxyHandlerBase, ServiceWebAPIBase, get_service_proxy_endpoint
+from ...storage.base import StorageLevel
 from .api import StorageAPI
+from .core import DataInfo
 
 
-class StorageWebHandler(ServiceWebHandlerBase):
+class StorageAPIProxyHandler(ServiceProxyHandlerBase):
     _api_cls = StorageAPI
 
     async def create(self, session_id: str, address: str, **kwargs):
-        return self._api_registry.add_instance(await StorageAPI.create(session_id, address, **kwargs))
+        return await StorageAPI.create(session_id, address, **kwargs)
 
 
-_service_name = 'service'
+_service_name = 'storage'
+_transfer_request_timeout = 30 * 60  # timeout for 30 minutes
 web_handlers = {
-    f'/api/service/{_service_name}/rpc': StorageWebHandler,
+    get_service_proxy_endpoint(_service_name): StorageAPIProxyHandler,
 }
 
 
@@ -34,7 +38,14 @@ class StorageWebAPI(ServiceWebAPIBase):
     _service_name = _service_name
 
     @classmethod
-    async def create(cls, session_id: str, address: str, **kwargs):
-        http_client = AsyncHTTPClient()
-        api_id = await cls._post(http_client, {}, 'create',  None, session_id, address, **kwargs)
-        return StorageWebAPI(http_client, api_id)
+    async def create(cls, web_address: str, session_id: str, address: str, **kwargs):
+        return StorageWebAPI(web_address, 'create', (session_id, address), kwargs)
+
+    async def get(self, data_key: str, conditions: List = None) -> Any:
+        return await self._post(self._http_client, dict(request_timeout=_transfer_request_timeout),
+                                'get', data_key, conditions)
+
+    async def put(self, data_key: str, obj: object,
+                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+        return await self._post(self._http_client, dict(request_timeout=_transfer_request_timeout),
+                                'put', data_key, obj, level)

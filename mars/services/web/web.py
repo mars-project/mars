@@ -12,5 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import NodeRole, start_services, stop_services
-from .web.web import get_supervisor_address
+from mars.services.web import MarsRequestHandler
+from tornado.httpclient import AsyncHTTPClient
+
+
+class SupervisorAddressWebHandler(MarsRequestHandler):
+    async def get(self):
+        self.write(self._supervisor_addr)
+
+
+get_supervisor_address_endpoint = '/api/service/web/supervisor_address'
+web_handlers = {
+    get_supervisor_address_endpoint: SupervisorAddressWebHandler,
+}
+
+
+def get_supervisor_address(web_address):
+    http_client = AsyncHTTPClient()
+    resp = await http_client.fetch(web_address + get_supervisor_address_endpoint)
+    return resp.body.decode()
