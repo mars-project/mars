@@ -106,7 +106,7 @@ class RayClientChannel(RayChannelBase):
             # Wait on ray object ref
             object_ref = await self._in_queue.get()
             return deserialize(*(await object_ref))
-        except RuntimeError as e:
+        except RuntimeError as e:  # pragma: no cover
             if not self._closed.is_set():
                 raise e
 
@@ -147,7 +147,7 @@ class RayServerChannel(RayChannelBase):
             raise ChannelClosed('Channel already closed, cannot write message')
         try:
             return deserialize(*(await self._in_queue.get()))
-        except RuntimeError:
+        except RuntimeError:  # pragma: no cover
             if not self._closed.is_set():
                 raise
 
@@ -212,7 +212,7 @@ class RayServer(Server):
         wait_coro = self._closed.wait()
         try:
             await asyncio.wait_for(wait_coro, timeout=timeout)
-        except (futures.TimeoutError, asyncio.TimeoutError):
+        except (futures.TimeoutError, asyncio.TimeoutError):  # pragma: no cover
             pass
 
     @implements(Server.on_connected)

@@ -18,7 +18,7 @@ jobs:
           - { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
               no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
-              no-deploy: 1, with-ray: "with ray", with-cython: 1 }
+              no-deploy: 1, with-ray: "with ray" }
 
     steps:
       - name: Check out code
@@ -49,7 +49,7 @@ jobs:
           pip install -r requirements-dev.txt
           pip install -r requirements-extra.txt
           if [[ $UNAME == "windows" ]]; then
-            pip install virtualenv flake8
+            pip install virtualenv flaky flake8
           else
             pip install virtualenv flaky flake8 etcd-gevent ray
             if [ -n "$WITH_KUBERNETES" ]; then
@@ -157,11 +157,8 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray --ignore-glob "mars/oscar/*"
-            mv .coverage build/.coverage.non-aio.file
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray mars/oscar
-            mv .coverage build/.coverage.aio.file
-            coverage combine build/ && coverage report
+            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray
+            coverage report
           fi
           coverage xml
 
