@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from mars.services.web import MarsRequestHandler
-from tornado.httpclient import AsyncHTTPClient
+from mars.services.web.core import supervisor_address_endpoint
 
 
 class SupervisorAddressWebHandler(MarsRequestHandler):
@@ -21,13 +21,8 @@ class SupervisorAddressWebHandler(MarsRequestHandler):
         self.write(self._supervisor_addr)
 
 
-get_supervisor_address_endpoint = '/api/service/web/supervisor_address'
 web_handlers = {
-    get_supervisor_address_endpoint: SupervisorAddressWebHandler,
+    supervisor_address_endpoint: SupervisorAddressWebHandler,
 }
 
 
-def get_supervisor_address(web_address):
-    http_client = AsyncHTTPClient()
-    resp = await http_client.fetch(web_address + get_supervisor_address_endpoint)
-    return resp.body.decode()

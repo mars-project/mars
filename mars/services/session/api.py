@@ -12,30 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+from abc import ABC, abstractmethod
+from typing import Union, TypeVar
+from urllib.parse import urlparse
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from .supervisor import SessionManagerActor
+from mars.services.web.core import ServiceWebAPIBase, get_supervisor_address
 
 
-class SessionAPI:
-    def __init__(self,
-                 address: str,
-                 session_manager: Union[SessionManagerActor, mo.ActorRef]):
-        self._address = address
-        self._session_manager_ref = session_manager
+APIType = TypeVar('APIType', bound='SessionAPI')
 
+
+class SessionAPI(ABC):
     @classmethod
     @alru_cache
-    async def create(cls, address: str, **kwargs) -> "SessionAPI":
-        if kwargs:  # pragma: no cover
-            raise TypeError(f'SessionAPI.create '
-                            f'got unknown arguments: {list(kwargs)}')
-        session_manager = await mo.actor_ref(
-            address, SessionManagerActor.default_uid())
-        return SessionAPI(address, session_manager)
+    async def create(cls, address: str, **kwargs) -> "APIType":
+        if urlparse(address).scheme == 'http':
+            return await SessionWebAPI.create(address, *kwargs)
+        else:
+            return await OscarSessionAPI.create(address, **kwargs)
 
+    @abstractmethod
     async def create_session(self, session_id: str) -> str:
         """
         Create session and return address.
@@ -50,6 +49,37 @@ class SessionAPI:
         address : str
             Session address.
         """
+
+    @abstractmethod
+    async def delete_session(self, session_id: str):
+        """
+        Delete session.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        """
+
+
+class OscarSessionAPI(SessionAPI):
+    def __init__(self,
+                 address: str,
+                 session_manager: Union[SessionManagerActor, mo.ActorRef]):
+        self._address = address
+        self._session_manager_ref = session_manager
+
+    @classmethod
+    @alru_cache
+    async def create(cls, address: str, **kwargs) -> "OscarSessionAPI":
+        if kwargs:  # pragma: no cover
+            raise TypeError(f'OscarSessionAPI.create '
+                            f'got unknown arguments: {list(kwargs)}')
+        session_manager = await mo.actor_ref(
+            address, SessionManagerActor.default_uid())
+        return OscarSessionAPI(address, session_manager)
+
+    async def create_session(self, session_id: str) -> str:
         session_actor_ref = \
             await self._session_manager_ref.create_session(session_id)
         return session_actor_ref.address
@@ -70,14 +100,6 @@ class SessionAPI:
         return await self._session_manager_ref.has_session(session_id)
 
     async def delete_session(self, session_id: str):
-        """
-        Delete session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        """
         await self._session_manager_ref.delete_session(session_id)
 
     async def get_session_address(self, session_id: str) -> str:
@@ -113,7 +135,7 @@ class SessionAPI:
         return await self._session_manager_ref.last_idle_time(session_id)
 
 
-class MockSessionAPI(SessionAPI):
+class MockSessionAPI(OscarSessionAPI):
     @classmethod
     async def create(cls,
                      address: str, **kwargs) -> "SessionAPI":
@@ -129,3 +151,18 @@ class MockSessionAPI(SessionAPI):
             await session_manager.create_session(
                 session_id, create_services=False)
         return MockSessionAPI(address, session_manager)
+
+
+class SessionWebAPI(ServiceWebAPIBase, SessionAPI):
+    _service_name = 'session'
+
+    @classmethod
+    async def create(cls, address: str, **kwargs):
+        supervisor_address = await get_supervisor_address(address)
+        return SessionWebAPI(address, 'create', supervisor_address, **kwargs)
+
+    async def create_session(self, session_id: str) -> str:
+        return await self._call_method({}, 'create_session', session_id)
+
+    async def delete_session(self, session_id: str):
+        return await self._call_method({}, 'delete_session', session_id)

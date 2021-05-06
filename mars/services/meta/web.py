@@ -12,26 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import ServiceProxyHandlerBase, ServiceWebAPIBase, get_service_proxy_endpoint
+from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
 from .api import MetaAPI
 
 
 class MetaAPIProxyHandler(ServiceProxyHandlerBase):
     _api_cls = MetaAPI
 
-    async def create(self, session_id: str, address: str):
-        return await MetaAPI.create(session_id, address)
 
-
-_service_name = 'meta'
 web_handlers = {
-    get_service_proxy_endpoint(_service_name): MetaAPIProxyHandler,
+    get_service_proxy_endpoint('meta'): MetaAPIProxyHandler,
 }
-
-
-class MetaWebAPI(ServiceWebAPIBase):
-    _service_name = _service_name
-
-    @classmethod
-    async def create(cls, web_address: str, session_id: str, address: str):
-        return MetaWebAPI(web_address, 'create', (session_id, address), {})

@@ -13,29 +13,21 @@
 # limitations under the License.
 
 import sys
+from abc import ABC, abstractmethod
 from typing import Any, List, Type, TypeVar
+from urllib.parse import urlparse
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage.base import StorageLevel, StorageFileObject
 from ...utils import extensible
 from .core import StorageHandlerActor, StorageManagerActor, DataInfo
+from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
-class StorageAPI:
-    def __init__(self,
-                 address: str,
-                 session_id: str):
-        self._address = address
-        self._session_id = session_id
-
-    async def _init(self):
-        self._storage_handler_ref = await mo.actor_ref(
-            self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref = await mo.actor_ref(
-            self._address, StorageManagerActor.default_uid())
+class StorageAPI(ABC):
 
     @classmethod
     @alru_cache
@@ -59,12 +51,13 @@ class StorageAPI:
         storage_api
             Storage api.
         """
-        if kwargs:  # pragma: no cover
-            raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
-        api = StorageAPI(address, session_id)
-        await api._init()
-        return api
+        supervisor_address = kwargs.get('supervisor_address', '')
+        if supervisor_address and urlparse(supervisor_address).scheme == 'http':
+            return await StorageWebAPI.create(session_id, address, **kwargs)
+        else:
+            return await OscarStorageAPI.create(session_id, address)
 
+    @abstractmethod
     @extensible
     async def get(self, data_key: str, conditions: List = None) -> Any:
         """
@@ -82,9 +75,8 @@ class StorageAPI:
         -------
             object
         """
-        return await self._storage_handler_ref.get(
-            self._session_id, data_key, conditions)
 
+    @abstractmethod
     @extensible
     async def put(self, data_key: str,
                   obj: object,
@@ -106,6 +98,42 @@ class StorageAPI:
         object information: ObjectInfo
             the put object information
         """
+
+
+class OscarStorageAPI(StorageAPI):
+    def __init__(self,
+                 address: str,
+                 session_id: str):
+        self._address = address
+        self._session_id = session_id
+
+    async def _init(self):
+        self._storage_handler_ref = await mo.actor_ref(
+            self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref = await mo.actor_ref(
+            self._address, StorageManagerActor.default_uid())
+
+    @classmethod
+    @alru_cache
+    async def create(cls: Type[APIType],
+                     session_id: str,
+                     address: str,
+                     **kwargs) -> APIType:
+        if kwargs:  # pragma: no cover
+            raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
+        api = OscarStorageAPI(address, session_id)
+        await api._init()
+        return api
+
+    @extensible
+    async def get(self, data_key: str, conditions: List = None) -> Any:
+        return await self._storage_handler_ref.get(
+            self._session_id, data_key, conditions)
+
+    @extensible
+    async def put(self, data_key: str,
+                  obj: object,
+                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -228,7 +256,7 @@ class StorageAPI:
         return await self._storage_handler_ref.list(level=level)
 
 
-class MockStorageAPI(StorageAPI):
+class MockStorageAPI(OscarStorageAPI):
     @classmethod
     async def create(cls: Type[APIType],
                      session_id: str,
@@ -260,3 +288,20 @@ class MockStorageAPI(StorageAPI):
     async def cleanup(cls: Type[APIType], address: str):
         await mo.destroy_actor(
             await mo.actor_ref(address, StorageManagerActor.default_uid()))
+
+
+class StorageWebAPI(ServiceWebAPIBase, StorageAPI):
+    _service_name = 'storage'
+
+    @classmethod
+    async def create(cls, session_id: str, address: str, **kwargs):
+        return StorageWebAPI(kwargs.pop('supervisor_address'), 'create', session_id, address, **kwargs)
+
+    async def get(self, data_key: str, conditions: List = None) -> Any:
+        return await self._call_method(dict(request_timeout=_transfer_request_timeout),
+                                'get', data_key, conditions)
+
+    async def put(self, data_key: str, obj: object,
+                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+        return await self._call_method(dict(request_timeout=_transfer_request_timeout),
+                                'put', data_key, obj, level)

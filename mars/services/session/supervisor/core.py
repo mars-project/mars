@@ -108,12 +108,12 @@ class SessionActor(mo.Actor):
         return f'{session_id}_session_actor'
 
     async def create_services(self):
-        from ...meta import MetaAPI
-        from ...task import TaskAPI
+        from ...meta import OscarMetaAPI
+        from ...task import OscarTaskAPI
 
-        self._meta_api = await MetaAPI.create_session(
+        self._meta_api = await OscarMetaAPI.create_session(
             self._session_id, self.address)
-        self._task_api = await TaskAPI.create_session(
+        self._task_api = await OscarTaskAPI.create_session(
             self._session_id, self.address)
 
     async def last_idle_time(self):
@@ -122,9 +122,9 @@ class SessionActor(mo.Actor):
         return await self._task_api.last_idle_time()
 
     async def __pre_destroy__(self):
-        from ...meta import MetaAPI
-        from ...task import TaskAPI
+        from ...meta import OscarMetaAPI
+        from ...task import OscarTaskAPI
 
         if self._meta_api:
-            await MetaAPI.destroy_session(self._session_id, self.address)
-            await TaskAPI.destroy_session(self._session_id, self.address)
+            await OscarMetaAPI.destroy_session(self._session_id, self.address)
+            await OscarTaskAPI.destroy_session(self._session_id, self.address)

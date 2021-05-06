@@ -133,20 +133,20 @@ def test_no_default_session():
 async def test_web_session(create_cluster):
     import uuid
     session_id = str(uuid.uuid4())
-    supervisor_address, web_address = create_cluster.supervisor_address, create_cluster.web_address
-    session = await Session.init(supervisor_address, session_id, web_address=web_address)
+    web_address = create_cluster.web_address
+    session = await Session.init(web_address, session_id)
     session.as_default()
     await test_execute(create_cluster)
     await test_iterative_tiling(create_cluster)
     Session.reset_default()
     await session.destroy()
-    await web_session_test(supervisor_address, web_address)
+    await web_session_test(web_address)
 
 
-async def web_session_test(supervisor_address, web_address):
+async def web_session_test(web_address):
     import uuid
     session_id = str(uuid.uuid4())
-    session = await Session.init(supervisor_address, session_id, web_address=web_address)
+    session = await Session.init(web_address, session_id)
     session.as_default()
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)

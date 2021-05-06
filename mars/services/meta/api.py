@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Dict, List, Any, Union
+from abc import ABC, abstractmethod
+from typing import Dict, List, Any, Union, TypeVar
+from urllib.parse import urlparse
 
 from ... import oscar as mo
 from ...core.operand import Fuse
@@ -24,9 +25,50 @@ from ..core import BandType
 from .core import get_meta_type
 from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
+from mars.services.web.core import ServiceWebAPIBase
 
 
-class MetaAPI:
+APIType = TypeVar('APIType', bound='MetaAPI')
+
+
+class MetaAPI(ABC):
+
+    @classmethod
+    @alru_cache
+    async def create(cls,
+                     session_id: str,
+                     address: str,
+                     **kwargs) -> "APIType":
+        """
+        Create Meta API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address.
+
+        Returns
+        -------
+        meta_api
+            Meta api.
+        """
+        supervisor_address = kwargs.get('supervisor_address', '')
+        if supervisor_address and urlparse(supervisor_address).scheme == 'http':
+            return await WebMetaAPI.create(session_id, address, **kwargs)
+        else:
+            return await OscarMetaAPI.create(session_id, address)
+
+    @abstractmethod
+    @extensible
+    async def get_chunk_meta(self,
+                             object_id: str,
+                             fields: List[str] = None):
+        pass
+
+
+class OscarMetaAPI(MetaAPI):
     def __init__(self,
                  session_id: str,
                  meta_store: Union[AbstractMetaStore, mo.ActorRef]):
@@ -37,7 +79,7 @@ class MetaAPI:
     @alru_cache
     async def create(cls,
                      session_id: str,
-                     address: str) -> "MetaAPI":
+                     address: str) -> "OscarMetaAPI":
         """
         Create Meta API.
 
@@ -56,12 +98,12 @@ class MetaAPI:
         meta_store_ref = await mo.actor_ref(
             address, MetaStoreActor.gen_uid(session_id))
 
-        return MetaAPI(session_id, meta_store_ref)
+        return OscarMetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def create_session(cls,
                              session_id: str,
-                             address: str) -> "MetaAPI":
+                             address: str) -> "OscarMetaAPI":
         """
         Creating a new meta store for the session, and return meta API.
 
@@ -82,7 +124,7 @@ class MetaAPI:
             address, MetaStoreManagerActor.default_uid())
         meta_store_ref = \
             await meta_store_manager_ref.new_session_meta_store(session_id)
-        return MetaAPI(session_id, meta_store_ref)
+        return OscarMetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def destroy_session(cls,
@@ -174,9 +216,9 @@ class MetaAPI:
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
 
-class MockMetaAPI(MetaAPI):
+class MockMetaAPI(OscarMetaAPI):
     @classmethod
-    async def create(cls, session_id: str, address: str) -> "MetaAPI":
+    async def create(cls, session_id: str, address: str) -> "APIType":
         # create an Actor for mock
         try:
             meta_store_manager_ref = await mo.create_actor(
@@ -193,3 +235,17 @@ class MockMetaAPI(MetaAPI):
         except mo.ActorAlreadyExist:
             pass
         return await super().create(session_id=session_id, address=address)
+
+
+class WebMetaAPI(ServiceWebAPIBase, MetaAPI):
+    _service_name = 'meta'
+
+    @classmethod
+    async def create(cls, session_id: str, address: str, **kwargs):
+        return WebMetaAPI(kwargs.pop('supervisor_address'), 'create', session_id, address)
+
+    @extensible
+    async def get_chunk_meta(self,
+                             object_id: str,
+                             fields: List[str] = None):
+        return await self._call_method({}, 'get_chunk_meta', object_id, fields)

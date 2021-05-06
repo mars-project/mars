@@ -82,22 +82,19 @@ def get_service_proxy_endpoint(service_name: str):
     return f'/api/service/{service_name}/__proxy__'
 
 
+_transfer_request_timeout = 30 * 60  # timeout for 30 minutes
+
+
 class ServiceWebAPIBase:
     _service_name = None
 
-    def __init__(self, address: str, api_creation_method_name, api_creation_args, api_creation_kwargs):
+    def __init__(self, address: str, api_creation_method_name, *args, **kwargs):
         self._http_client = AsyncHTTPClient()
         self._address = address
-        self._func_spec = _FuncSpec(api_creation_method_name, api_creation_args, api_creation_kwargs)
+        self._func_spec = _FuncSpec(api_creation_method_name, args, kwargs)
 
-    def __getattr__(self, method_name):
-        async def _func(*args, **kwargs):
-            return await self._post(self._http_client, {}, method_name, *args, **kwargs)
-
-        return _func
-
-    async def _post(self, http_client: AsyncHTTPClient, req_config, api_method_name: str, *args, **kwarg):
-        resp = await http_client.fetch(
+    async def _call_method(self, req_config, api_method_name: str, *args, **kwarg):
+        resp = await self._http_client.fetch(
             self._address + get_service_proxy_endpoint(self._service_name),
             method="POST", body=self._serialize_args(self._func_spec, _FuncSpec(api_method_name, args, kwarg)),
             **(req_config or dict()))
@@ -113,3 +110,12 @@ class ServiceWebAPIBase:
         if isinstance(result, _HandlerException):
             raise result.exc_value.with_traceback(result.exc_traceback)
         return result
+
+
+supervisor_address_endpoint = '/api/service/web/supervisor_address'
+
+
+async def get_supervisor_address(web_address):
+    http_client = AsyncHTTPClient()
+    resp = await http_client.fetch(web_address + supervisor_address_endpoint)
+    return resp.body.decode()

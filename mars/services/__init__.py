@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .core import NodeRole, start_services, stop_services
-from .web.web import get_supervisor_address
+from .web.core import get_supervisor_address
