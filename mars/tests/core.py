@@ -19,6 +19,7 @@ import os
 import logging
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -41,15 +42,9 @@ try:
 except ImportError:
     pytest = None
 try:
-    from flaky import flaky
+    from flaky import flaky as _raw_flaky
 except ImportError:
-    def flaky(o=None, **_):
-        if o is not None:
-            return o
-
-        def ident(x):
-            return x
-        return ident
+    _raw_flaky = None
 
 try:
     import mock
@@ -66,6 +61,22 @@ logger = logging.getLogger(__name__)
 
 class TestCase(unittest.TestCase):
     pass
+
+
+def flaky(o=None, *args, **kwargs):
+    platform = kwargs.pop('platform', '')
+    if _raw_flaky is None or not sys.platform.startswith(platform):
+        if o is not None:
+            return o
+
+        def ident(x):
+            return x
+
+        return ident
+    elif o is not None:
+        return _raw_flaky(o, *args, **kwargs)
+    else:
+        return _raw_flaky(*args, **kwargs)
 
 
 class MultiGetDict(dict):

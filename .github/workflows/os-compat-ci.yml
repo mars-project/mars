@@ -38,7 +38,7 @@ jobs:
         pip install -r requirements-dev.txt
         pip install -r requirements-extra.txt
         if [[ $UNAME == "windows" ]]; then
-          pip install virtualenv flake8
+          pip install virtualenv flaky flake8
         else
           pip install virtualenv flaky flake8 etcd-gevent
           if [ -z "$NO_COMMON_TESTS" ]; then
