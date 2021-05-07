@@ -16,6 +16,7 @@ import asyncio
 import inspect
 import logging
 import os
+import sys
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -156,8 +157,8 @@ class RayPoolBase(ABC):
         """Method for communication based on ray actors"""
         try:
             return await self._ray_server.__on_ray_recv__(channel_id, message)
-        except Exception as e:
-            return RayChannelException(e)
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            return RayChannelException(*sys.exc_info())
 
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY

@@ -36,8 +36,10 @@ ChannelID = namedtuple("ChannelID", ["client_id", "channel_index", "dest_address
 
 class RayChannelException(Exception):
 
-    def __init__(self, cause):
-        self.cause = cause
+    def __init__(self, exc_type, exc_value: BaseException, exc_traceback):
+        self.exc_type = exc_type
+        self.exc_value = exc_value
+        self.exc_traceback = exc_traceback
 
 
 class RayChannelBase(Channel, ABC):
@@ -113,7 +115,7 @@ class RayClientChannel(RayChannelBase):
             object_ref = await self._in_queue.get()
             result = await object_ref
             if isinstance(result, RayChannelException):
-                raise result.cause
+                raise result.exc_value.with_traceback(result.exc_traceback)
             return deserialize(*result)
         except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():
