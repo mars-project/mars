@@ -73,7 +73,7 @@ jobs:
             pip install statsmodels tsfresh
           fi
           virtualenv testenv && source testenv/bin/activate
-          pip install -r requirements.txt && pip install pytest pytest-timeout
+          pip install -r requirements.txt && pip install -r requirements-extra.txt && pip install pytest pytest-timeout
           if [ -z "$DEFAULT_VENV" ]; then
             deactivate
           else
