@@ -175,9 +175,6 @@ class DataManager:
             else:  # pragma: no cover
                 self._data_key_to_info[(session_id, data_key)] = rest
 
-    def list_infos(self, level: StorageLevel):
-        return self._data_info_list[level]
-
 
 class StorageHandlerActor(mo.Actor):
     def __init__(self,
@@ -448,16 +445,13 @@ class StorageManagerActor(mo.Actor):
                               session_id: str,
                               data_key: str) -> DataInfo:
         meta_api = await self._get_meta_api(session_id)
-
         address = (await meta_api.get_chunk_meta(
             data_key, fields=['bands']))['bands'][0][0]
-
         remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
                                                 address=address)
-        data_info = await remote_manager_ref.get_data_info(session_id, data_key)
-
+        data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
         self.put_data_info(session_id, data_key, data_info, None)
-        return data_info
+        raise mo.Return(data_info)
 
     def delete_data_info(self,
                          session_id: str,
@@ -473,6 +467,3 @@ class StorageManagerActor(mo.Actor):
 
     def unpin(self, object_id):
         self._pinned_keys.remove(object_id)
-
-    def get_pinned_keys(self):
-        return self._pinned_keys
