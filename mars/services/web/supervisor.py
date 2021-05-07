@@ -16,7 +16,6 @@ import functools
 import logging
 import os
 import re
-import socket
 
 from bokeh.application import Application
 from bokeh.application.handlers import FunctionHandler
@@ -25,7 +24,7 @@ from bokeh.server.server import Server
 from tornado import web
 
 from ... import oscar as mo
-from ...utils import get_next_port
+from ...utils import get_node_ip_address, get_next_port
 
 logger = logging.getLogger(__name__)
 _ROOT_PLACEHOLDER = 'ROOT_PLACEHOLDER'
@@ -93,7 +92,7 @@ class WebActor(mo.Actor):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
         supervisor_addr = self.address
 
-        host = self._config.get('host', socket.gethostbyname(socket.gethostname()))
+        host = self._config.get('host', get_node_ip_address())
         port = self._config.get('port', get_next_port())
         self._web_address = f'http://{host}:{port}'
         bokeh_apps = self._config.get('bokeh_apps', {})
