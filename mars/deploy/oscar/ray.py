@@ -77,6 +77,7 @@ class RayCluster:
         self._supervisor_pool = None
         self._worker_addresses = []
         self._worker_pools = []
+        self._stopped = False
         self.web_address = None
 
     async def start(self):
@@ -117,20 +118,22 @@ class RayCluster:
         self.web_address = await web_actor.get_web_address()
 
     async def stop(self):
-        for worker_address in self._worker_addresses:
-            await stop_worker(worker_address, self._config)
-        await stop_supervisor(self.supervisor_address, self._config)
-        for pool in self._worker_pools:
-            await pool.actor_pool.remote('stop')
-        await self._supervisor_pool.actor_pool.remote('stop')
-        RayActorDriver.stop_cluster()
+        if not self._stopped:
+            for worker_address in self._worker_addresses:
+                await stop_worker(worker_address, self._config)
+            await stop_supervisor(self.supervisor_address, self._config)
+            for pool in self._worker_pools:
+                await pool.actor_pool.remote('stop')
+            await self._supervisor_pool.actor_pool.remote('stop')
+            RayActorDriver.stop_cluster()
+            self._stopped = True
 
 
 class RayClient:
     def __init__(self,
                  cluster: RayCluster,
                  session: AbstractSession):
-        self.cluster = cluster
+        self._cluster = cluster
         self._address = cluster.supervisor_address
         self._session = session
 
@@ -149,11 +152,11 @@ class RayClient:
 
     @property
     def supervisor_address(self):
-        return self.cluster.supervisor_address
+        return self._cluster.supervisor_address
 
     @property
     def web_address(self):
-        return self.cluster.web_address
+        return self._cluster.web_address
 
     async def __aenter__(self):
         return self
