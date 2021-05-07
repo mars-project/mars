@@ -251,8 +251,8 @@ def get_node_ip_address(address="8.8.8.8:53"):
                 # try get node ip address from host name
                 host_name = socket.getfqdn(socket.gethostname())
                 node_ip_address = socket.gethostbyname(host_name)
-            except Exception:   # pragma: no cover
-                pass
+            except Exception as ex:   # pragma: no cover
+                logger.warning('get node ip address from hostname failed, got %s', ex)
     finally:
         s.close()
 
