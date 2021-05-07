@@ -18,6 +18,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pytest
+import uuid
 
 import mars.dataframe as md
 import mars.tensor as mt
@@ -131,7 +132,6 @@ def test_no_default_session():
 
 @pytest.mark.asyncio
 async def test_web_session(create_cluster):
-    import uuid
     session_id = str(uuid.uuid4())
     web_address = create_cluster.web_address
     session = await Session.init(web_address, session_id)
@@ -144,7 +144,6 @@ async def test_web_session(create_cluster):
 
 
 async def web_session_test(web_address):
-    import uuid
     session_id = str(uuid.uuid4())
     session = await Session.init(web_address, session_id)
     session.as_default()

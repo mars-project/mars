@@ -24,5 +24,3 @@ class SupervisorAddressWebHandler(MarsRequestHandler):
 web_handlers = {
     supervisor_address_endpoint: SupervisorAddressWebHandler,
 }
-
-
