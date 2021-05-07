@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from .api import MetaAPI
+from .api import OscarMetaAPI
 
 
 class MetaAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = MetaAPI
+    _api_cls = OscarMetaAPI
 
 
 web_handlers = {

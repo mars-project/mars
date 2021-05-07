@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Union, TypeVar
-from urllib.parse import urlparse
+from typing import Dict, List, Any, Union
 
 from ... import oscar as mo
 from ...core.operand import Fuse
@@ -28,37 +27,7 @@ from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 from mars.services.web.core import ServiceWebAPIBase
 
 
-APIType = TypeVar('APIType', bound='MetaAPI')
-
-
 class MetaAPI(ABC):
-
-    @classmethod
-    @alru_cache
-    async def create(cls,
-                     session_id: str,
-                     address: str,
-                     **kwargs) -> "APIType":
-        """
-        Create Meta API.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        meta_api
-            Meta api.
-        """
-        supervisor_address = kwargs.get('supervisor_address', '')
-        if supervisor_address and urlparse(supervisor_address).scheme == 'http':
-            return await WebMetaAPI.create(session_id, address, **kwargs)
-        else:
-            return await OscarMetaAPI.create(session_id, address)
 
     @abstractmethod
     @extensible
@@ -218,7 +187,7 @@ class OscarMetaAPI(MetaAPI):
 
 class MockMetaAPI(OscarMetaAPI):
     @classmethod
-    async def create(cls, session_id: str, address: str) -> "APIType":
+    async def create(cls, session_id: str, address: str) -> "OscarMetaAPI":
         # create an Actor for mock
         try:
             meta_store_manager_ref = await mo.create_actor(
@@ -241,8 +210,8 @@ class WebMetaAPI(ServiceWebAPIBase, MetaAPI):
     _service_name = 'meta'
 
     @classmethod
-    async def create(cls, session_id: str, address: str, **kwargs):
-        return WebMetaAPI(kwargs.pop('supervisor_address'), 'create', session_id, address)
+    async def create(cls, web_address: str, session_id: str, address: str):
+        return WebMetaAPI(web_address, 'create', session_id, address)
 
     @extensible
     async def get_chunk_meta(self,

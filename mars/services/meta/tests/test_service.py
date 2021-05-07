@@ -16,7 +16,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.services import start_services, NodeRole
-from mars.services.session.api import SessionAPI
+from mars.services.session.api import OscarSessionAPI
 from mars.services.meta.api import OscarMetaAPI
 
 
@@ -39,7 +39,7 @@ async def test_meta_service():
             NodeRole.SUPERVISOR, config, address=pool.external_address)
 
         session_id = 'test_session'
-        session_api = await SessionAPI.create(pool.external_address)
+        session_api = await OscarSessionAPI.create(pool.external_address)
         await session_api.create_session(session_id)
         # get session store
         meta_api = await OscarMetaAPI.create(session_id, pool.external_address)

@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from .api import SessionAPI
+from .api import OscarSessionAPI
 
 
 class SessionAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = SessionAPI
+    _api_cls = OscarSessionAPI
 
 
 web_handlers = {

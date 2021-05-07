@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import StorageAPI, MockStorageAPI, StorageWebAPI
+from .api import StorageAPI, OscarStorageAPI, MockStorageAPI, WebStorageAPI
 from .core import DataInfo

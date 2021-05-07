@@ -16,11 +16,11 @@
 import pytest
 import numpy as np
 
-from ...task.api import TaskAPI
+from ...task.api import OscarTaskAPI
 import mars.oscar as mo
 import mars.remote as mr
 from mars.services import start_services, NodeRole
-from mars.services.session import SessionAPI
+from mars.services.session import OscarSessionAPI
 from mars.core import TileableGraph, TileableGraphBuilder
 
 
@@ -42,7 +42,7 @@ async def test_meta_service():
         await start_services(
             NodeRole.SUPERVISOR, config, address=pool.external_address)
 
-        session_api = await SessionAPI.create(pool.external_address)
+        session_api = await OscarSessionAPI.create(pool.external_address)
         session_id = 'test_session'
         session_address = await session_api.create_session(session_id)
         assert session_address == pool.external_address
@@ -76,7 +76,7 @@ async def test_last_idle_time():
         await start_services(
             NodeRole.WORKER, config, address=worker_pool.external_address)
 
-        session_api = await SessionAPI.create(sv_pool.external_address)
+        session_api = await OscarSessionAPI.create(sv_pool.external_address)
         session_id = 'test_session'
         await session_api.create_session(session_id)
         # check last idle time is not None
@@ -84,7 +84,7 @@ async def test_last_idle_time():
         assert last_idle_time is not None
         assert await session_api.last_idle_time(session_id) == last_idle_time
         # submit a task
-        task_api = await TaskAPI.create(session_id, sv_pool.external_address)
+        task_api = await OscarTaskAPI.create(session_id, sv_pool.external_address)
 
         def f1():
             return np.arange(5)

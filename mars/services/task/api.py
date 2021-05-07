@@ -13,47 +13,18 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import List, Union, TypeVar
-from urllib.parse import urlparse
+from typing import List, Union
 
 from ... import oscar as mo
 from ...core import Tileable
 from ...lib.aio import alru_cache
-from ..session import SessionAPI
+from ..session import OscarSessionAPI
 from .core import TileableGraph, TaskResult
 from .supervisor.task_manager import TaskManagerActor
 from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 
-APIType = TypeVar('APIType', bound='TaskAPI')
-
 
 class TaskAPI(ABC):
-
-    @classmethod
-    async def create(cls,
-                     session_id: str,
-                     address: str,
-                     **kwargs) -> "APIType":
-        """
-        Create Task API.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        task_api
-            Task API.
-        """
-        supervisor_address = kwargs.get('supervisor_address', '')
-        if supervisor_address and urlparse(supervisor_address).scheme == 'http':
-            return await WebTaskAPI.create(session_id, address, **kwargs)
-        else:
-            return await OscarTaskAPI.create(session_id, address)
 
     @abstractmethod
     async def submit_tileable_graph(self,
@@ -140,6 +111,21 @@ class OscarTaskAPI(TaskAPI):
     async def create(cls,
                      session_id: str,
                      address: str) -> "OscarTaskAPI":
+        """
+        Create Task API.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID
+        address : str
+            Supervisor address.
+
+        Returns
+        -------
+        task_api
+            Task API.
+        """
         task_manager_ref = await mo.actor_ref(
             address, TaskManagerActor.gen_uid(session_id))
         return OscarTaskAPI(session_id, task_manager_ref)
@@ -163,7 +149,7 @@ class OscarTaskAPI(TaskAPI):
         task_api
             Task API
         """
-        session_api = await SessionAPI.create(address)
+        session_api = await OscarSessionAPI.create(address)
         session_address = await session_api.get_session_address(session_id)
         allocate_strategy = mo.allocate_strategy.AddressSpecified(session_address)
         task_manager_ref = await mo.create_actor(
@@ -254,8 +240,8 @@ class WebTaskAPI(ServiceWebAPIBase, TaskAPI):
 
     @classmethod
     @alru_cache
-    async def create(cls, session_id: str, address: str, **kwargs):
-        return WebTaskAPI(kwargs.pop('supervisor_address'), 'create', session_id, address, **kwargs)
+    async def create(cls, web_address: str, session_id: str, address: str, **kwargs):
+        return WebTaskAPI(web_address, 'create', session_id, address, **kwargs)
 
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
@@ -263,7 +249,7 @@ class WebTaskAPI(ServiceWebAPIBase, TaskAPI):
                                     fuse_enabled: bool = True,
                                     extra_config: dict = None) -> str:
         return await self._call_method(dict(request_timeout=_transfer_request_timeout),
-                                'submit_tileable_graph', graph, task_name, fuse_enabled, extra_config)
+                                       'submit_tileable_graph', graph, task_name, fuse_enabled, extra_config)
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         return await self._call_method({}, 'get_fetch_tileables', task_id)

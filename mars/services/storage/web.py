@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from .api import StorageAPI
+from .api import OscarStorageAPI
 
 
 class StorageAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = StorageAPI
+    _api_cls = OscarStorageAPI
 
 
 web_handlers = {

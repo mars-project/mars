@@ -15,15 +15,16 @@
 import asyncio
 from dataclasses import dataclass
 from numbers import Integral
+from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
 
 from ...core import Tileable, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
-from ...services.meta import MetaAPI
-from ...services.session import SessionAPI
-from ...services.storage import StorageAPI
-from ...services.task import TaskAPI, TaskResult
+from ...services.meta import MetaAPI, OscarMetaAPI, WebMetaAPI
+from ...services.session import SessionAPI, OscarSessionAPI, WebSessionAPI
+from ...services.storage import OscarStorageAPI, WebStorageAPI
+from ...services.task import TaskAPI, OscarTaskAPI, WebTaskAPI, TaskResult
 from ...utils import implements, merge_chunks
 from .typing import ClientType
 
@@ -78,11 +79,18 @@ class Session(AbstractSession):
             from .local import new_cluster
             return (await new_cluster(address, **kwargs)).session
 
-        session_api = await SessionAPI.create(address)
+        use_web_api = urlparse(address).scheme == 'http'
+        session_api = await WebSessionAPI.create(address) if use_web_api else await OscarSessionAPI.create(address)
         # create new session
         session_address = await session_api.create_session(session_id)
-        meta_api = await MetaAPI.create(session_id, session_address, supervisor_address=address)
-        task_api = await TaskAPI.create(session_id, session_address, supervisor_address=address)
+        if use_web_api:
+            meta_api = await WebMetaAPI.create(address, session_id, session_address)
+        else:
+            meta_api = await OscarMetaAPI.create(session_id, session_address)
+        if use_web_api:
+            task_api = await WebTaskAPI.create(address, session_id, session_address)
+        else:
+            task_api = await OscarTaskAPI.create(session_id, session_address)
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -183,7 +191,10 @@ class Session(AbstractSession):
                 # TODO: use batch API to fetch data
                 band = (await self._meta_api.get_chunk_meta(
                     chunk.key, fields=['bands']))['bands'][0]
-                storage_api = await StorageAPI.create(self._session_id, band[0], supervisor_address=self.address)
+                if urlparse(self.address).scheme == 'http':
+                    storage_api = await WebStorageAPI.create(self.address, self._session_id, band[0])
+                else:
+                    storage_api = await OscarStorageAPI.create(self._session_id, band[0])
                 index_to_data.append(
                     (chunk.index, await storage_api.get(chunk.key)))
 

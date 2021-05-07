@@ -33,7 +33,7 @@ from ....optimization.logical.tileable import optimize as optimize_tileable_grap
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
-from ...meta.api import MetaAPI
+from ...meta.api import OscarMetaAPI
 from ..analyzer import GraphAnalyzer
 from ..config import task_options
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
@@ -176,7 +176,7 @@ class SubtaskGraphScheduler:
                  subtask_graph: SubtaskGraph,
                  bands: List[BandType],
                  task_stage_info: "TaskStageInfo",
-                 meta_api: MetaAPI,
+                 meta_api: OscarMetaAPI,
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
         self._bands = bands
@@ -497,7 +497,7 @@ class TaskManagerActor(mo.Actor):
         self._last_idle_time = None
 
     async def __post_create__(self):
-        self._meta_api = await MetaAPI.create(self._session_id, self.address)
+        self._meta_api = await OscarMetaAPI.create(self._session_id, self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
 
         # get config

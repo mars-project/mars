@@ -31,7 +31,7 @@ from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import StorageAPI, MockStorageAPI
+from mars.services.storage.api import OscarStorageAPI, MockStorageAPI
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import \
     TaskConfigurationActor, TaskManagerActor
@@ -77,7 +77,7 @@ async def actor_pool():
 
 
 async def _merge_data(fetch_tileable: Tileable,
-                      storage_api: StorageAPI):
+                      storage_api: OscarStorageAPI):
     gets = []
     for i, chunk in enumerate(fetch_tileable.chunks):
         gets.append(storage_api.get.delay(chunk.key))

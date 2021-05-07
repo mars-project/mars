@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from .api import TaskAPI
+from .api import OscarTaskAPI
 
 
 class TaskAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = TaskAPI
+    _api_cls = OscarTaskAPI
 
 
 web_handlers = {

@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Union, TypeVar
-from urllib.parse import urlparse
+from typing import Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
@@ -22,17 +21,7 @@ from .supervisor import SessionManagerActor
 from mars.services.web.core import ServiceWebAPIBase, get_supervisor_address
 
 
-APIType = TypeVar('APIType', bound='SessionAPI')
-
-
 class SessionAPI(ABC):
-    @classmethod
-    @alru_cache
-    async def create(cls, address: str, **kwargs) -> "APIType":
-        if urlparse(address).scheme == 'http':
-            return await SessionWebAPI.create(address, *kwargs)
-        else:
-            return await OscarSessionAPI.create(address, **kwargs)
 
     @abstractmethod
     async def create_session(self, session_id: str) -> str:
@@ -153,13 +142,13 @@ class MockSessionAPI(OscarSessionAPI):
         return MockSessionAPI(address, session_manager)
 
 
-class SessionWebAPI(ServiceWebAPIBase, SessionAPI):
+class WebSessionAPI(ServiceWebAPIBase, SessionAPI):
     _service_name = 'session'
 
     @classmethod
     async def create(cls, address: str, **kwargs):
         supervisor_address = await get_supervisor_address(address)
-        return SessionWebAPI(address, 'create', supervisor_address, **kwargs)
+        return WebSessionAPI(address, 'create', supervisor_address, **kwargs)
 
     async def create_session(self, session_id: str) -> str:
         return await self._call_method({}, 'create_session', session_id)

@@ -21,10 +21,10 @@ import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.services import start_services, NodeRole
-from mars.services.session import SessionAPI
+from mars.services.session import OscarSessionAPI
 from mars.services.storage import MockStorageAPI
-from mars.services.meta import MetaAPI
-from mars.services.task import TaskAPI, TaskStatus
+from mars.services.meta import OscarMetaAPI
+from mars.services.task import OscarTaskAPI, TaskStatus
 
 
 @pytest.fixture
@@ -72,12 +72,12 @@ async def test_task_service(actor_pools):
         NodeRole.WORKER, config, address=worker_pool.external_address)
 
     session_id = 'test_session'
-    session_api = await SessionAPI.create(sv_pool.external_address)
+    session_api = await OscarSessionAPI.create(sv_pool.external_address)
     await session_api.create_session(session_id)
-    task_api = await TaskAPI.create(session_id,
+    task_api = await OscarTaskAPI.create(session_id,
                                     sv_pool.external_address)
     # create mock meta and storage APIs
-    _ = await MetaAPI.create(session_id,
+    _ = await OscarMetaAPI.create(session_id,
                              sv_pool.external_address)
     storage_api = await MockStorageAPI.create(session_id,
                                               worker_pool.external_address)
