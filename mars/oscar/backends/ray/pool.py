@@ -25,6 +25,7 @@ from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
+from ..router import Router
 from .communication import ChannelID, RayServer
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
 
@@ -72,7 +73,28 @@ class RayMainActorPool(MainActorPoolBase):
         return actor_handle
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
+        if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
+            # must shutdown gracefully, or coverage info lost
+            process.exit_actor.remote()
+            wait_time, waited_time = 30, 0
+            while await self.is_sub_pool_alive(process):  # pragma: no cover
+                if waited_time > wait_time:
+                    logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
+                    await self._kill_actor_forcibly(process)
+                    return
+                await asyncio.sleep(0.1)
+                wait_time += 0.1
+        else:
+            await self._kill_actor_forcibly(process)
+
+    async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
         ray.kill(process)
+        wait_time, waited_time = 30, 0
+        while await self.is_sub_pool_alive(process):  # pragma: no cover
+            if waited_time > wait_time:
+                raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
+            await asyncio.sleep(1)
+            logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
@@ -85,7 +107,15 @@ class RayMainActorPool(MainActorPoolBase):
 
 @_register_message_handler
 class RaySubActorPool(SubActorPoolBase):
-    pass
+
+    async def stop(self):
+        try:
+            # clean global router
+            Router.get_instance().remove_router(self._router)
+            await self._caller.stop()
+            self._servers = []
+        finally:
+            self._stopped.set()
 
 
 class PoolStatus(Enum):
@@ -97,6 +127,16 @@ class RayPoolBase(ABC):
     __slots__ = '_actor_pool', '_ray_server'
 
     _actor_pool: Optional['AbstractActorPool']
+
+    def __new__(cls, *args, **kwargs):
+        try:
+            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                # register coverage hooks on SIGTERM
+                from pytest_cov.embed import cleanup_on_sigterm
+                cleanup_on_sigterm()
+        except ImportError:  # pragma: no cover
+            pass
+        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):
         self._actor_pool = None
@@ -127,6 +167,11 @@ class RayPoolBase(ABC):
             return attr(*args, **kwargs)
         else:
             return attr
+
+    def exit_actor(self):
+        """Exiting current process gracefully."""
+        logger.info('Exiting %s of process %s now', self, os.getpid())
+        ray.actor.exit_actor()
 
 
 class RayMainPool(RayPoolBase):

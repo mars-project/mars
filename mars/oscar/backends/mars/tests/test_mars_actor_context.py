@@ -182,7 +182,7 @@ class PromiseTestActor(mo.Actor):
             self.call_log.append(('C', idx, time.time()))
         finally:
             await self.res_lock_ref.release()
-            yield res
+            raise mo.Return(res)
 
     async def test_promise_call(self, idx, delay=0.1):
         return self._apply_step(idx, delay)

@@ -123,6 +123,7 @@ class RayCluster:
         for pool in self._worker_pools:
             await pool.actor_pool.remote('stop')
         await self._supervisor_pool.actor_pool.remote('stop')
+        RayActorDriver.stop_cluster()
 
 
 class RayClient:
@@ -162,4 +163,4 @@ class RayClient:
 
     async def stop(self):
         await self._session.destroy()
-        RayActorDriver.stop_cluster()
+        await self._cluster.stop()

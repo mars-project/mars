@@ -15,6 +15,7 @@
 import asyncio
 import concurrent.futures as futures
 import os
+import socket
 import tempfile
 from abc import ABCMeta
 from asyncio import StreamReader, StreamWriter, AbstractServer
@@ -105,8 +106,7 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         else:
             future = asyncio.create_task(self._aio_server.serve_forever())
             try:
-                await asyncio.wait_for(future, timeout=timeout,
-                                       loop=asyncio.get_running_loop())
+                await asyncio.wait_for(future, timeout=timeout)
             except (futures.TimeoutError, asyncio.TimeoutError):
                 future.cancel()
 
@@ -272,6 +272,10 @@ class UnixSocketServer(_BaseSocketServer):
 
         aio_server = await asyncio.start_unix_server(
             handle_connection, path=path, **config)
+
+        for sock in aio_server.sockets:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+
         server = UnixSocketServer(process_index, aio_server, path,
                                   channel_handler=handle_channel)
         return server

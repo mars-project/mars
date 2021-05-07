@@ -15,26 +15,29 @@
 # limitations under the License.
 
 import asyncio
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
 import pyarrow as pa
-from pyarrow import plasma
 
 from ..resource import virtual_memory
 from ..serialization import AioSerializer, AioDeserializer
-from ..utils import implements, dataslots, calc_size_by_str
+from ..utils import implements, dataslots, calc_size_by_str, lazy_import
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
+plasma = lazy_import('pyarrow.plasma', globals=globals(), rename='plasma')
+if sys.platform.startswith('win'):
+    plasma = None
 
 PAGE_SIZE = 64 * 1024
 
 
 class PlasmaFileObject(BufferWrappedFileObject):
     def __init__(self,
-                 plasma_client: plasma.PlasmaClient,
+                 plasma_client: "plasma.PlasmaClient",
                  object_id: Any,
                  mode: str,
                  size: Optional[int] = None):
@@ -42,6 +45,10 @@ class PlasmaFileObject(BufferWrappedFileObject):
         self._object_id = object_id
         self._file = None
         super().__init__(mode, size=size)
+
+    @property
+    def buffer(self):
+        return getattr(self, '_buffer', None)
 
     def _write_init(self):
         self._buffer = buf = self._plasma_client.create(self._object_id, self._size)
@@ -68,6 +75,16 @@ class PlasmaFileObject(BufferWrappedFileObject):
         pass
 
 
+class PlasmaStorageFileObject(StorageFileObject):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._buffer = None
+
+    async def close(self):
+        self._buffer = self._file.buffer
+        await super().close()
+
+
 @dataslots
 @dataclass
 class PlasmaObjectInfo(ObjectInfo):
@@ -83,7 +100,7 @@ class PlasmaObjectInfo(ObjectInfo):
         self.buffer = client.get_buffers([self.object_id])[0]
 
 
-def get_actual_capacity(plasma_client: plasma.PlasmaClient) -> int:
+def get_actual_capacity(plasma_client: "plasma.PlasmaClient") -> int:
     """
     Get actual capacity of plasma store
 
@@ -232,12 +249,12 @@ class PlasmaStorage(StorageBackend):
 
         new_id = self._generate_object_id()
         plasma_writer = PlasmaFileObject(self._client, new_id, size=size, mode='w')
-        return StorageFileObject(plasma_writer, object_id=new_id)
+        return PlasmaStorageFileObject(plasma_writer, object_id=new_id)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
-        return StorageFileObject(plasma_reader, object_id=object_id)
+        return PlasmaStorageFileObject(plasma_reader, object_id=object_id)
 
     @implements(StorageBackend.list)
     async def list(self) -> List:

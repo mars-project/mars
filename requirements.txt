@@ -8,3 +8,5 @@ psutil>=4.0.0
 pickle5; python_version<'3.8'
 async_generator; python_version<'3.7'
 dataclasses; python_version<'3.7'
+shared-memory38; python_version<'3.8'
+asyncio37; python_version<'3.7'
