@@ -174,9 +174,10 @@ class PromiseTestActor(mo.Actor):
         return self._apply_step(idx, delay)
 
     async def test_yield_tuple(self, delay=0.1):
-        yield tuple(
+        tp = yield tuple(
             self._apply_step(idx, delay) for idx in range(4)
         ) + (asyncio.sleep(delay), 'PlainString')
+        raise mo.Return(tp)
 
     async def async_raiser_func(self):
         yield asyncio.sleep(0.1)

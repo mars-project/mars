@@ -251,7 +251,7 @@ cdef class _Actor:
         except Return as ex:
             return ex.value
         except StopAsyncIteration as ex:
-            return res
+            return
 
     async def __post_create__(self):
         """
