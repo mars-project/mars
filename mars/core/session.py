@@ -20,7 +20,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Type, Tuple, Union
 
-from ..config import options
+from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
 from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
@@ -47,11 +47,13 @@ def _wrap_in_thread(func: Callable):
 
     def inner(*args, **kwargs):
         default_session = get_default_session()
+        config = get_global_option().to_dict()
 
         def run_in_thread():
-            # set default session in this thread
-            sync_default_session(default_session)
-            return func(*args, **kwargs), get_default_session()
+            with option_context(config):
+                # set default session in this thread
+                sync_default_session(default_session)
+                return func(*args, **kwargs), get_default_session()
 
         fut = _pool.submit(run_in_thread)
         result, default_session_in_thread = fut.result()

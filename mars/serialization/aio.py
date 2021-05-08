@@ -71,7 +71,10 @@ class AioDeserializer:
         return read(n)
 
     async def _get_obj_header_bytes(self):
-        header_bytes = bytes(await self._file.read(11))
+        try:
+            header_bytes = bytes(await self._file.read(11))
+        except ConnectionResetError:
+            raise EOFError('Server may be closed')
         if len(header_bytes) == 0:
             raise EOFError('Received empty bytes')
         version = struct.unpack('B', header_bytes[:1])[0]

@@ -708,18 +708,19 @@ class TaskManagerActor(mo.Actor):
     async def _decref_when_finish(self,
                                   stages: List[TaskStageInfo],
                                   result_tileables: Set[TileableType]):
-        # decref chunks in subtask that has no successors
         decref_chunks = []
         error_or_cancelled = False
         for stage in stages:
-            # decref result of chunk graphs
-            decref_chunks.extend(stage.chunk_graph.results)
             if stage.task_result.error is not None:
                 # error happened
                 error_or_cancelled = True
             elif stage.subtask_graph_scheduler.is_cancelled():
                 # cancelled
                 error_or_cancelled = True
+            else:
+                # succeeded
+                # decref result of chunk graphs
+                decref_chunks.extend(stage.chunk_graph.results)
         await self._lifecycle_api.decref_chunks(
             [c.key for c in decref_chunks])
 
@@ -840,12 +841,18 @@ class TaskManagerActor(mo.Actor):
 
         # get progress of stages
         subtask_progress = 0.0
+        n_stage = 0
         for stage in task_info.task_stage_infos:
+            if stage.subtask_graph is None:
+                # generating subtask
+                continue
             n_subtask = len(stage.subtask_graph)
             progress = sum(result.progress for result
                            in stage.subtask_results.values())
             subtask_progress += progress / n_subtask
-        subtask_progress /= len(task_info.task_stage_infos)
+            n_stage += 1
+        if n_stage > 0:
+            subtask_progress /= n_stage
 
         return subtask_progress * tiled_percentage
 
