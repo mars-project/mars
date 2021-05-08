@@ -128,6 +128,8 @@ cdef class ActorRefMethod:
 
             args_list.append(args)
             kwargs_list.append(kwargs)
+        if last_method is None:
+            last_method = self.method_name
 
         if send:
             return self.ref.__send__((last_method, CALL_METHOD_BATCH,
