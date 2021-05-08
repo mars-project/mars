@@ -20,11 +20,15 @@ from ..mode import enter_mode
 
 class _TileableSession:
     def __init__(self, tileable, session):
-        key = tileable.key
+        from ..session import AbstractSession, SyncSession
+
+        if isinstance(session, AbstractSession):
+            key = tileable.key
+        else:
+            # legacy decref
+            key = tileable.key, tileable.id
 
         def cb(_, sess=ref(session)):
-            from ..session import AbstractSession, SyncSession
-
             s = sess()
             if s:
                 if isinstance(s, AbstractSession):
