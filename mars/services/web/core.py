@@ -18,8 +18,10 @@ import inspect
 import logging
 import sys
 
-from tornado.httpclient import AsyncHTTPClient
-from .supervisor import MarsRequestHandler
+try:
+    from .supervisor import MarsRequestHandler
+except ModuleNotFoundError:
+    MarsRequestHandler = object   # ignore handler if `bokeh`/`tornado` is not installed.
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +91,7 @@ class ServiceWebAPIBase:
     _service_name = None
 
     def __init__(self, address: str, api_creation_method_name, *args, **kwargs):
+        from tornado.httpclient import AsyncHTTPClient
         self._http_client = AsyncHTTPClient()
         self._address = address
         self._func_spec = _FuncSpec(api_creation_method_name, args, kwargs)
@@ -116,6 +119,7 @@ supervisor_address_endpoint = '/api/service/web/supervisor_address'
 
 
 async def get_supervisor_address(web_address):
+    from tornado.httpclient import AsyncHTTPClient
     http_client = AsyncHTTPClient()
     resp = await http_client.fetch(web_address + supervisor_address_endpoint)
     return resp.body.decode()
