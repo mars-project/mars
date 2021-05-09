@@ -20,7 +20,7 @@ import sys
 
 try:
     from .supervisor import MarsRequestHandler
-except ModuleNotFoundError:
+except ModuleNotFoundError:  # pragma: no cover
     MarsRequestHandler = object   # ignore handler if `bokeh`/`tornado` is not installed.
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class ServiceProxyHandlerBase(MarsRequestHandler):
                     api = api_creation_method(*api_creation_spec.args)
                 if inspect.isawaitable(api):
                     api = await api
-            except Exception:
+            except Exception:  # pragma: no cover
                 logger.exception(f'Create api of {self._api_cls} with {api_creation_spec} failed')
                 raise
             method = getattr(api, api_call_spec.method_name)
@@ -74,7 +74,7 @@ class ServiceProxyHandlerBase(MarsRequestHandler):
             if inspect.isawaitable(result):
                 result = await result
             self.write(serialize(result))
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             logger.exception(f'Execute method with {api_call_spec} failed, got exception {e}')
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.write(serialize(_HandlerException(exc_type, exc_value, exc_traceback)))
@@ -110,7 +110,7 @@ class ServiceWebAPIBase:
     @classmethod
     def _deserialize_result(cls, binary):
         result = deserialize(binary)
-        if isinstance(result, _HandlerException):
+        if isinstance(result, _HandlerException):  # pragma: no cover
             raise result.exc_value.with_traceback(result.exc_traceback)
         return result
 

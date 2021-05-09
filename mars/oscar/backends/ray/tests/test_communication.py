@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import os
 
 import pytest
 
@@ -22,6 +23,16 @@ def ray_cluster():
 
 
 class ServerActor:
+
+    def __new__(cls, *args, **kwargs):
+        try:
+            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                # register coverage hooks on SIGTERM
+                from pytest_cov.embed import cleanup_on_sigterm
+                cleanup_on_sigterm()
+        except ImportError:  # pragma: no cover
+            pass
+        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, address):
         self.address = address

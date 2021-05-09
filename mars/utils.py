@@ -243,7 +243,7 @@ def get_node_ip_address(address="8.8.8.8:53"):
         # connection.
         s.connect((ip_address, int(port)))
         node_ip_address = s.getsockname()[0]
-    except Exception as e:
+    except Exception as e:  # pragma: no cover
         node_ip_address = "127.0.0.1"
         # [Errno 101] Network is unreachable
         if e.errno == 101:

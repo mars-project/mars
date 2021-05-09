@@ -141,6 +141,8 @@ async def test_task_service_web_api(actor_pools):
     session_id = 'test_session'
     session_api = await WebSessionAPI.create(web_address)
     await session_api.create_session(session_id)
+    assert await session_api.get_last_idle_time() == \
+           await (await OscarSessionAPI.create(web_address)).get_last_idle_time()
     task_api = await WebTaskAPI.create(web_address, session_id, sv_pool.external_address)
     # create mock meta and storage APIs
     _ = await WebMetaAPI.create(web_address, session_id, sv_pool.external_address)

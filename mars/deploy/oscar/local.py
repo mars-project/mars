@@ -121,10 +121,6 @@ class LocalClient:
         return client
 
     @property
-    def supervisor_address(self):
-        return self._cluster.supervisor_address
-
-    @property
     def web_address(self):
         return self._cluster.web_address
 

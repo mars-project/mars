@@ -34,7 +34,7 @@ class MetaAPI(ABC):
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None):
-        pass
+        """Return chunk meta"""
 
 
 class OscarMetaAPI(MetaAPI):
