@@ -98,6 +98,21 @@ class TaskAPI(ABC):
             Get task progress.
         """
 
+    async def get_task_result(self, task_id: str) -> TaskResult:
+        """
+        Get task status.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        result : TaskResult
+            Task result.
+        """
+
 
 class OscarTaskAPI(TaskAPI):
     def __init__(self,
@@ -190,19 +205,6 @@ class OscarTaskAPI(TaskAPI):
             task_id, timeout=timeout)
 
     async def get_task_result(self, task_id: str) -> TaskResult:
-        """
-        Get task status.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        result : TaskResult
-            Task result.
-        """
         return await self._task_manager_ref.get_task_result(task_id)
 
     async def get_task_progress(self,
@@ -259,3 +261,6 @@ class WebTaskAPI(ServiceWebAPIBase, TaskAPI):
 
     async def get_task_progress(self, task_id: str) -> float:
         return await self._call_method({}, 'get_task_progress', task_id)
+
+    async def get_task_result(self, task_id: str) -> TaskResult:
+        return await self._call_method({}, 'get_task_result', task_id)
