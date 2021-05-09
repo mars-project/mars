@@ -51,7 +51,7 @@ class SessionAPI(ABC):
         """
 
     @abstractmethod
-    async def last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         """
         Get session last idle time.
 
@@ -123,8 +123,8 @@ class OscarSessionAPI(SessionAPI):
         """
         return (await self._session_manager_ref.get_session_ref(session_id)).address
 
-    async def last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
-        return await self._session_manager_ref.last_idle_time(session_id)
+    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+        return await self._session_manager_ref.get_last_idle_time(session_id)
 
 
 class MockSessionAPI(OscarSessionAPI):
@@ -159,5 +159,5 @@ class WebSessionAPI(ServiceWebAPIBase, SessionAPI):
     async def delete_session(self, session_id: str):
         return await self._call_method({}, 'delete_session', session_id)
 
-    async def last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         return await self._call_method({}, 'last_idle_time', session_id)

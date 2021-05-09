@@ -756,7 +756,7 @@ class TaskManagerActor(mo.Actor):
 
         return subtask_progress * tiled_percentage
 
-    def last_idle_time(self):
+    def get_last_idle_time(self):
         if self._last_idle_time is None:
             for task_info in self._task_id_to_task_info.values():
                 for task_processor in task_info.task_processors:

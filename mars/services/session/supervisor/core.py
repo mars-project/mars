@@ -83,13 +83,13 @@ class SessionManagerActor(mo.Actor):
                 supervisor_address, SessionManagerActor.default_uid())
             await session_manager_ref.remove_session_ref(session_id)
 
-    async def last_idle_time(self, session_id=None):
+    async def get_last_idle_time(self, session_id=None):
         if session_id is not None:
             session = self._session_refs[session_id]
-            return await session.last_idle_time()
+            return await session.get_last_idle_time()
         else:
             all_last_idle_time = await asyncio.gather(
-                *[session.last_idle_time() for session in self._session_refs.values()])
+                *[session.get_last_idle_time() for session in self._session_refs.values()])
             if any(last_idle_time is None for last_idle_time in all_last_idle_time):
                 return None
             else:
@@ -116,10 +116,10 @@ class SessionActor(mo.Actor):
         self._task_api = await OscarTaskAPI.create_session(
             self._session_id, self.address)
 
-    async def last_idle_time(self):
+    async def get_last_idle_time(self):
         if self._task_api is None:
             return None
-        return await self._task_api.last_idle_time()
+        return await self._task_api.get_last_idle_time()
 
     async def __pre_destroy__(self):
         from ...meta import OscarMetaAPI

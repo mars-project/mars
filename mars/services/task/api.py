@@ -223,7 +223,7 @@ class OscarTaskAPI(TaskAPI):
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
-    async def last_idle_time(self) -> Union[float, None]:
+    async def get_last_idle_time(self) -> Union[float, None]:
         """
         Get last idle time from task manager.
 
@@ -232,7 +232,7 @@ class OscarTaskAPI(TaskAPI):
         last_idle_time: float
             The last idle time if the task manager is idle else None.
         """
-        return await self._task_manager_ref.last_idle_time()
+        return await self._task_manager_ref.get_last_idle_time()
 
 
 class WebTaskAPI(ServiceWebAPIBase, TaskAPI):

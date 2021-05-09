@@ -53,7 +53,7 @@ async def test_meta_service():
 
 
 @pytest.mark.asyncio
-async def test_last_idle_time():
+async def test_get_last_idle_time():
     sv_pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
     worker_pool = await mo.create_actor_pool('127.0.0.1',
                                              n_process=2,
@@ -80,9 +80,9 @@ async def test_last_idle_time():
         session_id = 'test_session'
         await session_api.create_session(session_id)
         # check last idle time is not None
-        last_idle_time = await session_api.last_idle_time(session_id)
+        last_idle_time = await session_api.get_last_idle_time(session_id)
         assert last_idle_time is not None
-        assert await session_api.last_idle_time(session_id) == last_idle_time
+        assert await session_api.get_last_idle_time(session_id) == last_idle_time
         # submit a task
         task_api = await OscarTaskAPI.create(session_id, sv_pool.external_address)
 
@@ -109,10 +109,10 @@ async def test_last_idle_time():
         assert task_result.error is not None
 
         # the last idle time is changed
-        new_last_idle_time = await session_api.last_idle_time()
+        new_last_idle_time = await session_api.get_last_idle_time()
         assert new_last_idle_time is not None
         assert new_last_idle_time != last_idle_time
-        assert await session_api.last_idle_time() == new_last_idle_time
+        assert await session_api.get_last_idle_time() == new_last_idle_time
         assert new_last_idle_time > last_idle_time
 
         # blocking task.
@@ -124,4 +124,4 @@ async def test_last_idle_time():
         graph = TileableGraph([r4.data])
         next(TileableGraphBuilder(graph).build())
         await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-        assert await session_api.last_idle_time() is None
+        assert await session_api.get_last_idle_time() is None
