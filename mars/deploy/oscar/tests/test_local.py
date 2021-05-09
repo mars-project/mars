@@ -46,6 +46,7 @@ async def create_cluster():
 async def test_execute(create_cluster):
     session = get_default_session()
     assert session.address is not None
+    assert session.session_id is not None
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)

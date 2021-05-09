@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .api import LifecycleAPI, MockLifecycleAPI
+from .errors import TileableNotTracked

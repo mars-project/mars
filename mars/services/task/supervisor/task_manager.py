@@ -678,7 +678,7 @@ class TaskManagerActor(mo.Actor):
         # track and incref result tileables if tiled
         tracks = [], []
         for result_tileable in tileable_graph.result_tileables:
-            if result_tileable in processed:
+            if result_tileable in processed:  # pragma: no cover
                 continue
             try:
                 tiled_tileable = task_processor.get_tiled(result_tileable)
@@ -843,7 +843,7 @@ class TaskManagerActor(mo.Actor):
         subtask_progress = 0.0
         n_stage = 0
         for stage in task_info.task_stage_infos:
-            if stage.subtask_graph is None:
+            if stage.subtask_graph is None:  # pragma: no cover
                 # generating subtask
                 continue
             n_subtask = len(stage.subtask_graph)

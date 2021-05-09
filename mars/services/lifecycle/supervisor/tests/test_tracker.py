@@ -20,6 +20,7 @@ import pytest
 from mars import tensor as mt
 from mars.core import tile
 from mars.services.cluster import MockClusterAPI
+from mars.services.lifecycle import TileableNotTracked
 from mars.services.lifecycle.supervisor.tracker import LifecycleTrackerActor
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
@@ -67,5 +68,10 @@ async def test_tracker():
             for chunk_key in chunk_keys:
                 with pytest.raises(DataNotExist):
                     await storage_api.get(chunk_key)
+
+            with pytest.raises(TileableNotTracked):
+                await tracker.incref_tileables(['not_tracked'])
+            with pytest.raises(TileableNotTracked):
+                await tracker.decref_tileables(['not_tracked'])
         finally:
             await MockStorageAPI.cleanup(pool.external_address)

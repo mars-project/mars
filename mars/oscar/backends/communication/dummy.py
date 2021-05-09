@@ -146,7 +146,7 @@ class DummyServer(Server):
 
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
-        if self._closed.is_set():
+        if self._closed.is_set():  # pragma: no cover
             raise ServerClosed('Dummy server already closed')
 
         channel = args[0]
@@ -196,7 +196,7 @@ class DummyClient(Client):
         if server is None:  # pragma: no cover
             raise RuntimeError('DummyServer needs to be created '
                                'first before DummyClient')
-        if server.stopped:
+        if server.stopped:  # pragma: no cover
             raise ConnectionError('Dummy server closed')
 
         q1, q2 = asyncio.Queue(), asyncio.Queue()
