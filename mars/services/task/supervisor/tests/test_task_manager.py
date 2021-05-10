@@ -168,9 +168,11 @@ async def test_cancel_task(actor_pool):
         assert result.status == TaskStatus.terminated
 
     assert timer.duration < 15
+
+    keys = [r.key for r in rs]
+    del rs
     # test ref counts
-    assert (await lifecycle_api.get_tileable_ref_counts(
-        [r.key for r in rs])) == [0] * len(rs)
+    assert (await lifecycle_api.get_tileable_ref_counts(keys)) == [0] * len(keys)
 
 
 @pytest.mark.asyncio
