@@ -52,5 +52,5 @@ class RayActorBackend(BaseActorBackend):
         actor_handle = ray.remote(RayMainPool).options(
             num_cpus=0,  # main pool doesn't do horse work, mark it use no cpu.
             name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
-        ray.get(actor_handle.start.remote(address, n_process, **kwargs))
+        await actor_handle.start.remote(address, n_process, **kwargs)
         return actor_handle

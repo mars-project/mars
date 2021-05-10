@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 import os
 import yaml
@@ -97,19 +98,27 @@ class RayCluster:
         # create supervisor actor pool
         self._supervisor_pool = await create_supervisor_actor_pool(
             supervisor_node_address, n_process=0)
+        logger.info('Create supervisor on node %s succeeds.', supervisor_node_address)
         # start service
         self.supervisor_address = f'{supervisor_node_address}/0'
         await start_supervisor(self.supervisor_address, config=self._config)
-
-        for worker_node_address in worker_node_addresses:
-            worker_pool = await create_worker_actor_pool(worker_node_address, self._band_to_slot)
-            self._worker_pools.append(worker_pool)
-            worker_address = f'{worker_node_address}/0'
+        logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
+        worker_pools_and_addresses = await asyncio.gather(*[self._start_worker(addr) for addr in worker_node_addresses])
+        logger.info('Create %s workers and start services on workers succeeds.', len(worker_node_addresses))
+        for worker_address, worker_pool in worker_pools_and_addresses:
             self._worker_addresses.append(worker_address)
-            await start_worker(worker_address,
-                               self.supervisor_address,
-                               self._band_to_slot,
-                               config=self._config)
+            self._worker_pools.append(worker_pool)
+
+    async def _start_worker(self, worker_node_address):
+        worker_address = f'{worker_node_address}/0'
+        logger.info('Create worker on node %s succeeds.', worker_node_address)
+        worker_pool = await create_worker_actor_pool(worker_node_address, self._band_to_slot)
+        await start_worker(worker_address,
+                           self.supervisor_address,
+                           self._band_to_slot,
+                           config=self._config)
+        logger.info('Start services on worker %s succeeds.', worker_address)
+        return worker_address, worker_pool
 
     async def stop(self):
         for worker_address in self._worker_addresses:
