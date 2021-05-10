@@ -17,7 +17,7 @@ from collections import deque
 from typing import Type, Dict, List
 
 from ....core import ChunkGraph, ChunkType
-from ....core.operand import VirtualOperand, Fuse
+from ....core.operand import Fetch, Fuse, VirtualOperand
 from ....utils import implements, build_fetch
 from ...core import BandType
 from ..core import SubtaskGraph, Subtask, new_task_id
@@ -55,16 +55,17 @@ class AbstractGraphAnalyzer(ABC):
 
 
 class GraphAnalyzer(AbstractGraphAnalyzer):
-    def _iter_start_ops(self):
+    @classmethod
+    def _iter_start_ops(cls, chunk_graph: ChunkGraph):
         visited = set()
         op_keys = set()
-        start_chunks = deque(self._chunk_graph.iter_indep())
+        start_chunks = deque(chunk_graph.iter_indep())
         stack = deque([start_chunks.popleft()])
 
         while stack:
             chunk = stack.popleft()
             if chunk not in visited:
-                inp_chunks = self._chunk_graph.predecessors(chunk)
+                inp_chunks = chunk_graph.predecessors(chunk)
                 if not inp_chunks or \
                         all(inp_chunk in visited for inp_chunk in inp_chunks):
                     if len(inp_chunks) == 0:
@@ -73,12 +74,12 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                             op_keys.add(op_key)
                             yield chunk.op
                     visited.add(chunk)
-                    stack.extend(c for c in self._chunk_graph[chunk]
+                    stack.extend(c for c in chunk_graph[chunk]
                                  if c not in visited)
                 else:
                     stack.appendleft(chunk)
                     stack.extendleft(
-                        reversed([c for c in self._chunk_graph.predecessors(chunk)
+                        reversed([c for c in chunk_graph.predecessors(chunk)
                                   if c not in visited]))
             if not stack and start_chunks:
                 stack.appendleft(start_chunks.popleft())
@@ -111,6 +112,9 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
         for inp_chunk in inp_chunks:
             if inp_chunk in chunk_to_fetch_chunk:
                 inp_fetch_chunks.append(chunk_to_fetch_chunk[inp_chunk])
+            elif isinstance(inp_chunk.op, Fetch):
+                chunk_to_fetch_chunk[inp_chunk] = inp_chunk
+                inp_fetch_chunks.append(inp_chunk)
             else:
                 fetch_chunk = build_fetch(inp_chunk).data
                 chunk_to_fetch_chunk[inp_chunk] = fetch_chunk
@@ -191,7 +195,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                      chunk_to_bands: Dict[ChunkType, BandType],
                      chunk_to_fetch_chunk: Dict[ChunkType, ChunkType]) -> Subtask:
         virtual = isinstance(chunk.op, VirtualOperand)
-        inp_chunks = self._chunk_graph.predecessors(chunk)
+        inp_chunks = [inp_chunk for inp_chunk in self._chunk_graph.predecessors(chunk)
+                      if not isinstance(inp_chunk.op, Fetch)]
         # calculate priority
         if inp_chunks:
             priority = max(chunk_to_priorities[inp_chunk]
@@ -222,11 +227,16 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
 
     @implements(AbstractGraphAnalyzer.gen_subtask_graph)
     def gen_subtask_graph(self) -> SubtaskGraph:
-        start_ops = list(self._iter_start_ops())
+        fetch_removed_chunk_graph = self._chunk_graph.copy()
+        for chunk in self._chunk_graph:
+            if isinstance(chunk.op, Fetch):
+                fetch_removed_chunk_graph.remove_node(chunk)
+
+        start_ops = list(self._iter_start_ops(fetch_removed_chunk_graph))
 
         # assign start chunks
         assigner = self._graph_assigner_cls(
-            self._chunk_graph, start_ops, self._band_slots)
+            fetch_removed_chunk_graph, start_ops, self._band_slots)
         chunk_to_bands = assigner.assign()
 
         # fuse node
@@ -241,6 +251,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
         for chunk in self._chunk_graph.topological_iter():
             if chunk in visited:
                 continue
+            if isinstance(chunk.op, Fetch):
+                continue
 
             # gen subtask
             subtask = self._gen_subtask(
@@ -253,7 +265,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             subtask_graph.add_node(subtask)
             inp_subtasks = \
                 [chunk_to_subtask[inp_chunk] for inp_chunk
-                 in self._chunk_graph.predecessors(chunk)]
+                 in self._chunk_graph.predecessors(chunk)
+                 if not isinstance(inp_chunk.op, Fetch)]
             for inp_subtask in inp_subtasks:
                 subtask_graph.add_edge(inp_subtask, subtask)
 

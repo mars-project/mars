@@ -131,6 +131,6 @@ class SessionActor(mo.Actor):
         from ...task import TaskAPI
 
         if self._meta_api:
-            await MetaAPI.destroy_session(self._session_id, self.address)
-            await LifecycleAPI.destroy_session(self._session_id, self.address)
             await TaskAPI.destroy_session(self._session_id, self.address)
+            await LifecycleAPI.destroy_session(self._session_id, self.address)
+            await MetaAPI.destroy_session(self._session_id, self.address)

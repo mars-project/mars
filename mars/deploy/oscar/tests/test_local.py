@@ -164,15 +164,22 @@ def test_decref():
     with session:
         a = mt.ones((10, 10))
         b = mt.ones((10, 10))
+        c = b + 1
+        d = mt.ones((5, 5))
 
         a.execute(show_progress=False)
         b.execute(show_progress=False)
+        c.execute(show_progress=False)
+        d.execute(show_progress=False)
 
         del a
         ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 1
+        assert len(ref_counts) == 3
         del b
         ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 0
+        assert len(ref_counts) == 3
+        del c
+        ref_counts = session._get_ref_counts()
+        assert len(ref_counts) == 1
 
     session.stop_server()

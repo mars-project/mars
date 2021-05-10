@@ -599,6 +599,8 @@ class TaskManagerActor(mo.Actor):
             # optimization, run it in executor,
             # since optimization may be a CPU intensive operation
             tileable_graph = await loop.run_in_executor(None, task_processor.optimize)
+            # incref fetch tileables to ensure fetch data not deleted
+            await self._incref_fetch_tileables(tileable_graph)
 
             chunk_graph_iter = task_processor.tile(tileable_graph)
             lifecycle_processed_tileables = set()
@@ -667,9 +669,15 @@ class TaskManagerActor(mo.Actor):
                                           processor=task_processor)
                 self._tileable_key_to_info[tileable.key].append(info)
             await self._decref_when_finish(
-                stages, lifecycle_processed_tileables)
+                stages, lifecycle_processed_tileables, tileable_graph)
         finally:
             task_processor.done = True
+
+    async def _incref_fetch_tileables(self, tileable_graph: TileableGraph):
+        # incref fetch tileables in tileable graph to prevent them from deleting
+        to_incref_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
+                                   if isinstance(tileable.op, Fetch)]
+        await self._lifecycle_api.incref_tileables(to_incref_tileable_keys)
 
     async def _track_and_incref_result_tileables(self,
                                                  tileable_graph: TileableGraph,
@@ -707,7 +715,8 @@ class TaskManagerActor(mo.Actor):
 
     async def _decref_when_finish(self,
                                   stages: List[TaskStageInfo],
-                                  result_tileables: Set[TileableType]):
+                                  result_tileables: Set[TileableType],
+                                  tileable_graph: TileableGraph):
         decref_chunks = []
         error_or_cancelled = False
         for stage in stages:
@@ -724,10 +733,16 @@ class TaskManagerActor(mo.Actor):
         await self._lifecycle_api.decref_chunks(
             [c.key for c in decref_chunks])
 
-        # if task failed, roll back tileable incref
+        fetch_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
+                               if isinstance(tileable.op, Fetch)]
+
         if error_or_cancelled:
+            # if task failed, roll back tileable incref
             await self._lifecycle_api.decref_tileables(
-                [r.key for r in result_tileables])
+                [r.key for r in result_tileables] + fetch_tileable_keys)
+        else:
+            # decref fetch tileables only
+            await self._lifecycle_api.decref_tileables(fetch_tileable_keys)
 
     @classmethod
     async def _wait_for(cls, task_info: TaskInfo):

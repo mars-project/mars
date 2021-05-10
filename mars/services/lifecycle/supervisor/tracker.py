@@ -37,6 +37,12 @@ class LifecycleTrackerActor(mo.Actor):
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
 
+    async def __pre_destroy__(self):
+        chunk_keys = [chunk_key for chunk_key, ref_count
+                      in self._chunk_ref_counts.items() if ref_count > 0]
+        # remove all chunks
+        await self._remove_chunks(chunk_keys)
+
     @staticmethod
     def gen_uid(session_id):
         return f'{session_id}_lifecycle_tracker'
