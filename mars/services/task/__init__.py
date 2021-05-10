@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import TaskAPI, OscarTaskAPI, WebTaskAPI
+from .api import TaskAPI, OscarTaskAPI
 from .core import Task, TaskStatus, TaskResult, Subtask, \
     SubtaskStatus, SubtaskResult, new_task_id
 from .errors import TaskNotExist, SubtaskNotExist, SlotOccupiedAlready

@@ -21,7 +21,6 @@ from ...lib.aio import alru_cache
 from ..session import OscarSessionAPI
 from .core import TileableGraph, TaskResult
 from .supervisor.task_manager import TaskManagerActor
-from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 
 
 class TaskAPI(ABC):
@@ -235,32 +234,3 @@ class OscarTaskAPI(TaskAPI):
             The last idle time if the task manager is idle else None.
         """
         return await self._task_manager_ref.get_last_idle_time()
-
-
-class WebTaskAPI(ServiceWebAPIBase, TaskAPI):
-    _service_name = 'task'
-
-    @classmethod
-    @alru_cache
-    async def create(cls, web_address: str, session_id: str, address: str, **kwargs):
-        return WebTaskAPI(web_address, 'create', session_id, address, **kwargs)
-
-    async def submit_tileable_graph(self,
-                                    graph: TileableGraph,
-                                    task_name: str = None,
-                                    fuse_enabled: bool = True,
-                                    extra_config: dict = None) -> str:
-        return await self._call_method(dict(request_timeout=_transfer_request_timeout),
-                                       'submit_tileable_graph', graph, task_name, fuse_enabled, extra_config)
-
-    async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
-        return await self._call_method({}, 'get_fetch_tileables', task_id)
-
-    async def wait_task(self, task_id: str, timeout: float = None):
-        return await self._call_method({}, 'wait_task', task_id, timeout)
-
-    async def get_task_progress(self, task_id: str) -> float:
-        return await self._call_method({}, 'get_task_progress', task_id)
-
-    async def get_task_result(self, task_id: str) -> TaskResult:
-        return await self._call_method({}, 'get_task_result', task_id)

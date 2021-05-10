@@ -21,7 +21,6 @@ from ...lib.aio import alru_cache
 from ...storage.base import StorageLevel, StorageFileObject
 from ...utils import extensible
 from .core import StorageHandlerActor, StorageManagerActor, DataInfo
-from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 
 APIType = TypeVar('APIType', bound='StorageAPI')
 
@@ -275,20 +274,3 @@ class MockStorageAPI(OscarStorageAPI):
     async def cleanup(cls: Type[APIType], address: str):
         await mo.destroy_actor(
             await mo.actor_ref(address, StorageManagerActor.default_uid()))
-
-
-class WebStorageAPI(ServiceWebAPIBase, StorageAPI):
-    _service_name = 'storage'
-
-    @classmethod
-    async def create(cls, web_address: str, session_id: str, address: str):
-        return WebStorageAPI(web_address, 'create', session_id, address)
-
-    async def get(self, data_key: str, conditions: List = None) -> Any:
-        return await self._call_method(dict(request_timeout=_transfer_request_timeout),
-                                       'get', data_key, conditions)
-
-    async def put(self, data_key: str, obj: object,
-                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        return await self._call_method(dict(request_timeout=_transfer_request_timeout),
-                                       'put', data_key, obj, level)

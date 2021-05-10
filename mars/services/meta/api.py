@@ -24,7 +24,6 @@ from ..core import BandType
 from .core import get_meta_type
 from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
-from mars.services.web.core import ServiceWebAPIBase
 
 
 class MetaAPI(ABC):
@@ -204,17 +203,3 @@ class MockMetaAPI(OscarMetaAPI):
         except mo.ActorAlreadyExist:
             pass
         return await super().create(session_id=session_id, address=address)
-
-
-class WebMetaAPI(ServiceWebAPIBase, MetaAPI):
-    _service_name = 'meta'
-
-    @classmethod
-    async def create(cls, web_address: str, session_id: str, address: str):
-        return WebMetaAPI(web_address, 'create', session_id, address)
-
-    @extensible
-    async def get_chunk_meta(self,
-                             object_id: str,
-                             fields: List[str] = None):
-        return await self._call_method({}, 'get_chunk_meta', object_id, fields)

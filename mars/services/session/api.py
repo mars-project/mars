@@ -18,7 +18,6 @@ from typing import Union
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from .supervisor import SessionManagerActor
-from mars.services.web.core import ServiceWebAPIBase, get_supervisor_address
 
 
 class SessionAPI(ABC):
@@ -143,21 +142,3 @@ class MockSessionAPI(OscarSessionAPI):
             await session_manager.create_session(
                 session_id, create_services=False)
         return MockSessionAPI(address, session_manager)
-
-
-class WebSessionAPI(ServiceWebAPIBase, SessionAPI):
-    _service_name = 'session'
-
-    @classmethod
-    async def create(cls, address: str, **kwargs):
-        supervisor_address = await get_supervisor_address(address)
-        return WebSessionAPI(address, 'create', supervisor_address, **kwargs)
-
-    async def create_session(self, session_id: str) -> str:
-        return await self._call_method({}, 'create_session', session_id)
-
-    async def delete_session(self, session_id: str):
-        return await self._call_method({}, 'delete_session', session_id)
-
-    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
-        return await self._call_method({}, 'get_last_idle_time', session_id)
