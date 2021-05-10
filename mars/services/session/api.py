@@ -160,4 +160,4 @@ class WebSessionAPI(ServiceWebAPIBase, SessionAPI):
         return await self._call_method({}, 'delete_session', session_id)
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
-        return await self._call_method({}, 'last_idle_time', session_id)
+        return await self._call_method({}, 'get_last_idle_time', session_id)
