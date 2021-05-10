@@ -19,7 +19,6 @@ from typing import Union, Dict
 from ... import oscar as mo
 from ...core.session import _new_session
 from ...resource import cpu_count, cuda_count
-from ...services.web.supervisor import WebActor
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
@@ -85,6 +84,7 @@ class LocalCluster:
                 self.supervisor_address,
                 self._band_to_slot,
                 config=self._config)
+        from ...services.web.supervisor import WebActor
         web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
         self.web_address = await web_actor.get_web_address()
 

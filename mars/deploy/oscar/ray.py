@@ -23,7 +23,6 @@ from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from ... import oscar as mo
 from ...core.session import _new_session, AbstractSession
-from ...services.web.supervisor import WebActor
 from ...utils import lazy_import
 
 ray = lazy_import("ray")
@@ -113,7 +112,7 @@ class RayCluster:
                                self.supervisor_address,
                                self._band_to_slot,
                                config=self._config)
-
+        from ...services.web.supervisor import WebActor
         web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
         self.web_address = await web_actor.get_web_address()
 
