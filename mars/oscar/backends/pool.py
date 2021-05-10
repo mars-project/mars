@@ -881,11 +881,12 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
-        await self.stop_sub_pools()
-        await super().stop()
+        self._stopped.set()
         if self._monitor_task and not self._monitor_task.done():
             await self._monitor_task
             self._monitor_task = None
+        await self.stop_sub_pools()
+        await super().stop()
 
     @classmethod
     @abstractmethod
