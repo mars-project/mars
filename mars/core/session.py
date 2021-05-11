@@ -20,7 +20,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Type, Tuple, Union
 
-from ..config import options
+from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
 from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
@@ -47,11 +47,13 @@ def _wrap_in_thread(func: Callable):
 
     def inner(*args, **kwargs):
         default_session = get_default_session()
+        config = get_global_option().to_dict()
 
         def run_in_thread():
-            # set default session in this thread
-            sync_default_session(default_session)
-            return func(*args, **kwargs), get_default_session()
+            with option_context(config):
+                # set default session in this thread
+                sync_default_session(default_session)
+                return func(*args, **kwargs), get_default_session()
 
         fut = _pool.submit(run_in_thread)
         result, default_session_in_thread = fut.result()
@@ -156,6 +158,10 @@ class AbstractSession(ABC):
     def address(self):
         return self._address
 
+    @property
+    def session_id(self):
+        return self._session_id
+
     @classmethod
     @abstractmethod
     async def init(cls,
@@ -213,16 +219,26 @@ class AbstractSession(ABC):
         data
         """
 
-    def decref(self, *tileables):
+    @abstractmethod
+    async def decref(self, *tileable_keys):
         """
         Decref tileables.
 
         Parameters
         ----------
-        tileables
-            Tileables.
+        tileable_keys
+            Tileable keys.
         """
-        # TODO(qinxuye): implement this function when lifecycle service ready.
+
+    @abstractmethod
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        """
+        Get all ref counts
+
+        Returns
+        -------
+        ref_counts
+        """
 
     async def stop_server(self):
         """
@@ -411,6 +427,16 @@ class SyncSession:
 
     def fetch(self, *tileables):
         return fetch(*tileables, session=self._session)
+
+    @_wrap_in_thread
+    def decref(self, *tileables_keys):
+        return _loop.run_until_complete(
+            self._session.decref(*tileables_keys))
+
+    @_wrap_in_thread
+    def _get_ref_counts(self) -> Dict[str, int]:
+        return _loop.run_until_complete(
+            self._session._get_ref_counts())
 
     @_wrap_in_thread
     def destroy(self):

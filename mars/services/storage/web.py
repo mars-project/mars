@@ -14,15 +14,15 @@
 
 from typing import Any, List
 
-from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 from ...storage.base import StorageLevel
-from .api import StorageAPI, OscarStorageAPI
+from ..web.core import ServiceWebAPIBase, ServiceProxyHandlerBase, \
+    get_service_proxy_endpoint, _transfer_request_timeout
+from .api import AbstractStorageAPI, StorageAPI
 from .core import DataInfo
 
 
 class StorageAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = OscarStorageAPI
+    _api_cls = StorageAPI
 
 
 web_handlers = {
@@ -30,7 +30,7 @@ web_handlers = {
 }
 
 
-class WebStorageAPI(ServiceWebAPIBase, StorageAPI):
+class WebStorageAPI(ServiceWebAPIBase, AbstractStorageAPI):
     _service_name = 'storage'
 
     @classmethod

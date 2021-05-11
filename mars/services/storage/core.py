@@ -26,7 +26,7 @@ from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
 from ...utils import calc_data_size, dataslots
 from ..cluster import ClusterAPI
-from ..meta import OscarMetaAPI
+from ..meta import MetaAPI
 from .errors import DataNotExist
 
 logger = logging.getLogger(__name__)
@@ -227,9 +227,18 @@ class StorageHandlerActor(mo.Actor):
 
     async def delete(self,
                      session_id: str,
-                     data_key: str):
-        infos = await self._storage_manager_ref.get_data_infos(
-            session_id, data_key)
+                     data_key: str,
+                     error='raise'):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+        try:
+            infos = await self._storage_manager_ref.get_data_infos(
+                session_id, data_key)
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
         for info in infos or []:
             level = info.level
             await self._storage_manager_ref.delete_data_info(
@@ -338,7 +347,7 @@ class StorageManagerActor(mo.Actor):
         if self._supervisor_address is None:
             cluster_api = await ClusterAPI.create(self.address)
             self._supervisor_address = (await cluster_api.get_supervisors())[0]
-        return await OscarMetaAPI.create(session_id=session_id,
+        return await MetaAPI.create(session_id=session_id,
                                     address=self._supervisor_address)
 
     def get_client_params(self):

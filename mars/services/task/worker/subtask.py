@@ -30,8 +30,8 @@ from ....lib.aio import alru_cache
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ....optimization.physical import optimize
 from ...core import BandType
-from ...meta.api import OscarMetaAPI
-from ...storage.api import OscarStorageAPI
+from ...meta.api import MetaAPI
+from ...storage.api import StorageAPI
 from ..supervisor.task_manager import TaskManagerActor
 from ..config import task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
@@ -180,8 +180,8 @@ class SubtaskProcessor:
 
     def __init__(self,
                  subtask: Subtask,
-                 storage_api: OscarStorageAPI,
-                 meta_api: OscarMetaAPI,
+                 storage_api: StorageAPI,
+                 meta_api: MetaAPI,
                  band: BandType,
                  supervisor_address: str,
                  engines: List[str] = None):
@@ -509,10 +509,10 @@ class SubtaskRunnerActor(mo.Actor):
 
     async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
         # storage API
-        storage_api = await OscarStorageAPI.create(
+        storage_api = await StorageAPI.create(
             subtask.session_id, self.address)
         # meta API
-        meta_api = await OscarMetaAPI.create(
+        meta_api = await MetaAPI.create(
             subtask.session_id, self._supervisor_address)
 
         processor_cls = self._subtask_processor_cls

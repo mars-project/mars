@@ -29,9 +29,10 @@ import mars.tensor as mt
 from mars.core import Tileable, TileableGraph, TileableGraphBuilder
 from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
+from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import OscarStorageAPI, MockStorageAPI
+from mars.services.storage.api import StorageAPI, MockStorageAPI
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import \
     TaskConfigurationActor, TaskManagerActor
@@ -53,6 +54,7 @@ async def actor_pool():
         await MockClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        lifecycle_api = await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
 
         # create configuration
@@ -71,13 +73,13 @@ async def actor_pool():
             uid=BandSubtaskManagerActor.gen_uid('numa-0'),
             address=pool.external_address)
 
-        yield pool, session_id, meta_api, storage_api, manager
+        yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
 
         await MockStorageAPI.cleanup(pool.external_address)
 
 
 async def _merge_data(fetch_tileable: Tileable,
-                      storage_api: OscarStorageAPI):
+                      storage_api: StorageAPI):
     gets = []
     for i, chunk in enumerate(fetch_tileable.chunks):
         gets.append(storage_api.get.delay(chunk.key))
@@ -89,7 +91,7 @@ async def _merge_data(fetch_tileable: Tileable,
 
 @pytest.mark.asyncio
 async def test_run_task(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -108,17 +110,22 @@ async def test_run_task(actor_pool):
     assert task_result.error is None
     assert await manager.get_task_progress(task_id) == 1.0
 
-    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileables, storage_api)
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
     np.testing.assert_array_equal(result, raw + 1)
+
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts([b.key]))[0] == 1
+    assert (await lifecycle_api.get_chunk_ref_counts(
+        [c.key for c in result_tileable.chunks])) == [1] * len(result_tileable.chunks)
 
 
 @pytest.mark.asyncio
 async def test_error_task(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     with mt.errstate(divide='raise'):
-        a = mt.ones((10, 10), chunk_size=10)
+        a = mt.ones((10, 10), chunk_size=5)
         c = a / 0
 
     graph = TileableGraph([c.data])
@@ -134,10 +141,14 @@ async def test_error_task(actor_pool):
     assert task_result.error is not None
     assert isinstance(task_result.error, FloatingPointError)
 
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts([c.key]))[0] == 0
+    assert len(await lifecycle_api.get_all_chunk_ref_counts()) == 0
+
 
 @pytest.mark.asyncio
 async def test_cancel_task(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     def func():
         time.sleep(20)
@@ -159,10 +170,15 @@ async def test_cancel_task(actor_pool):
 
     assert timer.duration < 15
 
+    keys = [r.key for r in rs]
+    del rs
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts(keys)) == [0] * len(keys)
+
 
 @pytest.mark.asyncio
 async def test_iterative_tiling(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     rs = np.random.RandomState(0)
     raw_a = rs.rand(10, 10)
@@ -185,14 +201,19 @@ async def test_iterative_tiling(actor_pool):
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = raw_a[raw_a[:, 0] < 3] + raw_b[raw_b[:, 0] < 3]
-    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileables, storage_api)
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
     np.testing.assert_array_equal(result, expect)
+
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts([d.key]))[0] == 1
+    assert (await lifecycle_api.get_chunk_ref_counts(
+        [c.key for c in result_tileable.chunks])) == [1] * len(result_tileable.chunks)
 
 
 @pytest.mark.asyncio
 async def test_shuffle(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     raw = np.random.rand(10, 10)
     raw2 = np.random.randint(10, size=(10,))
@@ -214,14 +235,19 @@ async def test_shuffle(actor_pool):
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = raw[raw2]
-    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileables, storage_api)
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
     np.testing.assert_array_equal(result, expect)
+
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts([c.key]))[0] == 1
+    assert (await lifecycle_api.get_chunk_ref_counts(
+        [c.key for c in result_tileable.chunks])) == [1] * len(result_tileable.chunks)
 
 
 @pytest.mark.asyncio
 async def test_numexpr(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     raw = np.random.rand(10, 10)
     t = mt.tensor(raw, chunk_size=5)
@@ -242,14 +268,19 @@ async def test_numexpr(actor_pool):
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = (raw + 1) * 2 - 0.3
-    result_tileables = (await manager.get_task_result_tileables(task_id))[0]
-    result = await _merge_data(result_tileables, storage_api)
+    result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+    result = await _merge_data(result_tileable, storage_api)
     np.testing.assert_array_equal(result, expect)
+
+    # test ref counts
+    assert (await lifecycle_api.get_tileable_ref_counts([t2.key]))[0] == 1
+    assert (await lifecycle_api.get_chunk_ref_counts(
+        [c.key for c in result_tileable.chunks])) == [1] * len(result_tileable.chunks)
 
 
 @pytest.mark.asyncio
 async def test_optimization(actor_pool):
-    pool, session_id, meta_api, storage_api, manager = actor_pool
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     with tempfile.TemporaryDirectory() as tempdir:
         file_path = os.path.join(tempdir, 'test.csv')
@@ -287,3 +318,8 @@ async def test_optimization(actor_pool):
         result2 = result_tileables[1]
         result = await _merge_data(result2, storage_api)
         np.testing.assert_array_equal(result, expect)
+
+        # test ref counts
+        assert (await lifecycle_api.get_tileable_ref_counts([df3.key]))[0] == 1
+        assert (await lifecycle_api.get_chunk_ref_counts(
+            [c.key for c in result_tileables[1].chunks])) == [1] * len(result_tileables[1].chunks)

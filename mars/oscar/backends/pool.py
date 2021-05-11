@@ -379,7 +379,11 @@ class AbstractActorPool(ABC):
                 message = await channel.recv()
             except EOFError:
                 # no data to read, check channel
-                await channel.close()
+                try:
+                    await channel.close()
+                except (ConnectionError, EOFError):
+                    # close failed, ignore
+                    pass
                 return
             asyncio.create_task(self.process_message(message, channel))
             await asyncio.sleep(0)

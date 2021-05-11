@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import sys
 
 import numpy as np
 import pandas as pd
@@ -25,7 +24,7 @@ import mars.tensor as mt
 from mars.core.session import get_default_session, \
     new_session, execute, fetch, stop_server
 from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.session import Session
+from mars.deploy.oscar.session import Session, WebSession
 
 
 CONFIG_TEST_FILE = os.path.join(
@@ -47,6 +46,7 @@ async def create_cluster():
 async def test_execute(create_cluster):
     session = get_default_session()
     assert session.address is not None
+    assert session.session_id is not None
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -90,11 +90,44 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.max_val <= 30
 
 
+@pytest.mark.asyncio
+async def test_web_session(create_cluster):
+    session_id = str(uuid.uuid4())
+    web_address = create_cluster.web_address
+    session = await Session.init(web_address, session_id)
+    session.as_default()
+    assert isinstance(session, WebSession)
+    await test_execute(create_cluster)
+    await test_iterative_tiling(create_cluster)
+    Session.reset_default()
+    await session.destroy()
+    await web_session_test(web_address)
+
+
+async def web_session_test(web_address):
+    session_id = str(uuid.uuid4())
+    session = await Session.init(web_address, session_id)
+    session.as_default()
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+
+    info = await session.execute(b)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
+    Session.reset_default()
+    await session.destroy()
+
+
 def test_sync_execute():
-    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
-        if sys.platform != 'win32' else None
-    session = new_session(n_cpu=2, subprocess_start_method=start_method,
-                          default=True)
+    session = new_session(n_cpu=2, default=True,
+                          web=False)
+
+    # web not started
+    assert session._session.client.web_address is None
 
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
@@ -130,32 +163,28 @@ def test_no_default_session():
     stop_server()
 
 
-@pytest.mark.asyncio
-async def test_web_session(create_cluster):
-    session_id = str(uuid.uuid4())
-    web_address = create_cluster.web_address
-    session = await Session.init(web_address, session_id)
-    session.as_default()
-    await test_execute(create_cluster)
-    await test_iterative_tiling(create_cluster)
-    Session.reset_default()
-    await session.destroy()
-    await web_session_test(web_address)
+def test_decref():
+    session = new_session(n_cpu=2, default=True)
 
+    with session:
+        a = mt.ones((10, 10))
+        b = mt.ones((10, 10))
+        c = b + 1
+        d = mt.ones((5, 5))
 
-async def web_session_test(web_address):
-    session_id = str(uuid.uuid4())
-    session = await Session.init(web_address, session_id)
-    session.as_default()
-    raw = np.random.RandomState(0).rand(10, 10)
-    a = mt.tensor(raw, chunk_size=5)
-    b = a + 1
+        a.execute(show_progress=False)
+        b.execute(show_progress=False)
+        c.execute(show_progress=False)
+        d.execute(show_progress=False)
 
-    info = await session.execute(b)
-    await info
-    assert info.result() is None
-    assert info.exception() is None
-    assert info.progress() == 1
-    np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
-    Session.reset_default()
-    await session.destroy()
+        del a
+        ref_counts = session._get_ref_counts()
+        assert len(ref_counts) == 3
+        del b
+        ref_counts = session._get_ref_counts()
+        assert len(ref_counts) == 3
+        del c
+        ref_counts = session._get_ref_counts()
+        assert len(ref_counts) == 1
+
+    session.stop_server()

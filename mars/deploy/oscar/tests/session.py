@@ -102,6 +102,8 @@ def new_test_session(address: str = None,
         address = '127.0.0.1'
         if 'init_local' not in kwargs:
             kwargs['init_local'] = True
+    if 'web' not in kwargs:
+        kwargs['web'] = False
     session = _loop.run_until_complete(
         _new_test_session(address, session_id=session_id,
                           backend=backend, default=default, **kwargs))

@@ -32,7 +32,7 @@ class OptionError(Exception):
     pass
 
 
-class Redirection(object):
+class Redirection:
     def __init__(self, item, warn=None):
         self._items = item.split('.')
         self._warn = warn
@@ -260,7 +260,7 @@ class Config(object):
 
 @contextlib.contextmanager
 def option_context(config=None):
-    global_options = _get_global_option()
+    global_options = get_global_option()
 
     try:
         config = config or dict()
@@ -424,7 +424,7 @@ _options_local = threading.local()
 _options_local.default_options = default_options
 
 
-def _get_global_option():
+def get_global_option():
     ret = getattr(_options_local, 'default_options', None)
     if ret is None:
         ret = _options_local.default_options = Config(deepcopy(default_options._config))
@@ -432,15 +432,15 @@ def _get_global_option():
     return ret
 
 
-class OptionsProxy(object):
+class OptionsProxy:
     def __dir__(self):
-        return dir(_get_global_option())
+        return dir(get_global_option())
 
     def __getattribute__(self, attr):
-        return getattr(_get_global_option(), attr)
+        return getattr(get_global_option(), attr)
 
     def __setattr__(self, key, value):
-        setattr(_get_global_option(), key, value)
+        setattr(get_global_option(), key, value)
 
 
 options = OptionsProxy()

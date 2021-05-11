@@ -21,7 +21,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.services import start_services, NodeRole
-from mars.services.storage import OscarStorageAPI
+from mars.services.storage import StorageAPI
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ async def test_storage_service(actor_pools):
     await start_services(
         NodeRole.WORKER, config, address=worker_pool.external_address)
 
-    api = await OscarStorageAPI.create('mock_session', worker_pool.external_address)
+    api = await StorageAPI.create('mock_session', worker_pool.external_address)
     value1 = np.random.rand(10, 10)
     await api.put('data1', value1)
     get_value1 = await api.get('data1')
@@ -71,7 +71,7 @@ async def test_storage_service(actor_pools):
 
     # test api in subpool
     subpool_address = list(worker_pool._sub_processes.keys())[0]
-    api2 = await OscarStorageAPI.create('mock_session', subpool_address)
+    api2 = await StorageAPI.create('mock_session', subpool_address)
     assert api2._storage_handler_ref.address == subpool_address
 
     get_value1 = await api2.get('data1')

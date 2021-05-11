@@ -19,14 +19,22 @@ from ..mode import enter_mode
 
 
 class _TileableSession:
-    def __init__(self, tensor, session):
-        key = tensor.key, tensor.id
+    def __init__(self, tileable, session):
+        from ..session import AbstractSession, SyncSession
+
+        if isinstance(session, AbstractSession):
+            key = tileable.key
+        else:
+            # legacy decref
+            key = tileable.key, tileable.id
 
         def cb(_, sess=ref(session)):
             s = sess()
             if s:
+                if isinstance(s, AbstractSession):
+                    s = SyncSession(s)
                 s.decref(key)
-        self._tensor = ref(tensor, cb)
+        self.tileable = ref(tileable, cb)
 
 
 class _TileableDataCleaner:
@@ -34,13 +42,13 @@ class _TileableDataCleaner:
         self._tileable_to_sessions = WeakKeyDictionary()
 
     @enter_mode(build=True)
-    def register(self, tensor, session):
-        if tensor in self._tileable_to_sessions:
-            self._tileable_to_sessions[tensor].append(
-                _TileableSession(tensor, session))
+    def register(self, tileable, session):
+        if tileable in self._tileable_to_sessions:
+            self._tileable_to_sessions[tileable].append(
+                _TileableSession(tileable, session))
         else:
-            self._tileable_to_sessions[tensor] = \
-                [_TileableSession(tensor, session)]
+            self._tileable_to_sessions[tileable] = \
+                [_TileableSession(tileable, session)]
 
 
 # we don't use __del__ to avoid potential Circular reference

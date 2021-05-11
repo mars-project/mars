@@ -101,6 +101,7 @@ class SessionActor(mo.Actor):
         self._session_id = session_id
 
         self._meta_api = None
+        self._lifecycle_api = None
         self._task_api = None
 
     @classmethod
@@ -108,12 +109,15 @@ class SessionActor(mo.Actor):
         return f'{session_id}_session_actor'
 
     async def create_services(self):
-        from ...meta import OscarMetaAPI
-        from ...task import OscarTaskAPI
+        from ...meta import MetaAPI
+        from ...lifecycle import LifecycleAPI
+        from ...task import TaskAPI
 
-        self._meta_api = await OscarMetaAPI.create_session(
+        self._meta_api = await MetaAPI.create_session(
             self._session_id, self.address)
-        self._task_api = await OscarTaskAPI.create_session(
+        self._lifecycle_api = await LifecycleAPI.create_session(
+            self._session_id, self.address)
+        self._task_api = await TaskAPI.create_session(
             self._session_id, self.address)
 
     async def get_last_idle_time(self):
@@ -122,9 +126,11 @@ class SessionActor(mo.Actor):
         return await self._task_api.get_last_idle_time()
 
     async def __pre_destroy__(self):
-        from ...meta import OscarMetaAPI
-        from ...task import OscarTaskAPI
+        from ...meta import MetaAPI
+        from ...lifecycle import LifecycleAPI
+        from ...task import TaskAPI
 
         if self._meta_api:
-            await OscarMetaAPI.destroy_session(self._session_id, self.address)
-            await OscarTaskAPI.destroy_session(self._session_id, self.address)
+            await TaskAPI.destroy_session(self._session_id, self.address)
+            await LifecycleAPI.destroy_session(self._session_id, self.address)
+            await MetaAPI.destroy_session(self._session_id, self.address)

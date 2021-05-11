@@ -3,6 +3,7 @@ services:
   - session
   - storage
   - meta
+  - lifecycle
   - task
   - web
 cluster:

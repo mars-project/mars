@@ -14,13 +14,13 @@
 
 from typing import Union
 
-from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from mars.services.web.core import ServiceWebAPIBase, get_supervisor_address
-from .api import SessionAPI, OscarSessionAPI
+from ..web.core import ServiceWebAPIBase, ServiceProxyHandlerBase, \
+    get_service_proxy_endpoint, get_supervisor_address
+from .api import AbstractSessionAPI, SessionAPI
 
 
 class SessionAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = OscarSessionAPI
+    _api_cls = SessionAPI
 
 
 web_handlers = {
@@ -28,7 +28,7 @@ web_handlers = {
 }
 
 
-class WebSessionAPI(ServiceWebAPIBase, SessionAPI):
+class WebSessionAPI(ServiceWebAPIBase, AbstractSessionAPI):
     _service_name = 'session'
 
     @classmethod

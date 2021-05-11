@@ -14,30 +14,27 @@
 
 from typing import List
 
-from ...utils import extensible
-from ..web.core import ServiceWebAPIBase, ServiceProxyHandlerBase, \
+from ..web.core import ServiceProxyHandlerBase, ServiceWebAPIBase, \
     get_service_proxy_endpoint
-from .api import AbstractMetaAPI, MetaAPI
+from .api import AbstractLifecycleAPI, LifecycleAPI
 
 
-class MetaAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = MetaAPI
+class LifecycleAPIProxyHandler(ServiceProxyHandlerBase):
+    _api_cls = LifecycleAPI
 
 
-web_handlers = {
-    get_service_proxy_endpoint('meta'): MetaAPIProxyHandler,
+lifecycle_handlers = {
+    get_service_proxy_endpoint('lifecycle'): LifecycleAPIProxyHandler,
 }
 
 
-class WebMetaAPI(ServiceWebAPIBase, AbstractMetaAPI):
-    _service_name = 'meta'
+class WebLifecycleAPI(ServiceWebAPIBase, AbstractLifecycleAPI):
+    _service_name = 'lifecycle'
 
     @classmethod
     async def create(cls, web_address: str, session_id: str, address: str):
-        return WebMetaAPI(web_address, 'create', session_id, address)
+        return WebLifecycleAPI(web_address, 'create', session_id, address)
 
-    @extensible
-    async def get_chunk_meta(self,
-                             object_id: str,
-                             fields: List[str] = None):
-        return await self._call_method({}, 'get_chunk_meta', object_id, fields)
+    async def decref_tileables(self, tileable_keys: List[str]):
+        return await self._call_method({}, 'decref_tileables',
+                                       tileable_keys)

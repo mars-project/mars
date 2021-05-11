@@ -85,7 +85,7 @@ class SocketChannel(Channel):
 
 
 class _BaseSocketServer(Server, metaclass=ABCMeta):
-    __slots__ = '_aio_server',
+    __slots__ = '_aio_server', '_channels'
 
     def __init__(self,
                  address: str,
@@ -94,6 +94,7 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
         super().__init__(address, channel_handler)
         # asyncio.Server
         self._aio_server = aio_server
+        self._channels = []
 
     @implements(Server.start)
     async def start(self):
@@ -122,6 +123,7 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
                                 local_address=local_address,
                                 dest_address=dest_address,
                                 channel_type=self.channel_type)
+        self._channels.append(channel)
         # handle over channel to some handlers
         await self.channel_handler(channel)
 
@@ -129,6 +131,10 @@ class _BaseSocketServer(Server, metaclass=ABCMeta):
     async def stop(self):
         self._aio_server.close()
         await self._aio_server.wait_closed()
+        # close all channels
+        await asyncio.gather(
+            *(channel.close() for channel in self._channels
+              if not channel.closed))
 
     @property
     @implements(Server.stopped)

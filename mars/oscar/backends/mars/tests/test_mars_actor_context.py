@@ -140,29 +140,15 @@ class CreateDestroyActor(mo.Actor):
 
 class ResourceLockActor(mo.Actor):
     def __init__(self, count=1):
-        self._count = count
+        self._sem = asyncio.Semaphore(count)
         self._requests = deque()
 
     async def apply(self, val=None):
-        if self._count:
-            self._count -= 1
-            return val + 1 if val is not None else None
-
-        event = asyncio.Event()
-
-        async def waiter():
-            await event.wait()
-            self._count -= 1
-            return val + 1 if val is not None else None
-
-        self._requests.append(event)
-        return waiter()
+        yield self._sem.acquire()
+        raise mo.Return(val + 1 if val is not None else None)
 
     def release(self):
-        self._count += 1
-        if self._requests:
-            event = self._requests.popleft()
-            event.set()
+        self._sem.release()
 
 
 class PromiseTestActor(mo.Actor):

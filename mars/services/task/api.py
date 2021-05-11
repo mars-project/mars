@@ -18,12 +18,11 @@ from typing import List, Union
 from ... import oscar as mo
 from ...core import Tileable
 from ...lib.aio import alru_cache
-from ..session import OscarSessionAPI
 from .core import TileableGraph, TaskResult
 from .supervisor.task_manager import TaskManagerActor
 
 
-class TaskAPI(ABC):
+class AbstractTaskAPI(ABC):
 
     @abstractmethod
     async def submit_tileable_graph(self,
@@ -113,7 +112,7 @@ class TaskAPI(ABC):
         """
 
 
-class OscarTaskAPI(TaskAPI):
+class TaskAPI(AbstractTaskAPI):
     def __init__(self,
                  session_id: str,
                  task_manager_ref: Union[TaskManagerActor, mo.ActorRef]):
@@ -124,7 +123,7 @@ class OscarTaskAPI(TaskAPI):
     @alru_cache
     async def create(cls,
                      session_id: str,
-                     address: str) -> "OscarTaskAPI":
+                     address: str) -> "TaskAPI":
         """
         Create Task API.
 
@@ -142,12 +141,12 @@ class OscarTaskAPI(TaskAPI):
         """
         task_manager_ref = await mo.actor_ref(
             address, TaskManagerActor.gen_uid(session_id))
-        return OscarTaskAPI(session_id, task_manager_ref)
+        return TaskAPI(session_id, task_manager_ref)
 
     @classmethod
     async def create_session(cls,
                              session_id: str,
-                             address: str) -> "OscarTaskAPI":
+                             address: str) -> "TaskAPI":
         """
         Creating a new task API for the session.
 
@@ -163,14 +162,10 @@ class OscarTaskAPI(TaskAPI):
         task_api
             Task API
         """
-        session_api = await OscarSessionAPI.create(address)
-        session_address = await session_api.get_session_address(session_id)
-        allocate_strategy = mo.allocate_strategy.AddressSpecified(session_address)
         task_manager_ref = await mo.create_actor(
             TaskManagerActor, session_id, address=address,
-            uid=TaskManagerActor.gen_uid(session_id),
-            allocate_strategy=allocate_strategy)
-        return OscarTaskAPI(session_id, task_manager_ref)
+            uid=TaskManagerActor.gen_uid(session_id))
+        return TaskAPI(session_id, task_manager_ref)
 
     @classmethod
     async def destroy_session(cls,

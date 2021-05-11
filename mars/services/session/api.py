@@ -20,7 +20,7 @@ from ...lib.aio import alru_cache
 from .supervisor import SessionManagerActor
 
 
-class SessionAPI(ABC):
+class AbstractSessionAPI(ABC):
 
     @abstractmethod
     async def create_session(self, session_id: str) -> str:
@@ -66,7 +66,7 @@ class SessionAPI(ABC):
         """
 
 
-class OscarSessionAPI(SessionAPI):
+class SessionAPI(AbstractSessionAPI):
     def __init__(self,
                  address: str,
                  session_manager: Union[SessionManagerActor, mo.ActorRef]):
@@ -75,13 +75,13 @@ class OscarSessionAPI(SessionAPI):
 
     @classmethod
     @alru_cache
-    async def create(cls, address: str, **kwargs) -> "OscarSessionAPI":
+    async def create(cls, address: str, **kwargs) -> "SessionAPI":
         if kwargs:  # pragma: no cover
-            raise TypeError(f'OscarSessionAPI.create '
+            raise TypeError(f'SessionAPI.create '
                             f'got unknown arguments: {list(kwargs)}')
         session_manager = await mo.actor_ref(
             address, SessionManagerActor.default_uid())
-        return OscarSessionAPI(address, session_manager)
+        return SessionAPI(address, session_manager)
 
     async def create_session(self, session_id: str) -> str:
         session_actor_ref = \
@@ -126,7 +126,7 @@ class OscarSessionAPI(SessionAPI):
         return await self._session_manager_ref.get_last_idle_time(session_id)
 
 
-class MockSessionAPI(OscarSessionAPI):
+class MockSessionAPI(SessionAPI):
     @classmethod
     async def create(cls,
                      address: str, **kwargs) -> "SessionAPI":

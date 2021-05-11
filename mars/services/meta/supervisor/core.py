@@ -15,7 +15,7 @@
 from typing import Dict
 
 from .... import oscar as mo
-from ...session import OscarSessionAPI
+from ...session import SessionAPI
 from ..store import get_meta_store
 
 
@@ -34,7 +34,7 @@ class MetaStoreManagerActor(mo.Actor):
     async def __post_create__(self):
         self._meta_init_kwargs = \
             await self._meta_store_type.create(self._config)
-        self._session_api = await OscarSessionAPI.create(self.address)
+        self._session_api = await SessionAPI.create(self.address)
 
     async def new_session_meta_store(self,
                                      session_id: str) -> mo.ActorRef:
