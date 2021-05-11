@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Union
 
 from ... import oscar as mo
@@ -26,7 +26,17 @@ from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 
 
-class MetaAPI:
+class MetaAPI(ABC):
+
+    @abstractmethod
+    @extensible
+    async def get_chunk_meta(self,
+                             object_id: str,
+                             fields: List[str] = None):
+        """Return chunk meta"""
+
+
+class OscarMetaAPI(MetaAPI):
     def __init__(self,
                  session_id: str,
                  meta_store: Union[AbstractMetaStore, mo.ActorRef]):
@@ -37,7 +47,7 @@ class MetaAPI:
     @alru_cache
     async def create(cls,
                      session_id: str,
-                     address: str) -> "MetaAPI":
+                     address: str) -> "OscarMetaAPI":
         """
         Create Meta API.
 
@@ -56,12 +66,12 @@ class MetaAPI:
         meta_store_ref = await mo.actor_ref(
             address, MetaStoreActor.gen_uid(session_id))
 
-        return MetaAPI(session_id, meta_store_ref)
+        return OscarMetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def create_session(cls,
                              session_id: str,
-                             address: str) -> "MetaAPI":
+                             address: str) -> "OscarMetaAPI":
         """
         Creating a new meta store for the session, and return meta API.
 
@@ -82,7 +92,7 @@ class MetaAPI:
             address, MetaStoreManagerActor.default_uid())
         meta_store_ref = \
             await meta_store_manager_ref.new_session_meta_store(session_id)
-        return MetaAPI(session_id, meta_store_ref)
+        return OscarMetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def destroy_session(cls,
@@ -174,9 +184,9 @@ class MetaAPI:
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
 
-class MockMetaAPI(MetaAPI):
+class MockMetaAPI(OscarMetaAPI):
     @classmethod
-    async def create(cls, session_id: str, address: str) -> "MetaAPI":
+    async def create(cls, session_id: str, address: str) -> "OscarMetaAPI":
         # create an Actor for mock
         try:
             meta_store_manager_ref = await mo.create_actor(

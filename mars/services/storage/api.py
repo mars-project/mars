@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+from abc import ABC, abstractmethod
 from typing import Any, List, Type, TypeVar
 
 from ... import oscar as mo
@@ -24,7 +25,52 @@ from .core import StorageHandlerActor, StorageManagerActor, DataInfo
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
-class StorageAPI:
+class StorageAPI(ABC):
+
+    @abstractmethod
+    @extensible
+    async def get(self, data_key: str, conditions: List = None) -> Any:
+        """
+        Get object by data key.
+
+        Parameters
+        ----------
+        data_key: str
+            date key to get.
+
+        conditions: List
+            Index conditions to pushdown
+
+        Returns
+        -------
+            object
+        """
+
+    @abstractmethod
+    @extensible
+    async def put(self, data_key: str,
+                  obj: object,
+                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+        """
+        Put object into storage.
+
+        Parameters
+        ----------
+        data_key: str
+            data key to put.
+        obj: object
+            object to put.
+        level: StorageLevel
+            the storage level to put into, MEMORY as default
+
+        Returns
+        -------
+        object information: ObjectInfo
+            the put object information
+        """
+
+
+class OscarStorageAPI(StorageAPI):
     def __init__(self,
                  address: str,
                  session_id: str):
@@ -61,27 +107,12 @@ class StorageAPI:
         """
         if kwargs:  # pragma: no cover
             raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
-        api = StorageAPI(address, session_id)
+        api = OscarStorageAPI(address, session_id)
         await api._init()
         return api
 
     @extensible
     async def get(self, data_key: str, conditions: List = None) -> Any:
-        """
-        Get object by data key.
-
-        Parameters
-        ----------
-        data_key: str
-            date key to get.
-
-        conditions: List
-            Index conditions to pushdown
-
-        Returns
-        -------
-            object
-        """
         return await self._storage_handler_ref.get(
             self._session_id, data_key, conditions)
 
@@ -89,23 +120,6 @@ class StorageAPI:
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        """
-        Put object into storage.
-
-        Parameters
-        ----------
-        data_key: str
-            data key to put.
-        obj: object
-            object to put.
-        level: StorageLevel
-            the storage level to put into, MEMORY as default
-
-        Returns
-        -------
-        object information: ObjectInfo
-            the put object information
-        """
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -228,7 +242,7 @@ class StorageAPI:
         return await self._storage_handler_ref.list(level=level)
 
 
-class MockStorageAPI(StorageAPI):
+class MockStorageAPI(OscarStorageAPI):
     @classmethod
     async def create(cls: Type[APIType],
                      session_id: str,

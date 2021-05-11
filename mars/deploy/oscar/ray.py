@@ -77,6 +77,8 @@ class RayCluster:
         self._supervisor_pool = None
         self._worker_addresses = []
         self._worker_pools = []
+        self._stopped = False
+        self.web_address = None
 
     async def start(self):
         address_to_resources = dict()
@@ -109,6 +111,10 @@ class RayCluster:
             self._worker_addresses.append(worker_address)
             self._worker_pools.append(worker_pool)
 
+        from ...services.web.supervisor import WebActor
+        web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
+        self.web_address = await web_actor.get_web_address()
+
     async def _start_worker(self, worker_node_address):
         worker_address = f'{worker_node_address}/0'
         logger.info('Create worker on node %s succeeds.', worker_node_address)
@@ -121,13 +127,15 @@ class RayCluster:
         return worker_address, worker_pool
 
     async def stop(self):
-        for worker_address in self._worker_addresses:
-            await stop_worker(worker_address, self._config)
-        await stop_supervisor(self.supervisor_address, self._config)
-        for pool in self._worker_pools:
-            await pool.actor_pool.remote('stop')
-        await self._supervisor_pool.actor_pool.remote('stop')
-        RayActorDriver.stop_cluster()
+        if not self._stopped:
+            for worker_address in self._worker_addresses:
+                await stop_worker(worker_address, self._config)
+            await stop_supervisor(self.supervisor_address, self._config)
+            for pool in self._worker_pools:
+                await pool.actor_pool.remote('stop')
+            await self._supervisor_pool.actor_pool.remote('stop')
+            RayActorDriver.stop_cluster()
+            self._stopped = True
 
 
 class RayClient:
@@ -150,6 +158,10 @@ class RayClient:
     @property
     def session(self):
         return self._session
+
+    @property
+    def web_address(self):
+        return self._cluster.web_address
 
     async def __aenter__(self):
         return self

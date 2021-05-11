@@ -24,7 +24,7 @@ from bokeh.server.server import Server
 from tornado import web
 
 from ... import oscar as mo
-from ...utils import get_next_port
+from ...utils import get_node_ip_address, get_next_port
 
 logger = logging.getLogger(__name__)
 _ROOT_PLACEHOLDER = 'ROOT_PLACEHOLDER'
@@ -86,13 +86,15 @@ class WebActor(mo.Actor):
         super().__init__()
         self._config = config
         self._web_server = None
+        self._web_address = None
 
     async def start(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
         supervisor_addr = self.address
 
-        host = self._config.get('host') or '0.0.0.0'
-        port = self._config.get('port')
+        host = self._config.get('host', get_node_ip_address())
+        port = self._config.get('port', get_next_port())
+        self._web_address = f'http://{host}:{port}'
         bokeh_apps = self._config.get('bokeh_apps', {})
         web_handlers = self._config.get('web_handlers', {})
 
@@ -130,8 +132,19 @@ class WebActor(mo.Actor):
                 if retrial == 0:
                     raise
 
+    async def stop(self, wait=True):
+        self._web_server.stop(wait=wait)
+
+    def get_web_address(self):
+        return self._web_address
+
 
 async def start(config: dict, address: str = None):
-    ref = await mo.create_actor(WebActor, config=config.get('web', {}),
-                                address=address)
+    ref = await mo.create_actor(WebActor, uid=WebActor.default_uid(),
+                                config=config.get('web', {}), address=address)
     await ref.start()
+
+
+async def stop(address: str):
+    ref = await mo.actor_ref(WebActor.default_uid(), address=address)
+    await ref.stop()

@@ -16,6 +16,7 @@ import sys
 import weakref
 from typing import Union, Dict
 
+from ... import oscar as mo
 from ...core.session import _new_session
 from ...resource import cpu_count, cuda_count
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
@@ -60,27 +61,32 @@ class LocalCluster:
         for i in range(self._n_gpu):  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1
         self._supervisor_pool = None
+        self.supervisor_address = None
         self._n_worker = n_worker
         self._worker_pools = []
+        self.web_address = None
 
     async def start(self):
         self._supervisor_pool = await create_supervisor_actor_pool(
             self._address, n_process=0,
             subprocess_start_method=self._subprocess_start_method)
+        self.supervisor_address = self._supervisor_pool.external_address
         for _ in range(self._n_worker):
             worker_pool = await create_worker_actor_pool(
                 self._address, self._band_to_slot,
                 subprocess_start_method=self._subprocess_start_method)
             self._worker_pools.append(worker_pool)
         # start service
-        await start_supervisor(
-            self._supervisor_pool.external_address, config=self._config)
+        await start_supervisor(self.supervisor_address, config=self._config)
         for worker_pool in self._worker_pools:
             await start_worker(
                 worker_pool.external_address,
-                self._supervisor_pool.external_address,
+                self.supervisor_address,
                 self._band_to_slot,
                 config=self._config)
+        from ...services.web.supervisor import WebActor
+        web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
+        self.web_address = await web_actor.get_web_address()
 
     async def stop(self):
         for worker_pool in self._worker_pools:
@@ -113,6 +119,10 @@ class LocalClient:
         client = LocalClient(cluster, session)
         session.client = client
         return client
+
+    @property
+    def web_address(self):
+        return self._cluster.web_address
 
     async def __aenter__(self):
         return self

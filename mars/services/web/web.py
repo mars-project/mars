@@ -11,3 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from mars.services.web import MarsRequestHandler
+from mars.services.web.core import supervisor_address_endpoint
+
+
+class SupervisorAddressWebHandler(MarsRequestHandler):
+    async def get(self):
+        self.write(self._supervisor_addr)
+
+
+web_handlers = {
+    supervisor_address_endpoint: SupervisorAddressWebHandler,
+}

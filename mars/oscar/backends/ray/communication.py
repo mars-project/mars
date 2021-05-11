@@ -34,6 +34,14 @@ ray = lazy_import("ray")
 ChannelID = namedtuple("ChannelID", ["client_id", "channel_index", "dest_address"])
 
 
+class RayChannelException(Exception):
+
+    def __init__(self, exc_type, exc_value: BaseException, exc_traceback):
+        self.exc_type = exc_type
+        self.exc_value = exc_value
+        self.exc_traceback = exc_traceback
+
+
 class RayChannelBase(Channel, ABC):
     """
     Channel for communications between ray processes.
@@ -101,12 +109,15 @@ class RayClientChannel(RayChannelBase):
     @implements(Channel.recv)
     async def recv(self):
         if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot write message')
+            raise ChannelClosed('Channel already closed, cannot recv message')
         try:
             # Wait on ray object ref
             object_ref = await self._in_queue.get()
-            return deserialize(*(await object_ref))
-        except RuntimeError as e:  # pragma: no cover
+            result = await object_ref
+            if isinstance(result, RayChannelException):
+                raise result.exc_value.with_traceback(result.exc_traceback)
+            return deserialize(*result)
+        except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():
                 raise e
 
@@ -241,7 +252,8 @@ class RayServer(Server):
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         if self.stopped:
-            raise ServerClosed(f'Remote server {self.address} closed')
+            raise ServerClosed(f'Remote server {self.address} closed, but got message {deserialize(*message)} '
+                               f'from channel {channel_id}')
         channel = self._channels.get(channel_id)
         if not channel:
             _, peer_channel_index, peer_dest_address = channel_id

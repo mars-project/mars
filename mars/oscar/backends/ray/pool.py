@@ -16,6 +16,7 @@ import asyncio
 import inspect
 import logging
 import os
+import sys
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -26,7 +27,7 @@ from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
 from ..router import Router
-from .communication import ChannelID, RayServer
+from .communication import ChannelID, RayServer, RayChannelException
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
 
 ray = lazy_import('ray')
@@ -154,7 +155,10 @@ class RayPoolBase(ABC):
 
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         """Method for communication based on ray actors"""
-        return await self._ray_server.__on_ray_recv__(channel_id, message)
+        try:
+            return await self._ray_server.__on_ray_recv__(channel_id, message)
+        except Exception:   # pragma: no cover
+            return RayChannelException(*sys.exc_info())
 
     def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
         return PoolStatus.HEALTHY

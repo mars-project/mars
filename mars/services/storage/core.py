@@ -26,7 +26,7 @@ from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
 from ...utils import calc_data_size, dataslots
 from ..cluster import ClusterAPI
-from ..meta import MetaAPI
+from ..meta import OscarMetaAPI
 from .errors import DataNotExist
 
 logger = logging.getLogger(__name__)
@@ -338,7 +338,7 @@ class StorageManagerActor(mo.Actor):
         if self._supervisor_address is None:
             cluster_api = await ClusterAPI.create(self.address)
             self._supervisor_address = (await cluster_api.get_supervisors())[0]
-        return await MetaAPI.create(session_id=session_id,
+        return await OscarMetaAPI.create(session_id=session_id,
                                     address=self._supervisor_address)
 
     def get_client_params(self):
