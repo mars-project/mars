@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import SessionAPI, OscarSessionAPI, MockSessionAPI
+from .api import SessionAPI, MockSessionAPI
 from .supervisor import SessionManagerActor, SessionActor

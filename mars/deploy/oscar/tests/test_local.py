@@ -24,7 +24,7 @@ import mars.tensor as mt
 from mars.core.session import get_default_session, \
     new_session, execute, fetch, stop_server
 from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.session import Session
+from mars.deploy.oscar.session import Session, WebSession
 
 
 CONFIG_TEST_FILE = os.path.join(
@@ -96,6 +96,7 @@ async def test_web_session(create_cluster):
     web_address = create_cluster.web_address
     session = await Session.init(web_address, session_id)
     session.as_default()
+    assert isinstance(session, WebSession)
     await test_execute(create_cluster)
     await test_iterative_tiling(create_cluster)
     Session.reset_default()
@@ -122,7 +123,11 @@ async def web_session_test(web_address):
 
 
 def test_sync_execute():
-    session = new_session(n_cpu=2, default=True)
+    session = new_session(n_cpu=2, default=True,
+                          web=False)
+
+    # web not started
+    assert session._session.client.web_address is None
 
     with session:
         raw = np.random.RandomState(0).rand(10, 5)

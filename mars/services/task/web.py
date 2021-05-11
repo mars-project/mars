@@ -14,16 +14,16 @@
 
 from typing import List
 
-from mars.services.web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint
-from mars.services.web.core import ServiceWebAPIBase, _transfer_request_timeout
 from ...core import Tileable
 from ...lib.aio import alru_cache
-from .api import TaskAPI, OscarTaskAPI
+from ..web.core import ServiceProxyHandlerBase, get_service_proxy_endpoint, \
+    ServiceWebAPIBase, _transfer_request_timeout
+from .api import AbstractTaskAPI, TaskAPI
 from .core import TileableGraph, TaskResult
 
 
 class TaskAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = OscarTaskAPI
+    _api_cls = TaskAPI
 
 
 web_handlers = {
@@ -31,7 +31,7 @@ web_handlers = {
 }
 
 
-class WebTaskAPI(ServiceWebAPIBase, TaskAPI):
+class WebTaskAPI(ServiceWebAPIBase, AbstractTaskAPI):
     _service_name = 'task'
 
     @classmethod

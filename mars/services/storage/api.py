@@ -25,7 +25,7 @@ from .core import StorageHandlerActor, StorageManagerActor, DataInfo
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
-class StorageAPI(ABC):
+class AbstractStorageAPI(ABC):
 
     @abstractmethod
     @extensible
@@ -70,7 +70,7 @@ class StorageAPI(ABC):
         """
 
 
-class OscarStorageAPI(StorageAPI):
+class StorageAPI(AbstractStorageAPI):
     def __init__(self,
                  address: str,
                  session_id: str):
@@ -107,7 +107,7 @@ class OscarStorageAPI(StorageAPI):
         """
         if kwargs:  # pragma: no cover
             raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
-        api = OscarStorageAPI(address, session_id)
+        api = StorageAPI(address, session_id)
         await api._init()
         return api
 
@@ -244,7 +244,7 @@ class OscarStorageAPI(StorageAPI):
         return await self._storage_handler_ref.list(level=level)
 
 
-class MockStorageAPI(OscarStorageAPI):
+class MockStorageAPI(StorageAPI):
     @classmethod
     async def create(cls: Type[APIType],
                      session_id: str,

@@ -34,7 +34,7 @@ from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...core import BandType
 from ...lifecycle.api import LifecycleAPI
-from ...meta.api import OscarMetaAPI
+from ...meta.api import MetaAPI
 from ..analyzer import GraphAnalyzer
 from ..config import task_options
 from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
@@ -177,7 +177,7 @@ class SubtaskGraphScheduler:
                  subtask_graph: SubtaskGraph,
                  bands: List[BandType],
                  task_stage_info: "TaskStageInfo",
-                 meta_api: OscarMetaAPI,
+                 meta_api: MetaAPI,
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
         self._bands = bands

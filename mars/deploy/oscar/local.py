@@ -31,12 +31,13 @@ async def new_cluster(address: str = '0.0.0.0',
                       n_gpu: Union[int, str] = 'auto',
                       subprocess_start_method: str = None,
                       backend: str = None,
-                      config: Union[str, Dict] = None) -> ClientType:
+                      config: Union[str, Dict] = None,
+                      web: bool = True) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = \
             'spawn' if sys.platform == 'win32' else 'forkserver'
     cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
-                           subprocess_start_method, config)
+                           subprocess_start_method, config, web)
     await cluster.start()
     return await LocalClient.create(cluster, backend)
 
@@ -48,25 +49,32 @@ class LocalCluster:
                  n_cpu: Union[int, str] = 'auto',
                  n_gpu: Union[int, str] = 'auto',
                  subprocess_start_method: str = None,
-                 config: Union[str, Dict] = None):
+                 config: Union[str, Dict] = None,
+                 web: bool = True):
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
         self._n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
         self._n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
+        self._n_worker = n_worker
+        self._web = web
+
         self._band_to_slot = band_to_slot = dict()
         worker_cpus = self._n_cpu // n_worker
-        assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough for {n_worker}, try to decrease workers."
+        assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
+                                f"for {n_worker}, try to decrease workers."
         band_to_slot['numa-0'] = worker_cpus
         for i in range(self._n_gpu):  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1
         self._supervisor_pool = None
-        self.supervisor_address = None
-        self._n_worker = n_worker
         self._worker_pools = []
+
+        self.supervisor_address = None
         self.web_address = None
 
     async def start(self):
+        from ...services.web.supervisor import WebActor
+
         self._supervisor_pool = await create_supervisor_actor_pool(
             self._address, n_process=0,
             subprocess_start_method=self._subprocess_start_method)
@@ -84,9 +92,11 @@ class LocalCluster:
                 self.supervisor_address,
                 self._band_to_slot,
                 config=self._config)
-        from ...services.web.supervisor import WebActor
-        web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
-        self.web_address = await web_actor.get_web_address()
+
+        if self._web:
+            web_actor = await mo.actor_ref(WebActor.default_uid(),
+                                           address=self.supervisor_address)
+            self.web_address = await web_actor.get_web_address()
 
     async def stop(self):
         for worker_pool in self._worker_pools:

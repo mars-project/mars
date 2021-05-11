@@ -26,7 +26,7 @@ from .store import AbstractMetaStore
 from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
 
 
-class MetaAPI(ABC):
+class AbstractMetaAPI(ABC):
 
     @abstractmethod
     @extensible
@@ -36,7 +36,7 @@ class MetaAPI(ABC):
         """Return chunk meta"""
 
 
-class OscarMetaAPI(MetaAPI):
+class MetaAPI(AbstractMetaAPI):
     def __init__(self,
                  session_id: str,
                  meta_store: Union[AbstractMetaStore, mo.ActorRef]):
@@ -47,7 +47,7 @@ class OscarMetaAPI(MetaAPI):
     @alru_cache
     async def create(cls,
                      session_id: str,
-                     address: str) -> "OscarMetaAPI":
+                     address: str) -> "MetaAPI":
         """
         Create Meta API.
 
@@ -66,12 +66,12 @@ class OscarMetaAPI(MetaAPI):
         meta_store_ref = await mo.actor_ref(
             address, MetaStoreActor.gen_uid(session_id))
 
-        return OscarMetaAPI(session_id, meta_store_ref)
+        return MetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def create_session(cls,
                              session_id: str,
-                             address: str) -> "OscarMetaAPI":
+                             address: str) -> "MetaAPI":
         """
         Creating a new meta store for the session, and return meta API.
 
@@ -92,7 +92,7 @@ class OscarMetaAPI(MetaAPI):
             address, MetaStoreManagerActor.default_uid())
         meta_store_ref = \
             await meta_store_manager_ref.new_session_meta_store(session_id)
-        return OscarMetaAPI(session_id, meta_store_ref)
+        return MetaAPI(session_id, meta_store_ref)
 
     @classmethod
     async def destroy_session(cls,
@@ -193,9 +193,9 @@ class OscarMetaAPI(MetaAPI):
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
 
-class MockMetaAPI(OscarMetaAPI):
+class MockMetaAPI(MetaAPI):
     @classmethod
-    async def create(cls, session_id: str, address: str) -> "OscarMetaAPI":
+    async def create(cls, session_id: str, address: str) -> "MetaAPI":
         # create an Actor for mock
         try:
             meta_store_manager_ref = await mo.create_actor(

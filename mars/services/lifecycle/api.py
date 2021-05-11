@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 
 from ... import oscar as mo
@@ -20,7 +21,20 @@ from ...utils import extensible
 from .supervisor.tracker import  LifecycleTrackerActor
 
 
-class LifecycleAPI:
+class AbstractLifecycleAPI(ABC):
+    @abstractmethod
+    async def decref_tileables(self, tileable_keys: List[str]):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileable_keys : list
+            List of tileable keys.
+        """
+
+
+class LifecycleAPI(AbstractLifecycleAPI):
     def __init__(self,
                  session_id: str,
                  lifecycle_tracker_ref: Union[LifecycleTrackerActor, mo.ActorRef]):
