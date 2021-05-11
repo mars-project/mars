@@ -384,7 +384,10 @@ class SubtaskGraphScheduler:
 
             # done, block until all tasks finish
             if not self._cancelled.is_set():
-                await asyncio.gather(*[v[1] for v in tasks.values()])
+                try:
+                    await asyncio.gather(*[v[1] for v in tasks.values()])
+                except asyncio.CancelledError:
+                    pass
 
     async def schedule(self):
         if self._scheduling_api is None:
@@ -726,8 +729,15 @@ class TaskManagerActor(mo.Actor):
             elif stage.subtask_graph_scheduler.is_cancelled():
                 # cancelled
                 error_or_cancelled = True
-            else:
-                # succeeded
+            if stage.subtask_graph:
+                if error_or_cancelled:
+                    # error or cancel, rollback incref for subtask results
+                    for subtask in stage.subtask_graph:
+                        if stage.subtask_results.get(subtask.subtask_id):
+                            continue
+                        # if subtask not executed, rollback incref of predecessors
+                        for inp_subtask in stage.subtask_graph.predecessors(subtask):
+                            decref_chunks.extend(inp_subtask.chunk_graph.results)
                 # decref result of chunk graphs
                 decref_chunks.extend(stage.chunk_graph.results)
         await self._lifecycle_api.decref_chunks(
@@ -737,7 +747,7 @@ class TaskManagerActor(mo.Actor):
                                if isinstance(tileable.op, Fetch)]
 
         if error_or_cancelled:
-            # if task failed, roll back tileable incref
+            # if task failed or cancelled, roll back tileable incref
             await self._lifecycle_api.decref_tileables(
                 [r.key for r in result_tileables] + fetch_tileable_keys)
         else:

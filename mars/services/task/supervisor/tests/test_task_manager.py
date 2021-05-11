@@ -125,7 +125,7 @@ async def test_error_task(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     with mt.errstate(divide='raise'):
-        a = mt.ones((10, 10), chunk_size=10)
+        a = mt.ones((10, 10), chunk_size=5)
         c = a / 0
 
     graph = TileableGraph([c.data])
@@ -143,6 +143,7 @@ async def test_error_task(actor_pool):
 
     # test ref counts
     assert (await lifecycle_api.get_tileable_ref_counts([c.key]))[0] == 0
+    assert len(await lifecycle_api.get_all_chunk_ref_counts()) == 0
 
 
 @pytest.mark.asyncio
