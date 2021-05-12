@@ -32,5 +32,5 @@ def register_chunk_optimization_rule(op_types: List[Type[OperandType]]):
     return wrap
 
 
-def optimize(tileable_graph: ChunkGraph) -> OptimizationRecords:
-    return ChunkOptimizer.optimize(tileable_graph)
+def optimize(chunk_graph: ChunkGraph) -> OptimizationRecords:
+    return ChunkOptimizer.optimize(chunk_graph)

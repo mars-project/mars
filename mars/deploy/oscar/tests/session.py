@@ -16,7 +16,7 @@ import os
 import uuid
 
 from ....core import OBJECT_TYPE
-from ....core.session import register_session_cls
+from ....core.session import register_session_cls, _wrap_in_thread
 from ....core.session import AbstractSession, SyncSession, _loop
 from ....oscar.backends.router import Router
 from ....tests.core import _check_args, ObjectCheckMixin
@@ -59,23 +59,28 @@ class CheckedSession(ObjectCheckMixin, Session):
         return session
 
     @staticmethod
-    def _extract_check_options(kwargs):
+    def _extract_check_options(extra_config):
         check_options = dict()
         for key in _check_args:
-            check_options[key] = kwargs.pop(key, True)
+            check_options[key] = extra_config.pop(key, True)
         return check_options
 
+    def _process_result(self, tileable, result):
+        if self._check_options.get('check_all', True):
+            if not isinstance(tileable, OBJECT_TYPE) and \
+                    tileable.key not in self._tileable_checked:
+                self.assert_object_consistent(tileable, result)
+        return super()._process_result(tileable, result)
+
     async def fetch(self, *tileables, **kwargs):
-        check_options = self._extract_check_options(kwargs)
+        extra_config = kwargs.pop('extra_config', dict())
+        if kwargs:
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError(f'`fetch` got unexpected '
+                            f'arguments: {unexpected_keys}')
 
+        self._check_options = self._extract_check_options(extra_config)
         results = await super().fetch(*tileables)
-
-        if check_options.get('check_all', True):
-            for tileable, result in zip(tileables, results):
-                if not isinstance(tileable, OBJECT_TYPE) and \
-                        tileable.key not in self._tileable_checked:
-                    self.assert_object_consistent(tileable, result)
-
         return results
 
 
@@ -93,6 +98,7 @@ async def _new_test_session(address: str,
     return session
 
 
+@_wrap_in_thread
 def new_test_session(address: str = None,
                      session_id: str = None,
                      backend: str = 'test',

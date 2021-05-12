@@ -20,8 +20,11 @@ import pandas as pd
 
 from ...core import OBJECT_TYPE, OBJECT_CHUNK_TYPE
 from ...dataframe.core import DtypesValue, IndexValue, \
-    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, \
-    DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
+    DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DATAFRAME_GROUPBY_TYPE, \
+    SERIES_GROUPBY_TYPE, \
+    DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE, \
+    DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
+    CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...utils import dataslots
 from ..core import BandType
@@ -106,6 +109,35 @@ class IndexMeta(_TileableMeta):
     index_value: IndexValue = None
 
 
+@_register_type(DATAFRAME_GROUPBY_TYPE)
+@dataslots
+@dataclass
+class DataFrameGroupByMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtypes_value: DtypesValue = None
+    index_value: IndexValue = None
+    selection: List = None
+
+
+@_register_type(SERIES_GROUPBY_TYPE)
+@dataslots
+@dataclass
+class SeriesGroupByMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+    selection: List = None
+
+
+@_register_type(CATEGORICAL_TYPE)
+@dataslots
+@dataclass
+class CategoricalMeta(_TileableMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    categories_value: IndexValue = None
+
+
 @_register_type(OBJECT_TYPE)
 @dataslots
 @dataclass
@@ -155,6 +187,35 @@ class IndexChunkMeta(_ChunkMeta):
     shape: Tuple[int] = None
     dtype: PandasDtypeType = None
     index_value: IndexValue = None
+
+
+@_register_type(DATAFRAME_GROUPBY_CHUNK_TYPE)
+@dataslots
+@dataclass
+class DataFrameGroupByChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtypes_value: DtypesValue = None
+    index_value: IndexValue = None
+    selection: List = None
+
+
+@_register_type(SERIES_GROUPBY_CHUNK_TYPE)
+@dataslots
+@dataclass
+class SeriesGroupByChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    index_value: IndexValue = None
+    selection: List = None
+
+
+@_register_type(CATEGORICAL_CHUNK_TYPE)
+@dataslots
+@dataclass
+class CategoricalChunkMeta(_ChunkMeta):
+    shape: Tuple[int] = None
+    dtype: PandasDtypeType = None
+    categories_value: IndexValue = None
 
 
 @_register_type(OBJECT_CHUNK_TYPE)

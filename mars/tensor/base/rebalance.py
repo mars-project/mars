@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...context import get_context
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
+from ...core.context import get_context
 from ...serialize import KeyField, Float64Field, Int64Field
 from ...tensor.datasource import tensor as astensor
 from ...utils import check_chunks_unknown_shape, ceildiv
@@ -45,15 +45,18 @@ class RebalanceMixin:
 
         size = in_obj.shape[op.axis]
         if op.factor is not None:
-            cluster_cpu_count = ctx.get_total_ncores()
+            cluster_cpu_count = ctx.get_total_n_cpu()
             assert cluster_cpu_count > 0
             expect_n_chunk = int(cluster_cpu_count * op.factor)
         else:
             expect_n_chunk = op.num_partitions
 
         expect_chunk_size = max(ceildiv(size, expect_n_chunk), 1)
-        return [in_obj.rechunk(
-            {op.axis: expect_chunk_size}, reassign_worker=op.reassign_worker)._inplace_tile()]
+        r = yield from recursive_tile(
+            in_obj.rechunk(
+                {op.axis: expect_chunk_size},
+                reassign_worker=op.reassign_worker))
+        return r
 
 
 class TensorRebalance(RebalanceMixin, TensorOperandMixin, TensorOperand):

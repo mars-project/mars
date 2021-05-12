@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...lib.filesystem import open_file
 from ...serialize import KeyField, AnyField, StringField, ListField, \
@@ -178,7 +178,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
 
         if in_df.ndim == 2 and in_df.chunk_shape[1] > 1:
             # make sure only 1 chunk on the column axis
-            in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+            in_df = yield from recursive_tile(in_df.rechunk({1: in_df.shape[1]}))
 
         one_file = op.one_file
 
@@ -202,6 +202,7 @@ class DataFrameToCSV(DataFrameOperand, DataFrameOperandMixin):
             else:
                 chunk_op._output_stat = True
                 chunk_op.stage = OperandStage.map
+                chunk_op.output_types = [OutputType.scalar] * 2
                 # bytes of csv
                 kws = [{
                     'shape': (),

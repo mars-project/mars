@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...custom_log import redirect_custom_log
 from ...serialize import KeyField, FunctionField, TupleField, DictField, BoolField
 from ...utils import enter_current_session, check_chunks_unknown_shape, quiet_stdio
@@ -126,7 +126,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
             check_chunks_unknown_shape([inp], TilesError)
             # if input is a DataFrame, make sure 1 chunk on axis columns
-            inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
+            inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         out_chunks = []
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]

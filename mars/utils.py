@@ -644,6 +644,7 @@ def merge_chunks(chunk_results):
     :param chunk_results: list of tuple, {(chunk_idx, chunk_result), ...,}
     :return:
     """
+    from .lib.groupby_wrapper import GroupByWrapper
     from .lib.sparse import SparseNDArray
     from .tensor.array_utils import get_array_module
 
@@ -666,13 +667,41 @@ def merge_chunks(chunk_results):
         return pd.concat(concats, axis='index')
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
+    elif isinstance(v, pd.Index):
+        df = pd.concat([pd.DataFrame(index=r[1])
+                        for r in chunk_results])
+        return df.index
+    elif isinstance(v, pd.Categorical):
+        categories = [r[1] for r in chunk_results]
+        arrays = [np.asarray(r) for r in categories]
+        array = np.concatenate(arrays)
+        return pd.Categorical(array, categories=categories[0].categories,
+                              ordered=categories[0].ordered)
+    elif isinstance(v, GroupByWrapper):
+        df = pd.concat([r[1].obj for r in chunk_results], axis=0)
+        if not isinstance(v.keys, list):
+            keys = v.keys
+        else:
+            keys = []
+            for idx, k in enumerate(v.keys):
+                if isinstance(k, pd.Series):
+                    keys.append(pd.concat([r[1].keys[idx] for r in chunk_results]))
+                else:
+                    keys.append(k)
+        grouped = GroupByWrapper(df, None, keys=keys, axis=v.axis, level=v.level,
+                                 exclusions=v.exclusions, selection=v.selection,
+                                 as_index=v.as_index, sort=v.sort,
+                                 group_keys=v.group_keys, squeeze=v.squeeze,
+                                 observed=v.observed, mutated=v.mutated)
+        return grouped.groupby_obj
     else:
         result = None
         for cr in chunk_results:
-            if not cr[1]:
+            if cr[1] is None:
                 continue
             if result is None:
                 result = cr[1]
+                result = result.item() if hasattr(result, 'item') else result
             else:
                 raise TypeError(f'unsupported type {type(v)}')
         return result

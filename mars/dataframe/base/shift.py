@@ -209,7 +209,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
 
                     chunk_op = op.copy().reset_key()
                     if axis == 1:
-                        dtypes = c.dtypes.iloc[start: end]
+                        dtypes = out.dtypes.iloc[start: end]
                         columns_value = parse_index(dtypes.index, store_data=True)
                         index_value = c.index_value
                     else:

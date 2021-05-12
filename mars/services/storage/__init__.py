@@ -15,3 +15,4 @@
 from .api import StorageAPI, MockStorageAPI
 from .core import DataInfo
 from .errors import DataNotExist
+from .errors import DataNotExist

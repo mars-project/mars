@@ -116,6 +116,15 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.get(
             self._session_id, data_key, conditions)
 
+    async def batch_get(self, args_list, kwargs_list):
+        gets = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            gets.append(
+                self._storage_handler_ref.get.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.get.batch(*gets)
+
     @extensible
     async def put(self, data_key: str,
                   obj: object,
@@ -123,6 +132,18 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
+
+    @put.batch
+    async def batch_put(self, args_list, kwargs_list):
+        puts = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            if kwargs.get('level', None) is None:
+                kwargs['level'] = StorageLevel.MEMORY
+            puts.append(
+                self._storage_handler_ref.put.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.put.batch(*puts)
 
     @extensible
     async def get_infos(self, data_key: str) -> List[DataInfo]:

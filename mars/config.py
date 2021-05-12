@@ -159,7 +159,7 @@ class AttributeDict(dict):
         return d
 
 
-class Config(object):
+class Config:
     def __init__(self, config=None):
         self._config = config or AttributeDict()
         self._serialize_options = []

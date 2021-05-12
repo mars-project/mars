@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from collections import deque
 from typing import Type, Dict, List
 
-from ....core import ChunkGraph, ChunkType
+from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, Fuse, VirtualOperand
 from ....utils import implements, build_fetch
 from ...core import BandType
@@ -55,6 +55,10 @@ class AbstractGraphAnalyzer(ABC):
 
 
 class GraphAnalyzer(AbstractGraphAnalyzer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._chunk_to_copied = dict()
+
     @classmethod
     def _iter_start_ops(cls, chunk_graph: ChunkGraph):
         visited = set()
@@ -128,6 +132,18 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             -> ChunkGraph:
         virtual = isinstance(chunk.op, VirtualOperand)
         inp_chunks = self._chunk_graph.predecessors(chunk)
+        if len(inp_chunks) != len(chunk.inputs):
+            new_inp_chunks = []
+            inp_to_pred = dict()
+            pred_iter = self._chunk_graph.iter_predecessors(chunk)
+            for inp in chunk.inputs:
+                if inp not in inp_to_pred:
+                    pred = next(pred_iter)
+                    new_inp_chunks.append(pred)
+                    inp_to_pred[inp] = pred
+                else:
+                    new_inp_chunks.append(inp_to_pred[inp])
+            inp_chunks = new_inp_chunks
         inp_fetch_chunks = self._gen_input_chunks(inp_chunks, chunk_to_fetch_chunk)
 
         # gen chunk graph for each subtask
@@ -148,7 +164,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                 for inp_fetch_chunk in inp_fetch_chunks:
                     subtask_chunk_graph.add_node(inp_fetch_chunk)
                     subtask_chunk_graph.add_edge(inp_fetch_chunk, copied_chunk)
-
+            self._chunk_to_copied[out] = copied_chunk
         return subtask_chunk_graph
 
     def _build_fuse_subtask_chunk_graph(self,
@@ -187,6 +203,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                     # the last chunk
                     result_chunks.append(copied_fuse_chunk)
             fuse_to_copied[fuse_chunk] = copied_fuse_chunk
+        self._chunk_to_copied[chunk] = fuse_to_copied[chunk.chunk]
         return subtask_chunk_graph
 
     def _gen_subtask(self,
@@ -226,6 +243,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
         return subtask
 
     @implements(AbstractGraphAnalyzer.gen_subtask_graph)
+    @enter_mode(build=True)
     def gen_subtask_graph(self) -> SubtaskGraph:
         fetch_removed_chunk_graph = self._chunk_graph.copy()
         for chunk in self._chunk_graph:

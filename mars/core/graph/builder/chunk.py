@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
 from typing import List, Dict, Union, Set, Generator, Iterable
 
 from ....utils import copy_tileables, build_fetch
-from ...entity.tileables import handler, TilesError
+from ...entity.tileables import handler
 from ...mode import enter_mode
 from ...typing import EntityType, TileableType, ChunkType
 from ..entity import TileableGraph, ChunkGraph
@@ -53,38 +52,8 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             inputs=[self.tile_context[inp] for inp in tileable.inputs],
             copy_key=True, copy_id=False)
         tiled_tileables = [self._get_data(t) for t in tiled_tileables]
-
         # start to tile
-        # get tile handler
-        op = tiled_tileables[0].op
-        tile_handler = handler.get_handler(op)
-        if inspect.isgeneratorfunction(tile_handler):
-            # new style tile,
-            # op.tile can be a generator function,
-            # each time an operand yield some chunks,
-            # they will be put into ChunkGraph and executed first.
-            # After execution, resume from the yield place.
-            tiled_result = yield from tile_handler(op)
-        else:
-            # old style tile
-            # op.tile raise TilesError to submit predecessors first.
-            while True:
-                try:
-                    tiled_result = tile_handler(op)
-                    break
-                except TilesError as e:
-                    # failed
-                    if getattr(e, 'partial_tiled_chunks', None):
-                        yield e.partial_tiled_chunks
-                    else:
-                        yield []
-
-        tiled_results = [self._get_data(t) for t in tiled_result]
-        assert len(tiled_tileables) == len(tiled_results)
-        for tileable, tiled_result in zip(tiled_tileables, tiled_results):
-            tiled_result.copy_to(tileable)
-            tileable.op.outputs = tiled_tileables
-
+        tiled_tileables = yield from handler.tile(tiled_tileables)
         return tiled_tileables
 
     def _select_inputs(self, inputs: List[ChunkType]):
@@ -121,6 +90,11 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             need_process_tiles = []
             for tileable, process_tile in process_tile_iter:
                 if tileable in self.tile_context:
+                    continue
+                if any(inp not in self.tile_context
+                       for inp in tileable_graph.predecessors(tileable)):
+                    # predecessors not finished yet
+                    need_process_tiles.append((tileable, process_tile))
                     continue
 
                 try:

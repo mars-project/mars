@@ -89,12 +89,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 kw = {
                     'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'index_value': df_chunk.index_value,
+                    'dtypes_value': df_chunk.dtypes_value
                 }
             else:
                 series_chunk = right_chunks[out_idx[0]]
                 kw = {
                     'shape': (nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
                     'columns_value': df_chunk.columns_value,
+                    'dtypes_value': df_chunk.dtypes_value
                 }
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
@@ -120,12 +122,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 kw = {
                     'shape': (df_chunk.shape[0], np.nan),
                     'index_value': df_chunk.index_value,
+                    'dtypes_value': df_chunk.dtypes_value
                 }
             else:
                 series_chunk = left_chunks[out_idx[0]]
                 kw = {
                     'shape': (df_chunk.shape[0], np.nan),
                     'index_value': df_chunk.index_value,
+                    'dtypes_value': df_chunk.dtypes_value
                 }
             out_chunk = op.copy().reset_key().new_chunk([series_chunk, df_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
@@ -182,7 +186,6 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if tensor.ndim > 0:
                 tensor = tensor.rechunk((rechunk_size,))._inplace_tile()
 
-        cum_splits = [0] + np.cumsum(other.nsplits[axis]).tolist()
         out_chunks = []
         for out_index in itertools.product(*(map(range, other.chunk_shape))):
             tensor_chunk = tensor.cix[out_index[:tensor.ndim]]
@@ -190,13 +193,14 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             inputs = [other_chunk, tensor_chunk] if rhs_is_tensor else [tensor_chunk, other_chunk]
             if isinstance(other_chunk, DATAFRAME_CHUNK_TYPE):
-                start = cum_splits[out_index[axis]]
-                end = cum_splits[out_index[axis] + 1]
+                cum_splits = [0] + np.cumsum(other.nsplits[1]).tolist()
+                start = cum_splits[out_index[1]]
+                end = cum_splits[out_index[1] + 1]
                 chunk_dtypes = out.dtypes.iloc[start: end]
                 out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
                                              dtypes=chunk_dtypes,
                                              index_value=other_chunk.index_value,
-                                             columns_value=other.columns_value)
+                                             columns_value=other_chunk.columns_value)
             else:
                 out_chunk = out_op.new_chunk(inputs, shape=other_chunk.shape, index=other_chunk.index,
                                              dtype=out.dtype,

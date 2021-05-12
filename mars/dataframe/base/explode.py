@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...serialize import AnyField, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, standardize_range_index
@@ -63,7 +63,8 @@ class DataFrameExplode(DataFrameOperand, DataFrameOperandMixin):
 
         if in_obj.ndim == 2 and in_obj.chunk_shape[1] > 1:
             # make sure data's second dimension has only 1 chunk
-            in_obj = in_obj.rechunk({1: in_obj.shape[1]})._inplace_tile()
+            in_obj = yield from recursive_tile(
+                in_obj.rechunk({1: in_obj.shape[1]}))
 
         chunks = []
         for chunk in in_obj.chunks:

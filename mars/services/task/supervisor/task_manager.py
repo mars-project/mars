@@ -26,12 +26,16 @@ from .... import oscar as mo
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     Tileable, TileableType, ChunkType
+from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
-from ....dataframe.core import DATAFRAME_CHUNK_TYPE
+from ....dataframe.core import DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
+    SERIES_GROUPBY_CHUNK_TYPE
+from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
 from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
+from ...context import ThreadedServiceContext
 from ...core import BandType
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -109,12 +113,35 @@ class TaskProcessor:
         meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
             # optimize chunk graph
+            chunk_optimization_records = None
             if optimize:
+                chunk_optimization_records = optimize_chunk_graph(chunk_graph)
                 self.chunk_optimization_records_list.append(
-                    optimize_chunk_graph(chunk_graph))
+                    chunk_optimization_records)
             yield chunk_graph
             # update tileables' meta
-            self._update_tileables_params(tileable_graph, meta_updated)
+            self._update_tileables_params(tileable_graph, meta_updated,
+                                          chunk_optimization_records)
+
+    def analyze(self,
+                chunk_graph: ChunkGraph,
+                available_bands: Dict[BandType, int],
+                task_stage_info: "TaskStageInfo") -> SubtaskGraph:
+        task = self._task
+        analyzer = GraphAnalyzer(chunk_graph, available_bands,
+                                 task.fuse_enabled, task.extra_config,
+                                 task_stage_info)
+        return analyzer.gen_subtask_graph()
+
+    def analyze(self,
+                chunk_graph: ChunkGraph,
+                available_bands: Dict[BandType, int],
+                task_stage_info: "TaskStageInfo") -> SubtaskGraph:
+        task = self._task
+        analyzer = GraphAnalyzer(chunk_graph, available_bands,
+                                 task.fuse_enabled, task.extra_config,
+                                 task_stage_info)
+        return analyzer.gen_subtask_graph()
 
     @property
     def done(self) -> bool:
@@ -131,22 +158,30 @@ class TaskProcessor:
         tileable = tileable.data if hasattr(tileable, 'data') else tileable
         return self.tile_context[tileable]
 
-    @classmethod
-    def _update_tileable_params(cls,
+    def _update_tileable_params(self,
                                 tileable: TileableType,
-                                tiled: TileableType):
+                                tiled: TileableType,
+                                optimization_records: OptimizationRecords):
+        for chunk in tiled.chunks:
+            if optimization_records:
+                optimized_chunk = \
+                    optimization_records.get_optimization_result(chunk.data)
+                if optimized_chunk is not None:
+                    chunk.params = optimized_chunk.params
         tiled.refresh_params()
         tileable.params = tiled.params
 
     def _update_tileables_params(self,
                                  tileable_graph: TileableGraph,
-                                 updated: Set[TileableType]):
+                                 updated: Set[TileableType],
+                                 optimization_records: OptimizationRecords):
         for tileable in tileable_graph:
             if tileable in updated:
                 continue
             tiled_tileable = self.tile_context.get(tileable)
             if tiled_tileable is not None:
-                self._update_tileable_params(tileable, tiled_tileable)
+                self._update_tileable_params(tileable, tiled_tileable,
+                                             optimization_records)
                 updated.add(tileable)
 
     def __await__(self):
@@ -266,6 +301,12 @@ class SubtaskGraphScheduler:
             if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
                 fields.remove('dtypes')
                 fields.remove('columns_value')
+            elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
+                fields.remove('dtypes')
+                fields.remove('key_dtypes')
+                fields.remove('columns_value')
+            elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
+                fields.remove('key_dtypes')
             get_meta.append(self._meta_api.get_chunk_meta.delay(
                 chunk.key, fields=fields))
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
@@ -354,7 +395,7 @@ class SubtaskGraphScheduler:
                 except asyncio.CancelledError:
                     pass
 
-                if not self._cancelled.is_set():
+                if not self._cancelled.is_set() and not self._done.is_set():
                     try:
                         subtask_runner = await manager_ref.get_free_slot()
                     except asyncio.CancelledError:
@@ -366,7 +407,9 @@ class SubtaskGraphScheduler:
                 # has been pushed before slot released
                 subtask = q.get()
 
-                done = subtask is None or self._done.is_set() or self._cancelled.is_set()
+                done = subtask is None or \
+                       self._done.is_set() or \
+                       self._cancelled.is_set()
                 if done and subtask_runner:
                     # finished or cancelled, given back slot
                     await manager_ref.mark_slot_free(subtask_runner)
@@ -403,7 +446,10 @@ class SubtaskGraphScheduler:
         # wait for completion
         await self._done.wait()
         # wait for schedules to complete
-        await asyncio.gather(*self._band_schedules)
+        try:
+            await asyncio.gather(*self._band_schedules)
+        except asyncio.CancelledError:
+            pass
 
     async def cancel(self):
         if self._done.is_set():
@@ -522,6 +568,16 @@ class TaskManagerActor(mo.Actor):
         self._config, self._task_processor_cls = \
             task_conf['task_options'], task_conf['task_processor_cls']
         self._task_processor_cls = self._get_task_processor_cls()
+
+        # init context
+        await self._init_context()
+
+    async def _init_context(self):
+        loop = asyncio.get_running_loop()
+        context = ThreadedServiceContext(
+            self._session_id, self.address, self.address, loop=loop)
+        await context.init()
+        set_context(context)
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
         return await self._cluster_api.get_all_bands()
@@ -650,10 +706,8 @@ class TaskManagerActor(mo.Actor):
                 task_stage_info.chunk_graph = chunk_graph
                 # get subtask graph
                 available_bands = await self._get_available_band_slots()
-                analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                         task.fuse_enabled, task.extra_config,
-                                         task_stage_info)
-                subtask_graph = analyzer.gen_subtask_graph()
+                subtask_graph = task_processor.analyze(
+                    chunk_graph, available_bands, task_stage_info)
                 task_stage_info.subtask_graph = subtask_graph
                 await self._incref_after_analyze(subtask_graph, chunk_graph.results)
 

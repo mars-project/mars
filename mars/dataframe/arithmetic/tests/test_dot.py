@@ -12,82 +12,88 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
+import pytest
 
+from mars.config import option_context
 from mars.dataframe import DataFrame, Series
-from mars.tests.core import ExecutorForTest
+from mars.tests import new_test_session
 
 
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.executor = ExecutorForTest('numpy')
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def testDotExecution(self):
-        df1_raw = pd.DataFrame(np.random.rand(4, 7))
-        df2_raw = pd.DataFrame(np.random.rand(7, 5), columns=list('efghi'))
-        s1_raw = pd.Series(np.random.rand(7))
-        s2_raw = pd.Series(np.random.rand(7))
 
-        df1 = DataFrame(df1_raw, chunk_size=(3, 2))
-        df2 = DataFrame(df2_raw, chunk_size=(3, 4))
+def test_dot_execution(setup):
+    df1_raw = pd.DataFrame(np.random.rand(4, 7))
+    df2_raw = pd.DataFrame(np.random.rand(7, 5), columns=list('efghi'))
+    s1_raw = pd.Series(np.random.rand(7))
+    s2_raw = pd.Series(np.random.rand(7))
 
-        # df.dot(df)
-        r = df1.dot(df2)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df1_raw.dot(df2_raw)
-        pd.testing.assert_frame_equal(result, expected)
+    df1 = DataFrame(df1_raw, chunk_size=(3, 2))
+    df2 = DataFrame(df2_raw, chunk_size=(3, 4))
 
-        # test @
-        r = df1 @ df2
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df1_raw @ df2_raw
-        pd.testing.assert_frame_equal(result, expected)
+    # df.dot(df)
+    r = df1.dot(df2)
+    result = r.execute().fetch()
+    expected = df1_raw.dot(df2_raw)
+    pd.testing.assert_frame_equal(result, expected)
 
-        series1 = Series(s1_raw, chunk_size=5)
+    # test @
+    r = df1 @ df2
+    result = r.execute().fetch()
+    expected = df1_raw @ df2_raw
+    pd.testing.assert_frame_equal(result, expected)
 
-        # df.dot(series)
-        r = df1.dot(series1)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df1_raw.dot(s1_raw)
-        pd.testing.assert_series_equal(result, expected)
+    series1 = Series(s1_raw, chunk_size=5)
 
-        # df.dot(2d_array)
-        r = df1.dot(df2_raw.to_numpy())
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df1_raw.dot(df2_raw.to_numpy())
-        pd.testing.assert_frame_equal(result, expected)
+    # df.dot(series)
+    r = df1.dot(series1)
+    result = r.execute().fetch()
+    expected = df1_raw.dot(s1_raw)
+    pd.testing.assert_series_equal(result, expected)
 
-        # df.dot(1d_array)
-        r = df1.dot(s1_raw.to_numpy())
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = df1_raw.dot(s1_raw.to_numpy())
-        pd.testing.assert_series_equal(result, expected)
+    # df.dot(2d_array)
+    r = df1.dot(df2_raw.to_numpy())
+    result = r.execute().fetch()
+    expected = df1_raw.dot(df2_raw.to_numpy())
+    pd.testing.assert_frame_equal(result, expected)
 
-        series2 = Series(s2_raw, chunk_size=4)
+    # df.dot(1d_array)
+    r = df1.dot(s1_raw.to_numpy())
+    result = r.execute().fetch()
+    expected = df1_raw.dot(s1_raw.to_numpy())
+    pd.testing.assert_series_equal(result, expected)
 
-        # series.dot(series)
-        r = series1.dot(series2)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = s1_raw.dot(s2_raw)
-        self.assertAlmostEqual(result, expected)
+    series2 = Series(s2_raw, chunk_size=4)
 
-        # series.dot(df)
-        r = series1.dot(df2)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = s1_raw.dot(df2_raw)
-        pd.testing.assert_series_equal(result, expected)
+    # series.dot(series)
+    r = series1.dot(series2)
+    result = r.execute().fetch()
+    expected = s1_raw.dot(s2_raw)
+    assert pytest.approx(result) == expected
 
-        # series.dot(2d_array)
-        r = series1.dot(df2_raw.to_numpy())
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = s1_raw.dot(df2_raw.to_numpy())
-        np.testing.assert_almost_equal(result, expected)
+    # series.dot(df)
+    r = series1.dot(df2)
+    result = r.execute().fetch()
+    expected = s1_raw.dot(df2_raw)
+    pd.testing.assert_series_equal(result, expected)
 
-        # series.dot(1d_array)
-        r = series1.dot(s2_raw.to_numpy())
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        expected = s1_raw.dot(s2_raw.to_numpy())
-        self.assertAlmostEqual(result, expected)
+    # series.dot(2d_array)
+    r = series1.dot(df2_raw.to_numpy())
+    result = r.execute().fetch()
+    expected = s1_raw.dot(df2_raw.to_numpy())
+    np.testing.assert_almost_equal(result, expected)
+
+    # series.dot(1d_array)
+    r = series1.dot(s2_raw.to_numpy())
+    result = r.execute().fetch()
+    expected = s1_raw.dot(s2_raw.to_numpy())
+    assert pytest.approx(result) == expected

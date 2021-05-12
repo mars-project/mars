@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, OutputType, get_output_types
+from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
 from ...serialize import BoolField, DictField, StringField
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -324,7 +324,8 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
 
         if in_df.ndim == 2:
             if in_df.chunk_shape[1] > 1:
-                in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+                in_df = yield from recursive_tile(
+                    in_df.rechunk({1: in_df.shape[1]}))
 
         chunks = []
         for c in in_df.chunks:
@@ -333,14 +334,14 @@ class DataFrameEval(DataFrameOperand, DataFrameOperandMixin):
                 params = dict(
                     dtypes=out_df.dtypes, shape=new_shape,
                     columns_value=parse_index(out_df.dtypes.index, store_data=True),
-                    index_value=out_df.index_value,
+                    index_value=c.index_value,
                     index=c.index,
                 )
             else:
                 new_shape = (np.nan if np.isnan(out_df.shape[0]) else c.shape[0],)
                 params = dict(
                     name=out_df.name, dtype=out_df.dtype, shape=new_shape,
-                    index_value=out_df.index_value,
+                    index_value=c.index_value,
                     index=(c.index[0],)
                 )
             new_op = op.copy().reset_key()

@@ -79,6 +79,8 @@ class TileableOperandMixin:
             getattr(self, '_update_key')()
 
         chunks = []
+        if isinstance(output_limit, float) and kws:
+            output_limit = len(kws)
         for j in range(output_limit):
             create_chunk_kw = kw.copy()
             if kws:

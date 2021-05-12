@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType, TilesError
+from ...core import OutputType, TilesError, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, BoolField, Int64Field, StringField
-from ...utils import recursive_tile, check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
@@ -149,7 +149,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         elif op.nrows:
             inp = inp.iloc[:op.nrows]
 
-        ret = recursive_tile(inp)
+        ret = yield from recursive_tile(inp)
 
         chunks = []
         for c in ret.chunks:

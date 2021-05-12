@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...serialize import KeyField, AnyField
-from ...utils import recursive_tile
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import decide_unify_split, validate_axis
@@ -156,7 +155,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
                 ret._columns_value = rhs.columns_value
                 ret._dtypes = rhs.dtypes
 
-        return [recursive_tile(ret)]
+        tiled = yield from recursive_tile(ret)
+        return [tiled]
 
 
 def dot(df_or_seris, other):

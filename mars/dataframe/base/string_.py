@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, TilesError
+from ...core import OutputType, TilesError, recursive_tile
 from ...serialize import KeyField, StringField, TupleField, DictField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
@@ -72,7 +74,11 @@ class SeriesStringMethod(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        return _string_method_to_handlers[op.method].tile(op)
+        tiled = _string_method_to_handlers[op.method].tile(op)
+        if inspect.isgenerator(tiled):
+            return (yield from tiled)
+        else:
+            return tiled
 
     @classmethod
     def execute(cls, ctx, op):
@@ -229,7 +235,8 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
         if isinstance(op.inputs[1], TENSOR_TYPE):
             check_chunks_unknown_shape(op.inputs, TilesError)
             # rechunk others as input
-            others = op.inputs[1].rechunk(op.input.nsplits)._inplace_tile()
+            others = yield from recursive_tile(
+                op.inputs[1].rechunk(op.input.nsplits))
             out_chunks = []
             for c in inp.chunks:
                 chunk_op = op.copy().reset_key()

@@ -24,7 +24,7 @@ from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
-from ...utils import calc_data_size, dataslots
+from ...utils import calc_data_size, dataslots, extensible
 from ..cluster import ClusterAPI
 from ..meta import MetaAPI
 from .errors import DataNotExist
@@ -186,44 +186,90 @@ class StorageHandlerActor(mo.Actor):
                 if client.level & level:
                     clients[level] = client
 
+    async def _get_data(self, data_info, conditions):
+        if conditions is None:
+            yield self._clients[data_info.level].get(
+                data_info.object_id)
+        else:
+            try:
+                yield self._clients[data_info.level].get(
+                    data_info.object_id, conditions=conditions)
+            except NotImplementedError:
+                data = yield await self._clients[data_info.level].get(
+                    data_info.object_id)
+                try:
+                    sliced_value = data.iloc[tuple(conditions)]
+                except AttributeError:
+                    sliced_value = data[tuple(conditions)]
+                yield sliced_value
+
+    @extensible
     async def get(self,
                   session_id: str,
                   data_key: str,
                   conditions: List = None):
         data_info = await self._storage_manager_ref.get_data_info(
             session_id, data_key)
-        if conditions is None:
-            data = await self._clients[data_info.level].get(
-                data_info.object_id)
-            return data
-        else:
-            try:
-                return await self._clients[data_info.level].get(
-                    data_info.object_id, conditions=conditions)
-            except NotImplementedError:
-                data = await self._clients[data_info.level].get(
-                    data_info.object_id)
-                try:
-                    sliced_value = data.iloc[tuple(conditions)]
-                except AttributeError:
-                    sliced_value = data[tuple(conditions)]
-                return sliced_value
+        yield self._get_data(data_info, conditions)
 
+    @get.batch
+    async def batch_get(self, args_list, kwargs_list):
+        session_id = args_list[0][0]
+        data_keys = [args[1] for args in args_list]
+        data_infos = await self._storage_manager_ref.batch_get_data_info(
+            session_id, data_keys)
+        for data_info, kwargs in zip(data_infos, kwargs_list):
+            yield self._get_data(data_info, **kwargs)
+
+    @extensible
     async def put(self,
                   session_id: str,
                   data_key: str,
                   obj: object,
                   level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
-        await self._storage_manager_ref.allocate_size(size, level=level)
+        await self._storage_manager_ref.allocate_size(size, level)
         object_info = await self._clients[level].put(obj)
-        if object_info.size is not None and size != object_info.size:
-            await self._storage_manager_ref.update_quota(
-                object_info.size - size, level=level)
         data_info = _build_data_info(object_info, level, size)
         await self._storage_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
         return data_info
+
+    @put.batch
+    async def batch_put(self, args_list, kwargs_list):
+        objs = []
+        data_keys = []
+        session_id = None
+        level = None
+        # extract args
+        for arg, kwargs in zip(args_list, kwargs_list):
+            data_keys.append(arg[1])
+            objs.append(arg[2])
+            if session_id is None:
+                session_id = arg[0]
+            else:
+                assert session_id == arg[0]
+            if level is None:
+                level = kwargs['level']
+            else:
+                assert level == kwargs['level']
+
+        sizes = []
+        for obj in objs:
+            sizes.append(calc_data_size(obj))
+        await self._storage_manager_ref.allocate_size(
+            sum(sizes), level)
+
+        data_infos = []
+        object_infos = []
+        for size, obj in zip(sizes, objs):
+            object_info = await self._clients[level].put(obj)
+            data_infos.append(
+                _build_data_info(object_info, level, size))
+            object_infos.append(object_info)
+        await self._storage_manager_ref.batch_put_data_info(
+            session_id, data_keys, data_infos, object_infos)
+        return data_infos
 
     async def delete(self,
                      session_id: str,
@@ -373,7 +419,7 @@ class StorageManagerActor(mo.Actor):
             try:
                 yield self._storage_handler.prefetch(session_id, data_key)
             except NotImplementedError:  # pragma: no cover
-                raise
+                raise DataNotExist(f'Data {session_id, data_key} not exists')
 
     def update_quota(self,
                      size: int,
@@ -396,12 +442,34 @@ class StorageManagerActor(mo.Actor):
                       data_key: str) -> DataInfo:
         return self._data_manager.get_info(session_id, data_key)
 
+    def batch_get_data_info(self,
+                            session_id: str,
+                            data_keys: List[str]) -> List[DataInfo]:
+        return [self._data_manager.get_info(session_id, data_key)
+                for data_key in data_keys]
+
     def put_data_info(self,
                       session_id: str,
                       data_key: str,
                       data_info: DataInfo,
-                      object_info: Union[ObjectInfo] = None):
+                      object_info: ObjectInfo = None):
         self._data_manager.put(session_id, data_key, data_info, object_info)
+        if object_info.size is not None and data_info.memory_size != object_info.size:
+            self.update_quota(object_info.size - data_info.memory_size, data_info.level)
+
+    def batch_put_data_info(self,
+                            session_id: str,
+                            data_keys: List[str],
+                            data_infos: List[DataInfo],
+                            object_infos: List[Union[ObjectInfo, None]]):
+        for data_key, data_info, object_info in zip(
+                data_keys, data_infos, object_infos):
+            self._data_manager.put(session_id, data_key,
+                                   data_info, object_info)
+            if object_info.size is not None and \
+                    data_info.memory_size != object_info.size:
+                self.update_quota(
+                    object_info.size - data_info.memory_size, data_info.level)
 
     async def fetch_data_info(self,
                               session_id: str,

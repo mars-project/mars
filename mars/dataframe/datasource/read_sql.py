@@ -28,13 +28,13 @@ from ...serialize import StringField, AnyField, BoolField, ListField, \
 from ...tensor.utils import normalize_chunk_sizes
 from ..arrays import ArrowStringDtype
 from ..core import IndexValue
-from ..operands import DataFrameOperand, OutputType
+from ..operands import OutputType
 from ..utils import parse_index, create_sa_connection, \
     standardize_range_index, to_arrow_dtypes
-from .core import ColumnPruneSupportedDataSourceMixin
+from .core import ColumnPruneSupportedDataSourceMixin, HeadOptimizedDataSource
 
 
-class DataFrameReadSQL(DataFrameOperand, ColumnPruneSupportedDataSourceMixin):
+class DataFrameReadSQL(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin):
     _op_type_ = OperandDef.READ_SQL
 
     _table_or_sql = AnyField('table_or_sql')

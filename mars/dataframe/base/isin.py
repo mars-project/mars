@@ -17,7 +17,7 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
+from ...core import ENTITY_TYPE, TilesError, recursive_tile
 from ...serialize import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ...utils import check_chunks_unknown_shape
@@ -90,7 +90,7 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
             for value in op.inputs[1:]:
                 # make sure arg has known shape when it's a md.Series
                 check_chunks_unknown_shape([value], TilesError)
-                value = value.rechunk(value.shape)._inplace_tile()
+                value = yield from recursive_tile(value.rechunk(value.shape))
                 values_inputs.append(value)
 
         out_chunks = []

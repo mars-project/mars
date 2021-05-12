@@ -137,7 +137,10 @@ class StrSerializer(Serializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         if header.get('unicode'):
-            return buffers[0].decode()
+            buffer = buffers[0]
+            if isinstance(buffer, memoryview):
+                buffer = buffer.tobytes()
+            return buffer.decode()
         return buffers[0]
 
 

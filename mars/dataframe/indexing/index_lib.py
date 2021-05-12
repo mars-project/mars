@@ -462,7 +462,7 @@ class DataFrameIndexHandler:
 
         dtypes = None
         if index_info.input_axis == 0:
-            index_value = parse_index(chunk_input.index_value.to_pandas(),
+            index_value = parse_index(chunk_input.index_value.to_pandas()[:0],
                                       chunk_input, index, store_data=False)
         else:
             dtypes = cls._calc_dtypes(chunk_input.dtypes, index, context)

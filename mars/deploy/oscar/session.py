@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import asyncio
+import itertools
+from collections import defaultdict
 from dataclasses import dataclass
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
-from typing import Dict
+from typing import Dict, List, Tuple, Union
 
-from ...core import Tileable, enter_mode
+from ...core import TileableType, ChunkType, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
 from ...services.lifecycle import LifecycleAPI
@@ -27,7 +29,8 @@ from ...services.meta import MetaAPI
 from ...services.session import SessionAPI
 from ...services.storage import StorageAPI
 from ...services.task import TaskAPI, TaskResult
-from ...utils import implements, merge_chunks
+from ...tensor.utils import slice_split
+from ...utils import implements, merge_chunks, sort_dataframe_result
 from .typing import ClientType
 
 
@@ -75,10 +78,14 @@ class Session(AbstractSession):
     @classmethod
     async def _init(cls,
                     address: str,
-                    session_id: str):
+                    session_id: str,
+                    new: bool = True):
         session_api = await SessionAPI.create(address)
-        # create new session
-        session_address = await session_api.create_session(session_id)
+        if new:
+            # create new session
+            session_address = await session_api.create_session(session_id)
+        else:
+            session_address = await session_api.get_session_address(session_id)
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
@@ -91,6 +98,7 @@ class Session(AbstractSession):
     async def init(cls,
                    address: str,
                    session_id: str,
+                   new: bool = True,
                    **kwargs) -> "Session":
         init_local = kwargs.pop('init_local', False)
         if init_local:
@@ -133,7 +141,7 @@ class Session(AbstractSession):
     async def execute(self,
                       *tileables,
                       **kwargs) -> ExectionInfo:
-        fuse_enabled: bool = kwargs.pop('fuse_enabled', False)
+        fuse_enabled: bool = kwargs.pop('fuse_enabled', True)
         task_name: str = kwargs.pop('task_name', None)
         extra_config: dict = kwargs.pop('extra_config', None)
         if kwargs:  # pragma: no cover
@@ -156,8 +164,8 @@ class Session(AbstractSession):
             self._run_in_background(tileables, task_id, progress))
         return ExectionInfo(task_id, self._task_api, future, progress)
 
-    @enter_mode(build=True)
-    def _get_to_fetch_tileable(self, tileable: Tileable):
+    def _get_to_fetch_tileable(self, tileable: TileableType) -> \
+            Tuple[TileableType, List[Union[slice, Integral]]]:
         from ...tensor.indexing import TensorIndex
         from ...dataframe.indexing.iloc import \
             DataFrameIlocGetItem, SeriesIlocGetItem
@@ -183,33 +191,92 @@ class Session(AbstractSession):
 
         return self._tileable_to_fetch[tileable], indexes
 
+    @classmethod
+    def _calc_chunk_indexes(cls,
+                            fetch_tileable: TileableType,
+                            indexes: List[Union[slice, Integral]]) -> \
+            Dict[ChunkType, List[Union[slice, Integral]]]:
+        axis_to_slices = {
+            axis: slice_split(ind, fetch_tileable.nsplits[axis])
+            for axis, ind in enumerate(indexes)}
+        result = dict()
+        for chunk_index in itertools.product(
+                *[v.keys() for v in axis_to_slices.values()]):
+            # slice_obj: use tuple, since numpy complains
+            #
+            # FutureWarning: Using a non-tuple sequence for multidimensional indexing is deprecated; use
+            # `arr[tuple(seq)]` instead of `arr[seq]`. In the future this will be interpreted as an array
+            # index, `arr[np.array(seq)]`, which will result either in an error or a different result.
+            slice_obj = [axis_to_slices[axis][chunk_idx]
+                         for axis, chunk_idx in enumerate(chunk_index)]
+            chunk = fetch_tileable.cix[chunk_index]
+            result[chunk] = slice_obj
+        return result
+
+    def _process_result(self, tileable, result):
+        return sort_dataframe_result(tileable, result)
+
+    @enter_mode(build=True)
     async def fetch(self, *tileables, **kwargs):
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError(f'`fetch` got unexpected '
                             f'arguments: {unexpected_keys}')
 
-        data = []
-        for tileable in tileables:
-            fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
-            # TODO: support fetch slices
-            assert indexes is None
-            index_to_data = []
-            for chunk in fetch_tileable.chunks:
-                # TODO: use batch API to fetch data
-                band = (await self._meta_api.get_chunk_meta(
-                    chunk.key, fields=['bands']))['bands'][0]
+        with enter_mode(build=True):
+            chunks = []
+            get_chunk_metas = []
+            chunk_to_tileable = dict()
+            chunk_to_indexes = dict()
+            for tileable in tileables:
+                fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
+                if indexes is not None:
+                    chunk_to_indexes.update(self._calc_chunk_indexes(
+                        fetch_tileable, indexes))
+                for chunk in fetch_tileable.chunks:
+                    chunks.append(chunk)
+                    chunk_to_tileable[chunk] = tileable
+                    get_chunk_metas.append(
+                        self._meta_api.get_chunk_meta.delay(
+                            chunk.key, fields=['bands']))
+            chunk_metas = \
+                await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            chunk_to_addr = {chunk: meta['bands'][0][0]
+                             for chunk, meta in zip(chunks, chunk_metas)}
+
+            storage_apis_to_chunks_gets = defaultdict(lambda: (list(), list()))
+            for chunk, addr in chunk_to_addr.items():
+                # storage_api is cached if args identical
                 if urlparse(self.address).scheme == 'http':
                     from mars.services.storage.web import WebStorageAPI
                     storage_api = await WebStorageAPI.create(self.address, self._session_id, band[0])
                 else:
-                    storage_api = await StorageAPI.create(self._session_id, band[0])
-                index_to_data.append(
-                    (chunk.index, await storage_api.get(chunk.key)))
+                    storage_api = await StorageAPI.create(self._session_id, addr)
+                chunks, gets = storage_apis_to_chunks_gets[storage_api]
+                chunks.append(chunk)
+                conditions = chunk_to_indexes.get(chunk)
+                if indexes is not None and conditions is None:
+                    # has indexes and chunk has no data to fetch
+                    continue
+                gets.append(storage_api.get.delay(chunk.key, conditions=conditions))
+            tileable_to_index_data = defaultdict(list)
+            for storage_api, (chunks, gets) in storage_apis_to_chunks_gets.items():
+                chunks_data = await storage_api.get.batch(*gets)
+                for chunk, data in zip(chunks, chunks_data):
+                    tileable = chunk_to_tileable[chunk]
+                    tileable_to_index_data[tileable].append((chunk.index, data))
 
-            data.append(merge_chunks(index_to_data))
+            result = []
+            for tileable, index_to_data in tileable_to_index_data.items():
+                result.append(self._process_result(
+                    tileable, merge_chunks(index_to_data)))
+            return result
 
-        return data
+    async def decref(self, *tileable_keys):
+        return await self._lifecycle_api.decref_tileables(tileable_keys)
+
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        return await self._lifecycle_api.get_all_chunk_ref_counts()
 
     async def decref(self, *tileable_keys):
         return await self._lifecycle_api.decref_tileables(tileable_keys)
@@ -229,15 +296,19 @@ class WebSession(Session):
     @classmethod
     async def _init(cls,
                     address: str,
-                    session_id: str):
+                    session_id: str,
+                    new=True):
         from ...services.session.web import WebSessionAPI
         from ...services.lifecycle.web import WebLifecycleAPI
         from ...services.meta.web import WebMetaAPI
         from ...services.task.web import WebTaskAPI
 
         session_api = await WebSessionAPI.create(address)
-        # create new session
-        session_address = await session_api.create_session(session_id)
+        if new:
+            # create new session
+            session_address = await session_api.create_session(session_id)
+        else:
+            session_address = await session_api.get_session_address(session_id)
         lifecycle_api = await WebLifecycleAPI.create(
             address, session_id, session_address)
         meta_api = await WebMetaAPI.create(address, session_id, session_address)

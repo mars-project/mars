@@ -20,7 +20,8 @@ from .entity import Entity, EntityData, ENTITY_TYPE, \
     OutputType, register_output_types, get_output_types, \
     register_fetch_class, get_fetch_class, get_tileable_types, get_chunk_types, \
     HasShapeTileable, HasShapeTileableData, ExecutableTuple, _ExecuteAndFetchMixin, \
-    TilesError, NotSupportTile, register, tile
+    TilesError, NotSupportTile, register, tile, recursive_tile
+# noinspection PyUnresolvedReferences
 from .graph import DirectedGraph, DAG, GraphContainsCycleError, \
     TileableGraph, ChunkGraph, TileableGraphBuilder, ChunkGraphBuilder
 from .graph.builder.legacy import get_tiled

@@ -14,7 +14,7 @@
 
 from typing import Any, Dict
 
-from .....core import OperandType
+from .....core import OperandType, register
 from .....tests.core import _check_args, ObjectCheckMixin
 from ..subtask import SubtaskProcessor
 
@@ -25,6 +25,10 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
 
         check_options = dict()
         kwargs = self.subtask.extra_config or dict()
+        self._operand_executors = operand_executors = \
+            kwargs.pop('operand_executors', dict())
+        for op, executor in operand_executors.items():
+            op.register_executor(executor)
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
@@ -38,3 +42,8 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
                 if out not in self._chunk_graph.result_chunks:
                     continue
                 self.assert_object_consistent(out, ctx[out.key])
+
+    async def done(self):
+        await super().done()
+        for op in self._operand_executors:
+            op.unregister_executor()

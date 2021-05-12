@@ -60,9 +60,11 @@ class AbstractMetaStore(ABC):
             Meta.
         """
 
+    @abstractmethod
     async def get_meta(self,
                        object_id: str,
-                       fields: List[str] = None) -> Dict:
+                       fields: List[str] = None,
+                       error='raise') -> Dict:
         """
         Get meta.
 
@@ -72,6 +74,8 @@ class AbstractMetaStore(ABC):
             Object ID.
         fields : list
             Fields to filter, if not provided, get all fields.
+        error : str
+            'raise' or 'ignore'
 
         Returns
         -------
@@ -79,6 +83,7 @@ class AbstractMetaStore(ABC):
             Meta.
         """
 
+    @abstractmethod
     async def del_meta(self,
                        object_id: str):
         """
@@ -90,6 +95,7 @@ class AbstractMetaStore(ABC):
             Object ID.
         """
 
+    @abstractmethod
     async def add_chunk_bands(self,
                               object_id: str,
                               bands: List[BandType]):

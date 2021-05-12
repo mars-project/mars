@@ -414,7 +414,8 @@ def assert_groupby_equal(left, right, sort_keys=False, sort_index=True, with_sel
 
 _check_options = dict()
 _check_args = ['check_all', 'check_series_name', 'check_index_name', 'check_dtypes',
-               'check_dtype', 'check_shape', 'check_nsplits']
+               'check_dtype', 'check_shape', 'check_nsplits',
+               'check_index_value', 'check_columns_value']
 
 
 class MarsObjectCheckMixin:
@@ -801,7 +802,8 @@ class ObjectCheckMixin:
             raise AssertionError(f'Type of real value ({type(real)}) not one of {np_types!r}')
         if not hasattr(expected, 'dtype'):
             return
-        self.assert_dtype_consistent(expected.dtype, real.dtype)
+        if self._check_options['check_dtypes']:
+            self.assert_dtype_consistent(expected.dtype, real.dtype)
         self.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
@@ -823,7 +825,8 @@ class ObjectCheckMixin:
             raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
         self.assert_shape_consistent(expected.shape, real.shape)
         if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
-            pd.testing.assert_index_equal(expected.dtypes.index, self.adapt_index_value(real.dtypes.index))
+            pd.testing.assert_index_equal(expected.dtypes.index,
+                                          self.adapt_index_value(real.dtypes.index))
 
             if self._check_options['check_dtypes']:
                 try:
@@ -833,8 +836,10 @@ class ObjectCheckMixin:
                     raise AssertionError('dtypes in metadata %r cannot cast to real dtype %r'
                                          % (expected.dtypes, real.dtypes))
 
-        self.assert_index_value_consistent(expected.columns_value, real.columns)
-        self.assert_index_value_consistent(expected.index_value, real.index)
+        if self._check_options['check_columns_value'] and not np.isnan(expected.shape[1]):
+            self.assert_index_value_consistent(expected.columns_value, real.columns)
+        if self._check_options['check_index_value']and not np.isnan(expected.shape[0]):
+            self.assert_index_value_consistent(expected.index_value, real.index)
 
     def assert_series_consistent(self, expected, real):
         series_types = (pd.Series,)
@@ -854,6 +859,7 @@ class ObjectCheckMixin:
 
     def assert_groupby_consistent(self, expected, real):
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
+        from mars.lib.groupby_wrapper import GroupByWrapper
         from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
         from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 
@@ -867,6 +873,9 @@ class ObjectCheckMixin:
             series_groupby_types += (CUSeriesGroupBy,)
         except ImportError:
             pass
+
+        if isinstance(real, GroupByWrapper):
+            real = real.groupby_obj
 
         if isinstance(expected, (DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE)) \
                 and isinstance(real, df_groupby_types):

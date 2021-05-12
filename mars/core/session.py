@@ -167,6 +167,7 @@ class AbstractSession(ABC):
     async def init(cls,
                    address: str,
                    session_id: str,
+                   new: bool = True,
                    **kwargs) -> "AbstractSession":
         """
         Init a new session.
@@ -177,6 +178,8 @@ class AbstractSession(ABC):
             Address.
         session_id : str
             Session ID.
+        new : bool
+            New a session.
         kwargs
 
         Returns
@@ -277,7 +280,20 @@ async def _new_session(address: str,
 
     session_cls = _type_name_to_session_cls[backend]
     session = await session_cls.init(
-        address, session_id=session_id, **kwargs)
+        address, session_id=session_id,
+        new=True, **kwargs)
+    if default:
+        session.as_default()
+    return session
+
+
+async def _get_session(address: str,
+                       session_id: str,
+                       backend: str = 'oscar',
+                       default: bool = False):
+    session_cls = _type_name_to_session_cls[backend]
+    session = await session_cls.init(
+        address, session_id=session_id, new=False)
     if default:
         session.as_default()
     return session
@@ -399,20 +415,23 @@ def execute(tileable: TileableType,
 
 async def _fetch(tileable: TileableType,
                  *tileables: Tuple[TileableType],
-                 session: AbstractSession = None):
+                 session: AbstractSession = None,
+                 **kwargs):
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
             raise ValueError('No session found')
 
-    data = await session.fetch(tileable, *tileables)
+    data = await session.fetch(tileable, *tileables, **kwargs)
     return data[0] if len(tileables) == 0 else data
 
 
 @_wrap_in_thread
-def fetch(*tileables, session: AbstractSession = None):
+def fetch(*tileables: Tuple[TileableType],
+          session: AbstractSession = None,
+          **kwargs):
     return _loop.run_until_complete(
-        _fetch(*tileables, session=session))
+        _fetch(*tileables, session=session, **kwargs))
 
 
 class SyncSession:
@@ -448,6 +467,9 @@ class SyncSession:
         return _loop.run_until_complete(
             self._session.stop_server())
 
+    def as_default(self):
+        return self._session.as_default()
+
     def __enter__(self):
         return self
 
@@ -470,4 +492,15 @@ def new_session(address: str = None,
     session = _loop.run_until_complete(
         _new_session(address, session_id=session_id,
                      backend=backend, default=default, **kwargs))
+    return SyncSession(session)
+
+
+@_wrap_in_thread
+def get_session(address: str,
+                session_id: str,
+                backend: str = 'oscar',
+                default: bool = False):
+    session = _loop.run_until_complete(
+        _get_session(address, session_id=session_id,
+                     backend=backend, default=default))
     return SyncSession(session)

@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType, TilesError
+from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
 from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
@@ -220,7 +220,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(op.input, dict):
             return cls._tile_input_1d_tileables(op)
         elif op.input is not None:
-            return cls._tile_input_tensor(op)
+            return (yield from cls._tile_input_tensor(op))
         else:
             return cls._tile_tensor_none(op)
 
@@ -287,7 +287,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         if op.index is not None:
             # rechunk index if it's a tensor
             check_chunks_unknown_shape(op.inputs, TilesError)
-            index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
+            index_tensor = yield from recursive_tile(
+                op.index.rechunk([nsplits[0]]))
         else:
             index_tensor = None
 
@@ -496,7 +497,8 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
         nsplits = in_tensor.nsplits
 
         if op.index is not None:
-            index_tensor = op.index.rechunk([nsplits[0]])._inplace_tile()
+            index_tensor = yield from recursive_tile(
+                op.index.rechunk([nsplits[0]]))
         else:
             index_tensor = None
 

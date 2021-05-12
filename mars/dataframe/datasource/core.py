@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...context import get_context
-from ...core import TilesError
-from ...serialize import Int64Field, KeyField
+from ...core import recursive_tile
+from ...core.context import get_context
+from ...serialize import Int64Field
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
 class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
-    __slots__ = '_tiled',
+    __slots__ = ()
     # Data source op that optimized for head,
     # First, it will try to trigger first_chunk.head() and raise TilesError,
     # When iterative tiling is triggered,
     # check if the first_chunk.head() meets requirements.
     _nrows = Int64Field('nrows')
-    # for chunk
-    _first_chunk = KeyField('first_chunk')
 
     @property
     def nrows(self):
@@ -42,45 +40,33 @@ class HeadOptimizedDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_head(cls, op: "HeadOptimizedDataSource"):
-        if op.first_chunk is None:
-            op._tiled = tiled = cls._tile(op)
-            chunks = tiled[0].chunks
+        tileds = cls._tile(op)
+        chunks = tileds[0].chunks
 
-            err = TilesError('HeadOrTailOptimizeDataSource requires '
-                             'some dependencies executed first')
-            op._first_chunk = chunk = chunks[0]
-            err.partial_tiled_chunks = [chunk.data]
-            raise err
+        # execute first chunk
+        yield chunks[:1]
+
+        ctx = get_context()
+        chunk_shape = ctx.get_chunks_meta([chunks[0].key])[0]['shape']
+
+        if chunk_shape[0] == op.nrows:
+            # the first chunk has enough data
+            tileds[0]._nsplits = tuple((s,) for s in chunk_shape)
+            chunks[0]._shape = chunk_shape
+            tileds[0]._chunks = chunks[:1]
+            tileds[0]._shape = chunk_shape
         else:
-            tiled = op._tiled
-            chunks = tiled[0].chunks
-            del op._tiled
-
-            ctx = get_context()
-            chunk_shape = ctx.get_chunk_metas([op.first_chunk.key])[0].chunk_shape
-
-            # reset first chunk
-            op._first_chunk = None
-            for c in chunks:
-                c.op._first_chunk = None
-
-            if chunk_shape[0] == op.nrows:
-                # the first chunk has enough data
-                tiled[0]._nsplits = tuple((s,) for s in chunk_shape)
-                chunks[0]._shape = chunk_shape
-                tiled[0]._chunks = chunks[:1]
-                tiled[0]._shape = chunk_shape
-            else:
-                for chunk in tiled[0].chunks:
-                    chunk.op._nrows = None
-                # otherwise
-                tiled = [tiled[0].iloc[:op.nrows]._inplace_tile()]
-            return tiled
+            for chunk in tileds[0].chunks:
+                chunk.op._nrows = None
+            # otherwise
+            tiled = yield from recursive_tile(tileds[0].iloc[:op.nrows])
+            tileds = [tiled]
+        return tileds
 
     @classmethod
     def tile(cls, op: "HeadOptimizedDataSource"):
         if op.nrows is not None:
-            return cls._tile_head(op)
+            return (yield from cls._tile_head(op))
         else:
             return cls._tile(op)
 

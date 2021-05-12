@@ -16,6 +16,7 @@ import pandas as pd
 import cloudpickle
 
 from ... import opcodes
+from ...core import recursive_tile
 from ...serialize import StringField, AnyField, BoolField, \
     Int64Field, BytesField
 from ..core import DATAFRAME_TYPE
@@ -111,7 +112,8 @@ class DataFrameToSQLTable(DataFrameOperand, DataFrameOperandMixin):
         inp = op.inputs[0]
         out = op.outputs[0]
         if inp.ndim == 2:
-            inp = inp.rechunk({1: (inp.shape[1],)})._inplace_tile()
+            inp = yield from recursive_tile(
+                inp.rechunk({1: (inp.shape[1],)}))
 
         chunks = []
         for c in inp.chunks:

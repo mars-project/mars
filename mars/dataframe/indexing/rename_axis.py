@@ -98,10 +98,10 @@ class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
                     idx_cache[c.index[0]] = params['index_value']
             else:
                 try:
-                    params['columns_value'] = idx_cache[c.index[1]]
+                    params['columns_value'], params['dtypes'] = idx_cache[c.index[1]]
                 except KeyError:
                     cls._update_params(params, c, op.columns, axis=1, level=op.level)
-                    idx_cache[c.index[1]] = params['columns_value']
+                    idx_cache[c.index[1]] = params['columns_value'], params['dtypes']
 
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))

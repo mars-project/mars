@@ -31,8 +31,7 @@ class SessionManagerActor(mo.Actor):
                              session_id: str,
                              create_services: bool = True):
         if session_id in self._session_refs:
-            yield self._session_refs[session_id]
-            return
+            raise mo.Return(self._session_refs[session_id])
 
         address = (await self._cluster_api.get_supervisors_by_keys([session_id]))[0]
         session_actor_ref = await mo.create_actor(
@@ -54,7 +53,7 @@ class SessionManagerActor(mo.Actor):
         if create_services:
             yield session_actor_ref.create_services()
 
-        yield session_actor_ref
+        raise mo.Return(session_actor_ref)
 
     def get_session_ref(self,
                         session_id: str):
