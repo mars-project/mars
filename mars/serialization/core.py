@@ -141,16 +141,6 @@ class StrSerializer(Serializer):
         return buffers[0]
 
 
-class MemoryviewSerializer(Serializer):
-    serializer_name = 'memoryview'
-
-    def serialize(self, obj: Any, context: Dict):
-        return {}, [obj]
-
-    def deserialize(self, header: Dict, buffers: List, context: Dict):
-        return buffers[0]
-
-
 class PickleSerializer(Serializer):
     serializer_name = 'pickle'
 
@@ -301,7 +291,6 @@ ScalarSerializer.register(int)
 ScalarSerializer.register(float)
 ScalarSerializer.register(complex)
 ScalarSerializer.register(type(None))
-MemoryviewSerializer.register(memoryview)
 StrSerializer.register(bytes)
 StrSerializer.register(str)
 ListSerializer.register(list)

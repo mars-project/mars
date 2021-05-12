@@ -36,7 +36,7 @@ def ray_cluster():
     remote_nodes = []
     num_nodes = 1
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
+        remote_nodes.append(cluster.add_node(num_cpus=20))
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
     yield

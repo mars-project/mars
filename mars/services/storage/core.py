@@ -286,10 +286,10 @@ class StorageHandlerActor(mo.Actor):
     async def prefetch(self,
                        session_id: str,
                        data_key: str):
-        if StorageLevel.REMOTE not in self._clients:  # pragma: no cover
+        if StorageLevel.REMOTE not in self._clients:
             raise NotImplementedError
-        else:
-            data_info = yield self._storage_manager_ref.fetch_data_info(
+        else:  # pragma: no cover
+            data_info = await self._storage_manager_ref.fetch_data_info(
                 session_id, data_key)
             await self._clients[StorageLevel.REMOTE].prefetch(data_info.object_id)
 
@@ -341,15 +341,18 @@ class StorageManagerActor(mo.Actor):
                                                    uid=StorageHandlerActor.default_uid())
 
         # create actor for transfer
-        strategy = IdleLabel('io', 'sender')
-        await mo.create_actor(
-            SenderManagerActor, uid=SenderManagerActor.default_uid(),
-            address=self.address, allocate_strategy=strategy)
+        try:
+            sender_strategy = IdleLabel('io', 'sender')
+            await mo.create_actor(
+                SenderManagerActor, uid=SenderManagerActor.default_uid(),
+                address=self.address, allocate_strategy=sender_strategy)
 
-        strategy = IdleLabel('io', 'receiver')
-        await mo.create_actor(ReceiverActor, address=self.address,
-                              uid=ReceiverActor.default_uid(),
-                              allocate_strategy=strategy)
+            receiver_strategy = IdleLabel('io', 'receiver')
+            await mo.create_actor(ReceiverActor, address=self.address,
+                                  uid=ReceiverActor.default_uid(),
+                                  allocate_strategy=receiver_strategy)
+        except mo.errors.NoIdleSlot:
+            logger.debug('No io label slot to create transfer actor.')
 
     async def __pre_destroy__(self):
         for backend, teardown_params in self._teardown_params.items():
@@ -458,9 +461,6 @@ class StorageManagerActor(mo.Actor):
                          data_key: str,
                          level: StorageLevel):
         self._data_manager.delete(session_id, data_key, level)
-
-    def list_data_infos(self, level: StorageLevel) -> Dict:
-        return self._data_manager.list_infos(level)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)
