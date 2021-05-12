@@ -509,6 +509,7 @@ class TaskManagerActor(mo.Actor):
         self._last_idle_time = None
 
     async def __post_create__(self):
+        self._meta_api = await MetaAPI.create(self._session_id, self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
         self._lifecycle_api = await LifecycleAPI.create(

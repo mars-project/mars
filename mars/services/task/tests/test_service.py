@@ -25,7 +25,6 @@ from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus
-from mars.services.web.supervisor import WebActor
 
 
 @pytest.fixture

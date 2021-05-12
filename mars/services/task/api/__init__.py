@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import MarsRequestHandler, web_api, \
-    MarsServiceWebAPIHandler, MarsWebAPIClientMixin
-from .supervisor import WebActor
+from .core import AbstractTaskAPI
+from .oscar import TaskAPI

@@ -14,30 +14,12 @@
 
 from typing import List
 
-from ...utils import extensible
-from ..web.core import ServiceWebAPIBase, ServiceProxyHandlerBase, \
-    get_service_proxy_endpoint
-from .api import AbstractMetaAPI, MetaAPI
+from ....utils import extensible
 
 
-class MetaAPIProxyHandler(ServiceProxyHandlerBase):
-    _api_cls = MetaAPI
-
-
-web_handlers = {
-    get_service_proxy_endpoint('meta'): MetaAPIProxyHandler,
-}
-
-
-class WebMetaAPI(ServiceWebAPIBase, AbstractMetaAPI):
-    _service_name = 'meta'
-
-    @classmethod
-    async def create(cls, web_address: str, session_id: str, address: str):
-        return WebMetaAPI(web_address, 'create', session_id, address)
-
+class AbstractMetaAPI:
     @extensible
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None):
-        return await self._call_method({}, 'get_chunk_meta', object_id, fields)
+        raise NotImplementedError
