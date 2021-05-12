@@ -271,10 +271,11 @@ class StorageHandlerActor(mo.Actor):
             session_id, data_keys, data_infos, object_infos)
         return data_infos
 
+    @extensible
     async def delete(self,
                      session_id: str,
                      data_key: str,
-                     error='raise'):
+                     error: str):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
         try:
@@ -289,8 +290,44 @@ class StorageHandlerActor(mo.Actor):
             level = info.level
             await self._storage_manager_ref.delete_data_info(
                 session_id, data_key, level)
-            await self._clients[level].delete(info.object_id)
+            yield self._clients[level].delete(info.object_id)
             await self._storage_manager_ref.release_size(info.store_size, level)
+
+    @delete.batch
+    async def batch_delete(self, args_list, kwargs_list):
+        error = kwargs_list[0]['error']
+        session_id = args_list[0][0]
+        data_keys = [args[1] for args in args_list]
+        try:
+            data_infos_list = await self._storage_manager_ref.batch_get_data_infos(
+                session_id, data_keys)
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
+
+        delete_data_keys = []
+        levels = []
+        sizes = defaultdict(int)
+        object_ids_list = defaultdict(list)
+        for data_key, infos in zip(data_keys, data_infos_list):
+            for info in infos or []:
+                level = info.level
+                delete_data_keys.append(data_key)
+                levels.append(level)
+                object_ids_list[level].append(info.object_id)
+                sizes[level] += info.store_size
+
+        await self._storage_manager_ref.batch_delete_data_info(
+            session_id, delete_data_keys, levels)
+
+        for level, object_ids in object_ids_list.items():
+            for object_id in object_ids:
+                yield self._clients[level].delete(object_id)
+
+        for level, size in sizes.items():
+            await self._storage_manager_ref.release_size(size, level)
 
     async def open_reader(self,
                           session_id: str,
@@ -437,6 +474,12 @@ class StorageManagerActor(mo.Actor):
                        data_key: str) -> List[DataInfo]:
         return self._data_manager.get_infos(session_id, data_key)
 
+    def batch_get_data_infos(self,
+                             session_id: str,
+                             data_keys: List[str]) -> List[List[DataInfo]]:
+        return [self._data_manager.get_infos(session_id, data_key)
+                for data_key in data_keys]
+
     def get_data_info(self,
                       session_id: str,
                       data_key: str) -> DataInfo:
@@ -487,6 +530,13 @@ class StorageManagerActor(mo.Actor):
                          data_key: str,
                          level: StorageLevel):
         self._data_manager.delete(session_id, data_key, level)
+
+    def batch_delete_data_info(self,
+                               session_id: str,
+                               data_keys: str,
+                               levels: List[StorageLevel]):
+        for data_key, level in zip(data_keys, levels):
+            self._data_manager.delete(session_id, data_key, level)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)

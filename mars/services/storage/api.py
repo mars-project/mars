@@ -178,6 +178,18 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.delete(
             self._session_id, data_key, error=error)
 
+    @delete.batch
+    async def batch_delete(self, args_list, kwargs_list):
+        deletes = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            if kwargs.get('error', None) is None:
+                kwargs['error'] = 'raise'
+            deletes.append(
+                self._storage_handler_ref.delete.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.put.batch(*deletes)
+
     @extensible
     async def prefetch(self,
                        data_key: str,

@@ -71,6 +71,8 @@ class LifecycleTrackerActor(mo.Actor):
         return self._remove_chunks(to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
+        if not to_remove_chunk_keys:
+            return
         # get meta
         get_metas = []
         for to_remove_chunk_key in to_remove_chunk_keys:
