@@ -17,7 +17,7 @@ import pytest
 
 import mars.tensor as mt
 from mars.core.session import get_default_session, new_session
-from mars.deploy.oscar.ray import new_cluster
+from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.serialization.ray import register_ray_serializers
 from mars.tests.core import require_ray
 from ....utils import lazy_import
@@ -26,7 +26,7 @@ from . import test_local
 ray = lazy_import('ray')
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ray_cluster():
     try:
         from ray.cluster_utils import Cluster
@@ -110,3 +110,20 @@ def _sync_web_session_test(web_address):
     b = a.execute(show_progress=False)
     assert b is a
     return True
+
+
+@require_ray
+@pytest.mark.parametrize('test_option', [[True, ['ray://test_cluster/1/0', 'ray://test_cluster/2/0']],
+                                         [False, ['ray://test_cluster/0/1', 'ray://test_cluster/1/0']]])
+@pytest.mark.asyncio
+async def test_optional_supervisor_node(ray_cluster, test_option):
+    supervisor_exclusive_node, worker_addresses = test_option
+    config = _load_config()
+    config['cluster']['ray']['supervisor_exclusive_node'] = supervisor_exclusive_node
+    client = await new_cluster('test_cluster',
+                               worker_num=2,
+                               worker_cpu=2,
+                               worker_mem=1 * 1024 ** 3,
+                               config=config)
+    assert client.address == 'ray://test_cluster/0/0'
+    assert client._cluster._worker_addresses == worker_addresses

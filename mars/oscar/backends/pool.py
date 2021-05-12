@@ -647,8 +647,8 @@ class MainActorPoolBase(ActorPoolBase):
     _process_index_gen = itertools.count()
 
     @classmethod
-    def next_process_index(cls):
-        return next(cls._process_index_gen)
+    def process_index_gen(cls, address):
+        return cls._process_index_gen
 
     @property
     def _sub_processes(self):
@@ -1045,7 +1045,8 @@ async def create_actor_pool(address: str,
     external_addresses = pool_cls.get_external_addresses(address, n_process=n_process, ports=ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
-    main_process_index = pool_cls.next_process_index()
+    process_index_gen = pool_cls.process_index_gen(address)
+    main_process_index = next(process_index_gen)
     actor_pool_config.add_pool_conf(
         main_process_index,
         labels[0] if labels else None,
@@ -1053,7 +1054,7 @@ async def create_actor_pool(address: str,
         external_addresses[0])
     # add sub configs
     for i in range(n_process):
-        sub_process_index = pool_cls.next_process_index()
+        sub_process_index = next(process_index_gen)
         actor_pool_config.add_pool_conf(
             sub_process_index,
             labels[i + 1] if labels else None,

@@ -19,6 +19,10 @@ import yaml
 from typing import Union, Dict, List
 
 from mars.oscar.backends.ray.driver import RayActorDriver
+from mars.oscar.backends.ray.utils import (
+    process_placement_to_address,
+    node_placement_to_address,
+)
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
@@ -28,6 +32,9 @@ from ...utils import lazy_import
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
+
+# The default value for supervisor exclusive node.
+DEFAULT_SUPERVISOR_EXCLUSIVE_NODE = False
 
 
 def _load_config(filename=None):
@@ -82,31 +89,46 @@ class RayCluster:
 
     async def start(self):
         address_to_resources = dict()
-        supervisor_node_address = f'ray://{self._cluster_name}/0'
-        address_to_resources[supervisor_node_address] = {
+        supervisor_exclusive_node = self._config \
+            .get('cluster', {}) \
+            .get('ray', {}) \
+            .get('supervisor_exclusive_node', DEFAULT_SUPERVISOR_EXCLUSIVE_NODE)
+        self.supervisor_address = process_placement_to_address(self._cluster_name, 0, 0)
+        address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             'CPU': 1,
             # 'memory': self._supervisor_mem
         }
-        worker_node_addresses = []
-        for worker_index in range(1, self._worker_num + 1):
-            worker_node_address = f'ray://{self._cluster_name}/{worker_index}'
-            worker_node_addresses.append(worker_node_address)
-            address_to_resources[worker_node_address] = {
-                'CPU': self._worker_cpu,
-                # 'memory': self._worker_mem
-            }
+        worker_addresses = []
+        if supervisor_exclusive_node:
+            for worker_index in range(1, self._worker_num + 1):
+                worker_address = process_placement_to_address(self._cluster_name, worker_index, 0)
+                worker_addresses.append(worker_address)
+                worker_node_address = node_placement_to_address(self._cluster_name, worker_index)
+                address_to_resources[worker_node_address] = {
+                    'CPU': self._worker_cpu,
+                    # 'memory': self._worker_mem
+                }
+        else:
+            for worker_index in range(self._worker_num):
+                worker_address = process_placement_to_address(self._cluster_name, worker_index, int(worker_index == 0))
+                worker_addresses.append(worker_address)
+                worker_node_address = node_placement_to_address(self._cluster_name, worker_index)
+                address_to_resources[worker_node_address] = {
+                    'CPU': self._worker_cpu,
+                    # 'memory': self._worker_mem
+                }
         mo.setup_cluster(address_to_resources)
 
         # create supervisor actor pool
         self._supervisor_pool = await create_supervisor_actor_pool(
-            supervisor_node_address, n_process=0)
-        logger.info('Create supervisor on node %s succeeds.', supervisor_node_address)
+            self.supervisor_address, n_process=0)
+        logger.info('Create supervisor on node %s succeeds.', self.supervisor_address)
         # start service
-        self.supervisor_address = f'{supervisor_node_address}/0'
         await start_supervisor(self.supervisor_address, config=self._config)
         logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
-        worker_pools_and_addresses = await asyncio.gather(*[self._start_worker(addr) for addr in worker_node_addresses])
-        logger.info('Create %s workers and start services on workers succeeds.', len(worker_node_addresses))
+        worker_pools_and_addresses = await asyncio.gather(
+            *[self._start_worker(addr) for addr in worker_addresses])
+        logger.info('Create %s workers and start services on workers succeeds.', len(worker_addresses))
         for worker_address, worker_pool in worker_pools_and_addresses:
             self._worker_addresses.append(worker_address)
             self._worker_pools.append(worker_pool)
@@ -115,10 +137,9 @@ class RayCluster:
         web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
         self.web_address = await web_actor.get_web_address()
 
-    async def _start_worker(self, worker_node_address):
-        worker_address = f'{worker_node_address}/0'
-        logger.info('Create worker on node %s succeeds.', worker_node_address)
-        worker_pool = await create_worker_actor_pool(worker_node_address, self._band_to_slot)
+    async def _start_worker(self, worker_address):
+        logger.info('Create worker on node %s succeeds.', worker_address)
+        worker_pool = await create_worker_actor_pool(worker_address, self._band_to_slot)
         await start_worker(worker_address,
                            self.supervisor_address,
                            self._band_to_slot,
