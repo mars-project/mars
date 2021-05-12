@@ -36,6 +36,9 @@ class AbstractGraphBuilder(ABC):
     def _select_inputs(self, inputs: List[EntityType]):
         return inputs
 
+    def _if_add_node(self, node: EntityType, visited: Set):
+        return node not in visited
+
     def _add_nodes(self,
                    graph: Union[ChunkGraph, TileableGraph],
                    nodes: List[EntityType],
@@ -62,7 +65,7 @@ class AbstractGraphBuilder(ABC):
                 if not graph.has_successor(c, node):
                     graph.add_edge(c, node)
                 for out in c.op.outputs:
-                    if out not in visited:
+                    if self._if_add_node(out, visited):
                         nodes.append(out)
 
     @abstractmethod

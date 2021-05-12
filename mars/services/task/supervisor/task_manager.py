@@ -113,25 +113,12 @@ class TaskProcessor:
         meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
             # optimize chunk graph
-            chunk_optimization_records = None
             if optimize:
-                chunk_optimization_records = optimize_chunk_graph(chunk_graph)
                 self.chunk_optimization_records_list.append(
-                    chunk_optimization_records)
+                    optimize_chunk_graph(chunk_graph))
             yield chunk_graph
             # update tileables' meta
-            self._update_tileables_params(tileable_graph, meta_updated,
-                                          chunk_optimization_records)
-
-    def analyze(self,
-                chunk_graph: ChunkGraph,
-                available_bands: Dict[BandType, int],
-                task_stage_info: "TaskStageInfo") -> SubtaskGraph:
-        task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                 task.fuse_enabled, task.extra_config,
-                                 task_stage_info)
-        return analyzer.gen_subtask_graph()
+            self._update_tileables_params(tileable_graph, meta_updated)
 
     def analyze(self,
                 chunk_graph: ChunkGraph,
@@ -160,28 +147,19 @@ class TaskProcessor:
 
     def _update_tileable_params(self,
                                 tileable: TileableType,
-                                tiled: TileableType,
-                                optimization_records: OptimizationRecords):
-        for chunk in tiled.chunks:
-            if optimization_records:
-                optimized_chunk = \
-                    optimization_records.get_optimization_result(chunk.data)
-                if optimized_chunk is not None:
-                    chunk.params = optimized_chunk.params
+                                tiled: TileableType):
         tiled.refresh_params()
         tileable.params = tiled.params
 
     def _update_tileables_params(self,
                                  tileable_graph: TileableGraph,
-                                 updated: Set[TileableType],
-                                 optimization_records: OptimizationRecords):
+                                 updated: Set[TileableType]):
         for tileable in tileable_graph:
             if tileable in updated:
                 continue
             tiled_tileable = self.tile_context.get(tileable)
             if tiled_tileable is not None:
-                self._update_tileable_params(tileable, tiled_tileable,
-                                             optimization_records)
+                self._update_tileable_params(tileable, tiled_tileable)
                 updated.add(tileable)
 
     def __await__(self):
@@ -213,11 +191,13 @@ class SubtaskGraphScheduler:
                  bands: List[BandType],
                  task_stage_info: "TaskStageInfo",
                  meta_api: MetaAPI,
+                 optimization_records: OptimizationRecords,
                  scheduling_api=None):
         self._subtask_graph = subtask_graph
         self._bands = bands
         self._task_stage_info = task_stage_info
         self._meta_api = meta_api
+        self._optimization_records = optimization_records
         self._scheduling_api = scheduling_api
 
         # gen subtask_id to subtask
@@ -312,6 +292,10 @@ class SubtaskGraphScheduler:
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
         for chunk, meta in zip(chunks, metas):
             chunk.params = meta
+            original_chunk = \
+                self._optimization_records.get_original_chunk(chunk)
+            if original_chunk is not None:
+                original_chunk.params = chunk.params
 
     async def set_subtask_result(self, result: SubtaskResult):
         subtask_id = result.subtask_id
@@ -713,9 +697,13 @@ class TaskManagerActor(mo.Actor):
 
                 # schedule subtask graph
                 # TODO(qinxuye): pass scheduling API to scheduler when it's ready
+                chunk_optimization_records = None
+                if task_processor.chunk_optimization_records_list:
+                    chunk_optimization_records = \
+                        task_processor.chunk_optimization_records_list[-1]
                 subtask_scheduler = SubtaskGraphScheduler(
                     subtask_graph, list(available_bands), task_stage_info,
-                    self._meta_api)
+                    self._meta_api, chunk_optimization_records)
                 task_stage_info.subtask_graph_scheduler = subtask_scheduler
                 await subtask_scheduler.schedule()
 

@@ -249,7 +249,7 @@ class Session(AbstractSession):
                 # storage_api is cached if args identical
                 if urlparse(self.address).scheme == 'http':
                     from mars.services.storage.web import WebStorageAPI
-                    storage_api = await WebStorageAPI.create(self.address, self._session_id, band[0])
+                    storage_api = await WebStorageAPI.create(self.address, self._session_id, addr)
                 else:
                     storage_api = await StorageAPI.create(self._session_id, addr)
                 chunks, gets = storage_apis_to_chunks_gets[storage_api]

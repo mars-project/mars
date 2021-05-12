@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import itertools
 from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
@@ -22,10 +23,10 @@ from numbers import Integral
 
 import numpy as np
 
-from ...core import Tileable, TilesError
+from ...core import Tileable
 from ...core.operand import OperandStage
 from ...utils import check_chunks_unknown_shape, calc_nsplits, \
-    merge_chunks, recursive_tile
+    merge_chunks, recursive_tile, has_unknown_shape
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
 from ..operands import TensorShuffleProxy
 from ..utils import slice_split, calc_sliced_size, broadcast_shape, unify_chunks, \
@@ -295,7 +296,8 @@ class SliceIndexHandler(IndexHandler):
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
         # make sure input tileable has known chunk shapes
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -350,7 +352,8 @@ class IntegralIndexHandler(IndexHandler):
     def preprocess(self,
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -407,7 +410,8 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
     def preprocess(self,
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -454,7 +458,10 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
         # check both input tileable and index object itself
-        check_chunks_unknown_shape([context.tileable, index_info.raw_index], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
+        if has_unknown_shape(index_info.raw_index):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -545,7 +552,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
         # check if all ndarrays
         super().preprocess(index_info, context)
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
         fancy_index_infos = context.get_indexes(index_info.index_type)
         # unify shapes of all fancy indexes
@@ -684,7 +692,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         super().preprocess(index_info, context)
         to_check = [context.tileable] + \
             list(info.raw_index for info in fancy_index_infos)
-        check_chunks_unknown_shape(to_check, TilesError)
+        if has_unknown_shape(to_check):
+            yield []
 
         # unify shapes of all fancy indexes
         shape = broadcast_shape(
@@ -891,7 +900,7 @@ class IndexesHandler(ABC):
             if not parsed:
                 raise TypeError(f'unable to parse index {index}')
 
-        self._preprocess(context, index_infos)
+        yield from self._preprocess(context, index_infos)
         self._process(context, index_infos)
         self._postprocess(context, index_infos)
 
@@ -906,7 +915,9 @@ class IndexesHandler(ABC):
                     index_infos: List[IndexInfo]):
         # preprocess
         for index_info in index_infos:
-            index_info.handler.preprocess(index_info, context)
+            preprocess = index_info.handler.preprocess(index_info, context)
+            if inspect.isgenerator(preprocess):
+                yield from preprocess
 
     @classmethod
     def _process(cls, context, index_infos):

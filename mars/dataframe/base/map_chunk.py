@@ -157,6 +157,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = chunk_op.new_chunk([chunk], shape=shape,
                                                index_value=index_value,
                                                name=out.name,
+                                               dtype=out.dtype,
                                                index=(chunk.index[0],))
                 out_chunks.append(out_chunk)
                 nsplits[0].append(out_chunk.shape[0])

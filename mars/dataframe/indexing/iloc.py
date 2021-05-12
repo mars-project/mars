@@ -344,7 +344,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
             return tileds
 
         handler = DataFrameIlocIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -466,7 +466,7 @@ class SeriesIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
             return tileds
 
         handler = DataFrameIlocIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -590,7 +590,7 @@ class IndexIlocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         handler = DataFrameIlocIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):

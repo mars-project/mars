@@ -14,6 +14,7 @@
 
 from typing import List, Dict, Union, Set, Generator, Iterable
 
+from ....core import FUSE_CHUNK_TYPE
 from ....utils import copy_tileables, build_fetch
 from ...entity.tileables import handler
 from ...mode import enter_mode
@@ -69,6 +70,9 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                 new_inputs.append(inp)
         return new_inputs
 
+    def _if_add_node(self, node: EntityType, visited: Set):
+        return node not in visited or node not in self._processed_chunks
+
     def _build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
         tileable_graph = self._graph
         tileables = tileable_graph.result_tileables
@@ -82,7 +86,10 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             if chunk_graph is not None:
                 # last tiled chunks, add them to processed
                 # so that fetch chunk can be generated
-                self._processed_chunks.update(chunk_graph)
+                processed_chunks = [
+                    c.chunk if isinstance(c, FUSE_CHUNK_TYPE) else c
+                    for c in chunk_graph.result_chunks]
+                self._processed_chunks.update(processed_chunks)
 
             result_chunks = []
             chunk_graph = ChunkGraph(result_chunks)
@@ -120,17 +127,17 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                         self._add_nodes(chunk_graph, chunks, visited)
                         self.tile_context[out] = tiled_tileable
 
-            if not need_process_tiles:
-                # tile finished
-                for tileable in tileables:
-                    # add chunks that belongs to result tileables
-                    # to result chunks
+            for tileable in tileables:
+                # add chunks that belongs to result tileables
+                # to result chunks
+                if tileable in self.tile_context:
                     chunks = self.tile_context[tileable].chunks
                     for chunk in chunks:
                         chunk = self._get_data(chunk)
                         if chunk in chunk_graph:
                             result_chunks.append(chunk)
-            else:
+
+            if need_process_tiles:
                 process_tile_iter = need_process_tiles
                 # otherwise, add all chunks that have no successors
                 # to result chunks
@@ -148,6 +155,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                                 result_chunks.append(chunk)
                                 result_chunk_set.add(chunk)
 
+            # yield chunk graph for upcoming optimization and execution
             yield chunk_graph
 
             if not need_process_tiles:

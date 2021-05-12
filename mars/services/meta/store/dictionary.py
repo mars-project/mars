@@ -87,20 +87,6 @@ class DictMetaStore(AbstractMetaStore):
             metas.append(self._get_meta(*args, **kwargs))
         return metas
 
-    @implements(AbstractMetaStore.get_meta)
-    @extensible
-    async def get_meta(self,
-                       object_id: str,
-                       fields: List[str] = None) -> Dict:
-        return self._get_meta(object_id, fields=fields)
-
-    @get_meta.batch
-    async def batch_get_meta(self, args_list, kwargs_list):
-        metas = []
-        for args, kwargs in zip(args_list, kwargs_list):
-            metas.append(self._get_meta(*args, **kwargs))
-        return metas
-
     @implements(AbstractMetaStore.del_meta)
     async def del_meta(self,
                        object_id: str):

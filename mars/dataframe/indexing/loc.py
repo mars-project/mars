@@ -330,7 +330,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         handler = DataFrameLocIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):

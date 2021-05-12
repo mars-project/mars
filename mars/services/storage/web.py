@@ -14,6 +14,7 @@
 
 from typing import Any, List
 
+from ...utils import extensible
 from ...storage.base import StorageLevel
 from ..web.core import ServiceWebAPIBase, ServiceProxyHandlerBase, \
     get_service_proxy_endpoint, _transfer_request_timeout
@@ -37,6 +38,7 @@ class WebStorageAPI(ServiceWebAPIBase, AbstractStorageAPI):
     async def create(cls, web_address: str, session_id: str, address: str):
         return WebStorageAPI(web_address, 'create', session_id, address)
 
+    @extensible
     async def get(self, data_key: str, conditions: List = None) -> Any:
         return await self._call_method(dict(request_timeout=_transfer_request_timeout),
                                        'get', data_key, conditions)

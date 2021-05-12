@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 from pandas.core.dtypes.cast import find_common_type
 
-from ...core import Tileable, Chunk, OutputType, TilesError
+from ...core import Tileable, Chunk, OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
@@ -32,7 +32,7 @@ from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
 from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
     filter_inputs, slice_split, calc_sliced_size, to_numpy, \
     normalize_chunk_sizes
-from ...utils import check_chunks_unknown_shape, classproperty, recursive_tile
+from ...utils import check_chunks_unknown_shape, classproperty, has_unknown_shape
 from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..utils import parse_index
 from .utils import convert_labels_into_positions
@@ -227,8 +227,7 @@ class LabelSliceIndexHandler(IndexHandler):
 
         if check:
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
-                raise TilesError(f'Input tileable {tileable} has chunks with unknown shape '
-                                 f'on axis {input_axis}')
+                yield []
 
     def set_chunk_index_info(cls,
                              context: IndexHandlerContext,
@@ -401,8 +400,7 @@ class LabelIndexHandler(IndexHandler):
             index_value = [tileable.index_value, tileable.columns_value][input_axis]
         if index_value.has_value():
             if any(np.isnan(ns) for ns in tileable.nsplits[input_axis]):
-                raise TilesError(f'Input tileable {tileable} has chunks with unknown shape '
-                                 f'on axis {input_axis}')
+                yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -566,7 +564,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
         tileable = context.tileable
-        check_chunks_unknown_shape([tileable], TilesError)
+        if has_unknown_shape(tileable):
+            yield []
 
         # split raw index into chunks on the given axis
         split_info = split_indexes_into_chunks([tileable.nsplits[index_info.input_axis]],
@@ -732,7 +731,8 @@ class LabelNDArrayFancyIndexHandler(_LabelFancyIndexHandler):
                    context: IndexHandlerContext) -> None:
         tileable = context.tileable
         op = context.op
-        check_chunks_unknown_shape([tileable], TilesError)
+        if has_unknown_shape(tileable):
+            yield []
 
         input_axis = index_info.input_axis
         if tileable.ndim == 2:
@@ -915,10 +915,11 @@ class LabelTensorFancyIndexHandler(_LabelFancyIndexHandler):
     def preprocess(self,
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
-        check_chunks_unknown_shape([index_info.raw_index], TilesError)
+        if has_unknown_shape(index_info.raw_index):
+            yield
         # rechunk index into one
         index_info.unprocessed_raw_index = index_info.raw_index
-        index_info.raw_index = recursive_tile(
+        index_info.raw_index = yield from recursive_tile(
             index_info.raw_index.rechunk(index_info.raw_index.shape))
 
     def process(self,

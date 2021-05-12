@@ -72,7 +72,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         handler = TensorIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):

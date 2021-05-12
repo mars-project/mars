@@ -131,19 +131,9 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
                                    chunk_to_fetch_chunk: Dict[ChunkType, ChunkType]) \
             -> ChunkGraph:
         virtual = isinstance(chunk.op, VirtualOperand)
-        inp_chunks = self._chunk_graph.predecessors(chunk)
-        if len(inp_chunks) != len(chunk.inputs):
-            new_inp_chunks = []
-            inp_to_pred = dict()
-            pred_iter = self._chunk_graph.iter_predecessors(chunk)
-            for inp in chunk.inputs:
-                if inp not in inp_to_pred:
-                    pred = next(pred_iter)
-                    new_inp_chunks.append(pred)
-                    inp_to_pred[inp] = pred
-                else:
-                    new_inp_chunks.append(inp_to_pred[inp])
-            inp_chunks = new_inp_chunks
+        inp_chunks = chunk.inputs
+        assert all(inp_chunk in self._chunk_graph
+                   for inp_chunk in inp_chunks)
         inp_fetch_chunks = self._gen_input_chunks(inp_chunks, chunk_to_fetch_chunk)
 
         # gen chunk graph for each subtask
@@ -181,7 +171,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             copied_op._key = fuse_chunk.op.key
             if i == 0:
                 # the first chunk
-                inp_chunks = self._chunk_graph.predecessors(chunk)
+                inp_chunks = chunk.inputs
                 inp_fetch_chunks = self._gen_input_chunks(
                     inp_chunks, chunk_to_fetch_chunk)
                 copied_fuse_chunk = copied_op.new_chunk(

@@ -39,5 +39,7 @@ class WebMetaAPI(ServiceWebAPIBase, AbstractMetaAPI):
     @extensible
     async def get_chunk_meta(self,
                              object_id: str,
-                             fields: List[str] = None):
-        return await self._call_method({}, 'get_chunk_meta', object_id, fields)
+                             fields: List[str] = None,
+                             error: str = 'raise'):
+        return await self._call_method({}, 'get_chunk_meta',
+                                       object_id, fields, error)

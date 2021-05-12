@@ -111,11 +111,6 @@ class LocalCluster:
                 self._band_to_slot,
                 config=self._config)
 
-        if self._web:
-            web_actor = await mo.actor_ref(WebActor.default_uid(),
-                                           address=self.supervisor_address)
-            self.web_address = await web_actor.get_web_address()
-
     async def stop(self):
         for worker_pool in self._worker_pools:
             await stop_worker(worker_pool.external_address, self._config)

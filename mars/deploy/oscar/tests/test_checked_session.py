@@ -21,9 +21,9 @@ import mars.tensor as mt
 from mars.config import option_context
 from mars.core import TileableType, OperandType
 from mars.deploy.oscar.service import _load_config
-from mars.deploy.oscar.tests.session import new_test_session, CONFIG_FILE
 from mars.services.task.supervisor.tests import CheckedTaskProcessor
 from mars.services.task.worker.tests import CheckedSubtaskProcessor
+from mars.tests import new_test_session, CONFIG_FILE
 
 
 class FakeCheckedTaskProcessor(CheckedTaskProcessor):

@@ -75,15 +75,13 @@ class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
 
     def _update_tileable_params(self,
                                 tileable: TileableType,
-                                tiled: TileableType,
-                                optimization_records: OptimizationRecords):
+                                tiled: TileableType):
         if self._check_options['check_nsplits'] and \
                 tileable.key not in self._tileable_checked and \
                 not isinstance(tileable, OBJECT_TYPE):
             self._check_nsplits(tiled)
             self._tileable_checked[tileable.key] = True
-        return super()._update_tileable_params(tileable, tiled,
-                                               optimization_records)
+        return super()._update_tileable_params(tileable, tiled)
 
     @enter_mode(build=True)
     def analyze(self,
