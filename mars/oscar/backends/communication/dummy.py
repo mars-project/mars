@@ -129,7 +129,7 @@ class DummyServer(Server):
         except KeyError:
             server = DummyServer(address, handle_channel)
             DummyServer._address_to_instances[address] = server
-            return server
+        return server
 
     @implements(Server.start)
     async def start(self):
