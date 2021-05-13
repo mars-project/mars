@@ -650,6 +650,8 @@ def merge_chunks(chunk_results):
 
     chunk_results = sorted(chunk_results, key=lambda x: x[0])
     v = chunk_results[0][1]
+    if len(chunk_results) == 1 and not (chunk_results[0][0]):
+        return v
     if isinstance(v, (np.ndarray, SparseNDArray)):
         xp = get_array_module(v)
         ndim = v.ndim

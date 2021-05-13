@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import warnings
 import tempfile
 
 import numpy as np
 import pandas as pd
+import pytest
 try:
     import matplotlib
 except ImportError:  # pragma: no cover
@@ -90,13 +90,12 @@ def _check_plot_works(f, filterwarnings="always", **kwargs):  # pragma: no cover
         return ret
 
 
-@unittest.skipIf(matplotlib is None, 'matplotlib is not installed')
-class Test(unittest.TestCase):
-    def testPlot(self):
-        raw = pd.DataFrame({'a': ['s' + str(i) for i in range(10)],
-                            'b': np.random.RandomState(0).randint(10, size=10)})
-        df = md.DataFrame(raw, chunk_size=3)
+@pytest.mark.skipif(matplotlib is None, reason='matplotlib is not installed')
+def test_plot():
+    raw = pd.DataFrame({'a': ['s' + str(i) for i in range(10)],
+                        'b': np.random.RandomState(0).randint(10, size=10)})
+    df = md.DataFrame(raw, chunk_size=3)
 
-        _check_plot_works(df.plot, x='a', y='b')
-        _check_plot_works(df.plot, x='a', y=mt.tensor('b'))
-        _check_plot_works(df.plot.line)
+    _check_plot_works(df.plot, x='a', y='b')
+    _check_plot_works(df.plot, x='a', y=mt.tensor('b'))
+    _check_plot_works(df.plot.line)

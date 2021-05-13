@@ -12,79 +12,78 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
 
+from mars.core import tile
 from mars.tensor import Tensor
 from mars.dataframe.core import Series, DataFrame
 from mars.dataframe.datasource.series import from_pandas as series_from_pandas
 from mars.dataframe.datasource.dataframe import from_pandas as df_from_pandas
 
 
-class Test(unittest.TestCase):
-    def testSeriesQuantile(self):
-        raw = pd.Series(np.random.rand(10))
-        s = series_from_pandas(raw, chunk_size=3)
+def test_series_quantile():
+    raw = pd.Series(np.random.rand(10))
+    s = series_from_pandas(raw, chunk_size=3)
 
-        r = s.quantile()
-        self.assertIsInstance(r, Tensor)
-        r.tiles()
+    r = s.quantile()
+    assert isinstance(r, Tensor)
+    tile(r)
 
-        s = series_from_pandas(raw, chunk_size=3)
+    s = series_from_pandas(raw, chunk_size=3)
 
-        r = s.quantile([0.3, 0.7])
-        self.assertIsInstance(r, Series)
-        self.assertEqual(r.shape, (2,))
-        pd.testing.assert_index_equal(r.index_value.to_pandas(),
-                                      pd.Index([0.3, 0.7]))
-        r.tiles()
+    r = s.quantile([0.3, 0.7])
+    assert isinstance(r, Series)
+    assert r.shape == (2,)
+    pd.testing.assert_index_equal(r.index_value.to_pandas(),
+                                  pd.Index([0.3, 0.7]))
+    tile(r)
 
-    def testDataFrameQuantile(self):
-        raw = pd.DataFrame({'a': np.random.rand(10),
-                            'b': np.random.randint(1000, size=10),
-                            'c': [np.random.bytes(5) for _ in range(10)]})
-        s = df_from_pandas(raw, chunk_size=7)
 
-        # q = 0.3, axis = 0
-        r = s.quantile(0.3)
-        e = raw.quantile(0.3)
-        self.assertIsInstance(r, Series)
-        self.assertEqual(r.shape, (2,))
-        self.assertEqual(r.dtype, e.dtype)
-        pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
+def test_dataframe_quantile():
+    raw = pd.DataFrame({'a': np.random.rand(10),
+                        'b': np.random.randint(1000, size=10),
+                        'c': [np.random.bytes(5) for _ in range(10)]})
+    s = df_from_pandas(raw, chunk_size=7)
 
-        r.tiles()
+    # q = 0.3, axis = 0
+    r = s.quantile(0.3)
+    e = raw.quantile(0.3)
+    assert isinstance(r, Series)
+    assert r.shape == (2,)
+    assert r.dtype == e.dtype
+    pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
 
-        # q = 0.3, axis = 1
-        r = s.quantile(0.3, axis=1)
-        e = raw.quantile(0.3, axis=1)
-        self.assertIsInstance(r, Series)
-        self.assertEqual(r.shape, e.shape)
-        self.assertEqual(r.dtype, e.dtype)
-        pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
+    tile(r)
 
-        r.tiles()
+    # q = 0.3, axis = 1
+    r = s.quantile(0.3, axis=1)
+    e = raw.quantile(0.3, axis=1)
+    assert isinstance(r, Series)
+    assert r.shape == e.shape
+    assert r.dtype == e.dtype
+    pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
 
-        # q = [0.3, 0.7], axis = 0
-        r = s.quantile([0.3, 0.7])
-        e = raw.quantile([0.3, 0.7])
-        self.assertIsInstance(r, DataFrame)
-        self.assertEqual(r.shape, e.shape)
-        pd.testing.assert_series_equal(r.dtypes, e.dtypes)
-        pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
-        pd.testing.assert_index_equal(r.columns_value.to_pandas(), e.columns)
+    tile(r)
 
-        r.tiles()
+    # q = [0.3, 0.7], axis = 0
+    r = s.quantile([0.3, 0.7])
+    e = raw.quantile([0.3, 0.7])
+    assert isinstance(r, DataFrame)
+    assert r.shape == e.shape
+    pd.testing.assert_series_equal(r.dtypes, e.dtypes)
+    pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(), e.columns)
 
-        # q = [0.3, 0.7], axis = 1
-        r = s.quantile([0.3, 0.7], axis=1)
-        e = raw.quantile([0.3, 0.7], axis=1)
-        self.assertIsInstance(r, DataFrame)
-        self.assertEqual(r.shape, e.shape)
-        pd.testing.assert_series_equal(r.dtypes, e.dtypes)
-        pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
-        pd.testing.assert_index_equal(r.columns_value.to_pandas(), e.columns)
+    tile(r)
 
-        r.tiles()
+    # q = [0.3, 0.7], axis = 1
+    r = s.quantile([0.3, 0.7], axis=1)
+    e = raw.quantile([0.3, 0.7], axis=1)
+    assert isinstance(r, DataFrame)
+    assert r.shape == e.shape
+    pd.testing.assert_series_equal(r.dtypes, e.dtypes)
+    pd.testing.assert_index_equal(r.index_value.to_pandas(), e.index)
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(), e.columns)
+
+    tile(r)
