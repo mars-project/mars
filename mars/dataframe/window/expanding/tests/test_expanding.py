@@ -12,70 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 import mars.dataframe as md
-from mars.tests.core import ExecutorForTest
 
 
-class Test(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.executor = ExecutorForTest()
+def test_expanding():
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df2 = md.DataFrame(df)
 
-    def testExpanding(self):
-        df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
-        df2 = md.DataFrame(df)
+    with pytest.raises(NotImplementedError):
+        _ = df2.expanding(3, center=True)
 
-        with self.assertRaises(NotImplementedError):
-            _ = df2.expanding(3, center=True)
+    with pytest.raises(NotImplementedError):
+        _ = df2.expanding(3, axis=1)
 
-        with self.assertRaises(NotImplementedError):
-            _ = df2.expanding(3, axis=1)
+    r = df2.expanding(3, center=False)
+    expected = df.expanding(3, center=False)
+    assert repr(r) == repr(expected)
 
-        r = df2.expanding(3, center=False)
-        expected = df.expanding(3, center=False)
-        self.assertEqual(repr(r), repr(expected))
+    assert 'b' in dir(r)
 
-        self.assertIn('b', dir(r))
+    with pytest.raises(AttributeError):
+        _ = r.d
 
-        with self.assertRaises(AttributeError):
-            _ = r.d
+    with pytest.raises(KeyError):
+        _ = r['d']
 
-        with self.assertRaises(KeyError):
-            _ = r['d']
+    with pytest.raises(KeyError):
+        _ = r['a', 'd']
 
-        with self.assertRaises(KeyError):
-            _ = r['a', 'd']
+    assert 'a' not in dir(r.a)
+    assert 'c' not in dir(r['a', 'b'])
 
-        self.assertNotIn('a', dir(r.a))
-        self.assertNotIn('c', dir(r['a', 'b']))
 
-    def testExpandingAgg(self):
-        df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
-        df2 = md.DataFrame(df, chunk_size=3)
+def test_expanding_agg():
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df2 = md.DataFrame(df, chunk_size=3)
 
-        r = df2.expanding(3).agg('max')
-        expected = df.expanding(3).agg('max')
+    r = df2.expanding(3).agg('max')
+    expected = df.expanding(3).agg('max')
 
-        self.assertEqual(r.shape, df.shape)
-        self.assertIs(r.index_value, df2.index_value)
-        pd.testing.assert_index_equal(r.columns_value.to_pandas(),
+    assert r.shape == df.shape
+    assert r.index_value is df2.index_value
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(),
+                                  expected.columns)
+    pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
+
+    r = r.tiles()
+    for c in r.chunks:
+        assert c.shape == c.inputs[0].shape
+        assert c.index_value is c.inputs[0].index_value
+        pd.testing.assert_index_equal(c.columns_value.to_pandas(),
                                       expected.columns)
-        pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
+        pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
 
-        r = r.tiles()
-        for c in r.chunks:
-            self.assertEqual(c.shape, c.inputs[0].shape)
-            self.assertIs(c.index_value, c.inputs[0].index_value)
-            pd.testing.assert_index_equal(c.columns_value.to_pandas(),
-                                          expected.columns)
-            pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
-
-        aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
-        for a in aggs:
-            r = getattr(df2.expanding(3), a)()
-            self.assertEqual(r.op.func, [a])
+    aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
+    for a in aggs:
+        r = getattr(df2.expanding(3), a)()
+        assert r.op.func == [a]

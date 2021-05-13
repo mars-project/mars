@@ -14,53 +14,53 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from mars import dataframe as md
-from mars.tests.core import TestBase
 
 
-class Test(TestBase):
-    def testRolling(self):
-        df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
-        df2 = md.DataFrame(df)
+def test_rolling():
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df2 = md.DataFrame(df)
 
-        r = df2.rolling(3, min_periods=1, center=True,
-                        win_type='triang', closed='both')
-        expected = df.rolling(3, min_periods=1, center=True,
-                              win_type='triang', closed='both')
-        self.assertEqual(repr(r), repr(expected))
+    r = df2.rolling(3, min_periods=1, center=True,
+                    win_type='triang', closed='both')
+    expected = df.rolling(3, min_periods=1, center=True,
+                          win_type='triang', closed='both')
+    assert repr(r) == repr(expected)
 
-        self.assertIn('b', dir(r))
+    assert 'b' in dir(r)
 
-        with self.assertRaises(AttributeError):
-            _ = r.d
+    with pytest.raises(AttributeError):
+        _ = r.d
 
-        with self.assertRaises(KeyError):
-            _ = r['d']
+    with pytest.raises(KeyError):
+        _ = r['d']
 
-        with self.assertRaises(KeyError):
-            _ = r['a', 'd']
+    with pytest.raises(KeyError):
+        _ = r['a', 'd']
 
-        self.assertNotIn('a', dir(r.a))
-        self.assertNotIn('c', dir(r['a', 'b']))
+    assert 'a' not in dir(r.a)
+    assert 'c' not in dir(r['a', 'b'])
 
-    def testRollingAgg(self):
-        df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
-        df2 = md.DataFrame(df, chunk_size=3)
 
-        r = df2.rolling(3).agg('max')
-        expected = df.rolling(3).agg('max')
+def test_rolling_agg():
+    df = pd.DataFrame(np.random.rand(4, 3), columns=list('abc'))
+    df2 = md.DataFrame(df, chunk_size=3)
 
-        self.assertEqual(r.shape, df.shape)
-        self.assertIs(r.index_value, df2.index_value)
-        pd.testing.assert_index_equal(r.columns_value.to_pandas(),
+    r = df2.rolling(3).agg('max')
+    expected = df.rolling(3).agg('max')
+
+    assert r.shape == df.shape
+    assert r.index_value is df2.index_value
+    pd.testing.assert_index_equal(r.columns_value.to_pandas(),
+                                  expected.columns)
+    pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
+
+    r = r.tiles()
+    for c in r.chunks:
+        assert c.shape == c.inputs[0].shape
+        assert c.index_value is c.inputs[0].index_value
+        pd.testing.assert_index_equal(c.columns_value.to_pandas(),
                                       expected.columns)
-        pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
-
-        r = r.tiles()
-        for c in r.chunks:
-            self.assertEqual(c.shape, c.inputs[0].shape)
-            self.assertIs(c.index_value, c.inputs[0].index_value)
-            pd.testing.assert_index_equal(c.columns_value.to_pandas(),
-                                          expected.columns)
-            pd.testing.assert_series_equal(c.dtypes, expected.dtypes)
+        pd.testing.assert_series_equal(c.dtypes, expected.dtypes)

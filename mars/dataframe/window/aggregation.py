@@ -480,7 +480,11 @@ class BaseDataFrameExpandingAgg(DataFrameOperand, DataFrameOperandMixin):
             for func_name in func_to_aggs.keys():
                 if func_name == 'count':
                     if not op.count_always_valid and pred_record_count < op.min_periods - 1:
-                        func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
+                        try:
+                            func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
+                        except ValueError:
+                            func_to_aggs[func_name] = func_to_aggs[func_name].copy()
+                            func_to_aggs[func_name].iloc[:op.min_periods - pred_record_count - 1] = np.nan
                 else:
                     func_to_aggs[func_name][invalid_poses] = np.nan
 

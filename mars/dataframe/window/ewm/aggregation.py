@@ -72,7 +72,7 @@ def _combine_mean(pred_results, local_results, axis=0, alpha=None, alpha_ignore_
         return (local_results[0] / local_results[1]).ffill()
 
     alpha_data = local_results[1]
-    local_results[0].ffill(inplace=True)
+    local_results[0] = local_results[0].ffill()
     local_results[1] = alpha_data.ffill()
 
     local_sum_data, local_count_data = local_results
@@ -87,11 +87,11 @@ def _combine_mean(pred_results, local_results, axis=0, alpha=None, alpha_ignore_
 
 def _combine_var(pred_results, local_results, axis=0, alpha=None, alpha_ignore_na=False,
                  pred_exponent=None):
-    local_results[0].ffill(inplace=True)
+    local_results[0] = local_results[0].ffill()
     alpha_data = local_results[1]
     local_results[1] = alpha_data.ffill()
 
-    local_results[2].ffill(inplace=True)
+    local_results[2] = local_results[2].ffill()
     alpha2_data = local_results[3]
     local_results[3] = alpha2_data.ffill()
 
