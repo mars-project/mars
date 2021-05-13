@@ -20,10 +20,10 @@ import logging
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
@@ -244,7 +244,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             if getattr(op, '_reshape_with_shuffle', True):
                 result.op.extra_params['_reshape_with_shuffle'] = True
             result = result.transpose()
-            return [recursive_tile(result)]
+            return [(yield from recursive_tile(result))]
 
         if len(in_tensor.chunks) == 1:
             # 1 chunk

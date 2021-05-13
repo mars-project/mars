@@ -21,7 +21,7 @@ from pandas.core.dtypes.cast import find_common_type
 from pandas.core.indexing import IndexingError
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
 from ...config import options
 from ...serialize import AnyField, KeyField, ListField
 from ...tensor import asarray
@@ -392,8 +392,10 @@ class DataFrameIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
 
         # See Note [Fancy Index of Numpy and Pandas]
-        tensor0 = empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]].tiles()
-        tensor1 = empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]].tiles()
+        tensor0 = yield from recursive_tile(
+            empty(in_df.shape[0], chunk_size=(in_df.nsplits[0],))[op.indexes[0]])
+        tensor1 = yield from recursive_tile(
+            empty(in_df.shape[1], chunk_size=(in_df.nsplits[1],))[op.indexes[1]])
 
         chunk_mapping = {c0.inputs[0].index + c1.inputs[0].index: (c0, c1)
                          for c0, c1 in itertools.product(tensor0.chunks, tensor1.chunks)}
@@ -523,7 +525,8 @@ class SeriesIlocSetItem(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         # Reuse the logic of fancy indexing in tensor module.
-        tensor = empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes[0]].tiles()
+        tensor = yield from recursive_tile(
+            empty(in_series.shape, chunk_size=in_series.nsplits)[op.indexes[0]])
 
         chunk_mapping = dict((c.inputs[0].index, c) for c in tensor.chunks)
 

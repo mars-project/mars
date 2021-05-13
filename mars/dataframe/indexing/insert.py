@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import recursive_tile
 from ...serialize import AnyField, BoolField, Int64Field
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
@@ -79,7 +80,8 @@ class DataFrameInsert(DataFrameOperand, DataFrameOperandMixin):
         inp = op.inputs[0]
         value = op.value
         if isinstance(value, (SERIES_TYPE, TENSOR_TYPE)):
-            value = value.rechunk({0: inp.nsplits[0]})._inplace_tile()
+            value = yield from recursive_tile(
+                value.rechunk({0: inp.nsplits[0]}))
         out = op.outputs[0]
 
         chunk_bounds = np.cumsum((0,) + inp.nsplits[1])

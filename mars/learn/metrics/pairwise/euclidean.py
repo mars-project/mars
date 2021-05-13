@@ -16,10 +16,10 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
-from ....core import TilesError
+from ....core import TilesError, recursive_tile
 from ....serialize import KeyField, BoolField
 from ....tensor.core import TensorOrder
-from ....utils import recursive_tile, check_chunks_unknown_shape
+from ....utils import check_chunks_unknown_shape
 from ...utils import check_array
 from ...utils.extmath import row_norms
 from .core import PairwiseDistances
@@ -117,10 +117,12 @@ class EuclideanDistances(PairwiseDistances):
             check_chunks_unknown_shape([X, Y], TilesError)
             # rechunk
             new_nsplit = max(max(X.nsplits[0]) // 2, 1)
-            X = recursive_tile(X.rechunk({0: new_nsplit}).astype(np.float64))
+            X = yield from recursive_tile(
+                X.rechunk({0: new_nsplit}).astype(np.float64))
             if Y is not X:
                 new_nsplit = max(max(Y.nsplits[0]) // 2, 1)
-                Y = recursive_tile(Y.rechunk({0: new_nsplit}).astype(np.float64))
+                Y = yield from recursive_tile(
+                    Y.rechunk({0: new_nsplit}).astype(np.float64))
 
         XX = op.x_norm_squared
         if XX is None:
@@ -143,7 +145,7 @@ class EuclideanDistances(PairwiseDistances):
 
         distances = distances if op.squared else mt.sqrt(distances)
         distances = distances.astype(out.dtype, copy=False)
-        return [recursive_tile(distances)]
+        return [(yield from recursive_tile(distances))]
 
 
 def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,

@@ -17,8 +17,8 @@ import pandas as pd
 from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
+from ...core import recursive_tile
 from ...serialize import AnyField, StringField, ListField
-from ...utils import recursive_tile
 from ...tensor.base import sort
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -67,7 +67,8 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
 
         unique_chunk = None
         if op.dtype_values == 'category' and isinstance(op.dtype_values, str):
-            unique_chunk = recursive_tile(sort(in_series.unique())).chunks[0]
+            unique_chunk = yield from recursive_tile(
+                sort(in_series.unique())).chunks[0]
 
         chunks = []
         for c in in_series.chunks:
@@ -102,15 +103,19 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._category_cols = list(c.columns_value.to_pandas())
                 unique_chunks = []
                 for col in c.columns_value.to_pandas():
-                    unique_chunks.append(recursive_tile(sort(in_df[col].unique())).chunks[0])
+                    unique = yield from recursive_tile(sort(in_df[col].unique()))
+                    unique_chunks.append(unique.chunks[0])
                 new_chunk = chunk_op.new_chunk([c] + unique_chunks, **params)
                 out_chunks.append(new_chunk)
         elif isinstance(op.dtype_values, dict) and 'category' in op.dtype_values.values():
             # some columns' types are category
             category_cols = [c for c, v in op.dtype_values.items()
                              if isinstance(v, str) and v == 'category']
-            unique_chunks = dict((col, recursive_tile(sort(in_df[col].unique())).chunks[0])
-                                 for col in category_cols)
+            unique_chunks = dict()
+            for col in category_cols:
+                unique = yield from recursive_tile(
+                    sort(in_df[col].unique()))
+                unique_chunks[col] = unique.chunks[0]
             for c in in_df.chunks:
                 chunk_op = op.copy().reset_key()
                 params = c.params.copy()
@@ -143,9 +148,9 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
         if len(op.inputs[0].chunks) == 1:
             return cls._tile_one_chunk(op)
         elif isinstance(op.inputs[0], DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
         else:
-            return cls._tile_series_index(op)
+            return (yield from cls._tile_series_index(op))
 
     @classmethod
     def execute(cls, ctx, op):

@@ -147,4 +147,4 @@ class DataFrameSortOperand(DataFrameOperand):
         if op.nrows is not None:
             return cls._tile_head(op)
         else:
-            return cls._tile(op)
+            return (yield from cls._tile(op))

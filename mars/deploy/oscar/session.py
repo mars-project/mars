@@ -113,7 +113,7 @@ class Session(AbstractSession):
         if urlparse(address).scheme == 'http':
             return await WebSession._init(address, session_id)
         else:
-            return await Session._init(address, session_id)
+            return await cls._init(address, session_id)
 
     async def _run_in_background(self,
                                  tileables: list,

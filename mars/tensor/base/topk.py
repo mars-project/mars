@@ -18,11 +18,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import ExecutableTuple
+from ...core import ExecutableTuple, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
     BoolField, StringField, ListField
-from ...utils import ceildiv, flatten, recursive_tile
+from ...utils import ceildiv, flatten
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
 from ..datasource import tensor as astensor
@@ -191,7 +191,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         else:
             ret = [r[base_slcs + (slice(op.k),)] for r in ret]
 
-        ret = [recursive_tile(r) for r in ret]
+        ret = yield from recursive_tile(ret)
         new_op = op.copy()
         kws = [o.params for o in op.outputs]
         if return_value:

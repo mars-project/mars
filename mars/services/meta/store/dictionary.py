@@ -80,6 +80,9 @@ class DictMetaStore(AbstractMetaStore):
                        error: str = 'raise') -> Dict:
         return self._get_meta(object_id, fields=fields, error=error)
 
+    def _del_meta(self, object_id: str):
+        del self._store[object_id]
+
     @get_meta.batch
     async def batch_get_meta(self, args_list, kwargs_list):
         metas = []
@@ -88,9 +91,15 @@ class DictMetaStore(AbstractMetaStore):
         return metas
 
     @implements(AbstractMetaStore.del_meta)
+    @extensible
     async def del_meta(self,
                        object_id: str):
-        del self._store[object_id]
+        self._del_meta(object_id)
+
+    @del_meta.batch
+    async def batch_del_meta(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._del_meta(*args, **kwargs)
 
     @implements(AbstractMetaStore.add_chunk_bands)
     async def add_chunk_bands(self,

@@ -20,7 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import ENTITY_TYPE, OutputType, TilesError
+from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
 from ...serialize import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
@@ -269,7 +269,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         if op.col_names is not None:
             return cls.tile_with_columns(op)
         else:
-            return cls.tile_with_mask(op)
+            return (yield from cls.tile_with_mask(op))
 
     @classmethod
     def tile_with_mask(cls, op):
@@ -290,7 +290,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             else:
                 # tensor
                 nsplits = in_df.nsplits
-                mask = mask.rechunk(nsplits[:mask.ndim])._inplace_tile()
+                mask = yield from recursive_tile(
+                    mask.rechunk(nsplits[:mask.ndim]))
                 out_shape = in_df.chunk_shape
                 df_chunks = in_df.chunks
                 mask_chunks = mask.chunks

@@ -16,9 +16,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, get_output_types, TilesError
+from ...core import ENTITY_TYPE, get_output_types, TilesError, recursive_tile
 from ...serialize import AnyField, Int8Field, KeyField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index, validate_axis
 
@@ -86,10 +86,11 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
         value = op.value
         if isinstance(value, ENTITY_TYPE):
             input_tileables.append(value)
-            check_chunks_unknown_shape([value], TilesError)
+            if has_unknown_shape(value):
+                yield
 
         if any(np.isnan(s) for s in op.input.nsplits[op.axis]):
-            raise TilesError(f'chunks has unknown shape on axis {op.axis}')
+            yield
 
         if op.input.shape[op.axis] != value.shape[0]:
             raise ValueError(
@@ -98,7 +99,8 @@ class DataFrameSetAxis(DataFrameOperand, DataFrameOperandMixin):
             )
 
         if isinstance(value, ENTITY_TYPE):
-            value = value.rechunk({0: op.input.nsplits[op.axis]})._inplace_tile()
+            value = yield from recursive_tile(
+                value.rechunk({0: op.input.nsplits[op.axis]}))
             input_tileables[-1] = value
 
         slices = np.array((0,) + op.input.nsplits[op.axis]).cumsum()

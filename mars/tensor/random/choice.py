@@ -20,9 +20,9 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...serialize import ValueType, AnyField, KeyField, BoolField, TupleField
-from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
+from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..datasource import arange, array
@@ -131,7 +131,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                 ret = ret.reshape(out_shape)
             ret = ret.rechunk(nsplits)
 
-        return [recursive_tile(ret)]
+        return [(yield from recursive_tile(ret))]
 
     @classmethod
     def _tile_sample_without_replacement(cls, op, a, nsplits):

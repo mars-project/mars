@@ -178,7 +178,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
     def _tile_psrs(cls, op, in_data):
         out = op.outputs[0]
-        in_df, axis_chunk_shape, _, _ = cls.preprocess(op, in_data=in_data)
+        in_df, axis_chunk_shape, _, _ = yield from cls.preprocess(op, in_data=in_data)
 
         # stage 1: local sort and regular samples collected
         sorted_chunks, _, sampled_chunks = cls.local_sort_and_regular_sample(

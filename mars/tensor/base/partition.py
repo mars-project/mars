@@ -207,7 +207,8 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
         out_tensor = op.outputs[0]
         return_value, return_indices = op.return_value, op.return_indices
         # preprocess, to make sure chunk shape on axis are approximately same
-        in_tensor, axis_chunk_shape, out_idxes, need_align = cls.preprocess(op)
+        in_tensor, axis_chunk_shape, out_idxes, need_align = \
+            yield from cls.preprocess(op)
         axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
 
         out_chunks, out_indices_chunks = [], []
@@ -334,7 +335,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                 kws[-1]['chunks'] = out_indices_chunks
             return new_op.new_tensors([in_tensor], kws=kws)
         else:
-            return cls._tile_psrs(op, kth)
+            return (yield from cls._tile_psrs(op, kth))
 
     @classmethod
     def execute(cls, ctx, op):

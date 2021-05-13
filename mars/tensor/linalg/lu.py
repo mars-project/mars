@@ -18,9 +18,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
+from ...core import ExecutableTuple, TilesError, recursive_tile
 from ...serialize import KeyField
-from ...core import ExecutableTuple, TilesError
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -116,16 +116,16 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                                 gpu=in_tensor.op.gpu,
                                 chunk_size=(in_tensor.nsplits[0], max(in_tensor.nsplits[1])),
                                 order=in_tensor.order.value)
-            in_tensor = hstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            in_tensor = yield from recursive_tile(
+                hstack([in_tensor, zero_tensor]))
         elif in_tensor.shape[0] < in_tensor.shape[1]:
             zero_tensor = zeros((in_tensor.shape[1] - in_tensor.shape[0], in_tensor.shape[1]),
                                 dtype=in_tensor.dtype, sparse=in_tensor.issparse(),
                                 gpu=in_tensor.op.gpu,
                                 chunk_size=(max(in_tensor.nsplits[0]), in_tensor.nsplits[1]),
                                 order=in_tensor.order.value)
-            in_tensor = vstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            in_tensor = yield from recursive_tile(
+                vstack([in_tensor, zero_tensor]))
 
         check_chunks_unknown_shape([in_tensor], TilesError)
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:

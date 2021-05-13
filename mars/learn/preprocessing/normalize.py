@@ -20,11 +20,11 @@ except ImportError:  # pragma: no cover
     sklearn_normalize = None
 
 from ... import opcodes as OperandDef
+from ...core import recursive_tile
 from ...serialize import KeyField, StringField, Int32Field, BoolField
 from ...tensor.operands import TensorOperand, TensorOperandMixin
 from ...tensor.core import TensorOrder
 from ...tensor.array_utils import as_same_device, device, sparse, issparse
-from ...utils import recursive_tile
 from ... import tensor as mt
 from ..utils import check_array
 
@@ -220,9 +220,9 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
             else:
                 x = x / norms[mt.newaxis, :]
 
-            ret = [recursive_tile(x)]
+            ret = [(yield from recursive_tile(x))]
             if op.return_norm:
-                ret.append(recursive_tile(norms))
+                ret.append((yield from recursive_tile(norms)))
 
             new_op = op.copy()
             kws = [out.params for out in op.outputs]

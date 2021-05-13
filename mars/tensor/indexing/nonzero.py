@@ -18,8 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField
-from ...core import ExecutableTuple
-from ...utils import recursive_tile
+from ...core import ExecutableTuple, recursive_tile
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -47,11 +46,11 @@ class TensorNonzero(TensorHasInput, TensorOperandMixin):
         in_tensor = astensor(op.input)
 
         flattened = in_tensor.astype(bool).flatten()
-        recursive_tile(flattened)
+        flattened = yield from recursive_tile(flattened)
         indices = arange(flattened.size, dtype=np.intp, chunk_size=flattened.nsplits)
         indices = indices[flattened]
         dim_indices = unravel_index(indices, in_tensor.shape)
-        [recursive_tile(ind) for ind in dim_indices]
+        dim_indices = yield from recursive_tile(dim_indices)
 
         kws = [{'nsplits': ind.nsplits, 'chunks': ind.chunks, 'shape': o.shape}
                for ind, o in zip(dim_indices, op.outputs)]

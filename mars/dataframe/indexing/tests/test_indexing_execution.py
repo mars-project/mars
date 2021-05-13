@@ -1211,14 +1211,16 @@ def test_reindex_execution(setup):
         r = df.reindex([2, 4, 9, 12], level=1,
                        enable_sparse=enable_sparse)
 
-        result = self.executor.execute_dataframe(r, concat=True, check_shape=False)[0]
+        result = r.execute(extra_config={'check_shape': False}).fetch(
+            extra_config={'check_shape': False})
         expected = data.reindex([2, 4, 9, 12], level=1)
         pd.testing.assert_frame_equal(result, expected)
 
         r = df.reindex(mt.tensor([2, 4, 9, 12], chunk_size=2), level=1,
                        enable_sparse=enable_sparse)
 
-        result = self.executor.execute_dataframe(r, concat=True, check_shape=False)[0]
+        result = r.execute(extra_config={'check_shape': False}).fetch(
+            extra_config={'check_shape': False})
         expected = data.reindex([2, 4, 9, 12], level=1)
         pd.testing.assert_frame_equal(result, expected)
 
@@ -1230,7 +1232,7 @@ def test_reindex_execution(setup):
 
         with pytest.raises(ValueError):
             r = df.reindex([0, 1], enable_sparse=enable_sparse)
-            self.executor.execute_dataframe(r)
+            r.execute()
 
         # test one chunk
         data = pd.DataFrame(np.random.rand(10, 5), columns=['c1', 'c2', 'c3', 'c4', 'c5'])

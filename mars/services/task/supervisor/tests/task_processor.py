@@ -18,7 +18,7 @@ from typing import Dict
 import numpy as np
 
 from .....core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
-from .....optimization.logical.core import OptimizationRecords
+from .....core.operand import Fetch
 from .....tests.core import _check_args, ObjectCheckMixin
 from ...analyzer import GraphAnalyzer
 from ...core import SubtaskGraph, BandType
@@ -119,7 +119,8 @@ class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
                                  task_stage_info)
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(analyzer._chunk_to_copied[c]
-                      for c in chunk_graph.results)
+                      for c in chunk_graph.results
+                      if not isinstance(c.op, Fetch))
         for subtask in subtask_graph:
             if all(c not in results for c in subtask.chunk_graph.results):
                 if subtask.extra_config is None:

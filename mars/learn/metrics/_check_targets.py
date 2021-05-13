@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, ExecutableTuple, TilesError
+from ...core import ENTITY_TYPE, ExecutableTuple, TilesError, recursive_tile
 from ...context import get_context
 from ...serialize import AnyField, KeyField
 from ...tensor.core import TENSOR_TYPE, TensorOrder
-from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils.multiclass import type_of_target
 from ..utils import check_consistent_length, column_or_1d
@@ -147,9 +146,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         if not isinstance(y_type, TENSOR_TYPE):
             y_type = mt.tensor(y_type, dtype=object)
 
-        y_type = recursive_tile(y_type)
-        y_true = recursive_tile(y_true)
-        y_pred = recursive_tile(y_pred)
+        y_type = yield from recursive_tile(y_type)
+        y_true = yield from recursive_tile(y_true)
+        y_pred = yield from recursive_tile(y_pred)
 
         kws = [out.params for out in op.outputs]
         kws[0].update(dict(nsplits=(), chunks=[y_type.chunks[0]]))

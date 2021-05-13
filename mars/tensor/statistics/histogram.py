@@ -19,10 +19,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...serialize import AnyField, TupleField, KeyField, BoolField
 from ...context import get_context
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -59,7 +59,7 @@ class HistBinSelector:
             err = TilesError('bin edges calculation requires '
                              'some dependencies executed first')
             self._op._calc_bin_edges_dependencies = [width]
-            recursive_tile(width)
+            width = yield from recursive_tile(width)
             err.partial_tiled_chunks = [c.data for c in width.chunks]
             raise err
 
@@ -363,7 +363,7 @@ def _get_bin_edges(op, a, bins, range, weights):
         else:
             # Do not call selectors on empty arrays
             selector = _hist_bin_selectors[bin_name](op, a, (first_edge, last_edge), raw_range)
-            selector.check()
+            yield from selector.check()
             width = selector.get_result()
             if width:
                 n_equal_bins = int(np.ceil(_unsigned_subtract(last_edge, first_edge) / width))
@@ -542,7 +542,8 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         else:
             bins = op.bins
 
-        bin_edges, _ = _get_bin_edges(op, op.input, bins, range_, op.weights)
+        bin_edges, _ = yield from _get_bin_edges(
+            op, op.input, bins, range_, op.weights)
         bin_edges = bin_edges._inplace_tile()
         return [bin_edges]
 
@@ -863,7 +864,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         if op.density:
             db = mt.array(mt.diff(bins), float)
             hist = n / db / n.sum()
-            recursive_tile(hist)
+            hist = yield from recursive_tile(hist)
             return [hist]
         else:
             return [n]

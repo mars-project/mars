@@ -23,10 +23,9 @@ from numbers import Integral
 
 import numpy as np
 
-from ...core import Tileable
+from ...core import Tileable, recursive_tile
 from ...core.operand import OperandStage
-from ...utils import check_chunks_unknown_shape, calc_nsplits, \
-    merge_chunks, recursive_tile, has_unknown_shape
+from ...utils import calc_nsplits, merge_chunks, has_unknown_shape
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
 from ..operands import TensorShuffleProxy
 from ..utils import slice_split, calc_sliced_size, broadcast_shape, unify_chunks, \
@@ -471,7 +470,7 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
         index = index_info.raw_index
         # rechunk index into the same chunk size
         nsplits = tileable.nsplits[input_axis: input_axis + index.ndim]
-        index = index.rechunk(nsplits)._inplace_tile()
+        index = yield from recursive_tile(index.rechunk(nsplits))
         is_first_bool_index = self._is_first_bool_index(context, index_info)
 
         other_index_to_iter = dict()
@@ -700,8 +699,9 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             *(info.raw_index.shape for info in fancy_index_infos))
         fancy_indexes = []
         for fancy_index_info in fancy_index_infos:
-            fancy_indexes.append(
-                broadcast_to(fancy_index_info.raw_index, shape)._inplace_tile())
+            fancy_index = yield from recursive_tile(
+                broadcast_to(fancy_index_info.raw_index, shape))
+            fancy_indexes.append(fancy_index)
         shape_unified_fancy_indexes = unify_chunks(*fancy_indexes)
         for fancy_index_info, shape_unified_fancy_index in \
                 zip(fancy_index_infos, shape_unified_fancy_indexes):
@@ -710,10 +710,12 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         fancy_index_axes = tuple(info.input_axis for info in fancy_index_infos)
 
         # stack fancy indexes into one
-        concat_fancy_index = recursive_tile(stack([fancy_index_info.shape_unified_index
-                                                   for fancy_index_info in fancy_index_infos]))
+        concat_fancy_index = yield from recursive_tile(
+            stack([fancy_index_info.shape_unified_index
+                   for fancy_index_info in fancy_index_infos]))
         concat_fancy_index = \
-            concat_fancy_index.rechunk({0: len(fancy_index_infos)})._inplace_tile()
+            yield from recursive_tile(
+                concat_fancy_index.rechunk({0: len(fancy_index_infos)}))
 
         self._shuffle_fancy_indexes(concat_fancy_index, context,
                                     index_info, fancy_index_axes)
@@ -901,7 +903,7 @@ class IndexesHandler(ABC):
                 raise TypeError(f'unable to parse index {index}')
 
         yield from self._preprocess(context, index_infos)
-        self._process(context, index_infos)
+        yield from self._process(context, index_infos)
         self._postprocess(context, index_infos)
 
         if return_context:
@@ -923,7 +925,9 @@ class IndexesHandler(ABC):
     def _process(cls, context, index_infos):
         # process
         for index_info in index_infos:
-            index_info.handler.process(index_info, context)
+            process = index_info.handler.process(index_info, context)
+            if inspect.isgenerator(process):
+                yield from process
 
         context.processed_chunks = context.out_chunks = out_chunks = []
         for chunk_index, chunk_index_info in context.chunk_index_to_info.items():

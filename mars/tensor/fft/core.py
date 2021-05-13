@@ -16,10 +16,10 @@
 
 from collections.abc import Iterable
 
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, TupleField
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import get_array_module
@@ -178,7 +178,7 @@ class TensorFFTShiftMixin(TensorOperandMixin):
             slc2 = [slice(None)] * axis + [slice(slice_on, None)]
             x = concatenate([x[slc2], x[slc1]], axis=axis)
 
-        recursive_tile(x)
+        x = yield from recursive_tile(x)
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape,
                                   chunks=x.chunks, nsplits=x.nsplits)

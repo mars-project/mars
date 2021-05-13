@@ -78,7 +78,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
                 if op.na_position != 'last':  # pragma: no cover
                     raise NotImplementedError('Only support puts NaNs at the end.')
                 # use parallel sorting by regular sampling
-                return cls._tile_psrs(op, df)
+                return (yield from cls._tile_psrs(op, df))
         else:
             assert op.axis == 1
 

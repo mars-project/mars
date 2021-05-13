@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialize import BoolField, AnyField, KeyField, Int32Field
-from ...utils import recursive_tile
 from ...tensor.utils import filter_inputs
 from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin

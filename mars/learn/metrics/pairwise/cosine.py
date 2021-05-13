@@ -15,9 +15,9 @@
 import numpy as np
 
 from .... import opcodes as OperandDef
+from ....core import recursive_tile
 from ....serialize import KeyField
 from .... import tensor as mt
-from ....utils import recursive_tile
 from ....tensor.core import TensorOrder
 from ...preprocessing import normalize
 from .core import PairwiseDistances
@@ -61,7 +61,7 @@ class CosineDistances(PairwiseDistances):
         S = mt.clip(S, 0, 2)
         if x is y:
             mt.fill_diagonal(S, 0.0)
-        return [recursive_tile(S)]
+        return [(yield from recursive_tile(S))]
 
 
 def cosine_similarity(X, Y=None, dense_output=True):

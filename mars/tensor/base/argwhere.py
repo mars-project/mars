@@ -19,9 +19,9 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...serialize import KeyField
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from .ravel import ravel
@@ -51,11 +51,11 @@ class TensorArgwhere(TensorHasInput, TensorOperandMixin):
 
         check_chunks_unknown_shape([in_tensor], TilesError)
 
-        flattened = ravel(in_tensor)._inplace_tile()
+        flattened = yield from recursive_tile(ravel(in_tensor))
         indices = arange(flattened.size, dtype=np.intp, chunks=flattened.nsplits)
         indices = indices[flattened]
         dim_indices = unravel_index(indices, in_tensor.shape)
-        [recursive_tile(ind) for ind in dim_indices]
+        dim_indices = yield from recursive_tile(dim_indices)
 
         out_chunk_shape = dim_indices[0].chunk_shape + (in_tensor.ndim,)
         nsplits = dim_indices[0].nsplits + ((1,) * in_tensor.ndim,)

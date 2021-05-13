@@ -110,7 +110,8 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
         to see explanation of parallel sorting by regular sampling
         """
         out_tensor = op.outputs[0]
-        in_tensor, axis_chunk_shape, out_idxes, need_align = cls.preprocess(op)
+        in_tensor, axis_chunk_shape, out_idxes, need_align = \
+            yield from cls.preprocess(op)
         axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
         return_value, return_indices = op.return_value, op.return_indices
 
@@ -216,7 +217,7 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
             return new_op.new_tensors([in_tensor], kws=kws)
         else:
             # use parallel sorting by regular sampling
-            return cls._tile_psrs(op)
+            return (yield from cls._tile_psrs(op))
 
     @classmethod
     def execute(cls, ctx, op):

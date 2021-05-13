@@ -18,7 +18,7 @@ import pytest
 
 from mars import opcodes
 from mars.config import options, option_context
-from mars.core import OutputType, TilesError, get_tiled
+from mars.core import OutputType, TilesError, tile
 from mars.core.operand import OperandStage
 from mars.dataframe import eval as mars_eval, cut
 from mars.dataframe.base import to_gpu, to_cpu, astype
@@ -42,8 +42,7 @@ def test_to_gpu():
     assert cdf.op.gpu is True
     pd.testing.assert_series_equal(df.dtypes, cdf.dtypes)
 
-    cdf = cdf.tiles()
-    df = get_tiled(df)
+    df, cdf = tile(df, cdf)
 
     assert df.nsplits == cdf.nsplits
     assert df.chunks[0].index_value == cdf.chunks[0].index_value
@@ -61,8 +60,7 @@ def test_to_gpu():
     assert series.index_value == cseries.index_value
     assert cseries.op.gpu is True
 
-    cseries = cseries.tiles()
-    series = get_tiled(series)
+    series, cseries = tile(series, cseries)
 
     assert series.nsplits == cseries.nsplits
     assert series.chunks[0].index_value == cseries.chunks[0].index_value
@@ -83,8 +81,7 @@ def test_to_cpu():
     assert df2.op.gpu is False
     pd.testing.assert_series_equal(df.dtypes, df2.dtypes)
 
-    df2 = df2.tiles()
-    df = get_tiled(df)
+    df, df2 = tile(df, df2)
 
     assert df.nsplits == df2.nsplits
     assert df.chunks[0].index_value == df2.chunks[0].index_value
@@ -98,7 +95,7 @@ def test_to_cpu():
 def test_rechunk():
     raw = pd.DataFrame(np.random.rand(10, 10))
     df = from_pandas_df(raw, chunk_size=3)
-    df2 = df.rechunk(4).tiles()
+    df2 = tile(df.rechunk(4))
 
     assert df2.shape == (10, 10)
     assert len(df2.chunks) == 9
@@ -126,7 +123,7 @@ def test_rechunk():
     index = np.random.randint(-100, 100, size=(4,))
     raw = pd.DataFrame(np.random.rand(4, 10), index=index, columns=columns)
     df = from_pandas_df(raw, chunk_size=3)
-    df2 = df.rechunk(6).tiles()
+    df2 = tile(df.rechunk(6))
 
     assert df2.shape == (4, 10)
     assert len(df2.chunks) == 2
@@ -147,7 +144,7 @@ def test_rechunk():
 
     # test Series rechunk
     series = from_pandas_series(pd.Series(np.random.rand(10,)), chunk_size=3)
-    series2 = series.rechunk(4).tiles()
+    series2 = tile(series.rechunk(4))
 
     assert series2.shape == (10,)
     assert len(series2.chunks) == 3
@@ -162,7 +159,7 @@ def test_rechunk():
     assert series2.chunks[2].shape == (2,)
     pd.testing.assert_index_equal(series2.chunks[2].index_value.to_pandas(), pd.RangeIndex(8, 10))
 
-    series2 = series.rechunk(1).tiles()
+    series2 = tile(series.rechunk(1))
 
     assert series2.shape == (10,)
     assert len(series2.chunks) == 10
@@ -174,17 +171,10 @@ def test_rechunk():
     pd.testing.assert_index_equal(series2.chunks[0].index_value.to_pandas(), pd.RangeIndex(1))
 
     # no need to rechunk
-    series2 = series.rechunk(3).tiles()
-    series = get_tiled(series)
+    series2 = tile(series.rechunk(3))
+    series = tile(series)
     assert series2.chunk_shape == series.chunk_shape
     assert series2.nsplits == series.nsplits
-
-    # test rechunk on DataFrame has known shape, but chunk's shape is unknown
-    data = pd.DataFrame({0: [1, 2], 1: [3, 4], 'a': [5, 6]})
-    df = from_pandas_df(data)
-    df = df[df[0] < 3]
-    with pytest.raises(TilesError):
-        df.tiles().rechunk((np.nan, 3)).tiles()
 
 
 def test_data_frame_apply():
@@ -214,14 +204,14 @@ def test_data_frame_apply():
         r = df.apply('ffill')
         assert r.op._op_type_ == opcodes.FILL_NA
 
-        r = df.apply(np.sqrt).tiles()
+        r = tile(df.apply(np.sqrt))
         assert all(v == np.dtype('float64') for v in r.dtypes) is True
         assert r.shape == df.shape
         assert r.op._op_type_ == opcodes.APPLY
         assert r.op.output_types[0] == OutputType.dataframe
         assert r.op.elementwise is True
 
-        r = df.apply(lambda x: pd.Series([1, 2])).tiles()
+        r = tile(df.apply(lambda x: pd.Series([1, 2])))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (np.nan, df.shape[1])
         assert r.op.output_types[0] == OutputType.dataframe
@@ -230,7 +220,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(np.sum, axis='index').tiles()
+        r = tile(df.apply(np.sum, axis='index'))
         assert np.dtype('int64') == r.dtype
         assert r.shape == (df.shape[1],)
         assert r.op.output_types[0] == OutputType.series
@@ -239,7 +229,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(np.sum, axis='columns').tiles()
+        r = tile(df.apply(np.sum, axis='columns'))
         assert np.dtype('int64') == r.dtype
         assert r.shape == (df.shape[0],)
         assert r.op.output_types[0] == OutputType.series
@@ -248,7 +238,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1).tiles()
+        r = tile(df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], np.nan)
         assert r.op.output_types[0] == OutputType.dataframe
@@ -257,7 +247,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(lambda x: [1, 2], axis=1, result_type='expand').tiles()
+        r = tile(df.apply(lambda x: [1, 2], axis=1, result_type='expand'))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], np.nan)
         assert r.op.output_types[0] == OutputType.dataframe
@@ -266,7 +256,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(lambda x: list(range(10)), axis=1, result_type='reduce').tiles()
+        r = tile(df.apply(lambda x: list(range(10)), axis=1, result_type='reduce'))
         assert np.dtype('object') == r.dtype
         assert r.shape == (df.shape[0],)
         assert r.op.output_types[0] == OutputType.series
@@ -275,7 +265,7 @@ def test_data_frame_apply():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
         assert r.op.elementwise is False
 
-        r = df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast').tiles()
+        r = tile(df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast'))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], np.nan)
         assert r.op.output_types[0] == OutputType.dataframe
@@ -299,10 +289,10 @@ def test_series_apply():
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
-    r = series.apply('add', args=(1,)).tiles()
+    r = tile(series.apply('add', args=(1,)))
     assert r.op._op_type_ == opcodes.ADD
 
-    r = series.apply(np.sqrt).tiles()
+    r = tile(series.apply(np.sqrt))
     assert np.dtype('float64') == r.dtype
     assert r.shape == series.shape
     assert r.op._op_type_ == opcodes.APPLY
@@ -310,7 +300,7 @@ def test_series_apply():
     assert r.chunks[0].shape == (5,)
     assert r.chunks[0].inputs[0].shape == (5,)
 
-    r = series.apply('sqrt').tiles()
+    r = tile(series.apply('sqrt'))
     assert np.dtype('float64') == r.dtype
     assert r.shape == series.shape
     assert r.op._op_type_ == opcodes.APPLY
@@ -318,7 +308,7 @@ def test_series_apply():
     assert r.chunks[0].shape == (5,)
     assert r.chunks[0].inputs[0].shape == (5,)
 
-    r = series.apply(lambda x: [x, x + 1], convert_dtype=False).tiles()
+    r = tile(series.apply(lambda x: [x, x + 1], convert_dtype=False))
     assert np.dtype('object') == r.dtype
     assert r.shape == series.shape
     assert r.op._op_type_ == opcodes.APPLY
@@ -384,7 +374,7 @@ def test_transform():
         with pytest.raises(TypeError):
             df.transform(transform_df_with_err)
 
-        r = df.transform(transform_df_with_err, dtypes=df_raw.dtypes).tiles()
+        r = tile(df.transform(transform_df_with_err, dtypes=df_raw.dtypes))
         assert r.shape == df.shape
         assert r.op._op_type_ == opcodes.TRANSFORM
         assert r.op.output_types[0] == OutputType.dataframe
@@ -393,7 +383,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
         # test transform scenarios on data frames
-        r = df.transform(lambda x: list(range(len(x)))).tiles()
+        r = tile(df.transform(lambda x: list(range(len(x)))))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == df.shape
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -402,7 +392,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].shape[0] == df_raw.shape[0]
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
-        r = df.transform(lambda x: list(range(len(x))), axis=1).tiles()
+        r = tile(df.transform(lambda x: list(range(len(x))), axis=1))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == df.shape
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -411,7 +401,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].shape[1] == df_raw.shape[1]
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
-        r = df.transform(['cumsum', 'cummax', lambda x: x + 1]).tiles()
+        r = tile(df.transform(['cumsum', 'cummax', lambda x: x + 1]))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], df.shape[1] * 3)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -420,7 +410,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].shape[0] == df_raw.shape[0]
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
-        r = df.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1}).tiles()
+        r = tile(df.transform({'A': 'cumsum', 'D': ['cumsum', 'cummax'], 'F': lambda x: x + 1}))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], 4)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -430,7 +420,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
         # test agg scenarios on series
-        r = df.transform(lambda x: x.iloc[:-1], _call_agg=True).tiles()
+        r = tile(df.transform(lambda x: x.iloc[:-1], _call_agg=True))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (np.nan, df.shape[1])
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -439,7 +429,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].shape[0] == df_raw.shape[0]
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
-        r = df.transform(lambda x: x.iloc[:-1], axis=1, _call_agg=True).tiles()
+        r = tile(df.transform(lambda x: x.iloc[:-1], axis=1, _call_agg=True))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (df.shape[0], np.nan)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -450,7 +440,7 @@ def test_transform():
 
         fn_list = [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
                    lambda x: x.iloc[:-1].reset_index(drop=True)]
-        r = df.transform(fn_list, _call_agg=True).tiles()
+        r = tile(df.transform(fn_list, _call_agg=True))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (np.nan, df.shape[1] * 2)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -459,7 +449,7 @@ def test_transform():
         assert r.chunks[0].inputs[0].shape[0] == df_raw.shape[0]
         assert r.chunks[0].inputs[0].op._op_type_ == opcodes.CONCATENATE
 
-        r = df.transform(lambda x: x.sum(), _call_agg=True).tiles()
+        r = tile(df.transform(lambda x: x.sum(), _call_agg=True))
         assert r.dtype == np.dtype('int64')
         assert r.shape == (df.shape[1],)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -474,7 +464,7 @@ def test_transform():
                   lambda x: x.iloc[:-1].reset_index(drop=True)],
             'F': lambda x: x.iloc[:-1].reset_index(drop=True),
         }
-        r = df.transform(fn_dict, _call_agg=True).tiles()
+        r = tile(df.transform(fn_dict, _call_agg=True))
         assert all(v == np.dtype('int64') for v in r.dtypes) is True
         assert r.shape == (np.nan, 4)
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -485,7 +475,7 @@ def test_transform():
 
         # SERIES CASES
         # test transform scenarios on series
-        r = series.transform(lambda x: x + 1).tiles()
+        r = tile(series.transform(lambda x: x + 1))
         assert np.dtype('int64') == r.dtype
         assert r.shape == series.shape
         assert r.op._op_type_ == opcodes.TRANSFORM
@@ -509,7 +499,7 @@ def test_string_method():
     pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
     assert r.shape == s.shape
 
-    r = r.tiles()
+    r = tile(r)
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == np.bool_
@@ -524,7 +514,7 @@ def test_string_method():
     pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
     pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(2))
 
-    r = r.tiles()
+    r = tile(r)
     for i, c in enumerate(r.chunks):
         assert c.index == (i, 0)
         pd.testing.assert_index_equal(c.index_value.to_pandas(),
@@ -548,7 +538,7 @@ def test_string_method():
     assert r.op.output_types[0] == OutputType.scalar
     assert r.dtype == s.dtype
 
-    r = r.tiles()
+    r = tile(r)
     assert len(r.chunks) == 1
     assert r.chunks[0].op.output_types[0] == OutputType.scalar
     assert r.chunks[0].dtype == s.dtype
@@ -557,7 +547,7 @@ def test_string_method():
     assert r.op.output_types[0] == OutputType.series
     assert r.dtype == s.dtype
 
-    r = r.tiles()
+    r = tile(r)
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == s.dtype
@@ -572,7 +562,7 @@ def test_string_method():
     pd.testing.assert_index_equal(r.index_value.to_pandas(), s.index)
     pd.testing.assert_index_equal(r.columns_value.to_pandas(), pd.RangeIndex(1))
 
-    r = r.tiles()
+    r = tile(r)
     for i, c in enumerate(r.chunks):
         assert c.index == (i, 0)
         pd.testing.assert_index_equal(c.index_value.to_pandas(),
@@ -597,7 +587,7 @@ def test_datetime_method():
     assert r.op.output_types[0] == OutputType.series
     assert r.name == s.dt.year.name
 
-    r = r.tiles()
+    r = tile(r)
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == s.dt.year.dtype
@@ -618,7 +608,7 @@ def test_series_isin():
     a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=10)
     b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=2)
 
-    r = a.isin(b).tiles()
+    r = tile(a.isin(b))
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == np.dtype('bool')
@@ -634,7 +624,7 @@ def test_series_isin():
     a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=2)
     b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=4)
 
-    r = a.isin(b).tiles()
+    r = tile(a.isin(b))
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == np.dtype('bool')
@@ -650,7 +640,7 @@ def test_series_isin():
     a = from_pandas_series(pd.Series([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), chunk_size=2)
     b = from_pandas_series(pd.Series([2, 1, 9, 3]), chunk_size=2)
 
-    r = a.isin(b).tiles()
+    r = tile(a.isin(b))
     for i, c in enumerate(r.chunks):
         assert c.index == (i,)
         assert c.dtype == np.dtype('bool')
@@ -685,7 +675,7 @@ def test_cut():
     assert isinstance(r, SERIES_TYPE)
     assert isinstance(b, TENSOR_TYPE)
 
-    r = r.tiles()
+    r = tile(r)
 
     assert len(r.chunks) == 2
     for c in r.chunks:
@@ -697,7 +687,7 @@ def test_cut():
     assert len(r) == len(s)
     assert 'Categorical' in repr(r)
 
-    r = r.tiles()
+    r = tile(r)
 
     assert len(r.chunks) == 2
     for c in r.chunks:
@@ -739,7 +729,7 @@ def test_drop():
     r = df.drop(columns=['c1'])
     pd.testing.assert_index_equal(r.index_value.to_pandas(), raw.index)
 
-    tiled = r.tiles()
+    tiled = tile(r)
     start = 0
     for c in tiled.chunks:
         raw_index = raw.index[start: start + c.shape[0]]
@@ -784,14 +774,14 @@ def test_drop_duplicates():
         df.drop_duplicates(subset='c8')
 
     # test auto method selection
-    assert df.drop_duplicates().tiles().chunks[0].op.method == 'tree'
+    assert tile(df.drop_duplicates()).chunks[0].op.method == 'tree'
     # subset size less than chunk_store_limit
-    assert df.drop_duplicates(subset=['c1', 'c3']).tiles().chunks[0].op.method == 'subset_tree'
+    assert tile(df.drop_duplicates(subset=['c1', 'c3'])).chunks[0].op.method == 'subset_tree'
     with option_context({'chunk_store_limit': 5}):
         # subset size greater than chunk_store_limit
-        assert df.drop_duplicates(subset=['c1', 'c3']).tiles().chunks[0].op.method == 'tree'
-    assert df.drop_duplicates(subset=['c1', 'c7']).tiles().chunks[0].op.method == 'tree'
-    assert df['c7'].drop_duplicates().tiles().chunks[0].op.method == 'tree'
+        assert tile(df.drop_duplicates(subset=['c1', 'c3'])).chunks[0].op.method == 'tree'
+    assert tile(df.drop_duplicates(subset=['c1', 'c7'])).chunks[0].op.method == 'tree'
+    assert tile(df['c7'].drop_duplicates()).chunks[0].op.method == 'tree'
 
     s = df['c7']
     with pytest.raises(ValueError):
@@ -805,7 +795,7 @@ def test_memory_usage():
     raw = pd.DataFrame(data)
 
     df = from_pandas_df(raw, chunk_size=(500, 2))
-    r = df.memory_usage().tiles()
+    r = tile(df.memory_usage())
 
     assert isinstance(r, SERIES_TYPE)
     assert r.shape == (6,)
@@ -813,14 +803,14 @@ def test_memory_usage():
     assert r.chunks[0].op.stage is None
 
     df = from_pandas_df(raw, chunk_size=(100, 3))
-    r = df.memory_usage(index=True).tiles()
+    r = tile(df.memory_usage(index=True))
 
     assert isinstance(r, SERIES_TYPE)
     assert r.shape == (6,)
     assert len(r.chunks) == 2
     assert r.chunks[0].op.stage == OperandStage.reduce
 
-    r = df.memory_usage(index=False).tiles()
+    r = tile(df.memory_usage(index=False))
 
     assert isinstance(r, SERIES_TYPE)
     assert r.shape == (5,)
@@ -830,7 +820,7 @@ def test_memory_usage():
     raw = pd.Series(np.ones(shape=500).astype('object'), name='s')
 
     series = from_pandas_series(raw)
-    r = series.memory_usage().tiles()
+    r = tile(series.memory_usage())
 
     assert isinstance(r, TENSOR_TYPE)
     assert r.shape == ()
@@ -838,7 +828,7 @@ def test_memory_usage():
     assert r.chunks[0].op.stage is None
 
     series = from_pandas_series(raw, chunk_size=100)
-    r = series.memory_usage().tiles()
+    r = tile(series.memory_usage())
 
     assert isinstance(r, TENSOR_TYPE)
     assert r.shape == ()
@@ -851,7 +841,7 @@ def test_rebalance():
     df = from_pandas_df(raw)
 
     df2 = df.rebalance()
-    df2 = df2.tiles()
+    df2 = tile(df2)
 
     assert isinstance(df2.op, type(df.op))
 
@@ -864,13 +854,13 @@ def test_shift():
     df = from_pandas_df(raw, chunk_size=5)
 
     df2 = df.shift(1)
-    df2 = df2.tiles()
+    df2 = tile(df2)
 
     for c in df2.chunks:
         pd.testing.assert_index_equal(c.dtypes.index, c.columns_value.to_pandas())
 
     df2 = df.shift(1, freq='D')
-    df2 = df2.tiles()
+    df2 = tile(df2)
 
     for c in df2.chunks:
         pd.testing.assert_index_equal(c.dtypes.index, c.columns_value.to_pandas())

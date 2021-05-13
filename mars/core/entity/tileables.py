@@ -89,6 +89,9 @@ class OperandTilesHandler:
         tiled_results = [t.data if hasattr(t, 'data') else t
                          for t in tiled_result]
         assert len(tileables) == len(tiled_results)
+        if any(inspect.isgenerator(r) for r in tiled_results):  # pragma: no cover
+            raise TypeError(f'tiled result cannot be generator '
+                            f'when tiling {op}')
         cls._assign_to(tiled_results, tileables)
         return tileables
 
@@ -130,13 +133,6 @@ class OperandTilesHandler:
         else:
             raise NotImplementedError(
                 f'{type(op)} does not support tile') from cause
-
-    def inplace_tile(self, to_tile):
-        if not to_tile.is_coarse():
-            return to_tile
-        dispatched = self.dispatch(to_tile.op)
-        self._assign_to([d.data for d in dispatched], to_tile.op.outputs)
-        return to_tile
 
     @classmethod
     def tiles(cls, to_tile: TileableType):
@@ -344,9 +340,6 @@ class TileableData(EntityData, _ExecutableMixin):
     @enter_mode(build=True)
     def detach(self, entity):
         self._entities.discard(entity)
-
-    def _inplace_tile(self):
-        return handler.inplace_tile(self)
 
 
 class Tileable(Entity):

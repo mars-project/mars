@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, TilesError
+from ...core import ENTITY_TYPE, TilesError, recursive_tile
 from ...context import get_context
 from ...serialize import AnyField, BoolField, KeyField
 from ...tensor.core import TensorOrder
-from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ._check_targets import _check_targets
 
@@ -100,7 +99,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             score = mt.equal(y_true, y_pred)
 
         result = _weighted_sum(score, op.sample_weight, op.normalize)
-        return [recursive_tile(result)]
+        return [(yield from recursive_tile(result))]
 
 
 def _weighted_sum(sample_score, sample_weight, normalize=False):

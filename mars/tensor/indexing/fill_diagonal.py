@@ -16,8 +16,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import KeyField, AnyField, BoolField, Int32Field
-from ...core import ENTITY_TYPE, TilesError
-from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
+from ...core import ENTITY_TYPE, TilesError, recursive_tile
+from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -100,10 +100,11 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
             val = val[:size]
 
         if is_val_tensor and val.ndim > 0:
-            val = recursive_tile(val)
+            val = yield from recursive_tile(val)
             val = val.rechunk({0: val.size})
 
-        return recursive_tile(val) if is_val_tensor else val
+        return (yield from recursive_tile(val)) \
+            if is_val_tensor else val
 
     @staticmethod
     def _gen_val(val, diag_idx, cum_sizes):
@@ -235,7 +236,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
         is_in_tensor_tall = cls._is_tall(in_tensor)
 
         if op.val.ndim > 0:
-            val = cls._process_val(op.val, in_tensor, op.wrap)
+            val = yield from cls._process_val(op.val, in_tensor, op.wrap)
         else:
             val = op.val
 
@@ -255,7 +256,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                         sub_val = val
                     fill_diagonal(sub_tensor, sub_val, wrap=False)
                 out_tensor = concatenate(sub_tensors)
-                return [recursive_tile(out_tensor)]
+                return [(yield from recursive_tile(out_tensor))]
             else:
                 return cls._tile_2d(op, val)
         else:

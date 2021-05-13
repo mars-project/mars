@@ -125,11 +125,6 @@ class Entity(Serializable):
         new_entity.data = handler.tiles(self.data)
         return new_entity
 
-    def _inplace_tile(self):
-        from .tileables import handler
-
-        return handler.inplace_tile(self)
-
     def __getattr__(self, attr):
         return getattr(self._data, attr)
 

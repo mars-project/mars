@@ -31,7 +31,7 @@ def refresh_tileable_shape(tileable):
 def tile(tileable, *tileables: TileableType):
     from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 
-    target_tileables = [tileable] + list(tileables)
+    raw_tileables = target_tileables = [tileable] + list(tileables)
     target_tileables = [t.data if hasattr(t, 'data') else t
                         for t in target_tileables]
 
@@ -46,9 +46,10 @@ def tile(tileable, *tileables: TileableType):
     next(chunk_graph_builder.build())
 
     if len(tileables) == 0:
-        return tile_context[target_tileables[0]]
+        return type(tileable)(tile_context[target_tileables[0]])
     else:
-        return [tile_context[t] for t in target_tileables]
+        return [type(raw_t)(tile_context[t]) for raw_t, t
+                in zip(raw_tileables, target_tileables)]
 
 
 def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \

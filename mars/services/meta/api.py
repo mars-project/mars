@@ -221,6 +221,13 @@ class MetaAPI(AbstractMetaAPI):
                              object_id: str):
         return await self._meta_store.del_meta(object_id)
 
+    @del_chunk_meta.batch
+    async def batch_del_chunk_meta(self, args_list, kwargs_list):
+        del_chunk_metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            del_chunk_metas.append(self._meta_store.del_meta.delay(*args, **kwargs))
+        return await self._meta_store.del_meta.batch(*del_chunk_metas)
+
     @extensible
     async def add_chunk_bands(self,
                               object_id: str,

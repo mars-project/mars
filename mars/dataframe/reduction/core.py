@@ -19,9 +19,10 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 import numpy as np
 import pandas as pd
 
-from ...core import OutputType, ENTITY_TYPE, is_build_mode, is_kernel_mode, enter_mode
+from ...core import OutputType, ENTITY_TYPE, is_build_mode, \
+    is_kernel_mode, enter_mode, recursive_tile
 from ...core.operand import OperandStage
-from ...utils import tokenize, recursive_tile
+from ...utils import tokenize
 from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
 from ..core import SERIES_TYPE
 from ..utils import parse_index, build_df, build_empty_df, build_series, \
@@ -165,7 +166,7 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
             output_type = OutputType.scalar
             dtypes, index = out_df.dtype, None
 
-        out_df = recursive_tile(in_df.agg(
+        out_df = yield from recursive_tile(in_df.agg(
             cls.get_reduction_callable(op), axis=op.axis or 0, _numeric_only=op.numeric_only,
             _bool_only=op.bool_only, _combine_size=op.combine_size, _output_type=output_type,
             _dtypes=dtypes, _index=index

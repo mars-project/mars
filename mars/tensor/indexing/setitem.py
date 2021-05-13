@@ -17,10 +17,10 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
+from ...core import ENTITY_TYPE, TilesError, recursive_tile
 from ...serialize import KeyField, ListField, AnyField
 from ...tensor import tensor as astensor
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import check_chunks_unknown_shape
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
@@ -92,7 +92,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         if is_value_tensor and value.ndim > 0:
             check_chunks_unknown_shape([indexed, value], TilesError)
 
-            value = recursive_tile(
+            value = yield from recursive_tile(
                 broadcast_to(value, indexed.shape).astype(op.input.dtype))
             nsplits = indexed.nsplits
             value = value.rechunk(nsplits)._inplace_tile()

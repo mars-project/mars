@@ -18,7 +18,7 @@ from functools import partial
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import ValueType, Int32Field, \
     ListField, StringField, BoolField, AnyField
@@ -53,7 +53,8 @@ class PSRSOperandMixin:
             chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
             if axis_shape % chunk_size > 0:
                 chunk_sizes[-1] += axis_shape % chunk_size
-            in_data = in_data.rechunk({op.axis: tuple(chunk_sizes)})._inplace_tile()
+            in_data = yield from recursive_tile(
+                in_data.rechunk({op.axis: tuple(chunk_sizes)}))
             axis_chunk_shape = in_data.chunk_shape[op.axis]
 
         left_chunk_shape = in_data.chunk_shape[:op.axis] + in_data.chunk_shape[op.axis + 1:]

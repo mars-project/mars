@@ -11,7 +11,7 @@ cluster:
   node_timeout: 120
   node_check_interval: 1
 storage:
-  backends: [plasma]
+  backends: [shared_memory]
   plasma:
     store_memory: 20M
 meta:

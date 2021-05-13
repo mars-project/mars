@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialize import AnyField, Int32Field, BoolField, StringField
 from ...tensor.utils import filter_inputs
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
@@ -128,9 +128,11 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
         def rechunk_input(inp, axis=None):
             axis = axis if axis is not None else op.axis
             if isinstance(inp, DATAFRAME_TYPE):
-                inp = inp.rechunk(op.input.nsplits)._inplace_tile()
+                inp = yield from recursive_tile(
+                    inp.rechunk(op.input.nsplits))
             elif isinstance(inp, SERIES_TYPE):
-                inp = inp.rechunk({0: op.input.nsplits[axis]})._inplace_tile()
+                inp = yield from recursive_tile(
+                    inp.rechunk({0: op.input.nsplits[axis]}))
             return inp
 
         def get_tiled_chunk(obj, index, axis=None):
@@ -143,8 +145,8 @@ class DataFrameWhere(DataFrameOperand, DataFrameOperandMixin):
                 return obj
 
         # TODO support axis alignment for three objects
-        cond = rechunk_input(op.cond, axis=0)
-        other = rechunk_input(op.other)
+        cond = yield from rechunk_input(op.cond, axis=0)
+        other = yield from rechunk_input(op.other)
 
         chunks = []
         for c in op.input.chunks:

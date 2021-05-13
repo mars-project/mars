@@ -16,6 +16,7 @@ import asyncio
 import random
 import sys
 import weakref
+from collections import defaultdict
 from string import ascii_letters, digits
 from typing import Any, Dict, List, Tuple, Optional
 from dataclasses import dataclass
@@ -84,17 +85,20 @@ class ShmStorageFileObject(StorageFileObject):
 
 class _SharedMemoryManager:
     def __init__(self):
-        self._object_id_to_shms = dict()
-        self._object_id_to_buffer = dict()
+        self._object_id_to_shms = defaultdict(list)
+        self._object_id_to_buffer = defaultdict(list)
 
     def register(self, object_id: Any, shm: SharedMemory):
         # SharedMemory will release buffer when it's gc collected
         # here we create the reference from buffer to SharedMemory
+        i = len(self._object_id_to_shms[object_id])
+
         def _cb(_):
-            del self._object_id_to_shms[object_id]
-            del self._object_id_to_buffer[object_id]
-        self._object_id_to_shms[object_id] = shm
-        self._object_id_to_buffer[object_id] = weakref.ref(shm.buf, _cb)
+            self._object_id_to_shms[object_id].remove(i)
+            self._object_id_to_buffer[object_id].remove(i)
+
+        self._object_id_to_shms[object_id].append(shm)
+        self._object_id_to_buffer[object_id].append(weakref.ref(shm.buf, _cb))
 
 
 _shared_memory_manager = _SharedMemoryManager()
@@ -179,7 +183,10 @@ class SharedMemoryStorage(StorageBackend):
     async def delete(self, object_id):
         shm = SharedMemory(name=object_id)
         shm.unlink()
-        self._object_ids.remove(object_id)
+        try:
+            self._object_ids.remove(object_id)
+        except KeyError:
+            return
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:

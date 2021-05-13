@@ -946,20 +946,6 @@ def stack_back(flattened, raw):
     return _stack(result, raw)
 
 
-def recursive_tile(tileable):
-    q = [tileable]
-    while q:
-        t = q[-1]
-        cs = [c for c in t.inputs if c.is_coarse()]
-        if cs:
-            q.extend(cs)
-            continue
-        t._inplace_tile()
-        q.pop()
-
-    return tileable
-
-
 def replace_inputs(obj, old, new):
     new_inputs = []
     for inp in obj.inputs or []:

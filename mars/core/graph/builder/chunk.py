@@ -123,6 +123,8 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                         tiled_tileable = self._get_data(tiled_tileable)
 
                         chunks = tiled_tileable.chunks
+                        if chunks is None:
+                            raise TypeError
                         chunks = [self._get_data(c) for c in chunks]
                         self._add_nodes(chunk_graph, chunks, visited)
                         self.tile_context[out] = tiled_tileable
