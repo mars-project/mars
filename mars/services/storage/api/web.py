@@ -52,7 +52,7 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         result = await oscar_api.get(data_key)
         self.write(serialize_serializable(result))
 
-    @web_api('(?P<data_key>[^/]+)', method='post', arg_filter={'action': ''})
+    @web_api('(?P<data_key>[^/]+)', method='post')
     async def get_data_by_post(self, session_id: str, data_key: str):
         body_args = deserialize_serializable(self.request.body) if self.request.body else None
         conditions = body_args.get('conditions')
@@ -63,11 +63,8 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
 
     @web_api('(?P<data_key>[^/]+)', method='put')
     async def put_data(self, session_id: str, data_key: str):
-        level = self.get_argument('level', None)
-        if level is not None:
-            level = getattr(StorageLevel, level.upper())
-        else:
-            level = StorageLevel.MEMORY
+        level = self.get_argument('level', None) or 'MEMORY'
+        level = getattr(StorageLevel, level.upper())
 
         oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
         res = await oscar_api.put(

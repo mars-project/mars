@@ -164,3 +164,7 @@ async def test_web_storage_api():
 
         ret_value = await web_storage_api.get(t.chunks[0].key)
         np.testing.assert_array_equal(value, ret_value)
+
+        sliced_value = await web_storage_api.get(
+            t.chunks[0].key, conditions=[slice(3, 5), slice(None, None)])
+        np.testing.assert_array_equal(value[3:5, :], sliced_value)

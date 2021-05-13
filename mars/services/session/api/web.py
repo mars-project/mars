@@ -60,7 +60,7 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
         session_id = session_id or None
         oscar_api = await self._get_oscar_session_api(session_id)
         res = await oscar_api.get_last_idle_time(session_id)
-        self.write(str(res))
+        self.write(str(res) if res else '')
 
 
 web_handlers = {
@@ -90,6 +90,4 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         session_id = session_id or ''
         addr = f'{self._address}/api/session/{session_id}?action=get_last_idle_time'
         res = await self._request_url(addr)
-        if res.body == 'None':
-            return None
-        return float(res.body)
+        return float(res.body) if res.body else None

@@ -65,6 +65,8 @@ async def test_execute(create_cluster):
     with pytest.raises(ValueError):
         await session.fetch(b[b < 0.6])
 
+    del a, b
+
 
 @pytest.mark.asyncio
 async def test_iterative_tiling(create_cluster):
@@ -104,6 +106,8 @@ async def _run_web_session_test(web_address):
     assert info.exception() is None
     assert info.progress() == 1
     np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
+    del a, b
+
     Session.reset_default()
     await session.destroy()
 
