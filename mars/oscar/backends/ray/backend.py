@@ -44,7 +44,7 @@ class RayActorBackend(BaseActorBackend):
         n_process: int = None,
         **kwargs
     ):
-        pg_name, bundle_index, process_index = process_address_to_placement(address)
+        pg_name, bundle_index, _ = process_address_to_placement(address)
         pg = get_placement_group(pg_name) if pg_name else None
         if not pg:
             bundle_index = -1
