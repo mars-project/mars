@@ -57,6 +57,7 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
     @web_api('(?P<session_id>[^/]*)', method='get',
              arg_filter={'action': 'get_last_idle_time'})
     async def get_last_idle_time(self, session_id: str):
+        session_id = session_id or None
         oscar_api = await self._get_oscar_session_api(session_id)
         res = await oscar_api.get_last_idle_time(session_id)
         self.write(str(res))
@@ -86,6 +87,7 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         return bool(int(res.body))
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+        session_id = session_id or ''
         addr = f'{self._address}/api/session/{session_id}?action=get_last_idle_time'
         res = await self._request_url(addr)
         if res.body == 'None':

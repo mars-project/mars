@@ -66,9 +66,8 @@ async def actor_pool():
             'port': get_next_port(),
             'web_handlers': {TestAPIHandler.get_root_pattern(): TestAPIHandler},
         }
-        web_ref = await mo.create_actor(
+        await mo.create_actor(
             WebActor, web_config, address=pool.external_address)
-        await web_ref.start()
         yield pool, web_config['port']
 
 
@@ -103,7 +102,7 @@ async def test_web_api(actor_pool):
 
     with pytest.raises(HTTPError) as excinfo:
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/non_exist')
-    assert excinfo.value.code == 405
+    assert excinfo.value.code == 404
 
     with pytest.raises(ValueError):
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_error')

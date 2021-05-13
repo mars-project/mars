@@ -86,19 +86,11 @@ def test_sync_execute(ray_cluster, create_cluster):
     assert get_default_session() is None
 
 
-@require_ray
-@pytest.mark.asyncio
-async def test_web_session(ray_cluster, create_cluster):
-    await test_local.test_web_session(create_cluster)
-    web_address = create_cluster.web_address
-    assert await ray.remote(_run_web_session).remote(web_address)
-    assert await ray.remote(_sync_web_session_test).remote(web_address)
-
-
 def _run_web_session(web_address):
     register_ray_serializers()
     import asyncio
-    asyncio.new_event_loop().run_until_complete(test_local.web_session_test(web_address))
+    asyncio.new_event_loop().run_until_complete(
+        test_local._run_web_session_test(web_address))
     return True
 
 
@@ -110,3 +102,12 @@ def _sync_web_session_test(web_address):
     b = a.execute(show_progress=False)
     assert b is a
     return True
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_web_session(ray_cluster, create_cluster):
+    await test_local.test_web_session(create_cluster)
+    web_address = create_cluster.web_address
+    assert await ray.remote(_run_web_session).remote(web_address)
+    assert await ray.remote(_sync_web_session_test).remote(web_address)

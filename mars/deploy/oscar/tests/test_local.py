@@ -90,21 +90,7 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.max_val <= 30
 
 
-@pytest.mark.asyncio
-async def test_web_session(create_cluster):
-    session_id = str(uuid.uuid4())
-    web_address = create_cluster.web_address
-    session = await Session.init(web_address, session_id)
-    session.as_default()
-    assert isinstance(session, WebSession)
-    await test_execute(create_cluster)
-    await test_iterative_tiling(create_cluster)
-    Session.reset_default()
-    await session.destroy()
-    await web_session_test(web_address)
-
-
-async def web_session_test(web_address):
+async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await Session.init(web_address, session_id)
     session.as_default()
@@ -120,6 +106,20 @@ async def web_session_test(web_address):
     np.testing.assert_equal(raw + 1, (await session.fetch(b))[0])
     Session.reset_default()
     await session.destroy()
+
+
+@pytest.mark.asyncio
+async def test_web_session(create_cluster):
+    session_id = str(uuid.uuid4())
+    web_address = create_cluster.web_address
+    session = await Session.init(web_address, session_id)
+    session.as_default()
+    assert isinstance(session, WebSession)
+    await test_execute(create_cluster)
+    await test_iterative_tiling(create_cluster)
+    Session.reset_default()
+    await session.destroy()
+    await _run_web_session_test(web_address)
 
 
 def test_sync_execute():

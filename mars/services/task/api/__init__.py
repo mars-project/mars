@@ -14,3 +14,4 @@
 
 from .core import AbstractTaskAPI
 from .oscar import TaskAPI
+from .web import WebTaskAPI

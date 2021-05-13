@@ -14,4 +14,7 @@
 
 from .core import MarsRequestHandler, web_api, \
     MarsServiceWebAPIHandler, MarsWebAPIClientMixin
-from .supervisor import WebActor
+try:
+    from .supervisor import WebActor
+except ImportError:  # pragma: no cover
+    pass

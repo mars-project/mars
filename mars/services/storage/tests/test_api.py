@@ -19,11 +19,13 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
+import mars.tensor as mt
+from mars.core import tile
 from mars.serialize import dataserializer
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import MockStorageAPI
+from mars.services.storage.api import MockStorageAPI, WebStorageAPI
 from mars.services.web import WebActor
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
@@ -135,7 +137,7 @@ async def test_web_storage_api():
         await MockSessionAPI.create(
             session_id=session_id,
             address=pool.external_address)
-        await MockMetaAPI.create(
+        meta_api = await MockMetaAPI.create(
             session_id=session_id,
             address=pool.external_address)
         await MockStorageAPI.create(
@@ -149,3 +151,16 @@ async def test_web_storage_api():
                 StorageWebAPIHandler.get_root_pattern(): StorageWebAPIHandler
             }
         }
+        await mo.create_actor(WebActor, web_config, address=pool.external_address)
+
+        web_storage_api = WebStorageAPI(
+            session_id, f'http://127.0.0.1:{web_config["port"]}')
+
+        value = np.random.rand(10, 10)
+        t = mt.random.rand(10, 10)
+        t = tile(t)
+        await meta_api.set_chunk_meta(t.chunks[0], bands=[(pool.external_address, 'numa-0')])
+        await web_storage_api.put(t.chunks[0].key, value)
+
+        ret_value = await web_storage_api.get(t.chunks[0].key)
+        np.testing.assert_array_equal(value, ret_value)

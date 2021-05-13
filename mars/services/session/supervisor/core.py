@@ -54,7 +54,7 @@ class SessionManagerActor(mo.Actor):
         if create_services:
             yield session_actor_ref.create_services()
 
-        yield session_actor_ref
+        raise mo.Return(session_actor_ref)
 
     def get_session_ref(self,
                         session_id: str):

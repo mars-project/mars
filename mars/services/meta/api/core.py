@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import List
 
-from ....utils import extensible
 
-
-class AbstractMetaAPI:
-    @extensible
+class AbstractMetaAPI(ABC):
+    @abstractmethod
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None):

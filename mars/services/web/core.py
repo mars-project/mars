@@ -18,13 +18,15 @@ import logging
 import re
 import sys
 from collections import defaultdict
-from email.message import Message
 from typing import Callable, Dict, NamedTuple, Optional
 
-from bokeh.embed import server_document
 from tornado import httpclient, web
 
 from ...utils import serialize_serializable, deserialize_serializable
+
+if sys.version_info[:2] == (3, 6):
+    # make sure typing works
+    re.Pattern = type(re.compile(r'.*'))
 
 logger = logging.getLogger(__name__)
 _ROOT_PLACEHOLDER = 'ROOT_PLACEHOLDER'
@@ -47,6 +49,7 @@ class MarsRequestHandler(web.RequestHandler):  # pragma: no cover
             request=self.request, root_path=self.get_root_path(), **kwargs))
 
     def bokeh_server_document(self, url, resources="default", arguments=None):
+        from bokeh.embed import server_document
         raw_script = server_document(
             f'{_ROOT_PLACEHOLDER}/{url}', relative_urls=True, resources=resources, arguments=arguments)
 
@@ -82,7 +85,7 @@ def web_api(sub_pattern: str, method: str, arg_filter: Optional[Dict] = None):
                 if inspect.isawaitable(res):
                     res = await res
                 return res
-            except:
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 exc_type, exc, tb = sys.exc_info()
                 err_msg = f'{exc_type.__name__} when handling request with ' \
                           f'{type(self).__name__}.{func.__name__}'
@@ -125,7 +128,7 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
     @functools.lru_cache(100)
     def _route_sub_path(self, http_method: str, sub_path: str):
         handlers = self._method_to_handlers[http_method.lower()]  # type: Dict[Callable, _WebApiDef]
-        method, args, kwargs = None, None, None
+        method, kwargs = None, None
         for handler_method, web_api_def in handlers.items():
             match = web_api_def.sub_pattern_compiled.match(sub_path)
             if match is not None:
@@ -140,7 +143,7 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
         if method is not None:
             return method, kwargs
         else:
-            raise web.HTTPError(405, f'{sub_path} does not match any defined APIs '
+            raise web.HTTPError(404, f'{sub_path} does not match any defined APIs '
                                 f'with method {http_method.upper()}')
 
     def _make_handle_http_method(http_method: str):
@@ -186,16 +189,3 @@ class MarsWebAPIClientMixin:
                 res.rethrow()
             else:
                 raise exc.with_traceback(tb)
-
-    @staticmethod
-    def _make_multipart_form(body_data: Dict):
-        msg = Message()
-        msg.add_header('Content-Type', 'multipart/form-data')
-
-        for key, val in body_data.items():
-            part = Message()
-            part.add_header('Content-Disposition', f'form-data; name="{key}"')
-            part.set_payload(val)
-            msg.attach(part)
-
-        return msg.as_bytes()

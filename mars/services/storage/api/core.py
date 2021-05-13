@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import Any, List
 
 from ....storage.base import StorageLevel
-from ....utils import extensible
 from ..core import DataInfo
 
 
-class AbstractStorageAPI:
-    @extensible
+class AbstractStorageAPI(ABC):
+    @abstractmethod
     async def get(self, data_key: str, conditions: List = None) -> Any:
         """
         Get object by data key.
@@ -38,7 +38,7 @@ class AbstractStorageAPI:
             object
         """
 
-    @extensible
+    @abstractmethod
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:

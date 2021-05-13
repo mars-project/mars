@@ -23,6 +23,7 @@ from mars.core import TileableGraph, TileableGraphBuilder
 from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
+from mars.services.web import WebActor
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus
 
@@ -135,20 +136,17 @@ async def test_task_service_web_api(actor_pools):
     await start_services(
         NodeRole.WORKER, config, address=worker_pool.external_address)
 
-    from mars.services.session.web import WebSessionAPI
-    from mars.services.meta.web import WebMetaAPI
-    from mars.services.task.web import WebTaskAPI
+    from mars.services.session import WebSessionAPI
+    from mars.services.task import WebTaskAPI
 
     web_actor = await mo.actor_ref(WebActor.default_uid(), address=sv_pool.external_address)
     web_address = await web_actor.get_web_address()
     session_id = 'test_session'
-    session_api = await WebSessionAPI.create(web_address)
+    session_api = WebSessionAPI(web_address)
     await session_api.create_session(session_id)
     assert await session_api.get_last_idle_time() == \
            await (await SessionAPI.create(sv_pool.external_address)).get_last_idle_time()
-    task_api = await WebTaskAPI.create(web_address, session_id, sv_pool.external_address)
-    # create mock meta and storage APIs
-    _ = await WebMetaAPI.create(web_address, session_id, sv_pool.external_address)
+    task_api = WebTaskAPI(session_id, web_address)
     storage_api = await MockStorageAPI.create(session_id, worker_pool.external_address)
 
     def f1():

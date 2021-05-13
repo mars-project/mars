@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import Union
 
 
-class AbstractSessionAPI:
+class AbstractSessionAPI(ABC):
+    @abstractmethod
     async def create_session(self, session_id: str) -> str:
         """
         Create session and return address.
@@ -31,6 +33,7 @@ class AbstractSessionAPI:
             Session address.
         """
 
+    @abstractmethod
     async def delete_session(self, session_id: str):
         """
         Delete session.
@@ -41,6 +44,7 @@ class AbstractSessionAPI:
             Session ID.
         """
 
+    @abstractmethod
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         """
         Get session last idle time.

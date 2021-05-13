@@ -47,25 +47,22 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         return await StorageAPI.create(session_id, bands[0][0])
 
     @web_api('(?P<data_key>[^/]+)', method='get')
-    async def get(self, session_id: str, data_key: str):
+    async def get_data(self, session_id: str, data_key: str):
         oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
         result = await oscar_api.get(data_key)
         self.write(serialize_serializable(result))
 
     @web_api('(?P<data_key>[^/]+)', method='post', arg_filter={'action': ''})
-    async def get_by_post(self, session_id: str, data_key: str):
-        conditions_raw = self.get_argument('conditions', None)
-        if conditions_raw is not None:
-            conditions = deserialize_serializable(conditions_raw)
-        else:
-            conditions = None
+    async def get_data_by_post(self, session_id: str, data_key: str):
+        body_args = deserialize_serializable(self.request.body) if self.request.body else None
+        conditions = body_args.get('conditions')
 
         oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
         result = await oscar_api.get(data_key, conditions)
         self.write(serialize_serializable(result))
 
     @web_api('(?P<data_key>[^/]+)', method='put')
-    async def put(self, session_id: str, data_key: str):
+    async def put_data(self, session_id: str, data_key: str):
         level = self.get_argument('level', None)
         if level is not None:
             level = getattr(StorageLevel, level.upper())
@@ -73,8 +70,9 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
             level = StorageLevel.MEMORY
 
         oscar_api = await self._get_storage_api_by_object_id(session_id, data_key)
-        await oscar_api.put(
-            data_key, deserialize_serializable(self.get_argument('data')), level)
+        res = await oscar_api.put(
+            data_key, deserialize_serializable(self.request.body), level)
+        self.write(serialize_serializable(res))
 
 
 web_handlers = {
@@ -92,12 +90,13 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
         if conditions is None:
             res = await self._request_url(path)
         else:
+            body = serialize_serializable({
+                'conditions': conditions,
+            })
             res = await self._request_url(
-                path, method='post',
-                headers={'Content-Type': 'multipart/form-data'},
-                body=self._make_multipart_form({
-                    'conditions': serialize_serializable(conditions),
-                }))
+                path, method='POST',
+                headers={'Content-Type': 'application/octet-stream'},
+                body=body)
         return deserialize_serializable(res.body)
 
     async def put(self, data_key: str,
@@ -106,9 +105,7 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/storage/{data_key}' \
                f'?level={level.name.lower()}'
         res = await self._request_url(
-            path, method='put',
-            headers={'Content-Type': 'multipart/form-data'},
-            body=self._make_multipart_form({
-                'data': serialize_serializable(obj),
-            }))
+            path, method='PUT',
+            headers={'Content-Type': 'application/octet-stream'},
+            body=serialize_serializable(obj))
         return deserialize_serializable(res.body)

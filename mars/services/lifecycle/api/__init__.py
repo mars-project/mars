@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import AbstractSessionAPI, SessionAPI, MockSessionAPI, WebSessionAPI
-from .supervisor import SessionManagerActor, SessionActor
+from .core import AbstractLifecycleAPI
+from .oscar import LifecycleAPI, MockLifecycleAPI
+from .web import WebLifecycleAPI

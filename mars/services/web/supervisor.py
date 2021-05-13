@@ -51,7 +51,7 @@ class WebActor(mo.Actor):
         self._config = config
         self._web_server = None
 
-    async def start(self):
+    async def __post_create__(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
         supervisor_addr = self.address
 
@@ -95,11 +95,14 @@ class WebActor(mo.Actor):
                 if retrial == 0:
                     raise
 
+    async def __pre_destroy__(self):
+        if self._web_server is not None:
+            self._web_server.stop()
+
     def get_web_address(self):
         return self._web_address
 
 
 async def start(config: dict, address: str = None):
-    ref = await mo.create_actor(WebActor, config=config.get('web', {}),
-                                address=address)
-    await ref.start()
+    await mo.create_actor(WebActor, config=config.get('web', {}),
+                          uid=WebActor.default_uid(), address=address)

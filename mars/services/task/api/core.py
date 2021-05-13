@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from abc import ABC, abstractmethod
 from typing import List, Union
 
 from ....core import Tileable
-from ..core import TileableGraph
+from ..core import TileableGraph, TaskResult
 
 
-class AbstractTaskAPI:
+class AbstractTaskAPI(ABC):
+    @abstractmethod
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
@@ -44,6 +46,7 @@ class AbstractTaskAPI:
             Task ID.
         """
 
+    @abstractmethod
     async def wait_task(self, task_id: str, timeout: float = None):
         """
         Wait for a task to finish.
@@ -56,6 +59,7 @@ class AbstractTaskAPI:
             Second to timeout
         """
 
+    @abstractmethod
     async def cancel_task(self, task_id: str):
         """
         Cancel task.
@@ -66,6 +70,23 @@ class AbstractTaskAPI:
             Task ID.
         """
 
+    @abstractmethod
+    async def get_task_result(self, task_id: str) -> TaskResult:
+        """
+        Get task status.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        result : TaskResult
+            Task result.
+        """
+
+    @abstractmethod
     async def get_task_progress(self,
                                 task_id: str) -> float:
         """
@@ -82,6 +103,7 @@ class AbstractTaskAPI:
             Get task progress.
         """
 
+    @abstractmethod
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         """
         Get fetch tileable for a task.
@@ -97,6 +119,7 @@ class AbstractTaskAPI:
             Fetch tileable list.
         """
 
+    @abstractmethod
     async def get_last_idle_time(self) -> Union[float, None]:
         """
         Get last idle time from task manager.
