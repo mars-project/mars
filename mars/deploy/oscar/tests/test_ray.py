@@ -26,7 +26,7 @@ from . import test_local
 ray = lazy_import('ray')
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ray_cluster():
     try:
         from ray.cluster_utils import Cluster
@@ -125,5 +125,6 @@ async def test_optional_supervisor_node(ray_cluster, test_option):
                                worker_cpu=2,
                                worker_mem=1 * 1024 ** 3,
                                config=config)
-    assert client.address == 'ray://test_cluster/0/0'
-    assert client._cluster._worker_addresses == worker_addresses
+    async with client:
+        assert client.address == 'ray://test_cluster/0/0'
+        assert client._cluster._worker_addresses == worker_addresses
