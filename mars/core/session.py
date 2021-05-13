@@ -14,6 +14,7 @@
 
 import asyncio
 import concurrent.futures
+import functools
 import threading
 import uuid
 import warnings
@@ -29,9 +30,10 @@ from .typing import TileableType
 _loop = asyncio.new_event_loop()
 _get_session_lock = asyncio.Lock(loop=_loop)
 _pool = concurrent.futures.ThreadPoolExecutor(1)
+_gc_pool = concurrent.futures.ThreadPoolExecutor()
 
 
-def _wrap_in_thread(func: Callable):
+def _wrap_in_thread(pool_or_func):
     """
     Function is those wrapping async function,
     when there is a running event loop,
@@ -39,28 +41,35 @@ def _wrap_in_thread(func: Callable):
     so we wrap them to run in a thread.
     """
 
-    def sync_default_session(sess: "AbstractSession"):
-        if sess:
-            sess.as_default()
-        else:
-            AbstractSession.reset_default()
+    def _wrap(func: Callable,
+              executor: concurrent.futures.ThreadPoolExecutor):
+        def sync_default_session(sess: "AbstractSession"):
+            if sess:
+                sess.as_default()
+            else:
+                AbstractSession.reset_default()
 
-    def inner(*args, **kwargs):
-        default_session = get_default_session()
-        config = get_global_option().to_dict()
+        def inner(*args, **kwargs):
+            default_session = get_default_session()
+            config = get_global_option().to_dict()
 
-        def run_in_thread():
-            with option_context(config):
-                # set default session in this thread
-                sync_default_session(default_session)
-                return func(*args, **kwargs), get_default_session()
+            def run_in_thread():
+                with option_context(config):
+                    # set default session in this thread
+                    sync_default_session(default_session)
+                    return func(*args, **kwargs), get_default_session()
 
-        fut = _pool.submit(run_in_thread)
-        result, default_session_in_thread = fut.result()
-        sync_default_session(default_session_in_thread)
+            fut = executor.submit(run_in_thread)
+            result, default_session_in_thread = fut.result()
+            sync_default_session(default_session_in_thread)
 
-        return result
-    return inner
+            return result
+        return inner
+
+    if callable(pool_or_func):
+        return _wrap(pool_or_func, _pool)
+    else:
+        return functools.partial(_wrap, executor=pool_or_func)
 
 
 class ExecutionInfo(ABC):
@@ -447,7 +456,7 @@ class SyncSession:
     def fetch(self, *tileables):
         return fetch(*tileables, session=self._session)
 
-    @_wrap_in_thread
+    @_wrap_in_thread(_gc_pool)
     def decref(self, *tileables_keys):
         return _loop.run_until_complete(
             self._session.decref(*tileables_keys))

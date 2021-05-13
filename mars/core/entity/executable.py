@@ -33,7 +33,10 @@ class _TileableSession:
             if s:
                 if isinstance(s, AbstractSession):
                     s = SyncSession(s)
-                s.decref(key)
+                try:
+                    s.decref(key)
+                except RuntimeError:
+                    pass
         self.tileable = ref(tileable, cb)
 
 
