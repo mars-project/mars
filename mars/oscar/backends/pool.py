@@ -542,6 +542,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
 
         # create servers
         create_server_tasks = []
+        print(">>>>>>>> ", set(external_addresses + [internal_address, gen_local_address(process_index)]))
         for addr in set(external_addresses + [internal_address, gen_local_address(process_index)]):
             server_type = get_server_type(addr)
             task = asyncio.create_task(
@@ -550,6 +551,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             create_server_tasks.append(task)
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
+        print(f">>>>>>>> {cls}, {create_server_tasks}, {kw['servers']}")
 
         # create pool
         pool = cls(**kw)
