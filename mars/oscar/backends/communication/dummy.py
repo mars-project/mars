@@ -14,6 +14,7 @@
 
 import asyncio
 import concurrent.futures as futures
+import weakref
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
@@ -82,9 +83,9 @@ class DummyChannel(Channel):
 
 @register_server
 class DummyServer(Server):
-    __slots__ = '_closed', '_channels'
+    __slots__ = '_closed', '_channels', '__weakref__'
 
-    _address_to_instances: Dict[str, "DummyServer"] = dict()
+    _address_to_instances: Dict[str, "DummyServer"] = weakref.WeakValueDictionary()
     scheme = 'dummy'
 
     def __init__(self,
@@ -121,7 +122,6 @@ class DummyServer(Server):
         if config:  # pragma: no cover
             raise TypeError(f'Creating DummyServer got unexpected '
                             f'arguments: {",".join(config)}')
-
         try:
             server = DummyServer.get_instance(address)
             if server.stopped:
