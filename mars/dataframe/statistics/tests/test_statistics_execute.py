@@ -17,9 +17,9 @@ import pandas as pd
 import pytest
 
 from mars.config import option_context
-from mars.tests import new_test_session
-from mars.tensor import tensor
 from mars.dataframe import Series, DataFrame
+from mars.tensor import tensor
+from mars.tests import new_test_session
 
 
 @pytest.fixture(scope='module')

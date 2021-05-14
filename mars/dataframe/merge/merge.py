@@ -295,6 +295,7 @@ class DataFrameShuffleMerge(_DataFrameMergeBase):
                                            index=left_chunk.index,
                                            index_value=infer_index_value(left_chunk.index_value,
                                                                          right_chunk.index_value),
+                                           dtypes=df.dtypes,
                                            columns_value=df.columns_value)
             out_chunks.append(out_chunk)
 

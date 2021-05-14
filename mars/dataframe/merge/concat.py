@@ -19,9 +19,9 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, OutputType, TilesError
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ...utils import lazy_import, check_chunks_unknown_shape
+from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 from ..utils import parse_index, build_empty_df, build_empty_series, \
     standardize_range_index, validate_axis
-from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -132,7 +132,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
-        from ..indexing.iloc import SeriesIlocGetItem
+        from ..datasource.from_tensor import DataFrameFromTensor
+        from ..indexing.iloc import SeriesIlocGetItem, DataFrameIlocGetItem
 
         out = op.outputs[0]
         inputs = op.inputs
@@ -143,26 +144,44 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             inputs = [item.rechunk(op.inputs[0].nsplits)._inplace_tile() for item in inputs]
 
         cum_index = 0
+        offset = 0
         nsplits = []
         for series in inputs:
             for c in series.chunks:
                 if op.axis == 0:
                     index = (c.index[0] + cum_index,)
                     shape = c.shape
+                    iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
+                    out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
+                                                        index_value=c.index_value,
+                                                        dtype=c.dtype,
+                                                        name=c.name))
                 else:
                     index = (c.index[0], cum_index)
                     shape = (c.shape[0], 1)
-                iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
-                out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
-                                                    index_value=c.index_value,
-                                                    dtype=c.dtype,
-                                                    name=c.name))
+                    to_frame_op = DataFrameFromTensor(input_=c)
+                    if c.name:
+                        dtypes = pd.Series([c.dtype], index=[c.name])
+                    else:
+                        dtypes = pd.Series([c.dtype], index=pd.RangeIndex(offset, offset + 1))
+                    df_chunk = to_frame_op.new_chunk(
+                        [c], shape=shape, index=index, index_value=c.index_value,
+                        columns_value=parse_index(dtypes.index, store_data=True),
+                        dtypes=dtypes)
+                    iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
+                    out_chunks.append(iloc_op.new_chunk([df_chunk], shape=df_chunk.shape,
+                                                        index=index,
+                                                        dtypes=df_chunk.dtypes,
+                                                        index_value=df_chunk.index_value,
+                                                        columns_value=df_chunk.columns_value))
+
             if op.axis == 0:
                 nsplits.extend(series.nsplits[0])
                 cum_index += len(series.nsplits[op.axis])
             else:
                 nsplits.append(1)
                 cum_index += 1
+                offset += 1
 
         if op.ignore_index:
             out_chunks = standardize_range_index(out_chunks)
