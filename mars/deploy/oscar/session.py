@@ -21,12 +21,12 @@ from typing import Dict
 
 from ...core import Tileable, enter_mode
 from ...core.session import AbstractSession, register_session_cls, \
-    ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
-from ...services.lifecycle import LifecycleAPI
-from ...services.meta import MetaAPI
-from ...services.session import SessionAPI
+    ExecutionInfo as AbstractExecutionInfo, gen_submit_tileable_graph
+from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
+from ...services.meta import MetaAPI, AbstractMetaAPI
+from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.storage import StorageAPI
-from ...services.task import TaskAPI, TaskResult
+from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...utils import implements, merge_chunks
 from .typing import ClientType
 
@@ -36,10 +36,10 @@ class Progress:
     value: float = 0.0
 
 
-class ExectionInfo(AbstractExectionInfo):
+class ExecutionInfo(AbstractExecutionInfo):
     def __init__(self,
                  task_id: str,
-                 task_api: TaskAPI,
+                 task_api: AbstractTaskAPI,
                  aio_task: asyncio.Task,
                  progress: Progress):
         super().__init__(aio_task)
@@ -58,10 +58,10 @@ class Session(AbstractSession):
     def __init__(self,
                  address: str,
                  session_id: str,
-                 session_api: SessionAPI,
-                 meta_api: MetaAPI,
-                 lifecycle_api: LifecycleAPI,
-                 task_api: TaskAPI,
+                 session_api: AbstractSessionAPI,
+                 meta_api: AbstractMetaAPI,
+                 lifecycle_api: AbstractLifecycleAPI,
+                 task_api: AbstractTaskAPI,
                  client: ClientType = None):
         super().__init__(address, session_id)
         self._session_api = session_api
@@ -132,7 +132,7 @@ class Session(AbstractSession):
 
     async def execute(self,
                       *tileables,
-                      **kwargs) -> ExectionInfo:
+                      **kwargs) -> ExecutionInfo:
         fuse_enabled: bool = kwargs.pop('fuse_enabled', False)
         task_name: str = kwargs.pop('task_name', None)
         extra_config: dict = kwargs.pop('extra_config', None)
@@ -154,7 +154,7 @@ class Session(AbstractSession):
         # create asyncio.Task
         future = asyncio.create_task(
             self._run_in_background(tileables, task_id, progress))
-        return ExectionInfo(task_id, self._task_api, future, progress)
+        return ExecutionInfo(task_id, self._task_api, future, progress)
 
     @enter_mode(build=True)
     def _get_to_fetch_tileable(self, tileable: Tileable):
@@ -200,8 +200,8 @@ class Session(AbstractSession):
                 band = (await self._meta_api.get_chunk_meta(
                     chunk.key, fields=['bands']))['bands'][0]
                 if urlparse(self.address).scheme == 'http':
-                    from mars.services.storage.web import WebStorageAPI
-                    storage_api = await WebStorageAPI.create(self.address, self._session_id, band[0])
+                    from mars.services.storage import WebStorageAPI
+                    storage_api = WebStorageAPI(self._session_id, self.address)
                 else:
                     storage_api = await StorageAPI.create(self._session_id, band[0])
                 index_to_data.append(
@@ -212,7 +212,7 @@ class Session(AbstractSession):
         return data
 
     async def decref(self, *tileable_keys):
-        return await self._lifecycle_api.decref_tileables(tileable_keys)
+        return await self._lifecycle_api.decref_tileables(list(tileable_keys))
 
     async def _get_ref_counts(self) -> Dict[str, int]:
         return await self._lifecycle_api.get_all_chunk_ref_counts()
@@ -231,18 +231,17 @@ class WebSession(Session):
     async def _init(cls,
                     address: str,
                     session_id: str):
-        from ...services.session.web import WebSessionAPI
-        from ...services.lifecycle.web import WebLifecycleAPI
-        from ...services.meta.web import WebMetaAPI
-        from ...services.task.web import WebTaskAPI
+        from ...services.session import WebSessionAPI
+        from ...services.lifecycle import WebLifecycleAPI
+        from ...services.meta import WebMetaAPI
+        from ...services.task import WebTaskAPI
 
-        session_api = await WebSessionAPI.create(address)
+        session_api = WebSessionAPI(address)
         # create new session
-        session_address = await session_api.create_session(session_id)
-        lifecycle_api = await WebLifecycleAPI.create(
-            address, session_id, session_address)
-        meta_api = await WebMetaAPI.create(address, session_id, session_address)
-        task_api = await WebTaskAPI.create(address, session_id, session_address)
+        await session_api.create_session(session_id)
+        lifecycle_api = WebLifecycleAPI(session_id, address)
+        meta_api = WebMetaAPI(session_id, address)
+        task_api = WebTaskAPI(session_id, address)
 
         return cls(address, session_id,
                    session_api, meta_api,

@@ -12,28 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
+
 from typing import Dict, List, Any, Union
 
-from ... import oscar as mo
-from ...core.operand import Fuse
-from ...dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
-from ...lib.aio import alru_cache
-from ...utils import extensible
-from ..core import BandType
-from .core import get_meta_type
-from .store import AbstractMetaStore
-from .supervisor.core import MetaStoreManagerActor, MetaStoreActor
-
-
-class AbstractMetaAPI(ABC):
-
-    @abstractmethod
-    @extensible
-    async def get_chunk_meta(self,
-                             object_id: str,
-                             fields: List[str] = None):
-        """Return chunk meta"""
+from .... import oscar as mo
+from ....core.operand import Fuse
+from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
+from ....lib.aio import alru_cache
+from ....utils import extensible
+from ...core import BandType
+from ..core import get_meta_type
+from ..store import AbstractMetaStore
+from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
+from .core import AbstractMetaAPI
 
 
 class MetaAPI(AbstractMetaAPI):

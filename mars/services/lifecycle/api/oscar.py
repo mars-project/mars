@@ -12,26 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 
-from ... import oscar as mo
-from ...lib.aio import alru_cache
-from ...utils import extensible
-from .supervisor.tracker import  LifecycleTrackerActor
-
-
-class AbstractLifecycleAPI(ABC):
-    @abstractmethod
-    async def decref_tileables(self, tileable_keys: List[str]):
-        """
-        Decref tileables.
-
-        Parameters
-        ----------
-        tileable_keys : list
-            List of tileable keys.
-        """
+from .... import oscar as mo
+from ....lib.aio import alru_cache
+from ....utils import extensible
+from ..supervisor.tracker import LifecycleTrackerActor
+from .core import AbstractLifecycleAPI
 
 
 class LifecycleAPI(AbstractLifecycleAPI):

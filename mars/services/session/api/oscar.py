@@ -12,58 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 from typing import Union
 
-from ... import oscar as mo
-from ...lib.aio import alru_cache
-from .supervisor import SessionManagerActor
-
-
-class AbstractSessionAPI(ABC):
-
-    @abstractmethod
-    async def create_session(self, session_id: str) -> str:
-        """
-        Create session and return address.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID
-
-        Returns
-        -------
-        address : str
-            Session address.
-        """
-
-    @abstractmethod
-    async def delete_session(self, session_id: str):
-        """
-        Delete session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        """
-
-    @abstractmethod
-    async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
-        """
-        Get session last idle time.
-
-        Parameters
-        ----------
-        session_id : str, None
-            Session ID. None for all sessions.
-
-        Returns
-        -------
-        last_idle_time: str
-            The last idle time if the session(s) is idle else None.
-        """
+from .... import oscar as mo
+from ....lib.aio import alru_cache
+from ..supervisor import SessionManagerActor
+from .core import AbstractSessionAPI
 
 
 class SessionAPI(AbstractSessionAPI):
@@ -84,6 +38,19 @@ class SessionAPI(AbstractSessionAPI):
         return SessionAPI(address, session_manager)
 
     async def create_session(self, session_id: str) -> str:
+        """
+        Create session and return address.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID
+
+        Returns
+        -------
+        address : str
+            Session address.
+        """
         session_actor_ref = \
             await self._session_manager_ref.create_session(session_id)
         return session_actor_ref.address
@@ -104,6 +71,14 @@ class SessionAPI(AbstractSessionAPI):
         return await self._session_manager_ref.has_session(session_id)
 
     async def delete_session(self, session_id: str):
+        """
+        Delete session.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        """
         await self._session_manager_ref.delete_session(session_id)
 
     async def get_session_address(self, session_id: str) -> str:
@@ -123,6 +98,19 @@ class SessionAPI(AbstractSessionAPI):
         return (await self._session_manager_ref.get_session_ref(session_id)).address
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
+        """
+        Get session last idle time.
+
+        Parameters
+        ----------
+        session_id : str, None
+            Session ID. None for all sessions.
+
+        Returns
+        -------
+        last_idle_time: str
+            The last idle time if the session(s) is idle else None.
+        """
         return await self._session_manager_ref.get_last_idle_time(session_id)
 
 

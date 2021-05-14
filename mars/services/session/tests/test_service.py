@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import pytest
 import numpy as np
 
@@ -20,12 +19,14 @@ from ...task.api import TaskAPI
 import mars.oscar as mo
 import mars.remote as mr
 from mars.services import start_services, NodeRole
-from mars.services.session import SessionAPI
+from mars.services.session import SessionAPI, WebSessionAPI
 from mars.core import TileableGraph, TileableGraphBuilder
+from mars.utils import get_next_port
 
 
+@pytest.mark.parametrize('test_web', [False, True])
 @pytest.mark.asyncio
-async def test_meta_service():
+async def test_meta_service(test_web):
     pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
 
     async with pool:
@@ -39,15 +40,23 @@ async def test_meta_service():
                 "store": "dict"
             }
         }
+        if test_web:
+            config['services'] += ['web']
+            config['web'] = {'port': get_next_port()}
+
         await start_services(
             NodeRole.SUPERVISOR, config, address=pool.external_address)
 
-        session_api = await SessionAPI.create(pool.external_address)
+        if not test_web:
+            session_api = await SessionAPI.create(pool.external_address)
+        else:
+            session_api = WebSessionAPI(f'http://127.0.0.1:{config["web"]["port"]}')
         session_id = 'test_session'
         session_address = await session_api.create_session(session_id)
         assert session_address == pool.external_address
         assert await session_api.has_session(session_id) is True
-        assert await session_api.get_session_address(session_id) == session_address
+        if not test_web:
+            assert await session_api.get_session_address(session_id) == session_address
         await session_api.delete_session(session_id)
         assert await session_api.has_session(session_id) is False
 

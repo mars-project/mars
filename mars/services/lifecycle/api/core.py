@@ -12,5 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import AbstractSessionAPI, SessionAPI, MockSessionAPI, WebSessionAPI
-from .supervisor import SessionManagerActor, SessionActor
+from abc import ABC, abstractmethod
+from typing import Dict, List
+
+
+class AbstractLifecycleAPI(ABC):
+    @abstractmethod
+    async def decref_tileables(self, tileable_keys: List[str]):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileable_keys : list
+            List of tileable keys.
+        """
+
+    async def get_all_chunk_ref_counts(self) -> Dict[str, int]:
+        """
+        Get all chunk keys' ref counts.
+
+        Returns
+        -------
+        key_to_ref_counts: dict
+        """
