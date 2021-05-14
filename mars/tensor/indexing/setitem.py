@@ -20,7 +20,7 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, TilesError, recursive_tile
 from ...serialize import KeyField, ListField, AnyField
 from ...tensor import tensor as astensor
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
@@ -90,12 +90,13 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         if is_value_tensor and value.ndim > 0:
-            check_chunks_unknown_shape([indexed, value], TilesError)
+            if has_unknown_shape(indexed, value):
+                yield
 
             value = yield from recursive_tile(
                 broadcast_to(value, indexed.shape).astype(op.input.dtype))
             nsplits = indexed.nsplits
-            value = value.rechunk(nsplits)._inplace_tile()
+            value = yield from recursive_tile(value.rechunk(nsplits))
 
         chunk_mapping = {c.op.input.index: c for c in op.indexed.chunks}
         out_chunks = []

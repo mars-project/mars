@@ -14,7 +14,7 @@
 
 import sys
 from abc import ABC, abstractmethod
-from typing import Any, List, Type, TypeVar
+from typing import Any, List, Type, TypeVar, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
@@ -71,6 +71,9 @@ class AbstractStorageAPI(ABC):
 
 
 class StorageAPI(AbstractStorageAPI):
+    _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
+    _storage_manager_ref: Union[StorageManagerActor, mo.ActorRef]
+
     def __init__(self,
                  address: str,
                  session_id: str):
@@ -116,6 +119,7 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.get(
             self._session_id, data_key, conditions)
 
+    @get.batch
     async def batch_get(self, args_list, kwargs_list):
         gets = []
         for args, kwargs in zip(args_list, kwargs_list):
@@ -182,13 +186,11 @@ class StorageAPI(AbstractStorageAPI):
     async def batch_delete(self, args_list, kwargs_list):
         deletes = []
         for args, kwargs in zip(args_list, kwargs_list):
-            if kwargs.get('error', None) is None:
-                kwargs['error'] = 'raise'
             deletes.append(
                 self._storage_handler_ref.delete.delay(
                     self._session_id, *args, **kwargs)
             )
-        return await self._storage_handler_ref.put.batch(*deletes)
+        return await self._storage_handler_ref.delete.batch(*deletes)
 
     @extensible
     async def prefetch(self,

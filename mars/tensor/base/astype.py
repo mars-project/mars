@@ -68,8 +68,8 @@ class TensorAstype(TensorHasInput, TensorOperandMixin):
             out_chunks.append(chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, out_tensor.shape, nsplits=in_tensor.nsplits,
-                                  chunks=out_chunks)
+        return new_op.new_tensors(op.inputs, nsplits=in_tensor.nsplits,
+                                  chunks=out_chunks, kws=[out_tensor.params])
 
     @classmethod
     def execute(cls, ctx, op):

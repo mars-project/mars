@@ -218,6 +218,9 @@ class Session(AbstractSession):
 
     @enter_mode(build=True)
     async def fetch(self, *tileables, **kwargs):
+        from ...tensor.core import TensorOrder
+        from ...tensor.array_utils import get_array_module
+
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError(f'`fetch` got unexpected '
@@ -268,8 +271,16 @@ class Session(AbstractSession):
 
             result = []
             for tileable, index_to_data in tileable_to_index_data.items():
-                result.append(self._process_result(
-                    tileable, merge_chunks(index_to_data)))
+                merged = merge_chunks(index_to_data)
+                if hasattr(tileable, 'order'):
+                    module = get_array_module(merged)
+                    if tileable.order == TensorOrder.F_ORDER and \
+                            hasattr(module, 'asfortranarray'):
+                        merged = module.asfortranarray(merged)
+                    elif tileable.order == TensorOrder.C_ORDER and \
+                            hasattr(module, 'ascontiguousarray'):
+                        merged = module.ascontiguousarray(merged)
+                result.append(self._process_result(tileable, merged))
             return result
 
     async def decref(self, *tileable_keys):
