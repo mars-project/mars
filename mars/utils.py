@@ -36,6 +36,7 @@ import time
 import warnings
 import weakref
 import zlib
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Dict, Tuple, Union, Callable, Optional
@@ -1434,3 +1435,12 @@ def dataslots(cls):
     if qualname is not None:
         cls.__qualname__ = qualname
     return cls
+
+
+# Please refer to https://bugs.python.org/issue41451
+try:
+    class _Dummy(ABC):
+        __slots__ = ('__weakref__',)
+    abc_type_require_weakref_slot = True
+except TypeError:
+    abc_type_require_weakref_slot = False

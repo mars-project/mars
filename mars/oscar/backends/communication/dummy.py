@@ -18,7 +18,7 @@ import weakref
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
-from ....utils import implements, classproperty
+from ....utils import implements, classproperty, abc_type_require_weakref_slot
 from ...errors import ServerClosed
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
@@ -83,7 +83,7 @@ class DummyChannel(Channel):
 
 @register_server
 class DummyServer(Server):
-    __slots__ = '_closed', '_channels', '__weakref__'
+    __slots__ = ('_closed', '_channels') + ('__weakref__',) if abc_type_require_weakref_slot else tuple()
 
     _address_to_instances: Dict[str, "DummyServer"] = weakref.WeakValueDictionary()
     scheme = 'dummy'
