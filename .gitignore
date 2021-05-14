@@ -32,6 +32,7 @@ node_modules
 jspm_packages
 
 npm-debug.log*
+package-lock.json
 .npm
 .node_repl_history
 .grunt
@@ -82,6 +83,9 @@ mars/learn/cluster/*.c*
 mars/learn/utils/*.c*
 mars/lib/*.c*
 mars/oscar/**/*.c*
+
+# web bundle file
+mars/services/web/static
 
 # docs
 docs/source/savefig/

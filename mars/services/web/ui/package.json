@@ -1,0 +1,45 @@
+{
+  "name": "mars-ui",
+  "varsion": "0.1.0",
+  "description": "Mars frontend UI",
+  "author": "Wenjun Si",
+  "repository": "https://github.com/mars-project/mars",
+  "license": "Apache-2.0",
+  "babel": {
+    "presets": [
+      "@babel/preset-env",
+      "@babel/preset-react"
+    ]
+  },
+  "dependencies": {
+    "@material-ui/core": "^4.0.0",
+    "@material-ui/icons": "^4.0.0",
+    "lodash": "^4.17.0",
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0",
+    "react-router-dom": "^5.0.0"
+  },
+  "scripts": {
+    "start": "npm-run-all -p build serve",
+    "serve": "nodemon --ignore ./build --exec babel-node -- server.js",
+    "build": "webpack -w"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.3",
+    "@babel/node": "^7.12.3",
+    "@babel/preset-env": "^7.12.1",
+    "@babel/preset-react": "^7.12.1",
+    "babel-loader": "^8.1.0",
+    "css-loader": "^5.2.0",
+    "express": "^4.16.2",
+    "less-loader": "^10.0.0",
+    "nodemon": "latest",
+    "npm-run-all": "^4.1.2",
+    "react-hot-loader": "^4.13.0",
+    "style-loader": "^2.0.0",
+    "url-loader": "^4.0.0",
+    "webpack": "^5.3.2",
+    "webpack-cli": "^4.1.0",
+    "webpack-dev-server": "^3.11.0"
+  }
+}
