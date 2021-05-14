@@ -13,12 +13,27 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Dict, List, Optional
 
 
 class AbstractMetaAPI(ABC):
     @abstractmethod
     async def get_chunk_meta(self,
                              object_id: str,
-                             fields: List[str] = None):
-        raise NotImplementedError
+                             fields: List[str] = None,
+                             error: str = 'raise') -> Optional[Dict]:
+        """
+        Get chunk meta
+
+        Parameters
+        ----------
+        object_id
+            Object ID
+        fields
+            Fields to obtain
+        error
+            Way to handle errors, 'raise' by default
+        Returns
+        -------
+            Dict with fields as keys
+        """

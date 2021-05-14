@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import Dict, List, Optional
 
 from ....lib.aio import alru_cache
 from ....utils import serialize_serializable, deserialize_serializable
@@ -38,10 +38,11 @@ class MetaWebAPIHandler(MarsServiceWebAPIHandler):
     @web_api('(?P<data_key>[^/]+)', method='get')
     async def get_chunk_meta(self, session_id: str, data_key: str):
         fields_str = self.get_argument('fields', None)
+        error = self.get_argument('error', 'raise')
         fields = fields_str.split(',') if fields_str else None
 
         oscar_api = await self._get_oscar_meta_api(session_id)
-        result = await oscar_api.get_chunk_meta(data_key, fields)
+        result = await oscar_api.get_chunk_meta(data_key, fields=fields, error=error)
         self.write(serialize_serializable(result))
 
 
@@ -57,9 +58,11 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
 
     async def get_chunk_meta(self,
                              object_id: str,
-                             fields: List[str] = None):
-        req_addr = f'{self._address}/api/session/{self._session_id}/meta/{object_id}'
+                             fields: List[str] = None,
+                             error: str = 'raise') -> Optional[Dict]:
+        req_addr = f'{self._address}/api/session/{self._session_id}/meta/{object_id}' \
+                   f'?error={error}'
         if fields:
-            req_addr += '?fields=' + ','.join(fields)
+            req_addr += '&fields=' + ','.join(fields)
         res = await self._request_url(req_addr)
         return deserialize_serializable(res.body)
