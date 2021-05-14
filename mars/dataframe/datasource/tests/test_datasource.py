@@ -49,7 +49,7 @@ def test_from_pandas_dataframe():
     assert df.index_value.max_val == 9
     np.testing.assert_equal(df.columns_value._index_value._data, data.columns.values)
 
-    df = df.tiles()
+    df = tile(df)
 
     assert len(df.chunks) == 9
     pd.testing.assert_frame_equal(df.chunks[0].op.data, df.op.data.iloc[:4, :4])
@@ -105,7 +105,7 @@ def test_from_pandas_dataframe():
     assert isinstance(df2.index_value._index_value, IndexValue.RangeIndex)
     assert df2.index_value._index_value._slice == slice(0, 10, 2)
 
-    df2 = df2.tiles()
+    df2 = tile(df2)
 
     assert len(df2.chunks) == 6
     pd.testing.assert_frame_equal(df2.chunks[0].op.data, df2.op.data.iloc[:4, :4])
@@ -135,7 +135,7 @@ def test_from_pandas_series():
     assert series.index_value.min_val == 0
     assert series.index_value.max_val == 9
 
-    series = series.tiles()
+    series = tile(series)
 
     assert len(series.chunks) == 3
     pd.testing.assert_series_equal(series.chunks[0].op.data, series.op.data.iloc[:4])
@@ -164,7 +164,7 @@ def test_from_pandas_index():
     assert index.dtype == data.dtype
     assert isinstance(index.index_value.value, IndexValue.DatetimeIndex)
 
-    index = index.tiles()
+    index = tile(index)
 
     for i, c in enumerate(index.chunks):
         assert c.name == data.name
@@ -191,7 +191,7 @@ def test_from_tileable_index():
         assert index.name == pd_df.index.name
         assert isinstance(index.index_value.value, IndexValue.Int64Index)
 
-        index = index.tiles()
+        index = tile(index)
 
         assert len(index.chunks) == 2
         for c in index.chunks:
@@ -207,7 +207,7 @@ def test_from_tileable_index():
     assert index.name == 'new_name'
     assert isinstance(index.index_value.value, IndexValue.Float64Index)
 
-    index = index.tiles()
+    index = tile(index)
 
     assert len(index.chunks) == 2
     for c in index.chunks:
@@ -222,7 +222,7 @@ def test_from_tensor():
     assert isinstance(df.index_value._index_value, IndexValue.RangeIndex)
     assert df.op.dtypes[0] == tensor.dtype
 
-    df = df.tiles()
+    df = tile(df)
     assert len(df.chunks) == 4
     assert isinstance(df.chunks[0].index_value._index_value, IndexValue.RangeIndex)
     assert isinstance(df.chunks[0].index_value, IndexValue)
@@ -234,8 +234,8 @@ def test_from_tensor():
 
     df2 = dataframe_from_tensor(tensor2)
     df3 = dataframe_from_tensor(tensor3)
-    df2 = df2.tiles()
-    df3 = df3.tiles()
+    df2 = tile(df2)
+    df3 = tile(df3)
     np.testing.assert_equal(df2.chunks[0].index, (0, 0))
     np.testing.assert_equal(df3.chunks[0].index, (0, 0))
 
@@ -247,7 +247,7 @@ def test_from_tensor():
 
     # from tensor with given index
     df = dataframe_from_tensor(tensor, index=np.arange(0, 20, 2))
-    df = df.tiles()
+    df = tile(df)
     pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
     pd.testing.assert_index_equal(df.chunks[1].index_value.to_pandas(), pd.Index(np.arange(0, 10, 2)))
     pd.testing.assert_index_equal(df.chunks[2].index_value.to_pandas(), pd.Index(np.arange(10, 20, 2)))
@@ -255,13 +255,13 @@ def test_from_tensor():
 
     # from tensor with index that is a tensor as well
     df = dataframe_from_tensor(tensor, index=mt.arange(0, 20, 2))
-    df = df.tiles()
+    df = tile(df)
     assert len(df.chunks[0].inputs) == 2
     assert df.chunks[0].index_value.has_value() is False
 
     # from tensor with given columns
     df = dataframe_from_tensor(tensor, columns=list('abcdefghij'))
-    df = df.tiles()
+    df = tile(df)
     pd.testing.assert_index_equal(df.dtypes.index, pd.Index(list('abcdefghij')))
     pd.testing.assert_index_equal(df.chunks[0].columns_value.to_pandas(), pd.Index(['a', 'b', 'c', 'd', 'e']))
     pd.testing.assert_index_equal(df.chunks[0].dtypes.index, pd.Index(['a', 'b', 'c', 'd', 'e']))
@@ -280,7 +280,7 @@ def test_from_tensor():
     assert series.name == 'a'
     pd.testing.assert_index_equal(series.index_value.to_pandas(), pd.RangeIndex(10))
 
-    series = series.tiles()
+    series = tile(series)
     assert len(series.chunks) == 3
     pd.testing.assert_index_equal(series.chunks[0].index_value.to_pandas(), pd.RangeIndex(0, 4))
     assert series.chunks[0].name == 'a'
@@ -294,7 +294,7 @@ def test_from_tensor():
     df = dataframe_from_1d_tileables(d)
     pd.testing.assert_index_equal(df.columns_value.to_pandas(), pd.RangeIndex(2))
 
-    df = df.tiles()
+    df = tile(df)
 
     pd.testing.assert_index_equal(df.chunks[0].index_value.to_pandas(), pd.RangeIndex(4))
 
@@ -349,7 +349,7 @@ def test_from_records():
 
     tensor = mt.ones((10,), dtype=dtype, chunk_size=3)
     df = from_records(tensor)
-    df = df.tiles()
+    df = tile(df)
 
     assert df.chunk_shape == (4, 1)
     assert df.chunks[0].shape == (3, 3)
@@ -418,7 +418,7 @@ def test_read_sql():
         pd.testing.assert_index_equal(df.index_value.to_pandas(), test_df.index)
         pd.testing.assert_series_equal(df.dtypes, test_df.dtypes)
 
-        df = df.tiles()
+        df = tile(df)
         assert df.nsplits == ((4, 4, 2), (2,))
         for c in df.chunks:
             assert isinstance(c.op, DataFrameReadSQL)
@@ -457,7 +457,7 @@ def test_date_range():
     assert dr.index_value.is_monotonic_increasing == expected.is_monotonic_increasing
     assert dr.name == expected.name
 
-    dr = dr.tiles()
+    dr = tile(dr)
 
     for i, c in enumerate(dr.chunks):
         ec = expected[i * 3: (i + 1) * 3]

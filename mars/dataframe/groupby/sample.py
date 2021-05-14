@@ -21,14 +21,14 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, OutputType, get_output_types, TilesError
+from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialize import BoolField, DictField, Float32Field, KeyField, \
     Int32Field, Int64Field, NDArrayField, StringField
 from ...tensor.operands import TensorShuffleProxy
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..initializer import Series as asseries
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
@@ -155,7 +155,8 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
         iloc_col_header = _ILOC_COL_HEADER + str(op.random_col_id)
         weight_col_header = _WEIGHT_COL_HEADER + str(op.random_col_id)
 
-        check_chunks_unknown_shape([in_df], TilesError)
+        if has_unknown_shape(in_df):
+            yield
 
         if op.weights is None:
             weights_iter = itertools.repeat(None)
@@ -209,7 +210,8 @@ class GroupBySampleILoc(DataFrameOperand, DataFrameOperandMixin):
 
         groupby_params = op.groupby_params.copy()
         groupby_params.pop('selection', None)
-        grouped = map_df.groupby(**groupby_params)._inplace_tile()
+        grouped = yield from recursive_tile(
+            map_df.groupby(**groupby_params))
 
         result_chunks = []
         seeds = gen_random_seeds(len(grouped.chunks), op.random_state)
@@ -382,14 +384,15 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _tile_distributed(cls, op: "GroupBySample", in_df, weights):
         out_df = op.outputs[0]
-        check_chunks_unknown_shape([in_df], TilesError)
+        if has_unknown_shape(in_df):
+            yield
 
         sample_iloc_op = GroupBySampleILoc(
             groupby_params=op.groupby_params, size=op.size, frac=op.frac, replace=op.replace,
             weights=weights, random_state=op.random_state, errors=op.errors, seed=None,
             left_iloc_bound=None
         )
-        sampled_iloc = sample_iloc_op(in_df)._inplace_tile()
+        sampled_iloc = yield from recursive_tile(sample_iloc_op(in_df))
 
         map_chunks = []
         for c in sampled_iloc.chunks:
@@ -449,15 +452,17 @@ class GroupBySample(MapReduceOperand, DataFrameOperandMixin):
     def tile(cls, op: 'GroupBySample'):
         in_df = op.inputs[0]
         if in_df.ndim == 2:
-            in_df = in_df.rechunk({1: (in_df.shape[1],)})._inplace_tile()
+            in_df = yield from recursive_tile(
+                in_df.rechunk({1: (in_df.shape[1],)}))
 
         weights = op.weights
         if isinstance(weights, ENTITY_TYPE):
-            weights = weights.rechunk({0: in_df.nsplits[0]})._inplace_tile()
+            weights = yield from recursive_tile(
+                weights.rechunk({0: in_df.nsplits[0]}))
 
         if len(in_df.chunks) == 1:
             return cls._tile_one_chunk(op, in_df, weights)
-        return cls._tile_distributed(op, in_df, weights)
+        return (yield from cls._tile_distributed(op, in_df, weights))
 
     @classmethod
     def execute(cls, ctx, op: 'GroupBySample'):

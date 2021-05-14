@@ -278,12 +278,6 @@ class Session(AbstractSession):
     async def _get_ref_counts(self) -> Dict[str, int]:
         return await self._lifecycle_api.get_all_chunk_ref_counts()
 
-    async def decref(self, *tileable_keys):
-        return await self._lifecycle_api.decref_tileables(tileable_keys)
-
-    async def _get_ref_counts(self) -> Dict[str, int]:
-        return await self._lifecycle_api.get_all_chunk_ref_counts()
-
     async def destroy(self):
         await self._session_api.delete_session(self._session_id)
 

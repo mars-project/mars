@@ -22,7 +22,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...serialize import ValueType, KeyField, TupleField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..utils import unify_chunks
 from ..array_utils import as_same_device, device, is_sparse_module
 from ..operands import TensorOperand, TensorOperandMixin
@@ -91,8 +91,9 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
         c = itertools.count(max(a.ndim, b.ndim))
         a_ax = tuple(a_axes.index(i) if i in a_axes else next(c) for i in range(a.ndim))
         b_ax = tuple(b_axes.index(i) if i in b_axes else next(c) for i in range(b.ndim))
-        check_chunks_unknown_shape(op.inputs, TilesError)
-        a, b = unify_chunks((a, a_ax), (b, b_ax))
+        if has_unknown_shape(*op.inputs):
+            yield
+        a, b = yield from unify_chunks((a, a_ax), (b, b_ax))
         out = op.outputs[0]
 
         a_output_indexes = [range(len(a.nsplits[i])) for i in range(a.ndim) if i not in a_axes]

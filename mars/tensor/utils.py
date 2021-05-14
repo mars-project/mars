@@ -30,7 +30,7 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
-from ..core import ExecutableTuple
+from ..core import ExecutableTuple, recursive_tile
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 
@@ -480,7 +480,8 @@ def unify_nsplits(*tensor_axes):
     for t, axes in tensor_axes:
         new_chunk = dict((i, axes_unified_splits[ax]) for ax, i in zip(axes, range(t.ndim))
                          if ax in axes_unified_splits)
-        res.append(t.rechunk(new_chunk)._inplace_tile())
+        t = yield from recursive_tile(t.rechunk(new_chunk))
+        res.append(t)
 
     return tuple(res)
 
@@ -492,7 +493,7 @@ def unify_chunks(*tensors):
     if len(tensor_axes) < 2:
         return tuple(t[0] if isinstance(t, tuple) else t for t in tensors)
 
-    return unify_nsplits(*tensor_axes)
+    return (yield from unify_nsplits(*tensor_axes))
 
 
 def check_out_param(out, t, casting):

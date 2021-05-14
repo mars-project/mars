@@ -40,7 +40,6 @@ from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
-from mars.session import new_session
 from mars.tests import new_test_session
 from mars.tests.core import TestBase, require_cudf
 from mars.utils import arrow_array_to_objects

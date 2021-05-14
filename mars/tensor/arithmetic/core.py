@@ -35,7 +35,8 @@ class TensorElementWise(TensorOperandMixin):
     def tile(cls, op):
         if len(op.inputs) > 1:
             check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
+        inputs = yield from unify_chunks(
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
 
         chunk_shapes = [t.chunk_shape for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)

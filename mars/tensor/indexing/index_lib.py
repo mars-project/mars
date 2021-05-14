@@ -702,7 +702,7 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
             fancy_index = yield from recursive_tile(
                 broadcast_to(fancy_index_info.raw_index, shape))
             fancy_indexes.append(fancy_index)
-        shape_unified_fancy_indexes = unify_chunks(*fancy_indexes)
+        shape_unified_fancy_indexes = yield from unify_chunks(*fancy_indexes)
         for fancy_index_info, shape_unified_fancy_index in \
                 zip(fancy_index_infos, shape_unified_fancy_indexes):
             fancy_index_info.shape_unified_index = shape_unified_fancy_index

@@ -20,9 +20,8 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...serialize import KeyField, AnyField, Int32Field
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import Tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -102,10 +101,11 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
         ax = axis or 0
         out = op.outputs[0]
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         if isinstance(repeats, TENSOR_TYPE):
-            a, repeats = unify_chunks(a, (repeats, (ax,)))
+            a, repeats = yield from unify_chunks(a, (repeats, (ax,)))
 
         nsplit = a.nsplits[axis or 0]
 

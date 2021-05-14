@@ -658,7 +658,10 @@ def merge_chunks(chunk_results):
             for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
                 new_chunks.append((idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
             chunk_results = new_chunks
-        concat_result = xp.concatenate([c[1] for c in chunk_results])
+        to_concat = [c[1] for c in chunk_results]
+        if len(to_concat) == 1:
+            return to_concat[0]
+        concat_result = xp.concatenate(to_concat)
         return concat_result
     elif isinstance(v, pd.DataFrame):
         concats = []
@@ -756,14 +759,15 @@ def check_chunks_unknown_shape(tileables, error_cls):
                 raise error_cls(f'Input tileable {t} has chunks with unknown shape')
 
 
-def has_unknown_shape(tiled):
-    if getattr(tiled, 'shape', None) is None:
+def has_unknown_shape(*tiled_tileables):
+    for tileable in tiled_tileables:
+        if getattr(tileable, 'shape', None) is None:
+            return False
+        if any(pd.isnull(s) for s in tileable.shape):
+            return True
+        if any(pd.isnull(s) for s in itertools.chain(*tileable.nsplits)):
+            return True
         return False
-    if any(pd.isnull(s) for s in tiled.shape):
-        return True
-    if any(pd.isnull(s) for s in itertools.chain(*tiled.nsplits)):
-        return True
-    return False
 
 
 def sbytes(x):

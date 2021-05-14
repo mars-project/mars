@@ -218,7 +218,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if isinstance(op.input, dict):
-            return cls._tile_input_1d_tileables(op)
+            return (yield from cls._tile_input_1d_tileables(op))
         elif op.input is not None:
             return (yield from cls._tile_input_tensor(op))
         else:
@@ -231,7 +231,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         out_df = op.outputs[0]
         in_tensors = op.inputs
-        in_tensors = unify_chunks(*in_tensors)
+        in_tensors = yield from unify_chunks(*in_tensors)
         nsplit = in_tensors[0].nsplits[0]
 
         cum_sizes = [0] + np.cumsum(nsplit).tolist()

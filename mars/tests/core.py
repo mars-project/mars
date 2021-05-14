@@ -814,7 +814,7 @@ class ObjectCheckMixin:
                 pd.testing.assert_index_equal(expected_index, cls.adapt_index_value(real_index))
             except AssertionError as e:
                 raise AssertionError(
-                    f'Index of real value ({expected_index}) not equal to ({real_index})') from e
+                    f'Index of real value ({real_index}) not equal to ({expected_index})') from e
 
     def assert_dataframe_consistent(self, expected, real):
         dataframe_types = (pd.DataFrame,)
@@ -855,7 +855,8 @@ class ObjectCheckMixin:
                                  f'is not equal to real name {real.name}')
 
         self.assert_dtype_consistent(expected.dtype, real.dtype)
-        self.assert_index_value_consistent(expected.index_value, real.index)
+        if self._check_options['check_index_value']:
+            self.assert_index_value_consistent(expected.index_value, real.index)
 
     def assert_groupby_consistent(self, expected, real):
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy

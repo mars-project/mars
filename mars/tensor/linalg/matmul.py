@@ -21,7 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...serialize import KeyField, StringField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..utils import broadcast_shape, check_out_param, unify_chunks, check_order
 from ..array_utils import device, as_same_device, is_sparse_module
@@ -132,8 +132,9 @@ class TensorMatmul(TensorOperand, TensorOperandMixin):
         # the axes to align on
         a_axes = list(range(a.ndim - 2))[::-1] + [tensor.ndim - 2, tensor.ndim - 1]
         b_axes = list(range(b.ndim - 2))[::-1] + [tensor.ndim - 1, tensor.ndim]
-        check_chunks_unknown_shape(op.inputs, TilesError)
-        a, b = unify_chunks((a, a_axes), (b, b_axes))
+        if has_unknown_shape(a, b):
+            yield
+        a, b = yield from unify_chunks((a, a_axes), (b, b_axes))
 
         get_nsplit = lambda i: a.nsplits[i] if a.nsplits[i] != (1,) else b.nsplits[i]
         get_idx = lambda ch, idx: tuple(0 if ch.nsplits[j] == (1,) else ix for j, ix in enumerate(idx))

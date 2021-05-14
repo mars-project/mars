@@ -1863,7 +1863,9 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
     def get_params_from_data(cls, data: GroupByWrapper) -> Dict[str, Any]:
         params = super().get_params_from_data(data.obj)
         if data.selection:
-            params['shape'] = (params['shape'][0], len(data.selection))
+            dtypes = params['dtypes_value'].value[data.selection]
+            params['dtypes_value'] = DtypesValue(value=dtypes)
+            params['shape'] = data.shape
         return params
 
     def __init__(self, key_dtypes=None, selection=None, **kw):

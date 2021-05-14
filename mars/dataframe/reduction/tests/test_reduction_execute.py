@@ -24,6 +24,7 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 from mars.config import option_context
+from mars.core.session import get_default_session, SyncSession
 from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
 from mars.tests import new_test_session
@@ -41,6 +42,13 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
+
+
+@pytest.fixture
+def check_ref_counts():
+    yield
+    sess = get_default_session()
+    assert len(SyncSession(sess)._get_ref_counts()) == 0
 
 
 class FunctionOptions(NamedTuple):
@@ -62,7 +70,7 @@ reduction_functions = [
 
 
 @pytest.mark.parametrize('func_name,func_opts', reduction_functions)
-def test_series_reduction(setup, func_name, func_opts: FunctionOptions):
+def test_series_reduction(setup, check_ref_counts, func_name, func_opts: FunctionOptions):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -142,7 +150,7 @@ def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
 
 
 @pytest.mark.parametrize('func_name,func_opts', reduction_functions)
-def test_dataframe_reduction(setup, func_name, func_opts: FunctionOptions):
+def test_dataframe_reduction(setup, check_ref_counts, func_name, func_opts: FunctionOptions):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -223,7 +231,7 @@ def test_dataframe_reduction(setup, func_name, func_opts: FunctionOptions):
 
 
 @pytest.mark.parametrize('func_name,func_opts', reduction_functions)
-def test_dataframe_level_reduction(setup, func_name, func_opts: FunctionOptions):
+def test_dataframe_level_reduction(setup, check_ref_counts, func_name, func_opts: FunctionOptions):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -281,7 +289,7 @@ def test_dataframe_level_reduction(setup, func_name, func_opts: FunctionOptions)
 
 @require_cudf
 @require_cupy
-def test_gpu_execution(setup):
+def test_gpu_execution(setup, check_ref_counts):
     df_raw = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
     df = to_gpu(md.DataFrame(df_raw, chunk_size=6))
 
@@ -321,14 +329,11 @@ def test_gpu_execution(setup):
     np.testing.assert_array_equal(cp.asnumpy(res).sort(), s_raw.unique().sort())
 
 
-bool_reduction_functions = [
-    ('all',),
-    ('any',),
-]
+bool_reduction_functions = ['all', 'any']
 
 
 @pytest.mark.parametrize('func_name', bool_reduction_functions)
-def test_series_bool_reduction(setup, func_name):
+def test_series_bool_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -358,7 +363,7 @@ def test_series_bool_reduction(setup, func_name):
 
 
 @pytest.mark.parametrize('func_name', bool_reduction_functions)
-def test_series_bool_level_reduction(setup, func_name):
+def test_series_bool_level_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -390,7 +395,7 @@ def test_series_bool_level_reduction(setup, func_name):
 
 
 @pytest.mark.parametrize('func_name', bool_reduction_functions)
-def test_dataframe_bool_reduction(setup, func_name):
+def test_dataframe_bool_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -405,7 +410,8 @@ def test_dataframe_bool_reduction(setup, func_name):
 
     r = compute(md.DataFrame(data, chunk_size=6), axis='index', bool_only=True)
     pd.testing.assert_series_equal(
-        compute(data, axis='index', bool_only=True), r.execute().fetch())
+        compute(data, axis='index', bool_only=True),
+        r.execute(extra_config={'check_index_value': False}).fetch())
 
     r = compute(md.DataFrame(data, chunk_size=3), axis=1)
     pd.testing.assert_series_equal(
@@ -452,7 +458,7 @@ def test_dataframe_bool_reduction(setup, func_name):
 
 
 @pytest.mark.parametrize('func_name', bool_reduction_functions)
-def test_dataframe_bool_level_reduction(setup, func_name):
+def test_dataframe_bool_level_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -484,7 +490,7 @@ def test_dataframe_bool_level_reduction(setup, func_name):
     # bool_only not supported when level specified
 
 
-def test_series_count(setup):
+def test_series_count(setup, check_ref_counts):
     array = np.random.rand(10)
     array[[2, 7, 9]] = np.nan
     data = pd.Series(array)
@@ -507,7 +513,7 @@ def test_series_count(setup):
     assert result == expected
 
 
-def test_dataframe_count(setup):
+def test_dataframe_count(setup, check_ref_counts):
     data = pd.DataFrame({
         "Person": ["John", "Myla", "Lewis", "John", "Myla"],
         "Age": [24., np.nan, 21., 33, 26],
@@ -543,7 +549,7 @@ def test_dataframe_count(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
-def test_nunique(setup):
+def test_nunique(setup, check_ref_counts):
     data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
 
     series = md.Series(data1)
@@ -614,7 +620,7 @@ def test_nunique(setup):
 
 
 @pytest.mark.skipif(pa is None, reason='pyarrow not installed')
-def test_use_arrow_dtype_n_unique(setup):
+def test_use_arrow_dtype_n_unique(setup, check_ref_counts):
     with option_context({'dataframe.use_arrow_dtype': True, 'combine_size': 2}):
         rs = np.random.RandomState(0)
         data1 = pd.DataFrame({'a': rs.random(10),
@@ -635,7 +641,7 @@ def test_use_arrow_dtype_n_unique(setup):
         pd.testing.assert_series_equal(result, expected)
 
 
-def test_unique(setup):
+def test_unique(setup, check_ref_counts):
     data1 = pd.Series(np.random.randint(0, 5, size=(20,)))
 
     series = md.Series(data1)
@@ -662,7 +668,7 @@ def test_unique(setup):
     np.testing.assert_array_equal(result, expected)
 
 
-def test_index_reduction(setup):
+def test_index_reduction(setup, check_ref_counts):
     rs = np.random.RandomState(0)
     data = pd.Index(rs.randint(0, 5, (100,)))
     data2 = pd.Index(rs.randint(1, 6, (100,)))
@@ -685,16 +691,11 @@ def test_index_reduction(setup):
         assert result == getattr(data2, method)()
 
 
-cum_reduction_functions = [
-    ('cummax',),
-    ('cummin',),
-    ('cumprod',),
-    ('cumsum',),
-]
+cum_reduction_functions = ['cummax', 'cummin', 'cumprod', 'cumsum']
 
 
 @pytest.mark.parametrize('func_name', cum_reduction_functions)
-def test_series_cum_reduction(setup, func_name):
+def test_series_cum_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -722,7 +723,7 @@ def test_series_cum_reduction(setup, func_name):
 
 
 @pytest.mark.parametrize('func_name', cum_reduction_functions)
-def test_dataframe_cum_reduction(setup, func_name):
+def test_dataframe_cum_reduction(setup, check_ref_counts, func_name):
     def compute(data, **kwargs):
         return getattr(data, func_name)(**kwargs)
 
@@ -760,7 +761,7 @@ def test_dataframe_cum_reduction(setup, func_name):
     pd.testing.assert_frame_equal(compute(data, axis='columns'), r.execute().fetch())
 
 
-def test_dataframe_aggregate(setup):
+def test_dataframe_aggregate(setup, check_ref_counts):
     all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size',
                 'mean', 'var', 'std', 'sem', 'skew', 'kurt']
     data = pd.DataFrame(np.random.rand(20, 20))
@@ -824,7 +825,7 @@ def test_dataframe_aggregate(setup):
                                            mean_9=NamedAgg(9, 'mean')))
 
 
-def test_series_aggregate(setup):
+def test_series_aggregate(setup, check_ref_counts):
     all_aggs = ['sum', 'prod', 'min', 'max', 'count', 'size',
                 'mean', 'var', 'std', 'sem', 'skew', 'kurt']
     data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
@@ -857,7 +858,7 @@ def test_series_aggregate(setup):
                                    data.agg(col_var='var', col_skew='skew'))
 
 
-def test_aggregate_str_cat(setup):
+def test_aggregate_str_cat(setup, check_ref_counts):
     agg_fun = lambda x: x.str.cat(sep='_', na_rep='NA')
 
     rs = np.random.RandomState(0)
@@ -894,7 +895,7 @@ class MockReduction2(CustomReduction):
         return v1 + v2
 
 
-def test_custom_dataframe_aggregate(setup):
+def test_custom_dataframe_aggregate(setup, check_ref_counts):
     data = pd.DataFrame(np.random.rand(30, 20))
 
     df = md.DataFrame(data)
@@ -916,7 +917,7 @@ def test_custom_dataframe_aggregate(setup):
                                    data.agg(MockReduction2()))
 
 
-def test_custom_series_aggregate(setup):
+def test_custom_series_aggregate(setup, check_ref_counts):
     data = pd.Series(np.random.rand(20))
 
     s = md.Series(data)

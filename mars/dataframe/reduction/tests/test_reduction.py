@@ -22,6 +22,7 @@ import pandas as pd
 import pytest
 
 from mars import dataframe as md
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.tensor import Tensor
 from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
@@ -68,7 +69,7 @@ def test_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(series.op, op)
     assert series.shape == ()
 
-    series = series.tiles()
+    series = tile(series)
 
     assert len(series.chunks) == 1
     assert isinstance(series.chunks[0].op, DataFrameAggregate)
@@ -85,7 +86,7 @@ def test_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(series, Tensor)
     assert series.shape == ()
 
-    series = series.tiles()
+    series = tile(series)
 
     assert len(series.chunks) == 1
     assert isinstance(series.chunks[0].op, DataFrameAggregate)
@@ -104,7 +105,7 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(reduction_df.index_value._index_value, IndexValue.Index)
     assert reduction_df.shape == (2,)
 
-    reduction_df = reduction_df.tiles()
+    reduction_df = tile(reduction_df)
 
     assert len(reduction_df.chunks) == 1
     assert isinstance(reduction_df.chunks[0].op, DataFrameAggregate)
@@ -119,7 +120,7 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
                           (IndexValue.RangeIndex, IndexValue.Int64Index))
     assert reduction_df.shape == (10,)
 
-    reduction_df = reduction_df.tiles()
+    reduction_df = tile(reduction_df)
 
     assert len(reduction_df.chunks) == 4
     assert reduction_df.nsplits == ((3, 3, 3, 1),)
@@ -132,7 +133,7 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
 
     assert reduction_df.shape == (20,)
 
-    reduction_df = reduction_df.tiles()
+    reduction_df = tile(reduction_df)
 
     assert len(reduction_df.chunks) == 5
     assert reduction_df.nsplits == ((4,) * 5,)
@@ -160,7 +161,7 @@ def test_cum_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(series, Series)
     assert series.shape == (20,)
 
-    series = series.tiles()
+    series = tile(series)
 
     assert len(series.chunks) == 7
     assert isinstance(series.chunks[0].op, op)
@@ -179,7 +180,7 @@ def test_cum_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(series, Series)
     assert series.shape == (25,)
 
-    series = series.tiles()
+    series = tile(series)
 
     assert len(series.chunks) == 4
     assert isinstance(series.chunks[0].op, op)
@@ -199,7 +200,7 @@ def test_cum_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(reduction_df.index_value._index_value, IndexValue.Index)
     assert reduction_df.shape == (20, 2)
 
-    reduction_df = reduction_df.tiles()
+    reduction_df = tile(reduction_df)
 
     assert len(reduction_df.chunks) == 7
     assert isinstance(reduction_df.chunks[0].op, op)
@@ -215,7 +216,7 @@ def test_cum_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(reduction_df.index_value._index_value, IndexValue.RangeIndex)
     assert reduction_df.shape == (20, 10)
 
-    reduction_df = reduction_df.tiles()
+    reduction_df = tile(reduction_df)
 
     assert len(reduction_df.chunks) == 28
     assert reduction_df.nsplits == ((3, 3, 3, 3, 3, 3, 2), (3, 3, 3, 1))
@@ -235,7 +236,7 @@ def test_nunique():
     assert result.op.output_types[0] == OutputType.series
     assert isinstance(result.op, DataFrameNunique)
 
-    tiled = result.tiles()
+    tiled = tile(result)
     assert tiled.shape == (10,)
     assert len(tiled.chunks) == 4
     assert tiled.nsplits == ((3, 3, 3, 1,),)
@@ -250,7 +251,7 @@ def test_nunique():
     assert result2.op.output_types[0] == OutputType.series
     assert isinstance(result2.op, DataFrameNunique)
 
-    tiled = result2.tiles()
+    tiled = tile(result2)
     assert tiled.shape == (20,)
     assert len(tiled.chunks) == 7
     assert tiled.nsplits == ((3, 3, 3, 3, 3, 3, 2,),)
@@ -264,7 +265,7 @@ def test_dataframe_aggregate():
                  'skew', 'kurt', 'sem']
 
     df = from_pandas_df(data)
-    result = df.agg(agg_funcs).tiles()
+    result = tile(df.agg(agg_funcs))
     assert len(result.chunks) == 1
     assert result.shape == (len(agg_funcs), data.shape[1])
     assert list(result.columns_value.to_pandas()) == list(range(19))
@@ -274,7 +275,7 @@ def test_dataframe_aggregate():
 
     df = from_pandas_df(data, chunk_size=(3, 4))
 
-    result = df.agg('sum').tiles()
+    result = tile(df.agg('sum'))
     assert len(result.chunks) == 5
     assert result.shape == (data.shape[1],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[1]))
@@ -285,7 +286,7 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == list(range(4))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = df.agg('sum', axis=1).tiles()
+    result = tile(df.agg('sum', axis=1))
     assert len(result.chunks) == 7
     assert result.shape == (data.shape[0],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[0]))
@@ -295,7 +296,7 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == list(range(3))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = df.agg('var', axis=1).tiles()
+    result = tile(df.agg('var', axis=1))
     assert len(result.chunks) == 7
     assert result.shape == (data.shape[0],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[0]))
@@ -306,7 +307,7 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == list(range(3))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = df.agg(agg_funcs).tiles()
+    result = tile(df.agg(agg_funcs))
     assert len(result.chunks) == 5
     assert result.shape == (len(agg_funcs), data.shape[1])
     assert list(result.columns_value.to_pandas()) == list(range(data.shape[1]))
@@ -319,7 +320,7 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == agg_funcs
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = df.agg(agg_funcs, axis=1).tiles()
+    result = tile(df.agg(agg_funcs, axis=1))
     assert len(result.chunks) == 7
     assert result.shape == (data.shape[0], len(agg_funcs))
     assert list(result.columns_value.to_pandas()) == agg_funcs
@@ -334,7 +335,7 @@ def test_dataframe_aggregate():
 
     dict_fun = {0: 'sum', 2: ['var', 'max'], 9: ['mean', 'var', 'std']}
     all_cols = set(reduce(operator.add, [[v] if isinstance(v, str) else v for v in dict_fun.values()]))
-    result = df.agg(dict_fun).tiles()
+    result = tile(df.agg(dict_fun))
     assert len(result.chunks) == 2
     assert result.shape == (len(all_cols), len(dict_fun))
     assert set(result.columns_value.to_pandas()) == set(dict_fun.keys())
@@ -361,7 +362,7 @@ def test_series_aggregate():
 
     series = from_pandas_series(data)
 
-    result = series.agg(agg_funcs).tiles()
+    result = tile(series.agg(agg_funcs))
     assert len(result.chunks) == 1
     assert result.shape == (len(agg_funcs),)
     assert list(result.index_value.to_pandas()) == agg_funcs
@@ -370,7 +371,7 @@ def test_series_aggregate():
 
     series = from_pandas_series(data, chunk_size=3)
 
-    result = series.agg('sum').tiles()
+    result = tile(series.agg('sum'))
     assert len(result.chunks) == 1
     assert result.shape == ()
     assert result.op.output_types[0] == OutputType.scalar
@@ -378,7 +379,7 @@ def test_series_aggregate():
     assert agg_chunk.shape == ()
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = series.agg(agg_funcs).tiles()
+    result = tile(series.agg(agg_funcs))
     assert len(result.chunks) == 1
     assert result.shape == (len(agg_funcs),)
     assert list(result.index_value.to_pandas()) == agg_funcs

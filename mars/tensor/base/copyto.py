@@ -21,7 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...serialize import KeyField, StringField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..utils import unify_chunks, broadcast_shape
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -117,8 +117,10 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
+        if has_unknown_shape(*op.inputs):
+            yield
+        inputs = yield from unify_chunks(
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
         output = op.outputs[0]
 
         chunk_shapes = [t.chunk_shape if hasattr(t, 'chunk_shape') else t

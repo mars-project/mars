@@ -56,7 +56,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def tile(cls, op):
         if op.method == 'tree':
-            return super().tile(op)
+            return (yield from super().tile(op))
         else:
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
 

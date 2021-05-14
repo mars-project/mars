@@ -120,7 +120,7 @@ def test_groupby(setup):
                          series2.groupby(lambda x: int(x[1:]) % 3))
 
 
-def test_groupby_get_item(setup):
+def test_groupby_getitem(setup):
     rs = np.random.RandomState(0)
     data_size = 100
     raw = pd.DataFrame({'a': rs.randint(0, 10, size=(data_size,)),
@@ -301,11 +301,6 @@ def test_dataframe_groupby_agg(setup):
     r = mdf.groupby('c2').agg(['cumsum', 'cumcount'], method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                   raw.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
-
-    # test auto method
-    r = mdf.groupby('c2').agg('prod')
-    assert r.op.method == 'auto'
-    assert all((not isinstance(c.op, ShuffleProxy)) for c in r.build_graph(tiled=True)) is True
 
     r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2())
     pd.testing.assert_frame_equal(r.execute().fetch(),
