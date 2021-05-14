@@ -1270,7 +1270,8 @@ class _ExtensibleCallable:
             return await self.func(*args, **kwargs)
         except NotImplementedError:
             if self.batch_func:
-                return (await self.batch_func([args], [kwargs]))[0]
+                ret = await self.batch_func([args], [kwargs])
+                return None if ret is None else ret[0]
             raise
 
     def _sync_call(self, *args, **kwargs):

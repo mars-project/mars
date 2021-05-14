@@ -12,4 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .subtask_processor import CheckedSubtaskProcessor
+from typing import Dict
+
+from .... import oscar as mo
+
+
+async def start(config: Dict, address: None):
+    """
+    Start meta service on supervisor.
+
+    Parameters
+    ----------
+    config : dict
+        service config.
+        {
+            "scheduling" : {
+                "submit_period": 1
+            }
+        }
+    address : str
+        Actor pool address.
+    """
+    from .globalslot import GlobalSlotManagerActor
+    await mo.create_actor(
+        GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
+        address=address)

@@ -18,29 +18,26 @@ import importlib
 import logging
 import sys
 from collections import defaultdict
-from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType
-from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
-    VirtualOperand, OperandStage, execute
+from ....core.operand import Fetch, FetchShuffle, \
+    MapReduceOperand, VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ....optimization.physical import optimize
 from ...core import BandType
 from ...meta.api import MetaAPI
-from ...storage.api import StorageAPI
-from ..supervisor.task_manager import TaskManagerActor
-from ..config import task_options
+from ...storage import StorageAPI
+from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
 
-
 logger = logging.getLogger(__name__)
 
-_SubTaskRunnerType = Union["SubtaskRunnerActor", mo.ActorRef]
+SubtaskRunnerRef = Union["SubtaskRunnerActor", mo.ActorRef]
 
 
 class SubtaskManagerActor(mo.Actor):
@@ -52,127 +49,30 @@ class SubtaskManagerActor(mo.Actor):
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
-
         self._cluster_api = await ClusterAPI.create(self.address)
-        await self._create_band_subtask_managers()
 
-    async def _create_band_subtask_managers(self):
         band_to_slots = await self._cluster_api.get_bands()
         supervisor_address = (await self._cluster_api.get_supervisors())[0]
+        tasks = []
         for band, n_slot in band_to_slots.items():
-            await mo.create_actor(BandSubtaskManagerActor, supervisor_address,
-                                  n_slot, band[1],
-                                  subtask_processor_cls=self._subtask_processor_cls,
-                                  address=self.address,
-                                  uid=BandSubtaskManagerActor.gen_uid(band[1]))
+            tasks.append(asyncio.create_task(
+                self._create_band_runner_actors(band[1], n_slot, supervisor_address)))
+        await asyncio.gather(*tasks)
 
-
-class BandSubtaskManagerActor(mo.Actor):
-    """
-    Manage subtask runner slots for a band.
-    """
-    def __init__(self,
-                 supervisor_address: str,
-                 n_slots: int,
-                 band: str = 'numa-0',
-                 subtask_processor_cls: Type = None):
-        self._supervisor_address = supervisor_address
-        self._n_slots = n_slots
-        self._band = band
-        self._subtask_processor_cls = subtask_processor_cls
-
-        self._subtask_runner_slots = list()
-        self._free_slots = set()
-        self._running = asyncio.Semaphore(self._n_slots)
-        self._cancelled_subtask_runners: Dict[_SubTaskRunnerType, asyncio.Event] = dict()
-
-    async def __post_create__(self):
-        strategy = IdleLabel(self._band, 'subtask_runner')
-        band = (self.address, self._band)
-        for _ in range(self._n_slots):
-            runner = await mo.create_actor(
+    async def _create_band_runner_actors(self, band_name: str, n_slots: int,
+                                         supervisor_address: str):
+        strategy = IdleLabel(band_name, 'subtask_runner')
+        band = (self.address, band_name)
+        tasks = []
+        for slot_id in range(n_slots):
+            tasks.append(asyncio.create_task(mo.create_actor(
                 SubtaskRunnerActor,
-                self._supervisor_address, band, self.ref(),
+                supervisor_address, band,
                 subtask_processor_cls=self._subtask_processor_cls,
-                uid=SubtaskRunnerActor.default_uid(),
+                uid=SubtaskRunnerActor.gen_uid(slot_id),
                 address=self.address,
-                allocate_strategy=strategy)
-            self._subtask_runner_slots.append(runner)
-            self._free_slots.add(runner)
-
-    @classmethod
-    def gen_uid(cls, band: str = 'numa-0'):
-        return f'{band}_subtask_manager'
-
-    def register_slot(self, subtask_runner: _SubTaskRunnerType):
-        # when subtask runner created, it will notify subtask manager,
-        # normally, no particular operation needed,
-        # because subtask runner is created by manager itself,
-        # however, when subtask runner is forced to cancel via kill_actor,
-        # cancelling event etc will be handled
-        if subtask_runner in self._cancelled_subtask_runners:
-            self._cancelled_subtask_runners.pop(subtask_runner).set()
-
-    def mark_slot_free(self, subtask_runner: _SubTaskRunnerType):
-        self._free_slots.add(subtask_runner)
-        self._running.release()
-
-    def is_slot_free(self, subtask_runner: _SubTaskRunnerType):
-        return subtask_runner in self._free_slots
-
-    async def _free_slot(self,
-                         subtask_runner: _SubTaskRunnerType,
-                         timeout=5):
-        # otherwise, call subtask runner to cancel
-        cancel_subtask = asyncio.create_task(subtask_runner.cancel_subtask())
-        try:
-            loop = asyncio.get_running_loop()
-            future = loop.create_future()
-            cancel_subtask.add_done_callback(lambda f: future.set_result(None))
-            await asyncio.wait_for(future, timeout)
-        except asyncio.TimeoutError:
-            # timeout, force to cancel subtask by killing actor
-
-            # get subtask result and set it to cancelled
-            result = await subtask_runner.get_subtask_result()
-            result.status = SubtaskStatus.cancelled
-
-            event = self._cancelled_subtask_runners[subtask_runner] = asyncio.Event()
-            await mo.kill_actor(subtask_runner)
-            # when subtask runner recovered, this event will be set
-            await event.wait()
-
-            # since subtask runner is forced to get killed,
-            # it cannot notify task manager no more,
-            # so notify task manager here instead.
-            fut = SubtaskProcessor.notify_task_manager_result(
-                self._supervisor_address, result)
-            if fut:
-                await fut
-
-    async def free_slot(self,
-                        subtask_runner: _SubTaskRunnerType,
-                        timeout=5):
-        if self.is_slot_free(subtask_runner):
-            # slot is available, no action needed
-            return
-        # return coroutine to release Actor lock
-
-        yield self._free_slot(subtask_runner, timeout)
-
-        # succeeded, mark slot free
-        self.mark_slot_free(subtask_runner)
-
-    def get_all_slots(self) -> List[_SubTaskRunnerType]:
-        return self._subtask_runner_slots
-
-    async def _get_free_slot(self) -> _SubTaskRunnerType:
-        await self._running.acquire()
-        return self._free_slots.pop()
-
-    async def get_free_slot(self):
-        # return coroutine to release Actor lock.
-        return self._get_free_slot()
+                allocate_strategy=strategy)))
+        await asyncio.gather(*tasks)
 
 
 class SubtaskProcessor:
@@ -262,45 +162,16 @@ class SubtaskProcessor:
 
     @staticmethod
     @alru_cache(cache_exceptions=False)
-    async def _get_task_manager(supervisor_address: str, uid: str) -> mo.ActorRef:
-        return await mo.actor_ref(supervisor_address, uid)
+    async def _get_task_api(supervisor_address: str, session_id: str) -> TaskAPI:
+        return await TaskAPI.create(session_id, supervisor_address)
 
     @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
                                          result: SubtaskResult):
-        task_manager = await SubtaskProcessor._get_task_manager(
-            supervisor_address, TaskManagerActor.gen_uid(result.session_id))
-        # notify task manger
-        await task_manager.set_subtask_result(result)
-
-    async def cancel(self):
-        self.result.status = SubtaskStatus.cancelled
-        self.result.progress = 1.0
-        # notify task manager
-        fut = self.notify_task_manager_result(
-            self._supervisor_address, self.result)
-        if fut:
-            await fut
-
-    async def done(self):
-        if self.result.status == SubtaskStatus.running:
-            self.result.status = SubtaskStatus.succeeded
-        self.result.progress = 1.0
-        fut = self.notify_task_manager_result(
-            self._supervisor_address, self.result)
-        if fut:
-            await fut
-
-    @contextmanager
-    def _catch_error(self):
-        try:
-            yield
-        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-            logger.exception(f"Error when executing subtask: {self.subtask_id}")
-            _, err, tb = sys.exc_info()
-            self.result.status = SubtaskStatus.errored
-            self.result.error = err
-            self.result.traceback = tb
+        task_api = await SubtaskProcessor._get_task_api(
+            supervisor_address, result.session_id)
+        # notify task service
+        await task_api.set_subtask_result(result)
 
     def _init_ref_counts(self):
         chunk_graph = self._chunk_graph
@@ -321,7 +192,7 @@ class SubtaskProcessor:
     async def run(self):
         self.result.status = SubtaskStatus.running
 
-        with self._catch_error():
+        try:
             loop = asyncio.get_running_loop()
             executor = futures.ThreadPoolExecutor(1)
 
@@ -329,7 +200,7 @@ class SubtaskProcessor:
             self._gen_chunk_key_to_data_keys()
             ref_counts = self._init_ref_counts()
 
-            report_progress = asyncio.create_task(
+            asyncio.create_task(
                 self.report_progress_periodically())
 
             await self._load_input_data()
@@ -353,10 +224,10 @@ class SubtaskProcessor:
                         # wait for this computation to finish
                         await loop.run_in_executor(None, executor.shutdown)
                         # if cancelled, stop next computation,
-                        await self.cancel()
                         logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}, '
                                     f'subtask id: {self.subtask.subtask_id}')
-                        return
+                        self.result.status = SubtaskStatus.cancelled
+                        raise
                     self._op_progress[chunk.op.key] = 1.0
                 else:
                     self._op_progress[chunk.op.key] += 1.0
@@ -405,10 +276,10 @@ class SubtaskProcessor:
                 logger.info(f'Cancelling put data keys: {stored_keys}, '
                             f'subtask id: {self.subtask.subtask_id}')
                 put_infos.cancel()
-                await self.cancel()
                 logger.info(f'Cancelled put data keys: {stored_keys}, '
                             f'subtask id: {self.subtask.subtask_id}')
-                return
+                self.result.status = SubtaskStatus.cancelled
+                raise
 
             # clear data
             self._datastore = dict()
@@ -444,20 +315,28 @@ class SubtaskProcessor:
                     deletes.append(self._storage_api.delete.delay(data_key))
                 await self._storage_api.delete.batch(*deletes)
 
-                await self.cancel()
+                self.result.status = SubtaskStatus.cancelled
                 logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}, '
                             f'subtask id: {self.subtask.subtask_id}')
-                return
+                raise
 
             # set result data size
             self.result.data_size = sum(memory_sizes)
-
-        await self.done()
-        report_progress.cancel()
-        try:
-            await report_progress
         except asyncio.CancelledError:
+            self.result.status = SubtaskStatus.cancelled
+            self.result.progress = 1.0
+            raise
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+            self.result.status = SubtaskStatus.errored
+            self.result.progress = 1.0
+            _, self.result.error, self.result.traceback = sys.exc_info()
+            raise
+        finally:
             pass
+
+        self.result.status = SubtaskStatus.succeeded
+        self.result.progress = 1.0
+        return self.result
 
     async def report_progress_periodically(self, interval=.5, eps=0.001):
         last_progress = self.result.progress
@@ -483,20 +362,19 @@ class _SubtaskRunningInfo:
 
 
 class SubtaskRunnerActor(mo.Actor):
+    @classmethod
+    def gen_uid(cls, slot_id: int):
+        return f'slot_{slot_id}_subtask_runner'
+
     def __init__(self,
                  supervisor_address: str,
                  band: BandType,
-                 subtask_manager: Union[BandSubtaskManagerActor, mo.ActorRef],
                  subtask_processor_cls: Type = None):
         self._supervisor_address = supervisor_address
         self._band = band
         self._subtask_info: Optional[_SubtaskRunningInfo] = None
-        self._subtask_manager = subtask_manager
         self._subtask_processor_cls = \
             self._get_subtask_process_cls(subtask_processor_cls)
-
-    async def __post_create__(self):
-        await self._subtask_manager.register_slot(self.ref())
 
     @classmethod
     def _get_subtask_process_cls(cls, subtask_processor_cls):
@@ -522,18 +400,10 @@ class SubtaskRunnerActor(mo.Actor):
     async def _run_subtask(self, subtask: Subtask):
         processor = await self._init_subtask_processor(subtask)
         self._subtask_info.processor = processor
-        try:
-            await processor.run()
-        finally:
-            # release slot after notifying task manager,
-            # make sure the subtasks that have higher priorities
-            # have been enqueued so that they can be scheduled first.
-            await self._subtask_manager.mark_slot_free(self.ref())
+        return await processor.run()
 
     async def run_subtask(self, subtask: Subtask):
-        if self._subtask_info is not None and \
-                getattr(self._subtask_info, 'processor', None) is not None and \
-                not self._subtask_info.processor.status.is_done:
+        if not self.is_runner_free():  # pragma: no cover
             # current subtask is still running
             raise SlotOccupiedAlready(
                 f'There is subtask(id: '
@@ -545,6 +415,11 @@ class SubtaskRunnerActor(mo.Actor):
         self._subtask_info = _SubtaskRunningInfo(task=aio_task)
         return aio_task
 
+    def is_runner_free(self):
+        return self._subtask_info is None or \
+            getattr(self._subtask_info, 'processor', None) is None or \
+            self._subtask_info.processor.status.is_done
+
     async def wait_subtask(self):
         await self._subtask_info.task
 
@@ -552,9 +427,19 @@ class SubtaskRunnerActor(mo.Actor):
         return self._subtask_info.processor.result
 
     async def cancel_subtask(self):
+        if self._subtask_info is None:
+            return
+
         logger.info(f'Cancelling subtask: '
                     f'{self._subtask_info.processor.subtask_id}')
         aio_task = self._subtask_info.task
         aio_task.cancel()
+
+        async def waiter():
+            try:
+                await aio_task
+            except asyncio.CancelledError:
+                pass
+
         # return asyncio task to not block current actor
-        return aio_task
+        return waiter()

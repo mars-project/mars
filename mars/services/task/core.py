@@ -15,33 +15,17 @@
 import random
 from enum import Enum
 from string import ascii_letters, digits
-from typing import Any, List
+from typing import Any
 
-from ...core import TileableGraph, ChunkGraph, DAG
+from ...core import TileableGraph
 from ...serialization.serializables import Serializable, StringField, \
-    ReferenceField, Int32Field, Int64Field, Float64Field, \
-    BoolField, AnyField, ListField, DictField
-from ..core import BandType
+    ReferenceField, Int32Field, BoolField, AnyField, DictField
 
 
 class TaskStatus(Enum):
     pending = 0
     running = 1
     terminated = 2
-
-
-class SubtaskStatus(Enum):
-    pending = 0
-    running = 1
-    succeeded = 2
-    errored = 3
-    cancelled = 4
-
-    @property
-    def is_done(self) -> bool:
-        return self in (SubtaskStatus.succeeded,
-                        SubtaskStatus.errored,
-                        SubtaskStatus.cancelled)
 
 
 class Task(Serializable):
@@ -88,63 +72,6 @@ class TaskResult(Serializable):
                          status=status,
                          error=error,
                          traceback=traceback)
-
-
-class Subtask(Serializable):
-    subtask_id: str = StringField('subtask_id')
-    subtask_name: str = StringField('subtask_name')
-    session_id: str = StringField('session_id')
-    task_id: str = StringField('task_id')
-    chunk_graph: ChunkGraph = ReferenceField('chunk_graph', ChunkGraph)
-    expect_bands: List[BandType] = ListField('expect_bands')
-    virtual: bool = BoolField('virtual')
-    priority: int = Int32Field('priority')
-    rerun_time: int = Int32Field('rerun_time')
-    extra_config: dict = DictField('extra_config')
-
-    def __init__(self,
-                 subtask_id: str = None,
-                 session_id: str = None,
-                 task_id: str = None,
-                 chunk_graph: ChunkGraph = None,
-                 subtask_name: str = None,
-                 expect_bands: List[BandType] = None,
-                 priority: int = None,
-                 virtual: bool = False,
-                 rerun_time: int = 0,
-                 extra_config: dict = None):
-        super().__init__(subtask_id=subtask_id,
-                         subtask_name=subtask_name,
-                         session_id=session_id,
-                         task_id=task_id,
-                         chunk_graph=chunk_graph,
-                         expect_bands=expect_bands,
-                         priority=priority,
-                         virtual=virtual,
-                         rerun_time=rerun_time,
-                         extra_config=extra_config)
-
-    @property
-    def expect_band(self):
-        if self.expect_bands:
-            return self.expect_bands[0]
-
-
-class SubtaskResult(Serializable):
-    subtask_id: str = StringField('subtask_id')
-    session_id: str = StringField('session_id')
-    task_id: str = StringField('task_id')
-    status: SubtaskStatus = ReferenceField('status', SubtaskStatus)
-    progress: float = Float64Field('progress')
-    data_size: int = Int64Field('data_size', default=None)
-    error = AnyField('error', default=None)
-    traceback = AnyField('traceback', default=None)
-
-
-class SubtaskGraph(DAG):
-    """
-    Subtask graph.
-    """
 
 
 def new_task_id():

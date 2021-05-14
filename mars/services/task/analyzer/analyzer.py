@@ -20,7 +20,8 @@ from ....core import ChunkGraph, ChunkType
 from ....core.operand import Fetch, Fuse, VirtualOperand
 from ....utils import implements, build_fetch
 from ...core import BandType
-from ..core import SubtaskGraph, Subtask, new_task_id
+from ...subtask import SubtaskGraph, Subtask
+from ..core import new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 from .fusion import Fusion
 
@@ -219,7 +220,7 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             session_id=self._task_stage_info.task_info.session_id,
             task_id=self._task_stage_info.task_id,
             chunk_graph=subtask_chunk_graph,
-            expect_bands=[band],
+            expect_bands=[band] if band is not None else None,
             virtual=virtual,
             priority=priority,
             extra_config=self._extra_config)

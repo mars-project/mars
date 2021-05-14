@@ -17,6 +17,7 @@ from typing import List, Union
 from .... import oscar as mo
 from ....core import Tileable
 from ....lib.aio import alru_cache
+from ...subtask import SubtaskResult
 from ..core import TileableGraph, TaskResult
 from ..supervisor.task_manager import TaskManagerActor
 from .core import AbstractTaskAPI
@@ -196,6 +197,20 @@ class TaskAPI(AbstractTaskAPI):
             Fetch tileable list.
         """
         return await self._task_manager_ref.get_task_result_tileables(task_id)
+
+    async def set_subtask_result(self, subtask_result: SubtaskResult):
+        """
+        Set result of subtask
+
+        Parameters
+        ----------
+        subtask_result:
+
+        Returns
+        -------
+
+        """
+        return await self._task_manager_ref.set_subtask_result.tell(subtask_result)
 
     async def get_last_idle_time(self) -> Union[float, None]:
         """

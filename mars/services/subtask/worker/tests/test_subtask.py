@@ -27,11 +27,14 @@ from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuild
 from mars.services.cluster import MockClusterAPI
 from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
+from mars.services.scheduling import MockSchedulingAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
-from mars.services.task import Subtask, SubtaskStatus, SubtaskResult, new_task_id
-from mars.services.task.supervisor.task_manager import TaskConfigurationActor, TaskManagerActor
-from mars.services.task.worker.subtask import BandSubtaskManagerActor, SubtaskRunnerActor
+from mars.services.subtask import Subtask, SubtaskStatus, SubtaskResult
+from mars.services.subtask.worker.subtask import SubtaskManagerActor, \
+    SubtaskRunnerActor, SubtaskRunnerRef
+from mars.services.task import new_task_id
+from mars.services.task.supervisor.task_manager import TaskManagerActor, TaskConfigurationActor
 from mars.utils import Timer
 
 
@@ -51,12 +54,14 @@ async def actor_pool():
     async with pool:
         session_id = 'test_session'
         # create mock APIs
-        await MockClusterAPI.create(pool.external_address)
+        await MockClusterAPI.create(pool.external_address, band_to_slots={'numa-0': 2})
         await MockSessionAPI.create(
             pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
+        await MockSchedulingAPI.create(session_id, pool.external_address)
+        # await MockTaskAPI.create(session_id, pool.external_address)
 
         # create configuration
         await mo.create_actor(TaskConfigurationActor, dict(),
@@ -67,8 +72,8 @@ async def actor_pool():
             uid=FakeTaskManager.gen_uid(session_id),
             address=pool.external_address)
         manager = await mo.create_actor(
-            BandSubtaskManagerActor, pool.external_address, 2,
-            uid=BandSubtaskManagerActor.gen_uid('numa-0'),
+            SubtaskManagerActor, None,
+            uid=SubtaskManagerActor.default_uid(),
             address=pool.external_address)
 
         yield pool, session_id, meta_api, storage_api, manager
@@ -95,7 +100,8 @@ async def test_subtask_success(actor_pool):
     b = a + 1
 
     subtask = _gen_subtask(b, session_id)
-    subtask_runner: SubtaskRunnerActor = await manager.get_free_slot()
+    subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
+        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
     asyncio.create_task(subtask_runner.run_subtask(subtask))
     await asyncio.sleep(0)
     await subtask_runner.wait_subtask()
@@ -112,7 +118,7 @@ async def test_subtask_success(actor_pool):
     chunk_meta = await meta_api.get_chunk_meta(result_key)
     assert chunk_meta is not None
     assert chunk_meta['bands'][0] == (pool.external_address, 'numa-0')
-    assert await manager.is_slot_free(subtask_runner) is True
+    assert await subtask_runner.is_runner_free() is True
 
 
 @pytest.mark.asyncio
@@ -125,47 +131,62 @@ async def test_subtask_failure(actor_pool):
         c = a / 0
 
     subtask = _gen_subtask(c, session_id)
-    subtask_runner: SubtaskRunnerActor = await manager.get_free_slot()
-    await subtask_runner.run_subtask(subtask)
+    subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
+        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
+    with pytest.raises(FloatingPointError):
+        await subtask_runner.run_subtask(subtask)
     result = await subtask_runner.get_subtask_result()
     assert result.status == SubtaskStatus.errored
     assert isinstance(result.error, FloatingPointError)
-    assert await manager.is_slot_free(subtask_runner) is True
+    assert await subtask_runner.is_runner_free() is True
 
 
 @pytest.mark.asyncio
 async def test_cancel_subtask(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
+    subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
+        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
 
     def sleep(timeout: int):
         time.sleep(timeout)
         return timeout
 
-    a = mr.spawn(sleep, 2)
+    b = mr.spawn(sleep, 100)
 
-    subtask = _gen_subtask(a, session_id)
-    subtask_runner: SubtaskRunnerActor = await manager.get_free_slot()
+    subtask = _gen_subtask(b, session_id)
     asyncio.create_task(subtask_runner.run_subtask(subtask))
     await asyncio.sleep(0.2)
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
-        await manager.free_slot(subtask_runner, timeout=5)
-    # do not need to wait 5 sec
+        aio_task = asyncio.create_task(asyncio.wait_for(
+            subtask_runner.cancel_subtask(), timeout=1))
+        assert await subtask_runner.is_runner_free() is False
+        with pytest.raises(asyncio.TimeoutError):
+            await aio_task
+    # need 1 sec to reach timeout, then killing actor and wait for auto recovering
+    # the time would not be over 5 sec
     assert timer.duration < 5
-    assert await manager.is_slot_free(subtask_runner) is True
 
-    b = mr.spawn(sleep, 100)
+    async def wait_slot_restore():
+        while True:
+            try:
+                assert await subtask_runner.is_runner_free() is True
+            except (mo.ServerClosed, ConnectionRefusedError, mo.ActorNotExist):
+                await asyncio.sleep(0.5)
+            else:
+                break
 
-    subtask2 = _gen_subtask(b, session_id)
-    subtask_runner: SubtaskRunnerActor = await manager.get_free_slot()
+    await mo.kill_actor(subtask_runner)
+    await wait_slot_restore()
+
+    a = mr.spawn(sleep, 2)
+
+    subtask2 = _gen_subtask(a, session_id)
     asyncio.create_task(subtask_runner.run_subtask(subtask2))
     await asyncio.sleep(0.2)
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
-        aio_task = asyncio.create_task(manager.free_slot(subtask_runner, timeout=1))
-        assert await manager.is_slot_free(subtask_runner) is False
-        await aio_task
-    # need 1 sec to reach timeout, then killing actor and wait for auto recovering
-    # the time would not be over 10 sec
+        await asyncio.wait_for(subtask_runner.cancel_subtask(), timeout=6)
+    # do not need to wait 10 sec
     assert timer.duration < 10
-    assert await manager.is_slot_free(subtask_runner) is True
+    assert await subtask_runner.is_runner_free() is True

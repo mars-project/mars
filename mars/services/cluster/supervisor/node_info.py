@@ -108,8 +108,9 @@ class NodeInfoCollectorActor(mo.Actor):
             )
         return ret_infos
 
-    def get_all_bands(self) -> Dict[BandType, int]:
-        nodes = self._role_to_nodes.get(NodeRole.WORKER, list())
+    def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
+        role = role or NodeRole.WORKER
+        nodes = self._role_to_nodes.get(role, [])
         band_slots = dict()
         for node in nodes:
             node_resource = self._node_infos[node].resource
@@ -132,6 +133,20 @@ class NodeInfoCollectorActor(mo.Actor):
                 await event.wait()
                 return self.get_nodes_info(
                     role=role, env=env, resource=resource, state=state)
+            finally:
+                self._role_to_events[role].remove(event)
+
+        return waiter()
+
+    async def watch_all_bands(self, role: NodeRole = None):
+        role = role or NodeRole.WORKER
+        event = asyncio.Event()
+        self._role_to_events[role].add(event)
+
+        async def waiter():
+            try:
+                await event.wait()
+                return self.get_all_bands(role=role)
             finally:
                 self._role_to_events[role].remove(event)
 

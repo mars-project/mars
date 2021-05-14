@@ -198,9 +198,6 @@ class Test(WorkerCase):
                 assert_allclose(self.get_result(5), data1)
 
     def testDiskReadAndWriteMerger(self):
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
-
         test_addr = f'127.0.0.1:{get_next_port()}'
         options.worker.filemerger.max_file_size = 2400
         options.worker.filemerger.concurrency = 16

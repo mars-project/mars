@@ -32,12 +32,13 @@ from mars.oscar.backends.allocate_strategy import MainPool
 from mars.services.cluster import MockClusterAPI
 from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
+from mars.services.scheduling import MockSchedulingAPI
 from mars.services.session import MockSessionAPI
-from mars.services.storage.api import StorageAPI, MockStorageAPI
+from mars.services.storage import StorageAPI, MockStorageAPI
+from mars.services.subtask import MockSubtaskAPI
 from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.task_manager import \
     TaskConfigurationActor, TaskManagerActor
-from mars.services.task.worker.subtask import BandSubtaskManagerActor
 from mars.utils import Timer, merge_chunks
 
 
@@ -52,11 +53,13 @@ async def actor_pool():
     async with pool:
         session_id = 'test_session'
         # create mock APIs
-        await MockClusterAPI.create(pool.external_address)
+        await MockClusterAPI.create(pool.external_address, band_to_slots={'numa-0': 2})
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         lifecycle_api = await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
+        await MockSchedulingAPI.create(session_id, pool.external_address)
+        await MockSubtaskAPI.create(pool.external_address)
 
         # create configuration
         await mo.create_actor(TaskConfigurationActor, dict(),
@@ -67,12 +70,6 @@ async def actor_pool():
                                         uid=TaskManagerActor.gen_uid(session_id),
                                         address=pool.external_address,
                                         allocate_strategy=MainPool())
-
-        # create band subtask manager
-        await mo.create_actor(
-            BandSubtaskManagerActor, pool.external_address, 2,
-            uid=BandSubtaskManagerActor.gen_uid('numa-0'),
-            address=pool.external_address)
 
         yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
 
@@ -108,7 +105,8 @@ async def test_run_task(actor_pool):
     task_result: TaskResult = await manager.get_task_result(task_id)
 
     assert task_result.status == TaskStatus.terminated
-    assert task_result.error is None
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
     assert await manager.get_task_progress(task_id) == 1.0
 
     result_tileable = (await manager.get_task_result_tileables(task_id))[0]
@@ -201,7 +199,8 @@ async def test_iterative_tiling(actor_pool):
     task_result: TaskResult = await manager.get_task_result(task_id)
 
     assert task_result.status == TaskStatus.terminated
-    assert task_result.error is None
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = raw_a[raw_a[:, 0] < 3] + raw_b[raw_b[:, 0] < 3]
@@ -235,7 +234,8 @@ async def test_shuffle(actor_pool):
     task_result: TaskResult = await manager.get_task_result(task_id)
 
     assert task_result.status == TaskStatus.terminated
-    assert task_result.error is None
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = raw[raw2]
@@ -268,7 +268,8 @@ async def test_numexpr(actor_pool):
     task_result: TaskResult = await manager.get_task_result(task_id)
 
     assert task_result.status == TaskStatus.terminated
-    assert task_result.error is None
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
     assert await manager.get_task_progress(task_id) == 1.0
 
     expect = (raw + 1) * 2 - 0.3
@@ -290,9 +291,9 @@ async def test_optimization(actor_pool):
         file_path = os.path.join(tempdir, 'test.csv')
 
         pdf = pd.DataFrame({'a': [3, 4, 5, 3, 5, 4, 1, 2, 3],
-                           'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
-                           'c': list('aabaaddce'),
-                           'd': list('abaaaddce')})
+                            'b': [1, 3, 4, 5, 6, 5, 4, 4, 4],
+                            'c': list('aabaaddce'),
+                            'd': list('abaaaddce')})
         pdf.to_csv(file_path, index=False)
 
         df = md.read_csv(file_path)
@@ -309,7 +310,8 @@ async def test_optimization(actor_pool):
         task_result: TaskResult = await manager.get_task_result(task_id)
 
         assert task_result.status == TaskStatus.terminated
-        assert task_result.error is None
+        if task_result.error is not None:
+            raise task_result.error.with_traceback(task_result.traceback)
         assert await manager.get_task_progress(task_id) == 1.0
 
         expect = pdf.groupby('c').agg({'a': 'sum'})

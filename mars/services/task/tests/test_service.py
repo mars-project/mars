@@ -59,7 +59,8 @@ async def test_task_service(actor_pools, use_web_api):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "lifecycle", "meta", "task"],
+        "services": ["cluster", "session", "lifecycle", "meta", "lifecycle", "scheduling",
+                     "task", "subtask"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -68,7 +69,8 @@ async def test_task_service(actor_pools, use_web_api):
         "meta": {
             "store": "dict"
         },
-        "task": {}
+        "scheduling": {},
+        "task": {},
     }
     if use_web_api:
         config['services'].append('web')
@@ -122,7 +124,8 @@ async def test_task_service(actor_pools, use_web_api):
 
     assert task_result.status == TaskStatus.terminated
     assert await task_api.get_last_idle_time() is not None
-    assert task_result.error is None
+    if task_result.error is not None:
+        raise task_result.error.with_traceback(task_result.traceback)
 
     result_tileable = (await task_api.get_fetch_tileables(task_id))[0]
     data_key = result_tileable.chunks[0].key

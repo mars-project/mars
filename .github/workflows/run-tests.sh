@@ -21,8 +21,10 @@ if [ -z "$NO_COMMON_TESTS" ]; then
   pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe mars/web \
     mars/learn mars/remote mars/storage mars/lib
   mv .coverage build/.coverage.tensor.file
+  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded --forked mars/oscar mars/services
+  mv .coverage build/.coverage.oscar.file
   pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
-    --ignore mars/learn --ignore mars/remote mars
+    --ignore mars/learn --ignore mars/remote --ignore mars/services --ignore mars/oscar mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report
 

@@ -259,7 +259,8 @@ class MockStorageAPI(StorageAPI):
                 "plasma": plasma_setup_params,
             }
 
-        await mo.create_actor(StorageManagerActor,
+        storage_manger_cls = kwargs.pop('storage_manger_cls', StorageManagerActor)
+        await mo.create_actor(storage_manger_cls,
                               storage_configs,
                               uid=StorageManagerActor.default_uid(),
                               address=address)
