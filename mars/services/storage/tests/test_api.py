@@ -19,10 +19,17 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
+import mars.tensor as mt
+from mars.core import tile
 from mars.serialize import dataserializer
-from mars.services.storage.api import MockStorageAPI
+from mars.services.cluster import MockClusterAPI
+from mars.services.meta import MockMetaAPI
+from mars.services.session import MockSessionAPI
+from mars.services.storage.api import MockStorageAPI, WebStorageAPI
+from mars.services.web import WebActor
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
+from mars.utils import get_next_port
 
 try:
     import vineyard
@@ -61,8 +68,7 @@ if vineyard is not None:
     )})
 
 # shared_memory
-if sys.version_info[:2] >= (3, 8):
-    storage_configs.append({'shared_memory': dict()})
+storage_configs.append({'shared_memory': dict()})
 
 
 @pytest.mark.asyncio
@@ -115,3 +121,50 @@ async def test_storage_mock_api(storage_configs):
             read_value = dataserializer.loads(read_bytes)
 
         pd.testing.assert_frame_equal(value2, read_value)
+
+
+@pytest.mark.asyncio
+async def test_web_storage_api():
+    from mars.services.storage.api.web import StorageWebAPIHandler
+
+    start_method = 'fork' if sys.platform != 'win32' else None
+    pool = await mo.create_actor_pool('127.0.0.1', 1,
+                                      subprocess_start_method=start_method)
+    async with pool:
+        session_id = 'mock_session_id'
+        await MockClusterAPI.create(
+            address=pool.external_address)
+        await MockSessionAPI.create(
+            session_id=session_id,
+            address=pool.external_address)
+        meta_api = await MockMetaAPI.create(
+            session_id=session_id,
+            address=pool.external_address)
+        await MockStorageAPI.create(
+            address=pool.external_address,
+            session_id=session_id,
+            storage_configs={'shared_memory': dict()})
+
+        web_config = {
+            'port': get_next_port(),
+            'web_handlers': {
+                StorageWebAPIHandler.get_root_pattern(): StorageWebAPIHandler
+            }
+        }
+        await mo.create_actor(WebActor, web_config, address=pool.external_address)
+
+        web_storage_api = WebStorageAPI(
+            session_id, f'http://127.0.0.1:{web_config["port"]}')
+
+        value = np.random.rand(10, 10)
+        t = mt.random.rand(10, 10)
+        t = tile(t)
+        await meta_api.set_chunk_meta(t.chunks[0], bands=[(pool.external_address, 'numa-0')])
+        await web_storage_api.put(t.chunks[0].key, value)
+
+        ret_value = await web_storage_api.get(t.chunks[0].key)
+        np.testing.assert_array_equal(value, ret_value)
+
+        sliced_value = await web_storage_api.get(
+            t.chunks[0].key, conditions=[slice(3, 5), slice(None, None)])
+        np.testing.assert_array_equal(value[3:5, :], sliced_value)

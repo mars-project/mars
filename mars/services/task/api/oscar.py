@@ -12,104 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 from typing import List, Union
 
-from ... import oscar as mo
-from ...core import Tileable
-from ...lib.aio import alru_cache
-from .core import TileableGraph, TaskResult
-from .supervisor.task_manager import TaskManagerActor
-
-
-class AbstractTaskAPI(ABC):
-
-    @abstractmethod
-    async def submit_tileable_graph(self,
-                                    graph: TileableGraph,
-                                    task_name: str = None,
-                                    fuse_enabled: bool = True,
-                                    extra_config: dict = None) -> str:
-        """
-        Submit a tileable graph
-
-        Parameters
-        ----------
-        graph : TileableGraph
-            Tileable graph.
-        task_name : str
-            Task name
-        fuse_enabled : bool
-            Enable fuse optimization
-        extra_config : dict
-            Extra config.
-
-        Returns
-        -------
-        task_id : str
-            Task ID.
-        """
-
-    @abstractmethod
-    async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
-        """
-        Get fetch tileable for a task.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        fetch_tileable_list
-            Fetch tileable list.
-        """
-
-    @abstractmethod
-    async def wait_task(self, task_id: str, timeout: float = None):
-        """
-        Wait for a task to finish.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID
-        timeout: float
-            Second to timeout
-        """
-
-    @abstractmethod
-    async def get_task_progress(self,
-                                task_id: str) -> float:
-        """
-        Get task progress.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        progress : float
-            Get task progress.
-        """
-
-    async def get_task_result(self, task_id: str) -> TaskResult:
-        """
-        Get task status.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        result : TaskResult
-            Task result.
-        """
+from .... import oscar as mo
+from ....core import Tileable
+from ....lib.aio import alru_cache
+from ..core import TileableGraph, TaskResult
+from ..supervisor.task_manager import TaskManagerActor
+from .core import AbstractTaskAPI
 
 
 class TaskAPI(AbstractTaskAPI):
@@ -190,19 +100,74 @@ class TaskAPI(AbstractTaskAPI):
                                     task_name: str = None,
                                     fuse_enabled: bool = True,
                                     extra_config: dict = None) -> str:
+        """
+        Submit a tileable graph
+
+        Parameters
+        ----------
+        graph : TileableGraph
+            Tileable graph.
+        task_name : str
+            Task name
+        fuse_enabled : bool
+            Enable fuse optimization
+        extra_config : dict
+            Extra config.
+
+        Returns
+        -------
+        task_id : str
+            Task ID.
+        """
         return await self._task_manager_ref.submit_tileable_graph(
             graph, task_name, fuse_enabled=fuse_enabled,
             extra_config=extra_config)
 
     async def wait_task(self, task_id: str, timeout: float = None):
+        """
+        Wait for a task to finish.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID
+        timeout: float
+            Second to timeout
+        """
         return await self._task_manager_ref.wait_task(
             task_id, timeout=timeout)
 
     async def get_task_result(self, task_id: str) -> TaskResult:
+        """
+        Get task status.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        result : TaskResult
+            Task result.
+        """
         return await self._task_manager_ref.get_task_result(task_id)
 
     async def get_task_progress(self,
                                 task_id: str) -> float:
+        """
+        Get task progress.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        progress : float
+            Get task progress.
+        """
         return await self._task_manager_ref.get_task_progress(task_id)
 
     async def cancel_task(self, task_id: str):
@@ -217,6 +182,19 @@ class TaskAPI(AbstractTaskAPI):
         return await self._task_manager_ref.cancel_task(task_id)
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
+        """
+        Get fetch tileable for a task.
+
+        Parameters
+        ----------
+        task_id : str
+            Task ID.
+
+        Returns
+        -------
+        fetch_tileable_list
+            Fetch tileable list.
+        """
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
     async def get_last_idle_time(self) -> Union[float, None]:

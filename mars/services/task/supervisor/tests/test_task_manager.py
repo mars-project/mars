@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import gc
 import os
 import sys
 import tempfile
@@ -151,7 +152,7 @@ async def test_cancel_task(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     def func():
-        time.sleep(20)
+        time.sleep(200)
 
     rs = [mr.spawn(func) for _ in range(10)]
 
@@ -168,10 +169,13 @@ async def test_cancel_task(actor_pool):
         result = await manager.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
 
-    assert timer.duration < 15
+    assert timer.duration < 20
 
     keys = [r.key for r in rs]
     del rs
+    gc.collect()
+    await asyncio.sleep(0.5)
+
     # test ref counts
     assert (await lifecycle_api.get_tileable_ref_counts(keys)) == [0] * len(keys)
 

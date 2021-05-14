@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import MetaAPI, MockMetaAPI
+from .api import AbstractMetaAPI, MetaAPI, MockMetaAPI, WebMetaAPI
 from .core import TensorMeta, DataFrameMeta, SeriesMeta, IndexMeta, ObjectMeta, \
     TensorChunkMeta, DataFrameChunkMeta, SeriesChunkMeta, IndexChunkMeta, ObjectChunkMeta
