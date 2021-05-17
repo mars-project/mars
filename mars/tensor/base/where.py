@@ -19,8 +19,7 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import KeyField
+from ...serialization.serializables import KeyField
 from ...utils import has_unknown_shape
 from ..utils import broadcast_shape, unify_chunks
 from ..array_utils import as_same_device, device

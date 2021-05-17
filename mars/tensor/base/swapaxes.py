@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
 from ..datasource import tensor as astensor

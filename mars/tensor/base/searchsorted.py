@@ -19,7 +19,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...core.operand import OperandStage
-from ...serialize import KeyField, StringField, AnyField, Int64Field, Int32Field
+from ...serialization.serializables import KeyField, StringField, \
+    AnyField, Int64Field, Int32Field
 from ...config import options
 from ...utils import check_chunks_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin

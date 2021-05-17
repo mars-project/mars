@@ -17,9 +17,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, Int32Field
+from ...core import ExecutableTuple, recursive_tile
 from ...lib.sparse.core import get_array_module
-from ...core import ExecutableTuple
+from ...serialization.serializables import KeyField, AnyField, Int32Field
 from ..core import Tensor
 from ..datasource import tensor as astensor
 from ..utils import calc_sliced_size
@@ -107,16 +107,12 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         splits = op.outputs
         axis = op.axis
 
-        if any(np.isnan(s.shape[axis]) for s in splits):
-            # TODO(xuye.qin): when iterative tiling is ready and we can retrieve data from context,
-            # this function would be available
-            raise ValueError(f'Tensor chunk sizes are unknown: {splits}')
-
         acc_shapes = np.cumsum([s.shape[axis] for s in splits])
         out_kws = [dict() for _ in splits]
         for i, split in enumerate(splits):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
-            new_s = in_tensor[(slice(None),) * axis + (slc,)]._inplace_tile()
+            new_s = yield from recursive_tile(
+                in_tensor[(slice(None),) * axis + (slc,)])
             out_kws[i]['chunks'] = new_s.chunks
             out_kws[i]['nsplits'] = new_s.nsplits
             out_kws[i]['shape'] = split.shape

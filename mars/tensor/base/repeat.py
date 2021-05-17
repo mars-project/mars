@@ -21,7 +21,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import KeyField, AnyField, Int32Field
+from ...serialization.serializables import KeyField, AnyField, Int32Field
 from ...utils import has_unknown_shape
 from ..core import Tensor, TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..utils import broadcast_shape, unify_chunks
@@ -119,7 +119,8 @@ class TensorRepeat(TensorHasInput, TensorOperandMixin):
                 if split % s != 0:
                     new_nsplit.append(split % s)
 
-            a = yield from recursive_tile(a.rechunk({ax: new_nsplit}))
+            a = yield from recursive_tile(
+                a.rechunk({ax: new_nsplit}))
 
         out_chunks = []
         ax_cum_count = np.cumsum((0,) + a.nsplits[ax])

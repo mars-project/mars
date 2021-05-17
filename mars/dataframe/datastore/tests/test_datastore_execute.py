@@ -23,6 +23,7 @@ import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe import DataFrame
 from mars.tests import new_test_session
+from mars.tests import new_test_session
 from mars.tests.core import flaky
 
 try:

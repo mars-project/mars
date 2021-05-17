@@ -15,7 +15,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
+from ...serialization.serializables import FieldTypes, Int32Field, \
+    StringField, ListField, BoolField
 from ...core import ExecutableTuple
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -31,8 +32,8 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     _axis = Int32Field('axis')
     _kind = StringField('kind')
     _parallel_kind = StringField('parallel_kind')
-    _order = ListField('order', ValueType.string)
-    _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
+    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
     _need_align = BoolField('need_align')
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')

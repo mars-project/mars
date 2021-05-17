@@ -20,7 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, TilesError, recursive_tile
-from ...serialize import Int32Field, Int64Field, AnyField, KeyField
+from ...serialization.serializables import Int32Field, Int64Field, AnyField, KeyField
 from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin

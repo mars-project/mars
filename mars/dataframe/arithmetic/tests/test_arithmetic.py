@@ -128,7 +128,8 @@ def test_without_shuffle(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 11  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     # test df3's index and columns after tiling
     pd.testing.assert_index_equal(df3.columns_value.to_pandas(), func_opts.func(data1, data2).columns)
@@ -321,6 +322,7 @@ def test_dataframe_and_series_with_shuffle(func_name, func_opts):
     assert df2.columns_value.key != df1.columns_value.key
     assert df2.columns_value.should_be_monotonic is True
 
+
     df1, df2, s1 = tile(df1, df2, s1)
 
     assert df2.chunk_shape == (2, 2)
@@ -385,7 +387,8 @@ def test_series_and_series_with_align_map(func_name, func_opts):
     s2 = df1[3]
 
     s3 = func_opts.func(s1, s2)
-    s1, s2, s3 = tile(s1, s2, s3)
+
+    s1, s2 , s3 = tile(s1, s2, s3)
 
     assert s3.shape == (np.nan,)
 
@@ -446,7 +449,8 @@ def test_series_and_series_identical(func_name, func_opts):
     s2 = from_pandas_series(data1[3], chunk_size=5)
 
     s3 = func_opts.func(s1, s2)
-    s1, s2, s3 = tile(s1, s2, s3)
+
+    s1, s2 , s3 = tile(s1, s2, s3)
 
     assert s3.shape == (10,)
     assert s3.index_value.key == s1.index_value.key
@@ -487,7 +491,8 @@ def test_series_and_series_with_shuffle(func_name, func_opts):
     pd.testing.assert_index_equal(s3.index_value.to_pandas(), pd.Int64Index([]))
     assert s3.index_value.should_be_monotonic is True
 
-    s1, s2, s3 = tile(s1, s2, s3)
+
+    s1, s2 , s3 = tile(s1, s2, s3)
 
     assert s3.chunk_shape == (2,)
     for c in s3.chunks:
@@ -549,7 +554,8 @@ def test_identical_index_and_columns(func_name, func_opts):
     assert df3.index_value.key == df2.index_value.key
     assert df3.shape == (10, 10)  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     assert df3.chunk_shape == (2, 2)
     for c in df3.chunks:
@@ -597,7 +603,8 @@ def test_with_one_shuffle(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 12  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
     data2_index_min_max = [(2, True, 5, True), (6, True, 11, True)]
@@ -707,7 +714,8 @@ def test_with_all_shuffle(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 12  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     assert df3.chunk_shape == (2, 2)
     proxy_keys = set()
@@ -785,7 +793,8 @@ def test_with_all_shuffle(func_name, func_opts):
     assert df6.index_value.key != df5.index_value.key
     assert df6.shape[1] == 20  # columns is recorded, so we can get it
 
-    df4, df5, df6 = tile(df4, df5, df6)
+
+    df4, df5 , df6 = tile(df4, df5, df6)
 
     assert df6.chunk_shape == (4, 4)
     proxy_keys = set()
@@ -869,7 +878,8 @@ def test_without_shuffle_and_with_one_chunk(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 12  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     data1_index_min_max = [(0, True, 4, True), (5, True, 9, True)]
     data2_index_min_max = [(2, True, 5, True), (6, True, 11, True)]
@@ -951,7 +961,8 @@ def test_both_one_chunk(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 12  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     assert df3.chunk_shape == (1, 1)
     for c in df3.chunks:
@@ -988,7 +999,8 @@ def test_with_shuffle_and_one_chunk(func_name, func_opts):
     assert df3.index_value.key != df2.index_value.key
     assert df3.shape[1] == 12  # columns is recorded, so we can get it
 
-    df1, df2, df3 = tile(df1, df2, df3)
+
+    df1, df2 , df3 = tile(df1, df2, df3)
 
     assert df3.chunk_shape == (2, 1)
     proxy_keys = set()
@@ -1063,7 +1075,8 @@ def test_on_same_dataframe(func_name, func_opts):
     assert df2.columns_value.key == df.columns_value.key
     assert df2.shape[1] == 10
 
-    df, df2 = tile(df, df2)
+
+    df , df2 = tile(df, df2)
 
     assert df2.chunk_shape == df.chunk_shape
     for c in df2.chunks:
@@ -1205,7 +1218,8 @@ def test_abs():
     assert isinstance(df2.index_value.value, IndexValue.Int64Index)
     assert df2.shape == (10, 10)
 
-    df1, df2 = tile(df1, df2)
+
+    df1 , df2 = tile(df1, df2)
 
     assert df2.chunk_shape == (2, 1)
     for c2, c1 in zip(df2.chunks, df1.chunks):
@@ -1229,7 +1243,8 @@ def test_not():
     assert isinstance(df2.index_value.value, IndexValue.Int64Index)
     assert df2.shape == (10, 10)
 
-    df1, df2 = tile(df1, df2)
+
+    df1 , df2 = tile(df1, df2)
 
     assert df2.chunk_shape == (2, 1)
     for c2, c1 in zip(df2.chunks, df1.chunks):

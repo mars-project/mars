@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, ListField
+from ...serialization.serializables import FieldTypes, KeyField, ListField
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -35,7 +35,7 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.TRANSPOSE
 
     _input = KeyField('input')
-    _axes = ListField('axes', ValueType.int32)
+    _axes = ListField('axes', FieldTypes.int32)
 
     def __init__(self, axes=None, **kw):
         super().__init__(_axes=axes,

@@ -41,6 +41,10 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:
                     continue
+                if out.key not in ctx and \
+                        any(k[0] == out.key for k in ctx if isinstance(k, tuple)):
+                    # both shuffle mapper and reducer
+                    continue
                 self.assert_object_consistent(out, ctx[out.key])
 
     async def done(self):

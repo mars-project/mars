@@ -18,7 +18,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, DataTypeField, StringField
+from ...serialization.serializables import KeyField, DataTypeField, StringField
 from ..array_utils import as_same_device, device
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import get_order

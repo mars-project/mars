@@ -17,9 +17,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
-from ...serialize import Int32Field, TupleField, AnyField, KeyField
-from ...utils import check_chunks_unknown_shape
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import Int32Field, TupleField, AnyField, KeyField
+from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs, validate_axis, calc_object_length
@@ -70,21 +70,22 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
         inp = op.inputs[0]
         axis = op.axis
         if axis is None:
-            inp = inp.flatten()._inplace_tile()
+            inp = yield from recursive_tile(inp.flatten())
             axis = 0
         else:
             new_splits = [s if i == axis else sum(s)
                           for i, s in enumerate(inp.nsplits)]
-            inp = inp.rechunk(new_splits)._inplace_tile()
+            inp = yield from recursive_tile(inp.rechunk(new_splits))
 
-        check_chunks_unknown_shape([inp], TilesError)
+        if has_unknown_shape(inp):
+            yield
 
         index_obj = op.index_obj
         values = op.values
         if isinstance(values, ENTITY_TYPE):
             # if values is Mars type, we rechunk it into one chunk and
             # all insert chunks depend on it
-            values = values.rechunk(values.shape)._inplace_tile()
+            values = yield from recursive_tile(values.rechunk(values.shape))
 
         nsplits_on_axis = []
         if isinstance(index_obj, int):
@@ -112,7 +113,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     out_chunks.append(chunk)
                     nsplits_on_axis.append(chunk.shape[axis])
         elif isinstance(index_obj, ENTITY_TYPE):
-            index_obj = index_obj.rechunk(index_obj.shape)._inplace_tile()
+            index_obj = yield from recursive_tile(index_obj.rechunk(index_obj.shape))
             offset = 0
             out_chunks = []
             for chunk in inp.chunks:

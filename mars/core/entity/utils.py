@@ -57,6 +57,13 @@ def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
                   Union[TileableType, List[TileableType]]]:
     from .tileables import handler
 
+    return_list = len(tileables) > 0
+    if not return_list and isinstance(tileable, list):
+        return_list = True
+        raw = tileable
+        tileable = raw[0]
+        tileables = raw[1:]
+
     to_tile = [tileable] + list(tileables)
     q = [t for t in to_tile if t.is_coarse()]
     while q:
@@ -65,10 +72,10 @@ def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
         if cs:
             q.extend(cs)
             continue
-        yield from handler.tile([t])
+        yield from handler.tile(t.op.outputs)
         q.pop()
 
-    if len(tileables) == 0:
+    if not return_list:
         return tileable
     else:
         return [tileable] + list(tileables)
