@@ -15,6 +15,7 @@
 import numpy as np
 import pandas as pd
 
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.dataframe.initializer import DataFrame
 from mars.dataframe.indexing.getitem import DataFrameIndex
@@ -36,7 +37,7 @@ def test_sort_values():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 1
     assert isinstance(tiled.chunks[0].op, DataFrameSortValues)
@@ -47,7 +48,7 @@ def test_sort_values():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 2
     assert tiled.chunks[0].op.stage == OperandStage.reduce
@@ -58,7 +59,7 @@ def test_sort_values():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortValues)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 3
     assert tiled.chunks[0].op.stage == OperandStage.reduce
@@ -77,7 +78,7 @@ def test_sort_index():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortIndex)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 1
     assert isinstance(tiled.chunks[0].op, DataFrameSortIndex)
@@ -88,7 +89,7 @@ def test_sort_index():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortIndex)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 2
     assert tiled.chunks[0].op.stage == OperandStage.reduce
@@ -99,7 +100,7 @@ def test_sort_index():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortIndex)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert len(tiled.chunks) == 3
     assert tiled.chunks[0].op.stage == OperandStage.reduce
@@ -113,6 +114,6 @@ def test_sort_index():
     assert sorted_df.shape == raw.shape
     assert isinstance(sorted_df.op, DataFrameSortIndex)
 
-    tiled = sorted_df.tiles()
+    tiled = tile(sorted_df)
 
     assert all(isinstance(c.op, DataFrameIndex) for c in tiled.chunks) is True

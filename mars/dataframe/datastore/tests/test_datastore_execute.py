@@ -22,10 +22,8 @@ import pytest
 import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe import DataFrame
-from mars.deploy.local.core import new_cluster
-from mars.session import new_session
 from mars.tests import new_test_session
-from mars.tests.core import TestBase, flaky
+from mars.tests.core import flaky
 
 try:
     import vineyard

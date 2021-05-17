@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, get_output_types, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, get_output_types, recursive_tile
 from ...serialize import AnyField, Int8Field, KeyField
 from ...utils import has_unknown_shape
 from ..operands import DataFrameOperandMixin, DataFrameOperand

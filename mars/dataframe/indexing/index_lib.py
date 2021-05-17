@@ -32,7 +32,7 @@ from ...tensor.indexing.index_lib import IndexHandlerContext, IndexHandler, \
 from ...tensor.utils import split_indexes_into_chunks, calc_pos, \
     filter_inputs, slice_split, calc_sliced_size, to_numpy, \
     normalize_chunk_sizes
-from ...utils import check_chunks_unknown_shape, classproperty, has_unknown_shape
+from ...utils import classproperty, has_unknown_shape
 from ..core import SERIES_CHUNK_TYPE, SERIES_TYPE, IndexValue
 from ..utils import parse_index
 from .utils import convert_labels_into_positions

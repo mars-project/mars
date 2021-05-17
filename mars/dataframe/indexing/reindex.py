@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
     sps = None
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor

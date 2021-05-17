@@ -13,22 +13,21 @@
 # limitations under the License.
 
 import pandas as pd
+import pytest
 
-import unittest
 import mars.dataframe as md
 
 
-class Test(unittest.TestCase):
-    def testToDatetime(self):
-        wrong_args = [
-            pd.DataFrame({'a': [1, 2]}),
-            {'a': [1, 2]}
-        ]
+def test_to_datetime():
+    wrong_args = [
+        pd.DataFrame({'a': [1, 2]}),
+        {'a': [1, 2]}
+    ]
 
-        for arg in wrong_args:
-            with self.assertRaises(ValueError) as cm:
-                md.to_datetime(arg)
-            self.assertIn('[year, month, day]', str(cm.exception))
+    for arg in wrong_args:
+        with pytest.raises(ValueError) as cm:
+            md.to_datetime(arg)
+        assert '[year, month, day]' in str(cm.value)
 
-        with self.assertRaises(TypeError):
-            md.to_datetime([[1, 2], [3, 4]])
+    with pytest.raises(TypeError):
+        md.to_datetime([[1, 2], [3, 4]])

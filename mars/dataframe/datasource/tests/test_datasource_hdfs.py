@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 
 import mars.dataframe as md
-from mars.tests.core import TestBase, require_hadoop
+from mars.tests.core import require_hadoop
 
 
 TEST_DIR = '/tmp/test'

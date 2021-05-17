@@ -18,7 +18,7 @@ import pytest
 
 from mars import opcodes
 from mars.config import options, option_context
-from mars.core import OutputType, TilesError, tile
+from mars.core import OutputType, tile
 from mars.core.operand import OperandStage
 from mars.dataframe import eval as mars_eval, cut
 from mars.dataframe.base import to_gpu, to_cpu, astype

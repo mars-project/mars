@@ -25,7 +25,6 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 from mars.config import option_context
-from mars.core.operand import ShuffleProxy
 from mars.tests import new_test_session
 from mars.tests.core import assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
@@ -56,7 +55,7 @@ class MockReduction2(md.CustomReduction):
     def post(self, v1, v2):
         return v1 + v2
 
-    
+
 def test_groupby(setup):
     rs = np.random.RandomState(0)
     data_size = 100

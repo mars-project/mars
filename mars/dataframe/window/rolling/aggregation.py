@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes
-from ....core import TilesError
+from ....core import TilesError, recursive_tile
 from ....serialize import ValueType, AnyField, Int64Field, BoolField, \
     StringField, Int32Field, KeyField, TupleField, DictField, ListField
 from ....utils import lazy_import, check_chunks_unknown_shape
@@ -164,7 +164,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
 
         if axis == 0 and inp.ndim == 2:
             check_chunks_unknown_shape([inp], TilesError)
-            inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
+            inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         if is_window_int:
             # if window is integer
@@ -305,7 +305,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
         output_ndim = out.ndim
 
         # check if can be tiled
-        inp = cls._check_can_be_tiled(op, is_window_int)
+        inp = yield from cls._check_can_be_tiled(op, is_window_int)
 
         if inp.ndim == 1 and out.ndim == 1:
             # input series, output series

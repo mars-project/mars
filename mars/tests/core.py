@@ -792,7 +792,7 @@ class ObjectCheckMixin:
 
     def assert_tensor_consistent(self, expected, real):
         from mars.lib.sparse import SparseNDArray
-        np_types = (np.generic, np.ndarray, SparseNDArray)
+        np_types = (np.generic, np.ndarray, pd.Timestamp, SparseNDArray)
         if cupy is not None:
             np_types += (cupy.ndarray,)
 
@@ -804,7 +804,8 @@ class ObjectCheckMixin:
             return
         if self._check_options['check_dtypes']:
             self.assert_dtype_consistent(expected.dtype, real.dtype)
-        self.assert_shape_consistent(expected.shape, real.shape)
+        if self._check_options['check_shape']:
+            self.assert_shape_consistent(expected.shape, real.shape)
 
     @classmethod
     def assert_index_value_consistent(cls, expected_index_value, real_index):

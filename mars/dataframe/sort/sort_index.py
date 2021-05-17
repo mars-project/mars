@@ -15,7 +15,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...serialize import ListField, BoolField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame, standardize_range_index
@@ -83,7 +83,7 @@ class DataFrameSortIndex(DataFrameSortOperand, DataFramePSRSOperandMixin):
             assert op.axis == 1
 
             sorted_columns = list(df.columns_value.to_pandas().sort_values(ascending=op.ascending))
-            r = [df[sorted_columns]._inplace_tile()]
+            r = [(yield from recursive_tile(df[sorted_columns]))]
             if op.ignore_index:
                 out = op.outputs[0]
                 chunks = standardize_range_index(r[0].chunks, axis=0)

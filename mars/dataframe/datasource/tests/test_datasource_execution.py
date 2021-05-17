@@ -15,7 +15,6 @@
 import os
 import tempfile
 import time
-import unittest
 from collections import OrderedDict
 from datetime import datetime
 from string import printable
@@ -41,7 +40,7 @@ from mars.dataframe.datasource.index import from_pandas as from_pandas_index, fr
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
 from mars.tests import new_test_session
-from mars.tests.core import TestBase, require_cudf
+from mars.tests.core import require_cudf
 from mars.utils import arrow_array_to_objects
 
 

@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
+from mars.core import tile
 
 
 def test_expanding():
@@ -61,7 +62,7 @@ def test_expanding_agg():
                                   expected.columns)
     pd.testing.assert_series_equal(r.dtypes, df2.dtypes)
 
-    r = r.tiles()
+    r = tile(r)
     for c in r.chunks:
         assert c.shape == c.inputs[0].shape
         assert c.index_value is c.inputs[0].index_value

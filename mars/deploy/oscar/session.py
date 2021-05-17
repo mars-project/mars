@@ -133,10 +133,12 @@ class Session(AbstractSession):
             raise task_result.error.with_traceback(task_result.traceback)
         fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
         assert len(tileables) == len(fetch_tileables)
-        for tileable, fetch_tileable in zip(tileables, fetch_tileables):
-            self._tileable_to_fetch[tileable] = fetch_tileable
-            # update meta, e.g. unknown shape
-            tileable.params = fetch_tileable.params
+
+        with enter_mode(build=True):
+            for tileable, fetch_tileable in zip(tileables, fetch_tileables):
+                self._tileable_to_fetch[tileable] = fetch_tileable
+                # update meta, e.g. unknown shape
+                tileable.params = fetch_tileable.params
 
     async def execute(self,
                       *tileables,
@@ -216,7 +218,6 @@ class Session(AbstractSession):
     def _process_result(self, tileable, result):
         return sort_dataframe_result(tileable, result)
 
-    @enter_mode(build=True)
     async def fetch(self, *tileables, **kwargs):
         from ...tensor.core import TensorOrder
         from ...tensor.array_utils import get_array_module

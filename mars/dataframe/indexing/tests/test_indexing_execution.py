@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import os
 import tempfile
 
@@ -34,10 +33,7 @@ from mars.config import option_context
 from mars.dataframe.datasource.read_csv import DataFrameReadCSV
 from mars.dataframe.datasource.read_sql import DataFrameReadSQL
 from mars.dataframe.datasource.read_parquet import DataFrameReadParquet
-from mars.executor import register, Executor
-from mars.session import new_session
 from mars.tests import new_test_session
-from mars.tests.core import TestBase, ExecutorForTest
 
 
 @pytest.fixture(scope='module')
