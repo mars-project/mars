@@ -272,7 +272,7 @@ class Session(AbstractSession):
             result = []
             for tileable, index_to_data in tileable_to_index_data.items():
                 merged = merge_chunks(index_to_data)
-                if hasattr(tileable, 'order'):
+                if hasattr(tileable, 'order') and tileable.ndim > 0:
                     module = get_array_module(merged)
                     if tileable.order == TensorOrder.F_ORDER and \
                             hasattr(module, 'asfortranarray'):

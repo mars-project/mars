@@ -298,7 +298,7 @@ def test_where_execution(setup):
 
 
 def test_reshape_execution(setup):
-    raw_data = np.random.rand(10, 20, 30)
+    raw_data = np.random.rand(5, 10, 30)
     x = tensor(raw_data, chunk_size=6)
 
     y = x.reshape(-1, 30)
@@ -321,31 +321,31 @@ def test_reshape_execution(setup):
     res = y4.execute().fetch()
     np.testing.assert_array_equal(res, raw_data.ravel())
 
-    raw_data = np.random.rand(30, 100, 20)
-    x = tensor(raw_data, chunk_size=6)
+    raw_data = np.random.rand(6, 20, 4)
+    x = tensor(raw_data, chunk_size=3)
 
-    y = x.reshape(-1, 20, 5, 5, 4)
+    y = x.reshape(-1, 4, 5, 2, 2)
 
     res = y.execute().fetch()
-    np.testing.assert_array_equal(res, raw_data.reshape(-1, 20, 5, 5, 4))
+    np.testing.assert_array_equal(res, raw_data.reshape(-1, 4, 5, 2, 2))
 
-    y2 = x.reshape(3000, 10, 2)
+    y2 = x.reshape(120, 2, 2)
 
     res = y2.execute().fetch()
-    np.testing.assert_array_equal(res, raw_data.reshape(3000, 10, 2))
+    np.testing.assert_array_equal(res, raw_data.reshape(120, 2, 2))
 
-    y3 = x.reshape(60, 25, 40)
+    y3 = x.reshape(12, 5, 8)
 
     res = y3.execute().fetch()
-    np.testing.assert_array_equal(res, raw_data.reshape(60, 25, 40))
+    np.testing.assert_array_equal(res, raw_data.reshape(12, 5, 8))
 
-    y4 = x.reshape(60, 25, 40)
+    y4 = x.reshape(12, 5, 8)
     y4.op.extra_params['_reshape_with_shuffle'] = True
 
     # size_res = self.executor.execute_tensor(y4, mock=True)
     res = y4.execute().fetch()
     # assert res[0].nbytes == sum(v[0] for v in size_res)
-    assert np.array_equal(res, raw_data.reshape(60, 25, 40)) is True
+    assert np.array_equal(res, raw_data.reshape(12, 5, 8)) is True
 
     y5 = x.ravel(order='F')
 
