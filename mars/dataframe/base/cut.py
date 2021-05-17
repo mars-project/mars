@@ -22,7 +22,8 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, \
     TilesError, recursive_tile
 from ...core.context import get_context
-from ...serialize import KeyField, AnyField, BoolField, Int32Field, StringField
+from ...serialization.serializables import KeyField, AnyField, \
+    BoolField, Int32Field, StringField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ...utils import check_chunks_unknown_shape

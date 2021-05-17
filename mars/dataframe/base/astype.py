@@ -18,7 +18,7 @@ from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import AnyField, StringField, ListField
+from ...serialization.serializables import AnyField, StringField, ListField
 from ...tensor.base import sort
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -67,8 +67,8 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
 
         unique_chunk = None
         if op.dtype_values == 'category' and isinstance(op.dtype_values, str):
-            unique_chunk = yield from recursive_tile(
-                sort(in_series.unique())).chunks[0]
+            unique_chunk = (yield from recursive_tile(
+                sort(in_series.unique()))).chunks[0]
 
         chunks = []
         for c in in_series.chunks:

@@ -19,7 +19,8 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType, TilesError, recursive_tile
-from ...serialize import KeyField, StringField, TupleField, DictField
+from ...serialization.serializables import KeyField, StringField, \
+    TupleField, DictField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...utils import check_chunks_unknown_shape

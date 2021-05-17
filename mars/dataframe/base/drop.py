@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core import Entity, Chunk, CHUNK_TYPE, OutputType, recursive_tile
-from ...serialize import AnyField, StringField
+from ...serialization.serializables import AnyField, StringField
 from ..core import IndexValue, DATAFRAME_TYPE, SERIES_TYPE, INDEX_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis

@@ -19,7 +19,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import TilesError, recursive_tile
-from ...serialize import KeyField, AnyField, BoolField
+from ...serialization.serializables import KeyField, AnyField, BoolField
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, parse_index

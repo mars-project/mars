@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType, recursive_tile
-from ...serialize import AnyField, BoolField
+from ...serialization.serializables import AnyField, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, standardize_range_index
 

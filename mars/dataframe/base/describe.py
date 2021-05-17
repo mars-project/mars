@@ -19,7 +19,7 @@ from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import ValueType, KeyField, ListField, AnyField
+from ...serialization.serializables import FieldTypes, KeyField, ListField, AnyField
 from ...utils import lazy_import
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
@@ -34,7 +34,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DESCRIBE
 
     _input = KeyField('input')
-    _percentiles = ListField('percentiles', ValueType.float64)
+    _percentiles = ListField('percentiles', FieldTypes.float64)
     _include = AnyField('include')
     _exclude = AnyField('exclude')
 

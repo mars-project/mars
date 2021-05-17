@@ -29,7 +29,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
-from ...serialize import BoolField, DictField, StringField
+from ...serialization.serializables import BoolField, DictField, StringField
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index

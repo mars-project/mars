@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType
 from ...core.operand import OperandStage
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ...tensor.core import TensorOrder
 from ...tensor.merge import TensorConcatenate
 from ..operands import DataFrameOperand, DataFrameOperandMixin

@@ -18,7 +18,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType, TilesError
-from ...serialize import KeyField, AnyField, Int32Field, Int64Field
+from ...serialization.serializables import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
 from ...utils import check_chunks_unknown_shape

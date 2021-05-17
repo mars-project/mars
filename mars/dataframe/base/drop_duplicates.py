@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core.operand import OperandStage
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ...utils import lazy_import
 from ..operands import OutputType
 from ..utils import parse_index, hash_dataframe_on, gen_unknown_index_value, standardize_range_index

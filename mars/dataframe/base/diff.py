@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core import recursive_tile
-from ...serialize import AnyField, Int8Field, Int64Field
+from ...serialization.serializables import AnyField, Int8Field, Int64Field
 from ..core import DATAFRAME_TYPE, OutputType
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, validate_axis

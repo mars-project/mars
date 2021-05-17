@@ -20,7 +20,7 @@ from ...config import options
 from ...context import get_context, RunningMode
 from ...core import OutputType, TilesError, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
-from ...serialize import AnyField, Int32Field, StringField, KeyField
+from ...serialization.serializables import AnyField, Int32Field, StringField, KeyField
 from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy

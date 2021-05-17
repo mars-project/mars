@@ -18,7 +18,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...utils import lazy_import
-from ...serialize import Int32Field
+from ...serialization.serializables import Int32Field
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
 

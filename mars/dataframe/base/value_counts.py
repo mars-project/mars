@@ -18,7 +18,8 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, TilesError, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, BoolField, Int64Field, StringField
+from ...serialization.serializables import KeyField, BoolField, \
+    Int64Field, StringField
 from ...utils import check_chunks_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin

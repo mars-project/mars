@@ -18,7 +18,7 @@ from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, TilesError, recursive_tile
-from ...serialize import KeyField, AnyField
+from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ...utils import check_chunks_unknown_shape
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
