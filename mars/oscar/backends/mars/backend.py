@@ -42,5 +42,17 @@ class MarsActorBackend(BaseActorBackend):
             n_process: int = None,
             **kwargs):
         from ..pool import create_actor_pool
+
+        n_io_process = kwargs.pop('n_io_process', 0)
+        if n_io_process:
+            n_process += n_io_process
+
+            labels = kwargs['labels']
+            envs = kwargs['envs']
+            # sub-pools for IO(transfer and spill)
+            for _ in range(n_io_process):
+                if envs:
+                    envs.append(dict())
+                labels.append('io')
         return await create_actor_pool(
             address, pool_cls=MainActorPool, n_process=n_process, **kwargs)

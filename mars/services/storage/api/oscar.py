@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-from abc import ABC, abstractmethod
 from typing import Any, List, Type, TypeVar, Union
 
 from .... import oscar as mo
