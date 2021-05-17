@@ -189,6 +189,7 @@ class AbstractSession(ABC):
         """
         Destroy a session.
         """
+        self.reset_default()
 
     @abstractmethod
     async def execute(self,

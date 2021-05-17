@@ -21,7 +21,6 @@ from .....utils import lazy_import
 from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
-    node_placement_to_address,
     process_placement_to_address,
     addresses_to_placement_group_info,
     placement_group_info_to_addresses,
@@ -35,8 +34,8 @@ ray = lazy_import('ray')
 
 TEST_PLACEMENT_GROUP_NAME = 'test_placement_group'
 TEST_PLACEMENT_GROUP_BUNDLES = [{"CPU": 3}, {"CPU": 5}, {"CPU": 7}]
-TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(TEST_PLACEMENT_GROUP_NAME,
-                                                      TEST_PLACEMENT_GROUP_BUNDLES)
+TEST_ADDRESS_TO_RESOURCES = placement_group_info_to_addresses(
+    TEST_PLACEMENT_GROUP_NAME, TEST_PLACEMENT_GROUP_BUNDLES)
 
 
 class DummyActor(mo.Actor):
@@ -74,7 +73,7 @@ async def mars_cluster():
     mo.setup_cluster(address_to_resources=TEST_ADDRESS_TO_RESOURCES)
     main_pool_handles = []  # Hold actor_handle to avoid actor being freed.
     for index, bundle_spec in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
-        address = node_placement_to_address(TEST_PLACEMENT_GROUP_NAME, index)
+        address = process_placement_to_address(TEST_PLACEMENT_GROUP_NAME, index, 0)
         actor_handle = await mo.create_actor_pool(address, bundle_spec["CPU"])
         main_pool_handles.append(actor_handle)
 

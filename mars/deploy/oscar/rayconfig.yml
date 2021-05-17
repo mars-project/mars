@@ -10,6 +10,8 @@ cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
+  ray:
+    supervisor_exclusive_node: no
 storage:
   backends: [ray]
 meta:

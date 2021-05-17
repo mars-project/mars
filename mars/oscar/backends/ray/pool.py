@@ -14,6 +14,7 @@
 
 import asyncio
 import inspect
+import itertools
 import logging
 import os
 import sys
@@ -36,13 +37,17 @@ logger = logging.getLogger(__name__)
 
 @_register_message_handler
 class RayMainActorPool(MainActorPoolBase):
+    @classmethod
+    def process_index_gen(cls, address):
+        _, __, process_index = process_address_to_placement(address)
+        return itertools.count(process_index)
 
     @classmethod
     def get_external_addresses(
             cls, address: str, n_process: int = None, ports: List[int] = None):
         assert not ports, f"ports should be none when actor pool running on ray, but got {ports}"
-        pg_name, bundle_index, _process_index = process_address_to_placement(address)
-        return [process_placement_to_address(pg_name, bundle_index, i) for i in range(n_process + 1)]
+        pg_name, bundle_index, process_index = process_address_to_placement(address)
+        return [process_placement_to_address(pg_name, bundle_index, process_index + i) for i in range(n_process + 1)]
 
     @classmethod
     def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:

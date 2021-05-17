@@ -48,12 +48,13 @@ async def test_main_pool(ray_start_regular):
 
     main_actor_pool = await create_actor_pool(
         address, n_process=n_process, pool_cls=RayMainActorPool)
-    sub_processes = list(main_actor_pool.sub_processes.values())
-    assert len(sub_processes) == n_process
-    await main_actor_pool.kill_sub_pool(sub_processes[0], force=True)
-    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[0]))
-    await main_actor_pool.kill_sub_pool(sub_processes[1], force=False)
-    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[1]))
+    async with main_actor_pool:
+        sub_processes = list(main_actor_pool.sub_processes.values())
+        assert len(sub_processes) == n_process
+        await main_actor_pool.kill_sub_pool(sub_processes[0], force=True)
+        assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[0]))
+        await main_actor_pool.kill_sub_pool(sub_processes[1], force=False)
+        assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[1]))
 
 
 @require_ray

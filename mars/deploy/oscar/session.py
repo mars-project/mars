@@ -218,6 +218,7 @@ class Session(AbstractSession):
         return await self._lifecycle_api.get_all_chunk_ref_counts()
 
     async def destroy(self):
+        await super().destroy()
         await self._session_api.delete_session(self._session_id)
 
     async def stop_server(self):

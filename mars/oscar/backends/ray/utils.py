@@ -48,7 +48,7 @@ def process_address_to_placement(address):
     name, parts = _address_to_placement(address)
     if not parts or len(parts) != 2:
         raise ValueError(f"Only bundle index and process index path are allowed in ray "
-                         f"address {address} bug got {parts}.")
+                         f"address {address} but got {parts}.")
     bundle_index, process_index = parts
     return name, int(bundle_index), int(process_index)
 
