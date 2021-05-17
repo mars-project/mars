@@ -109,9 +109,9 @@ def _sync_web_session_test(web_address):
                                          [False, ['ray://test_cluster/0/1', 'ray://test_cluster/1/0']]])
 @pytest.mark.asyncio
 async def test_optional_supervisor_node(ray_cluster, test_option):
-    supervisor_exclusive_node, worker_addresses = test_option
+    supervisor_standalone, worker_addresses = test_option
     config = _load_config()
-    config['cluster']['ray']['supervisor_exclusive_node'] = supervisor_exclusive_node
+    config['cluster']['ray']['supervisor_standalone'] = supervisor_standalone
     client = await new_cluster('test_cluster',
                                worker_num=2,
                                worker_cpu=2,

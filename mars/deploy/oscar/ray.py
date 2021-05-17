@@ -33,8 +33,8 @@ from ...utils import lazy_import
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
 
-# The default value for supervisor exclusive node.
-DEFAULT_SUPERVISOR_EXCLUSIVE_NODE = False
+# The default value for supervisor standalone (not share node with worker).
+DEFAULT_SUPERVISOR_STANDALONE = False
 
 
 def _load_config(filename=None):
@@ -89,17 +89,17 @@ class RayCluster:
 
     async def start(self):
         address_to_resources = dict()
-        supervisor_exclusive_node = self._config \
+        supervisor_standalone = self._config \
             .get('cluster', {}) \
             .get('ray', {}) \
-            .get('supervisor_exclusive_node', DEFAULT_SUPERVISOR_EXCLUSIVE_NODE)
+            .get('supervisor_standalone', DEFAULT_SUPERVISOR_STANDALONE)
         self.supervisor_address = process_placement_to_address(self._cluster_name, 0, 0)
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             'CPU': 1,
             # 'memory': self._supervisor_mem
         }
         worker_addresses = []
-        if supervisor_exclusive_node:
+        if supervisor_standalone:
             for worker_index in range(1, self._worker_num + 1):
                 worker_address = process_placement_to_address(self._cluster_name, worker_index, 0)
                 worker_addresses.append(worker_address)
