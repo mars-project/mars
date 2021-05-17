@@ -25,6 +25,18 @@ except ImportError:  # pragma: no cover
 
 from mars import tensor as mt
 from mars import dataframe as md
+from mars.config import option_context
+from mars.tests import new_test_session
+
+
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
 
 def close(fignum=None):  # pragma: no cover
@@ -91,7 +103,7 @@ def _check_plot_works(f, filterwarnings="always", **kwargs):  # pragma: no cover
 
 
 @pytest.mark.skipif(matplotlib is None, reason='matplotlib is not installed')
-def test_plot():
+def test_plot(setup):
     raw = pd.DataFrame({'a': ['s' + str(i) for i in range(10)],
                         'b': np.random.RandomState(0).randint(10, size=10)})
     df = md.DataFrame(raw, chunk_size=3)

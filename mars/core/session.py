@@ -111,7 +111,7 @@ def gen_submit_tileable_graph(
         session: "AbstractSession",
         result_tileables: List[TileableType]):
     tileable_to_copied = dict()
-    result = []
+    result = [None] * len(result_tileables)
     graph = TileableGraph(result)
 
     q = list(result_tileables)
@@ -145,7 +145,7 @@ def gen_submit_tileable_graph(
             for out, new_out in zip(outputs, new_outputs):
                 tileable_to_copied[out] = new_out
                 if out in result_tileables:
-                    result.append(new_out)
+                    result[result_tileables.index(out)] = new_out
                 graph.add_node(new_out)
                 for new_inp in new_inputs:
                     graph.add_edge(new_inp, new_out)

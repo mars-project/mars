@@ -15,7 +15,7 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...serialize import BoolField
 from ..datasource.dataframe import from_pandas
 from ..indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
@@ -52,7 +52,11 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
         inputs = op.inputs
         first_df, others = inputs[0], inputs[1:]
         column_splits = first_df.nsplits[1]
-        others = [item.rechunk({1: column_splits})._inplace_tile() for item in others]
+        new_others = []
+        for item in others:
+            r = yield from recursive_tile(item.rechunk({1: column_splits}))
+            new_others.append(r)
+        others = new_others
         out_chunks = []
         nsplits = [[], list(first_df.nsplits[1])]
         row_index = 0
@@ -110,7 +114,7 @@ class DataFrameAppend(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if op.output_types[0] == OutputType.dataframe:
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
         else:
             return cls._tile_series(op)
 

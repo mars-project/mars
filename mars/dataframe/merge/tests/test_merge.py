@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from mars.core import get_tiled
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.dataframe.core import IndexValue
 from mars.dataframe.base.standardize_range_index import ChunkStandardizeRangeIndex
@@ -42,7 +42,7 @@ def test_merge():
 
     for kw in parameters:
         df = mdf1.merge(mdf2, **kw)
-        df = df.tiles()
+        df = tile(df)
 
         assert df.chunk_shape == (2, 1)
         for chunk in df.chunks:
@@ -86,7 +86,7 @@ def test_join():
 
     for kw in parameters:
         df = mdf1.join(mdf2, **kw)
-        df = df.tiles()
+        df = tile(df)
 
         assert df.chunk_shape == (3, 1)
         for chunk in df.chunks:
@@ -130,7 +130,7 @@ def test_join_on():
 
     for kw in parameters:
         df = mdf1.join(mdf2, **kw)
-        df = df.tiles()
+        df = tile(df)
 
         assert df.chunk_shape == (3, 1)
         for chunk in df.chunks:
@@ -166,35 +166,35 @@ def test_merge_one_chunk():
     mdf1 = from_pandas(df1)
     mdf2 = from_pandas(df2)
     df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
-    tiled = df.tiles()
+    tiled, tiled1, tiled2 = tile(df, mdf1, mdf2)
 
     assert tiled.chunk_shape == (1, 1)
-    assert tiled.chunks[0].inputs[0].key == get_tiled(mdf1).chunks[0].key
-    assert tiled.chunks[0].inputs[1].key == get_tiled(mdf2).chunks[0].key
+    assert tiled.chunks[0].inputs[0].key == tiled1.chunks[0].key
+    assert tiled.chunks[0].inputs[1].key == tiled2.chunks[0].key
 
     # left has one chunk
     mdf1 = from_pandas(df1)
     mdf2 = from_pandas(df2, chunk_size=2)
     df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
-    tiled = df.tiles()
+    tiled, tiled1, tiled2 = tile(df, mdf1, mdf2)
 
     assert tiled.chunk_shape == (2, 1)
-    assert tiled.chunks[0].inputs[0].key == get_tiled(mdf1).chunks[0].key
-    assert tiled.chunks[0].inputs[1].key == get_tiled(mdf2).chunks[0].key
-    assert tiled.chunks[1].inputs[0].key == get_tiled(mdf1).chunks[0].key
-    assert tiled.chunks[1].inputs[1].key == get_tiled(mdf2).chunks[1].key
+    assert tiled.chunks[0].inputs[0].key == tiled1.chunks[0].key
+    assert tiled.chunks[0].inputs[1].key == tiled2.chunks[0].key
+    assert tiled.chunks[1].inputs[0].key == tiled1.chunks[0].key
+    assert tiled.chunks[1].inputs[1].key == tiled2.chunks[1].key
 
     # right has one chunk
     mdf1 = from_pandas(df1, chunk_size=2)
     mdf2 = from_pandas(df2)
     df = mdf1.merge(mdf2, left_on='lkey', right_on='rkey')
-    tiled = df.tiles()
+    tiled, tiled1, tiled2 = tile(df, mdf1, mdf2)
 
     assert tiled.chunk_shape == (2, 1)
-    assert tiled.chunks[0].inputs[0].key == get_tiled(mdf1).chunks[0].key
-    assert tiled.chunks[0].inputs[1].key == get_tiled(mdf2).chunks[0].key
-    assert tiled.chunks[1].inputs[0].key == get_tiled(mdf1).chunks[1].key
-    assert tiled.chunks[1].inputs[1].key == get_tiled(mdf2).chunks[0].key
+    assert tiled.chunks[0].inputs[0].key == tiled1.chunks[0].key
+    assert tiled.chunks[0].inputs[1].key == tiled2.chunks[0].key
+    assert tiled.chunks[1].inputs[0].key == tiled1.chunks[1].key
+    assert tiled.chunks[1].inputs[1].key == tiled2.chunks[0].key
 
 
 def test_append():
@@ -208,7 +208,7 @@ def test_append():
     assert adf.shape == (20, 4)
     assert isinstance(adf.index_value.value, IndexValue.Int64Index)
 
-    tiled = adf.tiles()
+    tiled = tile(adf)
     assert tiled.nsplits == ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1))
     assert tiled.chunk_shape == (8, 2)
     for i, c in enumerate(tiled.chunks):
@@ -223,7 +223,7 @@ def test_append():
     assert isinstance(adf.index_value.value, IndexValue.RangeIndex)
     pd.testing.assert_index_equal(adf.index_value.to_pandas(), pd.RangeIndex(20))
 
-    tiled = adf.tiles()
+    tiled = tile(adf)
     assert tiled.nsplits == ((3, 3, 3, 1, 3, 3, 3, 1), (3, 1))
     assert tiled.chunk_shape == (8, 2)
     assert isinstance(tiled.chunks[0].op, ChunkStandardizeRangeIndex)
@@ -240,7 +240,7 @@ def test_concat():
     assert r.shape == (20, 4)
     pd.testing.assert_series_equal(r.dtypes, df1.dtypes)
 
-    tiled = r.tiles()
+    tiled = tile(r)
     assert tiled.nsplits == ((4, 4, 2, 4, 4, 2), (4,))
     for i, c in enumerate(tiled.chunks):
         assert c.index == (i, 0)
@@ -285,7 +285,7 @@ def test_concat():
     expected_dtypes = pd.concat([df1, df2], axis='columns').dtypes
     pd.testing.assert_series_equal(r.dtypes, expected_dtypes)
 
-    tiled = r.tiles()
+    tiled = tile(r)
     assert tiled.nsplits == ((3, 3, 3, 1), (3, 1, 4))
     for i, c in enumerate(tiled.chunks):
         index = (i // 3, i % 3)
@@ -298,5 +298,5 @@ def test_concat():
     r = concat([mdf1, mdf2], join='inner')
 
     assert r.shape == (20, 3)
-    tiled = r.tiles()
+    tiled = tile(r)
     assert tiled.nsplits == ((3, 3, 3, 1, 3, 3, 3, 1), (3, ))

@@ -130,8 +130,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
 
         nsplit = decide_unify_split(lhs.nsplits[-1], rhs.nsplits[0])
         lhs_axis = validate_axis(lhs.ndim, -1)
-        lhs = lhs.rechunk({lhs_axis: nsplit})._inplace_tile()
-        rhs = rhs.rechunk({0: nsplit})._inplace_tile()
+        lhs = yield from recursive_tile(lhs.rechunk({lhs_axis: nsplit}))
+        rhs = yield from recursive_tile(rhs.rechunk({0: nsplit}))
 
         # delegate computation to tensor
         lhs_tensor = lhs if isinstance(lhs, TENSOR_TYPE) else lhs.to_tensor()

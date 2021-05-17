@@ -19,6 +19,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
+from mars.core import tile
 from mars.core.operand import OperandStage
 
 
@@ -53,29 +54,29 @@ def test_fill_na():
     with pytest.raises(NotImplementedError):
         series.ffill(limit=1)
 
-    df2 = df.fillna(value_series_raw).tiles()
+    df2 = tile(df.fillna(value_series_raw))
     assert len(df2.chunks) == 1
     assert df2.chunks[0].shape == df2.shape
     assert df2.chunks[0].op.stage is None
 
-    series2 = series.fillna(value_series_raw).tiles()
+    series2 = tile(series.fillna(value_series_raw))
     assert len(series2.chunks) == 1
     assert series2.chunks[0].shape == series2.shape
     assert series2.chunks[0].op.stage is None
 
     df = md.DataFrame(df_raw, chunk_size=5)
-    df2 = df.fillna(value_series_raw).tiles()
+    df2 = tile(df.fillna(value_series_raw))
     assert len(df2.chunks) == 8
     assert df2.chunks[0].shape == (5, 5)
     assert df2.chunks[0].op.stage is None
 
     series = md.Series(series_raw, chunk_size=5)
-    series2 = series.fillna(value_series_raw).tiles()
+    series2 = tile(series.fillna(value_series_raw))
     assert len(series2.chunks) == 4
     assert series2.chunks[0].shape == (5,)
     assert series2.chunks[0].op.stage is None
 
-    df2 = df.ffill(axis='columns').tiles()
+    df2 = tile(df.ffill(axis='columns'))
     assert len(df2.chunks) == 8
     assert df2.chunks[0].shape == (5, 5)
     assert df2.chunks[0].op.axis == 1
@@ -83,7 +84,7 @@ def test_fill_na():
     assert df2.chunks[0].op.method == 'ffill'
     assert df2.chunks[0].op.limit is None
 
-    series2 = series.bfill().tiles()
+    series2 = tile(series.bfill())
     assert len(series2.chunks) == 4
     assert series2.chunks[0].shape == (5,)
     assert series2.chunks[0].op.stage == OperandStage.combine
@@ -93,17 +94,17 @@ def test_fill_na():
     value_df = md.DataFrame(value_df_raw, chunk_size=7)
     value_series = md.Series(value_series_raw, chunk_size=7)
 
-    df2 = df.fillna(value_df).tiles()
+    df2 = tile(df.fillna(value_df))
     assert df2.shape == df.shape
     assert df2.chunks[0].op.stage is None
 
-    df2 = df.fillna(value_series).tiles()
+    df2 = tile(df.fillna(value_series))
     assert df2.shape == df.shape
     assert df2.chunks[0].op.stage is None
 
     value_series_raw.index = list(range(10))
     value_series = md.Series(value_series_raw)
-    series2 = series.fillna(value_series).tiles()
+    series2 = tile(series.fillna(value_series))
     assert series2.shape == series.shape
     assert series2.chunks[0].op.stage is None
 
@@ -123,7 +124,7 @@ def test_drop_na():
         md.DataFrame(df_raw).dropna(axis=1)
 
     # only one chunk in columns, can run dropna directly
-    r = md.DataFrame(df_raw, chunk_size=(4, 10)).dropna().tiles()
+    r = tile(md.DataFrame(df_raw, chunk_size=(4, 10)).dropna())
     assert r.shape == (np.nan, 10)
     assert r.nsplits == ((np.nan,) * 5, (10,))
     for c in r.chunks:
@@ -133,7 +134,7 @@ def test_drop_na():
         assert c.shape == (np.nan, 10)
 
     # multiple chunks in columns, count() will be called first
-    r = md.DataFrame(df_raw, chunk_size=4).dropna().tiles()
+    r = tile(md.DataFrame(df_raw, chunk_size=4).dropna())
     assert r.shape == (np.nan, 10)
     assert r.nsplits == ((np.nan,) * 5, (4, 4, 2))
     for c in r.chunks:
@@ -148,7 +149,7 @@ def test_drop_na():
     for _ in range(10):
         series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
 
-    r = md.Series(series_raw, chunk_size=4).dropna().tiles()
+    r = tile(md.Series(series_raw, chunk_size=4).dropna())
     assert r.shape == (np.nan,)
     assert r.nsplits == ((np.nan,) * 5,)
     for c in r.chunks:
@@ -173,7 +174,7 @@ def test_replace():
     with pytest.raises(NotImplementedError):
         df.replace(-1, method='ffill', limit=5)
 
-    r = df.replace(-1, method='ffill').tiles()
+    r = tile(df.replace(-1, method='ffill'))
     assert len(r.chunks) == 15
     assert r.chunks[0].shape == (4, 4)
     assert r.chunks[0].op.stage == OperandStage.combine
@@ -184,7 +185,7 @@ def test_replace():
     assert r.chunks[-1].inputs[-1].op.method == 'ffill'
     assert r.chunks[-1].inputs[-1].op.limit is None
 
-    r = df.replace(-1, 99).tiles()
+    r = tile(df.replace(-1, 99))
     assert len(r.chunks) == 15
     assert r.chunks[0].shape == (4, 4)
     assert r.chunks[0].op.stage is None
@@ -196,7 +197,7 @@ def test_replace():
         series_raw.iloc[random.randint(0, 19)] = random.randint(0, 99)
     series = md.Series(series_raw, chunk_size=4)
 
-    r = series.replace(-1, method='ffill').tiles()
+    r = tile(series.replace(-1, method='ffill'))
     assert len(r.chunks) == 5
     assert r.chunks[0].shape == (4,)
     assert r.chunks[0].op.stage == OperandStage.combine
@@ -207,7 +208,7 @@ def test_replace():
     assert r.chunks[-1].inputs[-1].op.method == 'ffill'
     assert r.chunks[-1].inputs[-1].op.limit is None
 
-    r = series.replace(-1, 99).tiles()
+    r = tile(series.replace(-1, 99))
     assert len(r.chunks) == 5
     assert r.chunks[0].shape == (4,)
     assert r.chunks[0].op.stage is None

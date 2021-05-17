@@ -280,6 +280,9 @@ class Session(AbstractSession):
                     elif tileable.order == TensorOrder.C_ORDER and \
                             hasattr(module, 'ascontiguousarray'):
                         merged = module.ascontiguousarray(merged)
+                if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
+                        getattr(merged, 'size', None) == 1:
+                    merged = merged.item()
                 result.append(self._process_result(tileable, merged))
             return result
 

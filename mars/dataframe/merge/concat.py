@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType, TilesError
+from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
 from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
 from ...utils import lazy_import, check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
@@ -97,8 +97,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
             # need rechunk
             check_chunks_unknown_shape(inputs, TilesError)
             normalized_nsplits = {1 - axis: inputs[0].nsplits[1 - axis]}
-            inputs = [inp.rechunk(normalized_nsplits)._inplace_tile()
-                      for inp in inputs]
+            new_inputs = []
+            for inp in inputs:
+                new_inputs.append(
+                    (yield from recursive_tile(inp.rechunk(normalized_nsplits))))
+            inputs = new_inputs
 
         out_chunks = []
         nsplits = []
@@ -141,7 +144,11 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
         if op.axis == 1:
             check_chunks_unknown_shape(inputs, TilesError)
-            inputs = [item.rechunk(op.inputs[0].nsplits)._inplace_tile() for item in inputs]
+            new_inputs = []
+            for inp in inputs:
+                new_inputs.append(
+                    (yield from recursive_tile(inp.rechunk(op.inputs[0].nsplits))))
+            inputs = new_inputs
 
         cum_index = 0
         offset = 0
@@ -205,9 +212,9 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if isinstance(op.inputs[0], SERIES_TYPE):
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
         else:
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
 
     @classmethod
     def execute(cls, ctx, op):

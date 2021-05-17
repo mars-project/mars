@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType
+from ...core import OutputType, recursive_tile
 from ...config import options
 from ...serialize import AnyField, BoolField, StringField, Int32Field
 from ..align import align_dataframe_series
@@ -122,7 +122,8 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
         subset_df = in_df
         if op.subset:
             subset_df = in_df[op.subset]._inplace_tile()
-        count_series = subset_df.agg('count', axis=1, _use_inf_as_na=op.use_inf_as_na)._inplace_tile()
+        count_series = yield from recursive_tile(
+            subset_df.agg('count', axis=1, _use_inf_as_na=op.use_inf_as_na))
 
         nsplits, out_shape, left_chunks, right_chunks = align_dataframe_series(in_df, count_series, axis=0)
         out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))

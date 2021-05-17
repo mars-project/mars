@@ -131,18 +131,20 @@ class _ExecutableMixin:
                 f'Tileable object {key} must be executed first before {action}')
 
     def _fetch(self, session=None, **kw):
-        from ..session import AbstractSession, fetch
+        from ..session import fetch
+
+        return fetch(self, session=session, **kw)
+
+    def fetch(self, session=None, **kw):
+        from ..session import AbstractSession
 
         session = _get_session(self, session)
         self._check_session(session, 'fetch')
         if isinstance(session, AbstractSession):
             # new-style
-            return fetch(self, session=session, **kw)
+            return self._fetch(session=session, **kw)
         else:
             return session.fetch(self, **kw)
-
-    def fetch(self, session=None, **kw):
-        return self._fetch(session=session, **kw)
 
     def fetch_log(self, session=None, offsets=None, sizes=None):
         session = _get_session(self, session)
@@ -222,10 +224,22 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             items.append(f'{k}={v!r}')
         return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
 
+    def _execute(self, session=None, **kw):
+        from ..session import execute
+
+        wait = kw.pop('wait', True)
+        return execute(*self, session=session, wait=wait, **kw)
+
     def execute(self, session=None, **kw):
         if len(self) == 0:
             return self
-        return super().execute(session=session, **kw)
+        super().execute(session=session, **kw)
+        return self
+
+    def _fetch(self, session=None, **kw):
+        from ..session import fetch
+
+        return fetch(*self, session=session, **kw)
 
     def fetch(self, session=None, **kw):
         if len(self) == 0:
@@ -233,6 +247,8 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         ret = super().fetch(session=session, **kw)
         if self._raw_type is not None:
             ret = self._raw_type(*ret)
+        if len(self) == 1:
+            return ret,
         return ret
 
     def fetch_log(self, session=None, offsets=None, sizes=None):

@@ -18,7 +18,7 @@ import copy
 import numpy as np
 import pandas as pd
 
-from ...core import ENTITY_TYPE
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialize import AnyField, Float64Field
 from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
@@ -176,7 +176,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         rhs_is_tensor = isinstance(op.rhs, TENSOR_TYPE)
         tensor, other = (op.rhs, op.lhs) if rhs_is_tensor else (op.lhs, op.rhs)
         if tensor.shape == other.shape:
-            tensor = tensor.rechunk(other.nsplits)._inplace_tile()
+            tensor = yield from recursive_tile(tensor.rechunk(other.nsplits))
         else:
             # shape differs only when dataframe add 1-d tensor, we need rechunk on columns axis.
             if axis in ['columns', 1] and other.ndim == 1:
@@ -184,7 +184,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
                 axis = 0
             rechunk_size = other.nsplits[1] if axis == 'columns' or axis == 1 else other.nsplits[0]
             if tensor.ndim > 0:
-                tensor = tensor.rechunk((rechunk_size,))._inplace_tile()
+                tensor = yield from recursive_tile(tensor.rechunk((rechunk_size,)))
 
         out_chunks = []
         for out_index in itertools.product(*(map(range, other.chunk_shape))):
@@ -230,7 +230,7 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         elif isinstance(op.inputs[0], SERIES_TYPE) and isinstance(op.inputs[1], DATAFRAME_TYPE):
             return cls._tile_series_dataframe(op)
         elif isinstance(op.inputs[0], TENSOR_TYPE) or isinstance(op.inputs[1], TENSOR_TYPE):
-            return cls._tile_with_tensor(op)
+            return (yield from cls._tile_with_tensor(op))
 
     @classmethod
     def execute(cls, ctx, op):
