@@ -154,8 +154,7 @@ async def test_cancel_transfer(create_actors):
         'mock', 'data_key1', worker_address_2, StorageLevel.MEMORY))
 
     await asyncio.sleep(0.2)
-    await sender_actor.cancel('mock', 'data_key1')
-
+    send_task.cancel()
     await send_task
 
     with pytest.raises(DataNotExist):

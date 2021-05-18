@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import asyncio
+import os
 import random
 import sys
-import weakref
 from string import ascii_letters, digits
 from typing import Any, Dict, List, Tuple, Optional
 from dataclasses import dataclass
@@ -59,8 +59,7 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
         self._buffer = self._mv = shm.buf
 
     def _read_init(self):
-        self.shm = shm = SharedMemory(name=self._object_id)
-        _shared_memory_manager.register(self._object_id, shm)
+        self.shm = shm = SharedMemoryForRead(name=self._object_id)
         self._buffer = self._mv = buf = shm.buf
         self._size = buf.nbytes
 
@@ -68,7 +67,7 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
         pass
 
     def _read_close(self):
-        _shared_memory_manager.register(self._object_id, self.shm)
+        pass
 
 
 class ShmStorageFileObject(StorageFileObject):
@@ -82,22 +81,12 @@ class ShmStorageFileObject(StorageFileObject):
         await super().close()
 
 
-class _SharedMemoryManager:
-    def __init__(self):
-        self._object_id_to_shms = dict()
-        self._object_id_to_buffer = dict()
-
-    def register(self, object_id: Any, shm: SharedMemory):
-        # SharedMemory will release buffer when it's gc collected
-        # here we create the reference from buffer to SharedMemory
-        def _cb(_):
-            del self._object_id_to_shms[object_id]
-            del self._object_id_to_buffer[object_id]
-        self._object_id_to_shms[object_id] = shm
-        self._object_id_to_buffer[object_id] = weakref.ref(shm.buf, _cb)
-
-
-_shared_memory_manager = _SharedMemoryManager()
+class SharedMemoryForRead(SharedMemory):
+    def __del__(self):
+        # close fd only
+        fd = self._fd
+        if os.name != "nt" and fd >= 0:
+            os.close(fd)
 
 
 @register_storage_backend
@@ -148,11 +137,7 @@ class SharedMemoryStorage(StorageBackend):
 
         async with StorageFileObject(shm_file, object_id) as f:
             deserializer = AioDeserializer(f)
-            result = await deserializer.run()
-            # SharedMemory will release buffer when it's gc collected
-            # so we create the reference from buffer to SharedMemory
-            _shared_memory_manager.register(object_id, shm_file.shm)
-            return result
+            return await deserializer.run()
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
@@ -179,7 +164,11 @@ class SharedMemoryStorage(StorageBackend):
     async def delete(self, object_id):
         shm = SharedMemory(name=object_id)
         shm.unlink()
-        self._object_ids.remove(object_id)
+        shm.close()
+        try:
+            self._object_ids.remove(object_id)
+        except KeyError:
+            return
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:

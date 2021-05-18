@@ -25,7 +25,7 @@ from .core import StorageManagerActor, StorageHandlerActor
 
 @dataslots
 @dataclass
-class SendMessage:
+class TransferMessage:
     data: bytes
     session_id: str
     data_key: str
@@ -34,9 +34,6 @@ class SendMessage:
 
 
 class SenderManagerActor(mo.Actor):
-    def __init__(self):
-        self._key_to_send_task = dict()
-
     async def __post_create__(self):
         self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
             await mo.actor_ref(self.address, StorageManagerActor.default_uid())
@@ -45,8 +42,13 @@ class SenderManagerActor(mo.Actor):
 
     @staticmethod
     async def send_part(receiver_ref: Union[mo.ActorRef, "ReceiverActor"],
-                        message: SendMessage):
-        await receiver_ref.receive_part_data(message)
+                        message: TransferMessage):
+        send_task = asyncio.create_task(
+            receiver_ref.receive_part_data(message))
+        try:
+            await send_task
+        except asyncio.CancelledError:
+            send_task.cancel()
 
     @extensible
     async def send_data(self,
@@ -60,34 +62,31 @@ class SenderManagerActor(mo.Actor):
             address=address, uid=ReceiverActor.default_uid())
         info = await self._storage_manager_ref.get_data_info(session_id, data_key)
         store_size = info.store_size
-        yield receiver_ref.open_writer(session_id, data_key,
-                                       store_size, level)
+        task = asyncio.create_task(
+            receiver_ref.open_writer(session_id, data_key,
+                                     store_size, level))
+        try:
+            await task
+        except asyncio.CancelledError:
+            task.cancel()
         async with await self._storage_handler.open_reader(
                 session_id, data_key) as reader:
             while True:
                 part_data = await reader.read(block_size)
                 is_eof = len(part_data) < block_size
-                message = SendMessage(part_data, session_id, data_key, level, is_eof)
+                message = TransferMessage(part_data, session_id, data_key, level, is_eof)
                 send_task = asyncio.create_task(self.send_part(receiver_ref, message))
-                self._key_to_send_task[(session_id, data_key)] = send_task
                 try:
                     yield send_task
                 except asyncio.CancelledError:
-                    await receiver_ref.clean_cancelled_transfer(
-                        session_id, data_key)
+                    send_task.cancel()
                 if is_eof:
                     break
-
-    async def cancel(self,
-                     session_id: str,
-                     data_key: str):
-        task = self._key_to_send_task[(session_id, data_key)]
-        task.cancel()
 
 
 class ReceiverActor(mo.Actor):
     def __init__(self):
-        self._key_to_writer = dict()
+        self._key_to_writer_info = dict()
 
     async def __post_create__(self):
         self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
@@ -100,20 +99,27 @@ class ReceiverActor(mo.Actor):
                           data_key: str,
                           data_size: int,
                           level: StorageLevel):
-        await self._storage_manager_ref.allocate_size(data_size, level)
-        writer = await self._storage_handler.open_writer(session_id, data_key,
-                                                         data_size, level)
-        self._key_to_writer[(session_id, data_key)] = writer
+        try:
+            await self._storage_manager_ref.allocate_size(data_size, level)
+            writer = await self._storage_handler.open_writer(session_id, data_key,
+                                                             data_size, level)
+            self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
+        except asyncio.CancelledError:
+            await self._storage_manager_ref.release_size(
+                data_size, level)
 
-    async def clean_cancelled_transfer(self,
-                                       session_id: str,
-                                       data_key: str):
-        writer = self._key_to_writer[(session_id, data_key)]
-        await writer.close(done=False)
+    async def receive_part_data(self, message: TransferMessage):
+        writer, data_size, level = self._key_to_writer_info[
+            (message.session_id, message.data_key)]
+        try:
+            yield writer.write(message.data)
+            if message.is_eof:
+                yield writer.close()
+        except asyncio.CancelledError:
+            await self._storage_manager_ref.release_size(
+                data_size, level)
+            await self._storage_handler.delete(
+                message.session_id, message.data_key, error='ignore')
+            self._key_to_writer_info.pop((
+                message.session_id, message.data_key))
 
-    async def receive_part_data(self, message: SendMessage):
-        writer = self._key_to_writer[(message.session_id,
-                                      message.data_key)]
-        yield writer.write(message.data)
-        if message.is_eof:
-            yield writer.close()

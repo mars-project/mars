@@ -68,9 +68,9 @@ class WrappedStorageFileObject(AioFileObject):
     def __getattr__(self, item):
         return getattr(self._file, item)
 
-    async def close(self, done=True):
+    async def close(self):
         self._file.close()
-        if done and 'w' in self._file._mode:
+        if 'w' in self._file._mode:
             object_info = await self._storage_handler.object_info(self._file._object_id)
             data_info = _build_data_info(object_info, self._level, self._size)
             await self._storage_manager.put_data_info(
@@ -81,6 +81,7 @@ class StorageQuota:
     def __init__(self, total_size: Optional[int]):
         self._total_size = total_size
         self._used_size = 0
+        self._lock = asyncio.Semaphore()
 
     @property
     def total_size(self):
@@ -90,22 +91,30 @@ class StorageQuota:
     def used_size(self):
         return self._used_size
 
-    def update(self, size: int):
+    async def update(self, size: int):
+        await self._lock.acquire()
         if self._total_size is not None:
             self._total_size += size
+        self._lock.release()
 
-    def request(self, size: int) -> bool:
+    async def request(self, size: int) -> bool:
+        await self._lock.acquire()
         if self._total_size is None:
             self._used_size += size
+            self._lock.release()
             return True
         elif self._used_size + size >= self._total_size:
+            self._lock.release()
             return False
         else:
             self._used_size += size
+            self._lock.release()
             return True
 
-    def release(self, size: int):
+    async def release(self, size: int):
+        await self._lock.acquire()
         self._used_size -= size
+        self._lock.release()
 
 
 @dataslots
@@ -313,16 +322,13 @@ class StorageManagerActor(mo.Actor):
 
         # setup storage backend
         quotas = dict()
-        quota_locks = dict()
 
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
                     quotas[level] = StorageQuota(client.size)
-                    quota_locks[level] = asyncio.Semaphore()
         self._quotas = quotas
-        self._quota_locks = quota_locks
 
         # create handler actors for every process
         strategy = IdleLabel(None, 'storage_handler')
@@ -341,18 +347,19 @@ class StorageManagerActor(mo.Actor):
                                                    uid=StorageHandlerActor.default_uid())
 
         # create actor for transfer
-        try:
-            sender_strategy = IdleLabel('io', 'sender')
-            await mo.create_actor(
-                SenderManagerActor, uid=SenderManagerActor.default_uid(),
-                address=self.address, allocate_strategy=sender_strategy)
+        while True:
+            try:
+                sender_strategy = IdleLabel('io', 'sender')
+                await mo.create_actor(
+                    SenderManagerActor, uid=SenderManagerActor.default_uid(),
+                    address=self.address, allocate_strategy=sender_strategy)
 
-            receiver_strategy = IdleLabel('io', 'receiver')
-            await mo.create_actor(ReceiverActor, address=self.address,
-                                  uid=ReceiverActor.default_uid(),
-                                  allocate_strategy=receiver_strategy)
-        except mo.errors.NoIdleSlot:
-            logger.debug('No io label slot to create transfer actor.')
+                receiver_strategy = IdleLabel('io', 'receiver')
+                await mo.create_actor(ReceiverActor, address=self.address,
+                                      uid=ReceiverActor.default_uid(),
+                                      allocate_strategy=receiver_strategy)
+            except NoIdleSlot:
+                break
 
     async def __pre_destroy__(self):
         for backend, teardown_params in self._teardown_params.items():
@@ -383,9 +390,7 @@ class StorageManagerActor(mo.Actor):
     async def allocate_size(self,
                             size: int,
                             level: StorageLevel):
-        await self._quota_locks[level].acquire()
-        if self._quotas[level].request(size):
-            self._quota_locks[level].release()
+        if await self._quotas[level].request(size):
             return
         else:  # pragma: no cover
             raise NotImplementedError('Spill is not supported now')
@@ -413,19 +418,19 @@ class StorageManagerActor(mo.Actor):
                 sender_ref = await mo.actor_ref(
                     address=address, uid=SenderManagerActor.default_uid())
                 yield sender_ref.send_data(session_id, data_key,
-                                           address, level)
+                                           self.address, level)
                 await meta_api.add_chunk_bands(data_key, [(address, band or 'numa-0')])
 
-    def update_quota(self,
-                     size: int,
-                     level: StorageLevel):
-        self._quotas[level].update(size)
+    async def update_quota(self,
+                           size: int,
+                           level: StorageLevel):
+        await self._quotas[level].update(size)
 
-    def release_size(self,
-                     size: int,
-                     level: StorageLevel
+    async def release_size(self,
+                           size: int,
+                           level: StorageLevel
                      ):
-        self._quotas[level].release(size)
+        await self._quotas[level].release(size)
 
     def get_data_infos(self,
                        session_id: str,

@@ -36,7 +36,7 @@ async def create_cluster():
     start_method = os.environ.get('POOL_START_METHOD', None)
     client = await new_cluster(subprocess_start_method=start_method,
                                config=CONFIG_TEST_FILE,
-                               n_worker=1,
+                               n_worker=2,
                                n_cpu=2)
     async with client:
         yield client

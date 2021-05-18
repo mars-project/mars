@@ -61,14 +61,6 @@ class StorageLevel(Enum):
         other_value = getattr(other, 'value', other)
         return self.value > other_value
 
-    def spill_level(self):
-        if self == StorageLevel.GPU:
-            return StorageLevel.MEMORY
-        elif self == StorageLevel.MEMORY:
-            return StorageLevel.DISK
-        else:  # pragma: no cover
-            raise ValueError(f"Level {self} doesn't have spill level")
-
 
 @dataslots
 @dataclass
