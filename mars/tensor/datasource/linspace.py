@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ExecutableTuple
-from ...serialize import Int64Field, BoolField, AnyField
+from ...serialization.serializables import Int64Field, BoolField, AnyField
 from ...config import options
 from ..utils import decide_chunk_sizes
 from .core import TensorNoInput

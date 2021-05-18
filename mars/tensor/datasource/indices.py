@@ -19,7 +19,7 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, ListField
+from ...serialization.serializables import FieldTypes, ListField
 from .core import TensorNoInput
 from .arange import arange
 from .empty import empty
@@ -29,7 +29,7 @@ from .meshgrid import meshgrid
 class TensorIndices(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_INDICES
 
-    _dimensions = ListField('dimensions', ValueType.uint64)
+    _dimensions = ListField('dimensions', FieldTypes.uint64)
 
     def __init__(self, dimensions=None, **kw):
         super().__init__(_dimensions=dimensions, **kw)

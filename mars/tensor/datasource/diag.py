@@ -20,7 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import TilesError
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ...utils import check_chunks_unknown_shape
 from ..core import TENSOR_TYPE
 from ...lib.sparse import diag as sparse_diag

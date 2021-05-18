@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 
 from ...config import options
-from ...serialize import ValueType, StringField, TupleField
+from ...serialization.serializables import FieldTypes, StringField, TupleField
 from ..utils import normalize_shape, decide_chunk_sizes
 from ..core import TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
@@ -139,7 +139,7 @@ class TensorFromHDF5Like(TensorNoInput):
     _filename = StringField('filename')
     _group = StringField('group')
     _dataset = StringField('dataset')
-    _axis_offsets = TupleField('axis_offsets', ValueType.int64)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.int64)
 
     def __init__(self, filename=None, group=None, dataset=None, **kw):
         super().__init__(_filename=filename, _group=group,

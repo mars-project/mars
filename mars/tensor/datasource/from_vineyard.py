@@ -17,8 +17,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...serialize import StringField
 from ...context import get_context, RunningMode
+from ...serialization.serializables import StringField
 from ...utils import calc_nsplits
 from .core import TensorNoInput
 

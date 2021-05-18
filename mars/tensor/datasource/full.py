@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, StringField, KeyField
+from ...serialization.serializables import AnyField, StringField, KeyField
 from ...lib.sparse.core import get_sparse_module, get_array_module, naked
 from ...lib.sparse import SparseNDArray
 from ..array_utils import create_array

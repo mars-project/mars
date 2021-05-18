@@ -16,7 +16,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from .core import TensorNoInput
 from ..array_utils import create_array
 

@@ -21,7 +21,7 @@ import numpy as np
 from ...lib import sparse
 from ... import opcodes as OperandDef
 from ...core import TilesError
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ...utils import check_chunks_unknown_shape
 from ..array_utils import create_array
 from ..core import TensorOrder
@@ -81,7 +81,10 @@ class TensorTri(TensorHasInput):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, chunks=out_chunks, nsplits=m.nsplits)
+        params = tensor.params
+        params['chunks'] = out_chunks
+        params['nsplits'] = m.nsplits
+        return new_op.new_tensors(op.inputs, kws=[params])
 
     @classmethod
     def execute(cls, ctx, op):

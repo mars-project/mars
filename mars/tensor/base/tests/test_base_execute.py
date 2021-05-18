@@ -31,7 +31,7 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     trapz, shape, to_gpu, to_cpu, swapaxes
 from mars.tensor.datasource import tensor, ones, zeros, arange
 from mars.tests import new_test_session
-from mars.tests.core import require_cupy, TestBase
+from mars.tests.core import require_cupy
 
 
 @pytest.fixture(scope='module')

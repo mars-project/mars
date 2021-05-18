@@ -18,8 +18,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
 from ...lib.sparse import SparseNDArray
+from ...serialization.serializables import FieldTypes, NDArrayField, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
-from ...serialize import ValueType, NDArrayField, TupleField
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
 from ..fetch import TensorFetch
 from ..utils import get_chunk_slices
@@ -71,7 +71,7 @@ class CSRMatrixDataSource(TensorNoInput):
     _indices = NDArrayField('indices')
     _indptr = NDArrayField('indptr')
     _data = NDArrayField('data')
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
     def __init__(self, indices=None, indptr=None, data=None, shape=None, **kw):
