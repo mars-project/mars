@@ -17,10 +17,11 @@ from typing import List, Tuple
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....core import TilesError
+from ....core import recursive_tile
 from ....core.operand import OperandStage
-from ....serialize import ValueType, KeyField, AnyField, Float16Field, Int32Field, TupleField
-from ....utils import check_chunks_unknown_shape, require_module
+from ....serialization.serializables import FieldTypes, KeyField, \
+    AnyField, Float16Field, Int32Field, TupleField
+from ....utils import has_unknown_shape, require_module
 from ....config import options
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...array_utils import as_same_device, device, cp
@@ -43,7 +44,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     _a_offset = Int32Field('a_offset')
     _b = KeyField('b')
     _b_offset = Int32Field('b_offset')
-    _out_sizes = TupleField('out_sizes', ValueType.int32)
+    _out_sizes = TupleField('out_sizes', FieldTypes.int32)
     _n = Int32Field('n')
 
     def __init__(self, metric=None, p=None, w=None, v=None, vi=None,
@@ -227,15 +228,17 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         # make sure every inputs have known shape
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
-        in_tensor = op.input.rechunk({1: op.input.shape[1]})._inplace_tile()
+        in_tensor = yield from recursive_tile(
+            op.input.rechunk({1: op.input.shape[1]}))
         # rechunk w, v, vi into one chunk if any of them has value
         extra_inputs = [None] * 3
         for i, ei in enumerate([op.w, op.v, op.vi]):
             if ei is None:
                 continue
-            new_ei = ei.rechunk(ei.shape)._inplace_tile()
+            new_ei = yield from recursive_tile(ei.rechunk(ei.shape))
             extra_inputs[i] = new_ei
         w, v, vi = extra_inputs
 

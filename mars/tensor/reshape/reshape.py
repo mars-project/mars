@@ -20,9 +20,9 @@ import logging
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, TupleField, StringField, ValueType
+from ...serialization.serializables import FieldTypes, KeyField, TupleField, StringField
 from ...utils import has_unknown_shape
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
@@ -36,12 +36,12 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RESHAPE
 
     _input = KeyField('input')
-    _newshape = TupleField('newshape', ValueType.int64)
+    _newshape = TupleField('newshape', FieldTypes.int64)
     _order = StringField('order')
 
-    _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
-    _oldshape = TupleField('oldshape', ValueType.uint64)
-    _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.uint64)
+    _oldshape = TupleField('oldshape', FieldTypes.uint64)
+    _new_chunk_size = TupleField('new_chunk_size', FieldTypes.uint64)
 
     def __init__(self, newshape=None, order=None, axis_offsets=None, oldshape=None,
                  new_chunk_size=None, **kw):

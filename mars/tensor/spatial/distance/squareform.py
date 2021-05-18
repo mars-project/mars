@@ -19,7 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core import TilesError, recursive_tile
 from ....core.operand import OperandStage
-from ....serialize import ValueType, KeyField, BoolField, TupleField
+from ....serialization.serializables import FieldTypes, KeyField, BoolField, TupleField
 from ....config import options
 from ....utils import check_chunks_unknown_shape, require_module
 from ...core import TensorOrder
@@ -37,9 +37,9 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     _checks = BoolField('checks')
 
     _checks_input = KeyField('checks_input')
-    _x_shape = TupleField('x_shape', ValueType.int32)
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.tuple)
-    _start_positions = TupleField('start_positions', ValueType.int32)
+    _x_shape = TupleField('x_shape', FieldTypes.int32)
+    _reduce_sizes = TupleField('reduce_sizes', FieldTypes.tuple)
+    _start_positions = TupleField('start_positions', FieldTypes.int32)
 
     def __init__(self, checks=None, checks_input=None, x_shape=None,
                  reduce_sizes=None, start_positions=None, **kw):

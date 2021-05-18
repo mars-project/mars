@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import unittest
-
 import numpy as np
-
-from mars.core import get_tiled
-from mars.tensor import tensor
-
+import pytest
 try:
     import scipy
     from scipy.special import (
@@ -35,81 +29,83 @@ try:
 except ImportError:
     scipy = None
 
+from mars.core import tile
+from mars.tensor import tensor
 
-@unittest.skipIf(scipy is None, 'scipy not installed')
-class Test(unittest.TestCase):
-    def testGammaln(self):
-        raw = np.random.rand(10, 8, 5)
-        t = tensor(raw, chunk_size=3)
 
-        r = gammaln(t)
-        expect = scipy_gammaln(raw)
+@pytest.mark.skipif(scipy is None, reason='scipy not installed')
+def test_gammaln():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
 
-        self.assertEqual(r.shape, raw.shape)
-        self.assertEqual(r.dtype, expect.dtype)
+    r = gammaln(t)
+    expect = scipy_gammaln(raw)
 
-        r = r.tiles()
-        t = get_tiled(t)
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
 
-        self.assertEqual(r.nsplits, t.nsplits)
-        for c in r.chunks:
-            self.assertIsInstance(c.op, TensorGammaln)
-            self.assertEqual(c.index, c.inputs[0].index)
-            self.assertEqual(c.shape, c.inputs[0].shape)
+    t, r = tile(t, r)
 
-    def testElf(self):
-        raw = np.random.rand(10, 8, 5)
-        t = tensor(raw, chunk_size=3)
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorGammaln)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
 
-        r = erf(t)
-        expect = scipy_erf(raw)
 
-        self.assertEqual(r.shape, raw.shape)
-        self.assertEqual(r.dtype, expect.dtype)
+@pytest.mark.skipif(scipy is None, reason='scipy not installed')
+def test_elf():
+    raw = np.random.rand(10, 8, 5)
+    t = tensor(raw, chunk_size=3)
 
-        r = r.tiles()
-        t = get_tiled(t)
+    r = erf(t)
+    expect = scipy_erf(raw)
 
-        self.assertEqual(r.nsplits, t.nsplits)
-        for c in r.chunks:
-            self.assertIsInstance(c.op, TensorErf)
-            self.assertEqual(c.index, c.inputs[0].index)
-            self.assertEqual(c.shape, c.inputs[0].shape)
+    assert r.shape == raw.shape
+    assert r.dtype == expect.dtype
 
-    def testBetaInc(self):
-        raw1 = np.random.rand(4, 3, 2)
-        raw2 = np.random.rand(4, 3, 2)
-        raw3 = np.random.rand(4, 3, 2)
-        a = tensor(raw1, chunk_size=3)
-        b = tensor(raw2, chunk_size=3)
-        c = tensor(raw3, chunk_size=3)
+    t, r = tile(t, r)
 
-        r = betainc(a, b, c)
-        expect = scipy_betainc(raw1, raw2, raw3)
+    assert r.nsplits == t.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorErf)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape
 
-        self.assertEqual(r.shape, raw1.shape)
-        self.assertEqual(r.dtype, expect.dtype)
 
-        r = r.tiles()
-        tiled_a = get_tiled(a)
+@pytest.mark.skipif(scipy is None, reason='scipy not installed')
+def test_beta_inc():
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
 
-        self.assertEqual(r.nsplits, tiled_a.nsplits)
-        for chunk in r.chunks:
-            self.assertIsInstance(chunk.op, TensorBetaInc)
-            self.assertEqual(chunk.index, chunk.inputs[0].index)
-            self.assertEqual(chunk.shape, chunk.inputs[0].shape)
+    r = betainc(a, b, c)
+    expect = scipy_betainc(raw1, raw2, raw3)
 
-        betainc(a, b, c, out=a)
-        expect = scipy_betainc(raw1, raw2, raw3)
+    assert r.shape == raw1.shape
+    assert r.dtype == expect.dtype
 
-        self.assertEqual(a.shape, raw1.shape)
-        self.assertEqual(a.dtype, expect.dtype)
+    tiled_a, r = tile(a, r)
 
-        tiled_a = a.tiles()
-        b = get_tiled(b)
+    assert r.nsplits == tiled_a.nsplits
+    for chunk in r.chunks:
+        assert isinstance(chunk.op, TensorBetaInc)
+        assert chunk.index == chunk.inputs[0].index
+        assert chunk.shape == chunk.inputs[0].shape
 
-        self.assertEqual(tiled_a.nsplits, b.nsplits)
-        for c in r.chunks:
-            self.assertIsInstance(c.op, TensorBetaInc)
-            self.assertEqual(c.index, c.inputs[0].index)
-            self.assertEqual(c.shape, c.inputs[0].shape)
+    betainc(a, b, c, out=a)
+    expect = scipy_betainc(raw1, raw2, raw3)
+
+    assert a.shape == raw1.shape
+    assert a.dtype == expect.dtype
+
+    b, tiled_a = tile(b, a)
+
+    assert tiled_a.nsplits == b.nsplits
+    for c in r.chunks:
+        assert isinstance(c.op, TensorBetaInc)
+        assert c.index == c.inputs[0].index
+        assert c.shape == c.inputs[0].shape

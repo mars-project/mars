@@ -23,58 +23,61 @@ from mars.tensor.spatial import distance
 
 
 class Test(unittest.TestCase):
-    def testPdist(self):
+    
+    
+    def test_pdist():
         raw = np.random.rand(100, 10)
 
         # test 1 chunk
         a = tensor(raw, chunk_size=100)
         dist = distance.pdist(a)
-        self.assertEqual(dist.shape, (100 * 99 // 2,))
+        assert dist.shape == (100 * 99 // 2,)
 
         dist = dist.tiles()
-        self.assertEqual(len(dist.chunks), 1)
+        assert len(dist.chunks) == 1
         for c in dist.chunks:
-            self.assertEqual(c.shape, (dist.shape[0],))
+            assert c.shape == (dist.shape[0],)
 
         # test multiple chunks
         a = tensor(raw, chunk_size=15)
         dist = distance.pdist(a, aggregate_size=2)
-        self.assertEqual(dist.shape, (100 * 99 // 2,))
+        assert dist.shape == (100 * 99 // 2,)
 
         dist = dist.tiles()
-        self.assertEqual(len(dist.chunks), 2)
+        assert len(dist.chunks) == 2
         for c in dist.chunks:
-            self.assertEqual(c.shape, (dist.shape[0] // 2,))
+            assert c.shape == (dist.shape[0] // 2,)
 
         # X cannot be sparse
         raw = sps.csr_matrix(np.zeros((4, 3)))
         a = tensor(raw)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.pdist(a)
 
         # X can only be 2-d
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.pdist(np.random.rand(3, 3, 3))
 
         # out type wrong
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             distance.pdist(np.random.rand(3, 3), out=2)
 
         # out shape wrong
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.pdist(np.random.rand(3, 3),
                            out=tensor(np.random.rand(2)))
 
         # out dtype wrong
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.pdist(np.random.rand(3, 3),
                            out=tensor(np.random.randint(2, size=(3,))))
 
         # test extra param
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             distance.pdist(np.random.rand(3, 3), unknown_kw='unknown_kw')
-
-    def testCdist(self):
+    
+    
+    def test_cdist():
         raw_a = np.random.rand(100, 10)
         raw_b = np.random.rand(90, 10)
 
@@ -82,81 +85,82 @@ class Test(unittest.TestCase):
         a = tensor(raw_a, chunk_size=100)
         b = tensor(raw_b, chunk_size=100)
         dist = distance.cdist(a, b)
-        self.assertEqual(dist.shape, (100, 90))
+        assert dist.shape == (100, 90)
 
         dist = dist.tiles()
-        self.assertEqual(len(dist.chunks), 1)
+        assert len(dist.chunks) == 1
         for c in dist.chunks:
-            self.assertEqual(c.shape, dist.shape)
+            assert c.shape == dist.shape
 
         # test multiple chunks
         a = tensor(raw_a, chunk_size=15)
         b = tensor(raw_b, chunk_size=16)
         dist = distance.cdist(a, b)
-        self.assertEqual(dist.shape, (100, 90))
+        assert dist.shape == (100, 90)
 
         dist = dist.tiles()
-        self.assertEqual(len(dist.chunks), (100 // 15 + 1) * (90 // 16 + 1))
-        self.assertEqual(dist.nsplits, (get_tiled(a).nsplits[0],
-                                        get_tiled(b).nsplits[0]))
+        assert len(dist.chunks) == (100 // 15 + 1) * (90 // 16 + 1)
+        assert dist.nsplits == (get_tiled(a).nsplits[0],
+                                        get_tiled(b).nsplits[0])
         for c in dist.chunks:
             ta = get_tiled(a)
             tb = get_tiled(b)
-            self.assertEqual(c.shape, (ta.cix[c.index[0], 0].shape[0],
-                                       tb.cix[c.index[1], 0].shape[0]))
+            assert c.shape == (ta.cix[c.index[0], 0].shape[0],
+                                       tb.cix[c.index[1], 0].shape[0])
 
         # XA can only be 2-d
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(np.random.rand(3, 3, 3), np.random.rand(3, 3))
 
         # XB can only be 2-d
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(np.random.rand(3, 3), np.random.rand(3, 3, 3))
 
         # XA cannot be sparse
         raw = sps.csr_matrix(np.zeros((4, 3)))
         a = tensor(raw)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(a, np.random.rand(10, 3))
 
         # XB cannot be sparse
         raw = sps.csr_matrix(np.zeros((4, 3)))
         b = tensor(raw)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(np.random.rand(10, 3), b)
 
         # out type wrong
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             distance.cdist(raw_a, raw_b, out=2)
 
         # out shape wrong
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(raw_a, raw_b, out=tensor(np.random.rand(100, 91)))
 
         # out dtype wrong
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.cdist(raw_a, raw_b,
                            out=tensor(np.random.randint(2, size=(100, 90))))
 
         # test extra param
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             distance.cdist(raw_a, raw_b, unknown_kw='unknown_kw')
+    
+    
+    def test_squareform():
+        assert distance.squareform(np.array([], dtype=float)).shape == (1, 1)
+        assert distance.squareform(np.atleast_2d(np.random.rand())).shape == (0,)
 
-    def testSquareform(self):
-        self.assertEqual(distance.squareform(np.array([], dtype=float)).shape, (1, 1))
-        self.assertEqual(distance.squareform(np.atleast_2d(np.random.rand())).shape, (0,))
-
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.squareform(np.random.rand(3, 3), force='tomatrix')
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.squareform(np.random.rand(3), force='tovector')
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.squareform(np.random.rand(3, 3, 3))
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.squareform(np.random.rand(2, 4))
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             distance.squareform(np.random.rand(7))

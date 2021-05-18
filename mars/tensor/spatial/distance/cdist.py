@@ -18,9 +18,9 @@ from typing import Tuple
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....core import TilesError
-from ....serialize import KeyField, AnyField, Float16Field
-from ....utils import check_chunks_unknown_shape, require_module
+from ....core import recursive_tile
+from ....serialization.serializables import KeyField, AnyField, Float16Field
+from ....utils import has_unknown_shape, require_module
 from ...operands import TensorOperand, TensorOperandMixin
 from ...core import TensorOrder
 from ...datasource import tensor as astensor
@@ -144,17 +144,19 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         # make sure every inputs have known shape
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
-        xa = op.xa.rechunk({1: op.xa.shape[1]})._inplace_tile()
-        xb = op.xb.rechunk({1: op.xb.shape[1]})._inplace_tile()
+        xa = op.xa.rechunk({1: op.xa.shape[1]})
+        xb = op.xb.rechunk({1: op.xb.shape[1]})
+        xa, xb = yield from recursive_tile(xa, xb)
 
         # rechunk w, v, vi into one chunk if any of them has value
         extra_inputs = [None] * 3
         for i, ei in enumerate([op.w, op.v, op.vi]):
             if ei is None:
                 continue
-            new_ei = ei.rechunk(ei.shape)._inplace_tile()
+            new_ei = yield from recursive_tile(ei.rechunk(ei.shape))
             extra_inputs[i] = new_ei
         w, v, vi = extra_inputs
 

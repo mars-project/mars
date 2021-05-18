@@ -21,7 +21,8 @@ from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import recursive_tile
 from ...core.context import get_context
-from ...serialize import AnyField, TupleField, KeyField, BoolField
+from ...serialization.serializables import AnyField, TupleField, \
+    KeyField, BoolField
 from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin

@@ -17,9 +17,10 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, StringField, BoolField
 from ...core import ENTITY_TYPE, TilesError, recursive_tile
 from ...core.context import get_context
+from ...serialization.serializables import KeyField, AnyField, \
+    StringField, BoolField
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from ..base import moveaxis, where

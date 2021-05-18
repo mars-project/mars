@@ -16,18 +16,6 @@ from collections import namedtuple
 from distutils.version import LooseVersion
 
 import numpy as np
-
-from ...core import ExecutableTuple
-from ..arithmetic import (
-    divide as mt_divide, sqrt as mt_sqrt, absolute as mt_abs,
-    isnan as mt_isnan,
-)
-from ..base import where as mt_where
-from ..reduction import (
-    var as mt_var, mean as mt_mean,
-)
-from ..utils import implement_scipy
-
 try:
     from scipy import __version__ as sp_version
     from scipy.stats import (
@@ -41,6 +29,17 @@ except ImportError:
     sp_version = None
     sp_ttest_1samp = sp_ttest_ind = sp_ttest_ind_from_stats = sp_ttest_rel = None
     sp_distributions = None
+
+from ...core import ExecutableTuple
+from ..arithmetic import (
+    divide as mt_divide, sqrt as mt_sqrt, absolute as mt_abs,
+    isnan as mt_isnan,
+)
+from ..base import where as mt_where
+from ..reduction import (
+    var as mt_var, mean as mt_mean,
+)
+from ..utils import implement_scipy
 
 
 def _equal_var_ttest_denom(v1, n1, v2, n2):

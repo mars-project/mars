@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import KeyField, AnyField, BoolField
+from ...serialization.serializables import KeyField, AnyField, BoolField
 from ...lib.sparse.core import get_array_module
 from ...utils import has_unknown_shape
 from ..array_utils import as_same_device, device
