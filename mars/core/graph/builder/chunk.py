@@ -130,33 +130,36 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                         self._add_nodes(chunk_graph, chunks, visited)
                         self.tile_context[out] = tiled_tileable
 
-            for tileable in tileables:
-                # add chunks that belongs to result tileables
-                # to result chunks
-                if tileable in self.tile_context:
-                    chunks = self.tile_context[tileable].chunks
-                    for chunk in chunks:
-                        chunk = self._get_data(chunk)
-                        if chunk in chunk_graph:
-                            result_chunks.append(chunk)
-
+            # generate result chunks
+            result_chunk_set = set()
             if need_process_tiles:
                 process_tile_iter = need_process_tiles
                 # otherwise, add all chunks that have no successors
                 # to result chunks
-                result_chunk_set = set()
                 for chunk in chunk_graph:
                     if chunk_graph.count_successors(chunk) == 0:
                         if chunk not in result_chunk_set:
                             result_chunks.append(chunk)
                             result_chunk_set.add(chunk)
-                for tileable in tileables:
-                    if tileable in self.tile_context:
-                        for chunk in self.tile_context[tileable].chunks:
-                            if chunk in chunk_graph and \
-                                    chunk not in result_chunk_set:
-                                result_chunks.append(chunk)
-                                result_chunk_set.add(chunk)
+                for tileable, _ in need_process_tiles:
+                    # tileable that tile not completed,
+                    # scan inputs to make sure their chunks in result
+                    for inp_tileable in tileable_graph.predecessors(tileable):
+                        if inp_tileable in self.tile_context:
+                            for chunk in self.tile_context[inp_tileable].chunks:
+                                chunk = self._get_data(chunk)
+                                if chunk in chunk_graph and \
+                                        chunk not in result_chunk_set:
+                                    result_chunks.append(chunk)
+                                    result_chunk_set.add(chunk)
+            for tileable in tileables:
+                if tileable in self.tile_context:
+                    for chunk in self.tile_context[tileable].chunks:
+                        chunk = self._get_data(chunk)
+                        if chunk in chunk_graph and \
+                                chunk not in result_chunk_set:
+                            result_chunks.append(chunk)
+                            result_chunk_set.add(chunk)
 
             # yield chunk graph for upcoming optimization and execution
             yield chunk_graph

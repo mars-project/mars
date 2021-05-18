@@ -764,7 +764,7 @@ def check_chunks_unknown_shape(tileables, error_cls):
 def has_unknown_shape(*tiled_tileables):
     for tileable in tiled_tileables:
         if getattr(tileable, 'shape', None) is None:
-            return False
+            continue
         if any(pd.isnull(s) for s in tileable.shape):
             return True
         if any(pd.isnull(s) for s in itertools.chain(*tileable.nsplits)):

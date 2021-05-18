@@ -14,94 +14,92 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
+import pytest
 
-from mars.core import get_tiled
+from mars.core import tile
 from mars.tensor.datasource import ones, empty
 from mars.tensor.merge import concatenate, stack
 
 
-class Test(unittest.TestCase):
-    def testConcatenate(self):
+def test_concatenate():
+    a = ones((10, 20, 30), chunk_size=10)
+    b = ones((20, 20, 30), chunk_size=20)
+
+    c = concatenate([a, b])
+    assert c.shape == (30, 20, 30)
+
+    a = ones((10, 20, 30), chunk_size=10)
+    b = ones((10, 20, 40), chunk_size=20)
+
+    c = concatenate([a, b], axis=-1)
+    assert c.shape == (10, 20, 70)
+
+    with pytest.raises(ValueError):
         a = ones((10, 20, 30), chunk_size=10)
-        b = ones((20, 20, 30), chunk_size=20)
+        b = ones((20, 30, 30), chunk_size=20)
 
-        c = concatenate([a, b])
-        self.assertEqual(c.shape, (30, 20, 30))
+        concatenate([a, b])
 
+    with pytest.raises(ValueError):
         a = ones((10, 20, 30), chunk_size=10)
-        b = ones((10, 20, 40), chunk_size=20)
+        b = ones((20, 20), chunk_size=20)
 
-        c = concatenate([a, b], axis=-1)
-        self.assertEqual(c.shape, (10, 20, 70))
+        concatenate([a, b])
 
-        with self.assertRaises(ValueError):
-            a = ones((10, 20, 30), chunk_size=10)
-            b = ones((20, 30, 30), chunk_size=20)
+    a = ones((10, 20, 30), chunk_size=5)
+    b = ones((20, 20, 30), chunk_size=10)
 
-            concatenate([a, b])
+    a, c = tile(a, concatenate([a, b]))
+    assert c.chunk_shape[0] == 4
+    assert c.chunk_shape[1] == 4
+    assert c.chunk_shape[2] == 6
+    assert c.nsplits == ((5, 5, 10, 10), (5,) * 4, (5,) * 6)
+    assert c.cix[0, 0, 0].key == a.cix[0, 0, 0].key
+    assert c.cix[1, 0, 0].key == a.cix[1, 0, 0].key
 
-        with self.assertRaises(ValueError):
-            a = ones((10, 20, 30), chunk_size=10)
-            b = ones((20, 20), chunk_size=20)
 
-            concatenate([a, b])
+def test_stack():
+    raw_arrs = [ones((3, 4), chunk_size=2) for _ in range(10)]
+    arr2 = stack(raw_arrs, axis=0)
 
-        a = ones((10, 20, 30), chunk_size=5)
-        b = ones((20, 20, 30), chunk_size=10)
+    assert arr2.shape == (10, 3, 4)
 
-        c = concatenate([a, b]).tiles()
-        a = get_tiled(a)
-        self.assertEqual(c.chunk_shape[0], 4)
-        self.assertEqual(c.chunk_shape[1], 4)
-        self.assertEqual(c.chunk_shape[2], 6)
-        self.assertEqual(c.nsplits, ((5, 5, 10, 10), (5,) * 4, (5,) * 6))
-        self.assertEqual(c.cix[0, 0, 0].key, a.cix[0, 0, 0].key)
-        self.assertEqual(c.cix[1, 0, 0].key, a.cix[1, 0, 0].key)
+    arr2 = tile(arr2)
+    assert arr2.nsplits == ((1,) * 10, (2, 1), (2, 2))
 
-    def testStack(self):
-        raw_arrs = [ones((3, 4), chunk_size=2) for _ in range(10)]
-        arr2 = stack(raw_arrs, axis=0)
+    arr3 = stack(raw_arrs, axis=1)
 
-        self.assertEqual(arr2.shape, (10, 3, 4))
+    assert arr3.shape == (3, 10, 4)
 
-        arr2 = arr2.tiles()
-        self.assertEqual(arr2.nsplits, ((1,) * 10, (2, 1), (2, 2)))
+    arr3 = tile(arr3)
+    assert arr3.nsplits == ((2, 1), (1,) * 10, (2, 2))
 
-        arr3 = stack(raw_arrs, axis=1)
+    arr4 = stack(raw_arrs, axis=2)
 
-        self.assertEqual(arr3.shape, (3, 10, 4))
+    assert arr4.shape == (3, 4, 10)
 
-        arr3 = arr3.tiles()
-        self.assertEqual(arr3.nsplits, ((2, 1), (1,) * 10, (2, 2)))
+    arr4 = tile(arr4)
+    assert arr4.nsplits == ((2, 1), (2, 2), (1,) * 10)
 
-        arr4 = stack(raw_arrs, axis=2)
+    with pytest.raises(ValueError):
+        raw_arrs2 = [ones((3, 4), chunk_size=2), ones((4, 3), chunk_size=2)]
+        stack(raw_arrs2)
 
-        self.assertEqual(arr4.shape, (3, 4, 10))
+    with pytest.raises(np.AxisError):
+        stack(raw_arrs, axis=3)
 
-        arr4 = arr4.tiles()
-        self.assertEqual(arr4.nsplits, ((2, 1), (2, 2), (1,) * 10))
+    arr5 = tile(stack(raw_arrs, -1))
+    assert arr5.nsplits == ((2, 1), (2, 2), (1,) * 10)
 
-        with self.assertRaises(ValueError):
-            raw_arrs2 = [ones((3, 4), chunk_size=2), ones((4, 3), chunk_size=2)]
-            stack(raw_arrs2)
+    arr6 = tile(stack(raw_arrs, -3))
+    assert arr6.nsplits == ((1,) * 10, (2, 1), (2, 2))
 
-        with self.assertRaises(np.AxisError):
-            stack(raw_arrs, axis=3)
+    with pytest.raises(np.AxisError):
+        stack(raw_arrs, axis=-4)
 
-        arr5 = stack(raw_arrs, -1).tiles()
-        self.assertEqual(arr5.nsplits, ((2, 1), (2, 2), (1,) * 10))
+    with pytest.raises(TypeError):
+        stack(raw_arrs, out=1)
 
-        arr6 = stack(raw_arrs, -3).tiles()
-        self.assertEqual(arr6.nsplits, ((1,) * 10, (2, 1), (2, 2)))
-
-        with self.assertRaises(np.AxisError):
-            stack(raw_arrs, axis=-4)
-
-        with self.assertRaises(TypeError):
-            stack(raw_arrs, out=1)
-
-        with self.assertRaises(ValueError):
-            stack(raw_arrs, empty((1, 10, 3, 4)))
+    with pytest.raises(ValueError):
+        stack(raw_arrs, empty((1, 10, 3, 4)))

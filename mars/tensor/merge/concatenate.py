@@ -20,7 +20,8 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, BoolField, StringField, TupleField, SliceField
+from ...serialization.serializables import AnyField, BoolField, \
+    StringField, TupleField, SliceField
 from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
