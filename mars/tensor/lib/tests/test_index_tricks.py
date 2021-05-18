@@ -15,94 +15,105 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 
 from mars import tensor as mt
+from mars.config import option_context
+from mars.core import tile
 from mars.tensor.lib import nd_grid
-from mars.tests.core import TestBase, ExecutorForTest
+from mars.tests import new_test_session
 
 
-class Test(TestBase):
-    def setUp(self):
-        self.executor = ExecutorForTest('numpy')
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def testIndexTricks(self):
-        mgrid = nd_grid()
-        g = mgrid[0:5, 0:5]
-        g.tiles()  # tileable means no loop exists
+    
+def test_index_tricks():
+    mgrid = nd_grid()
+    g = mgrid[0:5, 0:5]
+    tile(g)  # tileable means no loop exists
 
-        ogrid = nd_grid(sparse=True)
-        o = ogrid[0:5, 0:5]
-        [ob.tiles() for ob in o]  # tilesable means no loop exists
+    ogrid = nd_grid(sparse=True)
+    o = ogrid[0:5, 0:5]
+    tile(*o)  # tilesable means no loop exists
 
-    def testR_(self):
-        r = mt.r_[mt.array([1, 2, 3]), 0, 0, mt.array([4, 5, 6])]
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_[np.array([1, 2, 3]), 0, 0, np.array([4, 5, 6])]
+def test_r_(setup):
+    r = mt.r_[mt.array([1, 2, 3]), 0, 0, mt.array([4, 5, 6])]
 
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.r_[np.array([1, 2, 3]), 0, 0, np.array([4, 5, 6])]
 
-        r = mt.r_[-1:1:6j, [0]*3, 5, 6]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_[-1:1:6j, [0]*3, 5, 6]
+    r = mt.r_[-1:1:6j, [0]*3, 5, 6]
 
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.r_[-1:1:6j, [0]*3, 5, 6]
 
-        r = mt.r_[-1:1:6j]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_[-1:1:6j]
+    r = mt.r_[-1:1:6j]
 
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.r_[-1:1:6j]
 
-        raw = [[0, 1, 2], [3, 4, 5]]
-        a = mt.array(raw, chunk_size=2)
-        r = mt.r_['-1', a, a]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_['-1', raw, raw]
+    raw = [[0, 1, 2], [3, 4, 5]]
+    a = mt.array(raw, chunk_size=2)
+    r = mt.r_['-1', a, a]
 
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.r_['-1', raw, raw]
 
-        r = mt.r_['0,2', [1, 2, 3], [4, 5, 6]]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_['0,2', [1, 2, 3], [4, 5, 6]]
+    r = mt.r_['0,2', [1, 2, 3], [4, 5, 6]]
 
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.r_['0,2', [1, 2, 3], [4, 5, 6]]
 
-        r = mt.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
-        np.testing.assert_array_equal(result, expected)
+    r = mt.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
 
-        r = mt.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
+    result = r.execute().fetch()
+    expected = np.r_['0,2,0', [1, 2, 3], [4, 5, 6]]
+    np.testing.assert_array_equal(result, expected)
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
-        np.testing.assert_array_equal(result, expected)
+    r = mt.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
 
-        self.assertEqual(len(mt.r_), 0)
+    result = r.execute().fetch()
+    expected = np.r_['1,2,0', [1, 2, 3], [4, 5, 6]]
+    np.testing.assert_array_equal(result, expected)
 
-        with self.assertRaises(ValueError):
-            _ = mt.r_[:3, 'wrong']
+    assert len(mt.r_) == 0
 
-    def testC_(self):
-        r = mt.c_[mt.array([1, 2, 3]), mt.array([4, 5, 6])]
+    with pytest.raises(ValueError):
+        _ = mt.r_[:3, 'wrong']
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.c_[np.array([1, 2, 3]), np.array([4, 5, 6])]
-        np.testing.assert_array_equal(result, expected)
 
-        r = mt.c_[mt.array([[1, 2, 3]]), 0, 0, mt.array([[4, 5, 6]])]
+def test_c_(setup):
+    r = mt.c_[mt.array([1, 2, 3]), mt.array([4, 5, 6])]
 
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.c_[np.array([[1, 2, 3]]), 0, 0, np.array([[4, 5, 6]])]
-        np.testing.assert_array_equal(result, expected)
+    result = r.execute().fetch()
+    expected = np.c_[np.array([1, 2, 3]), np.array([4, 5, 6])]
+    np.testing.assert_array_equal(result, expected)
 
-        r = mt.c_[:3, 1:4]
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        expected = np.c_[:3, 1:4]
-        np.testing.assert_array_equal(result, expected)
+    r = mt.c_[mt.array([[1, 2, 3]]), 0, 0, mt.array([[4, 5, 6]])]
+
+    result = r.execute().fetch()
+    expected = np.c_[np.array([[1, 2, 3]]), 0, 0, np.array([[4, 5, 6]])]
+    np.testing.assert_array_equal(result, expected)
+
+    r = mt.c_[:3, 1:4]
+    result = r.execute().fetch()
+    expected = np.c_[:3, 1:4]
+    np.testing.assert_array_equal(result, expected)
