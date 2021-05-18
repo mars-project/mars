@@ -20,6 +20,7 @@ from contextlib import contextmanager
 import numpy as np
 
 from ...config import options
+from ...core import recursive_tile
 from ...serialize import ValueType, TupleField, Int32Field
 from ...utils import tokenize
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
@@ -112,7 +113,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 t_nsplits = t.shape  # into 1 chunk
             rechunked = t.rechunk(t_nsplits)
             if rechunked is not t:
-                rechunked._inplace_tile()
+                yield from recursive_tile(rechunked)
                 changed = True
                 new_inputs.append(rechunked)
             else:

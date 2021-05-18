@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from ...core import TilesError
+from ...core import TilesError, recursive_tile
 from ...utils import check_chunks_unknown_shape
 from ..core import TensorOrder
 from ..utils import decide_chunk_sizes
@@ -59,7 +59,7 @@ class SFQR:
 
         if rechunk_size:
             new_chunks = decide_chunk_sizes(a.shape, rechunk_size, a.dtype.itemsize)
-            a = a.rechunk(new_chunks)._inplace_tile()
+            a = yield from recursive_tile(a.rechunk(new_chunks))
 
         # A_1's QR decomposition
         r_chunks = []
@@ -112,7 +112,7 @@ class TSQR:
         if a.chunk_shape[1] != 1:
             check_chunks_unknown_shape([a], TilesError)
             new_chunk_size = decide_chunk_sizes(a.shape, {1: a.shape[1]}, a.dtype.itemsize)
-            a = a.rechunk(new_chunk_size)._inplace_tile()
+            a = yield from recursive_tile(a.rechunk(new_chunk_size))
 
         # stage 1, map phase
         stage1_q_chunks, stage1_r_chunks = stage1_chunks = [[], []]  # Q and R chunks

@@ -869,6 +869,7 @@ def require_module(module: str):
 
 
 def ignore_warning(func):
+    @functools.wraps(func)
     def inner(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')

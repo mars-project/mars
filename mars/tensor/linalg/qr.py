@@ -90,9 +90,9 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':
-            return TSQR.tile(op)
+            return (yield from TSQR.tile(op))
         elif op.method == 'sfqr':
-            return SFQR.tile(op)
+            return (yield from SFQR.tile(op))
         else:
             raise NotImplementedError('Only tsqr method supported for now')
 

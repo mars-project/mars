@@ -18,7 +18,7 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import recursive_tile, TilesError
 from ...serialize import BoolField, KeyField
 from ...utils import check_chunks_unknown_shape
 from ..array_utils import device, as_same_device, cp
@@ -73,8 +73,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
 
         a, b = op.a, op.b
         unified_nsplit = decide_unify_split(a.nsplits[0], a.nsplits[1], b.nsplits[0])
-        a = a.rechunk((unified_nsplit, unified_nsplit))._inplace_tile()
-        b = b.rechunk((unified_nsplit,) + b.nsplits[1:])._inplace_tile()
+        a = yield from recursive_tile(a.rechunk((unified_nsplit, unified_nsplit)))
+        b = yield from recursive_tile(b.rechunk((unified_nsplit,) + b.nsplits[1:]))
 
         b_multi_dim = b.ndim > 1
         b_hsplits = b.chunk_shape[1] if b_multi_dim else 1

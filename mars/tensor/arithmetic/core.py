@@ -58,8 +58,12 @@ class TensorElementWise(TensorOperandMixin):
                 nsplits[i][idx] = s
 
         new_op = op.copy().reset_key()
-        kws = [{'chunks': out_chunk, 'nsplits': nsplits, 'shape': o.shape, 'dtype': o.dtype}
-               for out_chunk, o in zip(out_chunks, op.outputs)]
+        kws = []
+        for out_chunk, o in zip(out_chunks, op.outputs):
+            params = o.params.copy()
+            params['chunks'] = out_chunk
+            params['nsplits'] = nsplits
+            kws.append(params)
         return new_op.new_tensors(list(inputs), kws=kws, output_limit=len(op.outputs))
 
 

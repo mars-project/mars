@@ -131,7 +131,7 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]
-            in_tensor = in_tensor.rechunk([nsplits, nsplits])._inplace_tile()
+            in_tensor = yield from recursive_tile(in_tensor.rechunk([nsplits, nsplits]))
 
         p_chunks, p_invert_chunks, lower_chunks, l_permuted_chunks, upper_chunks = {}, {}, {}, {}, {}
         for i in range(in_tensor.chunk_shape[0]):
@@ -267,12 +267,12 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
 
         p, l_, u = new_op.new_tensors(op.inputs, kws=kws)
         if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
-            l_ = l_[:, :raw_in_tensor.shape[1]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
+            l_ = yield from recursive_tile(l_[:, :raw_in_tensor.shape[1]])
+            u = yield from recursive_tile(u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]])
         else:
-            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            l_ = l_[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[0], :]._inplace_tile()
+            p = yield from recursive_tile(p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]])
+            l_ = yield from recursive_tile(l_[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]])
+            u = yield from recursive_tile(u[:raw_in_tensor.shape[0], :])
         kws = [
             {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype,
              'shape': p.shape, 'order': p.order},
