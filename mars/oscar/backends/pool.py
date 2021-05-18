@@ -1030,7 +1030,8 @@ async def create_actor_pool(address: str,
                             subprocess_start_method: str = None,
                             auto_recover: Union[str, bool] = 'actor',
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
-                            on_process_recover: Callable[[MainActorPoolType, str], None] = None) \
+                            on_process_recover: Callable[[MainActorPoolType, str], None] = None,
+                            **kwargs) \
         -> MainActorPoolType:
     if n_process is None:
         n_process = multiprocessing.cpu_count()
@@ -1054,7 +1055,8 @@ async def create_actor_pool(address: str,
         main_process_index,
         labels[0] if labels else None,
         pool_cls.gen_internal_address(main_process_index, external_addresses[0]),
-        external_addresses[0])
+        external_addresses[0],
+        kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
         sub_process_index = next(process_index_gen)
@@ -1063,8 +1065,8 @@ async def create_actor_pool(address: str,
             labels[i + 1] if labels else None,
             pool_cls.gen_internal_address(sub_process_index, external_addresses[i + 1]),
             external_addresses[i + 1],
-            env=envs[i] if envs else None
-        )
+            env=envs[i] if envs else None,
+            kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({
         'actor_pool_config': actor_pool_config,

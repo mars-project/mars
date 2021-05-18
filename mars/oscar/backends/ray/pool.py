@@ -59,8 +59,8 @@ class RayMainActorPool(MainActorPoolBase):
             actor_pool_config: ActorPoolConfig,
             process_index: int,
             start_method: str = None):
-        external_addresses = \
-            actor_pool_config.get_pool_config(process_index)['external_address']
+        config = actor_pool_config.get_pool_config(process_index)
+        external_addresses = config['external_address']
         assert len(external_addresses) == 1, \
             f"Ray pool allows only one external address but got {external_addresses}"
         external_address = external_addresses[0]
@@ -72,8 +72,9 @@ class RayMainActorPool(MainActorPoolBase):
         if not pg:
             bundle_index = -1
         # Hold actor_handle to avoid actor being freed.
+        num_cpus = config['kwargs'].get('sub_pool_cpus', 1)
         actor_handle = ray.remote(RaySubPool).options(
-            num_cpus=1, name=external_address, placement_group=pg,
+            num_cpus=num_cpus, name=external_address, placement_group=pg,
             placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle

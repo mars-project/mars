@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 # The default value for supervisor standalone (not share node with worker).
 DEFAULT_SUPERVISOR_STANDALONE = False
+# The default value for supervisor sub pool count.
+DEFAULT_SUPERVISOR_SUB_POOL_NUM = 0
 
 
 def _load_config(filename=None):
@@ -92,7 +94,13 @@ class RayCluster:
         supervisor_standalone = self._config \
             .get('cluster', {}) \
             .get('ray', {}) \
-            .get('supervisor_standalone', DEFAULT_SUPERVISOR_STANDALONE)
+            .get('supervisor', {}) \
+            .get('standalone', DEFAULT_SUPERVISOR_STANDALONE)
+        supervisor_sub_pool_num = self._config \
+            .get('cluster', {}) \
+            .get('ray', {}) \
+            .get('supervisor', {}) \
+            .get('sub_pool_num', DEFAULT_SUPERVISOR_SUB_POOL_NUM)
         self.supervisor_address = process_placement_to_address(self._cluster_name, 0, 0)
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             'CPU': 1,
@@ -110,7 +118,8 @@ class RayCluster:
                 }
         else:
             for worker_index in range(self._worker_num):
-                worker_address = process_placement_to_address(self._cluster_name, worker_index, int(worker_index == 0))
+                worker_process_index = supervisor_sub_pool_num + 1 if worker_index == 0 else 0
+                worker_address = process_placement_to_address(self._cluster_name, worker_index, worker_process_index)
                 worker_addresses.append(worker_address)
                 worker_node_address = node_placement_to_address(self._cluster_name, worker_index)
                 address_to_resources[worker_node_address] = {
@@ -121,7 +130,7 @@ class RayCluster:
 
         # create supervisor actor pool
         self._supervisor_pool = await create_supervisor_actor_pool(
-            self.supervisor_address, n_process=0)
+            self.supervisor_address, n_process=supervisor_sub_pool_num, main_pool_cpus=0, sub_pool_cpus=0)
         logger.info('Create supervisor on node %s succeeds.', self.supervisor_address)
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
