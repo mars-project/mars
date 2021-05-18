@@ -16,10 +16,10 @@
 
 from collections.abc import Iterable
 
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...serialize import ValueType, KeyField, StringField, Int32Field, \
     Int64Field, TupleField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import get_array_module
@@ -38,11 +38,12 @@ class TensorFFTBaseMixin(TensorOperandMixin):
         out_tensor = op.outputs[0]
 
         if any(in_tensor.chunk_shape[axis] != 1 for axis in axes):
-            check_chunks_unknown_shape([in_tensor], TilesError)
+            if has_unknown_shape(in_tensor):
+                yield
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
             chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes}
             new_chunks = decide_chunk_sizes(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
-            in_tensor = in_tensor.rechunk(new_chunks)._inplace_tile()
+            in_tensor = yield from recursive_tile(in_tensor.rechunk(new_chunks))
 
         out_chunks = []
         for c in in_tensor.chunks:
@@ -70,7 +71,7 @@ class TensorFFTMixin(TensorFFTBaseMixin):
 
     @classmethod
     def tile(cls, op):
-        return cls._tile_fft(op, [op.axis])
+        return (yield from cls._tile_fft(op, [op.axis]))
 
 
 class TensorComplexFFTMixin(TensorFFTMixin):
@@ -91,7 +92,7 @@ def validate_fft(tensor, axis=-1, norm=None):
 class TensorFFTNMixin(TensorFFTBaseMixin):
     @classmethod
     def tile(cls, op):
-        return cls._tile_fft(op, op.axes)
+        return (yield from cls._tile_fft(op, op.axes))
 
     @staticmethod
     def _merge_shape(op, shape):
@@ -168,7 +169,8 @@ class TensorFFTShiftMixin(TensorOperandMixin):
         in_tensor = op.input
         is_inverse = cls._is_inverse()
 
-        check_chunks_unknown_shape([in_tensor], TilesError)
+        if has_unknown_shape(in_tensor):
+            yield
 
         x = in_tensor
         for axis in axes:
