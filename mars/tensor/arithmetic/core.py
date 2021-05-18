@@ -20,7 +20,7 @@ import numpy as np
 
 from ...core import ExecutableTuple, TilesError
 from ...serialize import ValueType, AnyField, DictField, KeyField, StringField, ListField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
 from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
@@ -34,7 +34,8 @@ class TensorElementWise(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         if len(op.inputs) > 1:
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
         inputs = yield from unify_chunks(
             *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
 

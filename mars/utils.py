@@ -769,7 +769,7 @@ def has_unknown_shape(*tiled_tileables):
             return True
         if any(pd.isnull(s) for s in itertools.chain(*tileable.nsplits)):
             return True
-        return False
+    return False
 
 
 def sbytes(x):

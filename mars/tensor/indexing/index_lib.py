@@ -691,8 +691,8 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         super().preprocess(index_info, context)
         to_check = [context.tileable] + \
             list(info.raw_index for info in fancy_index_infos)
-        if has_unknown_shape(to_check):
-            yield []
+        if has_unknown_shape(*to_check):
+            yield
 
         # unify shapes of all fancy indexes
         shape = broadcast_shape(

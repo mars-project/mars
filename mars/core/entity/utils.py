@@ -58,7 +58,7 @@ def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
     from .tileables import handler
 
     return_list = len(tileables) > 0
-    if not return_list and isinstance(tileable, list):
+    if not return_list and isinstance(tileable, (list, tuple)):
         return_list = True
         raw = tileable
         tileable = raw[0]

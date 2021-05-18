@@ -83,7 +83,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
     def tile(cls, op):
         from ..arithmetic.core import TensorElementWise
 
-        return TensorElementWise.tile(op)
+        return (yield from TensorElementWise.tile(op))
 
     @classmethod
     def execute(cls, ctx, op):
