@@ -96,7 +96,7 @@ async def test_storage_mock_api(storage_configs):
         value2 = pd.DataFrame({'col1': [str(i) for i in range(10)],
                                'col2': np.random.randint(0, 100, (10,))})
         await storage_api.put('data2', value2)
-        await storage_api.prefetch('data2')
+        await storage_api.fetch('data2')
         get_value2 = await storage_api.get('data2')
         pd.testing.assert_frame_equal(value2, get_value2)
 
@@ -108,7 +108,7 @@ async def test_storage_mock_api(storage_configs):
 
         await storage_api.delete('data2')
 
-        await storage_api.prefetch('data1')
+        await storage_api.fetch('data1')
 
         buffers = await AioSerializer(value2).run()
         size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)

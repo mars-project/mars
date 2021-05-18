@@ -228,7 +228,7 @@ class StorageBackend(ABC):
         List of objects
         """
 
-    async def prefetch(self, object_id):
+    async def fetch(self, object_id):
         """
         Fetch object to current worker.
 

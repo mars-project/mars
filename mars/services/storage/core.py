@@ -292,7 +292,7 @@ class StorageHandlerActor(mo.Actor):
     async def list(self, level: StorageLevel) -> List:
         return await self._clients[level].list()
 
-    async def prefetch(self,
+    async def fetch(self,
                        session_id: str,
                        data_key: str):
         if StorageLevel.REMOTE not in self._clients:
@@ -300,7 +300,7 @@ class StorageHandlerActor(mo.Actor):
         else:  # pragma: no cover
             data_info = await self._storage_manager_ref.fetch_data_info(
                 session_id, data_key)
-            await self._clients[StorageLevel.REMOTE].prefetch(data_info.object_id)
+            await self._clients[StorageLevel.REMOTE].fetch(data_info.object_id)
 
 
 class StorageManagerActor(mo.Actor):
@@ -395,12 +395,12 @@ class StorageManagerActor(mo.Actor):
         else:  # pragma: no cover
             raise NotImplementedError('Spill is not supported now')
 
-    async def prefetch(self,
-                       session_id: str,
-                       data_key: str,
-                       level: StorageLevel,
-                       address: str,
-                       band: str):
+    async def fetch(self,
+                    session_id: str,
+                    data_key: str,
+                    level: StorageLevel,
+                    address: str,
+                    band: str):
         from .transfer import SenderManagerActor
 
         try:
@@ -409,7 +409,7 @@ class StorageManagerActor(mo.Actor):
         except DataNotExist:
             # Not exists in local, fetch from remote worker
             try:
-                yield self._storage_handler.prefetch(session_id, data_key)
+                yield self._storage_handler.fetch(session_id, data_key)
             except NotImplementedError:  # pragma: no cover
                 meta_api = await self._get_meta_api(session_id)
                 if address is None:

@@ -146,11 +146,11 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, data_key, error=error)
 
     @extensible
-    async def prefetch(self,
-                       data_key: str,
-                       level: StorageLevel = StorageLevel.MEMORY,
-                       band: str = None,
-                       dest_address: str = None):
+    async def fetch(self,
+                    data_key: str,
+                    level: StorageLevel = StorageLevel.MEMORY,
+                    band: str = None,
+                    dest_address: str = None):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -165,7 +165,7 @@ class StorageAPI(AbstractStorageAPI):
         dest_address:
             destination address for data
         """
-        await self._storage_manager_ref.prefetch(
+        await self._storage_manager_ref.fetch(
             self._session_id, data_key, level, band, dest_address)
 
     @extensible

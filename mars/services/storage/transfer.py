@@ -122,4 +122,3 @@ class ReceiverActor(mo.Actor):
                 message.session_id, message.data_key, error='ignore')
             self._key_to_writer_info.pop((
                 message.session_id, message.data_key))
-
