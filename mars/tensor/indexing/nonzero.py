@@ -17,8 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
 from ...core import ExecutableTuple, recursive_tile
+from ...serialization.serializables import KeyField
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder

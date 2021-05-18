@@ -19,10 +19,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
+from ...core.context import get_context
 from ...serialize import AnyField, TupleField, KeyField, BoolField
-from ...context import get_context
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -49,27 +49,22 @@ class HistBinSelector:
         self._x = x
         self._range = range
         self._raw_range = raw_range
+        self._width = None
 
     def check(self):
-        if len(self._op._calc_bin_edges_dependencies) == 0:
-            # not checked before
-            width = self()
-            if width is None:
-                return
-            err = TilesError('bin edges calculation requires '
-                             'some dependencies executed first')
-            self._op._calc_bin_edges_dependencies = [width]
-            width = yield from recursive_tile(width)
-            err.partial_tiled_chunks = [c.data for c in width.chunks]
-            raise err
+        # not checked before
+        width = self()
+        if width is None:
+            return
+        self._width = width = yield from recursive_tile(width)
+        yield [c.data for c in width.chunks]
 
     def __call__(self):
         return
 
     def get_result(self):
         ctx = get_context()
-        width = ctx.get_chunk_results(
-            [self._op._calc_bin_edges_dependencies[0].chunks[0].key])[0]
+        width = ctx.get_chunks_result([self._width.chunks[0].key])[0]
         return width
 
 
@@ -402,23 +397,18 @@ def _get_bin_edges(op, a, bins, range, weights):
 
 
 class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
-    __slots__ = '_calc_bin_edges_dependencies',
     _op_type_ = OperandDef.HISTOGRAM_BIN_EDGES
 
     _input = KeyField('input')
     _bins = AnyField('bins')
     _range = TupleField('range')
     _weights = KeyField('weights')
-    _input_min = KeyField('input_min')
-    _input_max = KeyField('input_max')
     _uniform_bins = TupleField('uniform_bins')
 
     def __init__(self, input=None, bins=None, range=None, weights=None,
                  input_min=None, input_max=None, **kw):
-        super().__init__(_input=input, _bins=bins, _range=range, _weights=weights,
-                         _input_min=input_min, _input_max=input_max, **kw)
-        if getattr(self, '_calc_bin_edges_dependencies', None) is None:
-            self._calc_bin_edges_dependencies = []
+        super().__init__(_input=input, _bins=bins, _range=range,
+                         _weights=weights, **kw)
 
     @property
     def input(self):
@@ -436,14 +426,6 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
     def weights(self):
         return self._weights
 
-    @property
-    def input_min(self):
-        return self._input_min
-
-    @property
-    def input_max(self):
-        return self._input_max
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
@@ -452,10 +434,6 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             self._bins = next(inputs_iter)
         if self._weights is not None:
             self._weights = next(inputs_iter)
-        if self._input_min is not None:
-            self._input_min = next(inputs_iter)
-        if self._input_max is not None:
-            self._input_max = next(inputs_iter)
 
     def __call__(self, a, bins, range, weights):
         if range is not None:
@@ -503,48 +481,42 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             inputs.append(bins)
         if weights is not None:
             inputs.append(weights)
-        if (a.size > 0 or np.isnan(a.size)) and \
-                (isinstance(bins, str) or mt.ndim(bins) == 0) and not range:
-            # for bins that is str or integer, requires min max calculated first
-            # dims need to be kept in case a is empty which causes errors in reduction
-            input_min = self._input_min = a.min(keepdims=True)
-            inputs.append(input_min)
-            input_max = self._input_max = a.max(keepdims=True)
-            inputs.append(input_max)
 
         return self.new_tensor(inputs, shape=shape, order=TensorOrder.C_ORDER)
 
     @classmethod
     def tile(cls, op):
         ctx = get_context()
+        a = op.input
         range_ = op.range
-        if isinstance(op.bins, str):
-            check_chunks_unknown_shape([op.input], TilesError)
-        if op.input_min is not None:
-            # check if input min and max are calculated
-            min_max_chunk_keys = \
-                [inp.chunks[0].key for inp in (op.input_min, op.input_max)]
-            metas = ctx.get_chunk_metas(min_max_chunk_keys)
-            if any(meta is None for meta in metas):
-                raise TilesError('`input_min` or `input_max` need be executed first')
-            range_results = ctx.get_chunk_results(min_max_chunk_keys)
+        bins = op.bins
+
+        if isinstance(bins, str):
+            if has_unknown_shape(op.input):
+                yield
+        if (a.size > 0 or np.isnan(a.size)) and \
+                (isinstance(bins, str) or mt.ndim(bins) == 0) and not range_:
+            input_min = a.min(keepdims=True)
+            input_max = a.max(keepdims=True)
+            input_min, input_max = yield from recursive_tile(
+                input_min, input_max)
+            chunks = [input_min.chunks[0], input_max.chunks[0]]
+            yield chunks
+            range_results = ctx.get_chunks_result([c.key for c in chunks])
             # make sure returned bounds are valid
             if all(x.size > 0 for x in range_results):
                 range_ = tuple(x[0] for x in range_results)
-        if isinstance(op.bins, TENSOR_TYPE):
+        if isinstance(bins, TENSOR_TYPE):
             # `bins` is a Tensor, needs to be calculated first
-            bins_chunk_keys = [c.key for c in op.bins.chunks]
-            metas = ctx.get_chunk_metas(bins_chunk_keys)
-            if any(meta is None for meta in metas):
-                raise TilesError('`bins` should be executed first if it\'s a tensor')
-            bin_datas = ctx.get_chunk_results(bins_chunk_keys)
+            yield
+            bin_datas = ctx.get_chunks_result([c.key for c in bins.chunks])
             bins = np.concatenate(bin_datas)
         else:
             bins = op.bins
 
         bin_edges, _ = yield from _get_bin_edges(
             op, op.input, bins, range_, op.weights)
-        bin_edges = bin_edges._inplace_tile()
+        bin_edges = yield from recursive_tile(bin_edges)
         return [bin_edges]
 
 
@@ -840,7 +812,8 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         weights = None
         if op.weights is not None:
             # make input and weights have the same nsplits
-            weights = op.weights.rechunk(op.input.nsplits)._inplace_tile()
+            weights = yield from recursive_tile(
+                op.weights.rechunk(op.input.nsplits))
 
         out_chunks = []
         for chunk in op.input.chunks:

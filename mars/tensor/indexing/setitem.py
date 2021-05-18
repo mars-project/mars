@@ -17,8 +17,8 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
-from ...serialize import KeyField, ListField, AnyField
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, ListField, AnyField
 from ...tensor import tensor as astensor
 from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE

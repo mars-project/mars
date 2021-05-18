@@ -15,8 +15,9 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
-from ...serialize import KeyField, AnyField, BoolField, Int32Field
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, AnyField, \
+    BoolField, Int32Field
 from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor

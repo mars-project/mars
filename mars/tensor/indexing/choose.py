@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, ListField, StringField
+from ...serialization.serializables import FieldTypes, KeyField, \
+    ListField, StringField
 from ..utils import broadcast_shape, check_out_param
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -29,7 +30,7 @@ class TensorChoose(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.CHOOSE
 
     _a = KeyField('a')
-    _choices = ListField('choices', ValueType.key)
+    _choices = ListField('choices', FieldTypes.key)
     _mode = StringField('mode')
 
     def __init__(self, mode=None, **kw):
