@@ -89,6 +89,7 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
         a_inv = yield from recursive_tile(a_inv)
         return [a_inv]
 
+    @classmethod
     def execute(cls, ctx, op):
         (inp,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
