@@ -13,91 +13,99 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 
+from mars.config import option_context
 from mars.tensor.datasource import ones, tensor
-from mars.tests.core import TestBase
+from mars.tests import new_test_session
 
 
-class Test(TestBase):
-    def setUp(self):
-        self.ctx, self.executor = self._create_test_context()
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
+    
+    
+def test_reshape_execution(setup):
+    x = ones((1, 2, 3), chunk_size=[4, 3, 5])
+    y = x.reshape(3, 2)
+    res = y.execute().fetch()
+    assert y.shape == (3, 2)
+    np.testing.assert_equal(res, np.ones((3, 2)))
 
-    def testReshapeExecution(self):
-        x = ones((1, 2, 3), chunk_size=[4, 3, 5])
-        y = x.reshape(3, 2)
-        res = self.executor.execute_tensor(y)[0]
-        self.assertEqual(y.shape, (3, 2))
-        np.testing.assert_equal(res, np.ones((3, 2)))
+    data = np.random.rand(6, 4)
+    x2 = tensor(data, chunk_size=2)
+    y2 = x2.reshape(3, 8, order='F')
+    res = y2.execute().fetch()
+    expected = data.reshape((3, 8), order='F')
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags['C_CONTIGUOUS'] is False
 
-        data = np.random.rand(6, 4)
-        x2 = tensor(data, chunk_size=2)
-        y2 = x2.reshape(3, 8, order='F')
-        res = self.executor.execute_tensor(y2, concat=True)[0]
-        expected = data.reshape((3, 8), order='F')
+    data2 = np.asfortranarray(np.random.rand(6, 4))
+    x3 = tensor(data2, chunk_size=2)
+    y3 = x3.reshape(3, 8)
+    res = y3.execute().fetch()
+    expected = data2.reshape((3, 8))
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['C_CONTIGUOUS'] is True
+    assert res.flags['F_CONTIGUOUS'] is False
+
+    data2 = np.asfortranarray(np.random.rand(6, 4))
+    x3 = tensor(data2, chunk_size=2)
+    y3 = x3.reshape(3, 8, order='F')
+    res = y3.execute().fetch()
+    expected = data2.reshape((3, 8), order='F')
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags['C_CONTIGUOUS'] is False
+
+    for chunk_size in [None, 3]:
+        rs = np.random.RandomState(0)
+        data = rs.rand(3, 4, 5)
+        x = tensor(data, chunk_size=chunk_size)
+        x = x[x[:, 0, 0] < 0.7]
+        y = x.reshape(-1, 20)
+        assert np.isnan(y.shape[0]) is True
+        res = y.execute().fetch()
+        expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
         np.testing.assert_array_equal(res, expected)
-        self.assertTrue(res.flags['F_CONTIGUOUS'])
-        self.assertFalse(res.flags['C_CONTIGUOUS'])
 
-        data2 = np.asfortranarray(np.random.rand(6, 4))
-        x3 = tensor(data2, chunk_size=2)
-        y3 = x3.reshape(3, 8)
-        res = self.executor.execute_tensor(y3, concat=True)[0]
-        expected = data2.reshape((3, 8))
-        np.testing.assert_array_equal(res, expected)
-        self.assertTrue(res.flags['C_CONTIGUOUS'])
-        self.assertFalse(res.flags['F_CONTIGUOUS'])
 
-        data2 = np.asfortranarray(np.random.rand(6, 4))
-        x3 = tensor(data2, chunk_size=2)
-        y3 = x3.reshape(3, 8, order='F')
-        res = self.executor.execute_tensor(y3, concat=True)[0]
-        expected = data2.reshape((3, 8), order='F')
-        np.testing.assert_array_equal(res, expected)
-        self.assertTrue(res.flags['F_CONTIGUOUS'])
-        self.assertFalse(res.flags['C_CONTIGUOUS'])
+def test_shuffle_reshape_execution(setup):
+    a = ones((31, 27), chunk_size=10)
+    b = a.reshape(27, 31)
+    b.op.extra_params['_reshape_with_shuffle'] = True
 
-        with self.ctx:
-            for chunk_size in [None, 3]:
-                rs = np.random.RandomState(0)
-                data = rs.rand(3, 4, 5)
-                x = tensor(data, chunk_size=chunk_size)
-                x = x[x[:, 0, 0] < 0.7]
-                y = x.reshape(-1, 20)
-                self.assertTrue(np.isnan(y.shape[0]))
-                res = self.executor.execute_tensors([y])[0]
-                expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
-                np.testing.assert_array_equal(res, expected)
+    res = b.execute().fetch()
+    np.testing.assert_array_equal(res, np.ones((27, 31)))
 
-    def testShuffleReshapeExecution(self):
-        a = ones((31, 27), chunk_size=10)
-        b = a.reshape(27, 31)
-        b.op.extra_params['_reshape_with_shuffle'] = True
+    b2 = a.reshape(27, 31, order='F')
+    b.op.extra_params['_reshape_with_shuffle'] = True
+    res = b2.execute().fetch()
+    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags['C_CONTIGUOUS'] is False
 
-        res = self.executor.execute_tensor(b, concat=True)[0]
-        np.testing.assert_array_equal(res, np.ones((27, 31)))
+    data = np.random.rand(6, 4)
+    x2 = tensor(data, chunk_size=2)
+    y2 = x2.reshape(4, 6, order='F')
+    y2.op.extra_params['_reshape_with_shuffle'] = True
+    res = y2.execute().fetch()
+    expected = data.reshape((4, 6), order='F')
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['F_CONTIGUOUS'] is True
+    assert res.flags['C_CONTIGUOUS'] is False
 
-        b2 = a.reshape(27, 31, order='F')
-        b.op.extra_params['_reshape_with_shuffle'] = True
-        res = self.executor.execute_tensor(b2)[0]
-        self.assertTrue(res.flags['F_CONTIGUOUS'])
-        self.assertFalse(res.flags['C_CONTIGUOUS'])
-
-        data = np.random.rand(6, 4)
-        x2 = tensor(data, chunk_size=2)
-        y2 = x2.reshape(4, 6, order='F')
-        y2.op.extra_params['_reshape_with_shuffle'] = True
-        res = self.executor.execute_tensor(y2, concat=True)[0]
-        expected = data.reshape((4, 6), order='F')
-        np.testing.assert_array_equal(res, expected)
-        self.assertTrue(res.flags['F_CONTIGUOUS'])
-        self.assertFalse(res.flags['C_CONTIGUOUS'])
-
-        data2 = np.asfortranarray(np.random.rand(6, 4))
-        x3 = tensor(data2, chunk_size=2)
-        y3 = x3.reshape(4, 6)
-        y3.op.extra_params['_reshape_with_shuffle'] = True
-        res = self.executor.execute_tensor(y3, concat=True)[0]
-        expected = data2.reshape((4, 6))
-        np.testing.assert_array_equal(res, expected)
-        self.assertTrue(res.flags['C_CONTIGUOUS'])
-        self.assertFalse(res.flags['F_CONTIGUOUS'])
+    data2 = np.asfortranarray(np.random.rand(6, 4))
+    x3 = tensor(data2, chunk_size=2)
+    y3 = x3.reshape(4, 6)
+    y3.op.extra_params['_reshape_with_shuffle'] = True
+    res = y3.execute().fetch()
+    expected = data2.reshape((4, 6))
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['C_CONTIGUOUS'] is True
+    assert res.flags['F_CONTIGUOUS'] is False

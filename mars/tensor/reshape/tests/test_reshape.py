@@ -14,61 +14,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
+import pytest
 
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones
 from mars.tensor.reshape.reshape import TensorReshape
 
+    
+def test_reshape():
+    a = ones((10, 20, 30), chunk_size=5)
+    b = a.reshape(10, 600)
 
-class Test(unittest.TestCase):
-    def testReshape(self):
-        a = ones((10, 20, 30), chunk_size=5)
-        b = a.reshape(10, 600)
+    b = tile(b)
 
-        b = b.tiles()
+    assert tuple(sum(s) for s in b.nsplits) == (10, 600)
 
-        self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 600))
+    a = ones((10, 600), chunk_size=5)
+    b = a.reshape(10, 30, 20)
 
-        a = ones((10, 600), chunk_size=5)
-        b = a.reshape(10, 30, 20)
+    b = tile(b)
 
-        b = b.tiles()
+    assert tuple(sum(s) for s in b.nsplits) == (10, 30, 20)
 
-        self.assertEqual(tuple(sum(s) for s in b.nsplits), (10, 30, 20))
+    a = ones((10, 600), chunk_size=5)
+    a.shape = [10, 30, 20]
 
-        a = ones((10, 600), chunk_size=5)
-        a.shape = [10, 30, 20]
+    a = tile(a)
 
-        a = a.tiles()
+    assert tuple(sum(s) for s in a.nsplits) == (10, 30, 20)
 
-        self.assertEqual(tuple(sum(s) for s in a.nsplits), (10, 30, 20))
+    # test reshape unknown shape
+    c = a[a > 0]
+    d = c.reshape(10, 600)
+    assert d.shape == (10, 600)
+    d = c.reshape(-1, 10)
+    assert len(d.shape) == 2
+    assert np.isnan(d.shape[0])
+    assert d.shape[1]
 
-        # test reshape unknown shape
-        c = a[a > 0]
-        d = c.reshape(10, 600)
-        self.assertEqual(d.shape, (10, 600))
-        d = c.reshape(-1, 10)
-        self.assertEqual(len(d.shape), 2)
-        self.assertTrue(np.isnan(d.shape[0]))
-        self.assertTrue(d.shape[1], 10)
+    with pytest.raises(TypeError):
+        a.reshape((10, 30, 20), other_argument=True)
 
-        with self.assertRaises(TypeError):
-            a.reshape((10, 30, 20), other_argument=True)
 
-    def testShuffleReshape(self):
-        a = ones((31, 27), chunk_size=10)
-        b = a.reshape(27, 31)
-        b.op.extra_params['_reshape_with_shuffle'] = True
+def test_shuffle_reshape():
+    a = ones((31, 27), chunk_size=10)
+    b = a.reshape(27, 31)
+    b.op.extra_params['_reshape_with_shuffle'] = True
 
-        b = b.tiles()
+    b = tile(b)
 
-        self.assertEqual(tuple(sum(s) for s in b.nsplits), (27, 31))
-        self.assertIsInstance(b.chunks[0].op, TensorReshape)
-        self.assertEqual(b.chunks[0].op.stage, OperandStage.reduce)
+    assert tuple(sum(s) for s in b.nsplits) == (27, 31)
+    assert isinstance(b.chunks[0].op, TensorReshape)
+    assert b.chunks[0].op.stage == OperandStage.reduce
 
-        shuffle_map_sample = b.chunks[0].inputs[0].inputs[0]
-        self.assertIsInstance(shuffle_map_sample.op, TensorReshape)
-        self.assertEqual(shuffle_map_sample.op.stage, OperandStage.map)
+    shuffle_map_sample = b.chunks[0].inputs[0].inputs[0]
+    assert isinstance(shuffle_map_sample.op, TensorReshape)
+    assert shuffle_map_sample.op.stage == OperandStage.map
