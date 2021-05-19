@@ -115,9 +115,12 @@ class SharedMemoryStorage(StorageBackend):
     async def teardown(**kwargs):
         object_ids = kwargs.get('object_ids')
         for object_id in object_ids:
-            shm = SharedMemory(name=object_id)
-            shm.unlink()
-            await asyncio.sleep(0)
+            try:
+                shm = SharedMemory(name=object_id)
+                shm.unlink()
+                await asyncio.sleep(0)
+            except FileNotFoundError:
+                pass
 
     @property
     @implements(StorageBackend.level)
