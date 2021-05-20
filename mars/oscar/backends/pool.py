@@ -21,7 +21,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
 from ...utils import implements, to_binary
-from ...utils import lazy_import
+from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
 from ..core import ActorRef
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
@@ -76,7 +76,8 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
 
 class AbstractActorPool(ABC):
     __slots__ = 'process_index', 'label', 'external_address', 'internal_address', 'env', \
-                '_servers', '_router', '_config', '_stopped', '_actors', '_caller', '_process_messages'
+                '_servers', '_router', '_config', '_stopped', '_actors', '_caller', '_process_messages', \
+                '_asyncio_task_timeout_detector_task'
 
     def __init__(self,
                  process_index: int,
@@ -106,6 +107,7 @@ class AbstractActorPool(ABC):
 
         # manage async actor callers
         self._caller = ActorCaller()
+        self._asyncio_task_timeout_detector_task = register_asyncio_task_timeout_detector()
 
     @property
     def router(self):
@@ -365,6 +367,8 @@ class AbstractActorPool(ABC):
             await asyncio.gather(*stop_tasks)
 
             self._servers = []
+            if self._asyncio_task_timeout_detector_task:  # pragma: no cover
+                self._asyncio_task_timeout_detector_task.cancel()
         finally:
             self._stopped.set()
 

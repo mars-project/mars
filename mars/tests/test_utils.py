@@ -15,6 +15,8 @@
 
 import asyncio
 import copy
+import logging
+import multiprocessing
 import os
 import shutil
 import sys
@@ -536,3 +538,40 @@ async def test_batch_decorator(use_async):
                 test_inst.method2.delay(12, kwarg=34),
                 test_inst.method2.delay(10, kawarg=33))
             assert ret == [1, 2]
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(sys.version_info[:2] < (3, 7),
+                    reason='asyncio task timeout detector is not supported on python versions below 3.7')
+async def test_asyncio_task_timeout_detector():
+    log_file_name = 'test_asyncio_task_timeout_detector.log'
+    try:
+        os.environ['MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_CHECK_INTERVAL'] = '1'
+        p = multiprocessing.Process(target=_run_task_timeout_detector, args=(log_file_name,))
+        p.start()
+        while p.is_alive():
+            await asyncio.sleep(0.1)
+        with open(log_file_name, 'r') as f:
+            detector_log = f.read()
+            assert 'timeout_func' in detector_log
+    finally:
+        os.environ.pop('MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_CHECK_INTERVAL')
+        if os.path.exists(log_file_name):
+            os.remove(log_file_name)
+
+
+def _run_task_timeout_detector(log_file_name):
+    from ..utils import logger, register_asyncio_task_timeout_detector
+    fh = logging.FileHandler(log_file_name)
+    fh.setLevel(logging.INFO)
+    logger.addHandler(fh)
+
+    async def timeout_func():
+        await asyncio.sleep(2)
+
+    async def main():
+        task = register_asyncio_task_timeout_detector()
+        await asyncio.create_task(timeout_func())
+        task.cancel()
+
+    asyncio.run(main())

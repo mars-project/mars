@@ -27,7 +27,7 @@ from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
-from ...utils import implements, merge_chunks
+from ...utils import implements, merge_chunks, register_asyncio_task_timeout_detector
 from .typing import ClientType
 
 
@@ -71,6 +71,7 @@ class Session(AbstractSession):
         self.client = client
 
         self._tileable_to_fetch = WeakKeyDictionary()
+        self._asyncio_task_timeout_detector_task = register_asyncio_task_timeout_detector()
 
     @classmethod
     async def _init(cls,
@@ -220,6 +221,8 @@ class Session(AbstractSession):
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
+        if self._asyncio_task_timeout_detector_task:  # pragma: no cover
+            self._asyncio_task_timeout_detector_task.cancel()
 
     async def stop_server(self):
         if self.client:
