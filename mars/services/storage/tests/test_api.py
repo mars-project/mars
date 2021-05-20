@@ -74,6 +74,7 @@ storage_configs.append({'shared_memory': dict()})
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('storage_configs', storage_configs)
+@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
 @require_lib
 async def test_storage_mock_api(ray_start_regular, storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
