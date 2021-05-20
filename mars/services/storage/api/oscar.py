@@ -40,7 +40,7 @@ class StorageAPI(AbstractStorageAPI):
             await mo.actor_ref(self._address, StorageManagerActor.default_uid())
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,

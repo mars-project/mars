@@ -25,12 +25,12 @@ from .core import AbstractTaskAPI
 class TaskWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = '/api/session/(?P<session_id>[^/]+)/task'
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
         return await ClusterAPI.create(self._supervisor_addr)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_oscar_task_api(self, session_id: str):
         from .oscar import TaskAPI
         cluster_api = await self._get_cluster_api()

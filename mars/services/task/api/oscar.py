@@ -30,7 +30,7 @@ class TaskAPI(AbstractTaskAPI):
         self._task_manager_ref = task_manager_ref
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls,
                      session_id: str,
                      address: str) -> "TaskAPI":

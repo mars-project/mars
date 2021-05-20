@@ -29,7 +29,7 @@ class LifecycleAPI(AbstractLifecycleAPI):
         self._lifecycle_tracker_ref = lifecycle_tracker_ref
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls,
                      session_id: str,
                      address: str) -> "LifecycleAPI":

@@ -42,7 +42,7 @@ class ClusterAPI:
             [NodeInfoCollectorActor.default_uid()])
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls: Type[APIType], address: str) -> APIType:
         api_obj = cls(address)
         await api_obj._init()
@@ -169,7 +169,38 @@ class ClusterAPI:
         return await self._uploader_ref.get_bands()
 
     async def set_state_value(self, key: str, value: Union[List, Dict]):
-        await self._uploader_ref.set_state_value(key, value)
+        """
+        Set state value for current node
+
+        Parameters
+        ----------
+        key
+            state key to set
+        value
+            value of the state
+        """
+        await self._uploader_ref.set_state_value.tell(key, value)
+
+    async def set_band_resource(self, band: str, values: Dict):
+        """
+        Set resource usage for a band
+
+        Parameters
+        ----------
+        band
+        values
+
+        Returns
+        -------
+
+        """
+        await self._uploader_ref.set_band_resource.tell(band, values)
+
+    async def mark_node_ready(self):
+        """
+        Mark current node ready for work loads
+        """
+        await self._uploader_ref.mark_node_ready()
 
 
 class MockClusterAPI(ClusterAPI):
@@ -198,4 +229,6 @@ class MockClusterAPI(ClusterAPI):
             except mo.ActorAlreadyExist:  # pragma: no cover
                 pass
 
-        return await super().create(address=address)
+        api = await super().create(address=address)
+        await api.mark_node_ready()
+        return api

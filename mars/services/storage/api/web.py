@@ -25,12 +25,12 @@ from .core import AbstractStorageAPI
 class StorageWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = '/api/session/(?P<session_id>[^/]+)/storage'
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
         return await ClusterAPI.create(self._supervisor_addr)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_oscar_meta_api(self, session_id: str):
         from ...meta import MetaAPI
         cluster_api = await self._get_cluster_api()

@@ -261,7 +261,7 @@ class SubtaskProcessor:
                         f'subtask id: {self.subtask.subtask_id}')
 
     @staticmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_task_manager(supervisor_address: str, uid: str) -> mo.ActorRef:
         return await mo.actor_ref(supervisor_address, uid)
 
