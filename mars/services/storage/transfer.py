@@ -43,12 +43,14 @@ class SenderManagerActor(mo.Actor):
     @staticmethod
     async def send_part(receiver_ref: Union[mo.ActorRef, "ReceiverActor"],
                         message: TransferMessage):
-        send_task = asyncio.create_task(
-            receiver_ref.receive_part_data(message))
+        send_task = None
         try:
+            send_task = asyncio.create_task(
+                receiver_ref.receive_part_data(message))
             await send_task
         except asyncio.CancelledError:
-            send_task.cancel()
+            if send_task:
+                send_task.cancel()
 
     @extensible
     async def send_data(self,
@@ -105,7 +107,7 @@ class ReceiverActor(mo.Actor):
                                                              data_size, level)
             self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
         except asyncio.CancelledError:
-            await self._storage_manager_ref.release_size(
+            await self._storage_manager_ref.release_quota(
                 data_size, level)
 
     async def receive_part_data(self, message: TransferMessage):
@@ -116,7 +118,7 @@ class ReceiverActor(mo.Actor):
             if message.is_eof:
                 yield writer.close()
         except asyncio.CancelledError:
-            await self._storage_manager_ref.release_size(
+            await self._storage_manager_ref.release_quota(
                 data_size, level)
             await self._storage_handler.delete(
                 message.session_id, message.data_key, error='ignore')

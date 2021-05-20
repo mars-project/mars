@@ -125,8 +125,16 @@ async def test_simple_transfer(create_actors):
 class MockSenderManagerActor(SenderManagerActor):
     @staticmethod
     async def send_part(receiver_ref, message):
-        await asyncio.sleep(3)
-        await SenderManagerActor.send_part(receiver_ref, message)
+        send_task = None
+        try:
+            await asyncio.sleep(3)
+            send_task = asyncio.create_task(
+                receiver_ref.receive_part_data(message))
+            await send_task
+        except asyncio.CancelledError:  # pragma: no cover
+            if send_task:
+                send_task.cancel()
+                await send_task
 
 
 @pytest.mark.asyncio

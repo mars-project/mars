@@ -260,7 +260,7 @@ class StorageHandlerActor(mo.Actor):
             await self._storage_manager_ref.delete_data_info(
                 session_id, data_key, level)
             yield self._clients[level].delete(info.object_id)
-            await self._storage_manager_ref.release_size(info.store_size, level)
+            await self._storage_manager_ref.release_quota(info.store_size, level)
 
     async def open_reader(self,
                           session_id: str,
@@ -426,10 +426,10 @@ class StorageManagerActor(mo.Actor):
                            level: StorageLevel):
         await self._quotas[level].update(size)
 
-    async def release_size(self,
-                           size: int,
-                           level: StorageLevel
-                     ):
+    async def release_quota(self,
+                            size: int,
+                            level: StorageLevel
+                            ):
         await self._quotas[level].release(size)
 
     def get_data_infos(self,
