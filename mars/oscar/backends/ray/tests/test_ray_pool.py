@@ -14,23 +14,13 @@
 
 import pytest
 
-from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.tests.core import require_ray
+from mars.tests.conftest import *  # noqa
 from .....utils import lazy_import
-from ...router import Router
 from ..pool import RayMainPool, RayMainActorPool, create_actor_pool
 from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
-
-
-@pytest.fixture
-def ray_start_regular():
-    register_ray_serializers()
-    yield ray.init(num_cpus=10)
-    ray.shutdown()
-    unregister_ray_serializers()
-    Router.set_instance(None)
 
 
 @require_ray

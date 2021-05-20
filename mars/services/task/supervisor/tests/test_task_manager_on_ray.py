@@ -15,24 +15,14 @@
 import pytest
 
 import mars.oscar as mo
-from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.tests.core import require_ray
+from mars.tests.conftest import *  # noqa
 from mars.utils import lazy_import
-from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.utils import placement_group_info_to_addresses
 from mars.services.task.supervisor.task_manager import \
     TaskConfigurationActor
 
 ray = lazy_import('ray')
-
-
-@pytest.fixture
-def ray_start_regular():
-    register_ray_serializers()
-    yield ray.init(num_cpus=10)
-    ray.shutdown()
-    unregister_ray_serializers()
-    Router.set_instance(None)
 
 
 @require_ray
@@ -42,6 +32,7 @@ async def test_task_manager_creation(ray_start_regular):
     # the pool is an ActorHandle, it does not have an async context.
     pool = await mo.create_actor_pool('ray://test_cluster/0/0', n_process=2,
                                       labels=[None] + ['numa-0'] * 2)
+    assert pool
 
     # create configuration
     await mo.create_actor(TaskConfigurationActor, dict(),

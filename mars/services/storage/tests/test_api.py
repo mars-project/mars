@@ -29,6 +29,7 @@ from mars.services.storage.api import MockStorageAPI, WebStorageAPI
 from mars.services.web import WebActor
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
+from mars.tests.conftest import *  # noqa
 from mars.utils import get_next_port
 
 try:
@@ -74,7 +75,7 @@ storage_configs.append({'shared_memory': dict()})
 @pytest.mark.asyncio
 @pytest.mark.parametrize('storage_configs', storage_configs)
 @require_lib
-async def test_storage_mock_api(storage_configs):
+async def test_storage_mock_api(ray_start_regular, storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', 1,
                                       subprocess_start_method=start_method)
