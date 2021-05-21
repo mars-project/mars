@@ -94,7 +94,6 @@ class RayStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        ray.init(ignore_reinit_error=True)
         _register_sparse_matrix_serializer()
         return dict(), dict()
 
