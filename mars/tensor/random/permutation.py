@@ -76,10 +76,11 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
         in_tensor = op.inputs[0]
         out_tensor = op.outputs[0]
 
+        state = np.random.RandomState(op.seed)
         if len(op.input.chunks) == 1:
             chunk_op = op.copy().reset_key()
             chunk_op._state = None
-            chunk_op._seed = gen_random_seeds(1, op.state)[0]
+            chunk_op._seed = gen_random_seeds(1, state)[0]
             c = op.input.chunks[0]
             chunk = chunk_op.new_chunk([c], shape=c.shape,
                                        index=c.index, order=c.order)
@@ -88,8 +89,8 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                                       nsplits=op.input.nsplits, chunks=[chunk])
 
         chunk_size = in_tensor.chunk_shape[op.axis]
-        map_seeds = gen_random_seeds(chunk_size, op.state)
-        reduce_seeds = gen_random_seeds(chunk_size, op.state)
+        map_seeds = gen_random_seeds(chunk_size, state)
+        reduce_seeds = gen_random_seeds(chunk_size, state)
         reduce_chunks = []
         if in_tensor.ndim > 1:
             cs = in_tensor.chunk_shape
@@ -117,7 +118,8 @@ class TensorPermutation(TensorRandomMapReduceOperand, TensorOperandMixin):
                 chunk_shape = list(c.shape)
                 chunk_shape[op.axis] = np.nan
                 reduce_chunk = chunk_op.new_chunk([proxy_chunk], shape=tuple(chunk_shape),
-                                                  order=out_tensor.order, index=c.index)
+                                                  order=out_tensor.order, index=c.index,
+                                                  dtype=out_tensor.dtype)
                 reduce_chunks.append(reduce_chunk)
 
         new_op = op.copy()
@@ -217,6 +219,7 @@ def permutation(random_state, x, axis=0, chunk_size=None):
             raise np.AxisError('x must be an integer or at least 1-dimensional')
 
     axis = validate_axis(x.ndim, axis)
-    op = TensorPermutation(state=random_state.to_numpy(),
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorPermutation(seed=seed,
                            axis=axis, dtype=x.dtype, gpu=x.op.gpu)
     return op(x)

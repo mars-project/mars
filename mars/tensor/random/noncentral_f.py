@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -31,9 +32,9 @@ class TensorNoncentralF(TensorDistribution, TensorRandomOperandMixin):
     _nonc = AnyField('nonc')
     _func_name = 'noncentral_f'
 
-    def __init__(self, size=None, state=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def dfnum(self):
@@ -129,5 +130,6 @@ def noncentral_f(random_state, dfnum, dfden, nonc, size=None, chunk_size=None, g
         dtype = np.random.RandomState().noncentral_f(
             handle_array(dfnum), handle_array(dfden), handle_array(nonc), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorNoncentralF(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorNoncentralF(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(dfnum, dfden, nonc, chunk_size=chunk_size)

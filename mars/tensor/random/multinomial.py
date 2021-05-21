@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import ValueType, Int64Field, TupleField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorDistribution
 
 
@@ -138,6 +139,7 @@ def multinomial(random_state, n, pvals, size=None, chunk_size=None, gpu=None, dt
     if dtype is None:
         dtype = np.random.RandomState().multinomial(n, pvals, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorMultinomial(n=n, pvals=pvals, state=random_state.to_numpy(),
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorMultinomial(n=n, pvals=pvals, seed=seed,
                            size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

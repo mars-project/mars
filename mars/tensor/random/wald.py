@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -30,9 +31,9 @@ class TensorWald(TensorDistribution, TensorRandomOperandMixin):
     _scale = AnyField('scale')
     _func_name = 'wald'
 
-    def __init__(self, size=None, state=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def mean(self):
@@ -117,5 +118,6 @@ def wald(random_state, mean, scale, size=None, chunk_size=None, gpu=None, dtype=
         dtype = np.random.RandomState().wald(
             handle_array(mean), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorWald(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorWald(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(mean, scale, chunk_size=chunk_size)

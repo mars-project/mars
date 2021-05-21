@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -30,9 +31,9 @@ class TensorLaplace(TensorDistribution, TensorRandomOperandMixin):
     _scale = AnyField('scale')
     _func_name = 'laplace'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def loc(self):
@@ -134,5 +135,6 @@ def laplace(random_state, loc=0.0, scale=1.0, size=None, chunk_size=None, gpu=No
         dtype = np.random.RandomState().laplace(
             handle_array(loc), handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLaplace(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorLaplace(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(loc, scale, chunk_size=chunk_size)

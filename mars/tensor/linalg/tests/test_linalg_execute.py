@@ -25,8 +25,8 @@ from mars.tensor.datasource import tensor, diag, ones, arange
 from mars.tensor.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.random import uniform
-from mars.utils import ignore_warning
 from mars.tests import new_test_session
+from mars.utils import ignore_warning
 
 
 @pytest.fixture(scope='module')

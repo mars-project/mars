@@ -17,6 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,9 +30,9 @@ class TensorRandBeta(TensorDistribution, TensorRandomOperandMixin):
     _b = AnyField('b')
     _func_name = 'beta'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def a(self):
@@ -90,5 +91,6 @@ def beta(random_state, a, b, size=None, chunk_size=None, gpu=None, dtype=None):
         dtype = np.random.RandomState().beta(
             handle_array(a), handle_array(b), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorRandBeta(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorRandBeta(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(a, b, chunk_size=chunk_size)

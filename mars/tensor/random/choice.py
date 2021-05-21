@@ -40,9 +40,9 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     _p = KeyField('p')
 
     def __init__(self, a=None, size=None, replace=None, p=None,
-                 state=None, seed=None, **kw):
+                 seed=None, **kw):
         super().__init__(_a=a, _size=size, _replace=replace, _p=p,
-                         _state=state, _seed=seed, **kw)
+                         seed=seed, **kw)
 
     @property
     def a(self):
@@ -81,7 +81,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     def _tile_one_chunk(cls, op, a, p):
         out = op.outputs[0]
         chunk_op = op.copy().reset_key()
-        chunk_op._seed = gen_random_seeds(1, op.state)[0]
+        chunk_op._seed = gen_random_seeds(1, np.random.RandomState(op.seed))[0]
         chunk_inputs = []
         if isinstance(a, TENSOR_TYPE):
             chunk_op._a = a.chunks[0]
@@ -116,7 +116,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             a = array(a)
             a_size = a.size
 
-        rs = RandomState.from_numpy(op.state)
+        rs = RandomState.from_numpy(np.random.RandomState(op.seed))
 
         if is_a_int:
             # the indices is just the result
@@ -150,7 +150,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
         else:
             a = array(a)
             a_size = a.size
-        a = a._inplace_tile()
+        a = yield from recursive_tile(a)
 
         if any(cs < m for cs in a.nsplits[0]):
             # make sure all chunk > m
@@ -162,13 +162,13 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                 # merge it into previous one
                 chunk_sizes[-2] += chunk_sizes[-1]
                 chunk_sizes = chunk_sizes[:-1]
-            a = a.rechunk({0: chunk_sizes})._inplace_tile()
+            a = yield from recursive_tile(a.rechunk({0: chunk_sizes}))
             if len(chunk_sizes) == 1:
                 return cls._tile_one_chunk(op, a, None)
 
         # for each chunk in a, do regular sampling
         sampled_chunks = []
-        sample_seeds = gen_random_seeds(len(a.chunks), op.state)
+        sample_seeds = gen_random_seeds(len(a.chunks), np.random.RandomState(op.seed))
         for seed, chunk in zip(sample_seeds, a.chunks):
             chunk_op = op.copy().reset_key()
             chunk_op._a = chunk
@@ -186,23 +186,24 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
                 sampled_chunks, shape=(len(a.chunks), m), order=TensorOrder.C_ORDER)
 
             # gen indices with length m from 0...a.size
-            state = RandomState.from_numpy(op.state)
+            state = RandomState.from_numpy(np.random.RandomState(op.seed))
             indices = state.randint(a_size, size=(m,))
             cum_offsets = np.cumsum(a.nsplits[0])
-            ind = recursive_tile(searchsorted(cum_offsets, indices, side='right'))
+            ind = yield from recursive_tile(searchsorted(cum_offsets, indices, side='right'))
             ind_chunk = ind.chunks[0]
 
             # do fancy index to find result
-            indexes = [ind_chunk, arange(m)._inplace_tile().chunks[0]]
+            arange_tensor = yield from recursive_tile(arange(m))
+            indexes = [ind_chunk, arange_tensor.chunks[0]]
             out_chunk = TensorIndex(dtype=stacked_chunk.dtype, indexes=indexes).new_chunk(
                 [stacked_chunk] + list(indexes), shape=(m,), order=TensorOrder.C_ORDER)
 
         ret = op.copy().new_tensor(op.inputs, shape=(m,), order=out.order,
                                    nsplits=((m,),), chunks=[out_chunk])
         if len(out_shape) > 0:
-            ret = ret.reshape(out_shape)._inplace_tile()
-        ret = ret.rechunk(nsplits)._inplace_tile()
-        return [recursive_tile(ret)]
+            ret = yield from recursive_tile(ret.reshape(out_shape))
+        ret = yield from recursive_tile(ret.rechunk(nsplits))
+        return [ret]
 
     @classmethod
     def tile(cls, op):
@@ -218,9 +219,9 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             # we cannot handle p in a parallel fashion
             inputs = []
             if isinstance(a, TENSOR_TYPE):
-                a = a.rechunk(a.shape)._inplace_tile()
+                a = yield from recursive_tile(a.rechunk(a.shape))
                 inputs.append(a)
-            p = p.rechunk(p.shape)._inplace_tile()
+            p = yield from recursive_tile(p.rechunk(p.shape))
             inputs.append(p)
 
             # ignore nsplits if p is specified
@@ -232,9 +233,11 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
             return cls._tile_one_chunk(op, a, p)
 
         if op.replace:
-            return cls._tile_sample_with_replacement(op, a, nsplits)
+            return (yield from cls._tile_sample_with_replacement(
+                op, a, nsplits))
         else:
-            return cls._tile_sample_without_replacement(op, a, nsplits)
+            return (yield from cls._tile_sample_without_replacement(
+                op, a, nsplits))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -368,6 +371,7 @@ def choice(random_state, a, size=None, replace=True, p=None, chunk_size=None, gp
         raise ValueError("Cannot take a larger sample than population when 'replace=False'")
 
     size = random_state._handle_size(size)
-    op = TensorChoice(a=a, p=p, state=random_state.to_numpy(),
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorChoice(a=a, p=p, seed=seed,
                       replace=replace, size=size, dtype=dtype, gpu=gpu)
     return op(a, p, chunk_size=chunk_size)

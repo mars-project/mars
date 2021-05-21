@@ -31,7 +31,7 @@ from ..datasource import tensor as astensor
 from ..base import broadcast_to
 
 
-class RandomState(object):
+class RandomState:
     def __init__(self, seed=None):
         self._random_state = np.random.RandomState(seed=seed)
 
@@ -122,7 +122,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             op.inputs = new_inputs
 
         idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
-        seeds = gen_random_seeds(len(idxes), op.state)
+        seeds = gen_random_seeds(len(idxes), np.random.RandomState(op.seed))
 
         out_chunks = []
         for seed, idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
@@ -145,7 +145,6 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
             chunk_op = op.copy().reset_key()
             chunk_op._seed = int(seed)
-            chunk_op._state = None
             chunk_op._size = size
             out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx,
                                            order=tensor.order)
@@ -300,10 +299,6 @@ def RandomStateField(name, **kwargs):
 
 class TensorSeedOperandMixin(object):
     @property
-    def state(self):
-        return getattr(self, '_state', None)
-
-    @property
     def seed(self):
         return getattr(self, '_seed', None)
 
@@ -322,12 +317,17 @@ class TensorSeedOperandMixin(object):
 
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
-    _state = RandomStateField('state')
     _seed = Int32Field('seed')
+
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(_seed=seed, **kwargs)
+
+    @property
+    def seed(self):
+        return self._seed
 
 
 class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
-    _state = RandomStateField('state')
     _seed = Int32Field('seed')
 
 

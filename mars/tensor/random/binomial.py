@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -30,9 +31,9 @@ class TensorBinomial(TensorDistribution, TensorRandomOperandMixin):
     _p = AnyField('p')
     _func_name = 'binomial'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def n(self):
@@ -140,5 +141,6 @@ def binomial(random_state, n, p, size=None, chunk_size=None, gpu=None, dtype=Non
         dtype = np.random.RandomState().binomial(
             handle_array(n), handle_array(p), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorBinomial(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorBinomial(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(n, p, chunk_size=chunk_size)

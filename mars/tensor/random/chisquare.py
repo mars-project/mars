@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,9 +30,9 @@ class TensorChisquareDist(TensorDistribution, TensorRandomOperandMixin):
     _df = AnyField('df')
     _func_name = 'chisquare'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def df(self):
@@ -113,5 +114,6 @@ def chisquare(random_state, df, size=None, chunk_size=None, gpu=None, dtype=None
         dtype = np.random.RandomState().chisquare(
             handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorChisquareDist(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorChisquareDist(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(df, chunk_size=chunk_size)

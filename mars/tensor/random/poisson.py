@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,9 +30,9 @@ class TensorPoisson(TensorDistribution, TensorRandomOperandMixin):
     _lam = AnyField('lam')
     _func_name = 'poisson'
 
-    def __init__(self, size=None, state=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def lam(self):
@@ -114,5 +115,6 @@ def poisson(random_state, lam=1.0, size=None, chunk_size=None, gpu=None, dtype=N
         dtype = np.random.RandomState().poisson(
             handle_array(lam), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorPoisson(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorPoisson(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(lam, chunk_size=chunk_size)

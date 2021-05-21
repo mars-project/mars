@@ -37,10 +37,10 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
     _func_name = 'multivariate_normal'
 
     def __init__(self, mean=None, cov=None, size=None, check_valid=None, tol=None,
-                 state=None, dtype=None, **kw):
+                 dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
         super().__init__(_mean=mean, _cov=cov, _size=size, _check_valid=check_valid,
-                         _tol=tol, _state=state, dtype=dtype, **kw)
+                         _tol=tol, dtype=dtype, **kw)
 
     @property
     def mean(self):
@@ -80,7 +80,7 @@ class TensorMultivariateNormal(TensorDistribution, TensorRandomOperandMixin):
         cov_chunk = op.cov.chunks[0] if hasattr(op.cov, 'chunks') else op.cov
 
         idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
-        seeds = gen_random_seeds(len(idxes), op.state)
+        seeds = gen_random_seeds(len(idxes), np.random.RandomState(op.seed))
 
         out_chunks = []
         for seed, out_idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
@@ -262,6 +262,7 @@ def multivariate_normal(random_state, mean, cov, size=None, check_valid=None, to
         dtype = np.random.multivariate_normal(mean, cov, size=(0,), **small_kw).dtype
 
     size = random_state._handle_size(size)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorMultivariateNormal(mean=mean, cov=cov, size=size, check_valid=check_valid,
-                                  tol=tol, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+                                  tol=tol, seed=seed, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

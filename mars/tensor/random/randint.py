@@ -19,6 +19,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...serialize import Int64Field, Float64Field
 from ..array_utils import array_module
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
@@ -31,10 +32,10 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     _density = Float64Field('density')
     _func_name = 'randint'
 
-    def __init__(self, state=None, size=None, dtype=None,
+    def __init__(self, size=None, dtype=None,
                  low=None, high=None, density=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _low=low, _high=high,
+        super().__init__(_size=size, _low=low, _high=high,
                          _density=density, dtype=dtype, **kw)
 
     @property
@@ -65,8 +66,8 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
         from ...lib.sparse.core import cps, sps
 
         xp = array_module(op.gpu)
-        if op.state:
-            rs = op.state.random_state
+        if op.seed:
+            rs = np.random.RandomState(op.seed)
         else:
             rs = None
 
@@ -170,6 +171,7 @@ def randint(random_state, low, high=None, size=None, dtype='l', density=None,
     """
     sparse = bool(density)
     size = random_state._handle_size(size)
-    op = TensorRandint(state=random_state.to_numpy(), low=low, high=high, size=size, dtype=dtype,
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorRandint(seed=seed, low=low, high=high, size=size, dtype=dtype,
                        gpu=gpu, sparse=sparse, density=density)
     return op(chunk_size=chunk_size)

@@ -18,6 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialize import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -160,5 +161,6 @@ def lognormal(random_state, mean=0.0, sigma=1.0, size=None, chunk_size=None, gpu
         dtype = np.random.RandomState().lognormal(
             handle_array(mean), handle_array(sigma), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorLognormal(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorLognormal(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(mean, sigma, chunk_size=chunk_size)
