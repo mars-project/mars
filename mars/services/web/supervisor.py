@@ -86,7 +86,7 @@ class WebActor(mo.Actor):
                     http_server_kwargs={'max_buffer_size': 2 ** 32},
                 )
                 self._web_server.start()
-                logger.info('Mars UI started at %s:%d', host, port)
+                logger.info('Mars Web started at %s:%d', host, port)
                 break
             except OSError:  # pragma: no cover
                 if port is not None:

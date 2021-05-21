@@ -30,22 +30,18 @@ from mars.utils import get_next_port, kill_process_tree
 
 
 def _wait_supervisor_ready(supervisor_pid, timeout=120):
-    async def wait_proc():
-        start_time = time.time()
-        while True:
-            try:
-                ep_file_name = OscarCommandRunner._build_endpoint_file_path(pid=supervisor_pid)
-                with open(ep_file_name, 'r') as ep_file:
-                    return ep_file.read().strip()
-            except:  # noqa: E722  # pylint: disable=bare-except
-                if time.time() - start_time > timeout:
-                    raise
-                pass
-            finally:
-                await asyncio.sleep(0.1)
-
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(wait_proc())
+    start_time = time.time()
+    while True:
+        try:
+            ep_file_name = OscarCommandRunner._build_endpoint_file_path(pid=supervisor_pid)
+            with open(ep_file_name, 'r') as ep_file:
+                return ep_file.read().strip()
+        except:  # noqa: E722  # pylint: disable=bare-except
+            if time.time() - start_time > timeout:
+                raise
+            pass
+        finally:
+            time.sleep(0.1)
 
 
 def _wait_worker_ready(supervisor_addr, n_supervisors=1, n_workers=1, timeout=120):
@@ -65,7 +61,7 @@ def _wait_worker_ready(supervisor_addr, n_supervisors=1, n_workers=1, timeout=12
             finally:
                 await asyncio.sleep(0.1)
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     loop.run_until_complete(wait_for_workers())
 
 
@@ -84,15 +80,15 @@ def _get_labelled_port(label=None, create=True):
 
 supervisor_cmd_start = [sys.executable, '-m', 'mars.deploy.oscar.supervisor']
 worker_cmd_start = [sys.executable, '-m', 'mars.deploy.oscar.worker']
-start_params = [
-    [
+start_params = {
+    'bare_start': [
         supervisor_cmd_start,
         worker_cmd_start + [
-            '--config-file', os.path.join(os.path.dirname(__file__), 'local_test_config.yml')
+            '--config-file', os.path.join(os.path.dirname(__file__), 'local_test_config.yml'),
         ],
         False
     ],
-    [
+    'with_supervisors': [
         supervisor_cmd_start + [
             '-e', lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
             '-w', lambda: str(_get_labelled_port("web"))
@@ -104,11 +100,7 @@ start_params = [
         ],
         True
     ],
-]
-start_labels = [
-    'bare_start',
-    'with_supervisors',
-]
+}
 
 
 def _reload_args(args):
@@ -116,7 +108,7 @@ def _reload_args(args):
 
 
 @pytest.mark.parametrize('supervisor_args,worker_args,use_web_addr',
-                         start_params, ids=start_labels)
+                         list(start_params.values()), ids=list(start_params.keys()))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     sv_proc = w_proc = None
     try:
@@ -144,10 +136,17 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         res = mt.tensor(data, chunk_size=5).sum().execute().fetch()
         np.testing.assert_almost_equal(res, data.sum())
     finally:
+        ep_file_name = OscarCommandRunner._build_endpoint_file_path(pid=sv_proc.pid)
+        try:
+            os.unlink(ep_file_name)
+        except OSError:
+            pass
+
         for proc in [w_proc, sv_proc]:
             if not proc:
                 continue
             proc.terminate()
-            proc.wait(3)
-            if proc.returncode is None:
+            try:
+                proc.wait(3)
+            except subprocess.TimeoutExpired:
                 kill_process_tree(proc.pid)

@@ -740,8 +740,11 @@ def kill_process_tree(pid, include_parent=True):
     for p in children:
         try:
             if 'plasma' in p.name():
-                plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
-                                        if 'plasma' in conn.laddr), None)
+                try:
+                    plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
+                                            if 'plasma' in conn.laddr), None)
+                except psutil.AccessDenied:
+                    pass
             p.kill()
         except psutil.NoSuchProcess:  # pragma: no cover
             pass

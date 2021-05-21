@@ -17,7 +17,7 @@ import uuid
 
 from ....core import OBJECT_TYPE
 from ....core.session import register_session_cls
-from ....core.session import AbstractSession, SyncSession, _loop
+from ....core.session import AbstractSession, SyncSession, _ensure_loop
 from ....oscar.backends.router import Router
 from ....tests.core import _check_args, ObjectCheckMixin
 from ..session import Session
@@ -98,13 +98,15 @@ def new_test_session(address: str = None,
                      backend: str = 'test',
                      default: bool = False,
                      **kwargs):
+    loop = _ensure_loop()
+
     if address is None:
         address = '127.0.0.1'
         if 'init_local' not in kwargs:
             kwargs['init_local'] = True
     if 'web' not in kwargs:
         kwargs['web'] = False
-    session = _loop.run_until_complete(
+    session = loop.run_until_complete(
         _new_test_session(address, session_id=session_id,
                           backend=backend, default=default, **kwargs))
     return SyncSession(session)

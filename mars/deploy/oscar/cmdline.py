@@ -73,6 +73,7 @@ class OscarCommandRunner:
             conf_path = os.path.join(path, log_conf) if path else log_conf
             if os.path.exists(conf_path):
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
+                break
         else:
             log_level = self.args.log_level
             level = getattr(logging, log_level.upper()) if log_level else logging.INFO
@@ -164,5 +165,5 @@ class OscarCommandRunner:
         loop = asyncio.get_event_loop()
         task = loop.create_task(self._main(argv))
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
-            loop.add_signal_handler(sig, lambda: task.cancel())
+            loop.add_signal_handler(sig, task.cancel)
         loop.run_until_complete(task)
