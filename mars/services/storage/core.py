@@ -93,28 +93,32 @@ class StorageQuota:
 
     async def update(self, size: int):
         await self._lock.acquire()
-        if self._total_size is not None:
-            self._total_size += size
-        self._lock.release()
+        try:
+            if self._total_size is not None:
+                self._total_size += size
+        finally:
+            self._lock.release()
 
     async def request(self, size: int) -> bool:
-        await self._lock.acquire()
-        if self._total_size is None:
-            self._used_size += size
+        try:
+            await self._lock.acquire()
+            if self._total_size is None:
+                self._used_size += size
+                return True
+            elif self._used_size + size >= self._total_size:
+                return False
+            else:
+                self._used_size += size
+                return True
+        finally:
             self._lock.release()
-            return True
-        elif self._used_size + size >= self._total_size:
-            self._lock.release()
-            return False
-        else:
-            self._used_size += size
-            self._lock.release()
-            return True
 
     async def release(self, size: int):
         await self._lock.acquire()
-        self._used_size -= size
-        self._lock.release()
+        try:
+            self._used_size -= size
+        finally:
+            self._lock.release()
 
 
 @dataslots
@@ -318,7 +322,7 @@ class StorageManagerActor(mo.Actor):
         self._supervisor_address = None
 
     async def __post_create__(self):
-        from .transfer import SenderManagerActor, ReceiverActor
+        from .transfer import SenderManagerActor, ReceiverManagerActor
 
         # setup storage backend
         quotas = dict()
@@ -355,8 +359,8 @@ class StorageManagerActor(mo.Actor):
                     address=self.address, allocate_strategy=sender_strategy)
 
                 receiver_strategy = IdleLabel('io', 'receiver')
-                await mo.create_actor(ReceiverActor, address=self.address,
-                                      uid=ReceiverActor.default_uid(),
+                await mo.create_actor(ReceiverManagerActor, address=self.address,
+                                      uid=ReceiverManagerActor.default_uid(),
                                       allocate_strategy=receiver_strategy)
             except NoIdleSlot:
                 break

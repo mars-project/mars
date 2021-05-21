@@ -170,7 +170,7 @@ class SharedMemoryStorage(StorageBackend):
         shm.close()
         try:
             self._object_ids.remove(object_id)
-        except KeyError:
+        except KeyError:  # pragma: no cover
             return
 
     @implements(StorageBackend.object_info)

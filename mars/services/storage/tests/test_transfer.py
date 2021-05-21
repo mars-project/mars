@@ -25,7 +25,7 @@ import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import IdleLabel
 from mars.services.storage.errors import DataNotExist
 from mars.services.storage.core import StorageManagerActor, StorageHandlerActor
-from mars.services.storage.transfer import SenderManagerActor
+from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
 from mars.storage import StorageLevel
 
 
@@ -122,19 +122,17 @@ async def test_simple_transfer(create_actors):
     pd.testing.assert_frame_equal(data2, get_data3)
 
 
+class MockReceiverManagerActor(ReceiverManagerActor):
+    async def do_write(self, message):
+        await asyncio.sleep(3)
+        await super().do_write(message)
+
+
 class MockSenderManagerActor(SenderManagerActor):
     @staticmethod
-    async def send_part(receiver_ref, message):
-        send_task = None
-        try:
-            await asyncio.sleep(3)
-            send_task = asyncio.create_task(
-                receiver_ref.receive_part_data(message))
-            await send_task
-        except asyncio.CancelledError:  # pragma: no cover
-            if send_task:
-                send_task.cancel()
-                await send_task
+    async def get_receiver_ref(address: str):
+        return await mo.actor_ref(
+            address=address, uid=MockReceiverManagerActor.default_uid())
 
 
 @pytest.mark.asyncio
@@ -145,6 +143,9 @@ async def test_cancel_transfer(create_actors):
     await mo.create_actor(
         MockSenderManagerActor, uid=MockSenderManagerActor.default_uid(),
         address=worker_address_1, allocate_strategy=strategy)
+    await mo.create_actor(
+        MockReceiverManagerActor, uid=MockReceiverManagerActor.default_uid(),
+        address=worker_address_2, allocate_strategy=strategy)
 
     data1 = np.random.rand(10, 10)
     storage_handler1 = await mo.actor_ref(
@@ -161,7 +162,7 @@ async def test_cancel_transfer(create_actors):
     send_task = asyncio.create_task(sender_actor.send_data(
         'mock', 'data_key1', worker_address_2, StorageLevel.MEMORY))
 
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.5)
     send_task.cancel()
     await send_task
 

@@ -51,7 +51,7 @@ class MarsActorBackend(BaseActorBackend):
             envs = kwargs['envs']
             # sub-pools for IO(transfer and spill)
             for _ in range(n_io_process):
-                if envs:
+                if envs:    # pragma: no cover
                     envs.append(dict())
                 labels.append('io')
         return await create_actor_pool(
