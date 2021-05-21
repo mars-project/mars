@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
 import threading
 
 from mars.tests.core import TestBase
@@ -100,3 +101,13 @@ class Test(TestBase):
 
         target_cfg.update(src_cfg_dict)
         self.assertEqual(target_cfg.a.b.c, 1)
+
+    def testPickleConfig(self):
+        cfg = Config()
+        cfg.register_option('a.b.c', 1)
+        cfg.redirect_option('a.c', 'a.b.c')
+
+        s = pickle.dumps(cfg)
+        new_cfg = pickle.loads(s)
+        self.assertEqual(new_cfg.a.b.c, 1)
+        self.assertEqual(new_cfg.a.c, 1)

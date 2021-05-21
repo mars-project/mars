@@ -168,7 +168,8 @@ class Config(object):
         return list(self._config.keys())
 
     def __getattr__(self, item):
-        return getattr(self._config, item)
+        config = object.__getattribute__(self, '_config')
+        return getattr(config, item)
 
     def __setattr__(self, key, value):
         if key.startswith('_'):
