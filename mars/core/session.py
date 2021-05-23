@@ -23,7 +23,7 @@ from typing import Callable, Dict, List, Type, Tuple, Union
 
 from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
-from ..utils import classproperty, copy_tileables, build_fetch
+from ..utils import classproperty, copy_tileables, build_fetch, implements
 from .typing import TileableType
 
 
@@ -443,19 +443,68 @@ def fetch(*tileables: Tuple[TileableType],
         _fetch(*tileables, session=session, **kwargs))
 
 
-class SyncSession:
+class AbstractSyncSession(ABC):
+    @abstractmethod
+    def execute(self,
+                *tileables,
+                **kwargs) -> ExecutionInfo:
+        """
+        Execute tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        kwargs
+
+        Returns
+        -------
+        execution_info: ExecutionInfo
+        """
+
+    @abstractmethod
+    def fetch(self, *tileables) -> list:
+        """
+        Fetch tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+
+        Returns
+        -------
+        fetched_data : list
+        """
+
+    @abstractmethod
+    def decref(self, *tileables_keys):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileables_keys : list
+            Tileables' keys
+        """
+
+
+class SyncSession(AbstractSyncSession):
     def __init__(self,
                  session: AbstractSession):
         self._session = session
 
+    @implements(AbstractSyncSession.execute)
     def execute(self,
                 *tileables,
-                **kwargs):
+                **kwargs) -> ExecutionInfo:
         return execute(*tileables, session=self._session, **kwargs)
 
-    def fetch(self, *tileables):
+    @implements(AbstractSyncSession.fetch)
+    def fetch(self, *tileables) -> list:
         return fetch(*tileables, session=self._session)
 
+    @implements(AbstractSyncSession.decref)
     @_wrap_in_thread(_gc_pool)
     def decref(self, *tileables_keys):
         return _loop.run_until_complete(

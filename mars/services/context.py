@@ -17,7 +17,8 @@ from collections import defaultdict
 from typing import List, Dict
 
 from ..core.context import Context
-from ..core.session import SyncSession, _get_session
+from ..core.session import AbstractSession, AbstractSyncSession, \
+    ExecutionInfo, _get_session
 from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
@@ -26,13 +27,11 @@ from .meta import MetaAPI
 
 
 class ThreadedServiceContext(Context):
-    _loop = asyncio.AbstractEventLoop
-
     def __init__(self,
-                 session_id: str = None,
-                 supervisor_address: str = None,
-                 current_address: str = None,
-                 loop=None):
+                 session_id: str,
+                 supervisor_address: str,
+                 current_address: str,
+                 loop: asyncio.AbstractEventLoop):
         super().__init__(session_id=session_id,
                          supervisor_address=supervisor_address,
                          current_address=current_address)
@@ -56,10 +55,10 @@ class ThreadedServiceContext(Context):
         return fut.result()
 
     @implements(Context.get_current_session)
-    def get_current_session(self) -> SyncSession:
+    def get_current_session(self) -> AbstractSyncSession:
         sess = self._call(_get_session(self.supervisor_address,
                                        self.session_id))
-        return SyncSession(sess)
+        return ThreadedServiceSession(sess, self._loop)
 
     @implements(Context.get_supervisor_addresses)
     def get_supervisor_addresses(self) -> List[str]:
@@ -120,3 +119,31 @@ class ThreadedServiceContext(Context):
                         data_keys: List[str],
                         fields: List[str] = None) -> List[Dict]:
         return self._call(self._get_chunks_meta(data_keys, fields=fields))
+
+
+class ThreadedServiceSession(AbstractSyncSession):
+    def __init__(self,
+                 session: AbstractSession,
+                 loop: asyncio.AbstractEventLoop):
+        self._session = session
+        self._loop = loop
+
+    @implements(AbstractSyncSession.execute)
+    def execute(self,
+                *tileables,
+                **kwargs) -> ExecutionInfo:
+        coro = self._session.execute(*tileables, **kwargs)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
+    @implements(AbstractSyncSession.fetch)
+    def fetch(self, *tileables) -> list:
+        coro = self._session.fetch(*tileables)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
+    @implements(AbstractSyncSession.decref)
+    def decref(self, *tileables_keys):
+        coro = self._session.decref(*tileables_keys)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
