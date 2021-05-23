@@ -125,3 +125,33 @@ async def test_get_last_idle_time():
         next(TileableGraphBuilder(graph).build())
         await task_api.submit_tileable_graph(graph, fuse_enabled=False)
         assert await session_api.get_last_idle_time() is None
+
+
+@pytest.mark.asyncio
+async def test_lock():
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+
+    async with pool:
+        config = {
+            "services": ["cluster", "session", "meta", "task"],
+            "cluster": {
+                "backend": "fixed",
+                "lookup_address": pool.external_address,
+            },
+            "meta": {
+                "store": "dict"
+            }
+        }
+        await start_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)
+
+        session_api = await SessionAPI.create(pool.external_address)
+
+        session_id = 'test_session'
+        addr = await session_api.create_session(session_id)
+        await session_api.acquire_lock(session_id, 'my_lock', 2, 'a')
+        await session_api.release_lock(session_id, 'my_lock')
+        assert await mo.has_actor(mo.ActorRef(addr, b'my_lock'))
+        await session_api.acquire_lock(session_id, 'my_lock', 2, 'b')
+        await session_api.release_lock(session_id, 'my_lock')
+        assert not await mo.has_actor(mo.ActorRef(addr, b'my_lock'))

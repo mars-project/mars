@@ -17,7 +17,7 @@ from typing import Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from .supervisor import SessionManagerActor
+from .supervisor import SessionManagerActor, SessionActor
 
 
 class AbstractSessionAPI(ABC):
@@ -124,6 +124,24 @@ class SessionAPI(AbstractSessionAPI):
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         return await self._session_manager_ref.get_last_idle_time(session_id)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_session_ref(self, session_id: str) -> Union[SessionActor, mo.ActorRef]:
+        return await self._session_manager_ref.get_session_ref(session_id)
+
+    async def acquire_lock(self,
+                           session_id: str,
+                           lock_name: str,
+                           lock_value: int,
+                           key: str):
+        session_ref = await self._get_session_ref(session_id)
+        return await session_ref.acquire_lock(lock_name, lock_value, key)
+
+    async def release_lock(self,
+                           session_id: str,
+                           lock_name: str):
+        session_ref = await self._get_session_ref(session_id)
+        return await session_ref.release_lock(lock_name)
 
 
 class MockSessionAPI(SessionAPI):

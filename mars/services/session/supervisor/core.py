@@ -124,6 +124,23 @@ class SessionActor(mo.Actor):
             return None
         return await self._task_api.get_last_idle_time()
 
+    async def acquire_lock(self,
+                           lock_name: str,
+                           lock_value: int,
+                           key: str):
+        try:
+            ref = await mo.create_actor(LockActor, lock_name, lock_value,
+                                        address=self.address,
+                                        uid=lock_name)
+        except mo.ActorAlreadyExist:
+            ref = await mo.actor_ref(self.address, lock_name)
+        # return coroutine
+        return ref.acquire(key)
+
+    async def release_lock(self, lock_name: str):
+        ref = await mo.actor_ref(self.address, lock_name)
+        return await ref.release()
+
     async def __pre_destroy__(self):
         from ...meta import MetaAPI
         from ...lifecycle import LifecycleAPI
@@ -133,3 +150,26 @@ class SessionActor(mo.Actor):
             await TaskAPI.destroy_session(self._session_id, self.address)
             await LifecycleAPI.destroy_session(self._session_id, self.address)
             await MetaAPI.destroy_session(self._session_id, self.address)
+
+
+class LockActor(mo.Actor):
+    def __init__(self,
+                 name: str,
+                 value: int = 1):
+        # lock name
+        self._name = name
+        # to process key's size
+        self._value = value
+
+        self._lock = asyncio.Lock()
+        self._processed_keys = set()
+
+    async def acquire(self, key: str):
+        self._processed_keys.add(key)
+        return await self._lock.acquire()
+
+    async def release(self):
+        self._lock.release()
+        if len(self._processed_keys) == self._value:
+            # all values processed, destroy self
+            await self.ref().destroy()
