@@ -154,17 +154,25 @@ async def test_cancel_transfer(create_actors):
     storage_handler2 = await mo.actor_ref(
         uid=StorageHandlerActor.default_uid(),
         address=worker_address_2)
+    storage_manager2 = await mo.actor_ref(
+        uid=StorageManagerActor.default_uid(),
+        address=worker_address_2)
     await storage_handler1.put('mock', 'data_key1',
                                data1, StorageLevel.MEMORY)
 
     sender_actor = await mo.actor_ref(address=worker_address_1,
                                       uid=MockSenderManagerActor.default_uid())
+    used_before = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
+
     send_task = asyncio.create_task(sender_actor.send_data(
         'mock', 'data_key1', worker_address_2, StorageLevel.MEMORY))
 
     await asyncio.sleep(0.5)
     send_task.cancel()
     await send_task
+
+    used = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
+    assert used == used_before
 
     with pytest.raises(DataNotExist):
         await storage_handler2.get('mock', 'data_key1')

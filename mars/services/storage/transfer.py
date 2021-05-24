@@ -13,27 +13,43 @@
 # limitations under the License.
 
 import asyncio
-from dataclasses import dataclass
-from typing import Union
+from typing import Union, Any
 
 from ... import oscar as mo
-from ...config import options
+from ...serialization.serializables import Serializable, BoolField,\
+    StringField, ReferenceField, AnyField
 from ...storage import StorageLevel
-from ...utils import dataslots, extensible
+from ...utils import extensible
 from .core import StorageManagerActor, StorageHandlerActor
 
+DEFAULT_TRANSFER_BLOCK_SIZE = 5 * 1024 ** 2
 
-@dataslots
-@dataclass
-class TransferMessage:
-    data: bytes
-    session_id: str
-    data_key: str
-    level: StorageLevel
-    is_eof: bool
+
+class TransferMessage(Serializable):
+    data: Any = AnyField('data')
+    session_id: str = StringField('session_id')
+    data_key: str = StringField('data_key')
+    level: StorageLevel = ReferenceField('level', StorageLevel)
+    is_eof: bool = BoolField('is_eof')
+
+    def __init__(self,
+                 data: Any = None,
+                 session_id: str = None,
+                 data_key: str = None,
+                 level: StorageLevel = None,
+                 is_eof: bool = None):
+        super().__init__(data=data,
+                         session_id=session_id,
+                         data_key=data_key,
+                         level=level,
+                         is_eof=is_eof)
 
 
 class SenderManagerActor(mo.Actor):
+    def __init__(self,
+                 transfer_block_size: int = None):
+        self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
+
     async def __post_create__(self):
         self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
             await mo.actor_ref(self.address, StorageManagerActor.default_uid())
@@ -52,20 +68,23 @@ class SenderManagerActor(mo.Actor):
                         address: str,
                         level: StorageLevel,
                         block_size: int = None):
-        block_size = block_size or options.worker.transfer_block_size
+        block_size = block_size or self._transfer_block_size
         receiver_ref = await self.get_receiver_ref(address)
         info = await self._storage_manager_ref.get_data_info(session_id, data_key)
         store_size = info.store_size
         await receiver_ref.open_writer(session_id, data_key,
                                        store_size, level)
+
+        sent_size = 0
         async with await self._storage_handler.open_reader(
                 session_id, data_key) as reader:
             while True:
                 part_data = await reader.read(block_size)
-                is_eof = len(part_data) < block_size
+                is_eof = sent_size + len(part_data) >= store_size
                 message = TransferMessage(part_data, session_id, data_key, level, is_eof)
                 send_task = asyncio.create_task(receiver_ref.receive_part_data(message))
                 yield send_task
+                sent_size += len(part_data)
                 if is_eof:
                     break
 
@@ -86,7 +105,6 @@ class ReceiverManagerActor(mo.Actor):
                           data_size: int,
                           level: StorageLevel):
         try:
-            await self._storage_manager_ref.allocate_size(data_size, level)
             writer = await self._storage_handler.open_writer(session_id, data_key,
                                                              data_size, level)
             self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
@@ -106,11 +124,12 @@ class ReceiverManagerActor(mo.Actor):
         try:
             yield self.do_write(message)
         except asyncio.CancelledError:
-            _, data_size, level = self._key_to_writer_info[
+            writer, data_size, level = self._key_to_writer_info[
                 (message.session_id, message.data_key)]
             await self._storage_manager_ref.release_quota(
                 data_size, level)
             await self._storage_handler.delete(
                 message.session_id, message.data_key, error='ignore')
+            await writer.clean_up()
             self._key_to_writer_info.pop((
                 message.session_id, message.data_key))

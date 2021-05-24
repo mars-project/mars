@@ -68,6 +68,9 @@ class WrappedStorageFileObject(AioFileObject):
     def __getattr__(self, item):
         return getattr(self._file, item)
 
+    async def clean_up(self):
+        self._file.close()
+
     async def close(self):
         self._file.close()
         if 'w' in self._file._mode:
@@ -92,16 +95,12 @@ class StorageQuota:
         return self._used_size
 
     async def update(self, size: int):
-        await self._lock.acquire()
-        try:
+        async with self._lock:
             if self._total_size is not None:
                 self._total_size += size
-        finally:
-            self._lock.release()
 
     async def request(self, size: int) -> bool:
-        try:
-            await self._lock.acquire()
+        async with self._lock:
             if self._total_size is None:
                 self._used_size += size
                 return True
@@ -110,15 +109,10 @@ class StorageQuota:
             else:
                 self._used_size += size
                 return True
-        finally:
-            self._lock.release()
 
     async def release(self, size: int):
-        await self._lock.acquire()
-        try:
+        async with self._lock:
             self._used_size -= size
-        finally:
-            self._lock.release()
 
 
 @dataslots
@@ -235,7 +229,7 @@ class StorageHandlerActor(mo.Actor):
                   obj: object,
                   level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
-        await self._storage_manager_ref.allocate_size(size, level=level)
+        await self._storage_manager_ref.request_quota(size, level=level)
         object_info = await self._clients[level].put(obj)
         if object_info.size is not None and size != object_info.size:
             await self._storage_manager_ref.update_quota(
@@ -280,7 +274,7 @@ class StorageHandlerActor(mo.Actor):
                           data_key: str,
                           size: int,
                           level: StorageLevel) -> WrappedStorageFileObject:
-        await self._storage_manager_ref.allocate_size(size, level=level)
+        await self._storage_manager_ref.request_quota(size, level=level)
         writer = await self._clients[level].open_writer(size)
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
                                         self._storage_manager_ref, self._clients[level])
@@ -297,8 +291,8 @@ class StorageHandlerActor(mo.Actor):
         return await self._clients[level].list()
 
     async def fetch(self,
-                       session_id: str,
-                       data_key: str):
+                    session_id: str,
+                    data_key: str):
         if StorageLevel.REMOTE not in self._clients:
             raise NotImplementedError
         else:  # pragma: no cover
@@ -310,6 +304,7 @@ class StorageHandlerActor(mo.Actor):
 class StorageManagerActor(mo.Actor):
     def __init__(self,
                  storage_configs: Dict,
+                 transfer_block_size: int = None
                  ):
         self._storage_configs = storage_configs
         # params to init and teardown
@@ -320,6 +315,9 @@ class StorageManagerActor(mo.Actor):
         # stores the mapping from data key to storage info
         self._data_manager = DataManager()
         self._supervisor_address = None
+
+        # transfer config
+        self._transfer_block_size = transfer_block_size
 
     async def __post_create__(self):
         from .transfer import SenderManagerActor, ReceiverManagerActor
@@ -391,39 +389,13 @@ class StorageManagerActor(mo.Actor):
     def get_client_params(self):
         return self._init_params
 
-    async def allocate_size(self,
+    async def request_quota(self,
                             size: int,
                             level: StorageLevel):
         if await self._quotas[level].request(size):
             return
         else:  # pragma: no cover
             raise NotImplementedError('Spill is not supported now')
-
-    async def fetch(self,
-                    session_id: str,
-                    data_key: str,
-                    level: StorageLevel,
-                    address: str,
-                    band: str):
-        from .transfer import SenderManagerActor
-
-        try:
-            info = self._data_manager.get_info(session_id, data_key)
-            self.pin(info.object_id)
-        except DataNotExist:
-            # Not exists in local, fetch from remote worker
-            try:
-                yield self._storage_handler.fetch(session_id, data_key)
-            except NotImplementedError:  # pragma: no cover
-                meta_api = await self._get_meta_api(session_id)
-                if address is None:
-                    address = (await meta_api.get_chunk_meta(
-                        data_key, fields=['bands']))['bands'][0][0]
-                sender_ref = await mo.actor_ref(
-                    address=address, uid=SenderManagerActor.default_uid())
-                yield sender_ref.send_data(session_id, data_key,
-                                           self.address, level)
-                await meta_api.add_chunk_bands(data_key, [(address, band or 'numa-0')])
 
     async def update_quota(self,
                            size: int,
@@ -435,6 +407,35 @@ class StorageManagerActor(mo.Actor):
                             level: StorageLevel
                             ):
         await self._quotas[level].release(size)
+
+    def get_quota(self, level: StorageLevel):
+        return self._quotas[level].total_size, self._quotas[level].used_size
+
+    async def fetch(self,
+                    session_id: str,
+                    data_key: str,
+                    level: StorageLevel,
+                    address: str,
+                    band_name: str):
+        from .transfer import SenderManagerActor
+
+        try:
+            info = self._data_manager.get_info(session_id, data_key)
+            self.pin(info.object_id)
+        except DataNotExist:
+            # Not exists in local, fetch from remote worker
+            try:
+                yield self._storage_handler.fetch(session_id, data_key)
+            except NotImplementedError:
+                meta_api = await self._get_meta_api(session_id)
+                if address is None:
+                    address = (await meta_api.get_chunk_meta(
+                        data_key, fields=['bands']))['bands'][0][0]
+                sender_ref = await mo.actor_ref(
+                    address=address, uid=SenderManagerActor.default_uid())
+                yield sender_ref.send_data(session_id, data_key,
+                                           self.address, level)
+                await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
 
     def get_data_infos(self,
                        session_id: str,

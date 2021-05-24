@@ -35,11 +35,14 @@ async def start(config: dict, address: str):
     """
     storage_configs = config['storage']
     backends = storage_configs.get('backends')
+    options = storage_configs.get('default_config', dict())
+    transfer_block_size = options.get('transfer_block_size', None)
     backend_config = {backend: storage_configs.get(backend)
                       for backend in backends}
 
     await mo.create_actor(StorageManagerActor,
                           backend_config,
+                          transfer_block_size,
                           uid=StorageManagerActor.default_uid(),
                           address=address)
 

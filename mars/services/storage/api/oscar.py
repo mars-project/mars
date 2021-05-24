@@ -149,7 +149,7 @@ class StorageAPI(AbstractStorageAPI):
     async def fetch(self,
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
-                    band: str = None,
+                    band_name: str = None,
                     dest_address: str = None):
         """
         Fetch object from remote worker ot load object from disk.
@@ -160,13 +160,13 @@ class StorageAPI(AbstractStorageAPI):
             data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
-        band: BandType
+        band_name: BandType
             put data on specific band
         dest_address:
             destination address for data
         """
         await self._storage_manager_ref.fetch(
-            self._session_id, data_key, level, band, dest_address)
+            self._session_id, data_key, level, band_name, dest_address)
 
     @extensible
     async def unpin(self, data_key: str):

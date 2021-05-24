@@ -22,7 +22,6 @@ import mars.oscar as mo
 import mars.tensor as mt
 from mars.core import tile
 from mars.serialization import AioDeserializer, AioSerializer
-from mars.services.storage.api import MockStorageAPI
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
