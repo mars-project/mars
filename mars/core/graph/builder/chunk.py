@@ -44,7 +44,13 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
     def _tile(self,
               tileable: TileableType) -> \
             Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
+        from ....core.operand import Fetch
+
         tileable = self._get_data(tileable)
+
+        if isinstance(tileable.op, Fetch) and not tileable.is_coarse():
+            return [tileable]
+
         assert tileable.is_coarse()
 
         # copy tileable

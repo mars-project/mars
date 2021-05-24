@@ -33,7 +33,7 @@ from ....dataframe.core import DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYP
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
-from ....utils import build_fetch
+from ....utils import build_fetch, get_params_fields
 from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
 from ...core import BandType
@@ -277,16 +277,7 @@ class SubtaskGraphScheduler:
         for chunk in chunks:
             if isinstance(chunk.op, Fuse):
                 chunk = chunk.chunk
-            fields = list(chunk.params)
-            if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
-                fields.remove('dtypes')
-                fields.remove('columns_value')
-            elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
-                fields.remove('dtypes')
-                fields.remove('key_dtypes')
-                fields.remove('columns_value')
-            elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
-                fields.remove('key_dtypes')
+            fields = get_params_fields(chunk)
             get_meta.append(self._meta_api.get_chunk_meta.delay(
                 chunk.key, fields=fields))
         metas = await self._meta_api.get_chunk_meta.batch(*get_meta)
@@ -618,7 +609,7 @@ class TaskManagerActor(mo.Actor):
         # process graph, add fetch node to tiled context
         tiled_context = dict()
         for tileable in graph:
-            if isinstance(tileable.op, Fetch):
+            if isinstance(tileable.op, Fetch) and tileable.is_coarse():
                 info = self._tileable_key_to_info[tileable.key][0]
                 tiled = info.processor.tile_context[info.tileable]
                 tiled_context[tileable] = build_fetch(tiled).data
@@ -721,7 +712,7 @@ class TaskManagerActor(mo.Actor):
     async def _incref_fetch_tileables(self, tileable_graph: TileableGraph):
         # incref fetch tileables in tileable graph to prevent them from deleting
         to_incref_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
-                                   if isinstance(tileable.op, Fetch)]
+                                   if isinstance(tileable.op, Fetch) and tileable.is_coarse()]
         await self._lifecycle_api.incref_tileables(to_incref_tileable_keys)
 
     async def _track_and_incref_result_tileables(self,
@@ -786,7 +777,7 @@ class TaskManagerActor(mo.Actor):
             [c.key for c in decref_chunks])
 
         fetch_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
-                               if isinstance(tileable.op, Fetch)]
+                               if isinstance(tileable.op, Fetch) and tileable.is_coarse()]
 
         if error_or_cancelled:
             # if task failed or cancelled, roll back tileable incref

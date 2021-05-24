@@ -704,6 +704,8 @@ def merge_chunks(chunk_results):
         for cr in chunk_results:
             if cr[1] is None:
                 continue
+            if isinstance(cr[1], dict) and not cr[1]:
+                continue
             if result is None:
                 result = cr[1]
                 result = result.item() if hasattr(result, 'item') else result
@@ -1164,25 +1166,23 @@ def arrow_array_to_objects(obj):
 def enter_current_session(func):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
-        from .session import Session
-        from .context import ContextBase
+        from .core.session import AbstractSession, get_default_session
 
         # skip in some test cases
         if not hasattr(ctx, 'get_current_session'):
             return func(cls, ctx, op)
 
         session = ctx.get_current_session()
-        prev_default_session = Session.default
+        prev_default_session = get_default_session()
         session.as_default()
 
         try:
-            if isinstance(ctx, ContextBase):
-                with ctx:
-                    result = func(cls, ctx, op)
-            else:
-                result = func(cls, ctx, op)
+            result = func(cls, ctx, op)
         finally:
-            Session._set_default_session(prev_default_session)
+            if prev_default_session:
+                prev_default_session.as_default()
+            else:
+                AbstractSession.reset_default()
 
         return result
 
@@ -1456,3 +1456,21 @@ def dataslots(cls):
     if qualname is not None:
         cls.__qualname__ = qualname
     return cls
+
+
+def get_params_fields(chunk):
+    from .dataframe.core import DATAFRAME_CHUNK_TYPE, \
+        DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+
+    fields = list(chunk.params)
+    if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
+        fields.remove('dtypes')
+        fields.remove('columns_value')
+    elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
+        fields.remove('dtypes')
+        fields.remove('key_dtypes')
+        fields.remove('columns_value')
+    elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
+        fields.remove('key_dtypes')
+
+    return fields

@@ -279,7 +279,12 @@ class DictSerializer(CollectionSerializer):
                 key = context[key.id]
             ret[key] = real_value
 
-        ret = obj_type(zip(keys, values))
+        try:
+            ret = obj_type(zip(keys, values))
+        except TypeError:
+            # defaultdict
+            ret = obj_type()
+            ret.update(zip(keys, values))
         for k, v in zip(keys, values):
             if isinstance(k, Placeholder):
                 k.callbacks.append(partial(_key_replacer, k))

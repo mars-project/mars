@@ -22,7 +22,8 @@ from weakref import WeakKeyDictionary
 from typing import Dict, List, Tuple, Union
 
 from ...core import TileableType, ChunkType, enter_mode
-from ...core.session import AbstractSession, register_session_cls, \
+from ...core.operand import Fetch
+from ...core.session import AbstractAsyncSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
 from ...services.lifecycle import LifecycleAPI
 from ...services.meta import MetaAPI
@@ -55,7 +56,7 @@ class ExectionInfo(AbstractExectionInfo):
 
 
 @register_session_cls
-class Session(AbstractSession):
+class Session(AbstractAsyncSession):
     name = 'oscar'
 
     def __init__(self,
@@ -94,7 +95,7 @@ class Session(AbstractSession):
                    lifecycle_api, task_api)
 
     @classmethod
-    @implements(AbstractSession.init)
+    @implements(AbstractAsyncSession.init)
     async def init(cls,
                    address: str,
                    session_id: str,
@@ -111,9 +112,9 @@ class Session(AbstractSession):
                             f'arguments: {unexpected_keys}')
 
         if urlparse(address).scheme == 'http':
-            return await WebSession._init(address, session_id)
+            return await WebSession._init(address, session_id, new=new)
         else:
-            return await cls._init(address, session_id)
+            return await cls._init(address, session_id, new=new)
 
     async def _run_in_background(self,
                                  tileables: list,
@@ -187,11 +188,16 @@ class Session(AbstractSession):
                 if not all(isinstance(index, (slice, Integral))
                            for index in indexes):
                     raise ValueError('Only support fetch data slices')
+            elif isinstance(tileable.op, Fetch):
+                break
             else:
                 raise ValueError(f'Cannot fetch unexecuted '
                                  f'tileable: {tileable}')
 
-        return self._tileable_to_fetch[tileable], indexes
+        if isinstance(tileable.op, Fetch):
+            return tileable, indexes
+        else:
+            return self._tileable_to_fetch[tileable], indexes
 
     @classmethod
     def _calc_chunk_indexes(cls,

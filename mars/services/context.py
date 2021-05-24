@@ -14,11 +14,12 @@
 
 import asyncio
 from collections import defaultdict
-from typing import List, Dict
+from typing import List, Dict, Union
 
+from ..core import TileableType
 from ..core.context import Context
-from ..core.session import AbstractSession, AbstractSyncSession, \
-    ExecutionInfo, _get_session
+from ..core.session import AbstractAsyncSession, AbstractSyncSession, \
+    ExecutionInfo, _get_session, _execute, _fetch
 from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
@@ -123,22 +124,33 @@ class ThreadedServiceContext(Context):
 
 class ThreadedServiceSession(AbstractSyncSession):
     def __init__(self,
-                 session: AbstractSession,
+                 session: AbstractAsyncSession,
                  loop: asyncio.AbstractEventLoop):
+        super().__init__(session.address, session.session_id)
         self._session = session
         self._loop = loop
 
     @implements(AbstractSyncSession.execute)
     def execute(self,
+                tileable,
                 *tileables,
-                **kwargs) -> ExecutionInfo:
-        coro = self._session.execute(*tileables, **kwargs)
+                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        wait = kwargs.get('wait', True)
+        if kwargs.get('show_progress', 'auto') == 'auto':
+            # disable progress show in context session
+            kwargs['show_progress'] = False
+        coro = _execute(tileable, *tileables, session=self, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
+        execution_info = fut.result()
+        if wait:
+            return tileable if len(tileables) == 0 else \
+                [tileable] + list(tileables)
+        else:
+            return execution_info
 
     @implements(AbstractSyncSession.fetch)
-    def fetch(self, *tileables) -> list:
-        coro = self._session.fetch(*tileables)
+    def fetch(self, *tileables, **kwargs) -> list:
+        coro = _fetch(*tileables, session=self._session, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return fut.result()
 
@@ -147,3 +159,7 @@ class ThreadedServiceSession(AbstractSyncSession):
         coro = self._session.decref(*tileables_keys)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return fut.result()
+
+    @implements(AbstractSyncSession.to_async)
+    def to_async(self):
+        return self._session

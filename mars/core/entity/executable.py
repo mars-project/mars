@@ -32,7 +32,7 @@ class _TileableSession:
             s = sess()
             if s:
                 if isinstance(s, AbstractSession):
-                    s = SyncSession(s)
+                    s = s.to_sync()
                 try:
                     s.decref(key)
                 except RuntimeError:

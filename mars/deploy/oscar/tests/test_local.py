@@ -164,33 +164,8 @@ def test_no_default_session():
 
 
 def test_decref():
-    session = new_session(n_cpu=2, default=True)
+    import gc
 
-    with session:
-        a = mt.ones((10, 10))
-        b = mt.ones((10, 10))
-        c = b + 1
-        d = mt.ones((5, 5))
-
-        a.execute(show_progress=False)
-        b.execute(show_progress=False)
-        c.execute(show_progress=False)
-        d.execute(show_progress=False)
-
-        del a
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 3
-        del b
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 3
-        del c
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 1
-
-    session.stop_server()
-
-
-def test_decref():
     session = new_session(n_cpu=2, default=True)
 
     with session:

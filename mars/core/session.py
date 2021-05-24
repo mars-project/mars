@@ -18,58 +18,14 @@ import functools
 import threading
 import uuid
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC, ABCMeta, abstractmethod
 from typing import Callable, Dict, List, Type, Tuple, Union
 
 from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
+from ..core.operand import Fetch
 from ..utils import classproperty, copy_tileables, build_fetch, implements
 from .typing import TileableType
-
-
-_loop = asyncio.new_event_loop()
-_get_session_lock = asyncio.Lock(loop=_loop)
-_pool = concurrent.futures.ThreadPoolExecutor(1)
-_gc_pool = concurrent.futures.ThreadPoolExecutor()
-
-
-def _wrap_in_thread(pool_or_func):
-    """
-    Function is those wrapping async function,
-    when there is a running event loop,
-    error will raise (see GH#2108),
-    so we wrap them to run in a thread.
-    """
-
-    def _wrap(func: Callable,
-              executor: concurrent.futures.ThreadPoolExecutor):
-        def sync_default_session(sess: "AbstractSession"):
-            if sess:
-                sess.as_default()
-            else:
-                AbstractSession.reset_default()
-
-        def inner(*args, **kwargs):
-            default_session = get_default_session()
-            config = get_global_option().to_dict()
-
-            def run_in_thread():
-                with option_context(config):
-                    # set default session in this thread
-                    sync_default_session(default_session)
-                    return func(*args, **kwargs), get_default_session()
-
-            fut = executor.submit(run_in_thread)
-            result, default_session_in_thread = fut.result()
-            sync_default_session(default_session_in_thread)
-
-            return result
-        return inner
-
-    if callable(pool_or_func):
-        return _wrap(pool_or_func, _pool)
-    else:
-        return functools.partial(_wrap, executor=pool_or_func)
 
 
 class ExecutionInfo(ABC):
@@ -106,55 +62,7 @@ class ExecutionInfo(ABC):
         return self._future.__await__()
 
 
-@enter_mode(build=True)
-def gen_submit_tileable_graph(
-        session: "AbstractSession",
-        result_tileables: List[TileableType]):
-    tileable_to_copied = dict()
-    result = [None] * len(result_tileables)
-    graph = TileableGraph(result)
-
-    q = list(result_tileables)
-    while q:
-        tileable = q.pop()
-        if tileable in tileable_to_copied:
-            continue
-        outputs = tileable.op.outputs
-        inputs = tileable.inputs
-        new_inputs = []
-        all_inputs_processed = True
-        for inp in inputs:
-            if inp in tileable_to_copied:
-                new_inputs.append(tileable_to_copied[inp])
-            elif session in inp._executed_sessions:
-                # executed, gen fetch
-                fetch_input = build_fetch(inp).data
-                tileable_to_copied[inp] = fetch_input
-                graph.add_node(fetch_input)
-                new_inputs.append(fetch_input)
-            else:
-                # some input not processed before
-                all_inputs_processed = False
-                # put back tileable
-                q.append(tileable)
-                q.append(inp)
-                break
-        if all_inputs_processed:
-            new_outputs = [t.data for t
-                           in copy_tileables(outputs, inputs=new_inputs)]
-            for out, new_out in zip(outputs, new_outputs):
-                tileable_to_copied[out] = new_out
-                if out in result_tileables:
-                    result[result_tileables.index(out)] = new_out
-                graph.add_node(new_out)
-                for new_inp in new_inputs:
-                    graph.add_edge(new_inp, new_out)
-
-    return graph
-
-
 class AbstractSession(ABC):
-    name = None
     _default_session_local = threading.local()
 
     def __init__(self,
@@ -170,6 +78,57 @@ class AbstractSession(ABC):
     @property
     def session_id(self):
         return self._session_id
+
+    @property
+    @abstractmethod
+    def is_sync(self) -> bool:
+        """
+        Is synchronous session or not
+
+        Returns
+        -------
+        is_sync
+        """
+
+    def as_default(self):
+        """
+        Mark current session as default session.
+        """
+        AbstractSession._default_session_local.default_session = self
+        return self
+
+    @classmethod
+    def reset_default(cls):
+        AbstractSession._default_session_local.default_session = None
+
+    @classproperty
+    def default(self):
+        return getattr(AbstractSession._default_session_local,
+                       'default_session', None)
+
+    @abstractmethod
+    def to_async(self):
+        """
+        Get async session.
+
+        Returns
+        -------
+        async_session
+        """
+
+    @abstractmethod
+    def to_sync(self):
+        """
+        Get sync session.
+
+        Returns
+        -------
+        sync_session
+        """
+
+
+class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
+    name = None
 
     @classmethod
     @abstractmethod
@@ -195,6 +154,11 @@ class AbstractSession(ABC):
         -------
         session
         """
+
+    @property
+    @implements(AbstractSession.is_sync)
+    def is_sync(self) -> bool:
+        return False
 
     @abstractmethod
     async def destroy(self):
@@ -257,18 +221,167 @@ class AbstractSession(ABC):
         Stop server.
         """
 
-    def as_default(self):
-        AbstractSession._default_session_local.default_session = self
+    @implements(AbstractSession.to_async)
+    def to_async(self):
         return self
 
-    @classmethod
-    def reset_default(cls):
-        AbstractSession._default_session_local.default_session = None
+    @implements(AbstractSession.to_sync)
+    def to_sync(self):
+        return SyncSession(self)
 
-    @classproperty
-    def default(self):
-        return getattr(AbstractSession._default_session_local,
-                       'default_session', None)
+
+class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
+    @property
+    @implements(AbstractSession.is_sync)
+    def is_sync(self) -> bool:
+        return True
+
+    @abstractmethod
+    def execute(self,
+                tileable,
+                *tileables,
+                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        """
+        Execute tileables.
+
+        Parameters
+        ----------
+        tileable
+            Tileable.
+        tileables
+            Tileables.
+        kwargs
+
+        Returns
+        -------
+        result
+        """
+
+    @abstractmethod
+    def fetch(self, *tileables, **kwargs) -> list:
+        """
+        Fetch tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        kwargs
+
+        Returns
+        -------
+        fetched_data : list
+        """
+
+    @abstractmethod
+    def decref(self, *tileables_keys):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileables_keys : list
+            Tileables' keys
+        """
+
+    @implements(AbstractSession.to_sync)
+    def to_sync(self):
+        return self
+
+
+_loop = asyncio.new_event_loop()
+_get_session_lock = asyncio.Lock(loop=_loop)
+_pool = concurrent.futures.ThreadPoolExecutor(1)
+_gc_pool = concurrent.futures.ThreadPoolExecutor()
+
+
+def _wrap_in_thread(pool_or_func):
+    """
+    Function is those wrapping async function,
+    when there is a running event loop,
+    error will raise (see GH#2108),
+    so we wrap them to run in a thread.
+    """
+
+    def _wrap(func: Callable,
+              executor: concurrent.futures.ThreadPoolExecutor):
+        def sync_default_session(sess: "AbstractSession"):
+            if sess:
+                sess.as_default()
+            else:
+                AbstractSession.reset_default()
+
+        def inner(*args, **kwargs):
+            default_session = get_default_session()
+            config = get_global_option().to_dict()
+
+            def run_in_thread():
+                with option_context(config):
+                    # set default session in this thread
+                    sync_default_session(default_session)
+                    return func(*args, **kwargs), get_default_session()
+
+            fut = executor.submit(run_in_thread)
+            result, default_session_in_thread = fut.result()
+            sync_default_session(default_session_in_thread)
+
+            return result
+        return inner
+
+    if callable(pool_or_func):
+        return _wrap(pool_or_func, _pool)
+    else:
+        return functools.partial(_wrap, executor=pool_or_func)
+
+
+@enter_mode(build=True)
+def gen_submit_tileable_graph(
+        session: "AbstractSession",
+        result_tileables: List[TileableType]):
+    tileable_to_copied = dict()
+    result = [None] * len(result_tileables)
+    graph = TileableGraph(result)
+
+    q = list(result_tileables)
+    while q:
+        tileable = q.pop()
+        if tileable in tileable_to_copied:
+            continue
+        outputs = tileable.op.outputs
+        inputs = tileable.inputs
+        new_inputs = []
+        all_inputs_processed = True
+        for inp in inputs:
+            if inp in tileable_to_copied:
+                new_inputs.append(tileable_to_copied[inp])
+            elif session in inp._executed_sessions:
+                # executed, gen fetch
+                fetch_input = build_fetch(inp).data
+                tileable_to_copied[inp] = fetch_input
+                graph.add_node(fetch_input)
+                new_inputs.append(fetch_input)
+            else:
+                # some input not processed before
+                all_inputs_processed = False
+                # put back tileable
+                q.append(tileable)
+                q.append(inp)
+                break
+        if all_inputs_processed:
+            if isinstance(tileable.op, Fetch):
+                new_outputs = [tileable]
+            else:
+                new_outputs = [t.data for t
+                               in copy_tileables(outputs, inputs=new_inputs)]
+            for out, new_out in zip(outputs, new_outputs):
+                tileable_to_copied[out] = new_out
+                if out in result_tileables:
+                    result[result_tileables.index(out)] = new_out
+                graph.add_node(new_out)
+                for new_inp in new_inputs:
+                    graph.add_edge(new_inp, new_out)
+
+    return graph
 
 
 _type_name_to_session_cls: Dict[str, Type[AbstractSession]] = dict()
@@ -342,6 +455,12 @@ async def _get_default_or_create(**kwargs):
     return session
 
 
+@_wrap_in_thread
+def get_default_or_create(**kwargs):
+    return _loop.run_until_complete(
+        _get_default_or_create(**kwargs))
+
+
 def _new_progress():  # pragma: no cover
     try:
         from tqdm.auto import tqdm
@@ -359,20 +478,17 @@ def _new_progress():  # pragma: no cover
 async def _execute(*tileables: Tuple[TileableType],
                    session: AbstractSession = None,
                    wait: bool = True,
-                   backend: str = 'oscar',
-                   new_session_kwargs: dict = None,
                    show_progress: Union[bool, str] = 'auto',
-                   progress_update_interval=1, **kwargs):
-    if session is None:
-        session = await _get_default_or_create(
-            backend=backend, **(new_session_kwargs or dict()))
+                   progress_update_interval: Union[int, float] = 1,
+                   **kwargs):
 
     def _attach_session(fut: asyncio.Future):
         fut.result()
         for t in tileables:
             t._attach_session(session)
 
-    execution_info = await session.execute(*tileables, **kwargs)
+    async_session = session.to_async()
+    execution_info = await async_session.execute(*tileables, **kwargs)
     execution_info.add_done_callback(_attach_session)
 
     if wait:
@@ -402,7 +518,6 @@ async def _execute(*tileables: Tuple[TileableType],
         return execution_info
 
 
-@_wrap_in_thread
 def execute(tileable: TileableType,
             *tileables: Tuple[TileableType],
             session: AbstractSession = None,
@@ -413,96 +528,67 @@ def execute(tileable: TileableType,
             progress_update_interval=1, **kwargs):
     if show_progress is None:
         show_progress = options.show_progress
-    _loop.run_until_complete(_execute(
-        tileable, *tileables, session=session, wait=wait,
-        backend=backend, new_session_kwargs=new_session_kwargs,
-        show_progress=show_progress,
-        progress_update_interval=progress_update_interval, **kwargs))
-    return tileable if len(tileables) == 0 else \
-        [tileable] + list(tileables)
+    if session is None:
+        session = get_default_or_create(
+            backend=backend, **(new_session_kwargs or dict()))
+    if not session.is_sync:
+        sync_session = SyncSession(session)
+    else:
+        sync_session = session
+    return sync_session.execute(tileable, *tileables, wait=wait,
+                                show_progress=show_progress,
+                                progress_update_interval=progress_update_interval,
+                                **kwargs)
 
 
 async def _fetch(tileable: TileableType,
                  *tileables: Tuple[TileableType],
                  session: AbstractSession = None,
                  **kwargs):
-    if session is None:
-        session = get_default_session()
-        if session is None:  # pragma: no cover
-            raise ValueError('No session found')
-
     data = await session.fetch(tileable, *tileables, **kwargs)
     return data[0] if len(tileables) == 0 else data
 
 
-@_wrap_in_thread
 def fetch(*tileables: Tuple[TileableType],
           session: AbstractSession = None,
           **kwargs):
-    return _loop.run_until_complete(
-        _fetch(*tileables, session=session, **kwargs))
-
-
-class AbstractSyncSession(ABC):
-    @abstractmethod
-    def execute(self,
-                *tileables,
-                **kwargs) -> ExecutionInfo:
-        """
-        Execute tileables.
-
-        Parameters
-        ----------
-        tileables
-            Tileables.
-        kwargs
-
-        Returns
-        -------
-        execution_info: ExecutionInfo
-        """
-
-    @abstractmethod
-    def fetch(self, *tileables) -> list:
-        """
-        Fetch tileables.
-
-        Parameters
-        ----------
-        tileables
-            Tileables.
-
-        Returns
-        -------
-        fetched_data : list
-        """
-
-    @abstractmethod
-    def decref(self, *tileables_keys):
-        """
-        Decref tileables.
-
-        Parameters
-        ----------
-        tileables_keys : list
-            Tileables' keys
-        """
+    if session is None:
+        session = get_default_session()
+        if session is None:  # pragma: no cover
+            raise ValueError('No session found')
+    if not session.is_sync:
+        sync_session = SyncSession(session)
+    else:
+        sync_session = session
+    return sync_session.fetch(*tileables, **kwargs)
 
 
 class SyncSession(AbstractSyncSession):
     def __init__(self,
-                 session: AbstractSession):
+                 session: AbstractAsyncSession):
+        super().__init__(session.address, session.session_id)
         self._session = session
 
     @implements(AbstractSyncSession.execute)
+    @_wrap_in_thread
     def execute(self,
-                *tileables,
-                **kwargs) -> ExecutionInfo:
-        return execute(*tileables, session=self._session, **kwargs)
+                tileable: TileableType,
+                *tileables: TileableType,
+                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        wait = kwargs.get('wait', True)
+        execution_info = _loop.run_until_complete(_execute(
+            tileable, *tileables, session=self, **kwargs))
+        if wait:
+            return tileable if len(tileables) == 0 else \
+                [tileable] + list(tileables)
+        else:
+            return execution_info
 
     @implements(AbstractSyncSession.fetch)
-    def fetch(self, *tileables) -> list:
-        return fetch(*tileables, session=self._session)
+    @_wrap_in_thread
+    def fetch(self, *tileables, **kwargs) -> list:
+        return _loop.run_until_complete(
+            _fetch(*tileables, session=self._session, **kwargs))
 
     @implements(AbstractSyncSession.decref)
     @_wrap_in_thread(_gc_pool)
@@ -525,8 +611,9 @@ class SyncSession(AbstractSyncSession):
         return _loop.run_until_complete(
             self._session.stop_server())
 
-    def as_default(self):
-        return self._session.as_default()
+    @implements(AbstractSession.to_async)
+    def to_async(self):
+        return self._session
 
     def __enter__(self):
         return self

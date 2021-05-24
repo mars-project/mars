@@ -14,8 +14,11 @@
 
 from io import BytesIO
 
-from mars.tests.core import TestBase
+import pytest
+
+from mars.config import option_context
 from mars.remote import run_script
+from mars.tests import new_test_session
 
 
 script1 = b"""
@@ -28,15 +31,25 @@ assert session is not None
 """
 
 
-class Test(TestBase):
-    def testLocalRunScript(self):
-        s = BytesIO(script1)
-        self.assertEqual(run_script(
-            s, n_workers=2, run_kwargs={'n_parallel': 2}
-        )['status'], 'ok')
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def testLocalRunScriptWithExec(self):
-        s = BytesIO(script2)
-        self.assertEqual(run_script(
-            s, n_workers=2, run_kwargs={'n_parallel': 2}, mode='exec'
-        )['status'], 'ok')
+
+def test_local_run_script(setup):
+    s = BytesIO(script1)
+    assert run_script(
+        s, n_workers=2
+    )['status'] == 'ok'
+
+
+def test_local_run_script_with_exec(setup):
+    s = BytesIO(script2)
+    assert run_script(
+        s, n_workers=2, mode='exec'
+    )['status'] == 'ok'
