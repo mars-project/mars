@@ -75,7 +75,7 @@ class BandSubtaskManagerActor(mo.Actor):
                  supervisor_address: str,
                  n_slots: int,
                  band: str = 'numa-0',
-                 subtask_processor_cls = None):
+                 subtask_processor_cls: Type = None):
         self._supervisor_address = supervisor_address
         self._n_slots = n_slots
         self._band = band

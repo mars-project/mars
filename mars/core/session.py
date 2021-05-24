@@ -19,7 +19,7 @@ import threading
 import uuid
 import warnings
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, List, Type, Tuple, Union
+from typing import Callable, Dict, List, Optional, Type, Tuple, Union
 
 from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
@@ -28,7 +28,9 @@ from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
 
 
-_loop = _loop_pid = _get_session_lock = None
+_loop: Optional[asyncio.AbstractEventLoop] = None
+_loop_pid: Optional[int] = None
+_get_session_lock: Optional[asyncio.Lock] = None
 _pool = concurrent.futures.ThreadPoolExecutor(1)
 
 

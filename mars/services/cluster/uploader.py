@@ -28,7 +28,7 @@ DEFAULT_INFO_UPLOAD_INTERVAL = 1
 
 class NodeInfoUploaderActor(mo.Actor):
     def __init__(self, role=None, dirs=None, interval=None,
-                 band_to_slots=None):
+                 band_to_slots=None, use_gpu=True):
         self._info = NodeInfo(role=role)
 
         self._env_uploaded = False
@@ -38,6 +38,8 @@ class NodeInfoUploaderActor(mo.Actor):
         self._interval = interval or DEFAULT_INFO_UPLOAD_INTERVAL
         self._upload_task = None
         self._upload_enabled = False
+
+        self._use_gpu = use_gpu
 
     async def __post_create__(self):
         await self.upload_node_info()
@@ -67,7 +69,8 @@ class NodeInfoUploaderActor(mo.Actor):
             if not self._info.env:
                 self._info.env = gather_node_env()
             self._info.state.update(gather_node_states(dirs=self._dirs))
-            for band, res in gather_node_resource(self._band_to_slots).items():
+            for band, res in gather_node_resource(
+                    self._band_to_slots, use_gpu=self._use_gpu).items():
                 try:
                     res_dict = self._info.resource[band]
                 except KeyError:

@@ -47,6 +47,7 @@ async def create_worker_actor_pool(
             labels.append(band)
         else:
             assert band.startswith('numa')
+            envs.extend([dict() for _ in range(slot)])
             labels.extend([band] * slot)
 
     return await mo.create_actor_pool(

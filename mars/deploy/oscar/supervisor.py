@@ -50,7 +50,9 @@ class SupervisorCommandRunner(OscarCommandRunner):
     async def create_actor_pool(self):
         return await create_supervisor_actor_pool(
             self.args.endpoint, n_process=0, ports=self.ports,
-            modules=self.args.load_modules)
+            modules=self.args.load_modules,
+            subprocess_start_method='forkserver' if os.name == 'nt' else 'spawn'
+        )
 
     async def start_services(self):
         return await start_supervisor(

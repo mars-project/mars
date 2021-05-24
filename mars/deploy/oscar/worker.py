@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from ...resource import cpu_count, cuda_count
 from ...utils import get_next_port
 from .cmdline import OscarCommandRunner
@@ -56,7 +58,9 @@ class WorkerCommandRunner(OscarCommandRunner):
     async def create_actor_pool(self):
         return await create_worker_actor_pool(
             self.args.endpoint, self.band_to_slot, ports=self.ports,
-            n_io_process=self.n_io_process, modules=list(self.args.load_modules))
+            n_io_process=self.n_io_process, modules=list(self.args.load_modules),
+            subprocess_start_method='forkserver' if os.name == 'nt' else 'spawn'
+        )
 
     async def start_services(self):
         return await start_worker(

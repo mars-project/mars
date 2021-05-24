@@ -219,6 +219,7 @@ class MockClusterAPI(ClusterAPI):
                             address=address),
             mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
                             interval=kw.get('upload_interval'),
+                            use_gpu=kw.get('use_gpu', False),
                             uid=NodeInfoUploaderActor.default_uid(),
                             address=address),
         ])
