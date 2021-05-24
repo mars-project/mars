@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import asyncio
-from typing import Dict, Optional
+import functools
+from typing import Any, Dict, Optional, Union
 
 from .... import oscar as mo
+from ....lib.aio.lru import alru_cache
 from ...cluster import ClusterAPI
 
 
@@ -124,22 +126,17 @@ class SessionActor(mo.Actor):
             return None
         return await self._task_api.get_last_idle_time()
 
-    async def acquire_lock(self,
-                           lock_name: str,
-                           lock_value: int,
-                           key: str):
-        try:
-            ref = await mo.create_actor(LockActor, lock_name, lock_value,
-                                        address=self.address,
-                                        uid=lock_name)
-        except mo.ActorAlreadyExist:
-            ref = await mo.actor_ref(self.address, lock_name)
-        # return coroutine
-        return ref.acquire(key)
+    async def create_remote_object(self, name: str,
+                                   object_cls, *args, **kwargs):
+        return await mo.create_actor(
+            RemoteObjectActor, object_cls, args, kwargs,
+            address=self.address, uid=name)
 
-    async def release_lock(self, lock_name: str):
-        ref = await mo.actor_ref(self.address, lock_name)
-        return await ref.release()
+    async def get_remote_object(self, name: str):
+        return await mo.actor_ref(mo.ActorRef(self.address, name))
+
+    async def destroy_remote_object(self, name: str):
+        return await mo.destroy_actor(mo.ActorRef(self.address, name))
 
     async def __pre_destroy__(self):
         from ...meta import MetaAPI
@@ -152,24 +149,19 @@ class SessionActor(mo.Actor):
             await MetaAPI.destroy_session(self._session_id, self.address)
 
 
-class LockActor(mo.Actor):
-    def __init__(self,
-                 name: str,
-                 value: int = 1):
-        # lock name
-        self._name = name
-        # to process key's size
-        self._value = value
+class RemoteObjectActor(mo.Actor):
+    def __init__(self, object_cls, args, kwargs):
+        self._object = object_cls(*args, **kwargs)
 
-        self._lock = asyncio.Lock()
-        self._processed_keys = set()
+    def __getattr__(self, attr):
+        func = getattr(self._object, attr)
+        if not callable(func):  # pragma: no cover
+            return object.__getattribute__(self._object, attr)
 
-    async def acquire(self, key: str):
-        self._processed_keys.add(key)
-        return await self._lock.acquire()
+        @functools.wraps(func)
+        async def wrap(*args, **kwargs):
+            part_func = functools.partial(func, *args, **kwargs)
+            loop = asyncio.get_running_loop()
+            return loop.run_in_executor(None, part_func)
 
-    async def release(self):
-        self._lock.release()
-        if len(self._processed_keys) == self._value:
-            # all values processed, destroy self
-            await self.ref().destroy()
+        return wrap

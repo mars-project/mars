@@ -14,8 +14,9 @@
 
 import asyncio
 from collections import defaultdict
-from typing import List, Dict, Union
+from typing import Any, List, Dict, Union
 
+from .. import oscar as mo
 from ..core import TileableType
 from ..core.context import Context
 from ..core.session import AbstractAsyncSession, AbstractSyncSession, \
@@ -28,6 +29,10 @@ from .meta import MetaAPI
 
 
 class ThreadedServiceContext(Context):
+    _cluster_api: ClusterAPI
+    _session_api: SessionAPI
+    _meta_api: MetaAPI
+
     def __init__(self,
                  session_id: str,
                  supervisor_address: str,
@@ -120,6 +125,44 @@ class ThreadedServiceContext(Context):
                         data_keys: List[str],
                         fields: List[str] = None) -> List[Dict]:
         return self._call(self._get_chunks_meta(data_keys, fields=fields))
+
+    @implements(Context.create_remote_object)
+    def create_remote_object(self,
+                             name: str,
+                             object_cls, *args, **kwargs):
+        ref = self._call(self._session_api.create_remote_object(
+            self.session_id, name, object_cls, *args, **kwargs))
+        return _RemoteObjectWrapper(ref, self._loop)
+
+    @implements(Context.get_remote_object)
+    def get_remote_object(self, name: str):
+        ref = self._call(self._session_api.get_remote_object(
+            self.session_id, name))
+        return _RemoteObjectWrapper(ref, self._loop)
+
+    @implements(Context.destroy_remote_object)
+    def destroy_remote_object(self,
+                              name: str):
+        return self._call(self._session_api.destroy_remote_object(
+            self.session_id, name))
+
+
+class _RemoteObjectWrapper:
+    def __init__(self,
+                 ref: mo.ActorRef,
+                 loop: asyncio.AbstractEventLoop):
+        self._ref = ref
+        self._loop = loop
+
+    def __getattr__(self, attr):
+        func = getattr(self._ref, attr)
+
+        def wrap(*args, **kwargs):
+            coro = func(*args, **kwargs)
+            fut = asyncio.run_coroutine_threadsafe(coro, loop=self._loop)
+            return fut.result()
+
+        return wrap
 
 
 class ThreadedServiceSession(AbstractSyncSession):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
 
 import pytest
 import numpy as np
@@ -128,7 +129,7 @@ async def test_get_last_idle_time():
 
 
 @pytest.mark.asyncio
-async def test_lock():
+async def test_dmap():
     pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
 
     async with pool:
@@ -148,10 +149,12 @@ async def test_lock():
         session_api = await SessionAPI.create(pool.external_address)
 
         session_id = 'test_session'
-        addr = await session_api.create_session(session_id)
-        await session_api.acquire_lock(session_id, 'my_lock', 2, 'a')
-        await session_api.release_lock(session_id, 'my_lock')
-        assert await mo.has_actor(mo.ActorRef(addr, b'my_lock'))
-        await session_api.acquire_lock(session_id, 'my_lock', 2, 'b')
-        await session_api.release_lock(session_id, 'my_lock')
-        assert not await mo.has_actor(mo.ActorRef(addr, b'my_lock'))
+        await session_api.create_session(session_id)
+        lock = await session_api.create_remote_object(session_id, 'my_lock',
+                                                      threading.Lock)
+        await lock.acquire()
+        lock = await session_api.get_remote_object(session_id, 'my_lock')
+        await lock.release()
+        with pytest.raises(AttributeError):
+            await lock.abc()
+        await session_api.destroy_remote_object(session_id, 'my_lock')

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import Any, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
@@ -129,19 +129,25 @@ class SessionAPI(AbstractSessionAPI):
     async def _get_session_ref(self, session_id: str) -> Union[SessionActor, mo.ActorRef]:
         return await self._session_manager_ref.get_session_ref(session_id)
 
-    async def acquire_lock(self,
-                           session_id: str,
-                           lock_name: str,
-                           lock_value: int,
-                           key: str):
-        session_ref = await self._get_session_ref(session_id)
-        return await session_ref.acquire_lock(lock_name, lock_value, key)
+    async def create_remote_object(self,
+                                   session_id: str,
+                                   name: str,
+                                   object_cls,
+                                   *args, **kwargs):
+        session = await self._get_session_ref(session_id)
+        return await session.create_remote_object(name, object_cls, *args, **kwargs)
 
-    async def release_lock(self,
-                           session_id: str,
-                           lock_name: str):
-        session_ref = await self._get_session_ref(session_id)
-        return await session_ref.release_lock(lock_name)
+    async def get_remote_object(self,
+                                session_id: str,
+                                name: str):
+        session = await self._get_session_ref(session_id)
+        return await session.get_remote_object(name)
+
+    async def destroy_remote_object(self,
+                                    session_id: str,
+                                    name: str):
+        session = await self._get_session_ref(session_id)
+        return await session.destroy_remote_object(name)
 
 
 class MockSessionAPI(SessionAPI):

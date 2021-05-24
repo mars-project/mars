@@ -12,35 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
+import time
+from typing import List
+
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...context import RunningMode
 from ...core import TilesError
-from ...core.operand import SuccessorsExclusive
-from ...serialize import ValueType, KeyField, StringField, DictField, TupleField
+from ...core.context import get_context
+from ...serialize import ValueType, KeyField, StringField, DictField, \
+    TupleField, Int32Field
 from ...lib.filesystem import open_file
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
 
 
+class _HDF5Container:
+    def __init__(self,
+                 all_chunk_op_keys: List[str]):
+        self._all_chunk_op_keys = set(all_chunk_op_keys)
+        self._done_chunk_op_keys = set()
+        self._lock = threading.Lock()
+
+    def acquire(self):
+        return self._lock.acquire()
+
+    def release(self):
+        return self._lock.release()
+
+    def mark_done(self, op_key: str):
+        self._done_chunk_op_keys.add(op_key)
+
+    def is_done(self):
+        return self._done_chunk_op_keys == self._all_chunk_op_keys
+
+
 class TensorHDF5DataStore(TensorDataStore):
     _op_type_ = OperandDef.TENSOR_STORE_HDF5
 
     _input = KeyField('input')
-    _lock = KeyField('lock')
     _filename = StringField('filename')
     _group = StringField('group')
     _dataset = StringField('dataset')
     _dataset_kwds = DictField('dataset_kwds', key_type=ValueType.string)
     _axis_offsets = TupleField('axis_offsets', ValueType.int32)
     _out_shape = TupleField('out_shape', ValueType.int32)
+    _container_name = StringField('container_name')
 
-    def __init__(self, lock=None, filename=None, group=None, dataset=None,
-                 dataset_kwds=None, **kw):
-        super().__init__(_lock=lock, _filename=filename, _group=group, _dataset=dataset,
-                         _dataset_kwds=dataset_kwds, **kw)
+    def __init__(self, filename=None, group=None, dataset=None,
+                 dataset_kwds=None, container_name=None, **kw):
+        super().__init__(_filename=filename, _group=group, _dataset=dataset,
+                         _dataset_kwds=dataset_kwds,
+                         _container_name=container_name, **kw)
 
     @property
     def input(self):
@@ -71,6 +96,10 @@ class TensorHDF5DataStore(TensorDataStore):
         return self._out_shape
 
     @property
+    def container_name(self):
+        return self._container_name
+
+    @property
     def path(self):
         paths = []
         if self._group is not None:
@@ -81,8 +110,6 @@ class TensorHDF5DataStore(TensorDataStore):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
-        if self._lock is not None:
-            self._lock = self._inputs[-1]
 
     @classmethod
     def tile(cls, op):
@@ -105,20 +132,23 @@ class TensorHDF5DataStore(TensorDataStore):
             return new_op.new_tensors(op.inputs, shape=(0,) * in_tensor.ndim,
                                       nsplits=nsplits, chunks=[out_chunk])
 
-        # hdf5 cannot write concurrently,
-        # thus create a SuccessorsExclusive to control the concurrency
-        exclusive_chunk = SuccessorsExclusive(on=in_tensor.key).new_chunk(in_tensor.chunks)
+        container_name = f'{op.key}_{int(time.time())}'
+
         out_chunks = []
         acc = [[0] + np.cumsum(ns).tolist() for ns in in_tensor.nsplits]
+        chunk_op_keys = []
         for chunk in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._lock = exclusive_chunk
             chunk_op._out_shape = in_tensor.shape
+            chunk_op._container_name = container_name
             chunk_op._axis_offsets = tuple(acc[ax][i] for ax, i in enumerate(chunk.index))
-            chunk_op._pure_depends = [False, True]
-            out_chunk = chunk_op.new_chunk([chunk, exclusive_chunk], shape=(0,) * chunk.ndim,
+            out_chunk = chunk_op.new_chunk([chunk], shape=(0,) * chunk.ndim,
                                            index=chunk.index)
             out_chunks.append(out_chunk)
+            chunk_op_keys.append(out_chunk.op.key)
+
+        ctx = get_context()
+        ctx.create_remote_object(container_name, _HDF5Container, chunk_op_keys)
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, shape=(0,) * in_tensor.ndim,
@@ -126,21 +156,17 @@ class TensorHDF5DataStore(TensorDataStore):
                                   chunks=out_chunks)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "TensorHDF5DataStore"):
         import h5py
 
         to_store = ctx[op.inputs[0].key]
-        lock = None
         axis_offsets = op.axis_offsets
 
-        # for the local runtime,
-        # lock is created in the execution of SuccessorsExclusive.
-        # meanwhile for distributed runtime
-        # operand actor of SuccessorsExclusive will take over
-        # the correspond exclusive behavior
-        if ctx.running_mode == RunningMode.local and len(op.inputs) == 2:
-            lock = ctx[op.inputs[1].key]
-            lock.acquire()
+        container_name = op.container_name
+        container: _HDF5Container = None
+        if container_name:
+            container = ctx.get_remote_object(container_name)
+            container.acquire()
         try:
             with h5py.File(open_file(op.filename, mode='r+b'), mode='r+') as f:
                 try:
@@ -153,9 +179,13 @@ class TensorHDF5DataStore(TensorDataStore):
                          in zip(axis_offsets, to_store.shape))] = to_store
                 ctx[op.outputs[0].key] = np.empty((0,) * to_store.ndim,
                                                   dtype=to_store.dtype)
+                if container:
+                    container.mark_done(op.key)
         finally:
-            if lock is not None:
-                lock.release()
+            if container:
+                container.release()
+                if container.is_done():
+                    ctx.destroy_remote_object(container_name)
 
 
 def tohdf5(hdf5_file, x, group=None, dataset=None, **kwds):

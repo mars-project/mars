@@ -14,7 +14,7 @@
 
 import os
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import Any, List, Dict
 
 from .session import SyncSession
 
@@ -123,6 +123,54 @@ class Context(ABC):
         -------
         meta_list : list
             Meta list.
+        """
+
+    @abstractmethod
+    def create_remote_object(self,
+                             name: str,
+                             object_cls, *args, **kwargs):
+        """
+        Create remote object.
+
+        Parameters
+        ----------
+        name : str
+            Object name.
+        object_cls
+            Object class.
+        args
+        kwargs
+
+        Returns
+        -------
+        ref
+        """
+
+    @abstractmethod
+    def get_remote_object(self, name: str):
+        """
+        Get remote object
+
+        Parameters
+        ----------
+        name : str
+            Object name.
+
+        Returns
+        -------
+        ref
+        """
+
+    @abstractmethod
+    def destroy_remote_object(self,
+                              name: str):
+        """
+        Destroy remote object.
+
+        Parameters
+        ----------
+        name : str
+            Object name.
         """
 
     def __enter__(self):
