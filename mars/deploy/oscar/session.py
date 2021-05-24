@@ -236,16 +236,20 @@ class Session(AbstractAsyncSession):
         with enter_mode(build=True):
             chunks = []
             get_chunk_metas = []
-            chunk_to_tileable = dict()
-            chunk_to_indexes = dict()
+            chunk_to_tileables = defaultdict(list)
+            chunk_tileable_to_indexes = dict()
             for tileable in tileables:
                 fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
                 if indexes is not None:
-                    chunk_to_indexes.update(self._calc_chunk_indexes(
-                        fetch_tileable, indexes))
+                    chunk_to_slice = self._calc_chunk_indexes(
+                        fetch_tileable, indexes)
+                    for c, slc in chunk_to_slice.items():
+                        chunk_tileable_to_indexes[(tileable, c)] = slc
                 for chunk in fetch_tileable.chunks:
+                    if indexes and chunk not in chunk_to_slice:
+                        continue
                     chunks.append(chunk)
-                    chunk_to_tileable[chunk] = tileable
+                    chunk_to_tileables[chunk].append(tileable)
                     get_chunk_metas.append(
                         self._meta_api.get_chunk_meta.delay(
                             chunk.key, fields=['bands']))
@@ -264,17 +268,18 @@ class Session(AbstractAsyncSession):
                     storage_api = await StorageAPI.create(self._session_id, addr)
                 chunks, gets = storage_apis_to_chunks_gets[storage_api]
                 chunks.append(chunk)
-                conditions = chunk_to_indexes.get(chunk)
-                if indexes is not None and conditions is None:
-                    # has indexes and chunk has no data to fetch
-                    continue
-                gets.append(storage_api.get.delay(chunk.key, conditions=conditions))
+                for t in chunk_to_tileables.get(chunk):
+                    conditions = chunk_tileable_to_indexes.get((t, chunk))
+                    if indexes is not None and conditions is None:
+                        # has indexes and chunk has no data to fetch
+                        continue
+                    gets.append(storage_api.get.delay(chunk.key, conditions=conditions))
             tileable_to_index_data = defaultdict(list)
             for storage_api, (chunks, gets) in storage_apis_to_chunks_gets.items():
                 chunks_data = await storage_api.get.batch(*gets)
                 for chunk, data in zip(chunks, chunks_data):
-                    tileable = chunk_to_tileable[chunk]
-                    tileable_to_index_data[tileable].append((chunk.index, data))
+                    for tileable in chunk_to_tileables[chunk]:
+                        tileable_to_index_data[tileable].append((chunk.index, data))
 
             result = []
             for tileable, index_to_data in tileable_to_index_data.items():

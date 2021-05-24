@@ -29,7 +29,10 @@ class AbstractStorageAPI(ABC):
 
     @abstractmethod
     @extensible
-    async def get(self, data_key: str, conditions: List = None) -> Any:
+    async def get(self,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise') -> Any:
         """
         Get object by data key.
 
@@ -40,6 +43,8 @@ class AbstractStorageAPI(ABC):
 
         conditions: List
             Index conditions to pushdown
+        error: str
+            raise or ignore
 
         Returns
         -------
@@ -115,9 +120,12 @@ class StorageAPI(AbstractStorageAPI):
         return api
 
     @extensible
-    async def get(self, data_key: str, conditions: List = None) -> Any:
+    async def get(self,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise') -> Any:
         return await self._storage_handler_ref.get(
-            self._session_id, data_key, conditions)
+            self._session_id, data_key, conditions, error)
 
     @get.batch
     async def batch_get(self, args_list, kwargs_list):
@@ -195,7 +203,8 @@ class StorageAPI(AbstractStorageAPI):
     @extensible
     async def prefetch(self,
                        data_key: str,
-                       level: StorageLevel = StorageLevel.MEMORY):
+                       level: StorageLevel = StorageLevel.MEMORY,
+                       error: str = 'raise'):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -205,10 +214,12 @@ class StorageAPI(AbstractStorageAPI):
             data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
+        error: str
+            raise or ignore
 
         """
         await self._storage_manager_ref.prefetch(
-            self._session_id, data_key, level)
+            self._session_id, data_key, level, error)
 
     @extensible
     async def unpin(self, data_key: str):

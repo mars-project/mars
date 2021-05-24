@@ -300,7 +300,7 @@ def test_where_execution(setup):
 
 def test_reshape_execution(setup):
     raw_data = np.random.rand(5, 10, 30)
-    x = tensor(raw_data, chunk_size=6)
+    x = tensor(raw_data, chunk_size=8)
 
     y = x.reshape(-1, 30)
 
@@ -323,7 +323,7 @@ def test_reshape_execution(setup):
     np.testing.assert_array_equal(res, raw_data.ravel())
 
     raw_data = np.random.rand(6, 20, 4)
-    x = tensor(raw_data, chunk_size=3)
+    x = tensor(raw_data, chunk_size=5)
 
     y = x.reshape(-1, 4, 5, 2, 2)
 

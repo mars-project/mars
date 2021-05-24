@@ -259,14 +259,14 @@ class SubtaskProcessor:
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
-                    gets.append(self._storage_api.get.delay(key))
-                    prefetches.append(self._storage_api.prefetch.delay(key))
+                    gets.append(self._storage_api.get.delay(key, error='ignore'))
+                    prefetches.append(self._storage_api.prefetch.delay(key, error='ignore'))
         if keys:
             logger.info(f'Start getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
             await self._storage_api.prefetch.batch(*prefetches)
             inputs = await self._storage_api.get.batch(*gets)
-            self._datastore.update({key: get for key, get in zip(keys, inputs)})
+            self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.info(f'Finish getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
 

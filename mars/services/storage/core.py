@@ -148,11 +148,15 @@ class DataManager:
 
     def get_info(self,
                  session_id: str,
-                 data_key: str) -> DataInfo:
+                 data_key: str,
+                 error: str = 'raise') -> Union[DataInfo, None]:
         # if the data is stored in multiply levels,
         # return the lowest level info
-        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
-            raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+        if (session_id, data_key) not in self._data_key_to_info:
+            if error == 'raise':
+                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+            else:
+                return None
         infos = sorted(self._data_key_to_info.get((session_id, data_key)),
                        key=lambda x: x.data_info.level)
         return infos[0].data_info
@@ -208,17 +212,23 @@ class StorageHandlerActor(mo.Actor):
     async def get(self,
                   session_id: str,
                   data_key: str,
-                  conditions: List = None):
-        data_info = await self._storage_manager_ref.get_data_info(
-            session_id, data_key)
-        yield self._get_data(data_info, conditions)
+                  conditions: List = None,
+                  error: str = 'raise'):
+        try:
+            data_info = await self._storage_manager_ref.get_data_info(
+                session_id, data_key)
+            yield self._get_data(data_info, conditions)
+        except DataNotExist:
+            if error == 'raise':
+                raise
 
     def _get_data_info(self,
                        session_id: str,
                        data_key: str,
-                       conditions: List = None):
+                       conditions: List = None,
+                       error: str = 'raise'):
         info = self._storage_manager_ref.get_data_info.delay(
-            session_id, data_key)
+            session_id, data_key, error)
         return info, conditions
 
     @get.batch
@@ -232,18 +242,12 @@ class StorageHandlerActor(mo.Actor):
         data_infos = await self._storage_manager_ref.get_data_info.batch(*infos)
         results = []
         for data_info, conditions in zip(data_infos, conditions_list):
-            result = yield self._get_data(data_info, conditions)
-            results.append(result)
+            if data_info is None:
+                results.append(None)
+            else:
+                result = yield self._get_data(data_info, conditions)
+                results.append(result)
         raise mo.Return(results)
-
-    # @get.batch
-    # async def batch_get(self, args_list, kwargs_list):
-    #     session_id = args_list[0][0]
-    #     data_keys = [args[1] for args in args_list]
-    #     data_infos = await self._storage_manager_ref.batch_get_data_info(
-    #         session_id, data_keys)
-    #     for data_info, kwargs in zip(data_infos, kwargs_list):
-    #         yield self._get_data(data_info, **kwargs)
 
     @extensible
     async def put(self,
@@ -365,64 +369,6 @@ class StorageHandlerActor(mo.Actor):
             releases.append(self._storage_manager_ref.release_size.delay(size, level))
         await self._storage_manager_ref.release_size.batch(*releases)
 
-    # @extensible
-    # async def delete(self,
-    #                  session_id: str,
-    #                  data_key: str,
-    #                  error: str):
-    #     if error not in ('raise', 'ignore'):  # pragma: no cover
-    #         raise ValueError('error must be raise or ignore')
-    #     try:
-    #         infos = await self._storage_manager_ref.get_data_infos(
-    #             session_id, data_key)
-    #     except DataNotExist:
-    #         if error == 'raise':
-    #             raise
-    #         else:
-    #             return
-    #     for info in infos or []:
-    #         level = info.level
-    #         await self._storage_manager_ref.delete_data_info(
-    #             session_id, data_key, level)
-    #         yield self._clients[level].delete(info.object_id)
-    #         await self._storage_manager_ref.release_size(info.store_size, level)
-    #
-    # @delete.batch
-    # async def batch_delete(self, args_list, kwargs_list):
-    #     error = kwargs_list[0]['error']
-    #     session_id = args_list[0][0]
-    #     data_keys = [args[1] for args in args_list]
-    #     try:
-    #         data_infos_list = await self._storage_manager_ref.batch_get_data_infos(
-    #             session_id, data_keys)
-    #     except DataNotExist:
-    #         if error == 'raise':
-    #             raise
-    #         else:
-    #             return
-    #
-    #     delete_data_keys = []
-    #     levels = []
-    #     sizes = defaultdict(int)
-    #     object_ids_list = defaultdict(list)
-    #     for data_key, infos in zip(data_keys, data_infos_list):
-    #         for info in infos or []:
-    #             level = info.level
-    #             delete_data_keys.append(data_key)
-    #             levels.append(level)
-    #             object_ids_list[level].append(info.object_id)
-    #             sizes[level] += info.store_size
-    #
-    #     await self._storage_manager_ref.batch_delete_data_info(
-    #         session_id, delete_data_keys, levels)
-    #
-    #     for level, object_ids in object_ids_list.items():
-    #         for object_id in object_ids:
-    #             yield self._clients[level].delete(object_id)
-    #
-    #     for level, size in sizes.items():
-    #         await self._storage_manager_ref.release_size(size, level)
-
     async def open_reader(self,
                           session_id: str,
                           data_key: str) -> StorageFileObject:
@@ -541,7 +487,10 @@ class StorageManagerActor(mo.Actor):
     async def prefetch(self,
                        session_id: str,
                        data_key: str,
-                       level: StorageLevel):
+                       level: StorageLevel,
+                       error: str):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
         try:
             info = self._data_manager.get_info(session_id, data_key)
             self.pin(info.object_id)
@@ -549,8 +498,9 @@ class StorageManagerActor(mo.Actor):
             # Not exist in local, fetch from remote worker
             try:
                 yield self._storage_handler.prefetch(session_id, data_key)
-            except NotImplementedError:  # pragma: no cover
-                raise DataNotExist(f'Data {session_id, data_key} not exists')
+            except NotImplementedError:
+                if error == 'raise':
+                    raise DataNotExist(f'Data {session_id, data_key} not exists')
 
     def update_quota(self,
                      size: int,
@@ -604,8 +554,9 @@ class StorageManagerActor(mo.Actor):
     @extensible
     def get_data_info(self,
                       session_id: str,
-                      data_key: str) -> DataInfo:
-        return self._data_manager.get_info(session_id, data_key)
+                      data_key: str,
+                      error: str = 'raise') -> Union[DataInfo, None]:
+        return self._data_manager.get_info(session_id, data_key, error)
 
     @get_data_info.batch
     def batch_get_data_info(self, args_list, kwargs_list) -> List[DataInfo]:
