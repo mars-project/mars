@@ -140,6 +140,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: generated/
 
+   Series.add_prefix
    Series.drop
    Series.drop_duplicates
    Series.duplicated
@@ -153,7 +154,6 @@ Reindexing / selection / label manipulation
    Series.sample
    Series.set_axis
    Series.tail
-   Series.add_prefix
 
 Missing data handling
 ---------------------

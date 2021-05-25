@@ -144,6 +144,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: generated/
 
+   DataFrame.add_prefix
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.duplicated
@@ -157,7 +158,6 @@ Reindexing / selection / label manipulation
    DataFrame.set_axis
    DataFrame.set_index
    DataFrame.tail
-   DataFrame.add_prefix
 
 .. _generated.dataframe.missing:
 
