@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
 from ...tensor.core import TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -74,7 +74,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
 
         if not (hasattr(y, 'shape') and y.ndim == 2 and y.shape[1] > 1):
-            result = mt.array(False)._inplace_tile()
+            result = yield from recursive_tile(mt.array(False))
             return [result]
         else:
             unique_y = op.unique_y
@@ -251,7 +251,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                 y = np.asarray(y)
             y = mt.asarray(y)
         if np.isnan(y.size):  # pragma: no cover
-            raise TilesError('y has unknown shape')
+            yield
 
         chunk_op = TypeOfTarget(is_multilabel=is_multilabel_chunk,
                                 y_shape=y.shape, y_dtype=y.dtype)

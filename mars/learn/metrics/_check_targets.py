@@ -16,8 +16,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, ExecutableTuple, TilesError, recursive_tile
-from ...context import get_context
+from ...core import ENTITY_TYPE, ExecutableTuple, recursive_tile
+from ...core.context import get_context
 from ...serialize import AnyField, KeyField
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -98,18 +98,17 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         for y in (op.y_true, op.y_pred):
             if isinstance(y, ENTITY_TYPE):
                 if np.isnan(y.size):  # pragma: no cover
-                    raise TilesError('input has unknown shape')
+                    yield
 
         check_consistent_length(y_true, y_pred)
 
+        # make sure type_true and type_pred executed first
+        chunks = [op.type_true.chunks[0], op.type_pred.chunks[0]]
+        yield chunks
+
         ctx = get_context()
-        try:
-            type_true, type_pred = ctx.get_chunk_results(
-                [op.type_true.chunks[0].key,
-                 op.type_pred.chunks[0].key])
-        except (KeyError, AttributeError):
-            raise TilesError('type_true and type_pred '
-                             'needs to be executed first')
+        type_true, type_pred = ctx.get_chunks_result(
+            [c.key for c in chunks])
 
         y_type = {type_true, type_pred}
         if y_type == {"binary", "multiclass"}:

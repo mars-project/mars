@@ -17,10 +17,10 @@ import itertools
 import numpy as np
 
 from ....config import options
-from ....core import TilesError
+from ....core import recursive_tile
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....tensor import tensor as astensor
-from ....utils import check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 from ...utils import check_array
 
 
@@ -114,13 +114,14 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
     def _rechunk_cols_into_one(cls, x, y):
         y_is_x = y is x
         if x.chunk_shape[1] != 1 or y.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([x, y], TilesError)
+            if has_unknown_shape([x, y]):
+                yield
 
-            x = x.rechunk({1: x.shape[1]})._inplace_tile()
+            x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
             if y_is_x:
                 y = x
             else:
-                y = y.rechunk({1: y.shape[1]})._inplace_tile()
+                y = yield from recursive_tile(y.rechunk({1: y.shape[1]}))
 
         return x, y
 

@@ -23,13 +23,13 @@ except ImportError:  # pragma: no cover
 
 from .... import opcodes
 from .... import options
-from ....core import TilesError
+from ....core import recursive_tile
 from ....core.operand import OperandStage
 from ....serialize import KeyField, BoolField, DictField, Int64Field, AnyField
 from ....tensor.core import TensorOrder
 from ....tensor.merge import TensorConcatenate
 from ....tensor.array_utils import as_same_device, device, get_array_module
-from ....utils import check_chunks_unknown_shape, parse_readable_size
+from ....utils import has_unknown_shape, parse_readable_size
 from ...utils import gen_batches
 from ...utils.validation import _num_samples
 from .core import PairwiseDistances
@@ -297,11 +297,12 @@ class PairwiseDistancesTopk(PairwiseDistances):
         k = op.k
 
         if X.chunk_shape[1] > 1:
-            X = X.rechunk({1: X.shape[1]})._inplace_tile()
+            X = yield from recursive_tile(X.rechunk({1: X.shape[1]}))
 
-        check_chunks_unknown_shape([Y], TilesError)
+        if has_unknown_shape(Y):
+            yield
         if Y.chunk_shape[1] > 1:
-            Y = Y.rechunk({1: Y.shape[1]})._inplace_tile()
+            Y = yield from recursive_tile(Y.rechunk({1: Y.shape[1]}))
 
         out_distance_chunks, out_index_chunks = [], []
         y_acc_chunk_shapes = [0] + np.cumsum(Y.nsplits[0]).tolist()

@@ -16,9 +16,7 @@ import unittest
 
 import numpy as np
 import scipy.sparse as sps
-
-from mars.session import new_session
-
+import pytest
 try:
     import sklearn
 
@@ -27,77 +25,82 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 from mars import tensor as mt
-from mars.tests.core import ExecutorForTest
+from mars.config import option_context
 from mars.learn.metrics.pairwise import manhattan_distances
+from mars.tests import new_test_session
 
 
-@unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testManhattanDistances(self):
-        x = mt.random.randint(10, size=(10, 3), density=0.4)
-        y = mt.random.randint(10, size=(11, 3), density=0.5)
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+def test_manhattan_distances():
+    x = mt.random.randint(10, size=(10, 3), density=0.4)
+    y = mt.random.randint(10, size=(11, 3), density=0.5)
 
-        with self.assertRaises(TypeError):
-            manhattan_distances(x, y, sum_over_features=False)
+    with pytest.raises(TypeError):
+        manhattan_distances(x, y, sum_over_features=False)
 
-        x = x.todense()
-        y = y.todense()
+    x = x.todense()
+    y = y.todense()
 
-        d = manhattan_distances(x, y, sum_over_features=True)
-        self.assertEqual(d.shape, (10, 11))
-        d = manhattan_distances(x, y, sum_over_features=False)
-        self.assertEqual(d.shape, (110, 3))
+    d = manhattan_distances(x, y, sum_over_features=True)
+    assert d.shape == (10, 11)
+    d = manhattan_distances(x, y, sum_over_features=False)
+    assert d.shape == (110, 3)
 
-    def testManhattanDistancesExecution(self):
-        raw_x = np.random.rand(20, 5)
-        raw_y = np.random.rand(21, 5)
 
-        x1 = mt.tensor(raw_x, chunk_size=30)
-        y1 = mt.tensor(raw_y, chunk_size=30)
+raw_x = np.random.rand(20, 5)
+raw_y = np.random.rand(21, 5)
 
-        x2 = mt.tensor(raw_x, chunk_size=11)
-        y2 = mt.tensor(raw_y, chunk_size=12)
+x1 = mt.tensor(raw_x, chunk_size=30)
+y1 = mt.tensor(raw_y, chunk_size=30)
 
-        raw_sparse_x = sps.random(20, 5, density=0.4, format='csr', random_state=0)
-        raw_sparse_y = sps.random(21, 5, density=0.3, format='csr', random_state=0)
+x2 = mt.tensor(raw_x, chunk_size=11)
+y2 = mt.tensor(raw_y, chunk_size=12)
 
-        x3 = mt.tensor(raw_sparse_x, chunk_size=30)
-        y3 = mt.tensor(raw_sparse_y, chunk_size=30)
+raw_sparse_x = sps.random(20, 5, density=0.4, format='csr', random_state=0)
+raw_sparse_y = sps.random(21, 5, density=0.3, format='csr', random_state=0)
 
-        x4 = mt.tensor(raw_sparse_x, chunk_size=11)
-        y4 = mt.tensor(raw_sparse_y, chunk_size=12)
+x3 = mt.tensor(raw_sparse_x, chunk_size=30)
+y3 = mt.tensor(raw_sparse_y, chunk_size=30)
 
-        for x, y, is_sparse in [(x1, y1, False),
-                                (x2, y2, False),
-                                (x3, y3, True),
-                                (x4, y4, True)]:
-            if is_sparse:
-                rx, ry = raw_sparse_x, raw_sparse_y
-            else:
-                rx, ry = raw_x, raw_y
+x4 = mt.tensor(raw_sparse_x, chunk_size=11)
+y4 = mt.tensor(raw_sparse_y, chunk_size=12)
 
-            sv = [True, False] if not is_sparse else [True]
 
-            for sum_over_features in sv:
-                d = manhattan_distances(x, y, sum_over_features)
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+@pytest.mark.parametrize('x, y, is_sparse',
+                         [(x1, y1, False),
+                          (x2, y2, False),
+                          (x3, y3, True),
+                          (x4, y4, True)])
+def test_manhattan_distances_execution(setup, x, y, is_sparse):
+    if is_sparse:
+        rx, ry = raw_sparse_x, raw_sparse_y
+    else:
+        rx, ry = raw_x, raw_y
 
-                result = self.executor.execute_tensor(d, concat=True)[0]
-                expected = sk_manhattan_distances(rx, ry, sum_over_features)
+    sv = [True, False] if not is_sparse else [True]
 
-                np.testing.assert_almost_equal(result, expected)
+    for sum_over_features in sv:
+        d = manhattan_distances(x, y, sum_over_features)
 
-                d = manhattan_distances(x, sum_over_features=sum_over_features)
+        result = d.execute().fetch()
+        expected = sk_manhattan_distances(rx, ry, sum_over_features)
 
-                result = self.executor.execute_tensor(d, concat=True)[0]
-                expected = sk_manhattan_distances(rx, sum_over_features=sum_over_features)
+        np.testing.assert_almost_equal(result, expected)
 
-                np.testing.assert_almost_equal(result, expected)
+        d = manhattan_distances(x, sum_over_features=sum_over_features)
+
+        result = d.execute().fetch()
+        expected = sk_manhattan_distances(rx, sum_over_features=sum_over_features)
+
+        np.testing.assert_almost_equal(result, expected)

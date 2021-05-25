@@ -16,8 +16,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
-from ...context import get_context
+from ...core import ENTITY_TYPE, recursive_tile
+from ...core.context import get_context
 from ...serialize import AnyField, BoolField, KeyField
 from ...tensor.core import TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -85,11 +85,12 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        # make sure type_true executed first
+        chunks = [op.type_true.chunks[0]]
+        yield chunks
+
         ctx = get_context()
-        try:
-            type_true = ctx.get_chunk_results([op.type_true.chunks[0].key])[0]
-        except (KeyError, AttributeError):
-            raise TilesError('type_true needed to be executed first')
+        type_true = ctx.get_chunks_result([chunks[0].key])[0]
 
         y_true, y_pred = op.y_true, op.y_pred
         if type_true.item().startswith('multilabel'):

@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
-
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
-
+import pytest
 try:
     import sklearn
 
@@ -26,27 +21,29 @@ try:
 except ImportError:  # pragma: no cover
     sklearn = None
 
+from mars.config import option_context
 from mars.learn.metrics.pairwise import rbf_kernel
+from mars.tests import new_test_session
 
 
-@unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testRbfKernel(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 4)
-        raw_Y = rs.rand(11, 4)
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+def test_rbf_kernel(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 4)
+    raw_Y = rs.rand(11, 4)
 
-        r = rbf_kernel(raw_X, raw_Y)
-        result = r.to_numpy()
-        expected = sklearn_rbf_kernel(raw_X, raw_Y)
+    r = rbf_kernel(raw_X, raw_Y)
+    result = r.to_numpy()
+    expected = sklearn_rbf_kernel(raw_X, raw_Y)
 
-        np.testing.assert_almost_equal(result, expected)
+    np.testing.assert_almost_equal(result, expected)

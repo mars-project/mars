@@ -79,7 +79,7 @@ class HaversineDistances(PairwiseDistances):
         if len(x.chunks) == 1 and len(y.chunks) == 1:
             return cls._tile_one_chunk(op)
 
-        x, y = cls._rechunk_cols_into_one(x, y)
+        x, y = yield from cls._rechunk_cols_into_one(x, y)
         ret, = cls._tile_chunks(op, x, y)
         if y_is_x:
             fill_diagonal(ret, 0)
