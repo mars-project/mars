@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ...context import RunningMode
-from ...core import TilesError
+from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, StringField, Int64Field, \
     Int32Field, BoolField, Int8Field
@@ -35,7 +35,7 @@ from ...tensor.core import TensorOrder
 from ...tensor.random import RandomState
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.utils import check_random_state, gen_random_seeds
-from ...utils import check_chunks_unknown_shape, require_not_none, recursive_tile
+from ...utils import has_unknown_shape, require_not_none
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
@@ -135,9 +135,11 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
-        in_tensor = astensor(op.input, np.dtype(np.float32))._inplace_tile()
+        in_tensor = yield from recursive_tile(
+            astensor(op.input, np.dtype(np.float32)))
         if op.faiss_index == 'auto':
             faiss_index, n_sample = _gen_index_string_and_sample_count(
                 in_tensor.shape, op.n_sample, op.accuracy, op.memory_require,
@@ -152,7 +154,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
         if in_tensor.chunk_shape[1] != 1:
             # make sure axis 1 has 1 chunk
             in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
-        return cls._tile_chunks(op, in_tensor, faiss_index, n_sample)
+        return (yield from cls._tile_chunks(op, in_tensor, faiss_index, n_sample))
 
     @classmethod
     def _tile_one_chunk(cls, op, faiss_index, n_sample):
@@ -194,7 +196,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             rs = RandomState(op.seed)
             sampled_index = rs.choice(in_tensor.shape[0], size=n_sample,
                                       replace=False, chunk_size=n_sample)
-            sample_tensor = recursive_tile(in_tensor[sampled_index])
+            sample_tensor = yield from recursive_tile(in_tensor[sampled_index])
             assert len(sample_tensor.chunks) == 1
             sample_chunk = sample_tensor.chunks[0]
             train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric,

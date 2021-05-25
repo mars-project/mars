@@ -16,10 +16,10 @@ import cloudpickle
 import numpy as np
 
 from ...context import RunningMode
-from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE, TilesError
+from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE, recursive_tile
 from ...serialize import KeyField, Int32Field, DictField, AnyField, BoolField
 from ...tensor.core import TensorOrder
-from ...utils import check_chunks_unknown_shape, tokenize
+from ...utils import has_unknown_shape, tokenize
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
@@ -70,12 +70,13 @@ class TreeBase(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         # ball tree and kd tree requires the full data,
         # thus rechunk input tensor into 1 chunk
         inp = op.input.rechunk({ax: s for ax, s in enumerate(op.input.shape)})
-        inp = inp._inplace_tile()
+        inp = yield from recursive_tile(inp)
         out = op.outputs[0]
 
         chunk_op = op.copy().reset_key()
@@ -99,12 +100,7 @@ class TreeBase(LearnOperand, LearnOperandMixin):
         tree = cls._tree_type(
             a, op.leaf_size, metric=op.metric,
             **(op.metric_params or dict()))
-        if ctx.running_mode in [RunningMode.local_cluster, RunningMode.distributed]:
-            # for local cluster and distributed, pickle always
-            ctx[op.outputs[0].key] = cloudpickle.dumps(tree)
-        else:
-            # otherwise, to be clear for local, just put into storage directly
-            ctx[op.outputs[0].key] = tree
+        ctx[op.outputs[0].key] = tree
 
 
 def _on_serialize_tree(tree):
