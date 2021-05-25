@@ -21,7 +21,7 @@ import pytest
 import mars.oscar as mo
 import mars.tensor as mt
 from mars.core import tile
-from mars.serialize import dataserializer
+from mars.serialization import AioDeserializer, AioSerializer
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
@@ -78,7 +78,8 @@ storage_configs.append({'shared_memory': dict()})
 @require_lib
 async def test_storage_mock_api(ray_start_regular, storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', 1,
+    pool = await mo.create_actor_pool('127.0.0.1', 2,
+                                      labels=['main', 'sub', 'io'],
                                       subprocess_start_method=start_method)
     async with pool:
         session_id = 'mock_session_id'
@@ -96,7 +97,7 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
         value2 = pd.DataFrame({'col1': [str(i) for i in range(10)],
                                'col2': np.random.randint(0, 100, (10,))})
         await storage_api.put('data2', value2)
-        await storage_api.prefetch('data2')
+        await storage_api.fetch('data2')
         get_value2 = await storage_api.get('data2')
         pd.testing.assert_frame_equal(value2, get_value2)
 
@@ -108,19 +109,20 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
 
         await storage_api.delete('data2')
 
-        await storage_api.prefetch('data1')
+        await storage_api.fetch('data1')
 
-        write_data = dataserializer.dumps(value2)
+        buffers = await AioSerializer(value2).run()
+        size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
         # test open_reader and open_writer
-        writer = await storage_api.open_writer('write_key', len(write_data),
+        writer = await storage_api.open_writer('write_key', size,
                                                StorageLevel.MEMORY)
         async with writer:
-            await writer.write(write_data)
+            for buf in buffers:
+                await writer.write(buf)
 
         reader = await storage_api.open_reader('write_key')
         async with reader:
-            read_bytes = await reader.read()
-            read_value = dataserializer.loads(read_bytes)
+            read_value = await AioDeserializer(reader).run()
 
         pd.testing.assert_frame_equal(value2, read_value)
 

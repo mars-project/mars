@@ -35,8 +35,8 @@ async def actor_pools():
     async def start_pool(is_worker: bool):
         if is_worker:
             kw = dict(
-                n_process=2,
-                labels=['main'] + ['numa-0'] * 2,
+                n_process=3,
+                labels=['main'] + ['numa-0'] * 2 + ['io'],
                 subprocess_start_method='spawn'
             )
         else:

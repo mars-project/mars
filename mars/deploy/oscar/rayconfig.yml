@@ -14,6 +14,8 @@ cluster:
     supervisor_exclusive_node: no
 storage:
   backends: [ray]
+  default_config:
+    transfer_block_size: 5 * 1024 ** 2
 meta:
   store: dict
 task:
