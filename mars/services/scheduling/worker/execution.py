@@ -93,9 +93,9 @@ class SubtaskExecutionActor(mo.Actor):
         for n in subtask.chunk_graph:
             if not isinstance(n.op, Fetch) or n.key in pure_dep_keys:
                 continue
-            queries.append(storage_api.prefetch.delay(n.key))
+            queries.append(storage_api.fetch.delay(n.key))
         if queries:
-            await storage_api.prefetch.batch(*queries)
+            await storage_api.fetch.batch(*queries)
 
     async def _collect_input_sizes(self, subtask: Subtask, supervisor_address: str):
         storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
