@@ -272,8 +272,8 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
             is_finite_chunk = (yield from recursive_tile(
                 mt.isfinite(_safe_accumulator_op(mt.sum, x)))).chunks[0]
         elif x.dtype == np.dtype(object) and not op.allow_nan:
-            check_nan_chunk = yield from recursive_tile(
-                (x != x).any()).chunks[0]
+            check_nan_chunk = (yield from recursive_tile(
+                (x != x).any())).chunks[0]
 
         map_chunks = []
         for c in x.chunks:

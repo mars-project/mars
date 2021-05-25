@@ -14,156 +14,157 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.core import get_tiled
+from mars.core import tile
+from mars.config import option_context
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
-from mars.session import new_session
-from mars.tests.core import TestBase, ExecutorForTest
+from mars.tests import new_test_session
 
 
-class Test(TestBase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testShuffleExpr(self):
-        a = mt.random.rand(10, 3, chunk_size=2)
-        b = md.DataFrame(mt.random.rand(10, 5), chunk_size=2)
+def test_shuffle_expr():
+    a = mt.random.rand(10, 3, chunk_size=2)
+    b = md.DataFrame(mt.random.rand(10, 5), chunk_size=2)
 
-        new_a, new_b = shuffle(a, b, random_state=0)
+    new_a, new_b = shuffle(a, b, random_state=0)
 
-        self.assertIs(new_a.op, new_b.op)
-        self.assertIsInstance(new_a.op, LearnShuffle)
-        self.assertEqual(new_a.shape, a.shape)
-        self.assertEqual(new_b.shape, b.shape)
-        self.assertNotEqual(b.index_value.key, new_b.index_value.key)
+    assert new_a.op is new_b.op
+    assert isinstance(new_a.op, LearnShuffle)
+    assert new_a.shape == a.shape
+    assert new_b.shape == b.shape
+    assert b.index_value.key != new_b.index_value.key
 
-        new_a = new_a.tiles()
-        new_b = get_tiled(new_b)
+    new_a, new_b = tile(new_a, new_b)
 
-        self.assertEqual(len(new_a.chunks), 10)
-        self.assertTrue(np.isnan(new_a.chunks[0].shape[0]))
-        self.assertEqual(len(new_b.chunks), 15)
-        self.assertTrue(np.isnan(new_b.chunks[0].shape[0]))
-        self.assertNotEqual(new_b.chunks[0].index_value.key, new_b.chunks[1].index_value.key)
-        self.assertEqual(new_a.chunks[0].op.seeds, new_b.chunks[0].op.seeds)
+    assert len(new_a.chunks) == 10
+    assert np.isnan(new_a.chunks[0].shape[0])
+    assert len(new_b.chunks) == 15
+    assert np.isnan(new_b.chunks[0].shape[0])
+    assert new_b.chunks[0].index_value.key != new_b.chunks[1].index_value.key
+    assert new_a.chunks[0].op.seeds == new_b.chunks[0].op.seeds
 
-        c = mt.random.rand(10, 5, 3, chunk_size=2)
-        d = md.DataFrame(mt.random.rand(10, 5), chunk_size=(2, 5))
+    c = mt.random.rand(10, 5, 3, chunk_size=2)
+    d = md.DataFrame(mt.random.rand(10, 5), chunk_size=(2, 5))
 
-        new_c, new_d = shuffle(c, d, axes=(0, 1), random_state=0)
+    new_c, new_d = shuffle(c, d, axes=(0, 1), random_state=0)
 
-        self.assertIs(new_c.op, new_d.op)
-        self.assertIsInstance(new_c.op, LearnShuffle)
-        self.assertEqual(new_c.shape, c.shape)
-        self.assertEqual(new_d.shape, d.shape)
-        self.assertNotEqual(d.index_value.key, new_d.index_value.key)
-        self.assertFalse(np.all(new_d.dtypes.index[:-1] < new_d.dtypes.index[1:]))
-        pd.testing.assert_series_equal(d.dtypes, new_d.dtypes.sort_index())
+    assert new_c.op is new_d.op
+    assert isinstance(new_c.op, LearnShuffle)
+    assert new_c.shape == c.shape
+    assert new_d.shape == d.shape
+    assert d.index_value.key != new_d.index_value.key
+    assert not np.all(new_d.dtypes.index[:-1] < new_d.dtypes.index[1:])
+    pd.testing.assert_series_equal(d.dtypes, new_d.dtypes.sort_index())
 
-        new_c = new_c.tiles()
-        new_d = get_tiled(new_d)
+    new_c, new_d = tile(new_c, new_d)
 
-        self.assertEqual(len(new_c.chunks), 5 * 1 * 2)
-        self.assertTrue(np.isnan(new_c.chunks[0].shape[0]))
-        self.assertEqual(len(new_d.chunks), 5)
-        self.assertTrue(np.isnan(new_d.chunks[0].shape[0]))
-        self.assertEqual(new_d.chunks[0].shape[1], 5)
-        self.assertNotEqual(new_d.chunks[0].index_value.key, new_d.chunks[1].index_value.key)
-        pd.testing.assert_series_equal(new_d.chunks[0].dtypes.sort_index(), d.dtypes)
-        self.assertEqual(new_c.chunks[0].op.seeds, new_d.chunks[0].op.seeds)
-        self.assertEqual(len(new_c.chunks[0].op.seeds), 1)
-        self.assertEqual(new_c.chunks[0].op.reduce_sizes, (5,))
+    assert len(new_c.chunks) == 5 * 1 * 2
+    assert np.isnan(new_c.chunks[0].shape[0])
+    assert len(new_d.chunks) == 5
+    assert np.isnan(new_d.chunks[0].shape[0])
+    assert new_d.chunks[0].shape[1] == 5
+    assert new_d.chunks[0].index_value.key != new_d.chunks[1].index_value.key
+    pd.testing.assert_series_equal(new_d.chunks[0].dtypes.sort_index(), d.dtypes)
+    assert new_c.chunks[0].op.seeds == new_d.chunks[0].op.seeds
+    assert len(new_c.chunks[0].op.seeds) == 1
+    assert new_c.chunks[0].op.reduce_sizes == (5,)
 
-        with self.assertRaises(ValueError):
-            a = mt.random.rand(10, 5)
-            b = mt.random.rand(10, 4, 3)
-            shuffle(a, b, axes=1)
+    with pytest.raises(ValueError):
+        a = mt.random.rand(10, 5)
+        b = mt.random.rand(10, 4, 3)
+        shuffle(a, b, axes=1)
 
-        with self.assertRaises(TypeError):
-            shuffle(a, b, unknown_param=True)
+    with pytest.raises(TypeError):
+        shuffle(a, b, unknown_param=True)
 
-        self.assertIsInstance(shuffle(mt.random.rand(10, 5)), mt.Tensor)
+    assert isinstance(shuffle(mt.random.rand(10, 5)), mt.Tensor)
 
-    @staticmethod
-    def _sort(data, axes):
-        cur = data
-        for ax in axes:
-            if ax < data.ndim:
-                cur = np.sort(cur, axis=ax)
-        return cur
 
-    def testShuffleExecution(self):
-        # test consistency
-        s1 = np.arange(9).reshape(3, 3)
-        s2 = np.arange(1, 10).reshape(3, 3)
-        ts1 = mt.array(s1, chunk_size=2)
-        ts2 = mt.array(s2, chunk_size=2)
+def _sort(data, axes):
+    cur = data
+    for ax in axes:
+        if ax < data.ndim:
+            cur = np.sort(cur, axis=ax)
+    return cur
 
-        ret = shuffle(ts1, ts2, axes=[0, 1], random_state=0)
-        res1, res2 = self.executor.execute_tileables(ret)
 
-        # calc row index
-        s1_col_0 = s1[:, 0].tolist()
-        rs1_col_0 = [res1[:, i] for i in range(3) if set(s1_col_0) == set(res1[:, i])][0]
-        row_index = [s1_col_0.index(j) for j in rs1_col_0]
-        # calc col index
-        s1_row_0 = s1[0].tolist()
-        rs1_row_0 = [res1[i] for i in range(3) if set(s1_row_0) == set(res1[i])][0]
-        col_index = [s1_row_0.index(j) for j in rs1_row_0]
-        np.testing.assert_array_equal(res2, s2[row_index][:, col_index])
+def test_shuffle_execution(setup):
+    # test consistency
+    s1 = np.arange(9).reshape(3, 3)
+    s2 = np.arange(1, 10).reshape(3, 3)
+    ts1 = mt.array(s1, chunk_size=2)
+    ts2 = mt.array(s2, chunk_size=2)
 
-        # tensor + tensor
-        raw1 = np.random.rand(10, 15, 20)
-        t1 = mt.array(raw1, chunk_size=8)
-        raw2 = np.random.rand(10, 15, 20)
-        t2 = mt.array(raw2, chunk_size=5)
+    ret = shuffle(ts1, ts2, axes=[0, 1], random_state=0)
+    res1, res2 = ret.execute().fetch()
 
-        for axes in [(0,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]:
-            ret = shuffle(t1, t2, axes=axes, random_state=0)
-            res1, res2 = self.executor.execute_tileables(ret)
+    # calc row index
+    s1_col_0 = s1[:, 0].tolist()
+    rs1_col_0 = [res1[:, i] for i in range(3) if set(s1_col_0) == set(res1[:, i])][0]
+    row_index = [s1_col_0.index(j) for j in rs1_col_0]
+    # calc col index
+    s1_row_0 = s1[0].tolist()
+    rs1_row_0 = [res1[i] for i in range(3) if set(s1_row_0) == set(res1[i])][0]
+    col_index = [s1_row_0.index(j) for j in rs1_row_0]
+    np.testing.assert_array_equal(res2, s2[row_index][:, col_index])
 
-            self.assertEqual(res1.shape, raw1.shape)
-            self.assertEqual(res2.shape, raw2.shape)
-            np.testing.assert_array_equal(Test._sort(raw1, axes), Test._sort(res1, axes))
-            np.testing.assert_array_equal(Test._sort(raw2, axes), Test._sort(res2, axes))
+    # tensor + tensor
+    raw1 = np.random.rand(10, 15, 20)
+    t1 = mt.array(raw1, chunk_size=8)
+    raw2 = np.random.rand(10, 15, 20)
+    t2 = mt.array(raw2, chunk_size=5)
 
-        # tensor + tensor(more dimension)
-        raw3 = np.random.rand(10, 15)
-        t3 = mt.array(raw3, chunk_size=(8, 15))
-        raw4 = np.random.rand(10, 15, 20)
-        t4 = mt.array(raw4, chunk_size=(5, 15, 10))
+    for axes in [(0,), (0, 1), (0, 2), (1, 2), (0, 1, 2)]:
+        ret = shuffle(t1, t2, axes=axes, random_state=0)
+        res1, res2 = ret.execute().fetch()
 
-        for axes in [(1,), (0, 1), (1, 2)]:
-            ret = shuffle(t3, t4, axes=axes, random_state=0)
-            res3, res4 = self.executor.execute_tileables(ret)
+        assert res1.shape == raw1.shape
+        assert res2.shape == raw2.shape
+        np.testing.assert_array_equal(_sort(raw1, axes), _sort(res1, axes))
+        np.testing.assert_array_equal(_sort(raw2, axes), _sort(res2, axes))
 
-            self.assertEqual(res3.shape, raw3.shape)
-            self.assertEqual(res4.shape, raw4.shape)
-            np.testing.assert_array_equal(Test._sort(raw3, axes), Test._sort(res3, axes))
-            np.testing.assert_array_equal(Test._sort(raw4, axes), Test._sort(res4, axes))
+    # tensor + tensor(more dimension)
+    raw3 = np.random.rand(10, 15)
+    t3 = mt.array(raw3, chunk_size=(8, 15))
+    raw4 = np.random.rand(10, 15, 20)
+    t4 = mt.array(raw4, chunk_size=(5, 15, 10))
 
-        # tensor + dataframe + series
-        raw5 = np.random.rand(10, 15, 20)
-        t5 = mt.array(raw5, chunk_size=8)
-        raw6 = pd.DataFrame(np.random.rand(10, 15))
-        df = md.DataFrame(raw6, chunk_size=(8, 15))
-        raw7 = pd.Series(np.random.rand(10))
-        series = md.Series(raw7, chunk_size=8)
+    for axes in [(1,), (0, 1), (1, 2)]:
+        ret = shuffle(t3, t4, axes=axes, random_state=0)
+        res3, res4 = ret.execute().fetch()
 
-        for axes in [(0,), (1,), (0, 1), (1, 2), [0, 1, 2]]:
-            ret = shuffle(t5, df, series, axes=axes, random_state=0)
-            # skip check nsplits because it's updated
-            res5, res_df, res_series = self.executor.execute_tileables(ret, check_nsplits=False)
+        assert res3.shape == raw3.shape
+        assert res4.shape == raw4.shape
+        np.testing.assert_array_equal(_sort(raw3, axes), _sort(res3, axes))
+        np.testing.assert_array_equal(_sort(raw4, axes), _sort(res4, axes))
 
-            self.assertEqual(res5.shape, raw5.shape)
-            self.assertEqual(res_df.shape, df.shape)
-            self.assertEqual(res_series.shape, series.shape)
+    # tensor + dataframe + series
+    raw5 = np.random.rand(10, 15, 20)
+    t5 = mt.array(raw5, chunk_size=8)
+    raw6 = pd.DataFrame(np.random.rand(10, 15))
+    df = md.DataFrame(raw6, chunk_size=(8, 15))
+    raw7 = pd.Series(np.random.rand(10))
+    series = md.Series(raw7, chunk_size=8)
+
+    for axes in [(0,), (1,), (0, 1), (1, 2), [0, 1, 2]]:
+        ret = shuffle(t5, df, series, axes=axes, random_state=0)
+        # skip check nsplits because it's updated
+        res5, res_df, res_series = ret.execute(extra_config={'check_nsplits': False}).fetch(
+            extra_config={'check_nsplits': False})
+
+        assert res5.shape == raw5.shape
+        assert res_df.shape == df.shape
+        assert res_series.shape == series.shape

@@ -16,119 +16,127 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import pytest
 import scipy.sparse as sps
 
-from mars.config import option_context
-from mars.tests.core import ExecutorForTest
-from mars.learn.utils.checks import check_non_negative_then_return_value, assert_all_finite
 from mars import tensor as mt
 from mars import dataframe as md
+from mars.config import option_context
+from mars.tests import new_test_session
+from mars.learn.utils.checks import check_non_negative_then_return_value, assert_all_finite
 
 
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.executor = ExecutorForTest('numpy')
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
+    
+    
+def test_check_non_negative_then_return_value_execution(setup):
+    raw = np.random.randint(10, size=(10, 5))
+    c = mt.tensor(raw, chunk_size=(3, 2))
 
-    def testCheckNonNegativeThenReturnValueExecution(self):
-        raw = np.random.randint(10, size=(10, 5))
-        c = mt.tensor(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    result = r.execute().fetch()
+    np.testing.assert_array_equal(result, raw)
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        result = self.executor.execute_tileable(r, concat=True)[0]
-        np.testing.assert_array_equal(result, raw)
+    raw = raw.copy()
+    raw[1, 3] = -1
+    c = mt.tensor(raw, chunk_size=(3, 2))
 
-        raw = raw.copy()
-        raw[1, 3] = -1
-        c = mt.tensor(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    with pytest.raises(ValueError):
+        _ = r.execute().fetch()
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        with self.assertRaises(ValueError):
-            _ = self.executor.execute_tileable(r, concat=True)[0]
+    raw = sps.random(10, 5, density=.3, format='csr')
+    c = mt.tensor(raw, chunk_size=(3, 2))
 
-        raw = sps.random(10, 5, density=.3, format='csr')
-        c = mt.tensor(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    result = r.execute().fetch()
+    np.testing.assert_array_equal(result.toarray(), raw.A)
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        result = self.executor.execute_tileable(r, concat=True)[0]
-        np.testing.assert_array_equal(result.toarray(), raw.A)
+    raw = raw.copy()
+    raw[1, 3] = -1
+    c = mt.tensor(raw, chunk_size=(3, 2))
 
-        raw = raw.copy()
-        raw[1, 3] = -1
-        c = mt.tensor(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    with pytest.raises(ValueError):
+        _ = r.execute().fetch()
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        with self.assertRaises(ValueError):
-            _ = self.executor.execute_tileable(r, concat=True)[0]
+    raw = pd.DataFrame(np.random.rand(10, 4))
+    c = md.DataFrame(raw, chunk_size=(3, 2))
 
-        raw = pd.DataFrame(np.random.rand(10, 4))
-        c = md.DataFrame(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    result = r.execute().fetch()
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        result = self.executor.execute_tileable(r, concat=True)[0]
+    pd.testing.assert_frame_equal(result, raw)
 
-        pd.testing.assert_frame_equal(result, raw)
+    raw = raw.copy()
+    raw.iloc[1, 3] = -1
+    c = md.DataFrame(raw, chunk_size=(3, 2))
 
-        raw = raw.copy()
-        raw.iloc[1, 3] = -1
-        c = md.DataFrame(raw, chunk_size=(3, 2))
+    r = check_non_negative_then_return_value(c, c, 'sth')
+    with pytest.raises(ValueError):
+        _ = r.execute().fetch()
 
-        r = check_non_negative_then_return_value(c, c, 'sth')
-        with self.assertRaises(ValueError):
-            _ = self.executor.execute_tileable(r, concat=True)[0]
 
-    def testAssertAllFinite(self):
-        raw = np.array([2.3, np.inf], dtype=np.float64)
-        x = mt.tensor(raw)
+def test_assert_all_finite(setup):
+    raw = np.array([2.3, np.inf], dtype=np.float64)
+    x = mt.tensor(raw)
 
-        with self.assertRaises(ValueError):
-            r = assert_all_finite(x)
-            _ = self.executor.execute_tensor(r)
-
-        raw = np.array([2.3, np.nan], dtype=np.float64)
-        x = mt.tensor(raw)
-
-        with self.assertRaises(ValueError):
-            r = assert_all_finite(x, allow_nan=False)
-            _ = self.executor.execute_tensor(r)
-
-        max_float32 = np.finfo(np.float32).max
-        raw = [max_float32] * 2
-        self.assertFalse(np.isfinite(np.sum(raw)))
-        x = mt.tensor(raw)
-
+    with pytest.raises(ValueError):
         r = assert_all_finite(x)
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        self.assertTrue(result.item())
+        r.execute()
 
-        raw = np.array([np.nan, 'a'], dtype=object)
-        x = mt.tensor(raw)
+    raw = np.array([2.3, np.nan], dtype=np.float64)
+    x = mt.tensor(raw)
 
-        with self.assertRaises(ValueError):
-            r = assert_all_finite(x)
-            _ = self.executor.execute_tensor(r)
+    with pytest.raises(ValueError):
+        r = assert_all_finite(x, allow_nan=False)
+        r.execute()
 
-        raw = np.random.rand(10)
-        x = mt.tensor(raw, chunk_size=2)
+    max_float32 = np.finfo(np.float32).max
+    raw = [max_float32] * 2
+    assert not np.isfinite(np.sum(raw))
+    x = mt.tensor(raw)
 
-        r = assert_all_finite(x, check_only=False)
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        np.testing.assert_array_equal(result, raw)
+    r = assert_all_finite(x)
+    result = r.execute().fetch()
+    assert result is True
 
+    raw = np.array([np.nan, 'a'], dtype=object)
+    x = mt.tensor(raw)
+
+    with pytest.raises(ValueError):
         r = assert_all_finite(x)
-        result = self.executor.execute_tensor(r, concat=True)[0]
-        self.assertTrue(result.item())
+        r.execute()
 
-        with option_context() as options:
-            options.learn.assume_finite = True
+    raw = np.random.rand(10)
+    x = mt.tensor(raw, chunk_size=2)
 
-            self.assertIsNone(assert_all_finite(x))
-            self.assertIs(assert_all_finite(x, check_only=False), x)
+    r = assert_all_finite(x, check_only=False)
+    result = r.execute().fetch()
+    np.testing.assert_array_equal(result, raw)
 
-        # test sparse
-        s = sps.random(10, 3, density=0.1, format='csr',
-                       random_state=np.random.RandomState(0))
-        s[0, 2] = np.nan
+    r = assert_all_finite(x)
+    result = r.execute().fetch()
+    assert result is True
 
-        with self.assertRaises(ValueError):
-            r = assert_all_finite(s)
-            _ = self.executor.execute_tensor(r)
+    with option_context() as options:
+        options.learn.assume_finite = True
+
+        assert assert_all_finite(x) is None
+        assert assert_all_finite(x, check_only=False) is x
+
+    # test sparse
+    s = sps.random(10, 3, density=0.1, format='csr',
+                   random_state=np.random.RandomState(0))
+    s[0, 2] = np.nan
+
+    with pytest.raises(ValueError):
+        r = assert_all_finite(s)
+        r.execute()
