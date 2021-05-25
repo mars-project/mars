@@ -140,6 +140,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: generated/
 
+   Series.add_prefix
    Series.drop
    Series.drop_duplicates
    Series.duplicated

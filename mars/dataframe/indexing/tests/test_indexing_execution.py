@@ -1501,3 +1501,19 @@ class Test(TestBase):
         r2 = s[:].sample(frac=0.1, weights=weights, random_state=rs)
         pd.testing.assert_series_equal(self.executor.execute_dataframe(r1, concat=True)[0],
                                        self.executor.execute_dataframe(r2, concat=True)[0])
+
+    def testAddPrefix(self):
+        rs = np.random.RandomState(0)
+        raw = pd.DataFrame(rs.rand(10, 4), columns=['A', 'B', 'C', 'D'])
+        df = md.DataFrame(raw, chunk_size=3)
+
+        r = df.add_prefix('col_')
+        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                      raw.add_prefix('col_'))
+
+        raw = pd.Series(rs.rand(10), name='series')
+        series = md.Series(raw, chunk_size=3)
+
+        r = series.add_prefix('item_')
+        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                       raw.add_prefix('item_'))
