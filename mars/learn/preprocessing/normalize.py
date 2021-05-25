@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
     sklearn_normalize = None
 
 from ... import opcodes as OperandDef
-from ...core import recursive_tile
+from ...core import ExecutableTuple, recursive_tile
 from ...serialize import KeyField, StringField, Int32Field, BoolField
 from ...tensor.operands import TensorOperand, TensorOperandMixin
 from ...tensor.core import TensorOrder
@@ -100,7 +100,7 @@ class TensorNormalize(TensorOperand, TensorOperandMixin):
 
         if normed is None:
             return res
-        return res, normed
+        return ExecutableTuple([res, normed])
 
     @classmethod
     def _tile_one_chunk(cls, op):
