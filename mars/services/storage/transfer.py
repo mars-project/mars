@@ -99,18 +99,27 @@ class ReceiverManagerActor(mo.Actor):
         self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
             await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
 
+    async def create_writer(self,
+                            session_id: str,
+                            data_key: str,
+                            data_size: int,
+                            level: StorageLevel):
+        writer = await self._storage_handler.open_writer(session_id, data_key,
+                                                         data_size, level)
+        self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
+
     async def open_writer(self,
                           session_id: str,
                           data_key: str,
                           data_size: int,
                           level: StorageLevel):
+        create_task = asyncio.create_task(
+            self.create_writer(session_id, data_key, data_size, level))
         try:
-            writer = await self._storage_handler.open_writer(session_id, data_key,
-                                                             data_size, level)
-            self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
-        except asyncio.CancelledError:  # pragma: no cover
-            await self._storage_manager_ref.release_quota(
-                data_size, level)
+            await create_task
+        except asyncio.CancelledError:
+            create_task.cancel()
+            raise
 
     async def do_write(self, message: TransferMessage):
         writer, _, _ = self._key_to_writer_info[

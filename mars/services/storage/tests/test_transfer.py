@@ -122,6 +122,7 @@ async def test_simple_transfer(create_actors):
     pd.testing.assert_frame_equal(data2, get_data3)
 
 
+# test for cancelling happens when writing
 class MockReceiverManagerActor(ReceiverManagerActor):
     async def do_write(self, message):
         await asyncio.sleep(3)
@@ -135,16 +136,37 @@ class MockSenderManagerActor(SenderManagerActor):
             address=address, uid=MockReceiverManagerActor.default_uid())
 
 
+# test for cancelling happens when creating writer
+class MockReceiverManagerActor2(ReceiverManagerActor):
+    async def create_writer(self,
+                            session_id: str,
+                            data_key: str,
+                            data_size: int,
+                            level: StorageLevel):
+        await asyncio.sleep(3)
+        await super().create_writer(session_id, data_key, data_size, level)
+
+
+class MockSenderManagerActor2(SenderManagerActor):
+    @staticmethod
+    async def get_receiver_ref(address: str):
+        return await mo.actor_ref(
+            address=address, uid=MockReceiverManagerActor2.default_uid())
+
+
+@pytest.mark.parametrize('mock_sender, mock_receiver',
+                         [(MockSenderManagerActor, MockReceiverManagerActor),
+                          (MockSenderManagerActor2, MockReceiverManagerActor2)])
 @pytest.mark.asyncio
-async def test_cancel_transfer(create_actors):
+async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     worker_address_1, worker_address_2 = create_actors
 
     strategy = IdleLabel('io', 'mock_sender')
     await mo.create_actor(
-        MockSenderManagerActor, uid=MockSenderManagerActor.default_uid(),
+        mock_sender, uid=mock_sender.default_uid(),
         address=worker_address_1, allocate_strategy=strategy)
     await mo.create_actor(
-        MockReceiverManagerActor, uid=MockReceiverManagerActor.default_uid(),
+        mock_receiver, uid=mock_receiver.default_uid(),
         address=worker_address_2, allocate_strategy=strategy)
 
     data1 = np.random.rand(10, 10)
@@ -161,7 +183,7 @@ async def test_cancel_transfer(create_actors):
                                data1, StorageLevel.MEMORY)
 
     sender_actor = await mo.actor_ref(address=worker_address_1,
-                                      uid=MockSenderManagerActor.default_uid())
+                                      uid=mock_sender.default_uid())
     used_before = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
 
     send_task = asyncio.create_task(sender_actor.send_data(
@@ -169,10 +191,20 @@ async def test_cancel_transfer(create_actors):
 
     await asyncio.sleep(0.5)
     send_task.cancel()
-    await send_task
+
+    try:
+        await send_task
+    except asyncio.CancelledError:
+        pass
 
     used = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
     assert used == used_before
 
     with pytest.raises(DataNotExist):
         await storage_handler2.get('mock', 'data_key1')
+
+    send_task = asyncio.create_task(sender_actor.send_data(
+        'mock', 'data_key1', worker_address_2, StorageLevel.MEMORY))
+    await send_task
+    get_data = await storage_handler2.get('mock', 'data_key1')
+    np.testing.assert_array_equal(data1, get_data)
