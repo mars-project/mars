@@ -157,6 +157,7 @@ Reindexing / selection / label manipulation
    DataFrame.set_axis
    DataFrame.set_index
    DataFrame.tail
+   DataFrame.add_prefix
 
 .. _generated.dataframe.missing:
 

@@ -153,6 +153,7 @@ Reindexing / selection / label manipulation
    Series.sample
    Series.set_axis
    Series.tail
+   Series.add_prefix
 
 Missing data handling
 ---------------------
