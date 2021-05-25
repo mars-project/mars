@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Union
 
 from ....lib.aio import alru_cache
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from .core import AbstractSessionAPI
+
+logger = logging.getLogger(__name__)
 
 
 class SessionWebAPIHandler(MarsServiceWebAPIHandler):
@@ -38,8 +41,11 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
 
     @web_api('(?P<session_id>[^/]+)', method='put')
     async def create_session(self, session_id: str):
+        logger.warning(f'Getting oscar cluster api got for supervisor {self._supervisor_addr}')
         oscar_api = await self._get_oscar_session_api(session_id)
+        logger.warning(f'Oscar cluster api got for supervisor {self._supervisor_addr}')
         addr = await oscar_api.create_session(session_id)
+        logger.warning(f'Session created. ID: {session_id}')
         self.write(addr)
 
     @web_api('(?P<session_id>[^/]+)', method='delete')

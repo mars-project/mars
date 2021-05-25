@@ -145,13 +145,12 @@ class Test(unittest.TestCase):
 
     def testRunInKubernetes(self):
         with self._start_kube_cluster(
-            extra_labels={'mars-test/group': 'test-label-name'},
-            extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
-        ) as cluster_client:
+                extra_labels={'mars-test/group': 'test-label-name'},
+                extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'}):
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
-            r = cluster_client.session.run(c, timeout=600)
+            r = c.execute().fetch()
 
             expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
             assert_array_equal(r, expected.sum())

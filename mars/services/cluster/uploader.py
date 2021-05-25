@@ -56,6 +56,7 @@ class NodeInfoUploaderActor(mo.Actor):
             SupervisorLocatorActor.default_uid(), address=self.address)
         supervisor_addr = await locator_ref.get_supervisor(
             NodeInfoCollectorActor.default_uid())
+        logger.warning('Supervisor address: %s', supervisor_addr)
         return await mo.actor_ref(
             NodeInfoCollectorActor.default_uid(), address=supervisor_addr)
 
@@ -63,6 +64,9 @@ class NodeInfoUploaderActor(mo.Actor):
         self._upload_enabled = True
         # upload info in time to reduce latency
         await self.upload_node_info(False)
+
+    def is_node_ready(self):
+        return self._upload_enabled
 
     async def upload_node_info(self, call_next: bool = True):
         try:

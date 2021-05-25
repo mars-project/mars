@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import asyncio
+import logging
 from typing import List, Optional
 
 from mars import oscar as mo
 from mars.lib.uhashring import HashRing
 from mars.services.cluster.backends import AbstractClusterBackend, get_cluster_backend
 from mars.utils import extensible
+
+logger = logging.getLogger(__name__)
 
 
 class SupervisorLocatorActor(mo.Actor):
@@ -48,6 +51,7 @@ class SupervisorLocatorActor(mo.Actor):
         return self._supervisors
 
     def _set_supervisors(self, supervisors: List[str]):
+        logger.warning('SET SUPERVISORS: %r', supervisors)
         self._supervisors = supervisors
         self._hash_ring = HashRing(nodes=supervisors, hash_fn='ketama')
 
@@ -94,5 +98,26 @@ class SupervisorLocatorActor(mo.Actor):
                 return [self.get_supervisor(k) for k in keys]
             finally:
                 self._watch_events.remove(event)
+
+        return waiter()
+
+    async def wait_all_supervisors_ready(self):
+        expected_supervisors = await self._backend.get_expected_supervisors()
+        if set(self._supervisors or []) == set(expected_supervisors):
+            return
+
+        event = asyncio.Event()
+        self._watch_events.add(event)
+
+        async def waiter():
+            while True:
+                await event.wait()
+
+                expected_supervisors = await self._backend.get_expected_supervisors()
+                if set(self._supervisors) == set(expected_supervisors):
+                    self._watch_events.remove(event)
+                    return
+                else:
+                    event.clear()
 
         return waiter()

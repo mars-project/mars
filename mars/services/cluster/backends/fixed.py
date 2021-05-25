@@ -33,3 +33,6 @@ class FixedClusterBackend(AbstractClusterBackend):
 
     async def get_supervisors(self) -> List[str]:
         return self._supervisors
+
+    async def get_expected_supervisors(self) -> List[str]:
+        return self._supervisors

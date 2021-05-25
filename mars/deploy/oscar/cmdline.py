@@ -14,6 +14,7 @@
 
 import argparse
 import asyncio
+import faulthandler
 import glob
 import json
 import os
@@ -39,6 +40,8 @@ class OscarCommandRunner:
     _port_file_prefix = 'mars_service_process'
 
     def __init__(self):
+        faulthandler.enable()
+
         self.args = None
         self.ports = None
         self.config = {}
@@ -48,6 +51,7 @@ class OscarCommandRunner:
 
     def config_args(self, parser):
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
+        parser.add_argument('-H', '--host', help='host name of the service')
         parser.add_argument('-p', '--ports', help='ports of the service, must equal to'
                                                   'num of processes')
         parser.add_argument('-c', '--config', help='service configuration')
@@ -118,6 +122,13 @@ class OscarCommandRunner:
 
         if args.ports is not None:
             self.ports = [int(p) for p in args.ports.split(',')]
+
+        if args.endpoint is not None and args.host is not None:
+            raise ValueError('Cannot specify host and endpoint at the same time')
+        elif args.endpoint is None and len(self.ports or []) == 1:
+            default_host = os.environ.get('MARS_CONTAINER_IP', '0.0.0.0')
+            args.endpoint = (args.host or default_host) + f':{self.ports[0]}'
+            self.ports = None
 
         load_modules = []
         for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):

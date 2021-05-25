@@ -38,7 +38,8 @@ class WorkerCommandRunner(OscarCommandRunner):
     def parse_args(self, parser, argv, environ=None):
         args = super().parse_args(parser, argv, environ=environ)
 
-        if not args.supervisors:  # pragma: no cover
+        if self.config.get('cluster', {}).get('backend', 'fixed') == 'fixed' \
+                and not args.supervisors:  # pragma: no cover
             raise ValueError('--supervisors is needed to start Mars Worker')
 
         if args.endpoint is None:

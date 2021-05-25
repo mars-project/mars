@@ -202,6 +202,18 @@ class ClusterAPI:
         """
         await self._uploader_ref.mark_node_ready()
 
+    async def is_node_ready(self):
+        """
+        Check if node is ready
+        """
+        return await self._uploader_ref.is_node_ready()
+
+    async def wait_all_supervisors_ready(self):
+        """
+        Wait till all expected supervisors are ready
+        """
+        await self._locator_ref.wait_all_supervisors_ready()
+
 
 class MockClusterAPI(ClusterAPI):
     @classmethod

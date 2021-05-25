@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import asyncio
+import time
 
 import pytest
 
 import mars.oscar as mo
 from mars.services.cluster.locator import SupervisorLocatorActor
 from mars.tests.core import mock
+from mars.utils import Timer
 
 
 @pytest.fixture
@@ -31,7 +33,8 @@ async def actor_pool():
 
 async def _changing_watch_supervisors(self):
     idx = 0
-    while True:
+    t = time.time()
+    while time.time() - t < 1:
         try:
             await asyncio.sleep(0.1)
             # make sure supervisors are different every time
@@ -39,6 +42,7 @@ async def _changing_watch_supervisors(self):
             yield self._supervisors[idx:idx + 2]
         except asyncio.CancelledError:
             break
+    yield self._supervisors
 
 
 @pytest.mark.asyncio
@@ -54,6 +58,10 @@ async def test_fixed_locator(actor_pool):
     dbl_addrs = await locator_ref.get_supervisor('mock_name', 2)
     assert len(dbl_addrs) == 2
     assert all(addr in addresses for addr in dbl_addrs)
+
+    with Timer() as timer:
+        await locator_ref.wait_all_supervisors_ready()
+    assert timer.duration < 0.1
 
     await mo.destroy_actor(locator_ref)
 
@@ -72,5 +80,9 @@ async def test_changing_locator(actor_pool):
     assert (await locator_ref.watch_supervisors_by_keys(['mock_name']))[0] in addresses
 
     assert all(addr in addresses for addr in await locator_ref.watch_supervisors())
+
+    with Timer() as timer:
+        await locator_ref.wait_all_supervisors_ready()
+    assert timer.duration > 0.1
 
     await mo.destroy_actor(locator_ref)

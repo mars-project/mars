@@ -16,7 +16,7 @@
 import unittest
 
 from mars.deploy.kubernetes.config import NamespaceConfig, RoleConfig, \
-    RoleBindingConfig, ServiceConfig, EmptyDirVolumeConfig, MarsSchedulersConfig, \
+    RoleBindingConfig, ServiceConfig, EmptyDirVolumeConfig, MarsSupervisorsConfig, \
     MarsWorkersConfig, MarsWebsConfig
 
 
@@ -40,7 +40,7 @@ class Test(unittest.TestCase):
         self.assertEqual(service_config_dict['metadata']['name'], 'mars-test-service')
 
     def testSchedulerObject(self):
-        scheduler_config = MarsSchedulersConfig(
+        scheduler_config = MarsSupervisorsConfig(
             1, cpu=2, memory='10g', limit_resources=False, modules=['mars.test_mod'])
         scheduler_config.add_simple_envs(dict(TEST_ENV='test_val'))
 
