@@ -68,7 +68,10 @@ class PlasmaFileObject(BufferWrappedFileObject):
         return self._file.write(content)
 
     def _write_close(self):
-        self._plasma_client.seal(self._object_id)
+        try:
+            self._plasma_client.seal(self._object_id)
+        except plasma.PlasmaObjectNotFound:
+            pass
         self._file = None
 
     def _read_close(self):

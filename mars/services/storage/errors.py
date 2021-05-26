@@ -15,3 +15,7 @@
 
 class DataNotExist(Exception):
     pass
+
+
+class NoDataToSpill(Exception):
+    pass

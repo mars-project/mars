@@ -25,7 +25,7 @@ import scipy.sparse as sps
 
 from mars.lib.filesystem import LocalFileSystem
 from mars.lib.sparse import SparseNDArray, SparseMatrix
-from mars.serialization import serialize, deserialize
+from mars.serialization import serialize, deserialize, AioSerializer, AioDeserializer
 from mars.serialize import dataserializer
 from mars.storage.base import StorageLevel
 from mars.storage.cuda import CudaStorage
@@ -146,7 +146,7 @@ async def test_base_operations(ray_start_regular, storage_context):
 
     info1 = await storage.object_info(put_info1.object_id)
     # FIXME: remove os check when size issue fixed
-    assert info1.size == put_info1.size or not sys.platform.startswith('linux')
+    assert info1.size == put_info1.size
 
     data2 = pd.DataFrame({'col1': np.arange(10),
                           'col2': [f'str{i}' for i in range(10)],
@@ -157,7 +157,7 @@ async def test_base_operations(ray_start_regular, storage_context):
 
     info2 = await storage.object_info(put_info2.object_id)
     # FIXME: remove os check when size issue fixed
-    assert info2.size == put_info2.size or not sys.platform.startswith('linux')
+    assert info2.size == put_info2.size
 
     # FIXME: remove when list functionality is ready for vineyard.
     if not isinstance(storage, (VineyardStorage, SharedMemoryStorage, RayStorage)):
@@ -176,15 +176,14 @@ async def test_base_operations(ray_start_regular, storage_context):
 
     # test writer and reader
     t = np.random.random(10)
-    b = dataserializer.dumps(t)
-    async with await storage.open_writer(size=len(b)) as writer:
-        split = len(b) // 2
-        await writer.write(b[:split])
-        await writer.write(b[split:])
+    buffers = await AioSerializer(t).run()
+    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+    async with await storage.open_writer(size=size) as writer:
+        for buf in buffers:
+            await writer.write(buf)
 
     async with await storage.open_reader(writer.object_id) as reader:
-        content = await reader.read()
-        t2 = dataserializer.loads(content)
+        t2 = await AioDeserializer(reader).run()
 
     np.testing.assert_array_equal(t, t2)
 

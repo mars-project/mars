@@ -32,6 +32,7 @@ async def create_supervisor_actor_pool(
 async def create_worker_actor_pool(
         address: str,
         band_to_slots: Dict[str, int],
+        n_io_process: int = 1,
         subprocess_start_method: str = None,
         **kwargs):
     # TODO: support NUMA when ready
@@ -49,6 +50,7 @@ async def create_worker_actor_pool(
 
     return await mo.create_actor_pool(
         address, n_process=n_process,
+        n_io_process=n_io_process,
         labels=labels, envs=envs,
         subprocess_start_method=subprocess_start_method,
         **kwargs)

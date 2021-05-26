@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import sys
-from typing import Any, List, Type, TypeVar
+from typing import Any, List, Type, TypeVar, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
-from ..core import StorageHandlerActor, StorageManagerActor, DataInfo
+from ..core import StorageHandlerActor, StorageManagerActor, DataInfo, \
+    WrappedStorageFileObject
 from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
@@ -33,10 +34,10 @@ class StorageAPI(AbstractStorageAPI):
         self._session_id = session_id
 
     async def _init(self):
-        self._storage_handler_ref = await mo.actor_ref(
-            self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref = await mo.actor_ref(
-            self._address, StorageManagerActor.default_uid())
+        self._storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = \
+            await mo.actor_ref(self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
+            await mo.actor_ref(self._address, StorageManagerActor.default_uid())
 
     @classmethod
     @alru_cache
@@ -145,9 +146,11 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, data_key, error=error)
 
     @extensible
-    async def prefetch(self,
-                       data_key: str,
-                       level: StorageLevel = StorageLevel.MEMORY):
+    async def fetch(self,
+                    data_key: str,
+                    level: StorageLevel = StorageLevel.MEMORY,
+                    band_name: str = None,
+                    dest_address: str = None):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -157,10 +160,13 @@ class StorageAPI(AbstractStorageAPI):
             data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
-
+        band_name: BandType
+            put data on specific band
+        dest_address:
+            destination address for data
         """
-        await self._storage_manager_ref.prefetch(
-            self._session_id, data_key, level)
+        await self._storage_manager_ref.fetch(
+            self._session_id, data_key, level, band_name, dest_address)
 
     @extensible
     async def unpin(self, data_key: str):
@@ -194,7 +200,7 @@ class StorageAPI(AbstractStorageAPI):
     async def open_writer(self,
                           data_key: str,
                           size: int,
-                          level: StorageLevel) -> StorageFileObject:
+                          level: StorageLevel) -> WrappedStorageFileObject:
         """
         Return a file-like object for writing data.
 

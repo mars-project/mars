@@ -44,6 +44,8 @@ class RayActorBackend(BaseActorBackend):
         n_process: int = None,
         **kwargs
     ):
+        # pop `n_io_process` from kwargs as ray doesn't need this
+        kwargs.pop('n_io_process', 0)
         pg_name, bundle_index, _ = process_address_to_placement(address)
         pg = get_placement_group(pg_name) if pg_name else None
         if not pg:
