@@ -300,6 +300,7 @@ def _wrap_deprecates(fun):
     def _wrapped(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore', category=DeprecationWarning)
+            warnings.filterwarnings('ignore', category=FutureWarning)
             return fun(*args, **kwargs)
 
     if pyarrow is not None and LooseVersion(pyarrow.__version__) >= '2.0':
