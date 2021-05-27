@@ -79,6 +79,14 @@ class AbstractSession(ABC):
     def session_id(self):
         return self._session_id
 
+    def __eq__(self, other):
+        return isinstance(other, AbstractSession) and \
+               self._address == other.address and \
+               self._session_id == other.session_id
+
+    def __hash__(self):
+        return hash((AbstractSession, self._address, self._session_id))
+
     @property
     @abstractmethod
     def is_sync(self) -> bool:
@@ -334,7 +342,7 @@ def _wrap_in_thread(pool_or_func):
         return functools.partial(_wrap, executor=pool_or_func)
 
 
-@enter_mode(build=True)
+@enter_mode(build=True, kernel=True)
 def gen_submit_tileable_graph(
         session: "AbstractSession",
         result_tileables: List[TileableType]):
@@ -346,6 +354,9 @@ def gen_submit_tileable_graph(
     while q:
         tileable = q.pop()
         if tileable in tileable_to_copied:
+            if tileable in result_tileables:
+                result[result_tileables.index(tileable)] = \
+                    tileable_to_copied[tileable]
             continue
         outputs = tileable.op.outputs
         inputs = tileable.inputs
@@ -370,6 +381,11 @@ def gen_submit_tileable_graph(
         if all_inputs_processed:
             if isinstance(tileable.op, Fetch):
                 new_outputs = [tileable]
+            elif session in tileable._executed_sessions:
+                new_outputs = []
+                for out in outputs:
+                    fetch_out = tileable_to_copied.get(out, build_fetch(out).data)
+                    new_outputs.append(fetch_out)
             else:
                 new_outputs = [t.data for t
                                in copy_tileables(outputs, inputs=new_inputs)]
@@ -576,8 +592,11 @@ class SyncSession(AbstractSyncSession):
                 *tileables: TileableType,
                 **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
         wait = kwargs.get('wait', True)
+        to_execute_tileables = []
+        for t in (tileable,) + tileables:
+            to_execute_tileables.extend(t.op.outputs)
         execution_info = _loop.run_until_complete(_execute(
-            tileable, *tileables, session=self, **kwargs))
+            *to_execute_tileables, session=self, **kwargs))
         if wait:
             return tileable if len(tileables) == 0 else \
                 [tileable] + list(tileables)
