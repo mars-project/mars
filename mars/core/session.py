@@ -596,7 +596,7 @@ class SyncSession(AbstractSyncSession):
         for t in (tileable,) + tileables:
             to_execute_tileables.extend(t.op.outputs)
         execution_info = _loop.run_until_complete(_execute(
-            *to_execute_tileables, session=self, **kwargs))
+            *set(to_execute_tileables), session=self, **kwargs))
         if wait:
             return tileable if len(tileables) == 0 else \
                 [tileable] + list(tileables)
