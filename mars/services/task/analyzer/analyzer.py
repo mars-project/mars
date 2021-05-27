@@ -241,7 +241,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             if isinstance(chunk.op, Fetch):
                 fetch_removed_chunk_graph.remove_node(chunk)
 
-        start_ops = list(self._iter_start_ops(fetch_removed_chunk_graph))
+        start_ops = list(self._iter_start_ops(fetch_removed_chunk_graph)) \
+            if len(fetch_removed_chunk_graph) > 0 else []
 
         # assign start chunks
         assigner = self._graph_assigner_cls(
