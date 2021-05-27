@@ -131,7 +131,7 @@ class EuclideanDistances(PairwiseDistances):
         if YY is None:
             YY = row_norms(Y, squared=True)[np.newaxis, :]
 
-        X, Y = cls._adjust_chunk_sizes(X, Y, out)
+        X, Y = yield from cls._adjust_chunk_sizes(X, Y, out)
 
         distances = -2 * X.dot(Y.T)
         if distances.issparse():

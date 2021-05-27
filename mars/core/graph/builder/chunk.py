@@ -77,7 +77,7 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         return new_inputs
 
     def _if_add_node(self, node: EntityType, visited: Set):
-        return node not in visited or node not in self._processed_chunks
+        return node not in visited and node not in self._processed_chunks
 
     def _build(self) -> Iterable[Union[TileableGraph, ChunkGraph]]:
         tileable_graph = self._graph

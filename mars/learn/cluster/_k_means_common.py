@@ -16,11 +16,11 @@ import numpy as np
 
 from ... import opcodes
 from ... import tensor as mt
-from ...core import OutputType, TilesError
+from ...core import OutputType, recursive_tile
 from ...serialize import KeyField
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_fast import _inertia_dense, _inertia_sparse, merge_update_chunks
 
@@ -75,13 +75,15 @@ class KMeansInertia(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansInertia"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         x = op.x
-        x = x.rechunk({1: x.shape[1]})._inplace_tile()
-        sample_weight = op.sample_weight.rechunk({0: x.nsplits[0]})._inplace_tile()
-        labels = op.labels.rechunk({0: x.nsplits[0]})._inplace_tile()
+        x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
+        sample_weight = yield from recursive_tile(
+            op.sample_weight.rechunk({0: x.nsplits[0]}))
+        labels = yield from recursive_tile(op.labels.rechunk({0: x.nsplits[0]}))
         centers = op.centers
-        centers = centers.rechunk(centers.shape)._inplace_tile()
+        centers = yield from recursive_tile(centers.rechunk(centers.shape))
 
         out_chunks = []
         for x_chunk, sample_weight_chunk, labels_chunk \
@@ -104,7 +106,7 @@ class KMeansInertia(LearnOperand, LearnOperandMixin):
         params['chunks'] = out_chunks
         params['nsplits'] = ((1,) * x.chunk_shape[0],)
         out = new_op.new_tileable(op.inputs, kws=[params]).sum()
-        out._inplace_tile()
+        out = yield from recursive_tile(out)
         return [out]
 
     @classmethod
@@ -232,15 +234,15 @@ class KMeansRelocateEmptyClusters(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansRelocateEmptyClusters"):
-        empty_clusters = op.empty_clusters.rechunk(
-            op.empty_clusters.shape)._inplace_tile()
-        far_x = op.far_x.rechunk(op.far_x.shape)._inplace_tile()
-        far_labels = op.far_labels.rechunk(op.far_labels.shape)._inplace_tile()
-        far_sample_weight = op.far_sample_weights.rechunk(
-            op.far_sample_weights.shape)._inplace_tile()
-        centers_new = op.centers_new.rechunk(op.centers_new.shape)._inplace_tile()
-        weight_in_clusters = op.weight_in_clusters.rechunk(
-            op.weight_in_clusters.shape)._inplace_tile()
+        empty_clusters = yield from recursive_tile(op.empty_clusters.rechunk(
+            op.empty_clusters.shape))
+        far_x = yield from recursive_tile(op.far_x.rechunk(op.far_x.shape))
+        far_labels = yield from recursive_tile(op.far_labels.rechunk(op.far_labels.shape))
+        far_sample_weight = yield from recursive_tile(op.far_sample_weights.rechunk(
+            op.far_sample_weights.shape))
+        centers_new = yield from recursive_tile(op.centers_new.rechunk(op.centers_new.shape))
+        weight_in_clusters = yield from recursive_tile(op.weight_in_clusters.rechunk(
+            op.weight_in_clusters.shape))
 
         chunk_op = op.copy().reset_key()
         out_centers_new_chunk, out_weight_in_clusters_chunk = chunk_op.new_chunks(

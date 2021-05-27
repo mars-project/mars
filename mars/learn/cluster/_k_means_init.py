@@ -16,13 +16,13 @@ import numpy as np
 
 from ... import opcodes
 from ... import tensor as mt
-from ...core import OutputType, TilesError
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, Int32Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.random import RandomStateField
-from ...utils import recursive_tile, check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..metrics import euclidean_distances
 from ..operands import LearnOperand, LearnOperandMixin
 
@@ -167,7 +167,7 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
             assert len(op.x_squared_norms.chunks) == 1
             return cls._tile_one_chunk(op)
         else:
-            return cls._tile_k_init(op)
+            return (yield from cls._tile_k_init(op))
 
     @classmethod
     def _tile_k_init(cls, op: "KMeansPlusPlusInit"):
@@ -179,7 +179,7 @@ class KMeansPlusPlusInit(LearnOperand, LearnOperandMixin):
 
         centers = _kmeans_plus_plus_init(X, x_squared_norms, random_state,
                                          n_clusters, n_local_trials)
-        return recursive_tile(centers)
+        return (yield from recursive_tile(centers))
 
     @classmethod
     def execute(cls, ctx, op: "KMeansPlusPlusInit"):
@@ -310,7 +310,8 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansScalablePlusPlusInit"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         x = mt.tensor(op.x)
         x_squared_norms = mt.atleast_2d(op.x_squared_norms)
@@ -344,9 +345,9 @@ class KMeansScalablePlusPlusInit(LearnOperand, LearnOperandMixin):
             centers = mt.concatenate([centers, new_centers])
 
         # rechunk centers into one chunk
-        centers = recursive_tile(centers).rechunk(centers.shape)
+        centers = (yield from recursive_tile(centers)).rechunk(centers.shape)
 
-        distances = recursive_tile(euclidean_distances(
+        distances = yield from recursive_tile(euclidean_distances(
             x, centers, X_norm_squared=x_squared_norms, squared=True))
 
         map_index_to_chunks = {}

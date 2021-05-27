@@ -16,12 +16,12 @@ import numpy as np
 from sklearn.utils.extmath import row_norms as sklearn_row_norms
 
 from ... import opcodes
-from ...core import OutputType, TilesError
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, BoolField, Int32Field
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_common import _execute_merge_update, _relocate_empty_clusters
 from ._k_means_fast import update_center
@@ -116,13 +116,16 @@ class KMeansLloydUpdate(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansLloydUpdate"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         x = op.x
         if x.chunk_shape[1] != 1:  # pragma: no cover
-            x = x.rechunk({1: x.shape[1]})._inplace_tile()
-        sample_weight = op.sample_weight.rechunk({0: x.nsplits[0]})._inplace_tile()
-        x_squared_norms = op.x_squared_norms.rechunk({0: x.nsplits[0]})._inplace_tile()
-        labels = op.labels.rechunk({0: x.nsplits[0]})._inplace_tile()
+            x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
+        sample_weight = yield from recursive_tile(
+            op.sample_weight.rechunk({0: x.nsplits[0]}))
+        x_squared_norms = yield from recursive_tile(
+            op.x_squared_norms.rechunk({0: x.nsplits[0]}))
+        labels = yield from recursive_tile(op.labels.rechunk({0: x.nsplits[0]}))
         assert len(op.centers_old.chunks) == 1
 
         labels_chunks, centers_new_chunks, weight_in_clusters_chunks = [], [], []

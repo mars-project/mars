@@ -140,17 +140,18 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
                 expected_y_chunk_size = max(int(chunk_store_limit / itemsize / max_x_chunk_size), 1)
                 if max_x_chunk_size * expected_y_chunk_size * itemsize <= chunk_store_limit:
                     adjust_succeeded = True
-                    Y = Y.rechunk({0: expected_y_chunk_size})._inplace_tile()
+                    Y = yield from recursive_tile(
+                        Y.rechunk({0: expected_y_chunk_size}))
             else:
                 # x is smaller, rechunk x is more efficient
                 expected_x_chunk_size = max(int(chunk_store_limit / itemsize / max_y_chunk_size), 1)
                 if max_y_chunk_size * expected_x_chunk_size * itemsize <= chunk_store_limit:
                     adjust_succeeded = True
-                    X = X.rechunk({0: expected_x_chunk_size})._inplace_tile()
+                    X = yield from recursive_tile(X.rechunk({0: expected_x_chunk_size}))
 
             if not adjust_succeeded:
                 expected_chunk_size = max(int(np.sqrt(chunk_store_limit / itemsize)), 1)
-                X = X.rechunk({0: expected_chunk_size})._inplace_tile()
-                Y = Y.rechunk({0: expected_chunk_size})._inplace_tile()
+                X = yield from recursive_tile(X.rechunk({0: expected_chunk_size}))
+                Y = yield from recursive_tile(Y.rechunk({0: expected_chunk_size}))
 
         return X, Y
