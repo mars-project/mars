@@ -414,6 +414,11 @@ class SubtaskGraphScheduler:
                 self._band_schedules.append(
                     asyncio.create_task(self._schedule_band(band)))
 
+        if len(self._subtask_graph) == 0:
+            # no subtask to schedule, set status to done
+            self._schedule_done()
+            return
+
         # schedule independent subtasks
         indep_subtasks = list(self._subtask_graph.iter_indep())
         await self._schedule_subtasks(indep_subtasks)
@@ -782,7 +787,8 @@ class TaskManagerActor(mo.Actor):
         if error_or_cancelled:
             # if task failed or cancelled, roll back tileable incref
             await self._lifecycle_api.decref_tileables(
-                [r.key for r in result_tileables] + fetch_tileable_keys)
+                [r.key for r in result_tileables
+                 if not isinstance(r.op, Fetch)] + fetch_tileable_keys)
         else:
             # decref fetch tileables only
             await self._lifecycle_api.decref_tileables(fetch_tileable_keys)
@@ -905,6 +911,8 @@ class TaskManagerActor(mo.Actor):
                 # generating subtask
                 continue
             n_subtask = len(stage.subtask_graph)
+            if n_subtask == 0:
+                continue
             progress = sum(result.progress for result
                            in stage.subtask_results.values())
             subtask_progress += progress / n_subtask
