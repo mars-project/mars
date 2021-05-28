@@ -15,7 +15,6 @@
 import cloudpickle
 import numpy as np
 
-from ...context import RunningMode
 from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE, recursive_tile
 from ...serialize import KeyField, Int32Field, DictField, AnyField, BoolField
 from ...tensor.core import TensorOrder
@@ -185,8 +184,9 @@ class TreeQueryBase(LearnOperand, LearnOperandMixin):
         inp = op.input
 
         if inp.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([inp], TilesError)
-            inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
+            if has_unknown_shape(inp):
+                yield
+            inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         tree_chunk = None
         if isinstance(op.tree, OBJECT_TYPE):

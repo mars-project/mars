@@ -25,7 +25,6 @@ except ImportError:  # pragma: no cover
     faiss = None
 
 from ... import opcodes as OperandDef
-from ...context import RunningMode
 from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialize import KeyField, StringField, Int64Field, \
@@ -71,16 +70,12 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     _memory_require = Int8Field('memory_require',
                                 on_serialize=operator.attrgetter('value'),
                                 on_deserialize=MemoryRequirementGrade)
-    # for test purpose, could be 'object', 'filename' or 'bytes'
-    _return_index_type = StringField('return_index_type')
 
     def __init__(self, metric=None, faiss_index=None, n_sample=None, seed=None,
-                 same_distribution=None, return_index_type=None,
-                 accuracy=None, memory_require=None,
+                 same_distribution=None, accuracy=None, memory_require=None,
                  output_types=None, **kw):
         super().__init__(_metric=metric, _faiss_index=faiss_index, _n_sample=n_sample,
                          _seed=seed, _same_distribution=same_distribution,
-                         _return_index_type=return_index_type,
                          _accuracy=accuracy, _memory_require=memory_require,
                          _output_types=output_types, **kw)
         if self.output_types is None:
@@ -122,10 +117,6 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
     def memory_require(self):
         return self._memory_require
 
-    @property
-    def return_index_type(self):
-        return self._return_index_type
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         self._input = self._inputs[0]
@@ -153,7 +144,8 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
 
         if in_tensor.chunk_shape[1] != 1:
             # make sure axis 1 has 1 chunk
-            in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
+            in_tensor = yield from recursive_tile(
+                in_tensor.rechunk({1: in_tensor.shape[1]}))
         return (yield from cls._tile_chunks(op, in_tensor, faiss_index, n_sample))
 
     @classmethod
@@ -199,12 +191,11 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             sample_tensor = yield from recursive_tile(in_tensor[sampled_index])
             assert len(sample_tensor.chunks) == 1
             sample_chunk = sample_tensor.chunks[0]
-            train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric,
-                                              return_index_type=op.return_index_type)
+            train_op = FaissTrainSampledIndex(faiss_index=faiss_index, metric=op.metric)
             train_chunk = train_op.new_chunk([sample_chunk])
         elif op.gpu:  # pragma: no cover
             # if not need train, and on gpu, just merge data together to train
-            in_tensor = in_tensor.rechunk(in_tensor.shape)._inplace_tile()
+            in_tensor = yield from recursive_tile(in_tensor.rechunk(in_tensor.shape))
 
         # build index for each input chunk
         build_index_chunks = []
@@ -270,7 +261,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             else:
                 index.add(inp)
 
-            ctx[op.outputs[0].key] = _store_index(ctx, op, index, device_id)
+            ctx[op.outputs[0].key] = _store_index(index, device_id)
 
     @classmethod
     def _execute_map(cls, ctx, op):
@@ -282,13 +273,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             data = xp.ascontiguousarray(data)
             if index is not None:
                 # fetch the trained index
-                trained_index = _load_index(ctx, op, index, device_id)
-                return_index_type = _get_index_type(op.return_index_type, ctx)
-                if return_index_type == 'object':
-                    # clone a new one,
-                    # because faiss does not ensure thread-safe for operations that change index
-                    # https://github.com/facebookresearch/faiss/wiki/Threads-and-asynchronous-calls#thread-safety
-                    trained_index = faiss.clone_index(trained_index)
+                trained_index = _load_index(index, device_id)
             else:
                 trained_index = faiss.index_factory(data.shape[1], op.faiss_index,
                                                     op.faiss_metric_type)
@@ -315,7 +300,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             else:
                 trained_index.add(data)
 
-            ctx[op.outputs[0].key] = _store_index(ctx, op, trained_index, device_id)
+            ctx[op.outputs[0].key] = _store_index(trained_index, device_id)
 
     @classmethod
     def _execute_agg(cls, ctx, op):
@@ -328,7 +313,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             merged_index = None
             indexes = []
             for index in inputs:
-                index = _load_index(ctx, op, index, device_id)
+                index = _load_index(index, device_id)
                 indexes.append(index)
                 assert hasattr(index, 'merge_from')
                 if merged_index is None:
@@ -336,7 +321,7 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
                 else:
                     merged_index.merge_from(index, index.ntotal)
 
-            ctx[op.outputs[0].key] = _store_index(ctx, op, merged_index, device_id)
+            ctx[op.outputs[0].key] = _store_index(merged_index, device_id)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -349,66 +334,29 @@ class FaissBuildIndex(LearnOperand, LearnOperandMixin):
             cls._execute_one_chunk(ctx, op)
 
 
-def _get_index_type(return_index_type, ctx):
-    if return_index_type is None:  # pragma: no cover
-        if ctx.running_mode == RunningMode.local:
-            return_index_type = 'object'
-        elif ctx.running_mode == RunningMode.local_cluster:
-            return_index_type = 'filename'
-        else:
-            return_index_type = 'bytes'
-    return return_index_type
+def _store_index(index, device_id):
+    if device_id >= 0:  # pragma: no cover
+        # for gpu, convert to cpu first
+        index = faiss.index_gpu_to_cpu(index)
+    # distributed, save to file, then return in memory bytes
+    fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
+    faiss.write_index(index, fn)
+    try:
+        with open(fn, 'rb') as f:
+            return f.read()
+    finally:
+        os.remove(fn)
 
 
-def _store_index(ctx, op, index, device_id):
-    return_index_type = _get_index_type(op.return_index_type, ctx)
-
-    if return_index_type == 'object':
-        # no need to serialize
-        return index
-    elif return_index_type == 'filename':
-        # save to file, then return filename
-        if device_id >= 0:  # pragma: no cover
-            # for gpu, convert to cpu first
-            index = faiss.index_gpu_to_cpu(index)
-        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
-        faiss.write_index(index, fn)
-
-        atexit.register(lambda: os.remove(fn))
-
-        return fn
-    else:
-        if device_id >= 0:  # pragma: no cover
-            # for gpu, convert to cpu first
-            index = faiss.index_gpu_to_cpu(index)
-        # distributed, save to file, then return in memory bytes
-        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
-        faiss.write_index(index, fn)
-        try:
-            with open(fn, 'rb') as f:
-                return f.read()
-        finally:
-            os.remove(fn)
-
-
-def _load_index(ctx, op, index, device_id):
-    return_index_type = _get_index_type(op.return_index_type, ctx)
-
-    if return_index_type == 'object':
-        # local
-        return index
-    elif return_index_type == 'filename':
-        # local cluster
-        return faiss.read_index(index)
-    else:
-        # distributed
-        fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
-        with open(fn, 'wb') as f:
-            f.write(index)
-        index = faiss.read_index(f.name)
-        if device_id >= 0:  # pragma: no cover
-            index = _index_to_gpu(index, device_id)
-        return index
+def _load_index(index, device_id):
+    # distributed
+    fn = tempfile.mkstemp('.index', prefix='faiss_')[1]
+    with open(fn, 'wb') as f:
+        f.write(index)
+    index = faiss.read_index(f.name)
+    if device_id >= 0:  # pragma: no cover
+        index = _index_to_gpu(index, device_id)
+    return index
 
 
 def _index_to_gpu(index, device_id):  # pragma: no cover
@@ -437,13 +385,10 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
     _input = KeyField('input')
     _metric = StringField('metric')
     _faiss_index = StringField('faiss_index')
-    # for test purpose, could be 'object', 'filename' or 'bytes'
-    _return_index_type = StringField('return_index_type')
 
     def __init__(self, faiss_index=None, metric=None,
-                 return_index_type=None, output_types=None, **kw):
+                 output_types=None, **kw):
         super().__init__(_faiss_index=faiss_index, _metric=metric,
-                         _return_index_type=return_index_type,
                          _output_types=output_types, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.object]
@@ -463,10 +408,6 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
     @property
     def faiss_index(self):
         return self._faiss_index
-
-    @property
-    def return_index_type(self):
-        return self._return_index_type
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -488,8 +429,7 @@ class FaissTrainSampledIndex(LearnOperand, LearnOperandMixin):
             else:
                 index.train(data)
 
-            ctx[op.outputs[0].key] = _store_index(
-                ctx, op, index, device_id)
+            ctx[op.outputs[0].key] = _store_index(index, device_id)
 
 
 def _gen_index_string_and_sample_count(shape, n_sample, accuracy, memory_require, gpu=False, **kw):
@@ -602,15 +542,12 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     _n_neighbors = Int32Field('n_neighbors')
     _return_distance = BoolField('return_distance')
     _nprobe = Int64Field('nprobe')
-    # for test purpose, could be 'object', 'filename' or 'bytes'
-    _return_index_type = StringField('return_index_type')
 
     def __init__(self, faiss_index=None, metric=None, n_neighbors=None,
-                 return_distance=None, return_index_type=None,
-                 nprobe=None, output_types=None, gpu=None, **kw):
+                 return_distance=None, nprobe=None, output_types=None, gpu=None, **kw):
         super().__init__(_faiss_index=faiss_index, _n_neighbors=n_neighbors, _metric=metric,
                          _return_distance=return_distance, _output_types=output_types,
-                         _nprobe=nprobe, _return_index_type=return_index_type, _gpu=gpu, **kw)
+                         _nprobe=nprobe, _gpu=gpu, **kw)
         if self.output_types is None:
             self.output_types = [OutputType.tensor] * self.output_limit
 
@@ -637,10 +574,6 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     @property
     def return_distance(self):
         return self._return_distance
-
-    @property
-    def return_index_type(self):
-        return self._return_index_type
 
     @property
     def output_limit(self):
@@ -672,8 +605,10 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
         in_tensor = astensor(op.input)
 
         if in_tensor.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([in_tensor], TilesError)
-            in_tensor = in_tensor.rechunk({1: in_tensor.shape[1]})._inplace_tile()
+            if has_unknown_shape(in_tensor):
+                yield
+            in_tensor = yield from recursive_tile(
+                in_tensor.rechunk({1: in_tensor.shape[1]}))
 
         out_chunks = [], []
         for chunk in in_tensor.chunks:
@@ -714,7 +649,7 @@ class FaissQuery(LearnOperand, LearnOperandMixin):
     def execute(cls, ctx, op):
         (y,), device_id, xp = as_same_device(
             [ctx[op.input.key]], device=op.device, ret_extra=True)
-        indexes = [_load_index(ctx, op, ctx[index.key], device_id)
+        indexes = [_load_index(ctx[index.key], device_id)
                    for index in op.inputs[1:]]
 
         with device(device_id):
@@ -762,7 +697,6 @@ def faiss_query(faiss_index, data, n_neighbors, return_distance=True, nprobe=Non
     data = astensor(data)
     op = FaissQuery(faiss_index=faiss_index, n_neighbors=n_neighbors,
                     metric=faiss_index.op.metric, return_distance=return_distance,
-                    return_index_type=faiss_index.op.return_index_type,
                     nprobe=nprobe, gpu=data.op.gpu)
     ret = op(data)
     if not return_distance:
