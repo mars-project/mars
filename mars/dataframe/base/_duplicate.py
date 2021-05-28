@@ -17,7 +17,6 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ...config import options
-from ...context import get_context, RunningMode
 from ...core import OutputType, TilesError, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import AnyField, Int32Field, StringField, KeyField
@@ -276,10 +275,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             inp = yield from recursive_tile(
                 inp.rechunk({1: inp.shape[1]}))
 
-        ctx = get_context()
-        default_tile = cls._tile_shuffle \
-            if getattr(ctx, 'running_mode', None) == RunningMode.distributed \
-            else cls._tile_tree
+        default_tile = cls._tile_tree
 
         if op.method == 'auto':
             # if method == 'auto', pick appropriate method

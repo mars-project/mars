@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import TilesError, recursive_tile
-from ...custom_log import redirect_custom_log
+from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import KeyField, FunctionField, \
     TupleField, DictField, BoolField
 from ...utils import enter_current_session, check_chunks_unknown_shape, quiet_stdio

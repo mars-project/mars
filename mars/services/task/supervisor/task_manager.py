@@ -25,7 +25,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple, Type, Optional
 from .... import oscar as mo
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
-    Tileable, TileableType, ChunkType
+    Tileable, TileableType, ChunkType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
 from ....dataframe.core import DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
@@ -96,6 +96,13 @@ class TaskProcessor:
                 optimize_tileable_graph(self.tileable_graph)
         return self.tileable_graph
 
+    def _fill_fetch_tileable_with_chunks(self, tileable_graph: TileableGraph):
+        for t in tileable_graph:
+            if isinstance(t.op, Fetch):
+                tiled = self.tile_context[t]
+                t._chunks = tiled.chunks
+                t._nsplits = tiled.nsplits
+
     def tile(self, tileable_graph: TileableGraph) -> Iterable[ChunkGraph]:
         """
         Generate chunk graphs
@@ -105,6 +112,7 @@ class TaskProcessor:
         chunk_graph_generator: Generator
              Chunk graphs.
         """
+        self._fill_fetch_tileable_with_chunks(tileable_graph)
         # iterative chunk graph builder
         chunk_graph_builder = ChunkGraphBuilder(
             tileable_graph, fuse_enabled=self._task.fuse_enabled,
@@ -566,6 +574,7 @@ class TaskManagerActor(mo.Actor):
     def gen_uid(session_id):
         return f'{session_id}_task_manager'
 
+    @enter_mode(kernel=True)
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,

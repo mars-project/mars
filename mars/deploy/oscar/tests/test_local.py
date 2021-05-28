@@ -164,8 +164,6 @@ def test_no_default_session():
 
 
 def test_decref():
-    import gc
-
     session = new_session(n_cpu=2, default=True)
 
     with session:

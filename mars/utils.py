@@ -23,6 +23,7 @@ import io
 import itertools
 import logging
 import numbers
+import operator
 import os
 import pickle
 import pkgutil
@@ -648,7 +649,7 @@ def merge_chunks(chunk_results):
     from .lib.sparse import SparseNDArray
     from .tensor.array_utils import get_array_module
 
-    chunk_results = sorted(chunk_results, key=lambda x: x[0])
+    chunk_results = sorted(chunk_results, key=operator.itemgetter(0))
     v = chunk_results[0][1]
     if len(chunk_results) == 1 and not (chunk_results[0][0]):
         return v
@@ -699,6 +700,8 @@ def merge_chunks(chunk_results):
                                  group_keys=v.group_keys, squeeze=v.squeeze,
                                  observed=v.observed, mutated=v.mutated)
         return grouped.groupby_obj
+    elif isinstance(v, bytes):
+        return [r[1] for r in chunk_results]
     else:
         result = None
         for cr in chunk_results:

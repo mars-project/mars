@@ -14,10 +14,9 @@
 
 import asyncio
 import functools
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Optional
 
 from .... import oscar as mo
-from ....lib.aio.lru import alru_cache
 from ...cluster import ClusterAPI
 
 
@@ -98,16 +97,27 @@ class SessionManagerActor(mo.Actor):
 
 
 class SessionActor(mo.Actor):
-    def __init__(self, session_id: str):
+    def __init__(self,
+                 session_id: str):
         self._session_id = session_id
 
         self._meta_api = None
         self._lifecycle_api = None
         self._task_api = None
 
+        self._custom_log_meta_ref = None
+
     @classmethod
     def gen_uid(cls, session_id):
         return f'{session_id}_session_actor'
+
+    async def __post_create__(self):
+        from .custom_log import CustomLogMetaActor
+
+        self._custom_log_meta_ref = await mo.create_actor(
+            CustomLogMetaActor, self._session_id,
+            address=self.address,
+            uid=CustomLogMetaActor.gen_uid(self._session_id))
 
     async def create_services(self):
         from ...meta import MetaAPI
@@ -147,6 +157,8 @@ class SessionActor(mo.Actor):
             await TaskAPI.destroy_session(self._session_id, self.address)
             await LifecycleAPI.destroy_session(self._session_id, self.address)
             await MetaAPI.destroy_session(self._session_id, self.address)
+
+            await mo.destroy_actor(self._custom_log_meta_ref)
 
 
 class RemoteObjectActor(mo.Actor):

@@ -17,7 +17,8 @@ from typing import Any, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from .supervisor import SessionManagerActor, SessionActor
+from .supervisor import CustomLogMetaActor, SessionManagerActor, SessionActor
+from .worker import CustomLogActor
 
 
 class AbstractSessionAPI(ABC):
@@ -148,6 +149,30 @@ class SessionAPI(AbstractSessionAPI):
                                     name: str):
         session = await self._get_session_ref(session_id)
         return await session.destroy_remote_object(name)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_custom_log_meta_ref(self, session_id: str) -> \
+            Union[CustomLogMetaActor, mo.ActorRef]:
+        session = await self._get_session_ref(session_id)
+        return await mo.actor_ref(
+            mo.ActorRef(session.address,
+                        CustomLogMetaActor.gen_uid(session_id)))
+
+    async def register_custom_log_path(self,
+                                       session_id: str,
+                                       tileable_op_key: str,
+                                       chunk_op_key: str,
+                                       worker_address: str,
+                                       log_path: str):
+        custom_log_meta_ref = await self._get_custom_log_meta_ref(session_id)
+        return await custom_log_meta_ref.register_custom_log_path(
+            tileable_op_key, chunk_op_key, worker_address, log_path)
+
+    @classmethod
+    async def new_custom_log_dir(cls, address: str, session_id: str):
+        ref = await mo.actor_ref(mo.ActorRef(
+            address, CustomLogActor.default_uid()))
+        return await ref.new_custom_log_dir(session_id)
 
 
 class MockSessionAPI(SessionAPI):

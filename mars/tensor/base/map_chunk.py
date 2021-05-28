@@ -16,7 +16,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
-from ...custom_log import redirect_custom_log
+from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import FunctionField, BoolField, \
     TupleField, DictField
 from ...utils import enter_current_session, quiet_stdio, \

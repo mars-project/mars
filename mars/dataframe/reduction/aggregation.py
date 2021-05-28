@@ -25,8 +25,8 @@ import pandas as pd
 from ... import opcodes, tensor as mars_tensor
 from ...config import options
 from ...core import OutputType, ENTITY_TYPE, enter_mode, recursive_tile
+from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperandStage
-from ...custom_log import redirect_custom_log
 from ...serialize import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_current_session
 from ..core import INDEX_CHUNK_TYPE

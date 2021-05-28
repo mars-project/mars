@@ -20,10 +20,9 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...context import get_context, RunningMode
+from ...core.custom_log import redirect_custom_log
 from ...core import ENTITY_TYPE, OutputType
 from ...core.operand import OperandStage
-from ...custom_log import redirect_custom_log
 from ...serialize import Int32Field, AnyField, BoolField, StringField, ListField, DictField
 from ...utils import enter_current_session, lazy_import
 from ..core import GROUPBY_TYPE
@@ -430,11 +429,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op: "DataFrameGroupByAgg"):
         if op.method == 'auto':
-            ctx = get_context()
-            if ctx is not None and ctx.running_mode == RunningMode.distributed:  # pragma: no cover
-                return cls._tile_with_shuffle(op)
-            else:
-                return cls._tile_with_tree(op)
+            return cls._tile_with_tree(op)
         if op.method == 'shuffle':
             return cls._tile_with_shuffle(op)
         elif op.method == 'tree':

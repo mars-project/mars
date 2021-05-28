@@ -12,5 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from typing import Dict
+
+from .... import oscar as mo
 from .custom_log import CustomLogActor
-from .service import start
+
+
+async def start(config: Dict, address: str):
+    """
+    Start meta service on worker.
+
+    Parameters
+    ----------
+    config : dict
+        service config.
+        {
+            "session" : {
+            }
+        }
+    address : str
+        Actor pool address.
+    """
+    session_config = config.get('session', dict())
+    custom_log_dir = session_config.get('custom_log_dir')
+    await mo.create_actor(CustomLogActor, custom_log_dir,
+                          address=address, uid=CustomLogActor.default_uid())

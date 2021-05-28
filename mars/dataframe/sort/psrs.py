@@ -18,7 +18,6 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...context import RunningMode
 from ...core.operand import OperandStage, MapReduceOperand
 from ...utils import lazy_import
 from ...serialize import Int32Field, ListField, StringField, BoolField
@@ -370,8 +369,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
             ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
         by = op.by
-        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0'))) \
-            or getattr(ctx, 'running_mode', None) == RunningMode.distributed
+        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0')))
         if add_distinct_col and isinstance(a, xdf.DataFrame) and op.sort_type == 'sort_values':
             # when running under distributed mode, we introduce an extra column
             # to make sure pivots are distinct
@@ -609,8 +607,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):
         out_chunk = op.outputs[0]
-        raw_inputs = list(op.iter_mapper_data(
-            ctx, pop=getattr(ctx, 'running_mode', None) == RunningMode.distributed))
+        raw_inputs = list(op.iter_mapper_data(ctx, pop=False))
 
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         if xdf is pd:

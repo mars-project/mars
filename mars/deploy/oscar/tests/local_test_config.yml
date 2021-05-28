@@ -10,6 +10,8 @@ cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
+session:
+  custom_log_dir: auto
 storage:
   backends: [plasma]
   plasma:

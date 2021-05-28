@@ -20,7 +20,7 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
-from ...custom_log import redirect_custom_log
+from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
 from ...utils import enter_current_session, quiet_stdio

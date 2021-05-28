@@ -26,7 +26,7 @@ from mars.core import TileableGraph, TileableGraphBuilder
 
 
 @pytest.mark.asyncio
-async def test_meta_service():
+async def test_session_service():
     pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
 
     async with pool:

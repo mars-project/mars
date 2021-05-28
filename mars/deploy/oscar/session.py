@@ -120,22 +120,22 @@ class Session(AbstractAsyncSession):
                                  tileables: list,
                                  task_id: str,
                                  progress: Progress):
-        # wait for task to finish
-        while True:
-            task_result: TaskResult = await self._task_api.wait_task(
-                task_id, timeout=0.5)
-            if task_result is None:
-                # not finished, set progress
-                progress.value = await self._task_api.get_task_progress(task_id)
-            else:
-                progress.value = 1.0
-                break
-        if task_result.error:
-            raise task_result.error.with_traceback(task_result.traceback)
-        fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
-        assert len(tileables) == len(fetch_tileables)
+        with enter_mode(build=True, kernel=True):
+            # wait for task to finish
+            while True:
+                task_result: TaskResult = await self._task_api.wait_task(
+                    task_id, timeout=0.5)
+                if task_result is None:
+                    # not finished, set progress
+                    progress.value = await self._task_api.get_task_progress(task_id)
+                else:
+                    progress.value = 1.0
+                    break
+            if task_result.error:
+                raise task_result.error.with_traceback(task_result.traceback)
+            fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
+            assert len(tileables) == len(fetch_tileables)
 
-        with enter_mode(build=True):
             for tileable, fetch_tileable in zip(tileables, fetch_tileables):
                 self._tileable_to_fetch[tileable] = fetch_tileable
                 # update meta, e.g. unknown shape

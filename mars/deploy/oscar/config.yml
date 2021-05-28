@@ -9,8 +9,10 @@ cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
+session:
+  custom_log_dir: null
 storage:
-  backends: [plasma]
+  backends: [shared_memory]
   plasma:
     store_memory: 20%
 meta:

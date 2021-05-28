@@ -200,7 +200,7 @@ class TileableOperandMixin:
 
         tileables = self._new_tileables(inputs, kws=kws, **kw)
         if is_eager_mode():
-            ExecutableTuple(tileables).execute(fetch=False)
+            ExecutableTuple(tileables).execute()
         return tileables
 
     def new_tileable(self, inputs, kws=None, **kw) -> TileableType:

@@ -20,19 +20,12 @@ from ..mode import enter_mode
 
 class _TileableSession:
     def __init__(self, tileable, session):
-        from ..session import AbstractSession, SyncSession
-
-        if isinstance(session, AbstractSession):
-            key = tileable.key
-        else:
-            # legacy decref
-            key = tileable.key, tileable.id
+        key = tileable.key
 
         def cb(_, sess=ref(session)):
             s = sess()
             if s:
-                if isinstance(s, AbstractSession):
-                    s = s.to_sync()
+                s = s.to_sync()
                 try:
                     s.decref(key)
                 except RuntimeError:
@@ -59,50 +52,18 @@ _cleaner = _TileableDataCleaner()
 
 
 def _get_session(executable, session=None):
-    from ...session import Session as LagacySession
     from ..session import get_default_session
 
     if session is None and len(executable._executed_sessions) > 0:
         session = executable._executed_sessions[-1]
     if session is None:
         session = get_default_session()
-    # TODO(qinxuye): remove when old session removed
-    if session is None:
-        session = LagacySession.default
 
     return session
 
 
 class _ExecutableMixin:
     __slots__ = ()
-
-    def _legacy_execute(self, session=None, **kw):
-        from ...session import Session
-
-        if 'fetch' in kw and kw['fetch']:
-            raise ValueError('Does not support fetch=True for `.execute()`,'
-                             'please use `.fetch()` instead')
-        else:
-            kw['fetch'] = False
-
-        wait = kw.pop('wait', True)
-
-        if session is None:
-            session = Session.default_or_local()
-
-        def run():
-            # no more fetch, thus just fire run
-            session.run(self, **kw)
-            # return Tileable or ExecutableTuple itself
-            return self
-
-        if wait:
-            return run()
-        else:
-            # leverage ThreadPoolExecutor to submit task,
-            # return a concurrent.future.Future
-            thread_executor = ThreadPoolExecutor(1)
-            return thread_executor.submit(run)
 
     def _execute(self, session=None, **kw):
         from ..session import execute
@@ -111,15 +72,11 @@ class _ExecutableMixin:
         return execute(self, session=session, wait=wait, **kw)
 
     def execute(self, session=None, **kw):
-        from ..session import AbstractSession
+        from ..session import execute
 
         session = _get_session(self, session)
-        if isinstance(session, AbstractSession):
-            # new-style execute
-            return self._execute(session=session, **kw)
-        else:
-            # old-style execute
-            return self._legacy_execute(session=session, **kw)
+        wait = kw.pop('wait', True)
+        return execute(self, session=session, wait=wait, **kw)
 
     def _check_session(self, session, action):
         if session is None:
@@ -160,14 +117,7 @@ class _ExecuteAndFetchMixin:
     __slots__ = ()
 
     def _execute_and_fetch(self, session=None, **kw):
-        from ..session import AbstractSession
         session = _get_session(self, session)
-        if isinstance(session, AbstractSession):
-            return self.execute(session=session, **kw).fetch(session=session)
-        else:
-            return self._legacy_execute_and_fetch(session=session, **kw)
-
-    def _legacy_execute_and_fetch(self, session=None, **kw):
         wait = kw.pop('wait', True)
 
         def run():

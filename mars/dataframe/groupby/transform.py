@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...custom_log import redirect_custom_log
+from ...core.custom_log import redirect_custom_log
 from ...serialize import BoolField, TupleField, DictField, AnyField
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand

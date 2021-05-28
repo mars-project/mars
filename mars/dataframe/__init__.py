@@ -23,7 +23,6 @@ from .base.qcut import qcut
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_index import series_from_index
 from .datasource.from_records import from_records
-from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet
