@@ -17,7 +17,7 @@ import multiprocessing
 import pandas as pd
 
 from .... import remote as mr
-from ....session import Session
+from ....core.session import get_default_session
 from ....utils import ceildiv
 
 try:
@@ -34,7 +34,7 @@ except ImportError:
 
 class MarsDistributor(DistributorBaseClass):
     def __init__(self, session=None):
-        self._session = session or Session.default_or_local()
+        self._session = session or get_default_session()
 
     def calculate_best_chunk_size(self, data_length):
         if not hasattr(self._session, 'get_workers_meta'):

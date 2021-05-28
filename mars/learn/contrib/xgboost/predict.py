@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes as OperandDef
-from ....core import TilesError
+from ....core import TilesError, recursive_tile
 from ....serialize import KeyField, BytesField, DictField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
@@ -87,7 +87,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
         data = op.data
         if data.chunk_shape[1] > 1:
             check_chunks_unknown_shape([op.data], TilesError)
-            data = data.rechunk({1: op.data.shape[1]})._inplace_tile()
+            data = yield from recursive_tile(data.rechunk({1: op.data.shape[1]}))
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()
             chunk_index = (in_chunk.index[0],)

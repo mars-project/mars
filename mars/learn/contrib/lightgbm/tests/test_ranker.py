@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 import mars.tensor as mt
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.config import option_context
+from mars.tests import new_test_session
 
 try:
     import lightgbm
@@ -25,55 +25,55 @@ except ImportError:
     lightgbm = LGBMRanker = None
 
 
-@unittest.skipIf(lightgbm is None, 'LightGBM not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        n_rows = 1000
-        n_columns = 10
-        chunk_size = 20
-        rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    n_rows = 1000
+    n_columns = 10
+    chunk_size = 200
+    rs = mt.random.RandomState(0)
+    X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+    y = rs.rand(n_rows, chunk_size=chunk_size)
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+    with option_context({'show_progress': False}):
+        try:
+            yield X, y
+        finally:
+            sess.stop_server()
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testLocalRanker(self):
-        X, y = self.X, self.y
-        y = (y * 10).astype(mt.int32)
-        ranker = LGBMRanker(n_estimators=2)
-        ranker.fit(X, y, group=[X.shape[0]], verbose=True)
-        prediction = ranker.predict(X)
+@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+def test_local_ranker(setup):
+    X, y = setup
+    y = (y * 10).astype(mt.int32)
+    ranker = LGBMRanker(n_estimators=2)
+    ranker.fit(X, y, group=[X.shape[0]], verbose=True)
+    prediction = ranker.predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)
 
-        self.assertIsInstance(prediction, mt.Tensor)
-        result = prediction.fetch()
-        self.assertEqual(prediction.dtype, result.dtype)
+    assert isinstance(prediction, mt.Tensor)
+    result = prediction.fetch()
+    assert prediction.dtype == result.dtype
 
-        # test weight
-        weight = mt.random.rand(X.shape[0])
-        ranker = LGBMRanker(verbosity=1, n_estimators=2)
-        ranker.fit(X, y, group=[X.shape[0]], sample_weight=weight)
-        prediction = ranker.predict(X)
+    # test weight
+    weight = mt.random.rand(X.shape[0])
+    ranker = LGBMRanker(verbosity=1, n_estimators=2)
+    ranker.fit(X, y, group=[X.shape[0]], sample_weight=weight)
+    prediction = ranker.predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
-        result = prediction.fetch()
-        self.assertEqual(prediction.dtype, result.dtype)
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)
+    result = prediction.fetch()
+    assert prediction.dtype == result.dtype
 
-        # test local model
-        X_np = X.execute(session=self.session).fetch(session=self.session)
-        y_np = y.execute(session=self.session).fetch(session=self.session)
-        raw_ranker = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
-        raw_ranker.fit(X_np, y_np, group=[X.shape[0]])
-        prediction = LGBMRanker(raw_ranker).predict(X)
+    # test local model
+    X_np = X.execute().fetch()
+    y_np = y.execute().fetch()
+    raw_ranker = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
+    raw_ranker.fit(X_np, y_np, group=[X.shape[0]])
+    prediction = LGBMRanker(raw_ranker).predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)

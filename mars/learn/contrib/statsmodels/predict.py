@@ -17,9 +17,9 @@ import pickle  # nosec  # pylint: disable=import_pickle
 import numpy as np
 
 from .... import opcodes
+from ....core import OutputType, recursive_tile
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....serialize import BytesField, DictField, TupleField
-from ....core import OutputType
 from ...operands import LearnOperand, LearnOperandMixin
 
 
@@ -69,7 +69,7 @@ class StatsModelsPredict(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
 
         if exog.ndim > 1 and exog.chunk_shape[1] > 1:
-            exog = exog.rechunk({1: exog.shape[1]})._inplace_tile()
+            exog = yield from recursive_tile(exog.rechunk({1: exog.shape[1]}))
 
         chunks = []
         for in_chunk in exog.chunks:

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 from .run_script import run_pytorch_script
-from .dataset import MarsDataset
-from .sampler import MarsDistributedSampler, MarsRandomSampler
 
 
 def register_op():

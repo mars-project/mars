@@ -25,7 +25,7 @@ from typing import Any, Dict
 import numpy as np
 
 from ..core import Entity, HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
-    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode
+    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode, recursive_tile
 from ..core.entity.utils import refresh_tileable_shape
 from ..serialization.serializables import Serializable, FieldTypes, \
     DataTypeField, ListField, TupleField, BoolField, StringField, AnyField, ReferenceField
@@ -807,7 +807,8 @@ class MutableTensor(Entity):
         output_shape = calc_shape(self.shape, tensor_index)
 
         index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=list(tensor_index))
-        index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape))._inplace_tile()
+        index_tensor = yield from recursive_tile(
+            index_tensor_op.new_tensor([self], tuple(output_shape)))
         output_chunks = index_tensor.chunks
 
         is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields

@@ -24,7 +24,7 @@ from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
 from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
-from ...utils import check_chunks_unknown_shape
+from ...utils import check_chunks_unknown_shape, has_unknown_shape
 from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
@@ -282,6 +282,9 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
         out_df = op.outputs[0]
         in_tensor = op.input
         out_chunks = []
+        if out_df.index_value.has_value() and has_unknown_shape(in_tensor):
+            yield
+
         nsplits = in_tensor.nsplits
 
         if op.index is not None:

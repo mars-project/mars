@@ -15,7 +15,7 @@
 import concurrent.futures
 
 from .... import remote
-from ....session import Session, new_session
+from ....core.session import get_default_session, new_session
 
 try:
     from joblib.parallel import ParallelBackendBase, AutoBatchingMixin, \
@@ -38,7 +38,7 @@ class MarsDistributedBackend(AutoBatchingMixin, ParallelBackendBase):
             if service is not None:
                 self.session = new_session(service, backend=backend)
             else:
-                self.session = Session.default_or_local()
+                self.session = get_default_session()
         else:
             self.session = session
 
@@ -57,7 +57,7 @@ class MarsDistributedBackend(AutoBatchingMixin, ParallelBackendBase):
     def effective_n_jobs(self, n_jobs):
         eff_n_jobs = super(MarsDistributedBackend, self).effective_n_jobs(n_jobs)
         if n_jobs == -1:
-            eff_n_jobs = self.session.get_cpu_count() or self.n_parallel
+            eff_n_jobs = self.n_parallel
         return eff_n_jobs
 
     def apply_async(self, func, callback=None):

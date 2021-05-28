@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 import mars.tensor as mt
-from mars.session import new_session
+from mars.config import option_context
 from mars.learn.contrib.xgboost import XGBRegressor
-from mars.tests.core import ExecutorForTest
+from mars.tests import new_test_session
 
 try:
     import xgboost
@@ -25,56 +25,56 @@ except ImportError:
     xgboost = None
 
 
-@unittest.skipIf(xgboost is None, 'XGBoost not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        n_rows = 1000
-        n_columns = 10
-        chunk_size = 20
-        rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    n_rows = 1000
+    n_columns = 10
+    chunk_size = 200
+    rs = mt.random.RandomState(0)
+    X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+    y = rs.rand(n_rows, chunk_size=chunk_size)
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+    with option_context({'show_progress': False}):
+        try:
+            yield X, y
+        finally:
+            sess.stop_server()
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testLocalRegressor(self):
-        X, y = self.X, self.y
-        regressor = XGBRegressor(verbosity=1, n_estimators=2)
-        regressor.set_params(tree_method='hist')
-        regressor.fit(X, y, eval_set=[(X, y)])
-        prediction = regressor.predict(X)
+@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+def test_local_regressor(setup):
+    X, y = setup
+    regressor = XGBRegressor(verbosity=1, n_estimators=2)
+    regressor.set_params(tree_method='hist')
+    regressor.fit(X, y, eval_set=[(X, y)])
+    prediction = regressor.predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)
 
-        history = regressor.evals_result()
+    history = regressor.evals_result()
 
-        self.assertIsInstance(prediction, mt.Tensor)
-        self.assertIsInstance(history, dict)
+    assert isinstance(prediction, mt.Tensor)
+    assert isinstance(history, dict)
 
-        self.assertEqual(list(history['validation_0'])[0], 'rmse')
-        self.assertEqual(len(history['validation_0']['rmse']), 2)
+    assert list(history['validation_0'])[0] == 'rmse'
+    assert len(history['validation_0']['rmse']) == 2
 
-        # test weight
-        weight = mt.random.rand(X.shape[0])
-        classifier = XGBRegressor(verbosity=1, n_estimators=2)
-        regressor.set_params(tree_method='hist')
-        classifier.fit(X, y, sample_weights=weight)
-        prediction = classifier.predict(X)
+    # test weight
+    weight = mt.random.rand(X.shape[0])
+    classifier = XGBRegressor(verbosity=1, n_estimators=2)
+    regressor.set_params(tree_method='hist')
+    classifier.fit(X, y, sample_weights=weight)
+    prediction = classifier.predict(X)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)
 
-        # test wrong params
-        regressor = XGBRegressor(verbosity=1, n_estimators=2)
-        with self.assertRaises(TypeError):
-            regressor.fit(X, y, wrong_param=1)
-        regressor.fit(X, y)
-        with self.assertRaises(TypeError):
-            regressor.predict(X, wrong_param=1)
+    # test wrong params
+    regressor = XGBRegressor(verbosity=1, n_estimators=2)
+    with pytest.raises(TypeError):
+        regressor.fit(X, y, wrong_param=1)
+    regressor.fit(X, y)
+    with pytest.raises(TypeError):
+        regressor.predict(X, wrong_param=1)

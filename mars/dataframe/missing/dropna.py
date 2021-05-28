@@ -121,7 +121,7 @@ class DataFrameDropNA(DataFrameOperand, DataFrameOperandMixin):
 
         subset_df = in_df
         if op.subset:
-            subset_df = in_df[op.subset]._inplace_tile()
+            subset_df = in_df[op.subset]
         count_series = yield from recursive_tile(
             subset_df.agg('count', axis=1, _use_inf_as_na=op.use_inf_as_na))
 

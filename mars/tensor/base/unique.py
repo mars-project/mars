@@ -163,6 +163,9 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     def _tile_via_shuffle(cls, op):
         # rechunk the axes except the axis to do unique into 1 chunk
         inp = op.inputs[0]
+        if has_unknown_shape(inp):
+            yield
+
         if inp.ndim > 1:
             new_chunk_size = dict()
             for axis in range(inp.ndim):

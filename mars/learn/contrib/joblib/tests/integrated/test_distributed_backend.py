@@ -31,8 +31,8 @@ except ImportError:
     joblib = sklearn = None
 
 
-@unittest.skipIf(sys.platform == 'win32', "plasma don't support windows")
-@unittest.skipIf(joblib is None, 'joblib not installed')
+@pytest.mark.skipif(sys.platform == 'win32', reason="plasma don't support windows")
+@pytest.mark.skipif(joblib is None, reason='joblib not installed')
 class Test(IntegrationTestBase):
     def setUp(self):
         register_mars_backend()
@@ -47,9 +47,10 @@ class Test(IntegrationTestBase):
         self.X = X[filter]
         self.y = y[filter]
         super().setUp()
-
-    @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-    def testSKLearnSVCTrain(self):
+    
+    
+    @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+    def test_sk_learn_svc_train():
         digits = load_digits()
         param_space = {
             'C': np.logspace(-6, 6, 30),

@@ -13,10 +13,9 @@
 # limitations under the License.
 
 from .... import opcodes
-from ....context import get_context, RunningMode
-from ....core import ExecutableTuple, get_output_types, TilesError
+from ....core import ExecutableTuple, TilesError, get_output_types, recursive_tile
 from ....serialize import AnyField
-from ....utils import check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 
 
@@ -76,18 +75,16 @@ class LGBMAlign(LearnOperand, LearnOperandMixin):
         data = op.data
 
         # check inputs to make sure no unknown chunk shape exists
-        check_chunks_unknown_shape(inputs, TilesError)
+        if has_unknown_shape(*inputs):
+            yield
 
-        ctx = get_context()
-        if ctx.running_mode != RunningMode.distributed:
-            outputs = [inp.rechunk(tuple((s,) for s in inp.shape))._inplace_tile() for inp in inputs]
-        else:
-            if len(data.nsplits[1]) != 1:
-                data = data.rechunk({1: data.shape[1]})._inplace_tile()
-            outputs = [data]
-            for inp in inputs[1:]:
-                if inp is not None:
-                    outputs.append(inp.rechunk((data.nsplits[0],))._inplace_tile())
+        if len(data.nsplits[1]) != 1:
+            data = yield from recursive_tile(data.rechunk({1: data.shape[1]}))
+        outputs = [data]
+        for inp in inputs[1:]:
+            if inp is not None:
+                outputs.append(
+                    (yield from recursive_tile(inp.rechunk((data.nsplits[0],)))))
 
         kws = []
         for o in outputs:

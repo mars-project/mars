@@ -17,10 +17,10 @@ import os
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....serialize import Int32Field, StringField
-from ....context import get_context, RunningMode
-from ....utils import to_binary
+from ....core.context import get_context
 from ....remote.run_script import RunScript
+from ....serialize import Int32Field, StringField
+from ....utils import to_binary
 from ..utils import pick_workers
 
 
@@ -57,16 +57,12 @@ class RunPyTorch(RunScript):
     def tile(cls, op):
         ctx = get_context()
 
-        if ctx.running_mode != RunningMode.distributed:
-            workers = ['127.0.0.1'] * op.world_size
-        else:
-            workers = pick_workers(ctx.get_worker_addresses(), op.world_size)
+        workers = pick_workers(ctx.get_worker_addresses(), op.world_size)
 
         out_chunks = []
         for i in range(op.world_size):
             chunk_op = op.copy().reset_key()
-            if ctx.running_mode == RunningMode.distributed:
-                chunk_op.expect_worker = workers[i]
+            chunk_op.expect_worker = workers[i]
             if op.init_method is None:
                 chunk_op._master_port = op.master_port
                 chunk_op._master_addr = workers[0].split(':', 1)[0]
@@ -89,7 +85,7 @@ class RunPyTorch(RunScript):
 
     @classmethod
     def execute(cls, ctx, op):
-        assert ctx.get_local_address() == op.expect_worker
+        assert ctx.current_address.split(':')[0] == op.expect_worker.split(':')[0]
 
         super().execute(ctx, op)
 

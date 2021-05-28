@@ -47,7 +47,7 @@ class StartTracker(LearnOperand, LearnOperandMixin):
         from .tracker import RabitTracker
 
         env = {'DMLC_NUM_WORKER': op.n_workers}
-        rabit_context = RabitTracker(hostIP=ctx.get_local_address().split(':', 1)[0],
+        rabit_context = RabitTracker(hostIP=ctx.current_address.split(':', 1)[0],
                                      nslave=op.n_workers)
         env.update(rabit_context.slave_envs())
 

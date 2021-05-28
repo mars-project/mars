@@ -17,12 +17,12 @@ import pickle  # nosec  # pylint: disable=import_pickle
 import cloudpickle
 
 from .... import opcodes
-from ....context import get_context
-from ....core import OutputType, TilesError
+from ....core import OutputType, TilesError, recursive_tile
+from ....core.context import get_context
 from ....core.operand import OperandStage, MergeDictOperand
 from ....serialize import KeyField, BytesField, DictField, Int32Field, \
     Float32Field, FunctionField
-from ....utils import check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 
 
 class StatsModelsTrain(MergeDictOperand):
@@ -128,19 +128,22 @@ class StatsModelsTrain(MergeDictOperand):
     def tile(cls, op: "StatsModelsTrain"):
         if op.factor is not None:
             ctx = get_context()
-            cluster_cpu_count = ctx.get_total_ncores()
+            cluster_cpu_count = ctx.get_total_n_cpu()
             assert cluster_cpu_count > 0
             num_partitions = int(cluster_cpu_count * op.factor)
         else:
             num_partitions = op.num_partitions
 
-        check_chunks_unknown_shape([op.exog, op.endog], TilesError)
+        if has_unknown_shape(op.exog, op.endog):
+            yield
 
         exog = op.exog
         if exog.ndim > 1 and exog.chunk_shape[1] > 1:
-            exog = exog.rechunk({1: exog.shape[1]})._inplace_tile()
-        exog = exog.rebalance(num_partitions=num_partitions)._inplace_tile()
-        endog = op.endog.rebalance(num_partitions=num_partitions)._inplace_tile()
+            exog = exog.rechunk({1: exog.shape[1]})
+        exog = yield from recursive_tile(
+            exog.rebalance(num_partitions=num_partitions))
+        endog = yield from recursive_tile(
+            op.endog.rebalance(num_partitions=num_partitions))
 
         assert len(exog.chunks) == len(endog.chunks)
 

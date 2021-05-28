@@ -15,11 +15,12 @@
 import itertools
 
 from .... import opcodes as OperandDef
-from ....core import ExecutableTuple, get_output_types
+from ....core import ExecutableTuple, get_output_types, recursive_tile
+from ....dataframe.core import DATAFRAME_TYPE
 from ....serialize import KeyField, Float64Field, ListField, BoolField
 from ....tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
-from ....dataframe.core import DATAFRAME_TYPE
+from ....utils import has_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 from ...utils import convert_to_tensor_or_dataframe, concat_chunks
 
@@ -129,17 +130,20 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
     def _tile_multi_output(cls, op):
         data, label, weight = op.data, op.label, op.weight
 
+        if has_unknown_shape(data):
+            yield
+
         if data.chunk_shape[1] > 1:
             # make sure data's second dimension has only 1 chunk
-            data = data.rechunk({1: data.shape[1]})._inplace_tile()
+            data = yield from recursive_tile(data.rechunk({1: data.shape[1]}))
 
         nsplit = data.nsplits[0]
         # rechunk label
         if label is not None:
-            label = label.rechunk({0: nsplit})._inplace_tile()
+            label = yield from recursive_tile(label.rechunk({0: nsplit}))
         # rechunk weight
         if weight is not None:
-            weight = weight.rechunk({0: nsplit})._inplace_tile()
+            weight = yield from recursive_tile(weight.rechunk({0: nsplit}))
 
         out_chunkss = [[] for _ in range(op.output_limit)]
         for i in range(len(nsplit)):
@@ -182,66 +186,47 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def _tile_single_output(cls, op):
-        from ....context import get_context, RunningMode
+        from ....core.context import get_context
 
         data, label, weight = op.data, op.label, op.weight
 
         ctx = get_context()
-        if ctx.running_mode != RunningMode.distributed:
-            # for local and local cluster, just concat all data into one
-            data_concat_chunk = data.op.concat_tileable_chunks(data).chunks[0]
-            inps = [data_concat_chunk]
-            label_concat_chunk = None
+
+        # for distributed, we should concat the chunks
+        # which allocated on the same worker into one
+        data_chunk_metas = ctx.get_chunks_meta([c.key for c in data.chunks], fields=['bands'])
+        data_chunk_workers = [m['bands'][0][0] for m in data_chunk_metas]
+        worker_to_chunks = dict()
+        for i, worker in enumerate(data_chunk_workers):
+            size = 1 + (label is not None) + (weight is not None)
+            if worker not in worker_to_chunks:
+                worker_to_chunks[worker] = [[] for _ in range(size)]
+            worker_to_chunks[worker][0].append(data.chunks[i])
             if label is not None:
-                label_concat_chunk = label.op.concat_tileable_chunks(label).chunks[0]
-                inps.append(label_concat_chunk)
-            weight_concat_chunk = None
+                worker_to_chunks[worker][1].append(label.chunks[i])
             if weight is not None:
-                weight_concat_chunk = weight.op.concat_tileable_chunks(weight).chunks[0]
-                inps.append(weight_concat_chunk)
-            chunk_op = ToDMatrix(data=data_concat_chunk, label=label_concat_chunk,
-                                 missing=op.missing, weight=weight_concat_chunk,
-                                 feature_names=op.feature_names,
-                                 feature_types=op.feature_types,
-                                 multi_output=False, output_types=op.output_types)
-            out_chunks = [chunk_op.new_chunk(inps, **data_concat_chunk.params)]
-            nsplits = tuple((s,) for s in data_concat_chunk.shape)
-        else:
-            # for distributed, we should concat the chunks
-            # which allocated on the same worker into one
-            data_chunk_metas = ctx.get_chunk_metas([c.key for c in data.chunks])
-            data_chunk_workers = [m.workers[0] for m in data_chunk_metas]
-            worker_to_chunks = dict()
-            for i, worker in enumerate(data_chunk_workers):
-                size = 1 + (label is not None) + (weight is not None)
-                if worker not in worker_to_chunks:
-                    worker_to_chunks[worker] = [[] for _ in range(size)]
-                worker_to_chunks[worker][0].append(data.chunks[i])
-                if label is not None:
-                    worker_to_chunks[worker][1].append(label.chunks[i])
-                if weight is not None:
-                    worker_to_chunks[worker][-1].append(weight.chunks[i])
-            ind = itertools.count(0)
-            out_chunks = []
-            for worker, chunks in worker_to_chunks.items():
-                data_chunk = concat_chunks(chunks[0])
-                inps = [data_chunk]
-                label_chunk = None
-                if label is not None:
-                    label_chunk = concat_chunks(chunks[1])
-                    inps.append(label_chunk)
-                weight_chunk = None
-                if weight is not None:
-                    weight_chunk = concat_chunks(chunks[2])
-                    inps.append(weight_chunk)
-                chunk_op = ToDMatrix(data=data_chunk, label=label_chunk, missing=op.missing,
-                                     weight=weight_chunk, feature_names=op.feature_names,
-                                     feature_types=op.feature_types, multi_output=False,
-                                     output_types=op.output_types)
-                kws = data_chunk.params
-                kws['index'] = (next(ind), 0)
-                out_chunks.append(chunk_op.new_chunk(inps, **kws))
-            nsplits = (tuple(c.shape[0] for c in out_chunks), (out_chunks[0].shape[1],))
+                worker_to_chunks[worker][-1].append(weight.chunks[i])
+        ind = itertools.count(0)
+        out_chunks = []
+        for worker, chunks in worker_to_chunks.items():
+            data_chunk = concat_chunks(chunks[0])
+            inps = [data_chunk]
+            label_chunk = None
+            if label is not None:
+                label_chunk = concat_chunks(chunks[1])
+                inps.append(label_chunk)
+            weight_chunk = None
+            if weight is not None:
+                weight_chunk = concat_chunks(chunks[2])
+                inps.append(weight_chunk)
+            chunk_op = ToDMatrix(data=data_chunk, label=label_chunk, missing=op.missing,
+                                 weight=weight_chunk, feature_names=op.feature_names,
+                                 feature_types=op.feature_types, multi_output=False,
+                                 output_types=op.output_types)
+            kws = data_chunk.params
+            kws['index'] = (next(ind), 0)
+            out_chunks.append(chunk_op.new_chunk(inps, **kws))
+        nsplits = (tuple(c.shape[0] for c in out_chunks), (out_chunks[0].shape[1],))
 
         new_op = op.copy()
         kw = op.outputs[0].params
@@ -252,7 +237,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op):
         if op.multi_output:
-            return cls._tile_multi_output(op)
+            return (yield from cls._tile_multi_output(op))
         else:
             return cls._tile_single_output(op)
 
@@ -272,6 +257,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             return chunk
         return ctx[chunk.key]
 
+    @classmethod
     def execute(cls, ctx, op):
         if op.multi_output:
             outs = op.outputs
