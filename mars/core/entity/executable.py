@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from concurrent.futures import ThreadPoolExecutor
+from typing import List
 from weakref import WeakKeyDictionary, ref
 
 from ..mode import enter_mode
+from ..typing import SessionType, TileableType
 
 
 class _TileableSession:
-    def __init__(self, tileable, session):
+    def __init__(self,
+                 tileable: TileableType,
+                 session: SessionType):
         key = tileable.key
 
         def cb(_, sess=ref(session)):
@@ -38,7 +41,9 @@ class _TileableDataCleaner:
         self._tileable_to_sessions = WeakKeyDictionary()
 
     @enter_mode(build=True)
-    def register(self, tileable, session):
+    def register(self,
+                 tileable: TileableType,
+                 session: SessionType):
         if tileable in self._tileable_to_sessions:
             self._tileable_to_sessions[tileable].append(
                 _TileableSession(tileable, session))
@@ -51,7 +56,9 @@ class _TileableDataCleaner:
 _cleaner = _TileableDataCleaner()
 
 
-def _get_session(executable, session=None):
+def _get_session(
+        executable: "_ExecutableMixin",
+        session: SessionType = None):
     from ..session import get_default_session
 
     if session is None and len(executable._executed_sessions) > 0:
@@ -64,21 +71,24 @@ def _get_session(executable, session=None):
 
 class _ExecutableMixin:
     __slots__ = ()
+    _executed_sessions: List[SessionType]
 
-    def _execute(self, session=None, **kw):
+    def _execute(self, session: SessionType = None, **kw):
         from ..session import execute
 
         wait = kw.pop('wait', True)
         return execute(self, session=session, wait=wait, **kw)
 
-    def execute(self, session=None, **kw):
+    def execute(self, session: SessionType = None, **kw):
         from ..session import execute
 
         session = _get_session(self, session)
         wait = kw.pop('wait', True)
         return execute(self, session=session, wait=wait, **kw)
 
-    def _check_session(self, session, action):
+    def _check_session(self,
+                       session: SessionType,
+                       action: str):
         if session is None:
             if isinstance(self, tuple):
                 key = self[0].key
@@ -87,28 +97,25 @@ class _ExecutableMixin:
             raise ValueError(
                 f'Tileable object {key} must be executed first before {action}')
 
-    def _fetch(self, session=None, **kw):
+    def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
 
         return fetch(self, session=session, **kw)
 
-    def fetch(self, session=None, **kw):
-        from ..session import AbstractSession
-
+    def fetch(self, session: SessionType = None, **kw):
         session = _get_session(self, session)
         self._check_session(session, 'fetch')
-        if isinstance(session, AbstractSession):
-            # new-style
-            return self._fetch(session=session, **kw)
-        else:
-            return session.fetch(self, **kw)
+        return self._fetch(session=session, **kw)
 
-    def fetch_log(self, session=None, offsets=None, sizes=None):
+    def fetch_log(self,
+                  session: SessionType = None,
+                  offsets: List[int] = None,
+                  sizes: List[int] =None):
         session = _get_session(self, session)
         self._check_session(session, 'fetch_log')
         return session.fetch_log([self], offsets=offsets, sizes=sizes)[0]
 
-    def _attach_session(self, session):
+    def _attach_session(self, session: SessionType):
         _cleaner.register(self, session)
         self._executed_sessions.append(session)
 
@@ -116,28 +123,27 @@ class _ExecutableMixin:
 class _ExecuteAndFetchMixin:
     __slots__ = ()
 
-    def _execute_and_fetch(self, session=None, **kw):
+    def _execute_and_fetch(self,
+                           session: SessionType = None, **kw):
+        from ..session import ExecutionInfo
+
         session = _get_session(self, session)
-        wait = kw.pop('wait', True)
-
-        def run():
-            fetch_kwargs = kw.pop('fetch_kwargs', dict())
-            if len(self._executed_sessions) == 0:
-                # not executed before
-                self.execute(session=session, **kw)
-            return self.fetch(session=session, **fetch_kwargs)
-
-        if wait:
-            return run()
+        fetch_kwargs = kw.pop('fetch_kwargs', dict())
+        ret = self.execute(session=session, **kw)
+        if isinstance(ret, ExecutionInfo):
+            # wait=False
+            ret.add_done_callback(
+                lambda _: self.fetch(session=session, **fetch_kwargs))
+            return ret
         else:
-            thread_executor = ThreadPoolExecutor(1)
-            return thread_executor.submit(run)
+            # wait=True
+            return self.fetch(session=session, **fetch_kwargs)
 
 
 class _ToObjectMixin(_ExecuteAndFetchMixin):
     __slots__ = ()
 
-    def to_object(self, session=None, **kw):
+    def to_object(self, session: SessionType = None, **kw):
         return self._execute_and_fetch(session=session, **kw)
 
 
@@ -174,24 +180,24 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             items.append(f'{k}={v!r}')
         return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
 
-    def _execute(self, session=None, **kw):
+    def _execute(self, session : SessionType = None, **kw):
         from ..session import execute
 
         wait = kw.pop('wait', True)
         return execute(*self, session=session, wait=wait, **kw)
 
-    def execute(self, session=None, **kw):
+    def execute(self, session: SessionType = None, **kw):
         if len(self) == 0:
             return self
         super().execute(session=session, **kw)
         return self
 
-    def _fetch(self, session=None, **kw):
+    def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
 
         return fetch(*self, session=session, **kw)
 
-    def fetch(self, session=None, **kw):
+    def fetch(self, session: SessionType = None, **kw):
         if len(self) == 0:
             return tuple()
         ret = super().fetch(session=session, **kw)
@@ -201,13 +207,16 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return ret,
         return ret
 
-    def fetch_log(self, session=None, offsets=None, sizes=None):
+    def fetch_log(self,
+                  session: SessionType = None,
+                  offsets: List[int] = None,
+                  sizes: List[int] = None):
         if len(self) == 0:
             return []
         session = self._get_session(session=session)
         return session.fetch_log(self, offsets=offsets, sizes=sizes)
 
-    def _get_session(self, session=None):
+    def _get_session(self, session: SessionType = None):
         if session is None:
             for item in self:
                 session = _get_session(item, session)
