@@ -157,12 +157,10 @@ class K8SClusterBackend(AbstractClusterBackend):
             while True:
                 try:
                     event = await self._spawn_in_pool(next, streamer, StopIteration)
-                    logger.warning('NEXT: %r', event)
                     if event is StopIteration:
                         return
                 except (ReadTimeoutError, StopIteration):
                     new_pods = set(await self._get_endpoints_by_service_type(service_type, update=True))
-                    logger.warning('new_pods: %r', new_pods)
                     if new_pods != cur_pods:
                         cur_pods = new_pods
                         yield await self._get_endpoints_by_service_type(service_type, update=False)
@@ -186,7 +184,6 @@ class K8SClusterBackend(AbstractClusterBackend):
     async def get_expected_supervisors(self) -> List[str]:
         expected_supervisors = await self._get_endpoints_by_service_type(
             MarsSupervisorsConfig.rc_name, filter_ready=False)
-        logger.warning('Expected supervisors: %r', expected_supervisors)
         return expected_supervisors
 
 
@@ -203,18 +200,14 @@ class K8SServiceMixin:
         cluster_api = None
         while True:
             try:
-                logger.warning('START cluster_api = await ClusterAPI.create(self.args.endpoint)')
                 cluster_api = await ClusterAPI.create(self.args.endpoint)
                 break
             except:  # noqa: E722  # pylint: disable=bare-except  # pragma: no cover
-                logger.exception('Failed to create ClusterAPI')
                 await asyncio.sleep(0.1)
                 continue
 
         assert cluster_api is not None
-        logger.warning('BEGIN await cluster_api.wait_all_supervisors_ready()')
         await cluster_api.wait_all_supervisors_ready()
-        logger.warning('END await cluster_api.wait_all_supervisors_ready()')
 
     async def start_readiness_server(self):
         readiness_port = os.environ.get('MARS_K8S_READINESS_PORT',

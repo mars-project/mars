@@ -132,7 +132,6 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
 
     @functools.lru_cache(100)
     def _route_sub_path(self, http_method: str, sub_path: str):
-        logger.warning('Routing sub path %s on method %s', sub_path, http_method)
         handlers = self._method_to_handlers[http_method.lower()]  # type: Dict[Callable, _WebApiDef]
         method, kwargs = None, None
         for handler_method, web_api_def in handlers.items():

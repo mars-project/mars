@@ -56,7 +56,6 @@ class NodeInfoUploaderActor(mo.Actor):
             SupervisorLocatorActor.default_uid(), address=self.address)
         supervisor_addr = await locator_ref.get_supervisor(
             NodeInfoCollectorActor.default_uid())
-        logger.warning('Supervisor address: %s', supervisor_addr)
         return await mo.actor_ref(
             NodeInfoCollectorActor.default_uid(), address=supervisor_addr)
 

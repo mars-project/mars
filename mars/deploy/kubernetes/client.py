@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import random
@@ -21,6 +22,7 @@ import uuid
 from urllib.parse import urlparse
 
 from ...core.session import new_session
+from ...services.cluster.api import WebClusterAPI
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSupervisorsConfig, MarsWorkersConfig
@@ -54,9 +56,9 @@ class KubernetesClusterClient:
     def start(self):
         try:
             self._endpoint = self._cluster.start()
-            self._session = new_session(self._endpoint).as_default()
+            self._session = new_session(self._endpoint, default=True)
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            # self.stop()
+            self.stop()
             raise
 
     def stop(self, wait=False, timeout=0):
@@ -127,6 +129,7 @@ class KubernetesCluster:
         self._supervisor_extra_labels = _override_labels(kwargs.pop('supervisor_extra_labels', None))
         self._supervisor_service_port = kwargs.pop('supervisor_service_port', None) or service_port
         self._web_port = web_port or self._default_web_port
+        self._external_web_endpoint = None
 
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
@@ -184,9 +187,7 @@ class KubernetesCluster:
             )
             if host_ip in addresses:
                 host_ip = urlparse(self._core_api.api_client.configuration.host).netloc.split(':', 1)[0]
-        addr = f'http://{host_ip}:{port}'
-        logger.warning('HOST ADDR: %s', addr)
-        return addr
+        return f'http://{host_ip}:{port}'
 
     def _get_ready_pod_count(self, label_selector):
         query = self._core_api.list_namespaced_pod(
@@ -261,11 +262,31 @@ class KubernetesCluster:
             'mars/service-type=' + MarsSupervisorsConfig.rc_name,
             'mars/service-type=' + MarsWorkersConfig.rc_name,
         ]
+        start_time = time.time()
         logger.debug('Start waiting pods to be ready')
         wait_services_ready(selectors, limits,
                             lambda sel: self._get_ready_pod_count(sel),
                             timeout=self._timeout)
         logger.info('All service pods ready.')
+        self._timeout -= time.time() - start_time
+
+    def _wait_web_ready(self):
+        loop = asyncio.get_event_loop()
+
+        async def get_supervisors():
+            start_time = time.time()
+            while True:
+                try:
+                    cluster_api = WebClusterAPI(self._external_web_endpoint)
+                    supervisors = await cluster_api.get_supervisors()
+
+                    if len(supervisors) == self._supervisor_num:
+                        break
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                    if time.time() - start_time > self._timeout:
+                        raise TimeoutError('Wait for kubernetes cluster timed out') from None
+
+        loop.run_until_complete(get_supervisors())
 
     def _load_cluster_logs(self):
         log_dict = dict()
@@ -282,13 +303,14 @@ class KubernetesCluster:
 
             self._create_services()
 
-            logger.warning('self._wait_services_ready()')
             self._wait_services_ready()
-            logger.warning('self._create_kube_service()')
-            return self._create_kube_service()
+
+            self._external_web_endpoint = self._create_kube_service()
+            self._wait_web_ready()
+            return self._external_web_endpoint
         except:  # noqa: E722
             if self._log_when_fail:  # pargma: no cover
-                logger.error('Error when creating cluster')
+                logger.exception('Error when creating cluster')
                 for name, log in self._load_cluster_logs().items():
                     logger.error('Error logs for %s:\n%s', name, log)
             self.stop()

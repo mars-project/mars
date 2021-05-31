@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import asyncio
-import logging
 from typing import List, Optional
 
 from mars import oscar as mo
 from mars.lib.uhashring import HashRing
 from mars.services.cluster.backends import AbstractClusterBackend, get_cluster_backend
 from mars.utils import extensible
-
-logger = logging.getLogger(__name__)
 
 
 class SupervisorLocatorActor(mo.Actor):
@@ -51,7 +48,6 @@ class SupervisorLocatorActor(mo.Actor):
         return self._supervisors
 
     def _set_supervisors(self, supervisors: List[str]):
-        logger.warning('SET SUPERVISORS: %r', supervisors)
         self._supervisors = supervisors
         self._hash_ring = HashRing(nodes=supervisors, hash_fn='ketama')
 

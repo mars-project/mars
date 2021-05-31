@@ -15,11 +15,9 @@
 import asyncio
 import enum
 import importlib
-import logging
 from typing import Dict, List, Tuple, Union
 
 BandType = Tuple[str, str]
-logger = logging.getLogger(__name__)
 
 
 class NodeRole(enum.Enum):
@@ -99,7 +97,6 @@ async def start_services(node_role: NodeRole, config: Dict,
     if mark_ready and 'cluster' in service_names:
         from .cluster import ClusterAPI
         cluster_api = await ClusterAPI.create(address)
-        logger.warning('Mark node %s ready', address)
         await cluster_api.mark_node_ready()
 
 

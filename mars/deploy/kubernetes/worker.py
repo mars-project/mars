@@ -34,10 +34,8 @@ class K8SWorkerCommandRunner(K8SServiceMixin, WorkerCommandRunner):
             self.pool.external_address, self.args.supervisors,
             self.band_to_slot, list(self.args.load_modules), self.config,
             mark_ready=False)
-        logger.warning('START await self.wait_all_supervisors_ready()')
         await self.wait_all_supervisors_ready()
 
-        logger.warning('START cluster_api = await ClusterAPI.create(self.args.endpoint)')
         cluster_api = await ClusterAPI.create(self.args.endpoint)
         await cluster_api.mark_node_ready()
 

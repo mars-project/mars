@@ -118,8 +118,9 @@ class Test(unittest.TestCase):
 
             log_processes = []
             for item in pod_items['items']:
-                log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
-                                                       item['metadata']['name']]))
+                log_processes.append(subprocess.Popen(
+                    ['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
+                    item['metadata']['name']]))
 
             yield cluster_client
 
@@ -128,7 +129,7 @@ class Test(unittest.TestCase):
             pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
             for item in pod_items['items']:
                 p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
-                                      item['metadata']['name'], '/srv/graceful_stop.sh'])
+                                      item['metadata']['name'], '--', '/srv/graceful_stop.sh'])
                 procs.append(p)
             for p in procs:
                 p.wait()
@@ -148,7 +149,7 @@ class Test(unittest.TestCase):
                 extra_labels={'mars-test/group': 'test-label-name'},
                 extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'}):
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-            b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+            b = mt.ones((100, 100), chunk_size=20) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
             r = c.execute().fetch()
 
