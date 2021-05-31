@@ -31,7 +31,7 @@ from .typing import TileableType
 class ExecutionInfo(ABC):
     def __init__(self,
                  future: asyncio.Future):
-        self._future = future
+        self.future = self.aio_future = future
 
     @abstractmethod
     def progress(self) -> float:
@@ -43,23 +43,11 @@ class ExecutionInfo(ABC):
         progress : float
         """
 
-    def result(self):
-        return self._future.result()
-
-    def exception(self):
-        return self._future.exception()
-
-    def done(self):
-        return self._future.done()
-
-    def cancel(self):
-        return self._future.cancel()
-
-    def add_done_callback(self, cb):
-        return self._future.add_done_callback(cb)
+    def __getattr__(self, attr):
+        return getattr(self.future, attr)
 
     def __await__(self):
-        return self._future.__await__()
+        return self.future.__await__()
 
 
 class AbstractSession(ABC):
@@ -611,6 +599,8 @@ async def _fetch(tileable: TileableType,
                  *tileables: Tuple[TileableType],
                  session: AbstractSession = None,
                  **kwargs):
+    if isinstance(tileable, tuple) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
     data = await session.fetch(tileable, *tileables, **kwargs)
     return data[0] if len(tileables) == 0 else data
 
@@ -669,6 +659,14 @@ class SyncSession(AbstractSyncSession):
             return tileable if len(tileables) == 0 else \
                 [tileable] + list(tileables)
         else:
+            fut = execution_info.aio_future
+
+            def run():
+                _loop.run_until_complete(fut)
+                return tileable if len(tileables) == 0 else \
+                    [tileable] + list(tileables)
+
+            execution_info.future = _pool.submit(run)
             return execution_info
 
     @implements(AbstractSyncSession.fetch)

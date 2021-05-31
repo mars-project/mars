@@ -94,7 +94,12 @@ def redirect_custom_log(func: Callable[[Type, Context, OperandType], None]):
     def wrap(cls,
              ctx: Context,
              op: OperandType):
-        log_path = os.path.join(ctx.new_custom_log_dir(), op.key)
+        custom_log_dir = ctx.new_custom_log_dir()
+
+        if custom_log_dir is None:
+            return func(cls, ctx, op)
+
+        log_path = os.path.join(custom_log_dir, op.key)
 
         with _LogWrapper(ctx, op, log_path):
             return func(cls, ctx, op)

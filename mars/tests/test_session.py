@@ -31,7 +31,7 @@ import mars.tensor as mt
 import mars.dataframe as md
 import mars.remote as mr
 from mars.config import option_context
-from mars.core.session import execute, fetch_log
+from mars.core.session import execute, fetch, fetch_log
 from mars.tests import new_test_session
 
 
@@ -74,7 +74,7 @@ def test_session_async_execute(setup):
     pd.testing.assert_series_equal(raw_df.sum(), res[0])
     assert raw_a.sum() == res[1]
     res = mt.ExecutableTuple(t).execute(wait=False)
-    res = res.result().fetch()
+    res = fetch(*res.result())
     pd.testing.assert_series_equal(raw_df.sum(), res[0])
     assert raw_a.sum() == res[1]
 

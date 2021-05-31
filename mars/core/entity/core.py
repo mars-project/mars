@@ -54,12 +54,10 @@ class EntityData(Base):
     def extra_params(self):
         return self._extra_params
 
-    def build_graph(self, tiled=False, fuse_enabled=True,
-                    **build_chunk_graph_kwargs):
-        from ..graph.builder.legacy import _build_graph
+    def build_graph(self, **kw):
+        from ..graph.builder.utils import build_graph
 
-        return _build_graph([self], tiled=tiled, fuse_enabled=fuse_enabled,
-                            **build_chunk_graph_kwargs)
+        return build_graph([self], **kw)
 
     def visualize(self, graph_attrs=None, node_attrs=None, **kw):
         from graphviz import Source

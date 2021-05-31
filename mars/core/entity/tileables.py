@@ -134,13 +134,6 @@ class OperandTilesHandler:
             raise NotImplementedError(
                 f'{type(op)} does not support tile') from cause
 
-    @classmethod
-    def tiles(cls, to_tile: TileableType):
-        from ..graph.builder.legacy import _build_graph, get_tiled
-
-        _build_graph([to_tile], tiled=True, fuse_enabled=False)
-        return get_tiled(to_tile)
-
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register

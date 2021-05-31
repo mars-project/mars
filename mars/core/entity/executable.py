@@ -121,16 +121,22 @@ class _ExecuteAndFetchMixin:
 
     def _execute_and_fetch(self,
                            session: SessionType = None, **kw):
-        from ..session import ExecutionInfo
+        from ..session import ExecutionInfo, _pool, _loop, _fetch
 
         session = _get_session(self, session)
         fetch_kwargs = kw.pop('fetch_kwargs', dict())
         ret = self.execute(session=session, **kw)
         if isinstance(ret, ExecutionInfo):
             # wait=False
-            ret.add_done_callback(
-                lambda _: self.fetch(session=session, **fetch_kwargs))
-            return ret
+            fut = ret.aio_future
+
+            def run():
+                _loop.run_until_complete(fut)
+                return _loop.run_until_complete(
+                    _fetch(self, session=session, **fetch_kwargs)
+                )
+
+            return _pool.submit(run)
         else:
             # wait=True
             return self.fetch(session=session, **fetch_kwargs)
@@ -183,8 +189,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return self
 
         session = _get_session(self, session)
-        execute(*self, session=session, **kw)
-        return self
+        return execute(*self, session=session, **kw)
 
     def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
