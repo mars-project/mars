@@ -14,21 +14,33 @@
 
 import asyncio
 import concurrent.futures
+import os
 import threading
 import uuid
 import warnings
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, List, Type, Tuple, Union
+from typing import Callable, Dict, List, Optional, Type, Tuple, Union
 
 from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
+from ..lib.aio import create_lock
 from ..utils import classproperty, copy_tileables, build_fetch
 from .typing import TileableType
 
 
-_loop = asyncio.new_event_loop()
-_get_session_lock = asyncio.Lock(loop=_loop)
+_loop: Optional[asyncio.AbstractEventLoop] = None
+_loop_pid: Optional[int] = None
+_get_session_lock: Optional[asyncio.Lock] = None
 _pool = concurrent.futures.ThreadPoolExecutor(1)
+
+
+def _ensure_loop():
+    global _loop_pid, _loop, _get_session_lock, _pool
+    if _loop_pid != os.getpid():
+        _loop_pid = os.getpid()
+        _loop = asyncio.new_event_loop()
+        _get_session_lock = create_lock(_loop)
+    return _loop
 
 
 def _wrap_in_thread(func: Callable):
@@ -55,6 +67,7 @@ def _wrap_in_thread(func: Callable):
                 sync_default_session(default_session)
                 return func(*args, **kwargs), get_default_session()
 
+        _ensure_loop()
         fut = _pool.submit(run_in_thread)
         result, default_session_in_thread = fut.result()
         sync_default_session(default_session_in_thread)

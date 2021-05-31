@@ -71,6 +71,8 @@ async def start_services(node_role: NodeRole, config: Dict,
         modules = []
     elif isinstance(modules, str):
         modules = [modules]
+    else:
+        modules = list(modules)
     modules.append('mars.services')
 
     # discover services
@@ -90,6 +92,11 @@ async def start_services(node_role: NodeRole, config: Dict,
 
     for entries in svc_entries_list:
         await asyncio.gather(*[entry(config, address=address) for entry in entries])
+
+    if 'cluster' in service_names:
+        from .cluster import ClusterAPI
+        cluster_api = await ClusterAPI.create(address)
+        await cluster_api.mark_node_ready()
 
 
 async def stop_services(node_role: NodeRole,

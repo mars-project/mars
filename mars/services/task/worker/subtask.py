@@ -75,7 +75,7 @@ class BandSubtaskManagerActor(mo.Actor):
                  supervisor_address: str,
                  n_slots: int,
                  band: str = 'numa-0',
-                 subtask_processor_cls = None):
+                 subtask_processor_cls: Type = None):
         self._supervisor_address = supervisor_address
         self._n_slots = n_slots
         self._band = band
@@ -261,7 +261,7 @@ class SubtaskProcessor:
                         f'subtask id: {self.subtask.subtask_id}')
 
     @staticmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_task_manager(supervisor_address: str, uid: str) -> mo.ActorRef:
         return await mo.actor_ref(supervisor_address, uid)
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from itertools import count
-from typing import Dict
+from typing import Dict, List
 
 from ... import oscar as mo
 
@@ -21,9 +21,11 @@ from ... import oscar as mo
 async def create_supervisor_actor_pool(
         address: str,
         n_process: int,
+        modules: List[str] = None,
+        ports: List[int] = None,
         subprocess_start_method: str = None):
     return await mo.create_actor_pool(
-        address, n_process=n_process,
+        address, n_process=n_process, ports=ports, modules=modules,
         subprocess_start_method=subprocess_start_method)
 
 
@@ -31,6 +33,8 @@ async def create_worker_actor_pool(
         address: str,
         band_to_slots: Dict[str, int],
         n_io_process: int = 1,
+        modules: List[str] = None,
+        ports: List[int] = None,
         subprocess_start_method: str = None):
     # TODO: support NUMA when ready
     n_process = sum(slot for slot in band_to_slots.values())
@@ -43,10 +47,11 @@ async def create_worker_actor_pool(
             labels.append(band)
         else:
             assert band.startswith('numa')
+            envs.extend([dict() for _ in range(slot)])
             labels.extend([band] * slot)
 
     return await mo.create_actor_pool(
-        address, n_process=n_process,
+        address, n_process=n_process, ports=ports,
         n_io_process=n_io_process,
-        labels=labels, envs=envs,
+        labels=labels, envs=envs, modules=modules,
         subprocess_start_method=subprocess_start_method)

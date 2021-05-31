@@ -23,12 +23,12 @@ from .core import AbstractLifecycleAPI
 class LifecycleWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = '/api/session/(?P<session_id>[^/]+)/lifecycle'
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
         return await ClusterAPI.create(self._supervisor_addr)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_oscar_lifecycle_api(self, session_id: str):
         from .oscar import LifecycleAPI
         cluster_api = await self._get_cluster_api()
@@ -64,7 +64,7 @@ class WebLifecycleAPI(AbstractLifecycleAPI, MarsWebAPIClientMixin):
                f'?action=decref_tileables'
         await self._request_url(
             path, method='POST',
-            headers={'Content-Type': 'multipart/x-www-form-urlencoded'},
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
             body='tileable_keys=' + ','.join(tileable_keys)
         )
 
