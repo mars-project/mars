@@ -18,7 +18,10 @@ import pytest
 
 import mars.oscar as mo
 from mars.services import NodeRole
-from mars.services.cluster.api import MockClusterAPI
+from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
+from mars.services.cluster.api.web import web_handlers
+from mars.services.web.supervisor import start as start_web
+from mars.utils import get_next_port
 
 
 @pytest.fixture
@@ -64,3 +67,30 @@ async def test_api(actor_pool):
             [TestActor.default_uid()], watch=True), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(api.watch_nodes(NodeRole.WORKER), timeout=0.1)
+
+
+@pytest.mark.asyncio
+async def test_web_api(actor_pool):
+    pool_addr = actor_pool.external_address
+    api = await MockClusterAPI.create(pool_addr, upload_interval=0.1)
+
+    web_config = {
+        'web': {
+            'host': '127.0.0.1',
+            'port': get_next_port(),
+            'web_handlers': web_handlers,
+        }
+    }
+    await start_web(web_config, pool_addr)
+
+    web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
+    assert await web_api.get_supervisors() == []
+
+    await api.set_state_value('custom_key', {'key': 'value'})
+    await asyncio.sleep(0.1)
+    nodes_info = await web_api.get_nodes_info(nodes=[pool_addr], state=True)
+    assert pool_addr in nodes_info
+    assert 'custom_key' in nodes_info[pool_addr]['state']
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(web_api.watch_nodes(NodeRole.WORKER), timeout=0.1)
