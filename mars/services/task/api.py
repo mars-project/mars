@@ -190,9 +190,12 @@ class TaskAPI(AbstractTaskAPI):
                                     task_name: str = None,
                                     fuse_enabled: bool = True,
                                     extra_config: dict = None) -> str:
-        return await self._task_manager_ref.submit_tileable_graph(
-            graph, task_name, fuse_enabled=fuse_enabled,
-            extra_config=extra_config)
+        try:
+            return await self._task_manager_ref.submit_tileable_graph(
+                graph, task_name, fuse_enabled=fuse_enabled,
+                extra_config=extra_config)
+        except mo.ActorNotExist:
+            raise RuntimeError('Session closed already')
 
     async def wait_task(self, task_id: str, timeout: float = None):
         return await self._task_manager_ref.wait_task(

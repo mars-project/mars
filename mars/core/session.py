@@ -542,8 +542,6 @@ def execute(tileable: TileableType,
             new_session_kwargs: dict = None,
             show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
-    if show_progress is None:
-        show_progress = options.show_progress
     if session is None:
         session = get_default_or_create(
             backend=backend, **(new_session_kwargs or dict()))
@@ -590,13 +588,17 @@ class SyncSession(AbstractSyncSession):
     def execute(self,
                 tileable: TileableType,
                 *tileables: TileableType,
+                show_progress: Union[bool, str] = None,
                 **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
         wait = kwargs.get('wait', True)
+        if show_progress is None:
+            show_progress = options.show_progress
         to_execute_tileables = []
         for t in (tileable,) + tileables:
             to_execute_tileables.extend(t.op.outputs)
         execution_info = _loop.run_until_complete(_execute(
-            *set(to_execute_tileables), session=self, **kwargs))
+            *set(to_execute_tileables), session=self,
+            show_progress=show_progress, **kwargs))
         if wait:
             return tileable if len(tileables) == 0 else \
                 [tileable] + list(tileables)
@@ -634,13 +636,16 @@ class SyncSession(AbstractSyncSession):
     def to_async(self):
         return self._session
 
+    def close(self):
+        self.destroy()
+        if AbstractSession.default is self._session:
+            AbstractSession.reset_default()
+
     def __enter__(self):
         return self
 
     def __exit__(self, *_):
-        self.destroy()
-        if AbstractSession.default is self._session:
-            AbstractSession.reset_default()
+        self.close()
 
 
 @_wrap_in_thread

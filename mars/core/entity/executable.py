@@ -73,18 +73,11 @@ class _ExecutableMixin:
     __slots__ = ()
     _executed_sessions: List[SessionType]
 
-    def _execute(self, session: SessionType = None, **kw):
-        from ..session import execute
-
-        wait = kw.pop('wait', True)
-        return execute(self, session=session, wait=wait, **kw)
-
     def execute(self, session: SessionType = None, **kw):
         from ..session import execute
 
         session = _get_session(self, session)
-        wait = kw.pop('wait', True)
-        return execute(self, session=session, wait=wait, **kw)
+        return execute(self, session=session, **kw)
 
     def _check_session(self,
                        session: SessionType,
@@ -180,16 +173,14 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             items.append(f'{k}={v!r}')
         return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
 
-    def _execute(self, session : SessionType = None, **kw):
+    def execute(self, session: SessionType = None, **kw):
         from ..session import execute
 
-        wait = kw.pop('wait', True)
-        return execute(*self, session=session, wait=wait, **kw)
-
-    def execute(self, session: SessionType = None, **kw):
         if len(self) == 0:
             return self
-        super().execute(session=session, **kw)
+
+        session = _get_session(self, session)
+        execute(*self, session=session, **kw)
         return self
 
     def _fetch(self, session: SessionType = None, **kw):

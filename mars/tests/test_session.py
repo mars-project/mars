@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 
 import mars.tensor as mt
 import mars.dataframe as md
+from mars.core.session import new_session
 from mars.config import option_context
 from mars.tensor.core import TensorOrder
 from mars.tensor.datasource import ArrayDataSource
@@ -76,7 +77,7 @@ def test_session_async_execute(setup):
     assert raw_a.sum() == res[1]
 
 
-def test_executable_tuple_execute():
+def test_executable_tuple_execute(setup):
     raw_a = np.random.RandomState(0).rand(10, 20)
     a = mt.tensor(raw_a)
 
@@ -99,7 +100,7 @@ def test_executable_tuple_execute():
     pd.testing.assert_frame_equal(raw_df, res.b)
 
 
-def test_multiple_output_execute():
+def test_multiple_output_execute(setup):
     data = np.random.random((5, 9))
 
     # test multiple outputs
@@ -146,162 +147,26 @@ def test_multiple_output_execute():
     assert result == expected
 
 
-def test_re_execute_same():
-    data = np.random.random((5, 9))
-
-    # test run the same tensor
-    arr4 = mt.tensor(data.copy(), chunk_size=3) + 1
-    result1 = arr4.to_numpy()
-    expected = data + 1
-
-    np.testing.assert_array_equal(result1, expected)
-
-    result2 = arr4.to_numpy()
-
-    np.testing.assert_array_equal(result1, result2)
-
-    # test run the same tensor with single chunk
-    arr4 = mt.tensor(data.copy())
-    result1 = arr4.to_numpy()
-    expected = data
-
-    np.testing.assert_array_equal(result1, expected)
-
-    result2 = arr4.to_numpy()
-    np.testing.assert_array_equal(result1, result2)
-
-    # modify result
-    sess = Session.default_or_local()
-    executor = sess._sess._executor
-    executor.chunk_result[get_tiled(arr4).chunks[0].key] = data + 2
-
-    result3 = arr4.to_numpy()
-    np.testing.assert_array_equal(result3, data + 2)
-
-    # test run same key tensor
-    arr5 = mt.ones((10, 10), chunk_size=3)
-    result1 = arr5.to_numpy()
-
-    del arr5
-    arr6 = mt.ones((10, 10), chunk_size=3)
-    result2 = arr6.to_numpy()
-
-    np.testing.assert_array_equal(result1, result2)
-
-    # test copy, make sure it will not let the execution cache missed
-    df = md.DataFrame(mt.ones((10, 3), chunk_size=5))
-    executed = [False]
-
-    def add_one(x):
-        if executed[0]:  # pragma: no cover
-            raise ValueError('executed before')
-        return x + 1
-
-    df2 = df.apply(add_one)
-    pd.testing.assert_frame_equal(df2.to_pandas(), pd.DataFrame(np.ones((10, 3)) + 1))
-
-    executed[0] = True
-
-    df3 = df2.copy()
-    df4 = df3 * 2
-    pd.testing.assert_frame_equal(df4.to_pandas(), pd.DataFrame(np.ones((10, 3)) * 4))
-
-
-def test_execute_both_executed_and_not():
-    data = np.random.random((5, 9))
-
-    arr1 = mt.tensor(data, chunk_size=4) * 2
-    arr2 = mt.tensor(data) + 1
-
-    np.testing.assert_array_equal(arr2.to_numpy(), data + 1)
-
-    # modify result
-    sess = Session.default_or_local()
-    executor = sess._sess._executor
-    executor.chunk_result[get_tiled(arr2).chunks[0].key] = data + 2
-
-    results = sess.run(arr1, arr2)
-    np.testing.assert_array_equal(results[0], data * 2)
-    np.testing.assert_array_equal(results[1], data + 2)
-
-
-def test_tensor_execute_not_fetch():
-    data = np.random.random((5, 9))
-    sess = Session.default_or_local()
-
-    arr1 = mt.tensor(data, chunk_size=2) * 2
-
-    with pytest.raises(ValueError):
-        sess.fetch(arr1)
-
-    assert arr1.execute() is arr1
-
-    # modify result
-    executor = sess._sess._executor
-    executor.chunk_result[get_tiled(arr1).chunks[0].key] = data[:2, :2] * 3
-
-    expected = data * 2
-    expected[:2, :2] = data[:2, :2] * 3
-
-    np.testing.assert_array_equal(arr1.to_numpy(), expected)
-
-
-def test_dataframe_execute_not_fetch():
-    data1 = pd.DataFrame(np.random.random((5, 4)), columns=list('abcd'))
-    sess = Session.default_or_local()
-
-    df1 = md.DataFrame(data1, chunk_size=2)
-
-    with pytest.raises(ValueError):
-        sess.fetch(df1)
-
-    assert df1.execute() is df1
-    assert len(df1[df1['a'] > 1].to_pandas(fetch_kwargs={'batch_size': 2})) == 0
-    assert len(df1[df1['a'] > 1]['a'].to_pandas(fetch_kwargs={'batch_size': 2})) == 0
-
-    # modify result
-    executor = sess._sess._executor
-    executor.chunk_result[get_tiled(df1).chunks[0].key] = data1.iloc[:2, :2] * 3
-
-    expected = data1
-    expected.iloc[:2, :2] = data1.iloc[:2, :2] * 3
-
-    pd.testing.assert_frame_equal(df1.to_pandas(), expected)
-    pd.testing.assert_frame_equal(df1.to_pandas(fetch_kwargs={'batch_size': 2}), expected)
-
-
 def test_closed_session():
-    session = new_session()
-    arr = mt.ones((10, 10))
+    session = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        arr = mt.ones((10, 10))
 
-    result = session.run(arr)
+        result = session.execute(arr)
 
-    np.testing.assert_array_equal(result, np.ones((10, 10)))
+        np.testing.assert_array_equal(result, np.ones((10, 10)))
 
-    session.close()
-    with pytest.raises(RuntimeError):
-        session.run(arr)
+        # close session
+        session.close()
 
-    with pytest.raises(RuntimeError):
-        session.run(arr + 1)
+        with pytest.raises(RuntimeError):
+            session.execute(arr)
 
-
-def test_bool_indexing():
-    arr = mt.random.rand(10, 10, chunk_size=5)
-    arr[3:8, 3:8] = mt.ones((5, 5))
-
-    arr2 = arr[arr == 1]
-    assert arr2.shape == (np.nan,)
-
-    arr2.execute()
-    assert arr2.shape == (25,)
-
-    arr3 = arr2.reshape((5, 5))
-    expected = np.ones((5, 5))
-    np.testing.assert_array_equal(arr3.to_numpy(), expected)
+        with pytest.raises(RuntimeError):
+            session.execute(arr + 1)
 
 
-def test_array_protocol():
+def test_array_protocol(setup):
     arr = mt.ones((10, 20))
 
     result = np.asarray(arr)
@@ -323,283 +188,50 @@ def test_array_protocol():
     np.testing.assert_array_equal(result, np.asarray(200, dtype=np.float_))
 
 
-def test_random_execute_in_sessions():
-    arr = mt.random.rand(20, 20)
-
-    sess1 = new_session()
-    res1 = sess1.run(arr)
-
-    sess2 = new_session()
-    res2 = sess2.run(arr)
-
-    np.testing.assert_array_equal(res1, res2)
-
-
-def test_fetch():
+def test_without_fuse(setup):
     sess = new_session()
 
-    arr1 = mt.ones((10, 5), chunk_size=3)
-
-    r1 = sess.run(arr1)
-    r2 = sess.run(arr1)
-    np.testing.assert_array_equal(r1, r2)
-
-    executor = sess._sess._executor
-    executor.chunk_result[get_tiled(arr1).chunks[0].key] = np.ones((3, 3)) * 2
-    r3 = sess.run(arr1 + 1)
-    np.testing.assert_array_equal(r3[:3, :3], np.ones((3, 3)) * 3)
-
-    # rerun to ensure arr1's chunk results still exist
-    r4 = sess.run(arr1 + 1)
-    np.testing.assert_array_equal(r4[:3, :3], np.ones((3, 3)) * 3)
-
-    arr2 = mt.ones((10, 5), chunk_size=3)
-    r5 = sess.run(arr2)
-    np.testing.assert_array_equal(r5[:3, :3], np.ones((3, 3)) * 2)
-
-    r6 = sess.run(arr2 + 1)
-    np.testing.assert_array_equal(r6[:3, :3], np.ones((3, 3)) * 3)
-
-    df = md.DataFrame(np.random.rand(10, 2), columns=list('ab'))
-    s = df['a'].map(lambda x: np.ones((3, 3)), dtype='object').sum()
-
-    np.testing.assert_array_equal(s.execute().fetch(), np.ones((3, 3)) * 10)
-
-    # test fetch multiple tensors
-    raw = np.random.rand(5, 10)
-    arr1 = mt.ones((5, 10), chunk_size=5)
-    arr2 = mt.tensor(raw, chunk_size=3)
-    arr3 = mt.sum(arr2)
-
-    sess.run(arr1, arr2, arr3)
-
-    fetch1, fetch2, fetch3 = sess.fetch(arr1, arr2, arr3)
-    np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
-    np.testing.assert_array_equal(fetch2, raw)
-    np.testing.assert_almost_equal(fetch3, raw.sum())
-
-    fetch1, fetch2, fetch3 = sess.fetch([arr1, arr2, arr3])
-    np.testing.assert_array_equal(fetch1, np.ones((5, 10)))
-    np.testing.assert_array_equal(fetch2, raw)
-    np.testing.assert_almost_equal(fetch3, raw.sum())
-
-    raw = np.random.rand(5, 10)
-    arr = mt.tensor(raw, chunk_size=5)
-    s = arr.sum()
-
-    assert pytest.approx(s.execute().fetch()) == raw.sum()
-
-    def _execute_ds(*_):  # pragma: no cover
-        raise ValueError('cannot run random again')
-
-    try:
-        register(ArrayDataSource, _execute_ds)
-
-        assert pytest.approx(s.fetch()) == raw.sum()
-    finally:
-        del Executor._op_runners[ArrayDataSource]
-
-
-def test_without_compose():
-    sess = new_session()
-
-    arr1 = (mt.ones((10, 10), chunk_size=3) + 1) * 2
-    r1 = sess.run(arr1)
-    arr2 = (mt.ones((10, 10), chunk_size=4) + 1) * 2
-    r2 = sess.run(arr2, compose=False)
+    arr1 = (mt.ones((10, 10), chunk_size=6) + 1) * 2
+    r1 = arr1.execute(fuse_enabled=False).fetch()
+    arr2 = (mt.ones((10, 10), chunk_size=5) + 1) * 2
+    r2 = arr2.execute(fuse_enabled=False).fetch()
     np.testing.assert_array_equal(r1, r2)
 
 
-def test_dataframe_create():
-    sess = new_session()
-    tensor = mt.ones((2, 2))
-    df = md.DataFrame(tensor)
-    df_result = sess.run(df)
-    df2 = md.DataFrame(df)
-    df2 = sess.run(df2)
-    np.testing.assert_equal(df_result.values, np.ones((2, 2)))
-    pd.testing.assert_frame_equal(df_result, df2)
-
-    raw_a = np.random.rand(10)
-    raw_b = np.random.randint(1000, size=10)
-    df = md.DataFrame({'a': mt.tensor(raw_a), 'b': mt.tensor(raw_b)}, columns=['b', 'a'])
-    df_result = sess.run(df)
-    pd.testing.assert_frame_equal(
-        df_result, pd.DataFrame({'a': raw_a, 'b': raw_b}, columns=['b', 'a']))
-
-
-def test_dataframe_tensor_convert():
-    # test from_tensor(), from_dataframe(), to_tensor(), to_dataframe()
-    sess = new_session()
-    tensor = mt.ones((2, 2))
-    df = tensor.to_dataframe()
-    np.testing.assert_equal(sess.run(df), np.ones((2, 2)))
-    tensor2 = mt.from_dataframe(df)
-    np.testing.assert_equal(sess.run(tensor2), np.ones((2, 2)))
-
-    tensor3 = tensor2.from_dataframe(df)
-    np.testing.assert_equal(sess.run(tensor3), np.ones((2, 2)))
-
-    tensor4 = df.to_tensor()
-    np.testing.assert_equal(sess.run(tensor4), np.ones((2, 2)))
-
-    df = md.dataframe_from_tensor(tensor3)
-    np.testing.assert_equal(sess.run(df).values, np.ones((2, 2)))
-
-    df = df.from_tensor(tensor3)
-    np.testing.assert_equal(sess.run(df).values, np.ones((2, 2)))
-
-    # test raise error exception
-    with pytest.raises(TypeError):
-        md.dataframe_from_tensor(mt.ones((1, 2, 3)))
-
-    # test exception
-    tensor = md.dataframe_from_tensor(mt.array([1, 2, 3]))
-    np.testing.assert_equal(sess.run(tensor), np.array([1, 2, 3]).reshape(3, 1))
-
-
-def test_dataframe_execution():
-    sess = new_session()
-
-    raw = pd.DataFrame(np.random.rand(5, 3),
-                       index=pd.date_range('2020-1-1', periods=5))
-
-    for chunk_size in (3, 5):
-        df = md.DataFrame(raw, chunk_size=chunk_size)
-
-        r = df.loc['2020-1-2']
-        result = sess.run(r)
-        pd.testing.assert_series_equal(result, raw.loc['2020-1-2'])
-
-        df = md.DataFrame(raw, chunk_size=chunk_size)
-        df2 = df[[0, 2]].dropna().head(4).copy()
-        df3 = df2[df2[0] > 0.5]
-        result = sess.run(df3)
-        expected = raw[[0, 2]].dropna().head(4).copy()
-        expected = expected[expected[0] > 0.5]
-        pd.testing.assert_frame_equal(result, expected)
-
-
-@pytest.mark.skipif(pa is not None, reason='this test aims to test usage of ArrowDtype '
-                                 'when pyarrow not installed')
-def test_dataframe_with_arrow_dtype_execution():
-    sess = new_session()
-
-    # test ArrowDtype when pyarrow not installed
-    raw = pd.DataFrame({'a': [f's{i}' for i in range(10)],
-                        'b': np.random.rand(10)})
-    df = md.DataFrame(raw, chunk_size=5)
-    df['a'] = df['a'].astype('Arrow[string]')
-
-    r = df.groupby('a').sum()  # can work for expression
-    with pytest.raises(ImportError):
-        # cannot perform execution
-        # due to the reason that pyarrow not installed
-        _ = sess.run(r)
-
-
-def test_fetch_slices():
-    sess = new_session()
-
+def test_fetch_slices(setup):
     arr1 = mt.random.rand(10, 8, chunk_size=3)
-    r1 = sess.run(arr1)
+    r1 = arr1.execute().fetch()
 
-    r2 = sess.fetch(arr1[:2, 3:9])
+    r2 = arr1[:2, 3:9].fetch()
     np.testing.assert_array_equal(r2, r1[:2, 3:9])
 
-    r3 = sess.fetch(arr1[0])
+    r3 = arr1[0].fetch()
     np.testing.assert_array_equal(r3, r1[0])
 
 
-def test_fetch_dataframe_slices():
-    sess = new_session()
-
+def test_fetch_dataframe_slices(setup):
     arr1 = mt.random.rand(10, 8, chunk_size=3)
     df1 = md.DataFrame(arr1)
-    r1 = sess.run(df1)
+    r1 = df1.execute().fetch()
 
-    r2 = sess.fetch(df1.iloc[:, :])
+    r2 = df1.iloc[:, :].fetch()
     pd.testing.assert_frame_equal(r2, r1.iloc[:, :])
 
-    r3 = sess.fetch(df1.iloc[1])
+    r3 = df1.iloc[1].fetch(extra_config={'check_series_name': False})
     pd.testing.assert_series_equal(r3, r1.iloc[1])
 
-    r4 = sess.fetch(df1.iloc[0, 2])
+    r4 = df1.iloc[0, 2].fetch()
     assert r4 == r1.iloc[0, 2]
 
     arr2 = mt.random.rand(10, 3, chunk_size=3)
     df2 = md.DataFrame(arr2)
-    r5 = sess.run(df2)
+    r5 = df2.execute().fetch()
 
-    r6 = df2.iloc[:4].fetch(batch_size=3, session=sess)
+    r6 = df2.iloc[:4].fetch(batch_size=3)
     pd.testing.assert_frame_equal(r5.iloc[:4], r6)
 
 
-def test_multi_outputs_op():
-    sess = new_session()
-
-    rs = np.random.RandomState(0)
-    raw = rs.rand(20, 5)
-    a = mt.tensor(raw, chunk_size=5)
-    q = mt.abs(mt.linalg.qr(a)[0])
-
-    ret = sess.run(q)
-    np.testing.assert_almost_equal(ret, np.abs(np.linalg.qr(raw)[0]))
-    assert len(sess._sess.executor.chunk_result) == len(get_tiled(q).chunks)
-
-
-def test_iterative_tiling():
-    sess = new_session()
-
-    rs = np.random.RandomState(0)
-    raw = rs.rand(100)
-    a = mt.tensor(raw, chunk_size=10)
-    a.sort()
-    c = a[:5]
-
-    ret = sess.run(c)
-    np.testing.assert_array_equal(ret, np.sort(raw)[:5])
-
-    executor = sess._sess.executor
-    assert len(executor.chunk_result) == 1
-    executor.chunk_result.clear()
-
-    raw1 = rs.rand(20)
-    raw2 = rs.rand(20)
-    a = mt.tensor(raw1, chunk_size=10)
-    a.sort()
-    b = mt.tensor(raw2, chunk_size=15) + 1
-    c = mt.concatenate([a[:10], b])
-    c.sort()
-    d = c[:5]
-
-    ret = sess.run(d)
-    expected = np.sort(np.concatenate([np.sort(raw1)[:10], raw2 + 1]))[:5]
-    np.testing.assert_array_equal(ret, expected)
-    assert len(executor.chunk_result) == len(get_tiled(d).chunks)
-
-    raw = rs.rand(100)
-    a = mt.tensor(raw, chunk_size=10)
-    a.sort()
-    b = a + 1
-    c = b[:5]
-
-    ret = sess.run([b, c])
-    expected = np.sort(raw + 1)[:5]
-    np.testing.assert_array_equal(ret[1], expected)
-
-    raw = rs.randint(100, size=(100,))
-    a = mt.tensor(raw, chunk_size=23)
-    a.sort()
-    b = mt.histogram(a, bins='stone')
-
-    res = sess.run(b)
-    expected = np.histogram(np.sort(raw), bins='stone')
-    np.testing.assert_almost_equal(res[0], expected[0])
-    np.testing.assert_almost_equal(res[1], expected[1])
-
-
-def test_repr():
+def test_repr(setup):
     # test tensor repr
     with np.printoptions(threshold=100):
         arr = np.random.randint(1000, size=(11, 4, 13))
@@ -652,7 +284,7 @@ def test_repr():
     assert repr(c.execute()) == repr(pd.qcut(range(5), 3))
 
 
-def test_iter():
+def test_iter(setup):
     raw_data = pd.DataFrame(np.random.randint(1000, size=(20, 10)))
     df = md.DataFrame(raw_data, chunk_size=5)
 
@@ -696,51 +328,3 @@ def test_iter():
 
     # test to_dict
     assert s.to_dict() == raw_data.to_dict()
-
-
-def test_named():
-    rs = np.random.RandomState(0)
-    raw = rs.rand(10, 10)
-
-    sess = Session.default_or_local()
-
-    # test named tensor
-    t = mt.tensor(raw, chunk_size=3)
-    name = 't_name'
-    r1 = t.execute(name=name, session=sess)
-    np.testing.assert_array_equal(r1, raw)
-
-    t2 = mt.named_tensor(name=name, session=sess)
-    assert t2.order == TensorOrder.C_ORDER
-    r2 = (t2 + 1).execute(session=sess).fetch()
-    np.testing.assert_array_equal(r2, raw + 1)
-
-    # test named series
-    name = 's_name'
-    raw = pd.Series([1, 2, 3])
-    s = md.Series(raw)
-    r1 = s.execute(name=name, session=sess).fetch()
-    pd.testing.assert_series_equal(r1, raw)
-
-    s2 = md.named_series(name=name, session=sess)
-    assert s2.dtype == s.dtype
-    pd.testing.assert_index_equal(s2.index_value.to_pandas(),
-                                  s.index_value.to_pandas())
-    r2 = s2.execute(session=sess).fetch()
-    pd.testing.assert_series_equal(r2, raw)
-
-    # test dataframe
-    name = 'd_name'
-    raw = pd.DataFrame(np.random.rand(10, 3))
-    d = md.DataFrame(raw, chunk_size=4)
-    r1 = d.execute(name=name, session=sess).fetch()
-    pd.testing.assert_frame_equal(r1, raw)
-
-    d2 = md.named_dataframe(name=name, session=sess)
-    pd.testing.assert_series_equal(d2.dtypes, d.dtypes)
-    pd.testing.assert_index_equal(d2.index_value.to_pandas(),
-                                  d.index_value.to_pandas())
-    pd.testing.assert_index_equal(d2.columns_value.to_pandas(),
-                                  d.columns_value.to_pandas())
-    r2 = d2.execute(session=sess).fetch()
-    pd.testing.assert_frame_equal(r2, raw)

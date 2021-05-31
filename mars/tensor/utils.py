@@ -23,6 +23,7 @@ from collections.abc import Iterable
 from functools import lru_cache, reduce, wraps
 from math import ceil
 from numbers import Integral
+from typing import Dict, List, Union
 
 import numpy as np
 try:
@@ -314,7 +315,8 @@ def calc_object_length(obj, size=None):
         return len(obj)
 
 
-def slice_split(index, sizes):
+def slice_split(index: Union[int, slice],
+                sizes: List[int]) -> Dict[int, Union[int, slice]]:
     size = sum(sizes)
 
     if isinstance(index, Integral):

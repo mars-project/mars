@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series, Index, named_dataframe, named_series
+from .initializer import DataFrame, Series, Index
 # do imports to register operands
 from .base.cut import cut
 from .base.eval import mars_eval as eval  # pylint: disable=redefined-builtin

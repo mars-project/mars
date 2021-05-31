@@ -19,12 +19,13 @@ from dataclasses import dataclass
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from ...core import TileableType, ChunkType, enter_mode
 from ...core.operand import Fetch
 from ...core.session import AbstractAsyncSession, register_session_cls, \
     ExecutionInfo as AbstractExectionInfo, gen_submit_tileable_graph
+from ...lib.aio import alru_cache
 from ...services.lifecycle import LifecycleAPI
 from ...services.meta import MetaAPI
 from ...services.session import SessionAPI
@@ -53,6 +54,14 @@ class ExectionInfo(AbstractExectionInfo):
 
     def progress(self) -> float:
         return self._progress.value
+
+
+@dataclass
+class ChunkFetchInfo:
+    tileable: TileableType
+    chunk: ChunkType
+    indexes: List[Union[int, slice]]
+    data: Any = None
 
 
 @register_session_cls
@@ -203,7 +212,7 @@ class Session(AbstractAsyncSession):
     def _calc_chunk_indexes(cls,
                             fetch_tileable: TileableType,
                             indexes: List[Union[slice, Integral]]) -> \
-            Dict[ChunkType, List[Union[slice, Integral]]]:
+            Dict[ChunkType, List[Union[slice, int]]]:
         axis_to_slices = {
             axis: slice_split(ind, fetch_tileable.nsplits[axis])
             for axis, ind in enumerate(indexes)}
@@ -224,6 +233,15 @@ class Session(AbstractAsyncSession):
     def _process_result(self, tileable, result):
         return sort_dataframe_result(tileable, result)
 
+    @alru_cache(cache_exceptions=False)
+    async def _get_storage_api(self, address: str):
+        if urlparse(self.address).scheme == 'http':
+            from mars.services.storage.web import WebStorageAPI
+            storage_api = await WebStorageAPI.create(self.address, self._session_id, address)
+        else:
+            storage_api = await StorageAPI.create(self._session_id, address)
+        return storage_api
+
     async def fetch(self, *tileables, **kwargs):
         from ...tensor.core import TensorOrder
         from ...tensor.array_utils import get_array_module
@@ -236,53 +254,53 @@ class Session(AbstractAsyncSession):
         with enter_mode(build=True):
             chunks = []
             get_chunk_metas = []
-            chunk_to_tileables = defaultdict(list)
-            chunk_tileable_to_indexes = dict()
+            fetch_infos_list = []
             for tileable in tileables:
                 fetch_tileable, indexes = self._get_to_fetch_tileable(tileable)
+                chunk_to_slice = None
                 if indexes is not None:
                     chunk_to_slice = self._calc_chunk_indexes(
                         fetch_tileable, indexes)
-                    for c, slc in chunk_to_slice.items():
-                        chunk_tileable_to_indexes[(tileable, c)] = slc
+                fetch_infos = []
                 for chunk in fetch_tileable.chunks:
                     if indexes and chunk not in chunk_to_slice:
                         continue
                     chunks.append(chunk)
-                    chunk_to_tileables[chunk].append(tileable)
                     get_chunk_metas.append(
                         self._meta_api.get_chunk_meta.delay(
                             chunk.key, fields=['bands']))
+                    indexes = chunk_to_slice[chunk] \
+                        if chunk_to_slice is not None else None
+                    fetch_infos.append(ChunkFetchInfo(tileable=tileable,
+                                                      chunk=chunk,
+                                                      indexes=indexes))
+                fetch_infos_list.append(fetch_infos)
             chunk_metas = \
                 await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
             chunk_to_addr = {chunk: meta['bands'][0][0]
                              for chunk, meta in zip(chunks, chunk_metas)}
 
-            storage_apis_to_chunks_gets = defaultdict(lambda: (list(), list()))
-            for chunk, addr in chunk_to_addr.items():
-                # storage_api is cached if args identical
-                if urlparse(self.address).scheme == 'http':
-                    from mars.services.storage.web import WebStorageAPI
-                    storage_api = await WebStorageAPI.create(self.address, self._session_id, addr)
-                else:
-                    storage_api = await StorageAPI.create(self._session_id, addr)
-                chunks, gets = storage_apis_to_chunks_gets[storage_api]
-                chunks.append(chunk)
-                for t in chunk_to_tileables.get(chunk):
-                    conditions = chunk_tileable_to_indexes.get((t, chunk))
-                    if indexes is not None and conditions is None:
-                        # has indexes and chunk has no data to fetch
-                        continue
-                    gets.append(storage_api.get.delay(chunk.key, conditions=conditions))
-            tileable_to_index_data = defaultdict(list)
-            for storage_api, (chunks, gets) in storage_apis_to_chunks_gets.items():
-                chunks_data = await storage_api.get.batch(*gets)
-                for chunk, data in zip(chunks, chunks_data):
-                    for tileable in chunk_to_tileables[chunk]:
-                        tileable_to_index_data[tileable].append((chunk.index, data))
+            storage_api_to_gets = defaultdict(list)
+            storage_api_to_fetch_infos = defaultdict(list)
+            for fetch_info in itertools.chain(*fetch_infos_list):
+                conditions = fetch_info.indexes
+                chunk = fetch_info.chunk
+                addr = chunk_to_addr[chunk]
+                storage_api = await self._get_storage_api(addr)
+                storage_api_to_gets[storage_api].append(
+                    storage_api.get.delay(chunk.key, conditions=conditions))
+                storage_api_to_fetch_infos[storage_api].append(fetch_info)
+            for storage_api in storage_api_to_gets:
+                fetched_data = await storage_api.get.batch(
+                    *storage_api_to_gets[storage_api])
+                infos = storage_api_to_fetch_infos[storage_api]
+                for info, data in zip(infos, fetched_data):
+                    info.data = data
 
             result = []
-            for tileable, index_to_data in tileable_to_index_data.items():
+            for tileable, fetch_infos in zip(tileables, fetch_infos_list):
+                index_to_data = [(fetch_info.chunk.index, fetch_info.data)
+                                 for fetch_info in fetch_infos]
                 merged = merge_chunks(index_to_data)
                 if hasattr(tileable, 'order') and tileable.ndim > 0:
                     module = get_array_module(merged)

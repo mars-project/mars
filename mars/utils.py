@@ -39,7 +39,7 @@ import weakref
 import zlib
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Union, Callable, Optional
+from typing import Any, List, Dict, Tuple, Union, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -639,7 +639,7 @@ def get_chunk_reducer_index(chunk):
             raise
 
 
-def merge_chunks(chunk_results):
+def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]):
     """
     Concatenate chunk results according to index.
     :param chunk_results: list of tuple, {(chunk_idx, chunk_result), ...,}

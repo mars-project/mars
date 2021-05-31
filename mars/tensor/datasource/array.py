@@ -189,17 +189,6 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
         raise ValueError(f'Cannot create tensor by given data: {data}')
 
 
-def named_tensor(name, session=None):
-    from ...session import Session
-
-    sess = session or Session.default_or_local()
-    tileable_infos = sess.get_named_tileable_infos(name=name)
-    fetch_op = TensorFetch()
-    return fetch_op.new_tensor([], shape=tileable_infos.tileable_shape,
-                               _key=tileable_infos.tileable_key,
-                               kws=[tileable_infos.tileable_extra_meta])
-
-
 def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
     """
     Create a tensor.
