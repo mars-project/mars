@@ -21,7 +21,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
-from ...serialize import KeyField, SeriesField, DataTypeField, AnyField
+from ...serialization.serializables import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
 from ...utils import check_chunks_unknown_shape, has_unknown_shape

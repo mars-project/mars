@@ -25,7 +25,7 @@ from .... import opcodes
 from .... import options
 from ....core import recursive_tile
 from ....core.operand import OperandStage
-from ....serialize import KeyField, BoolField, DictField, Int64Field, AnyField
+from ....serialization.serializables import KeyField, BoolField, DictField, Int64Field, AnyField
 from ....tensor.core import TensorOrder
 from ....tensor.merge import TensorConcatenate
 from ....tensor.array_utils import as_same_device, device, get_array_module

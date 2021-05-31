@@ -19,7 +19,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand import OperandStage, MapReduceOperand
-from ...serialize import AnyField, BoolField, StringField, TupleField, \
+from ...serialization.serializables import AnyField, BoolField, StringField, TupleField, \
     KeyField, Int32Field
 from ..operands import DataFrameOperand, DataFrameOperandMixin, \
     DataFrameShuffleProxy

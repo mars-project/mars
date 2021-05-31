@@ -18,7 +18,7 @@ from pandas.api.types import is_list_like
 
 from ... import opcodes
 from ...core import OutputType, TilesError, recursive_tile
-from ...serialize import KeyField, AnyField
+from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ..core import SERIES_TYPE, DataFrame
 from ..initializer import Series as asseries

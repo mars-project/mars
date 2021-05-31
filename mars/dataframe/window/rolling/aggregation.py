@@ -19,8 +19,8 @@ import pandas as pd
 
 from .... import opcodes
 from ....core import TilesError, recursive_tile
-from ....serialize import ValueType, AnyField, Int64Field, BoolField, \
-    StringField, Int32Field, KeyField, TupleField, DictField, ListField
+from ....serialization.serializables import FieldTypes, AnyField, Int64Field, \
+    BoolField, StringField, Int32Field, KeyField, TupleField, DictField, ListField
 from ....utils import lazy_import, check_chunks_unknown_shape
 from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
@@ -44,8 +44,8 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
     _func_args = TupleField('func_args')
     _func_kwargs = DictField('func_kwargs')
     # for chunks
-    _preds = ListField('preds', ValueType.key)
-    _succs = ListField('succs', ValueType.key)
+    _preds = ListField('preds', FieldTypes.key)
+    _succs = ListField('succs', FieldTypes.key)
 
     def __init__(self, input=None, window=None, min_periods=None, center=None,  # pylint: disable=redefined-builtin
                  win_type=None, on=None, axis=None, closed=None, func=None,

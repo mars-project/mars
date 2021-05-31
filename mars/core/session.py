@@ -224,6 +224,28 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         ref_counts
         """
 
+    @abstractmethod
+    async def fetch_tileable_op_logs(self,
+                                     tileable_op_key: str,
+                                     offsets: Union[Dict[str, List[int]], str, int],
+                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        """
+        Fetch logs given tileable op key.
+
+        Parameters
+        ----------
+        tileable_op_key : str
+            Tileable op key.
+        offsets
+            Chunk op key to offsets.
+        sizes
+            Chunk op key to sizes.
+
+        Returns
+        -------
+        chunk_key_to_logs
+        """
+
     async def stop_server(self):
         """
         Stop server.
@@ -291,6 +313,36 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         tileables_keys : list
             Tileables' keys
         """
+
+    @abstractmethod
+    def fetch_tileable_op_logs(self,
+                               tileable_op_key: str,
+                               offsets: Union[Dict[str, List[int]], str, int],
+                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        """
+        Fetch logs given tileable op key.
+
+        Parameters
+        ----------
+        tileable_op_key : str
+            Tileable op key.
+        offsets
+            Chunk op key to offsets.
+        sizes
+            Chunk op key to sizes.
+
+        Returns
+        -------
+        chunk_key_to_logs
+        """
+
+    def fetch_log(self,
+                  tileables: List[TileableType],
+                  offsets: List[int] = None,
+                  sizes: List[int] = None):
+        from .custom_log import fetch
+
+        return fetch(tileables, self, offsets=offsets, sizes=sizes)
 
     @implements(AbstractSession.to_sync)
     def to_sync(self):
@@ -577,6 +629,20 @@ def fetch(*tileables: Tuple[TileableType],
     return sync_session.fetch(*tileables, **kwargs)
 
 
+def fetch_log(*tileables: Tuple[TileableType],
+              session: AbstractSession = None,
+              **kwargs):
+    if session is None:
+        session = get_default_session()
+        if session is None:  # pragma: no cover
+            raise ValueError('No session found')
+    if not session.is_sync:
+        sync_session = SyncSession(session)
+    else:
+        sync_session = session
+    return sync_session.fetch_log(tileables, **kwargs)
+
+
 class SyncSession(AbstractSyncSession):
     def __init__(self,
                  session: AbstractAsyncSession):
@@ -621,6 +687,16 @@ class SyncSession(AbstractSyncSession):
     def _get_ref_counts(self) -> Dict[str, int]:
         return _loop.run_until_complete(
             self._session._get_ref_counts())
+
+    @implements(AbstractSyncSession.fetch_tileable_op_logs)
+    @_wrap_in_thread
+    def fetch_tileable_op_logs(self,
+                               tileable_op_key: str,
+                               offsets: Union[Dict[str, List[int]], str, int],
+                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        return _loop.run_until_complete(
+            self._session.fetch_tileable_op_logs(tileable_op_key,
+                                                 offsets, sizes))
 
     @_wrap_in_thread
     def destroy(self):

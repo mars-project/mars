@@ -18,7 +18,7 @@ from ... import opcodes
 from ... import tensor as mt
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.random import RandomStateField

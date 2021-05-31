@@ -17,7 +17,7 @@ import itertools
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import DataFrameField, SeriesField
+from ...serialization.serializables import DataFrameField, SeriesField
 from ...tensor.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin

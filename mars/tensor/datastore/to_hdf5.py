@@ -21,8 +21,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import TilesError
 from ...core.context import get_context
-from ...serialize import ValueType, KeyField, StringField, DictField, \
-    TupleField, Int32Field
+from ...serialization.serializables import FieldTypes, KeyField, \
+    StringField, DictField, TupleField, Int32Field
 from ...lib.filesystem import open_file
 from ...utils import check_chunks_unknown_shape
 from ..datasource import tensor as astensor
@@ -56,9 +56,9 @@ class TensorHDF5DataStore(TensorDataStore):
     _filename = StringField('filename')
     _group = StringField('group')
     _dataset = StringField('dataset')
-    _dataset_kwds = DictField('dataset_kwds', key_type=ValueType.string)
-    _axis_offsets = TupleField('axis_offsets', ValueType.int32)
-    _out_shape = TupleField('out_shape', ValueType.int32)
+    _dataset_kwds = DictField('dataset_kwds', key_type=FieldTypes.string)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.int32)
+    _out_shape = TupleField('out_shape', FieldTypes.int32)
     _container_name = StringField('container_name')
 
     def __init__(self, filename=None, group=None, dataset=None,

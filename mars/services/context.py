@@ -14,6 +14,7 @@
 
 import asyncio
 from collections import defaultdict
+from functools import lru_cache
 from typing import Any, List, Dict, Union
 
 from .. import oscar as mo
@@ -146,6 +147,22 @@ class ThreadedServiceContext(Context):
         return self._call(self._session_api.destroy_remote_object(
             self.session_id, name))
 
+    @implements(Context.register_custom_log_path)
+    def register_custom_log_path(self,
+                                 session_id: str,
+                                 tileable_op_key: str,
+                                 chunk_op_key: str,
+                                 worker_address: str,
+                                 log_path: str):
+        return self._call(self._session_api.register_custom_log_path(
+            session_id, tileable_op_key, chunk_op_key, worker_address, log_path))
+
+    @implements(Context.new_custom_log_dir)
+    @lru_cache(50)
+    def new_custom_log_dir(self) -> str:
+        return self._call(self._session_api.new_custom_log_dir(
+            self.current_address, self.session_id))
+
 
 class _RemoteObjectWrapper:
     def __init__(self,
@@ -200,6 +217,16 @@ class ThreadedServiceSession(AbstractSyncSession):
     @implements(AbstractSyncSession.decref)
     def decref(self, *tileables_keys):
         coro = self._session.decref(*tileables_keys)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
+    @implements(AbstractSyncSession.fetch_tileable_op_logs)
+    def fetch_tileable_op_logs(self,
+                               tileable_op_key: str,
+                               offsets: Dict[str, List[int]],
+                               sizes: Dict[str, List[int]]) -> Dict:
+        coro = self._session.fetch_tileable_op_logs(
+            tileable_op_key, offsets, sizes)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return fut.result()
 

@@ -20,7 +20,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage, MapReduceOperand
 from ...utils import lazy_import
-from ...serialize import Int32Field, ListField, StringField, BoolField
+from ...serialization.serializables import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..core import IndexValue, OutputType
 from ..utils import standardize_range_index, parse_index

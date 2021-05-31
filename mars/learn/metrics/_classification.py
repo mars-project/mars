@@ -18,7 +18,7 @@ from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import ENTITY_TYPE, recursive_tile
 from ...core.context import get_context
-from ...serialize import AnyField, BoolField, KeyField
+from ...serialization.serializables import AnyField, BoolField, KeyField
 from ...tensor.core import TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ._check_targets import _check_targets

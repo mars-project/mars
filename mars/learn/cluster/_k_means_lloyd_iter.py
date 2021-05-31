@@ -18,7 +18,7 @@ from sklearn.utils.extmath import row_norms as sklearn_row_norms
 from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, BoolField, Int32Field
+from ...serialization.serializables import KeyField, BoolField, Int32Field
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
 from ...utils import has_unknown_shape

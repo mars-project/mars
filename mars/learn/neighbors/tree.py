@@ -16,7 +16,7 @@ import cloudpickle
 import numpy as np
 
 from ...core import Object, OBJECT_TYPE, OBJECT_CHUNK_TYPE, recursive_tile
-from ...serialize import KeyField, Int32Field, DictField, AnyField, BoolField
+from ...serialization.serializables import KeyField, Int32Field, DictField, AnyField, BoolField
 from ...tensor.core import TensorOrder
 from ...utils import has_unknown_shape, tokenize
 from ..operands import LearnOperand, LearnOperandMixin, OutputType

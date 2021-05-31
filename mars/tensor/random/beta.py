@@ -16,7 +16,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 

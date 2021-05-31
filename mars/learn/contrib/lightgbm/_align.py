@@ -14,7 +14,7 @@
 
 from .... import opcodes
 from ....core import ExecutableTuple, TilesError, get_output_types, recursive_tile
-from ....serialize import AnyField
+from ....serialization.serializables import AnyField
 from ....utils import has_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin
 

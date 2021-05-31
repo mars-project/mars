@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field
+from ...serialization.serializables import Int32Field
 from ..array_utils import device, as_same_device
 from ..datasource import tensor as astensor
 from .core import TensorUnaryOp

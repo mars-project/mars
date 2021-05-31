@@ -17,7 +17,7 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
-from ....serialize import ValueType, DictField, KeyField, ListField
+from ....serialization.serializables import ValueType, DictField, KeyField, ListField
 from ....core import OutputType
 from ....core.context import get_context
 from ....core.operand import MergeDictOperand

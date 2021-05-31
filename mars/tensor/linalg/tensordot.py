@@ -21,7 +21,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import TilesError
-from ...serialize import ValueType, KeyField, TupleField
+from ...serialization.serializables import FieldTypes, KeyField, TupleField
 from ...utils import has_unknown_shape
 from ..utils import unify_chunks
 from ..array_utils import as_same_device, device, is_sparse_module
@@ -36,8 +36,8 @@ class TensorTensorDot(TensorOperand, TensorOperandMixin):
 
     _a = KeyField('a')
     _b = KeyField('b')
-    _a_axes = TupleField('a_axes', ValueType.int32)
-    _b_axes = TupleField('b_axes', ValueType.int32)
+    _a_axes = TupleField('a_axes', FieldTypes.int32)
+    _b_axes = TupleField('b_axes', FieldTypes.int32)
 
     def __init__(self, a_axes=None, b_axes=None, **kw):
         super().__init__(_a_axes=a_axes, _b_axes=b_axes, **kw)

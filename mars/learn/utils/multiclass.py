@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
+from ...serialization.serializables import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
 from ...tensor.core import TensorOrder
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite

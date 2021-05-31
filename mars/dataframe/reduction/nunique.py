@@ -21,7 +21,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...config import options
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ...utils import lazy_import
 from ..arrays import ArrowListArray, ArrowListDtype
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, \

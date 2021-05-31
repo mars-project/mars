@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
 from ...lib.sparse.array import get_sparse_module, SparseNDArray
-from ...serialize import KeyField, Int64Field
+from ...serialization.serializables import KeyField, Int64Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.utils import decide_unify_split

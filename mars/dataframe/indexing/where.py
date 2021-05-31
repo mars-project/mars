@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialize import AnyField, Int32Field, BoolField, StringField
+from ...serialization.serializables import AnyField, Int32Field, BoolField, StringField
 from ...tensor.utils import filter_inputs
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand

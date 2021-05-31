@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes
 from ...config import options
 from ...core import OutputType
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 

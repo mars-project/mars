@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, get_output_types, TilesError, recursive_tile
-from ...serialize import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
+from ...serialization.serializables import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
     KeyField
 from ...tensor import searchsorted
 from ...tensor.base import TensorMapChunk

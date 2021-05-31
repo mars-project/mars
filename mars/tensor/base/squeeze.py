@@ -16,7 +16,7 @@
 
 from collections.abc import Iterable
 
-from ...serialize import ValueType, KeyField, TupleField
+from ...serialization.serializables import FieldTypes, KeyField, TupleField
 from ... import opcodes as OperandDef
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import as_same_device, device
@@ -45,7 +45,7 @@ class TensorSqueeze(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.SQUEEZE
 
     _input = KeyField('input')
-    _axis = TupleField('axis', ValueType.int32)
+    _axis = TupleField('axis', FieldTypes.int32)
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, create_view=True, **kw)

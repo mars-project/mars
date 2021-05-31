@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core.operand import OperandStage
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ..operands import TensorOperandMixin, TensorShuffleProxy
 from ..utils import gen_random_seeds, validate_axis
 from ..datasource import tensor as astensor

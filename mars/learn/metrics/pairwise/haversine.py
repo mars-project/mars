@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover
 
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
-from ....serialize import KeyField, BoolField
+from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tensor.indexing import fill_diagonal
 from ....tensor.array_utils import as_same_device, device

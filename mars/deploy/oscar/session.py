@@ -322,6 +322,13 @@ class Session(AbstractAsyncSession):
     async def _get_ref_counts(self) -> Dict[str, int]:
         return await self._lifecycle_api.get_all_chunk_ref_counts()
 
+    async def fetch_tileable_op_logs(self,
+                                     tileable_op_key: str,
+                                     offsets: Union[Dict[str, List[int]], str, int],
+                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        return await self._session_api.fetch_tileable_op_logs(
+            self.session_id, tileable_op_key, offsets, sizes)
+
     async def destroy(self):
         await self._session_api.delete_session(self._session_id)
 

@@ -20,7 +20,7 @@ from .... import opcodes
 from ....core import OutputType, TilesError, recursive_tile
 from ....core.context import get_context
 from ....core.operand import OperandStage, MergeDictOperand
-from ....serialize import KeyField, BytesField, DictField, Int32Field, \
+from ....serialization.serializables import KeyField, BytesField, DictField, Int32Field, \
     Float32Field, FunctionField
 from ....utils import has_unknown_shape
 

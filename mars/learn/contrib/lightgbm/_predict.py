@@ -20,7 +20,7 @@ import pandas as pd
 from .... import opcodes
 from ....core import recursive_tile
 from ....dataframe.utils import parse_index
-from ....serialize import BoolField, BytesField, DictField, KeyField
+from ....serialization.serializables import BoolField, BytesField, DictField, KeyField
 from ....tensor.core import TENSOR_TYPE, TensorOrder
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 

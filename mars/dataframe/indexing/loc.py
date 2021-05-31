@@ -23,7 +23,7 @@ from pandas.core.indexing import IndexingError
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
-from ...serialize import KeyField, ListField
+from ...serialization.serializables import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
 from ...utils import lazy_import

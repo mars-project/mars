@@ -17,8 +17,8 @@ import pandas as pd
 from ...config import options
 from ...core import TilesError, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import Int32Field, Int64Field, StringField, \
-    ListField, BoolField, ValueType
+from ...serialization.serializables import FieldTypes, Int32Field, Int64Field, \
+    StringField, ListField, BoolField
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
 from ..utils import parse_index
@@ -32,7 +32,7 @@ class DataFrameSortOperand(DataFrameOperand):
     _na_position = StringField('na_position')
     _ignore_index = BoolField('ignore_index')
     _parallel_kind = StringField('parallel_kind')
-    _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
     _nrows = Int64Field('nrows')
 
     def __init__(self, axis=None, ascending=None, inplace=None, kind=None, na_position=None,

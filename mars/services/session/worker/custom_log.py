@@ -15,9 +15,10 @@
 import os
 import shutil
 import tempfile
-from typing import List
+from typing import Any, Dict, List
 
 from .... import oscar as mo
+from ....lib.aio import AioFileObject
 
 
 class CustomLogActor(mo.Actor):
@@ -44,3 +45,30 @@ class CustomLogActor(mo.Actor):
     @classmethod
     def clear_custom_log_dirs(cls, paths: List[str]):
         [shutil.rmtree(path, ignore_errors=True) for path in paths]
+
+    @classmethod
+    async def fetch_logs(cls,
+                         log_paths: List[str],
+                         offsets: List[int],
+                         sizes: List[int]) -> List[Dict[str, Any]]:
+        result = []
+        for i, log_path in enumerate(log_paths):
+            log_result = dict()
+
+            offset = offsets[i]
+            size = sizes[i]
+
+            async with AioFileObject(open(log_path)) as f:
+                if offset < 0:
+                    # process negative offset
+                    offset = max(os.path.getsize(log_path) + offset, 0)
+
+                if offset:
+                    await f.seek(offset)
+
+                log_result['log'] = await f.read(size)
+                log_result['offset'] = await f.tell()
+
+            result.append(log_result)
+
+        return result

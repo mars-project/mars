@@ -19,7 +19,7 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import NDArrayField, StringField, Float64Field
+from ...serialization.serializables import NDArrayField, StringField, Float64Field
 from ...config import options
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from ..array_utils import array_module, device

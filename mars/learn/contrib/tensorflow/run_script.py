@@ -22,7 +22,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core.context import get_context
 from ....remote.run_script import RunScript
-from ....serialize import BytesField, Int32Field, DictField, StringField
+from ....serialization.serializables import BytesField, Int32Field, DictField, StringField
 from ....utils import to_binary
 from ..utils import pick_workers
 

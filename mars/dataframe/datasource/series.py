@@ -15,7 +15,7 @@
 import itertools
 
 from ... import opcodes as OperandDef
-from ...serialize import SeriesField, DataTypeField
+from ...serialization.serializables import SeriesField, DataTypeField
 from ...config import options
 from ...core import OutputType
 from ...tensor.utils import get_chunk_slices

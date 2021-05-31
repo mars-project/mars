@@ -21,7 +21,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import AnyField, StringField
+from ...serialization.serializables import AnyField, StringField
 from ..array_utils import as_same_device, device
 from ..arithmetic.utils import chunk_tree_add
 from ..core import TensorOrder

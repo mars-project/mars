@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialize import AnyField, Float64Field
+from ...serialization.serializables import AnyField, Float64Field
 from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
 from ...utils import classproperty

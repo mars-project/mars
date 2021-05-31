@@ -104,9 +104,12 @@ class _ExecutableMixin:
                   session: SessionType = None,
                   offsets: List[int] = None,
                   sizes: List[int] =None):
+        from ..session import fetch_log
+
         session = _get_session(self, session)
         self._check_session(session, 'fetch_log')
-        return session.fetch_log([self], offsets=offsets, sizes=sizes)[0]
+        return fetch_log(self, session=session,
+                         offsets=offsets, sizes=sizes)[0]
 
     def _attach_session(self, session: SessionType):
         _cleaner.register(self, session)
@@ -202,10 +205,13 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
                   session: SessionType = None,
                   offsets: List[int] = None,
                   sizes: List[int] = None):
+        from ..session import fetch_log
+
         if len(self) == 0:
             return []
         session = self._get_session(session=session)
-        return session.fetch_log(self, offsets=offsets, sizes=sizes)
+        return fetch_log(*self, session=session,
+                         offsets=offsets, sizes=sizes)
 
     def _get_session(self, session: SessionType = None):
         if session is None:

@@ -14,7 +14,7 @@
 
 from collections import OrderedDict
 
-from ....serialize import AnyField, Int64Field, BoolField, StringField, Int32Field
+from ....serialization.serializables import AnyField, Int64Field, BoolField, StringField, Int32Field
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, validate_axis
 from ..core import Window

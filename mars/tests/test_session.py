@@ -14,11 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import tempfile
 from collections import namedtuple
 
 import numpy as np
 import pandas as pd
 import pytest
+import yaml
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -26,10 +29,9 @@ except ImportError:  # pragma: no cover
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.core.session import new_session
+import mars.remote as mr
 from mars.config import option_context
-from mars.tensor.core import TensorOrder
-from mars.tensor.datasource import ArrayDataSource
+from mars.core.session import execute, fetch_log
 from mars.tests import new_test_session
 
 
@@ -189,8 +191,6 @@ def test_array_protocol(setup):
 
 
 def test_without_fuse(setup):
-    sess = new_session()
-
     arr1 = (mt.ones((10, 10), chunk_size=6) + 1) * 2
     r1 = arr1.execute(fuse_enabled=False).fetch()
     arr2 = (mt.ones((10, 10), chunk_size=5) + 1) * 2
@@ -328,3 +328,158 @@ def test_iter(setup):
 
     # test to_dict
     assert s.to_dict() == raw_data.to_dict()
+
+
+CONFIG = """
+services:
+  - cluster
+  - session
+  - storage
+  - meta
+  - lifecycle
+  - task
+  - web
+cluster:
+  backend: fixed
+  node_timeout: 120
+  node_check_interval: 1
+session:
+  custom_log_dir: {custom_log_dir}
+storage:
+  backends: [shared_memory]
+  plasma:
+    store_memory: 20M
+meta:
+  store: dict
+task:
+  default_config:
+    optimize_tileable_graph: yes
+    optimize_chunk_graph: yes
+    fuse_enabled: yes
+  task_processor_cls: mars.services.task.supervisor.tests.CheckedTaskProcessor
+  subtask_processor_cls: mars.services.task.worker.tests.CheckedSubtaskProcessor
+"""
+
+
+@pytest.fixture
+def fetch_log_setup():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        config = CONFIG.format(custom_log_dir=temp_dir)
+        sess = new_test_session(default=True,
+                                config=yaml.safe_load(config),
+                                n_cpu=8)
+        with option_context({'show_progress': False}):
+            try:
+                yield sess
+            finally:
+                sess.stop_server()
+
+
+def test_fetch_log(fetch_log_setup):
+    def f():
+        print('test')
+
+    r = mr.spawn(f)
+    r.execute()
+
+    log = r.fetch_log()
+    assert str(log).strip() == 'test'
+
+    # test multiple functions
+    def f1(size):
+        print('f1' * size)
+        sys.stdout.flush()
+
+    fs = mr.ExecutableTuple([mr.spawn(f1, 30), mr.spawn(f1, 40)])
+    execute(*fs)
+    log = fetch_log(*fs, offsets=20, sizes=10)
+    assert str(log[0]).strip() == ('f1' * 30)[20:30]
+    assert str(log[1]).strip() == ('f1' * 40)[20:30]
+    assert len(log[0].offsets) > 0
+    assert all(s > 0 for s in log[0].offsets)
+    assert len(log[1].offsets) > 0
+    assert all(s > 0 for s in log[1].offsets)
+    assert len(log[0].chunk_op_keys) > 0
+
+    # test negative offsets
+    log = fs.fetch_log(offsets=-20, sizes=10)
+    assert str(log[0]).strip() == ('f1' * 30 + '\n')[-20:-10]
+    assert str(log[1]).strip() == ('f1' * 40 + '\n')[-20:-10]
+    assert all(s > 0 for s in log[0].offsets) is True
+    assert len(log[1].offsets) > 0
+    assert all(s > 0 for s in log[1].offsets) is True
+    assert len(log[0].chunk_op_keys) > 0
+
+    # test negative offsets which represented in string
+    log = fetch_log(*fs, offsets='-0.02K', sizes='0.01K')
+    assert str(log[0]).strip() == ('f1' * 30 + '\n')[-20:-10]
+    assert str(log[1]).strip() == ('f1' * 40 + '\n')[-20:-10]
+    assert all(s > 0 for s in log[0].offsets) is True
+    assert len(log[1].offsets) > 0
+    assert all(s > 0 for s in log[1].offsets) is True
+    assert len(log[0].chunk_op_keys) > 0
+
+    def test_nested():
+        print('level0')
+        fr = mr.spawn(f1, 1)
+        fr.execute()
+        print(fr.fetch_log())
+
+    r = mr.spawn(test_nested)
+    r.execute()
+    log = str(r.fetch_log())
+    assert 'level0' in log
+    assert 'f1' in log
+
+    df = md.DataFrame(mt.random.rand(10, 3), chunk_size=5)
+
+    def df_func(c):
+        print('df func')
+        return c
+
+    df2 = df.map_chunk(df_func)
+    df2.execute()
+    log = df2.fetch_log()
+    assert 'Chunk op key:' in str(log)
+    assert 'df func' in repr(log)
+    assert len(str(df.fetch_log())) == 0
+
+    def test_host(rndf):
+        rm = mr.spawn(nested, rndf)
+        rm.execute()
+        print(rm.fetch_log())
+
+    def nested(_rndf):
+        print('log_content')
+
+    ds = [mr.spawn(test_host, n, retry_when_fail=False)
+          for n in np.random.rand(4)]
+    xtp = execute(*ds)
+    for log in fetch_log(*xtp):
+        assert str(log).strip() == 'log_content'
+
+    def test_threaded():
+        import threading
+
+        exc_info = None
+
+        def print_fun():
+            nonlocal exc_info
+            try:
+                print('inner')
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                exc_info = sys.exc_info()
+
+        print_thread = threading.Thread(target=print_fun)
+        print_thread.start()
+        print_thread.join()
+
+        if exc_info is not None:
+            raise exc_info[1].with_traceback(exc_info[-1])
+
+        print('after')
+
+    rm = mr.spawn(test_threaded)
+    rm.execute()
+    logs = str(rm.fetch_log()).strip()
+    assert logs == 'inner\nafter'

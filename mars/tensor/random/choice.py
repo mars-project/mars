@@ -21,7 +21,8 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import TilesError, recursive_tile
-from ...serialize import ValueType, AnyField, KeyField, BoolField, TupleField
+from ...serialization.serializables import FieldTypes, AnyField, KeyField, \
+    BoolField, TupleField
 from ...utils import check_chunks_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
@@ -35,7 +36,7 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RAND_CHOICE
 
     _a = AnyField('a')
-    _size = TupleField('size', ValueType.int64)
+    _size = TupleField('size', FieldTypes.int64)
     _replace = BoolField('replace')
     _p = KeyField('p')
 

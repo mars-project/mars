@@ -23,7 +23,8 @@ from ...config import options
 from ...core.custom_log import redirect_custom_log
 from ...core import ENTITY_TYPE, OutputType
 from ...core.operand import OperandStage
-from ...serialize import Int32Field, AnyField, BoolField, StringField, ListField, DictField
+from ...serialization.serializables import Int32Field, AnyField, BoolField, \
+    StringField, ListField, DictField
 from ...utils import enter_current_session, lazy_import
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat

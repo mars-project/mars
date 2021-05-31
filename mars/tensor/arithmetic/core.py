@@ -18,12 +18,14 @@ import itertools
 
 import numpy as np
 
-from ...core import ExecutableTuple, TilesError
-from ...serialize import ValueType, AnyField, DictField, KeyField, StringField, ListField
+from ...core import ExecutableTuple
+from ...serialization.serializables import FieldTypes, AnyField, DictField, \
+    KeyField, StringField, ListField
 from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
-from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
+from ..utils import unify_chunks, broadcast_shape, check_out_param, \
+    filter_inputs, check_order
 from ..operands import TensorOperandMixin, TensorOperand
 from ..array_utils import device, as_same_device, convert_order
 
@@ -147,7 +149,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, lhs=None, rhs=None, out=None, where=None, order=None, **kwargs):
         super().__init__(_lhs=lhs, _rhs=rhs, _out=out, _where=where, _order=order, **kwargs)
@@ -351,7 +353,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, out=None, where=None, order=None, **kwargs):
         super().__init__(_out=out, _where=where, _order=order, **kwargs)
@@ -627,7 +629,7 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, args=None, out=None, where=None, casting=None,
                  order=None, err=None, **kwargs):

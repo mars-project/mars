@@ -20,7 +20,7 @@ from ..core import ENTITY_TYPE, TILEABLE_TYPE, ChunkData
 from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
-from ..serialize import FunctionField, ListField, DictField, \
+from ..serialization.serializables import FunctionField, ListField, DictField, \
     BoolField, Int32Field
 from ..tensor.core import TENSOR_TYPE
 from ..utils import build_fetch_tileable, enter_current_session, \

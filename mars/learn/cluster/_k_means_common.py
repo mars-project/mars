@@ -17,7 +17,7 @@ import numpy as np
 from ... import opcodes
 from ... import tensor as mt
 from ...core import OutputType, recursive_tile
-from ...serialize import KeyField
+from ...serialization.serializables import KeyField
 from ...tensor.array_utils import as_same_device, device, sparse
 from ...tensor.core import TensorOrder
 from ...utils import has_unknown_shape

@@ -19,7 +19,7 @@ import numpy as np
 from .... import opcodes
 from ....core import OutputType, recursive_tile
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
-from ....serialize import BytesField, DictField, TupleField
+from ....serialization.serializables import BytesField, DictField, TupleField
 from ...operands import LearnOperand, LearnOperandMixin
 
 

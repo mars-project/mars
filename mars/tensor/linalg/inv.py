@@ -19,7 +19,7 @@ from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import KeyField
+from ...serialization.serializables import KeyField
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin

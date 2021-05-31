@@ -23,7 +23,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
-from ...serialize import BoolField, DictField, Float32Field, KeyField, \
+from ...serialization.serializables import BoolField, DictField, Float32Field, KeyField, \
     Int32Field, Int64Field, NDArrayField, StringField
 from ...tensor.operands import TensorShuffleProxy
 from ...tensor.random import RandomStateField

@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field
+from ...serialization.serializables import Int32Field
 from ..datasource import tensor as astensor
 from ..array_utils import device, as_same_device, get_array_module
 from .var import reduce_var_square

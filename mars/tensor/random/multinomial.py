@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, Int64Field, TupleField
+from ...serialization.serializables import FieldTypes, Int64Field, TupleField
 from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorDistribution
 
@@ -27,7 +27,7 @@ class TensorMultinomial(TensorDistribution, TensorRandomOperandMixin):
 
     _fields_ = '_n', '_pvals', '_size'
     _n = Int64Field('n')
-    _pvals = TupleField('pvals', ValueType.float64)
+    _pvals = TupleField('pvals', FieldTypes.float64)
     _func_name = 'multinomial'
 
     def __init__(self, n=None, pvals=None, state=None, size=None,

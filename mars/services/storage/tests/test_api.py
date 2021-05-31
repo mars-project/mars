@@ -19,7 +19,7 @@ import pandas as pd
 import pytest
 
 import mars.oscar as mo
-from mars.serialize import dataserializer
+from mars.serialization import AioDeserializer, AioSerializer
 from mars.services.storage.api import MockStorageAPI
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
@@ -102,16 +102,17 @@ async def test_storage_mock_api(storage_configs):
 
         await storage_api.prefetch('data1')
 
-        write_data = dataserializer.dumps(value2)
+        buffers = await AioSerializer(value2).run()
+        size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
         # test open_reader and open_writer
-        writer = await storage_api.open_writer('write_key', len(write_data),
+        writer = await storage_api.open_writer('write_key', size,
                                                StorageLevel.MEMORY)
         async with writer:
-            await writer.write(write_data)
+            for buf in buffers:
+                await writer.write(buf)
 
         reader = await storage_api.open_reader('write_key')
         async with reader:
-            read_bytes = await reader.read()
-            read_value = dataserializer.loads(read_bytes)
+            read_value = await AioDeserializer(reader).run()
 
         pd.testing.assert_frame_equal(value2, read_value)

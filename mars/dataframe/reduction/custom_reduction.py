@@ -15,7 +15,7 @@
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 

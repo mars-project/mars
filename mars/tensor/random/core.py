@@ -21,7 +21,7 @@ import numpy as np
 
 from ...config import options
 from ...core import recursive_tile
-from ...serialize import ValueType, TupleField, Int32Field
+from ...serialization.serializables import FieldTypes, TupleField, Int32Field
 from ...utils import tokenize
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..utils import decide_chunk_sizes, gen_random_seeds, broadcast_shape
@@ -332,7 +332,7 @@ class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperan
 
 
 class TensorDistribution(TensorRandomOperand):
-    _size = TupleField('size', ValueType.int64)
+    _size = TupleField('size', FieldTypes.int64)
 
     @property
     def size(self):
@@ -375,7 +375,7 @@ class TensorDistribution(TensorRandomOperand):
 
 
 class TensorSimpleRandomData(TensorRandomOperand):
-    _size = TupleField('size', ValueType.int64)
+    _size = TupleField('size', FieldTypes.int64)
 
     @property
     def size(self):

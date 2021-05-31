@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import TilesError, recursive_tile
-from ...serialize import KeyField, AnyField
+from ...serialization.serializables import KeyField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import decide_unify_split, validate_axis

@@ -20,7 +20,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...config import options
-from ...serialize import AnyField, BoolField, StringField, Int32Field
+from ...serialization.serializables import AnyField, BoolField, StringField, Int32Field
 from ..align import align_dataframe_series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis

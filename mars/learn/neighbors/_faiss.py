@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, StringField, Int64Field, \
+from ...serialization.serializables import KeyField, StringField, Int64Field, \
     Int32Field, BoolField, Int8Field
 from ...tensor import tensor as astensor
 from ...tensor.core import TensorOrder

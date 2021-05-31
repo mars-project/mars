@@ -21,7 +21,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import ValueType, KeyField, AnyField, TupleField, BoolField
+from ...serialization.serializables import FieldTypes, KeyField, \
+    AnyField, TupleField, BoolField
 from ..utils import validate_axis
 from ..array_utils import device, as_same_device
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -35,7 +36,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
     _ord = AnyField('ord')
-    _axis = TupleField('axis', ValueType.int32)
+    _axis = TupleField('axis', FieldTypes.int32)
     _keepdims = BoolField('keepdims')
 
     def __init__(self, ord=None, axis=None, keepdims=None, **kw):

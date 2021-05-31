@@ -16,7 +16,7 @@ import warnings
 
 from ... import opcodes
 from ...core import get_output_types, OutputType
-from ...serialize import AnyField, StringField
+from ...serialization.serializables import AnyField, StringField
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_series, validate_axis, parse_index

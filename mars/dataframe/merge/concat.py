@@ -17,7 +17,8 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
-from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
+from ...serialization.serializables import FieldTypes, ListField, StringField, \
+    BoolField, AnyField
 from ...utils import lazy_import, check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 from ..utils import parse_index, build_empty_df, build_empty_series, \
@@ -465,7 +466,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
 
-    _groups = ListField('groups', ValueType.key)
+    _groups = ListField('groups', FieldTypes.key)
     _groupby_params = AnyField('groupby_params')
 
     def __init__(self, groups=None, groupby_params=None, output_types=None, **kw):

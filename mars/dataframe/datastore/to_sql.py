@@ -17,7 +17,7 @@ import cloudpickle
 
 from ... import opcodes
 from ...core import recursive_tile
-from ...serialize import StringField, AnyField, BoolField, \
+from ...serialization.serializables import StringField, AnyField, BoolField, \
     Int64Field, BytesField
 from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin

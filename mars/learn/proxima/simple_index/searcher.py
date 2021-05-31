@@ -29,7 +29,7 @@ from ....context import get_context, RunningMode
 from ....core import ENTITY_TYPE, TilesError, OutputType
 from ....core.operand import OperandStage
 from ....lib.filesystem import get_fs, FileSystem
-from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
+from ....serialization.serializables import KeyField, StringField, Int32Field, Int64Field, \
     DictField, AnyField, BytesField, BoolField
 from ....tensor.core import TensorOrder
 from ....utils import check_chunks_unknown_shape, Timer, ceildiv

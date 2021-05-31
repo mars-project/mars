@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..serialize import DataTypeField
+from ..serialization.serializables import DataTypeField
 from ..core import OutputType
 from ..core.operand import Operand, TileableOperandMixin, HasInput, \
     ShuffleProxy, MapReduceOperand, Fuse

@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import ENTITY_TYPE, get_output_types, recursive_tile
-from ...serialize import AnyField, Int8Field, KeyField
+from ...serialization.serializables import AnyField, Int8Field, KeyField
 from ...utils import has_unknown_shape
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index, validate_axis

@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int64Field
+from ...serialization.serializables import Int64Field
 from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 

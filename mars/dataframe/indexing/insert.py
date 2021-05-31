@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import recursive_tile
-from ...serialize import AnyField, BoolField, Int64Field
+from ...serialization.serializables import AnyField, BoolField, Int64Field
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin

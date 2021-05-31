@@ -18,7 +18,7 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, StringField
+from ...serialization.serializables import KeyField, StringField
 from ...core import ExecutableTuple
 from ..array_utils import device, as_same_device
 from ..datasource import tensor as astensor

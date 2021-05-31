@@ -19,7 +19,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialize import KeyField, AnyField, StringField, DataTypeField, \
+from ...serialization.serializables import KeyField, AnyField, StringField, DataTypeField, \
     BoolField, Int32Field
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import empty, tensor as astensor, \

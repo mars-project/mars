@@ -25,7 +25,7 @@ from ...core import get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
 from ...dataframe.utils import parse_index
 from ...lib import sparse
-from ...serialize import ValueType, TupleField, KeyField
+from ...serialization.serializables import ValueType, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
 from ...utils import tokenize, lazy_import, has_unknown_shape

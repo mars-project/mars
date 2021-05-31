@@ -25,7 +25,8 @@ from .... import opcodes
 from ....core import ExecutableTuple, OutputType, recursive_tile
 from ....core.context import get_context
 from ....core.operand import MergeDictOperand
-from ....serialize import DictField, Int32Field, KeyField, ListField, StringField, ValueType
+from ....serialization.serializables import FieldTypes, DictField, Int32Field, \
+    KeyField, ListField, StringField
 from ...utils import concat_chunks, collect_ports
 from ._align import align_data_set
 from .core import LGBMModelType, get_model_cls_from_type
@@ -38,19 +39,19 @@ class LGBMTrain(MergeDictOperand):
 
     _model_type = Int32Field('model_type', on_serialize=lambda x: x.value,
                              on_deserialize=LGBMModelType)
-    _params = DictField('params', key_type=ValueType.string)
+    _params = DictField('params', key_type=FieldTypes.string)
     _data = KeyField('data')
     _label = KeyField('label')
     _sample_weight = KeyField('sample_weight')
     _init_score = KeyField('init_score')
-    _kwds = DictField('kwds', key_type=ValueType.string)
+    _kwds = DictField('kwds', key_type=FieldTypes.string)
 
-    _eval_datas = ListField('eval_datas', ValueType.key)
-    _eval_labels = ListField('eval_labels', ValueType.key)
-    _eval_sample_weights = ListField('eval_sample_weights', ValueType.key)
-    _eval_init_scores = ListField('eval_init_scores', ValueType.key)
+    _eval_datas = ListField('eval_datas', FieldTypes.key)
+    _eval_labels = ListField('eval_labels', FieldTypes.key)
+    _eval_sample_weights = ListField('eval_sample_weights', FieldTypes.key)
+    _eval_init_scores = ListField('eval_init_scores', FieldTypes.key)
 
-    _workers = ListField('workers', ValueType.string)
+    _workers = ListField('workers', FieldTypes.string)
     _worker_id = Int32Field('worker_id')
     _worker_ports = KeyField('worker_ports')
 

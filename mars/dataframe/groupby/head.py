@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType, get_output_types, recursive_tile
-from ...serialize import DictField, Int64Field
+from ...serialization.serializables import DictField, Int64Field
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_concatenated_rows_frame, parse_index

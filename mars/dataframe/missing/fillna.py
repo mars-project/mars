@@ -21,7 +21,7 @@ from ... import opcodes
 from ...config import options
 from ...core import ENTITY_TYPE, Entity, OutputType, get_output_types
 from ...core.operand import OperandStage
-from ...serialize import StringField, AnyField, BoolField, Int64Field
+from ...serialization.serializables import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand

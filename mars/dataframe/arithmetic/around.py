@@ -15,7 +15,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field
+from ...serialization.serializables import Int32Field
 from ...utils import classproperty
 from .core import DataFrameUnaryUfunc
 

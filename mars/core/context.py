@@ -173,6 +173,40 @@ class Context(ABC):
             Object name.
         """
 
+    @abstractmethod
+    def register_custom_log_path(self,
+                                 session_id: str,
+                                 tileable_op_key: str,
+                                 chunk_op_key: str,
+                                 worker_address: str,
+                                 log_path: str):
+        """
+        Register custom log path.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        tileable_op_key : str
+            Key of tileable's op.
+        chunk_op_key : str
+            Kye of chunk's op.
+        worker_address : str
+            Worker address.
+        log_path : str
+            Log path.
+        """
+
+    def new_custom_log_dir(self) -> str:
+        """
+        New custom log dir.
+
+        Returns
+        -------
+        custom_log_dir : str
+            Custom log dir.
+        """
+
     def __enter__(self):
         Context.prev = Context.current
         Context.current = self

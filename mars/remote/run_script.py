@@ -23,7 +23,7 @@ import numpy as np
 from .. import opcodes
 from ..core import OutputType
 from ..core.operand import MergeDictOperand
-from ..serialize import BytesField, ListField, Int32Field, StringField, BoolField
+from ..serialization.serializables import BytesField, ListField, Int32Field, StringField, BoolField
 from ..utils import to_binary
 
 

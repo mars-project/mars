@@ -18,7 +18,7 @@ import numpy as np
 from math import factorial
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field
+from ...serialization.serializables import Int32Field
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device, get_array_module
 from .core import TensorReduction, TensorReductionMixin, numel

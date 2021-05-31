@@ -20,7 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import TilesError
-from ...serialize import KeyField, StringField
+from ...serialization.serializables import KeyField, StringField
 from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..utils import broadcast_shape, check_out_param, unify_chunks, check_order

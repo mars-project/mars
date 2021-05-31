@@ -27,7 +27,7 @@ from ....context import get_context, RunningMode
 from ....lib.filesystem import get_fs, LocalFileSystem
 from ....core import OutputType, TilesError
 from ....core.operand import OperandStage
-from ....serialize import StringField, Int32Field, Int64Field, \
+from ....serialization.serializables import StringField, Int32Field, Int64Field, \
     DictField, BytesField, TupleField, DataTypeField
 from ....utils import check_chunks_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin

@@ -16,7 +16,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
-from ....serialize import KeyField
+from ....serialization.serializables import KeyField
 from .... import tensor as mt
 from ....tensor.core import TensorOrder
 from ...preprocessing import normalize

@@ -16,7 +16,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import ListField
+from ...serialization.serializables import ListField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
 from ..core import IndexValue

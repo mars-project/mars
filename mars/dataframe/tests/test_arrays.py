@@ -25,7 +25,6 @@ from mars.config import option_context
 from mars.core import enter_mode
 from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 from mars.dataframe.utils import arrow_table_to_pandas_dataframe
-from mars.serialize import dataserializer
 
 
 @unittest.skipIf(pa is None, 'pyarrow not installed')
@@ -413,12 +412,6 @@ class Test(unittest.TestCase):
         self.assertEqual(df2.dtypes.iloc[2], ArrowListDtype(str))
         self.assertLess(df2.memory_usage(deep=True).sum(),
                         df.memory_usage(deep=True).sum())
-
-        # test serialize
-        df3 = dataserializer.loads(dataserializer.dumps(df2))
-        self.assertEqual(df2.dtypes.iloc[1], ArrowStringDtype())
-        self.assertEqual(df2.dtypes.iloc[2], ArrowListDtype(str))
-        pd.testing.assert_frame_equal(df3, df2)
 
         # test df method
         df4 = df2.groupby('b').sum()

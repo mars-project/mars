@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import StringField
+from ...serialization.serializables import StringField
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction

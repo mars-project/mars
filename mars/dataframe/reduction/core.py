@@ -23,7 +23,7 @@ from ...core import OutputType, ENTITY_TYPE, is_build_mode, \
     is_kernel_mode, enter_mode, recursive_tile
 from ...core.operand import OperandStage
 from ...utils import tokenize
-from ...serialize import BoolField, AnyField, DataTypeField, Int32Field
+from ...serialization.serializables import BoolField, AnyField, DataTypeField, Int32Field
 from ..core import SERIES_TYPE
 from ..utils import parse_index, build_df, build_empty_df, build_series, \
     build_empty_series, validate_axis

@@ -21,7 +21,7 @@ from ... import opcodes as OperandDef
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...lib.filesystem import open_file
-from ...serialize import KeyField, AnyField, StringField, ListField, \
+from ...serialization.serializables import KeyField, AnyField, StringField, ListField, \
     BoolField, Int32Field, Int64Field, DictField
 from ...tensor.core import TensorOrder
 from ...tensor.operands import TensorOperand, TensorOperandMixin

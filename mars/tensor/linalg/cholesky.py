@@ -17,7 +17,7 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from ...serialize import KeyField, BoolField
+from ...serialization.serializables import KeyField, BoolField
 from ... import opcodes as OperandDef
 from ...core import TilesError, recursive_tile
 from ...utils import check_chunks_unknown_shape

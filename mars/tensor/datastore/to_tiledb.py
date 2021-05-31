@@ -20,7 +20,8 @@ except (ImportError, OSError):  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ...core.operand import Operand
-from ...serialize import ValueType, DictField, TupleField, StringField, Int64Field, KeyField
+from ...serialization.serializables import FieldTypes, DictField, \
+    TupleField, StringField, Int64Field, KeyField
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import sps
 from ..datasource import tensor as astensor
@@ -41,7 +42,7 @@ class TensorTileDBDataStore(TensorDataStore):
     _tiledb_key = StringField('tiledb_key')
     # open array at a given timestamp if provided
     _tiledb_timestamp = Int64Field('tiledb_timestamp')
-    _axis_offsets = TupleField('axis_offsets', ValueType.int64)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.int64)
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_key=None,
                  tiledb_timestamp=None, **kw):

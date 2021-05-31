@@ -14,7 +14,7 @@
 
 from ... import opcodes
 from ...core import recursive_tile
-from ...serialize import KeyField
+from ...serialization.serializables import KeyField
 from ..initializer import Index
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 

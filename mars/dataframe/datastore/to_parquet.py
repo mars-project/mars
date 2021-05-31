@@ -19,7 +19,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import TilesError, recursive_tile
 from ...lib.filesystem import open_file, get_fs
-from ...serialize import KeyField, AnyField, StringField, ListField, \
+from ...serialization.serializables import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
 from ...utils import check_chunks_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin

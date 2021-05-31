@@ -23,7 +23,7 @@ from ... import tensor as mt
 from ...core import ENTITY_TYPE, get_output_types, recursive_tile
 from ...core.operand import OperandStage
 from ...config import options
-from ...serialize import KeyField, StringField, BoolField, DataTypeField
+from ...serialization.serializables import KeyField, StringField, BoolField, DataTypeField
 from ...tensor.core import TensorOrder, TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
 from ...utils import ceildiv

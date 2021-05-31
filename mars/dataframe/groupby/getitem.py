@@ -16,7 +16,7 @@ from collections.abc import Iterable
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 

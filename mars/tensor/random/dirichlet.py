@@ -20,7 +20,7 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import TupleField
+from ...serialization.serializables import TupleField
 from ...config import options
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorDistribution

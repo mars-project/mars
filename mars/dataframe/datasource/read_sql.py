@@ -23,7 +23,7 @@ import cloudpickle
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...serialize import StringField, AnyField, BoolField, ListField, \
+from ...serialization.serializables import StringField, AnyField, BoolField, ListField, \
     Int64Field, Float64Field, BytesField
 from ...tensor.utils import normalize_chunk_sizes
 from ..arrays import ArrowStringDtype

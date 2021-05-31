@@ -21,7 +21,7 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
-from ...serialize import AnyField, Int32Field, BoolField
+from ...serialization.serializables import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
 from ...utils import check_chunks_unknown_shape

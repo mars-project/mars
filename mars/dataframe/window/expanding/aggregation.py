@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes
-from ....serialize import BoolField
+from ....serialization.serializables import BoolField
 from ..aggregation import BaseDataFrameExpandingAgg
 
 _stage_info = namedtuple('_stage_info', ('map_groups', 'map_sources', 'combine_sources',

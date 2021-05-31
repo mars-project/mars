@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Dict, List, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
+from ...utils import parse_readable_size
 from .supervisor import CustomLogMetaActor, SessionManagerActor, SessionActor
 from .worker import CustomLogActor
 
@@ -173,6 +174,57 @@ class SessionAPI(AbstractSessionAPI):
         ref = await mo.actor_ref(mo.ActorRef(
             address, CustomLogActor.default_uid()))
         return await ref.new_custom_log_dir(session_id)
+
+    async def fetch_tileable_op_logs(self,
+                                     session_id: str,
+                                     tileable_op_key: str,
+                                     chunk_op_key_to_offsets: Dict[str, List[int]],
+                                     chunk_op_key_to_sizes: Dict[str, List[int]]) -> Dict:
+        custom_log_meta_ref = await self._get_custom_log_meta_ref(session_id)
+        chunk_op_key_to_arr_paths = \
+            await custom_log_meta_ref.get_tileable_op_log_paths(tileable_op_key)
+        if chunk_op_key_to_arr_paths is None:
+            return
+        worker_to_kwds = dict()
+        for chunk_op_key, addr_path in chunk_op_key_to_arr_paths.items():
+            worker_address, log_path = addr_path
+            if isinstance(chunk_op_key_to_offsets, dict):
+                offset = chunk_op_key_to_offsets.get(chunk_op_key, 0)
+            elif isinstance(chunk_op_key_to_offsets, str):
+                offset = int(parse_readable_size(chunk_op_key_to_offsets)[0])
+            elif isinstance(chunk_op_key_to_offsets, int):
+                offset = chunk_op_key_to_offsets
+            else:
+                offset = 0
+            if isinstance(chunk_op_key_to_sizes, dict):
+                size = chunk_op_key_to_sizes.get(chunk_op_key, -1)
+            elif isinstance(chunk_op_key_to_sizes, str):
+                size = int(parse_readable_size(chunk_op_key_to_sizes)[0])
+            elif isinstance(chunk_op_key_to_sizes, int):
+                size = chunk_op_key_to_sizes
+            else:
+                size = -1
+            if worker_address not in worker_to_kwds:
+                worker_to_kwds[worker_address] = {
+                    'chunk_op_keys': [],
+                    'log_paths': [],
+                    'offsets': [],
+                    'sizes': []
+                }
+            kwds = worker_to_kwds[worker_address]
+            kwds['chunk_op_keys'].append(chunk_op_key)
+            kwds['log_paths'].append(log_path)
+            kwds['offsets'].append(offset)
+            kwds['sizes'].append(size)
+        result = dict()
+        for worker, kwds in worker_to_kwds.items():
+            custom_log_ref = await mo.actor_ref(
+                mo.ActorRef(worker, CustomLogActor.default_uid()))
+            chunk_op_keys = kwds.pop('chunk_op_keys')
+            logs = await custom_log_ref.fetch_logs(**kwds)
+            for chunk_op_key, log_result in zip(chunk_op_keys, logs):
+                result[chunk_op_key] = log_result
+        return result
 
 
 class MockSessionAPI(SessionAPI):

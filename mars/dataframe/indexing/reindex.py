@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
 from ... import opcodes
 from ...core import ENTITY_TYPE, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
+from ...serialization.serializables import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
 from ...utils import lazy_import
 from ..core import Index as DataFrameIndexType, INDEX_TYPE

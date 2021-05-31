@@ -19,7 +19,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core.context import get_context
 from ....remote.run_script import RunScript
-from ....serialize import Int32Field, StringField
+from ....serialization.serializables import Int32Field, StringField
 from ....utils import to_binary
 from ..utils import pick_workers
 

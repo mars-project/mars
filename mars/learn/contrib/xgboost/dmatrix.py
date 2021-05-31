@@ -17,7 +17,7 @@ import itertools
 from .... import opcodes as OperandDef
 from ....core import ExecutableTuple, get_output_types, recursive_tile
 from ....dataframe.core import DATAFRAME_TYPE
-from ....serialize import KeyField, Float64Field, ListField, BoolField
+from ....serialization.serializables import KeyField, Float64Field, ListField, BoolField
 from ....tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
 from ....utils import has_unknown_shape

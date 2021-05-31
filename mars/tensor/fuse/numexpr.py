@@ -25,7 +25,7 @@ except ImportError:
     NUMEXPR_INSTALLED = False
 import numpy as np
 
-from ...serialize import DataTypeField
+from ...serialization.serializables import DataTypeField
 from ..operands import TensorFuse
 from .. import arithmetic, reduction
 from ..array_utils import as_same_device

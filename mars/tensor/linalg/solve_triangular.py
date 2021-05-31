@@ -19,7 +19,7 @@ from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile, TilesError
-from ...serialize import BoolField, KeyField
+from ...serialization.serializables import BoolField, KeyField
 from ...utils import check_chunks_unknown_shape
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin

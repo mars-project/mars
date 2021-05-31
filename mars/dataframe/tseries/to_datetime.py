@@ -21,7 +21,7 @@ from pandas.api.types import is_scalar, is_dict_like
 
 from ... import opcodes
 from ...core import TilesError, recursive_tile
-from ...serialize import KeyField, StringField, BoolField, AnyField
+from ...serialization.serializables import KeyField, StringField, BoolField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, INDEX_CHUNK_TYPE

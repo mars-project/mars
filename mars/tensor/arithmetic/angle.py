@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ..array_utils import device, as_same_device
 from ..utils import infer_dtype
 from .core import TensorUnaryOp

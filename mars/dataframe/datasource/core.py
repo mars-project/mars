@@ -14,7 +14,7 @@
 
 from ...core import recursive_tile
 from ...core.context import get_context
-from ...serialize import Int64Field
+from ...serialization.serializables import Int64Field
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 

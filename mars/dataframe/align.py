@@ -22,7 +22,8 @@ import pandas as pd
 from .. import opcodes as OperandDef
 from ..core import OutputType
 from ..core.operand import OperandStage, MapReduceOperand
-from ..serialize import ValueType, AnyField, BoolField, Int32Field, KeyField, ListField
+from ..serialization.serializables import FieldTypes, AnyField, \
+    BoolField, Int32Field, KeyField, ListField
 from .core import SERIES_CHUNK_TYPE
 from .utils import hash_dtypes, filter_dtypes
 from .operands import DataFrameOperandMixin, DataFrameShuffleProxy
@@ -43,7 +44,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
     _column_max = AnyField('column_max')
     _column_max_close = BoolField('column_max_close')
     _column_shuffle_size = Int32Field('column_shuffle_size')
-    _column_shuffle_segments = ListField('column_shuffle_segments', ValueType.series)
+    _column_shuffle_segments = ListField('column_shuffle_segments', FieldTypes.series)
 
     _input = KeyField('input')
 

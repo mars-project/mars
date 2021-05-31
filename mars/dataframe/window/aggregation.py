@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 from ...core.operand import OperandStage
-from ...serialize import AnyField, BoolField, Int32Field, Int64Field, \
+from ...serialization.serializables import AnyField, BoolField, Int32Field, Int64Field, \
     DictField, StringField
 from ...utils import tokenize
 from ..core import DATAFRAME_TYPE

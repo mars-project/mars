@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, Entity, OutputType
 from ...core.operand import OperandStage, MapReduceOperand
 from ...lib.groupby_wrapper import wrapped_groupby
-from ...serialize import BoolField, Int32Field, AnyField
+from ...serialization.serializables import BoolField, Int32Field, AnyField
 from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE

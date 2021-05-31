@@ -19,7 +19,7 @@ import pandas as pd
 
 from .... import opcodes as OperandDef
 from ....core import TilesError, recursive_tile
-from ....serialize import KeyField, BytesField, DictField
+from ....serialization.serializables import KeyField, BytesField, DictField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder

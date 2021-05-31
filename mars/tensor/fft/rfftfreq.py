@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
-from ...serialize import Int32Field, Float64Field
+from ...serialization.serializables import Int32Field, Float64Field
 from ..datasource import arange
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TensorOrder

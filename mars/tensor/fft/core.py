@@ -17,8 +17,8 @@
 from collections.abc import Iterable
 
 from ...core import recursive_tile
-from ...serialize import ValueType, KeyField, StringField, Int32Field, \
-    Int64Field, TupleField
+from ...serialization.serializables import FieldTypes, KeyField, \
+    StringField, Int32Field, Int64Field, TupleField
 from ...utils import has_unknown_shape
 from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -223,8 +223,8 @@ class TensorBaseSingleDimensionFFT(TensorBaseFFT):
 
 
 class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
-    _shape = TupleField('shape', ValueType.int64)
-    _axes = TupleField('axes', ValueType.int32)
+    _shape = TupleField('shape', FieldTypes.int64)
+    _axes = TupleField('axes', FieldTypes.int32)
 
     @property
     def shape(self):
@@ -260,7 +260,7 @@ class TensorStandardFFTN(TensorBaseMultipleDimensionFFT):
 
 class TensorFFTShiftBase(TensorHasInput):
     _input = KeyField('input')
-    _axes = TupleField('axes', ValueType.int32)
+    _axes = TupleField('axes', FieldTypes.int32)
 
     @property
     def axes(self):

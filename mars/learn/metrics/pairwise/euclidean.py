@@ -17,7 +17,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from .... import tensor as mt
 from ....core import TilesError, recursive_tile
-from ....serialize import KeyField, BoolField
+from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....utils import check_chunks_unknown_shape
 from ...utils import check_array

@@ -25,31 +25,6 @@ from typing import List, Callable, Optional, Type
 from .context import Context
 from .typing import OperandType, TileableType, SessionType
 
-
-_custom_log_dir: Optional[str] = None
-
-
-def get_custom_log_dir() -> str:
-    from ..config import options
-
-    global _custom_log_dir
-
-    if _custom_log_dir is None:
-        log_dir = options.custom_log_dir
-
-        if log_dir is None:
-            log_dir = tempfile.mkdtemp(prefix='mars-custom-log')
-
-        _custom_log_dir = log_dir
-
-    return _custom_log_dir
-
-
-def remove_custom_log_dir():
-    log_dir = get_custom_log_dir()
-    shutil.rmtree(log_dir)
-
-
 class _LogWrapper:
     def __init__(self,
                  ctx: Context,
@@ -110,12 +85,6 @@ class _LogWrapper:
         self.raw_stdout.flush()
 
 
-def gen_log_path(session_id: str, op_key: str):
-    filename = f"{str(session_id).replace('-', '_')}_{op_key}"
-    custom_log_dir = get_custom_log_dir()
-    return os.path.join(custom_log_dir, filename)
-
-
 def redirect_custom_log(func: Callable[[Type, Context, OperandType], None]):
     """
     Redirect stdout to a file by wrapping ``Operand.execute(ctx, op)``
@@ -125,7 +94,7 @@ def redirect_custom_log(func: Callable[[Type, Context, OperandType], None]):
     def wrap(cls,
              ctx: Context,
              op: OperandType):
-        log_path = gen_log_path(ctx.session_id, op.key)
+        log_path = os.path.join(ctx.new_custom_log_dir(), op.key)
 
         with _LogWrapper(ctx, op, log_path):
             return func(cls, ctx, op)
