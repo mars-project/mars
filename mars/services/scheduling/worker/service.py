@@ -23,7 +23,7 @@ from .execution import SubtaskExecutionActor
 
 async def start(config: Dict, address: None):
     """
-    Start meta service on supervisor.
+    Start scheduling service on worker.
 
     Parameters
     ----------
