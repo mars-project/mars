@@ -57,7 +57,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
 
     @classmethod
     def tile(cls, op):
-        return TensorDiagBase.tile(op)
+        return (yield from TensorDiagBase.tile(op))
 
     @classmethod
     def execute(cls, ctx, op):

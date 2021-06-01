@@ -58,8 +58,8 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
-    
-    
+
+
 def test_create_sparse_execution(setup):
     mat = sps.csr_matrix([[0, 0, 2], [2, 0, 0]])
     t = tensor(mat, dtype='f8', chunk_size=2)
@@ -214,7 +214,7 @@ def test_arange_execution(setup):
 
 def test_diag_execution(setup):
     # 2-d  6 * 6
-    a = arange(36, chunk_size=2).reshape(6, 6)
+    a = arange(36, chunk_size=5).reshape(6, 6)
 
     d = diag(a)
     res = d.execute().fetch()

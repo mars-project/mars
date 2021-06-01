@@ -172,7 +172,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
         if len(a.chunks) == 1:
             return cls._tile_one_chunk(op, a, v, out)
-        return cls._tile_tree_reduction(op, a, v, out)
+        return (yield from cls._tile_tree_reduction(op, a, v, out))
 
     @classmethod
     def _execute_without_stage(cls, xp, a, v, op):

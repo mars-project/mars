@@ -183,7 +183,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
             return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
                                       chunks=chunks, nsplits=(tuple(nsplit),))
         else:
-            return super().tile(op)
+            return (yield from super().tile(op))
 
     @property
     def k(self):

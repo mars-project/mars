@@ -189,7 +189,8 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return self
 
         session = _get_session(self, session)
-        return execute(*self, session=session, **kw)
+        execute(*self, session=session, **kw)
+        return self
 
     def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
