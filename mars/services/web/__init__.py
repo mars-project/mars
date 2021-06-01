@@ -12,4 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .supervisor import MarsRequestHandler
+from .core import MarsRequestHandler, web_api, \
+    MarsServiceWebAPIHandler, MarsWebAPIClientMixin
+try:
+    from .supervisor import WebActor
+except ImportError:  # pragma: no cover
+    pass

@@ -115,9 +115,12 @@ class SharedMemoryStorage(StorageBackend):
     async def teardown(**kwargs):
         object_ids = kwargs.get('object_ids')
         for object_id in object_ids:
-            shm = SharedMemory(name=object_id)
-            shm.unlink()
-            await asyncio.sleep(0)
+            try:
+                shm = SharedMemory(name=object_id)
+                shm.unlink()
+                await asyncio.sleep(0)
+            except FileNotFoundError:
+                pass
 
     @property
     @implements(StorageBackend.level)
@@ -167,16 +170,20 @@ class SharedMemoryStorage(StorageBackend):
         shm.close()
         try:
             self._object_ids.remove(object_id)
-        except KeyError:
+        except KeyError:  # pragma: no cover
             return
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id) -> ObjectInfo:
-        shm = SharedMemory(name=object_id)
+        shm_file = SharedMemoryFileObject(object_id, mode='r')
+
+        async with ShmStorageFileObject(shm_file, object_id) as f:
+            deserializer = AioDeserializer(f)
+            size = await deserializer.get_size()
         if _is_windows:
-            return WinShmObjectInfo(size=shm.size, object_id=object_id, shm=shm)
+            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
         else:
-            return ObjectInfo(size=shm.size, object_id=object_id)
+            return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

@@ -86,14 +86,14 @@ class SessionManagerActor(mo.Actor):
     async def get_last_idle_time(self, session_id=None):
         if session_id is not None:
             session = self._session_refs[session_id]
-            return await session.get_last_idle_time()
+            raise mo.Return(await session.get_last_idle_time())
         else:
-            all_last_idle_time = await asyncio.gather(
+            all_last_idle_time = yield asyncio.gather(
                 *[session.get_last_idle_time() for session in self._session_refs.values()])
             if any(last_idle_time is None for last_idle_time in all_last_idle_time):
-                return None
+                raise mo.Return(None)
             else:
-                return max(all_last_idle_time)
+                raise mo.Return(max(all_last_idle_time))
 
 
 class SessionActor(mo.Actor):

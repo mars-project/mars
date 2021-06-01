@@ -78,7 +78,7 @@ class BandSubtaskManagerActor(mo.Actor):
                  supervisor_address: str,
                  n_slots: int,
                  band: str = 'numa-0',
-                 subtask_processor_cls = None):
+                 subtask_processor_cls: Type = None):
         self._supervisor_address = supervisor_address
         self._n_slots = n_slots
         self._band = band
@@ -250,28 +250,28 @@ class SubtaskProcessor:
     async def _load_input_data(self):
         keys = []
         gets = []
-        prefetches = []
+        fetches = []
         for chunk in self._chunk_graph.iter_indep():
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
-                prefetches.append(self._storage_api.prefetch.delay(chunk.key))
+                fetches.append(self._storage_api.fetch.delay(chunk.key))
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
-                    prefetches.append(self._storage_api.prefetch.delay(key, error='ignore'))
+                    fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
             logger.info(f'Start getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
-            await self._storage_api.prefetch.batch(*prefetches)
+            await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.info(f'Finish getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
 
     @staticmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_task_manager(supervisor_address: str, uid: str) -> mo.ActorRef:
         return await mo.actor_ref(supervisor_address, uid)
 

@@ -3,6 +3,7 @@ services:
   - session
   - storage
   - meta
+  - lifecycle
   - task
   - web
 cluster:
@@ -15,6 +16,8 @@ storage:
   backends: [shared_memory]
   plasma:
     store_memory: 20%
+  default_config:
+    transfer_block_size: 5 * 1024 ** 2
 meta:
   store: dict
 task:

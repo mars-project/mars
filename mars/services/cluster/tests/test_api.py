@@ -46,10 +46,16 @@ async def test_api(actor_pool):
     assert (await api.get_supervisor_refs([TestActor.default_uid()]))[0].address == pool_addr
 
     await api.set_state_value('custom_key', {'key': 'value'})
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.1)
     nodes_info = await api.get_nodes_info(nodes=[pool_addr], state=True)
     assert pool_addr in nodes_info
     assert 'custom_key' in nodes_info[pool_addr]['state']
+
+    await api.set_band_resource('numa-0', {'custom_usage': 0.1})
+    await asyncio.sleep(0.1)
+    nodes_info = await api.get_nodes_info(nodes=[pool_addr], resource=True)
+    assert pool_addr in nodes_info
+    assert 'custom_usage' in nodes_info[pool_addr]['resource']['numa-0']
 
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(api.get_supervisors(watch=True), timeout=0.1)

@@ -94,7 +94,6 @@ class RayStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        ray.init(ignore_reinit_error=True)
         _register_sparse_matrix_serializer()
         return dict(), dict()
 
@@ -146,6 +145,6 @@ class RayStorage(StorageBackend):
     async def list(self) -> List:
         raise NotImplementedError("Ray storage does not support list")
 
-    @implements(StorageBackend.prefetch)
-    async def prefetch(self, object_id):
+    @implements(StorageBackend.fetch)
+    async def fetch(self, object_id):
         pass

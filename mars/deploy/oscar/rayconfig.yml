@@ -3,16 +3,21 @@ services:
   - session
   - storage
   - meta
+  - lifecycle
   - task
   - web
 cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
+  ray:
+    supervisor_exclusive_node: no
 session:
   custom_log_dir: null
 storage:
   backends: [ray]
+  default_config:
+    transfer_block_size: 5 * 1024 ** 2
 meta:
   store: dict
 task:

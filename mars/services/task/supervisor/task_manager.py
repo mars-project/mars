@@ -520,9 +520,9 @@ class TaskManagerActor(mo.Actor):
     _task_id_to_task_stage_info: Dict[str, TaskStageInfo]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
-    _cluster_api: ClusterAPI
-    _meta_api: MetaAPI
-    _lifecycle_api: LifecycleAPI
+    _cluster_api: Optional[ClusterAPI]
+    _meta_api: Optional[MetaAPI]
+    _lifecycle_api: Optional[LifecycleAPI]
 
     def __init__(self,
                  session_id: str,
@@ -818,19 +818,9 @@ class TaskManagerActor(mo.Actor):
         if timeout is None:
             return await self._wait_for(task_info)
 
-        loop = asyncio.get_running_loop()
-        future = loop.create_future()
         task = asyncio.create_task(self._wait_for(task_info))
-
-        def cb(_):
-            try:
-                future.set_result(None)
-            except asyncio.InvalidStateError:  # pragma: no cover
-                pass
-
-        task.add_done_callback(cb)
         try:
-            await asyncio.wait_for(future, timeout)
+            await asyncio.wait_for(asyncio.shield(task), timeout)
             return await task
         except asyncio.TimeoutError:
             return

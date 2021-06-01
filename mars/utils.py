@@ -37,6 +37,7 @@ import time
 import warnings
 import weakref
 import zlib
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, List, Dict, Tuple, Union, Callable, Optional
@@ -224,40 +225,6 @@ def _get_ports_from_netstat():
         except subprocess.TimeoutExpired:
             p.kill()
             continue
-
-
-# Copy from ray/services.py
-def get_node_ip_address(address="8.8.8.8:53"):
-    """Determine the IP address of the local node.
-
-    Args:
-        address (str): The IP address and port of any known live service on the
-            network you care about.
-
-    Returns:
-        The IP address of the current node.
-    """
-    ip_address, port = address.split(":")
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # This command will raise an exception if there is no internet
-        # connection.
-        s.connect((ip_address, int(port)))
-        node_ip_address = s.getsockname()[0]
-    except Exception as e:  # pragma: no cover
-        node_ip_address = "127.0.0.1"
-        # [Errno 101] Network is unreachable
-        if e.errno == 101:
-            try:
-                # try get node ip address from host name
-                host_name = socket.getfqdn(socket.gethostname())
-                node_ip_address = socket.gethostbyname(host_name)
-            except Exception as ex:   # pragma: no cover
-                logger.warning('get node ip address from hostname failed, got %s', ex)
-    finally:
-        s.close()
-
-    return node_ip_address
 
 
 def get_next_port(typ=None, occupy=True):
@@ -813,8 +780,11 @@ def kill_process_tree(pid, include_parent=True):
     for p in children:
         try:
             if 'plasma' in p.name():
-                plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
-                                        if 'plasma' in conn.laddr), None)
+                try:
+                    plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
+                                            if 'plasma' in conn.laddr), None)
+                except psutil.AccessDenied:
+                    pass
             p.kill()
         except psutil.NoSuchProcess:  # pragma: no cover
             pass
@@ -1477,3 +1447,81 @@ def get_params_fields(chunk):
         fields.remove('key_dtypes')
 
     return fields
+
+
+# Please refer to https://bugs.python.org/issue41451
+try:
+    class _Dummy(ABC):
+        __slots__ = ('__weakref__',)
+    abc_type_require_weakref_slot = True
+except TypeError:
+    abc_type_require_weakref_slot = False
+
+
+def patch_asyncio_task_create_time():  # pragma: no cover
+    new_loop = False
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        new_loop = True
+    loop_class = loop.__class__
+    # Save raw loop_class.create_task and make multiple apply idempotent
+    loop_create_task = getattr(patch_asyncio_task_create_time, 'loop_create_task', loop_class.create_task)
+    patch_asyncio_task_create_time.loop_create_task = loop_create_task
+
+    def new_loop_create_task(*args, **kwargs):
+        task = loop_create_task(*args, **kwargs)
+        task.__mars_asyncio_task_create_time__ = time.time()
+        return task
+
+    if loop_create_task is not new_loop_create_task:
+        loop_class.create_task = new_loop_create_task
+    if not new_loop and loop.create_task is not new_loop_create_task:
+        loop.create_task = functools.partial(new_loop_create_task, loop)
+
+
+async def asyncio_task_timeout_detector(
+        check_interval: int, task_timeout_seconds: int, task_exclude_filters: List[str]):
+    task_exclude_filters.append('asyncio_task_timeout_detector')
+    while True:  # pragma: no cover
+        await asyncio.sleep(check_interval)
+        loop = asyncio.get_running_loop()
+        current_time = time.time()  # avoid invoke `time.time()` frequently if we have plenty of unfinished tasks.
+        for task in asyncio.all_tasks(loop=loop):
+            # Some task may be create before `patch_asyncio_task_create_time` applied, take them as never timeout.
+            create_time = getattr(task, '__mars_asyncio_task_create_time__', current_time)
+            if current_time - create_time >= task_timeout_seconds:
+                stack = io.StringIO()
+                task.print_stack(file=stack)
+                task_str = str(task)
+                if any(excluded_task in task_str for excluded_task in task_exclude_filters):
+                    continue
+                logger.warning('''Task %s in event loop %s doesn't finish in %s seconds. %s''',
+                               task, loop, time.time() - create_time, stack.getvalue())
+
+
+def register_asyncio_task_timeout_detector(
+        check_interval: int = None,
+        task_timeout_seconds: int = None,
+        task_exclude_filters: List[str] = None) -> Optional[asyncio.Task]:  # pragma: no cover
+    """Register a asyncio task which print timeout task periodically."""
+    check_interval = check_interval or int(os.environ.get('MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_CHECK_INTERVAL', -1))
+    if check_interval > 0:
+        patch_asyncio_task_create_time()
+        task_timeout_seconds = task_timeout_seconds or int(
+            os.environ.get('MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_SECONDS', check_interval))
+        if not task_exclude_filters:
+            # Ignore mars/oscar by default since it has some long-running coroutines.
+            task_exclude_filters = os.environ.get('MARS_DEBUG_ASYNCIO_TASK_EXCLUDE_FILTERS', 'mars/oscar')
+            task_exclude_filters = task_exclude_filters.split(';')
+        if sys.version_info[:2] < (3, 7):
+            logger.warning('asyncio tasks timeout detector is not supported under python %s', sys.version)
+        else:
+            loop = asyncio.get_running_loop()
+            logger.info('Create asyncio tasks timeout detector with check_interval %s task_timeout_seconds %s '
+                        'task_exclude_filters %s', check_interval, task_timeout_seconds, task_exclude_filters)
+            return loop.create_task(asyncio_task_timeout_detector(
+                check_interval, task_timeout_seconds, task_exclude_filters))
+    else:
+        return None

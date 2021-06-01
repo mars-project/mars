@@ -44,8 +44,8 @@ class FakeTaskManager(TaskManagerActor):
 async def actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                      labels=[None] + ['numa-0'] * 2,
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
+                                      labels=['main'] + ['numa-0'] * 2 + ['io'],
                                       subprocess_start_method=start_method)
 
     async with pool:
@@ -166,6 +166,6 @@ async def test_cancel_subtask(actor_pool):
         assert await manager.is_slot_free(subtask_runner) is False
         await aio_task
     # need 1 sec to reach timeout, then killing actor and wait for auto recovering
-    # the time would not be over 6 sec
-    assert timer.duration < 6
+    # the time would not be over 10 sec
+    assert timer.duration < 10
     assert await manager.is_slot_free(subtask_runner) is True

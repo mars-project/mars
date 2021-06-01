@@ -20,21 +20,24 @@ import mars.dataframe as md
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
+from mars.core import tile
+from mars.services import start_services, NodeRole
 from mars.services.cluster import MockClusterAPI
-from mars.services.session import MockSessionAPI
-from mars.services.meta import MockMetaAPI
+from mars.services.session import MockSessionAPI, SessionAPI
+from mars.services.meta import MockMetaAPI, MetaAPI, WebMetaAPI
+from mars.utils import get_next_port
 
 
 t = mt.random.rand(10, 10)
-t = t.tiles()
+t = tile(t)
 df = md.DataFrame(t)
-df = df.tiles()
+df = tile(df)
 series = df[0]
-series = series.tiles()
+series = tile(series)
 index = df.index
-index = index.tiles()
+index = tile(index)
 obj = mr.spawn(lambda: 3)
-obj = obj.tiles()
+obj = tile(obj)
 
 test_objects = [t, df, series, index, obj]
 
@@ -81,3 +84,45 @@ async def test_meta_mock_api(obj):
         await meta_api.del_chunk_meta(chunk.key)
         with pytest.raises(KeyError):
             await meta_api.get_chunk_meta(chunk.key)
+
+
+@pytest.mark.asyncio
+async def test_meta_web_api():
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    web_port = get_next_port()
+
+    async with pool:
+        config = {
+            "services": ["cluster", "session", "meta", "task", "web"],
+            "cluster": {
+                "backend": "fixed",
+                "lookup_address": pool.external_address,
+            },
+            "meta": {
+                "store": "dict"
+            },
+            "web": {
+                "port": web_port,
+            }
+        }
+        await start_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)
+
+        session_id = 'test_session'
+        session_api = await SessionAPI.create(pool.external_address)
+        await session_api.create_session(session_id)
+
+        t = mt.random.rand(10, 10)
+        t = t.tiles()
+
+        meta_api = await MetaAPI.create(session_id, pool.external_address)
+        web_api = WebMetaAPI(session_id, f'http://localhost:{web_port}')
+
+        await meta_api.set_chunk_meta(
+            t.chunks[0], bands=[(pool.external_address, 'numa-0')])
+        meta = await web_api.get_chunk_meta(
+            t.chunks[0].key, fields=['shape', 'bands'])
+        assert set(meta.keys()) == {'shape', 'bands'}
+
+        with pytest.raises(KeyError):
+            await web_api.get_chunk_meta('non-exist-key')

@@ -30,10 +30,14 @@ def _load_config(filename=None):
 
 
 async def start_supervisor(address: str,
+                           lookup_address: str = None,
                            modules: Union[List, str, None] = None,
                            config: Dict = None):
     if not config or isinstance(config, str):
         config = _load_config(config)
+    lookup_address = lookup_address or address
+    if config['cluster'].get('lookup_address') is None:
+        config['cluster']['lookup_address'] = lookup_address
     await start_services(NodeRole.SUPERVISOR, config,
                          modules=modules, address=address)
 

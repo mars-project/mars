@@ -17,7 +17,7 @@ from ...backend import BaseActorBackend, register_backend
 from ..context import MarsActorContext
 from .driver import RayActorDriver
 from .pool import RayMainPool
-from .utils import process_placement_to_address, node_address_to_placement, get_placement_group
+from .utils import process_address_to_placement, get_placement_group
 
 ray = lazy_import("ray")
 
@@ -44,8 +44,9 @@ class RayActorBackend(BaseActorBackend):
         n_process: int = None,
         **kwargs
     ):
-        pg_name, bundle_index = node_address_to_placement(address)
-        address = process_placement_to_address(pg_name, bundle_index, process_index=0)
+        # pop `n_io_process` from kwargs as ray doesn't need this
+        kwargs.pop('n_io_process', 0)
+        pg_name, bundle_index, _ = process_address_to_placement(address)
         pg = get_placement_group(pg_name) if pg_name else None
         if not pg:
             bundle_index = -1

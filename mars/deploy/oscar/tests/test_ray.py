@@ -17,7 +17,7 @@ import pytest
 
 import mars.tensor as mt
 from mars.core.session import get_default_session, new_session
-from mars.deploy.oscar.ray import new_cluster
+from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.serialization.ray import register_ray_serializers
 from mars.tests.core import require_ray
 from ....utils import lazy_import
@@ -86,19 +86,11 @@ def test_sync_execute(ray_cluster, create_cluster):
     assert get_default_session() is None
 
 
-@require_ray
-@pytest.mark.asyncio
-async def test_web_session(ray_cluster, create_cluster):
-    await test_local.test_web_session(create_cluster)
-    web_address = create_cluster.web_address
-    assert await ray.remote(_run_web_session).remote(web_address)
-    assert await ray.remote(_sync_web_session_test).remote(web_address)
-
-
 def _run_web_session(web_address):
     register_ray_serializers()
     import asyncio
-    asyncio.new_event_loop().run_until_complete(test_local.web_session_test(web_address))
+    asyncio.new_event_loop().run_until_complete(
+        test_local._run_web_session_test(web_address))
     return True
 
 
@@ -113,26 +105,27 @@ def _sync_web_session_test(web_address):
 
 
 @require_ray
+@pytest.mark.parametrize('test_option', [[True, ['ray://test_cluster/1/0', 'ray://test_cluster/2/0']],
+                                         [False, ['ray://test_cluster/0/1', 'ray://test_cluster/1/0']]])
+@pytest.mark.asyncio
+async def test_optional_supervisor_node(ray_cluster, test_option):
+    supervisor_exclusive_node, worker_addresses = test_option
+    config = _load_config()
+    config['cluster']['ray']['supervisor_exclusive_node'] = supervisor_exclusive_node
+    client = await new_cluster('test_cluster',
+                               worker_num=2,
+                               worker_cpu=2,
+                               worker_mem=1 * 1024 ** 3,
+                               config=config)
+    async with client:
+        assert client.address == 'ray://test_cluster/0/0'
+        assert client._cluster._worker_addresses == worker_addresses
+
+
+@require_ray
 @pytest.mark.asyncio
 async def test_web_session(ray_cluster, create_cluster):
     await test_local.test_web_session(create_cluster)
     web_address = create_cluster.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)
-
-
-def _run_web_session(web_address):
-    register_ray_serializers()
-    import asyncio
-    asyncio.new_event_loop().run_until_complete(test_local.web_session_test(web_address))
-    return True
-
-
-def _sync_web_session_test(web_address):
-    register_ray_serializers()
-    new_session(web_address, backend='oscar', default=True)
-    raw = np.random.RandomState(0).rand(10, 5)
-    a = mt.tensor(raw, chunk_size=5).sum(axis=1)
-    b = a.execute(show_progress=False)
-    assert b is a
-    return True

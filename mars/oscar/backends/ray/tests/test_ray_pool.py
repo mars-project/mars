@@ -14,23 +14,13 @@
 
 import pytest
 
-from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.tests.core import require_ray
+from mars.tests.conftest import *  # noqa
 from .....utils import lazy_import
-from ...router import Router
 from ..pool import RayMainPool, RayMainActorPool, create_actor_pool
 from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
-
-
-@pytest.fixture
-def ray_start_regular():
-    register_ray_serializers()
-    yield ray.init(num_cpus=10)
-    ray.shutdown()
-    unregister_ray_serializers()
-    Router.set_instance(None)
 
 
 @require_ray
@@ -48,12 +38,13 @@ async def test_main_pool(ray_start_regular):
 
     main_actor_pool = await create_actor_pool(
         address, n_process=n_process, pool_cls=RayMainActorPool)
-    sub_processes = list(main_actor_pool.sub_processes.values())
-    assert len(sub_processes) == n_process
-    await main_actor_pool.kill_sub_pool(sub_processes[0], force=True)
-    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[0]))
-    await main_actor_pool.kill_sub_pool(sub_processes[1], force=False)
-    assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[1]))
+    async with main_actor_pool:
+        sub_processes = list(main_actor_pool.sub_processes.values())
+        assert len(sub_processes) == n_process
+        await main_actor_pool.kill_sub_pool(sub_processes[0], force=True)
+        assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[0]))
+        await main_actor_pool.kill_sub_pool(sub_processes[1], force=False)
+        assert not (await main_actor_pool.is_sub_pool_alive(sub_processes[1]))
 
 
 @require_ray

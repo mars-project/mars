@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import gc
 import os
 import sys
 import tempfile
@@ -44,8 +45,8 @@ from mars.utils import Timer, merge_chunks
 async def actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                      labels=[None] + ['numa-0'] * 2,
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
+                                      labels=['main'] + ['numa-0'] * 2 + ['io'],
                                       subprocess_start_method=start_method)
 
     async with pool:
@@ -151,7 +152,7 @@ async def test_cancel_task(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
     def func():
-        time.sleep(20)
+        time.sleep(200)
 
     rs = [mr.spawn(func) for _ in range(10)]
 
@@ -168,10 +169,13 @@ async def test_cancel_task(actor_pool):
         result = await manager.get_task_result(task_id)
         assert result.status == TaskStatus.terminated
 
-    assert timer.duration < 15
+    assert timer.duration < 20
 
     keys = [r.key for r in rs]
     del rs
+    gc.collect()
+    await asyncio.sleep(0.5)
+
     # test ref counts
     assert (await lifecycle_api.get_tileable_ref_counts(keys)) == [0] * len(keys)
 

@@ -13,66 +13,17 @@
 # limitations under the License.
 
 import sys
-from abc import ABC, abstractmethod
 from typing import Any, List, Type, TypeVar, Union
 
-from ... import oscar as mo
-from ...lib.aio import alru_cache
-from ...storage.base import StorageLevel, StorageFileObject
-from ...utils import extensible
-from .core import StorageHandlerActor, StorageManagerActor, DataInfo
+from .... import oscar as mo
+from ....lib.aio import alru_cache
+from ....storage.base import StorageLevel, StorageFileObject
+from ....utils import extensible
+from ..core import StorageHandlerActor, StorageManagerActor, DataInfo, \
+    WrappedStorageFileObject
+from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
-
-
-class AbstractStorageAPI(ABC):
-
-    @abstractmethod
-    @extensible
-    async def get(self,
-                  data_key: str,
-                  conditions: List = None,
-                  error: str = 'raise') -> Any:
-        """
-        Get object by data key.
-
-        Parameters
-        ----------
-        data_key: str
-            date key to get.
-
-        conditions: List
-            Index conditions to pushdown
-        error: str
-            raise or ignore
-
-        Returns
-        -------
-            object
-        """
-
-    @abstractmethod
-    @extensible
-    async def put(self, data_key: str,
-                  obj: object,
-                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        """
-        Put object into storage.
-
-        Parameters
-        ----------
-        data_key: str
-            data key to put.
-        obj: object
-            object to put.
-        level: StorageLevel
-            the storage level to put into, MEMORY as default
-
-        Returns
-        -------
-        object information: ObjectInfo
-            the put object information
-        """
 
 
 class StorageAPI(AbstractStorageAPI):
@@ -86,13 +37,13 @@ class StorageAPI(AbstractStorageAPI):
         self._session_id = session_id
 
     async def _init(self):
-        self._storage_handler_ref = await mo.actor_ref(
-            self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref = await mo.actor_ref(
-            self._address, StorageManagerActor.default_uid())
+        self._storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = \
+            await mo.actor_ref(self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
+            await mo.actor_ref(self._address, StorageManagerActor.default_uid())
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,
@@ -124,6 +75,21 @@ class StorageAPI(AbstractStorageAPI):
                   data_key: str,
                   conditions: List = None,
                   error: str = 'raise') -> Any:
+        """
+        Get object by data key.
+
+        Parameters
+        ----------
+        data_key: str
+            date key to get.
+
+        conditions: List
+            Index conditions to pushdown
+
+        Returns
+        -------
+            object
+        """
         return await self._storage_handler_ref.get(
             self._session_id, data_key, conditions, error)
 
@@ -141,6 +107,23 @@ class StorageAPI(AbstractStorageAPI):
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+        """
+        Put object into storage.
+
+        Parameters
+        ----------
+        data_key: str
+            data key to put.
+        obj: object
+            object to put.
+        level: StorageLevel
+            the storage level to put into, MEMORY as default
+
+        Returns
+        -------
+        object information: ObjectInfo
+            the put object information
+        """
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -201,10 +184,12 @@ class StorageAPI(AbstractStorageAPI):
         return await self._storage_handler_ref.delete.batch(*deletes)
 
     @extensible
-    async def prefetch(self,
-                       data_key: str,
-                       level: StorageLevel = StorageLevel.MEMORY,
-                       error: str = 'raise'):
+    async def fetch(self,
+                    data_key: str,
+                    level: StorageLevel = StorageLevel.MEMORY,
+                    band_name: str = None,
+                    dest_address: str = None,
+                    error: str = 'raise'):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -214,12 +199,16 @@ class StorageAPI(AbstractStorageAPI):
             data key to fetch to current worker with specific level
         level: StorageLevel
             the storage level to put into, MEMORY as default
+        band_name: BandType
+            put data on specific band
+        dest_address:
+            destination address for data
         error: str
             raise or ignore
 
         """
-        await self._storage_manager_ref.prefetch(
-            self._session_id, data_key, level, error)
+        await self._storage_manager_ref.fetch(
+            self._session_id, data_key, level, band_name, dest_address, error)
 
     @extensible
     async def unpin(self, data_key: str):
@@ -253,7 +242,7 @@ class StorageAPI(AbstractStorageAPI):
     async def open_writer(self,
                           data_key: str,
                           size: int,
-                          level: StorageLevel) -> StorageFileObject:
+                          level: StorageLevel) -> WrappedStorageFileObject:
         """
         Return a file-like object for writing data.
 
@@ -296,7 +285,7 @@ class MockStorageAPI(StorageAPI):
                      session_id: str,
                      address: str,
                      **kwargs) -> APIType:
-        from .core import StorageManagerActor
+        from ..core import StorageManagerActor
 
         storage_configs = kwargs.get('storage_configs')
         if not storage_configs:

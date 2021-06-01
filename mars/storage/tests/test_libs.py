@@ -18,10 +18,10 @@ import io
 import sys
 import tempfile
 import pkgutil
-import pytest
 
 import numpy as np
 import pandas as pd
+import pytest
 import scipy.sparse as sps
 
 from mars.lib.filesystem import LocalFileSystem
@@ -35,6 +35,7 @@ from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
 from mars.tests.core import require_ray, require_cudf, require_cupy
+from mars.tests.conftest import *  # noqa
 try:
     import vineyard
 except ImportError:
@@ -59,8 +60,9 @@ if ray is not None:
     require_lib = require_ray
 
 
+@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
 @pytest.fixture(params=params)
-async def storage_context(request):
+async def storage_context(ray_start_regular, request):
     if request.param == 'filesystem':
         tempdir = tempfile.mkdtemp()
         params, teardown_params = await FileSystemStorage.setup(
@@ -133,7 +135,8 @@ def test_storage_level():
 
 @pytest.mark.asyncio
 @require_lib
-async def test_base_operations(storage_context):
+@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+async def test_base_operations(ray_start_regular, storage_context):
     storage = storage_context
 
     data1 = np.random.rand(10, 10)
@@ -143,7 +146,7 @@ async def test_base_operations(storage_context):
 
     info1 = await storage.object_info(put_info1.object_id)
     # FIXME: remove os check when size issue fixed
-    assert info1.size == put_info1.size or not sys.platform.startswith('linux')
+    assert info1.size == put_info1.size
 
     data2 = pd.DataFrame({'col1': np.arange(10),
                           'col2': [f'str{i}' for i in range(10)],
@@ -154,7 +157,7 @@ async def test_base_operations(storage_context):
 
     info2 = await storage.object_info(put_info2.object_id)
     # FIXME: remove os check when size issue fixed
-    assert info2.size == put_info2.size or not sys.platform.startswith('linux')
+    assert info2.size == put_info2.size
 
     # FIXME: remove when list functionality is ready for vineyard.
     if not isinstance(storage, (VineyardStorage, SharedMemoryStorage, RayStorage)):

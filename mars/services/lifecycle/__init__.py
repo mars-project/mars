@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import LifecycleAPI, MockLifecycleAPI
+from .api import LifecycleAPI, MockLifecycleAPI, \
+    AbstractLifecycleAPI, WebLifecycleAPI
 from .errors import TileableNotTracked
 
 from .api import LifecycleAPI, MockLifecycleAPI

@@ -21,7 +21,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
 from ...utils import implements, to_binary
-from ...utils import lazy_import
+from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
 from ..core import ActorRef
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
@@ -76,7 +76,8 @@ def _register_message_handler(pool_type: Type["AbstractActorPool"]):
 
 class AbstractActorPool(ABC):
     __slots__ = 'process_index', 'label', 'external_address', 'internal_address', 'env', \
-                '_servers', '_router', '_config', '_stopped', '_actors', '_caller', '_process_messages'
+                '_servers', '_router', '_config', '_stopped', '_actors', '_caller', '_process_messages', \
+                '_asyncio_task_timeout_detector_task'
 
     def __init__(self,
                  process_index: int,
@@ -106,6 +107,7 @@ class AbstractActorPool(ABC):
 
         # manage async actor callers
         self._caller = ActorCaller()
+        self._asyncio_task_timeout_detector_task = register_asyncio_task_timeout_detector()
 
     @property
     def router(self):
@@ -357,7 +359,6 @@ class AbstractActorPool(ABC):
         try:
             # clean global router
             Router.get_instance().remove_router(self._router)
-
             stop_tasks = []
             # stop all servers
             stop_tasks.extend([server.stop() for server in self._servers])
@@ -366,6 +367,8 @@ class AbstractActorPool(ABC):
             await asyncio.gather(*stop_tasks)
 
             self._servers = []
+            if self._asyncio_task_timeout_detector_task:  # pragma: no cover
+                self._asyncio_task_timeout_detector_task.cancel()
         finally:
             self._stopped.set()
 
@@ -533,6 +536,11 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor_pool_config.get_pool_config(process_index)['external_address']
         internal_address = kw['internal_address']
 
+        # import predefined modules
+        modules = actor_pool_config.get_pool_config(process_index)['modules'] or []
+        for mod in modules:
+            __import__(mod, globals(), locals(), [])
+
         # set default router
         # actor context would be able to use exact client
         cls._set_global_router(kw['router'])
@@ -647,8 +655,8 @@ class MainActorPoolBase(ActorPoolBase):
     _process_index_gen = itertools.count()
 
     @classmethod
-    def next_process_index(cls):
-        return next(cls._process_index_gen)
+    def process_index_gen(cls, address):
+        return cls._process_index_gen
 
     @property
     def _sub_processes(self):
@@ -1018,7 +1026,7 @@ class MainActorPoolBase(ActorPoolBase):
         """Returns internal address for pool of specified process index"""
 
 
-async def create_actor_pool(address: str,
+async def create_actor_pool(address: str, *,
                             pool_cls: Type[MainActorPoolType] = None,
                             n_process: int = None,
                             labels: List[str] = None,
@@ -1026,6 +1034,7 @@ async def create_actor_pool(address: str,
                             envs: List[Dict] = None,
                             subprocess_start_method: str = None,
                             auto_recover: Union[str, bool] = 'actor',
+                            modules: List[str] = None,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None) \
         -> MainActorPoolType:
@@ -1045,21 +1054,25 @@ async def create_actor_pool(address: str,
     external_addresses = pool_cls.get_external_addresses(address, n_process=n_process, ports=ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
-    main_process_index = pool_cls.next_process_index()
+    process_index_gen = pool_cls.process_index_gen(address)
+    main_process_index = next(process_index_gen)
     actor_pool_config.add_pool_conf(
         main_process_index,
         labels[0] if labels else None,
         pool_cls.gen_internal_address(main_process_index, external_addresses[0]),
-        external_addresses[0])
+        external_addresses[0],
+        modules=modules
+    )
     # add sub configs
     for i in range(n_process):
-        sub_process_index = pool_cls.next_process_index()
+        sub_process_index = next(process_index_gen)
         actor_pool_config.add_pool_conf(
             sub_process_index,
             labels[i + 1] if labels else None,
             pool_cls.gen_internal_address(sub_process_index, external_addresses[i + 1]),
             external_addresses[i + 1],
-            env=envs[i] if envs else None
+            env=envs[i] if envs else None,
+            modules=modules
         )
 
     pool: MainActorPoolType = await pool_cls.create({

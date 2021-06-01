@@ -18,7 +18,6 @@ from tornado.httpclient import AsyncHTTPClient
 import mars.oscar as mo
 from mars.services import NodeRole, start_services
 from mars.utils import get_next_port
-from ..web.supervisor import WebActor
 
 
 @pytest.fixture
@@ -52,7 +51,5 @@ async def test_start_service(actor_pool_context):
                              address=pool.external_address)
 
     http_client = AsyncHTTPClient()
-    web_actor = await mo.actor_ref(WebActor.default_uid(), address=pool.external_address)
-    web_address = await web_actor.get_web_address()
-    resp = await http_client.fetch(f'{web_address}/test_actor1/test_api')
+    resp = await http_client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
     assert resp.body.decode() == 'val1'
