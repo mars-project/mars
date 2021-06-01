@@ -23,10 +23,12 @@ async def create_supervisor_actor_pool(
         n_process: int,
         modules: List[str] = None,
         ports: List[int] = None,
-        subprocess_start_method: str = None):
+        subprocess_start_method: str = None,
+        **kwargs):
     return await mo.create_actor_pool(
         address, n_process=n_process, ports=ports, modules=modules,
-        subprocess_start_method=subprocess_start_method)
+        subprocess_start_method=subprocess_start_method,
+        **kwargs)
 
 
 async def create_worker_actor_pool(
@@ -35,7 +37,8 @@ async def create_worker_actor_pool(
         n_io_process: int = 1,
         modules: List[str] = None,
         ports: List[int] = None,
-        subprocess_start_method: str = None):
+        subprocess_start_method: str = None,
+        **kwargs):
     # TODO: support NUMA when ready
     n_process = sum(slot for slot in band_to_slots.values())
     envs = []
@@ -54,4 +57,5 @@ async def create_worker_actor_pool(
         address, n_process=n_process, ports=ports,
         n_io_process=n_io_process,
         labels=labels, envs=envs, modules=modules,
-        subprocess_start_method=subprocess_start_method)
+        subprocess_start_method=subprocess_start_method,
+        **kwargs)
