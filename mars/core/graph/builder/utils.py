@@ -24,9 +24,9 @@ from .chunk import ChunkGraphBuilder
 
 @enter_mode(kernel=True)
 def build_graph(tileables: List[TileableType],
-                 tile: bool = False,
-                 fuse_enabled: bool = True,
-                 **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
+                tile: bool = False,
+                fuse_enabled: bool = True,
+                **chunk_graph_build_kwargs) -> Union[TileableGraph, ChunkGraph]:
     tileables = list(itertools.chain(
         *(tileable.op.outputs for tileable in tileables)))
     tileable_graph = TileableGraph(tileables)

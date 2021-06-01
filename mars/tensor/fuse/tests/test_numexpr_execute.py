@@ -14,175 +14,161 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
+import pytest
 
-from mars.executor import Executor
-from mars.utils import ignore_warning
+from mars.config import option_context
 from mars.tensor.datasource import tensor
+from mars.tests import new_test_session
+from mars.utils import ignore_warning
 
 
-class Test(unittest.TestCase):
-    def setUp(self):
-        self.executor = Executor()
+@pytest.fixture(scope='module')
+def setup():
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
-    def testBaseExecution(self):
-        executor_numpy = Executor('numpy')
 
-        raw1 = np.random.randint(10, size=(10, 10, 10))
-        raw2 = np.random.randint(10, size=(10, 10, 10))
-        arr1 = tensor(raw1, chunk_size=3)
-        arr2 = tensor(raw2, chunk_size=3)
+def test_base_execution(setup):
+    raw1 = np.random.randint(10, size=(10, 10, 10))
+    raw2 = np.random.randint(10, size=(10, 10, 10))
+    arr1 = tensor(raw1, chunk_size=5)
+    arr2 = tensor(raw2, chunk_size=5)
 
-        arr3 = arr1 + arr2 + 10
-        arr4 = 10 + arr1 + arr2
-        res3 = executor_numpy.execute_tensor(arr3, concat=True)
-        res3_cmp = self.executor.execute_tensor(arr4, concat=True)
-        self.assertTrue(np.array_equal(res3[0], res3_cmp[0]))
+    arr3 = arr1 + arr2 + 10
+    arr4 = 10 + arr1 + arr2
+    res3 = arr3.execute().fetch()
+    res3_cmp = arr4.execute().fetch()
+    np.testing.assert_array_equal(res3, res3_cmp)
 
-        res5 = executor_numpy.execute_tensor((arr1 + arr1), concat=True)
-        res5_cmp = self.executor.execute_tensor((arr1 + arr1), concat=True)
-        self.assertTrue(np.array_equal(res5[0], res5_cmp[0]))
 
-    def testFuseSizeExecution(self):
-        executor_size = Executor()
-        executor_numpy = Executor()
+def _gen_pairs(seq):
+    test_seq = np.random.RandomState(0).permutation(seq)
+    for i in range(0, len(seq), 2):
+        j = (i + 1) % len(seq)
+        yield test_seq[i], test_seq[j]
 
-        raw1 = np.random.randint(10, size=(10, 10, 10))
-        arr1 = tensor(raw1, chunk_size=3)
-        arr2 = arr1 + 10
-        arr3 = arr2 * 3
-        arr4 = arr3 + 5
 
-        res4_size = executor_size.execute_tensor(arr4, mock=True)
-        res4 = executor_numpy.execute_tensor(arr4, concat=True)
-        res4_cmp = self.executor.execute_tensor(arr4, concat=True)
-        self.assertEqual(sum(s[0] for s in res4_size), arr4.nbytes)
-        self.assertTrue(np.array_equal(res4[0], res4_cmp[0]))
+@ignore_warning
+def test_unary_execution(setup):
+    from mars.tensor.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
 
-    @staticmethod
-    def _gen_pairs(seq):
-        test_seq = np.random.RandomState(0).permutation(seq)
-        for i in range(0, len(seq), 2):
-            j = (i + 1) % len(seq)
-            yield test_seq[i], test_seq[j]
+    _sp_unary_ufunc = {arccosh, invert, conj}
+    _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)[:3]
 
-    @ignore_warning
-    def testUnaryExecution(self):
-        from mars.tensor.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
+    def _normalize_by_sin(func1, func2, arr):
+        return func1(abs(sin((func2(arr)))))
 
-        _sp_unary_ufunc = {arccosh, invert, conj}
-        _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)
-        executor_numexpr = Executor()
-
-        def _normalize_by_sin(func1, func2, arr):
-            return func1(abs(sin((func2(arr)))))
-
-        tested = set()
-        for func1, func2 in self._gen_pairs(_new_unary_ufunc):
-            raw = np.random.random((8, 8, 8))
-            arr1 = tensor(raw, chunk_size=4)
-
-            arr2 = _normalize_by_sin(func1, func2, arr1)
-            res = executor_numexpr.execute_tensor(arr2, concat=True)
-            res_cmp = self.executor.execute_tensor(arr2, concat=True)
-            np.testing.assert_allclose(res[0], res_cmp[0])
-            tested.update([func1, func2])
-        # make sure all functions tested
-        self.assertEqual(tested, set(_new_unary_ufunc))
-
-        raw = np.random.randint(100, size=(8, 8, 8))
+    tested = set()
+    for func1, func2 in _gen_pairs(_new_unary_ufunc):
+        raw = np.random.random((8, 8, 8))
         arr1 = tensor(raw, chunk_size=4)
-        arr2 = arccosh(1 + abs(invert(arr1)))
-        res = executor_numexpr.execute_tensor(arr2, concat=True)
-        res_cmp = self.executor.execute_tensor(arr2, concat=True)
-        self.assertTrue(np.allclose(res[0], res_cmp[0]))
 
-    @ignore_warning
-    def testBinExecution(self):
-        from mars.tensor.arithmetic import BIN_UFUNC, mod, fmod, \
-            bitand, bitor, bitxor, lshift, rshift, ldexp
+        arr2 = _normalize_by_sin(func1, func2, arr1)
+        res = arr2.execute()
+        res_cmp = arr2.execute(fuse_enabled=False)
+        np.testing.assert_allclose(res[0], res_cmp[0])
+        tested.update([func1, func2])
+    # make sure all functions tested
+    assert tested == set(_new_unary_ufunc)
 
-        _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
-        _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
-        executor_numexpr = Executor()
+    raw = np.random.randint(100, size=(8, 8, 8))
+    arr1 = tensor(raw, chunk_size=4)
+    arr2 = arccosh(1 + abs(invert(arr1)))
+    res = arr2.execute(fuse_enabled=False).fetch()
+    res_cmp = arccosh(1 + abs(~raw))
+    np.testing.assert_array_almost_equal(res[0], res_cmp[0])
 
-        tested = set()
-        for func1, func2 in self._gen_pairs(_new_bin_ufunc):
-            raw = np.random.random((9, 9, 9))
-            arr1 = tensor(raw, chunk_size=5)
 
-            arr2 = func1(1, func2(2, arr1))
-            res = executor_numexpr.execute_tensor(arr2, concat=True)
-            res_cmp = self.executor.execute_tensor(arr2, concat=True)
-            self.assertTrue(np.allclose(res[0], res_cmp[0]))
-            tested.update([func1, func2])
-        # make sure all functions tested
-        self.assertEqual(tested, set(_new_bin_ufunc))
+@ignore_warning
+def test_bin_execution(setup):
+    from mars.tensor.arithmetic import BIN_UFUNC, mod, bitand, bitxor, rshift, ldexp
 
-        tested = set()
-        for func1, func2 in self._gen_pairs(_sp_bin_ufunc):
-            raw = np.random.randint(1, 100, size=(10, 10, 10))
-            arr1 = tensor(raw, chunk_size=3)
+    _sp_bin_ufunc = [mod, bitand, bitxor, rshift]
+    _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})[:3]
 
-            arr2 = func1(10, func2(arr1, 5))
-            res = executor_numexpr.execute_tensor(arr2, concat=True)
-            res_cmp = self.executor.execute_tensor(arr2, concat=True)
-            self.assertTrue(np.allclose(res[0], res_cmp[0]))
-            tested.update([func1, func2])
-        # make sure all functions tested
-        self.assertEqual(tested, set(_sp_bin_ufunc))
+    tested = set()
+    for func1, func2 in _gen_pairs(_new_bin_ufunc):
+        raw = np.random.random((9, 9, 9))
+        arr1 = tensor(raw, chunk_size=5)
 
-    def testReductionExecution(self):
-        raw1 = np.random.randint(5, size=(8, 8, 8))
-        raw2 = np.random.randint(5, size=(8, 8, 8))
-        arr1 = tensor(raw1, chunk_size=3)
-        arr2 = tensor(raw2, chunk_size=3)
+        arr2 = func1(1, func2(2, arr1))
+        res = arr2.execute().fetch()
+        res_cmp = arr2.execute(fuse_enabled=False).fetch()
+        np.testing.assert_array_almost_equal(res, res_cmp)
+        tested.update([func1, func2])
+    # make sure all functions tested
+    assert tested == set(_new_bin_ufunc)
 
-        res1 = self.executor.execute_tensor((arr1 + 1).sum(keepdims=True))
-        res2 = self.executor.execute_tensor((arr1 + 1).prod(keepdims=True))
-        self.assertTrue(np.array_equal((raw1 + 1).sum(keepdims=True), res1[0]))
-        self.assertTrue(np.array_equal((raw1 + 1).prod(keepdims=True), res2[0]))
+    tested = set()
+    for func1, func2 in _gen_pairs(_sp_bin_ufunc):
+        raw = np.random.randint(1, 100, size=(10, 10, 10))
+        arr1 = tensor(raw, chunk_size=6)
 
-        res1 = self.executor.execute_tensor((arr1 + 1).sum(axis=1), concat=True)
-        res2 = self.executor.execute_tensor((arr1 + 1).prod(axis=1), concat=True)
-        res3 = self.executor.execute_tensor((arr1 + 1).max(axis=1), concat=True)
-        res4 = self.executor.execute_tensor((arr1 + 1).min(axis=1), concat=True)
-        self.assertTrue(np.array_equal((raw1 + 1).sum(axis=1), res1[0]))
-        self.assertTrue(np.array_equal((raw1 + 1).prod(axis=1), res2[0]))
-        self.assertTrue(np.array_equal((raw1 + 1).max(axis=1), res3[0]))
-        self.assertTrue(np.array_equal((raw1 + 1).min(axis=1), res4[0]))
+        arr2 = func1(10, func2(arr1, 5))
+        res = arr2.execute().fetch()
+        res_cmp = arr2.execute(fuse_enabled=False).fetch()
+        np.testing.assert_array_almost_equal(res, res_cmp)
+        tested.update([func1, func2])
+    # make sure all functions tested
+    assert tested == set(_sp_bin_ufunc)
 
-        raw3 = raw2 - raw1 + 10
-        arr3 = -arr1 + arr2 + 10
 
-        res1 = self.executor.execute_tensor(arr3.sum(axis=(0, 1)), concat=True)
-        res2 = self.executor.execute_tensor(arr3.prod(axis=(0, 1)), concat=True)
-        res3 = self.executor.execute_tensor(arr3.max(axis=(0, 1)), concat=True)
-        res4 = self.executor.execute_tensor(arr3.min(axis=(0, 1)), concat=True)
-        self.assertTrue(np.array_equal(raw3.sum(axis=(0, 1)), res1[0]))
-        self.assertTrue(np.array_equal(raw3.prod(axis=(0, 1)), res2[0]))
-        self.assertTrue(np.array_equal(raw3.max(axis=(0, 1)), res3[0]))
-        self.assertTrue(np.array_equal(raw3.min(axis=(0, 1)), res4[0]))
+def test_reduction_execution(setup):
+    raw1 = np.random.randint(5, size=(8, 8, 8))
+    raw2 = np.random.randint(5, size=(8, 8, 8))
+    arr1 = tensor(raw1, chunk_size=4)
+    arr2 = tensor(raw2, chunk_size=4)
 
-    def testBoolReductionExecution(self):
-        raw = np.random.randint(5, size=(8, 8, 8))
-        arr = tensor(raw, chunk_size=2)
+    res1 = (arr1 + 1).sum(keepdims=True).execute().fetch()
+    res2 = (arr1 + 1).prod(keepdims=True).execute().fetch()
+    np.testing.assert_array_equal((raw1 + 1).sum(keepdims=True), res1)
+    np.testing.assert_array_equal((raw1 + 1).prod(keepdims=True), res2)
 
-        res = self.executor.execute_tensor((arr > 3).sum(axis=1), concat=True)
-        np.testing.assert_array_equal(res[0], (raw > 3).sum(axis=1))
+    res1 = (arr1 + 1).sum(axis=1).execute().fetch()
+    res2 = (arr1 + 1).prod(axis=1).execute().fetch()
+    res3 = (arr1 + 1).max(axis=1).execute().fetch()
+    res4 = (arr1 + 1).min(axis=1).execute().fetch()
+    np.testing.assert_array_equal((raw1 + 1).sum(axis=1), res1)
+    np.testing.assert_array_equal((raw1 + 1).prod(axis=1), res2)
+    np.testing.assert_array_equal((raw1 + 1).max(axis=1), res3)
+    np.testing.assert_array_equal((raw1 + 1).min(axis=1), res4)
 
-        res = self.executor.execute_tensor((arr > 3).sum())
-        np.testing.assert_array_equal(res, (raw > 3).sum())
+    raw3 = raw2 - raw1 + 10
+    arr3 = -arr1 + arr2 + 10
 
-    def testOrderExecution(self):
-        raw = np.asfortranarray(np.random.rand(4, 5, 6))
-        arr = tensor(raw, chunk_size=2)
+    res1 = arr3.sum(axis=(0, 1)).execute().fetch()
+    res2 = arr3.prod(axis=(0, 1)).execute().fetch()
+    res3 = arr3.max(axis=(0, 1)).execute().fetch()
+    res4 = arr3.min(axis=(0, 1)).execute().fetch()
+    np.testing.assert_array_equal(raw3.sum(axis=(0, 1)), res1)
+    np.testing.assert_array_equal(raw3.prod(axis=(0, 1)), res2)
+    np.testing.assert_array_equal(raw3.max(axis=(0, 1)), res3)
+    np.testing.assert_array_equal(raw3.min(axis=(0, 1)), res4)
 
-        res = self.executor.execute_tensor(arr * 3 + 1, concat=True)[0]
-        expected = raw * 3 + 1
 
-        np.testing.assert_array_equal(res, expected)
-        self.assertEqual(res.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
-        self.assertEqual(res.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+def test_bool_reduction_execution(setup):
+    raw = np.random.randint(5, size=(8, 8, 8))
+    arr = tensor(raw, chunk_size=4)
+
+    res = (arr > 3).sum(axis=1).execute().fetch()
+    np.testing.assert_array_equal(res, (raw > 3).sum(axis=1))
+
+    res = (arr > 3).sum().execute().fetch()
+    np.testing.assert_array_equal(res, (raw > 3).sum())
+
+
+def test_order_execution(setup):
+    raw = np.asfortranarray(np.random.rand(4, 5, 6))
+    arr = tensor(raw, chunk_size=3)
+
+    res = (arr * 3 + 1).execute().fetch()
+    expected = raw * 3 + 1
+
+    np.testing.assert_array_equal(res, expected)
+    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
+    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
