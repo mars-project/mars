@@ -553,8 +553,12 @@ class StorageManagerActor(mo.Actor):
                     data_key: str,
                     level: StorageLevel,
                     address: str,
-                    band_name: str):
+                    band_name: str,
+                    error: str):
         from .transfer import SenderManagerActor
+
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
 
         try:
             info = self._data_manager.get_info(session_id, data_key)
@@ -564,15 +568,19 @@ class StorageManagerActor(mo.Actor):
             try:
                 yield self._storage_handler.fetch(session_id, data_key)
             except NotImplementedError:
-                meta_api = await self._get_meta_api(session_id)
-                if address is None:
-                    address = (await meta_api.get_chunk_meta(
-                        data_key, fields=['bands']))['bands'][0][0]
-                sender_ref = await mo.actor_ref(
-                    address=address, uid=SenderManagerActor.default_uid())
-                yield sender_ref.send_data(session_id, data_key,
-                                           self.address, level)
-                await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
+                try:
+                    meta_api = await self._get_meta_api(session_id)
+                    if address is None:
+                        address = (await meta_api.get_chunk_meta(
+                            data_key, fields=['bands']))['bands'][0][0]
+                    sender_ref = await mo.actor_ref(
+                        address=address, uid=SenderManagerActor.default_uid())
+                    yield sender_ref.send_data(session_id, data_key,
+                                               self.address, level)
+                    await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
+                except KeyError:
+                    if error == 'raise':
+                        raise DataNotExist(f'Data {session_id, data_key} not exists')
 
     def _get_data_infos(self,
                         session_id: str,

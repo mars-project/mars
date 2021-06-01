@@ -156,7 +156,8 @@ class StorageAPI(AbstractStorageAPI):
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
                     band_name: str = None,
-                    dest_address: str = None):
+                    dest_address: str = None,
+                    error: str = 'raise'):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -170,9 +171,12 @@ class StorageAPI(AbstractStorageAPI):
             put data on specific band
         dest_address:
             destination address for data
+        error: str
+            raise or ignore
         """
         await self._storage_manager_ref.fetch(
-            self._session_id, data_key, level, band_name, dest_address)
+            self._session_id, data_key, level,
+            band_name, dest_address, error)
 
     @extensible
     async def unpin(self, data_key: str):
