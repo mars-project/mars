@@ -25,7 +25,7 @@ from ...core import get_output_types, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
 from ...dataframe.utils import parse_index
 from ...lib import sparse
-from ...serialization.serializables import ValueType, TupleField, KeyField
+from ...serialization.serializables import FieldTypes, TupleField, KeyField
 from ...tensor.utils import validate_axis, check_random_state, gen_random_seeds, decide_unify_split
 from ...tensor.array_utils import get_array_module
 from ...utils import tokenize, lazy_import, has_unknown_shape
@@ -52,11 +52,11 @@ def _safe_slice(obj, slc, output_type):
 class LearnShuffle(MapReduceOperand, LearnOperandMixin):
     _op_type_ = OperandDef.PERMUTATION
 
-    _axes = TupleField('axes', ValueType.int32)
-    _seeds = TupleField('seeds', ValueType.uint32)
+    _axes = TupleField('axes', FieldTypes.int32)
+    _seeds = TupleField('seeds', FieldTypes.uint32)
 
     _input = KeyField('input')
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.uint32)
+    _reduce_sizes = TupleField('reduce_sizes', FieldTypes.uint32)
 
     def __init__(self, axes=None, seeds=None, output_types=None, reduce_sizes=None, **kw):
         super().__init__(_axes=axes, _seeds=seeds, _output_types=output_types,

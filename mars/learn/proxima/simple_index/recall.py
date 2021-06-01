@@ -80,7 +80,8 @@ def recall_one_byid(linear_key, ann_key, ann_score, topk_ids):
 
 
 def compute_recall(pk_l, distance_l, pk_p, distance_p, topk_ids, method="BYID", epsilon=1e-6):
-    pk_l, distance_l, pk_p, distance_p = np.array(pk_l), np.array(distance_l), np.array(pk_p), np.array(distance_p)
+    pk_l, distance_l, pk_p, distance_p = np.array(pk_l), np.array(distance_l), \
+                                         np.array(pk_p), np.array(distance_p)
     topk_matchs = {}
     for ids in topk_ids:
         topk_matchs[ids] = 0

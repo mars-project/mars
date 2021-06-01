@@ -17,7 +17,7 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
-from ....serialization.serializables import ValueType, DictField, KeyField, ListField
+from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
 from ....core import OutputType
 from ....core.context import get_context
 from ....core.operand import MergeDictOperand
@@ -35,10 +35,10 @@ def _on_serialize_evals(evals_val):
 class XGBTrain(MergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
-    _params = DictField('params', key_type=ValueType.string)
+    _params = DictField('params', key_type=FieldTypes.string)
     _dtrain = KeyField('dtrain')
     _evals = ListField('evals', on_serialize=_on_serialize_evals)
-    _kwargs = DictField('kwargs', key_type=ValueType.string)
+    _kwargs = DictField('kwargs', key_type=FieldTypes.string)
     _tracker = KeyField('tracker')
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,

@@ -700,7 +700,7 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]):
                                  group_keys=v.group_keys, squeeze=v.squeeze,
                                  observed=v.observed, mutated=v.mutated)
         return grouped.groupby_obj
-    elif isinstance(v, bytes):
+    elif isinstance(v, (str, bytes)):
         return [r[1] for r in chunk_results]
     else:
         result = None
