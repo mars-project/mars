@@ -16,10 +16,10 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
 from ...serialization.serializables import FieldTypes, ListField, StringField, \
     BoolField, AnyField
-from ...utils import lazy_import, check_chunks_unknown_shape
+from ...utils import lazy_import, has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 from ..utils import parse_index, build_empty_df, build_empty_series, \
     standardize_range_index, validate_axis
@@ -96,7 +96,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         if not all(inputs[i].nsplits[1 - axis] == inputs[i + 1].nsplits[1 - axis]
                    for i in range(len(inputs) - 1)):
             # need rechunk
-            check_chunks_unknown_shape(inputs, TilesError)
+            if has_unknown_shape(*inputs):
+                yield
             normalized_nsplits = {1 - axis: inputs[0].nsplits[1 - axis]}
             new_inputs = []
             for inp in inputs:
@@ -144,7 +145,8 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
 
         if op.axis == 1:
-            check_chunks_unknown_shape(inputs, TilesError)
+            if has_unknown_shape(*inputs):
+                yield
             new_inputs = []
             for inp in inputs:
                 new_inputs.append(

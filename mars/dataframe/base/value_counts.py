@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType, TilesError, recursive_tile
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
 from ...serialization.serializables import KeyField, BoolField, \
     Int64Field, StringField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
@@ -136,7 +136,8 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
 
         if op.normalize:
             if op.convert_index_to_interval:
-                check_chunks_unknown_shape([op.input], TilesError)
+                if has_unknown_shape(op.input):
+                    yield
                 inp = inp.truediv(op.input.shape[0], axis=0)
             else:
                 inp = inp.truediv(inp.sum(), axis=0)

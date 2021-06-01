@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
@@ -124,9 +124,9 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if any(np.isnan(ns) for ns in lhs.nsplits[-1]):
-            raise TilesError('lhs has unknown chunk shape on last axis')
+            yield
         if any(np.isnan(ns) for ns in rhs.nsplits[0]):
-            raise TilesError('rhs has unknown chunk shape on first axis')
+            yield
 
         nsplit = decide_unify_split(lhs.nsplits[-1], rhs.nsplits[0])
         lhs_axis = validate_axis(lhs.ndim, -1)

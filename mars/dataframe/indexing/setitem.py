@@ -17,7 +17,7 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes
-from ...core import OutputType, TilesError, recursive_tile
+from ...core import OutputType, recursive_tile
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
 from ..core import SERIES_TYPE, DataFrame
@@ -118,7 +118,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                 # do rechunk
                 if any(np.isnan(s) for s in target.nsplits[0]) or \
                         any(np.isnan(s) for s in value.nsplits[0]):  # pragma: no cover
-                    raise TilesError('target or value has unknown chunk shape')
+                    yield
 
                 value = yield from recursive_tile(
                     value.rechunk({0: target.nsplits[0]}))

@@ -306,14 +306,6 @@ def test_chunks_indexer():
     assert chunk_keys == expected
 
 
-def test_check_chunks_unknown_shape():
-    with pytest.raises(ValueError):
-        a = mt.random.rand(10, chunk_size=5)
-        mt.random.shuffle(a)
-        a = a.tiles()
-        utils.check_chunks_unknown_shape([a], ValueError)
-
-
 def test_insert_reversed_tuple():
     assert utils.insert_reversed_tuple((), 9) == (9,)
     assert utils.insert_reversed_tuple((7, 4, 3, 1), 9) == (9, 7, 4, 3, 1)

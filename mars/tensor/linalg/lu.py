@@ -18,9 +18,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...core import ExecutableTuple, TilesError, recursive_tile
+from ...core import ExecutableTuple, recursive_tile
 from ...serialization.serializables import KeyField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -127,7 +127,8 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
             in_tensor = yield from recursive_tile(
                 vstack([in_tensor, zero_tensor]))
 
-        check_chunks_unknown_shape([in_tensor], TilesError)
+        if has_unknown_shape(in_tensor):
+            yield
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]

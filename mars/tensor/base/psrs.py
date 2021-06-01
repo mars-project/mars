@@ -18,7 +18,7 @@ from functools import partial
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialization.serializables import FieldTypes, Int32Field, \
     ListField, StringField, BoolField, AnyField
@@ -47,8 +47,7 @@ class PSRSOperandMixin:
         if not has_unknown_shape:
             axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
             if np.isnan(axis_shape) or any(np.isnan(s) for s in in_data.nsplits[op.axis]):
-                raise TilesError('fail to tile because either the shape of '
-                                 f'input data on axis {op.axis} has unknown shape or chunk shape')
+                yield
             chunk_size = int(axis_shape / axis_chunk_shape)
             chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
             if axis_shape % chunk_size > 0:

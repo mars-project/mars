@@ -18,7 +18,7 @@ import itertools
 import numpy as np
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, get_output_types, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, get_output_types, recursive_tile
 from ...serialization.serializables import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
     KeyField
 from ...tensor import searchsorted
@@ -26,7 +26,7 @@ from ...tensor.base import TensorMapChunk
 from ...tensor.merge import TensorConcatenate
 from ...tensor.random import RandomState as TensorRandomState, RandomStateField
 from ...tensor.utils import normalize_chunk_sizes, gen_random_seeds
-from ...utils import check_chunks_unknown_shape, ceildiv
+from ...utils import has_unknown_shape, ceildiv
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import validate_axis, parse_index
 
@@ -343,7 +343,8 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameSample"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         in_df = op.inputs[0]
         if in_df.ndim == 2:

@@ -18,11 +18,10 @@ from typing import Dict
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...serialization.serializables import FieldTypes, KeyField, \
     StringField, BytesField, TupleField
 from ...lib.filesystem import get_fs, FSMap
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from .core import TensorDataStore
 
 
@@ -92,7 +91,8 @@ class TensorToZarrDataStore(TensorDataStore):
     def tile(cls, op):
         import zarr
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         in_tensor = op.input
 
         # create dataset

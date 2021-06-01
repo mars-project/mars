@@ -759,13 +759,6 @@ def numpy_dtype_from_descr_json(obj):
     return obj
 
 
-def check_chunks_unknown_shape(tileables, error_cls):
-    for t in tileables:
-        for ns in t.nsplits:
-            if any(np.isnan(s) for s in ns):
-                raise error_cls(f'Input tileable {t} has chunks with unknown shape')
-
-
 def has_unknown_shape(*tiled_tileables):
     for tileable in tiled_tileables:
         if getattr(tileable, 'shape', None) is None:

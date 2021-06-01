@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...core.context import get_context
 from ...serialization.serializables import KeyField, Float64Field, Int64Field
 from ...tensor.datasource import tensor as astensor
-from ...utils import check_chunks_unknown_shape, ceildiv
+from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin, TensorOperand
 
 
@@ -41,7 +41,8 @@ class RebalanceMixin:
         if ctx is None and op.factor is not None:
             return [in_obj]
 
-        check_chunks_unknown_shape([in_obj], TilesError)
+        if has_unknown_shape(in_obj):
+            yield
 
         size = in_obj.shape[op.axis]
         if op.factor is not None:

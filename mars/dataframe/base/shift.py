@@ -16,9 +16,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, TilesError
+from ...core import OutputType
 from ...serialization.serializables import KeyField, AnyField, Int8Field, Int64Field
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
@@ -157,7 +157,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 out_chunks.append(out_chunk)
         else:
             if np.isnan(np.sum(inp.nsplits[axis])):  # pragma: no cover
-                raise TilesError(f'input has unknown chunk shape on axis {axis}')
+                yield
 
             # shift data
             inc = op.periods > 0
@@ -235,7 +235,8 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         from ..indexing.iloc import SeriesIlocGetItem
         from ..merge import DataFrameConcat
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         inp = op.input
         out = op.outputs[0]

@@ -16,10 +16,10 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
-from ....core import TilesError, recursive_tile
+from ....core import recursive_tile
 from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
-from ....utils import check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 from ...utils import check_array
 from ...utils.extmath import row_norms
 from .core import PairwiseDistances
@@ -114,7 +114,8 @@ class EuclideanDistances(PairwiseDistances):
         out = op.outputs[0]
 
         if X.dtype == np.float32:
-            check_chunks_unknown_shape([X, Y], TilesError)
+            if has_unknown_shape(X, Y):
+                yield
             # rechunk
             new_nsplit = max(max(X.nsplits[0]) // 2, 1)
             X = yield from recursive_tile(
