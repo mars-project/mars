@@ -37,10 +37,10 @@ class StorageAPI(AbstractStorageAPI):
         self._session_id = session_id
 
     async def _init(self):
-        self._storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
-            await mo.actor_ref(self._address, StorageManagerActor.default_uid())
+        self._storage_handler_ref = await mo.actor_ref(
+            self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref = await mo.actor_ref(
+            self._address, StorageManagerActor.default_uid())
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -75,21 +75,6 @@ class StorageAPI(AbstractStorageAPI):
                   data_key: str,
                   conditions: List = None,
                   error: str = 'raise') -> Any:
-        """
-        Get object by data key.
-
-        Parameters
-        ----------
-        data_key: str
-            date key to get.
-
-        conditions: List
-            Index conditions to pushdown
-
-        Returns
-        -------
-            object
-        """
         return await self._storage_handler_ref.get(
             self._session_id, data_key, conditions, error)
 
@@ -107,23 +92,6 @@ class StorageAPI(AbstractStorageAPI):
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        """
-        Put object into storage.
-
-        Parameters
-        ----------
-        data_key: str
-            data key to put.
-        obj: object
-            object to put.
-        level: StorageLevel
-            the storage level to put into, MEMORY as default
-
-        Returns
-        -------
-        object information: ObjectInfo
-            the put object information
-        """
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -188,8 +156,7 @@ class StorageAPI(AbstractStorageAPI):
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
                     band_name: str = None,
-                    dest_address: str = None,
-                    error: str = 'raise'):
+                    dest_address: str = None):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -203,12 +170,9 @@ class StorageAPI(AbstractStorageAPI):
             put data on specific band
         dest_address:
             destination address for data
-        error: str
-            raise or ignore
-
         """
         await self._storage_manager_ref.fetch(
-            self._session_id, data_key, level, band_name, dest_address, error)
+            self._session_id, data_key, level, band_name, dest_address)
 
     @extensible
     async def unpin(self, data_key: str):

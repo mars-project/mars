@@ -188,9 +188,12 @@ class DataManager:
 
 
 class StorageHandlerActor(mo.Actor):
+
+    _storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]
+
     def __init__(self,
                  storage_init_params: Dict,
-                 storage_manager_ref: mo.ActorRef):
+                 storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]):
         self._storage_init_params = storage_init_params
         self._storage_manager_ref = storage_manager_ref
 
@@ -301,7 +304,7 @@ class StorageHandlerActor(mo.Actor):
             data_keys.append(data_key)
             sizes.append(size)
 
-        await self._storage_manager_ref.allocate_size(
+        await self._storage_manager_ref.request_quota(
             sum(sizes), level)
 
         data_infos = []
@@ -379,8 +382,8 @@ class StorageHandlerActor(mo.Actor):
             yield self._clients[level].delete(object_id)
         releases = []
         for level, size in level_sizes.items():
-            releases.append(self._storage_manager_ref.release_size.delay(size, level))
-        await self._storage_manager_ref.release_size.batch(*releases)
+            releases.append(self._storage_manager_ref.release_quota.delay(size, level))
+        await self._storage_manager_ref.release_quota.batch(*releases)
 
     async def open_reader(self,
                           session_id: str,
@@ -446,27 +449,26 @@ class StorageManagerActor(mo.Actor):
 
         # setup storage backend
         quotas = dict()
-
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
                     quotas[level] = StorageQuota(client.size)
-        self._quotas = quotas
 
         # create handler actors for every process
-        strategy = IdleLabel(None, 'storage_handler')
-        self._storage_handler_refs = []
+        strategy = IdleLabel(None, 'StorageHandler')
         while True:
             try:
-                handler_ref = await mo.create_actor(
-                    StorageHandlerActor, self._init_params,
-                    self.ref(), uid=StorageHandlerActor.default_uid(),
-                    address=self.address, allocate_strategy=strategy)
-                self._storage_handler_refs.append(handler_ref)
+                await mo.create_actor(StorageHandlerActor,
+                                      self._init_params,
+                                      self.ref(),
+                                      uid=StorageHandlerActor.default_uid(),
+                                      address=self.address,
+                                      allocate_strategy=strategy)
             except NoIdleSlot:
                 break
 
+        self._quotas = quotas
         self._storage_handler = await mo.actor_ref(address=self.address,
                                                    uid=StorageHandlerActor.default_uid())
 
@@ -524,11 +526,23 @@ class StorageManagerActor(mo.Actor):
                            level: StorageLevel):
         await self._quotas[level].update(size)
 
+    async def _release_quota(self,
+                             size: int,
+                             level: StorageLevel
+                             ):
+        await self._quotas[level].release(size)
+
+    @extensible
     async def release_quota(self,
                             size: int,
                             level: StorageLevel
                             ):
-        await self._quotas[level].release(size)
+        await self._release_quota(size, level)
+
+    @release_quota.batch
+    async def batch_release_quota(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            await self._release_quota(*args, **kwargs)
 
     def get_quota(self, level: StorageLevel):
         return self._quotas[level].total_size, self._quotas[level].used_size
@@ -538,11 +552,8 @@ class StorageManagerActor(mo.Actor):
                     data_key: str,
                     level: StorageLevel,
                     address: str,
-                    band_name: str,
-                    error: str):
+                    band_name: str):
         from .transfer import SenderManagerActor
-        if error not in ('raise', 'ignore'):  # pragma: no cover
-            raise ValueError('error must be raise or ignore')
 
         try:
             info = self._data_manager.get_info(session_id, data_key)
@@ -552,41 +563,20 @@ class StorageManagerActor(mo.Actor):
             try:
                 yield self._storage_handler.fetch(session_id, data_key)
             except NotImplementedError:
-                try:
-                    meta_api = await self._get_meta_api(session_id)
-                    if address is None:
-                        address = (await meta_api.get_chunk_meta(
-                            data_key, fields=['bands']))['bands'][0][0]
-                    sender_ref = await mo.actor_ref(
-                        address=address, uid=SenderManagerActor.default_uid())
-                    yield sender_ref.send_data(session_id, data_key,
-                                               self.address, level)
-                    await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
-                except KeyError:
-                    raise DataNotExist(f'Data {session_id, data_key} not exists') from None
-
-    def _release_size(self,
-                      size: int,
-                      level: StorageLevel
-                      ):
-        self._quotas[level].release(size)
-
-    @extensible
-    def release_size(self,
-                     size: int,
-                     level: StorageLevel
-                     ):
-        return self._release_size(size, level)
-
-    @release_size.batch
-    def batch_release_size(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            self._release_size(*args, **kwargs)
+                meta_api = await self._get_meta_api(session_id)
+                if address is None:
+                    address = (await meta_api.get_chunk_meta(
+                        data_key, fields=['bands']))['bands'][0][0]
+                sender_ref = await mo.actor_ref(
+                    address=address, uid=SenderManagerActor.default_uid())
+                yield sender_ref.send_data(session_id, data_key,
+                                           self.address, level)
+                await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
 
     def _get_data_infos(self,
                         session_id: str,
                         data_key: str,
-                        error: str) -> List[DataInfo]:
+                        error: str) -> Union[List[DataInfo], None]:
         try:
             return self._data_manager.get_infos(session_id, data_key)
         except DataNotExist:

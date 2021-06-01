@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Tuple, Type, Union
 
 from ..utils import dataslots
 from .core import StorageFileObject
@@ -102,7 +102,7 @@ class StorageBackend(ABC):
         """
 
     @property
-    def size(self) -> Optional[int]:
+    def size(self) -> Union[int, None]:
         """
         The total size of storage.
 

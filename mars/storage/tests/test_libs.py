@@ -18,10 +18,10 @@ import io
 import sys
 import tempfile
 import pkgutil
+import pytest
 
 import numpy as np
 import pandas as pd
-import pytest
 import scipy.sparse as sps
 
 from mars.lib.filesystem import LocalFileSystem
@@ -36,6 +36,7 @@ from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
 from mars.tests.core import require_ray, require_cudf, require_cupy
 from mars.tests.conftest import *  # noqa
+
 try:
     import vineyard
 except ImportError:
