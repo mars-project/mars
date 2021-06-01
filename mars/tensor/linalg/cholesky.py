@@ -19,8 +19,8 @@ from numpy.linalg import LinAlgError
 
 from ...serialization.serializables import KeyField, BoolField
 from ... import opcodes as OperandDef
-from ...core import TilesError, recursive_tile
-from ...utils import check_chunks_unknown_shape
+from ...core import recursive_tile
+from ...utils import has_unknown_shape
 from ..operands import TensorHasInput, TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -57,7 +57,8 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
 
         tensor = op.outputs[0]
         in_tensor = op.input
-        check_chunks_unknown_shape([in_tensor], TilesError)
+        if has_unknown_shape(in_tensor):
+            yield
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]

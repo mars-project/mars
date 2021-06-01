@@ -20,9 +20,8 @@ import numpy as np
 
 from ...lib import sparse
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...serialization.serializables import KeyField, Int32Field
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..array_utils import create_array
 from ..core import TensorOrder
 from .core import TensorHasInput
@@ -43,7 +42,8 @@ class TensorTri(TensorHasInput):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         tensor = op.outputs[0]
 
         m = op.input

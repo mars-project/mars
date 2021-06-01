@@ -20,13 +20,13 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, \
-    TilesError, recursive_tile
+    recursive_tile
 from ...core.context import get_context
 from ...serialization.serializables import KeyField, AnyField, \
     BoolField, Int32Field, StringField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE, TensorOrder
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import SERIES_TYPE, INDEX_TYPE
 from ..datasource.index import from_pandas as asindex
 from ..initializer import Series as asseries
@@ -197,7 +197,8 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         if isinstance(op.bins, ENTITY_TYPE):
             # check op.bins chunk shapes
-            check_chunks_unknown_shape([op.bins], TilesError)
+            if has_unknown_shape(op.bins):
+                yield
             bins = yield from recursive_tile(
                 op.bins.rechunk(op.bins.shape))
         else:
@@ -205,7 +206,8 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
 
         if isinstance(op.labels, ENTITY_TYPE):
             # check op.labels chunk shapes
-            check_chunks_unknown_shape([op.labels], TilesError)
+            if has_unknown_shape(op.labels):
+                yield
             labels = yield from recursive_tile(
                 op.labels.rechunk(op.labels.shape))
         else:

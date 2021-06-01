@@ -18,9 +18,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...core import recursive_tile, TilesError
+from ...core import recursive_tile
 from ...serialization.serializables import BoolField, KeyField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..array_utils import device, as_same_device, cp
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -69,7 +69,8 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
         from ..arithmetic.utils import chunk_tree_add
         from .dot import TensorDot
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         a, b = op.a, op.b
         unified_nsplit = decide_unify_split(a.nsplits[0], a.nsplits[1], b.nsplits[0])

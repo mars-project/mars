@@ -15,15 +15,14 @@
 import functools
 import io
 import os
-import shutil
 import sys
-import tempfile
 import textwrap
 import weakref
-from typing import List, Callable, Optional, Type
+from typing import List, Callable, Type
 
 from .context import Context
 from .typing import OperandType, TileableType, SessionType
+
 
 class _LogWrapper:
     def __init__(self,

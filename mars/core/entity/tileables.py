@@ -30,10 +30,6 @@ from .core import EntityData, Entity
 from .executable import _ExecutableMixin
 
 
-class TilesError(Exception):
-    partial_tiled_chunks: List[ChunkType]
-
-
 class NotSupportTile(Exception):
     pass
 
@@ -64,25 +60,14 @@ class OperandTilesHandler:
         op = tileables[0].op
         tile_handler = cls.get_handler(op)
         if inspect.isgeneratorfunction(tile_handler):
-            # new style tile,
             # op.tile can be a generator function,
             # each time an operand yield some chunks,
             # they will be put into ChunkGraph and executed first.
             # After execution, resume from the yield place.
             tiled_result = yield from tile_handler(op)
         else:
-            # old style tile
-            # op.tile raise TilesError to submit predecessors first.
-            while True:
-                try:
-                    tiled_result = tile_handler(op)
-                    break
-                except TilesError as e:
-                    # failed
-                    if getattr(e, 'partial_tiled_chunks', None):
-                        yield e.partial_tiled_chunks
-                    else:
-                        yield []
+            # without iterative tiling
+            tiled_result = tile_handler(op)
 
         if not isinstance(tiled_result, list):
             tiled_result = [tiled_result]

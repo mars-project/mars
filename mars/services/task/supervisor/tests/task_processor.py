@@ -97,28 +97,6 @@ class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
                                  task_stage_info)
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(analyzer._chunk_to_copied[c]
-                      for c in chunk_graph.results)
-        for subtask in subtask_graph:
-            if all(c not in results for c in subtask.chunk_graph.results):
-                if subtask.extra_config is None:
-                    subtask.extra_config = dict()
-                subtask.extra_config['check_all'] = False
-        return subtask_graph
-
-    @enter_mode(build=True)
-    def analyze(self,
-                chunk_graph: ChunkGraph,
-                available_bands: Dict[BandType, int],
-                task_stage_info: TaskStageInfo) -> SubtaskGraph:
-        # record shapes generated in tile
-        for n in chunk_graph:
-            self._raw_chunk_shapes[n.key] = getattr(n, 'shape', None)
-        task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                 task.fuse_enabled, task.extra_config,
-                                 task_stage_info)
-        subtask_graph = analyzer.gen_subtask_graph()
-        results = set(analyzer._chunk_to_copied[c]
                       for c in chunk_graph.results
                       if not isinstance(c.op, Fetch))
         for subtask in subtask_graph:

@@ -14,7 +14,7 @@
 
 from typing import Any, Dict
 
-from .....core import OperandType, register
+from .....core import OperandType
 from .....tests.core import _check_args, ObjectCheckMixin
 from ..subtask import SubtaskProcessor
 

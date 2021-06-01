@@ -15,7 +15,7 @@
 import pandas as pd
 
 from ...config import options
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...serialization.serializables import FieldTypes, Int32Field, Int64Field, \
     StringField, ListField, BoolField
@@ -93,8 +93,7 @@ class DataFrameSortOperand(DataFrameOperand):
         if inp.ndim == 2:
             if inp.chunk_shape[1 - axis] > 1:  # pragma: no cover
                 if any(pd.isna(s) for s in inp.nsplits[1 - axis]):
-                    raise TilesError('Need to be executed first '
-                                     'due to unknown chunk shape')
+                    yield
                 inp = yield from recursive_tile(inp.rechunk({1 - axis: inp.shape[1 - axis]}))
 
         out_chunks = []

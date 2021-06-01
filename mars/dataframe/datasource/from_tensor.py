@@ -20,11 +20,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
 from ...serialization.serializables import KeyField, SeriesField, DataTypeField, AnyField
 from ...tensor.datasource import tensor as astensor
 from ...tensor.utils import unify_chunks
-from ...utils import check_chunks_unknown_shape, has_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import INDEX_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
@@ -227,7 +227,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def _tile_input_1d_tileables(cls, op):
         # make sure all tensor have known chunk shapes
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         out_df = op.outputs[0]
         in_tensors = op.inputs
@@ -289,7 +290,8 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
 
         if op.index is not None:
             # rechunk index if it's a tensor
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
             index_tensor = yield from recursive_tile(
                 op.index.rechunk([nsplits[0]]))
         else:
@@ -490,7 +492,8 @@ class SeriesFromTensor(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         if op.index is None:
             # check all inputs to make sure no unknown chunk shape
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
 
         if op.input is None:
             return cls._tile_tensor_none(op)

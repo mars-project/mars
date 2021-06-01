@@ -18,10 +18,7 @@ import pytest
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.config import option_context
-from mars.context import ContextBase, ChunkMeta, RunningMode
 from mars.learn.contrib.xgboost import train, MarsDMatrix
-from mars.learn.contrib.xgboost.dmatrix import ToDMatrix
-from mars.learn.contrib.xgboost.train import XGBTrain
 from mars.tests import new_test_session
 
 try:

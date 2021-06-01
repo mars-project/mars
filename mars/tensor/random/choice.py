@@ -20,10 +20,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...serialization.serializables import FieldTypes, AnyField, KeyField, \
     BoolField, TupleField
-from ...utils import check_chunks_unknown_shape, ceildiv
+from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperandMixin
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..datasource import arange, array
@@ -208,7 +208,8 @@ class TensorChoice(TensorRandomOperand, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         out = op.outputs[0]
         chunk_size = out.extra_params.raw_chunk_size or options.chunk_size

@@ -24,14 +24,6 @@ from mars.core import enter_mode
 from mars.dataframe.initializer import DataFrame
 from mars.tests import new_test_session
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
 
 @pytest.fixture(scope='module')
 def setup():

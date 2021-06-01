@@ -19,7 +19,6 @@ import numpy as np
 import pytest
 import scipy.sparse as sp
 try:
-    from sklearn.cluster import KMeans as SK_KMeans
     from sklearn.datasets import make_blobs
     from sklearn.metrics.cluster import v_measure_score
     from sklearn.utils._testing import assert_raise_message, assert_warns

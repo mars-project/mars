@@ -20,7 +20,6 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...serialization.serializables import FieldTypes, KeyField, TupleField
 from ...utils import has_unknown_shape
 from ..utils import unify_chunks

@@ -17,10 +17,10 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ...config import options
-from ...core import OutputType, TilesError, recursive_tile
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
 from ...serialization.serializables import AnyField, Int32Field, StringField, KeyField
-from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
+from ...utils import ceildiv, has_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
@@ -271,7 +271,8 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             return cls._tile_one_chunk(op)
 
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([inp], TilesError)
+            if has_unknown_shape(inp):
+                yield
             inp = yield from recursive_tile(
                 inp.rechunk({1: inp.shape[1]}))
 

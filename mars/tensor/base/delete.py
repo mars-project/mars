@@ -19,7 +19,7 @@ from collections import defaultdict
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
 from ...serialization.serializables import Int32Field, Int64Field, AnyField, KeyField
 from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor

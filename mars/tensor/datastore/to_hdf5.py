@@ -19,12 +19,11 @@ from typing import List
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...core.context import get_context
 from ...serialization.serializables import FieldTypes, KeyField, \
-    StringField, DictField, TupleField, Int32Field
+    StringField, DictField, TupleField
 from ...lib.filesystem import open_file
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
 
@@ -113,7 +112,8 @@ class TensorHDF5DataStore(TensorDataStore):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         in_tensor = op.input
 
         with open_file(op.filename, 'w'):

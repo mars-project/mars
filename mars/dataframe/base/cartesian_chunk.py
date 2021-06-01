@@ -16,10 +16,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...core.custom_log import redirect_custom_log
 from ...serialization.serializables import KeyField, FunctionField, TupleField, DictField
-from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
+from ...utils import has_unknown_shape, enter_current_session, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_series, build_empty_df, parse_index, \
     validate_output_types
@@ -120,12 +120,14 @@ class DataFrameCartesianChunk(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if left.ndim == 2 and left.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([left], TilesError)
+            if has_unknown_shape(left):
+                yield
             # if left is a DataFrame, make sure 1 chunk on axis columns
             left = yield from recursive_tile(
                 left.rechunk({1: left.shape[1]}))
         if right.ndim == 2 and right.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([right], TilesError)
+            if has_unknown_shape(right):
+                yield
             # if right is a DataFrame, make sure 1 chunk on axis columns
             right = yield from recursive_tile(
                 right.rechunk({1: right.shape[1]}))

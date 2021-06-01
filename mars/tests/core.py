@@ -14,17 +14,10 @@
 # limitations under the License.
 
 import functools
-import itertools
 import os
 import logging
-import shutil
-import subprocess
 import sys
-import tempfile
-import time
 import unittest
-from collections.abc import Iterable
-from weakref import ReferenceType
 from typing import Dict
 
 import numpy as np
@@ -269,7 +262,7 @@ class ObjectCheckMixin:
 
         if self._check_options['check_columns_value'] and not np.isnan(expected.shape[1]):
             self.assert_index_value_consistent(expected.columns_value, real.columns)
-        if self._check_options['check_index_value']and not np.isnan(expected.shape[0]):
+        if self._check_options['check_index_value'] and not np.isnan(expected.shape[0]):
             self.assert_index_value_consistent(expected.index_value, real.index)
 
     def assert_series_consistent(self, expected, real):

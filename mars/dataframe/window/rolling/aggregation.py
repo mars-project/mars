@@ -18,10 +18,10 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes
-from ....core import TilesError, recursive_tile
+from ....core import recursive_tile
 from ....serialization.serializables import FieldTypes, AnyField, Int64Field, \
     BoolField, StringField, Int32Field, KeyField, TupleField, DictField, ListField
-from ....utils import lazy_import, check_chunks_unknown_shape
+from ....utils import lazy_import, has_unknown_shape
 from ...operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, parse_index
@@ -163,14 +163,14 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
         axis = op.axis
 
         if axis == 0 and inp.ndim == 2:
-            check_chunks_unknown_shape([inp], TilesError)
+            if has_unknown_shape(inp):
+                yield
             inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         if is_window_int:
             # if window is integer
             if any(np.isnan(ns) for ns in inp.nsplits[op.axis]):
-                raise TilesError('input DataFrame or Series '
-                                 f'has unknown chunk shape on axis {op.axis}')
+                yield
         else:
             # if window is offset
             # must be aware of index's meta including min and max
@@ -184,8 +184,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     index_value = chunk.columns_value
                 if pd.isnull(index_value.min_val) or pd.isnull(index_value.max_val):
-                    raise TilesError('input DataFrame or Series '
-                                     f'has unknown index meta {op.axis}')
+                    yield
 
         return inp
 

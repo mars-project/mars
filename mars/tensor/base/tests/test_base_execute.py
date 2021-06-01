@@ -23,7 +23,6 @@ from mars import dataframe as md
 from mars import tensor as mt
 from mars import execute, fetch
 from mars.config import option_context
-from mars.core import tile
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \

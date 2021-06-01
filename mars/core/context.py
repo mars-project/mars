@@ -14,7 +14,7 @@
 
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict
+from typing import List, Dict
 
 from .session import SyncSession
 

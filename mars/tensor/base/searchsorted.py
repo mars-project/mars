@@ -17,12 +17,11 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...core.operand import OperandStage
 from ...serialization.serializables import KeyField, StringField, \
     AnyField, Int64Field, Int32Field
 from ...config import options
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TENSOR_TYPE, TensorOrder
 from ..datasource.array import tensor as astensor
@@ -117,7 +116,8 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_tree_reduction(cls, op, a, v, out):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         combine_size = op.combine_size or options.combine_size
         input_len = len(op.inputs)

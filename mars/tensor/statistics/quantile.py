@@ -17,11 +17,11 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
 from ...core.context import get_context
 from ...serialization.serializables import KeyField, AnyField, \
     StringField, BoolField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from ..base import moveaxis, where
 from ..indexing import take
@@ -306,7 +306,8 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
             if not _quantile_is_valid(q):
                 raise ValueError(op.q_error_msg)
         else:
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
             q = np.asarray(op.q)
 
         if len(op.a.chunks) == 1 and (op.out is None or len(op.out.chunks) == 1):

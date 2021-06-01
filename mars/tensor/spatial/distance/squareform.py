@@ -17,11 +17,11 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....core import TilesError, recursive_tile
+from ....core import recursive_tile
 from ....core.operand import OperandStage
 from ....serialization.serializables import FieldTypes, KeyField, BoolField, TupleField
 from ....config import options
-from ....utils import check_chunks_unknown_shape, require_module
+from ....utils import has_unknown_shape, require_module
 from ...core import TensorOrder
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...datasource import ascontiguousarray, array, zeros
@@ -160,7 +160,8 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
 
     @classmethod
     def _tile_chunks(cls, op, chunk_size):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         out = op.outputs[0]
 
         checks_input = yield from cls._gen_checks_input(op)

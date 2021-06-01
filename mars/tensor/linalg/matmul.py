@@ -19,7 +19,6 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
 from ...serialization.serializables import KeyField, StringField
 from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder

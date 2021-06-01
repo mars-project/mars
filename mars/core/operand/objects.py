@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import opcodes
 from ...serialization.serializables import BoolField
 from ..entity import OutputType, register_fetch_class
-from .base import Operand, VirtualOperand
+from .base import Operand
 from .core import TileableOperandMixin
 from .fetch import FetchMixin, Fetch
 from .fuse import Fuse, FuseChunkMixin

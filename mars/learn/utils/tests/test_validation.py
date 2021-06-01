@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from itertools import product
-import unittest
 
 import numpy as np
 import pytest
