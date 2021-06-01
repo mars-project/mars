@@ -31,7 +31,7 @@ def _install():
     from .where import mask, where
     from .set_axis import df_set_axis, series_set_axis
     from .sample import sample
-    from .add_preifx import df_add_prefix, series_add_prefix
+    from .add_prefix import df_add_prefix, series_add_prefix
 
     for cls in DATAFRAME_TYPE + SERIES_TYPE:
         setattr(cls, 'iloc', cache_readonly(iloc))

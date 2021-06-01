@@ -28,7 +28,7 @@ class SessionAPI(AbstractSessionAPI):
         self._session_manager_ref = session_manager
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls, address: str, **kwargs) -> "SessionAPI":
         if kwargs:  # pragma: no cover
             raise TypeError(f'SessionAPI.create '

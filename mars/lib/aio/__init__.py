@@ -27,3 +27,11 @@ if sys.version_info[:2] < (3, 7):
     asyncio.run = run
     asyncio.get_running_loop = get_running_loop
     asyncio.create_task = asyncio.ensure_future
+
+
+def create_lock(loop=None):
+    async def _create_lock():
+        return asyncio.Lock()
+
+    loop = loop or asyncio.get_event_loop()
+    return loop.run_until_complete(_create_lock())

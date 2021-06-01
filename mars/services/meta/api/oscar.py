@@ -35,7 +35,7 @@ class MetaAPI(AbstractMetaAPI):
         self._meta_store = meta_store
 
     @classmethod
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def create(cls,
                      session_id: str,
                      address: str) -> "MetaAPI":

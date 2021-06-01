@@ -24,12 +24,12 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
     def get_root_pattern(cls):
         return '/api/session(?:/(?P<sub_path>[^/]*)$|$)'
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
         return await ClusterAPI.create(self._supervisor_addr)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_oscar_session_api(self, session_id: str):
         from .oscar import SessionAPI
         cluster_api = await self._get_cluster_api()

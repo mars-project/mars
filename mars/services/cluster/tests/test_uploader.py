@@ -45,6 +45,7 @@ async def test_uploader(actor_pool):
         NodeInfoUploaderActor, role=NodeRole.WORKER, interval=0.1,
         uid=NodeInfoUploaderActor.default_uid(), address=pool_addr
     )
+    await uploader_ref.mark_node_ready()
 
     await uploader_ref.set_state_value.tell('custom_state', {'key': 'val'})
     await asyncio.sleep(0.2)

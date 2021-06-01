@@ -91,8 +91,10 @@ class NodeInfoCollectorActor(mo.Actor):
     def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
                        env: bool = False, resource: bool = False,
                        state: bool = False):
-        nodes = nodes or self._role_to_nodes.get(role) \
-            or self._node_infos.keys()
+        if nodes is None:
+            nodes = self._role_to_nodes.get(role) if role is not None \
+                else self._node_infos.keys()
+            nodes = nodes or []
         ret_infos = dict()
         for node in nodes:
             if node not in self._node_infos:

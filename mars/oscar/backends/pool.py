@@ -536,6 +536,11 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             actor_pool_config.get_pool_config(process_index)['external_address']
         internal_address = kw['internal_address']
 
+        # import predefined modules
+        modules = actor_pool_config.get_pool_config(process_index)['modules'] or []
+        for mod in modules:
+            __import__(mod, globals(), locals(), [])
+
         # set default router
         # actor context would be able to use exact client
         cls._set_global_router(kw['router'])
@@ -1021,7 +1026,7 @@ class MainActorPoolBase(ActorPoolBase):
         """Returns internal address for pool of specified process index"""
 
 
-async def create_actor_pool(address: str,
+async def create_actor_pool(address: str, *,
                             pool_cls: Type[MainActorPoolType] = None,
                             n_process: int = None,
                             labels: List[str] = None,
@@ -1029,10 +1034,10 @@ async def create_actor_pool(address: str,
                             envs: List[Dict] = None,
                             subprocess_start_method: str = None,
                             auto_recover: Union[str, bool] = 'actor',
+                            modules: List[str] = None,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None,
-                            **kwargs) \
-        -> MainActorPoolType:
+                            **kwargs) -> MainActorPoolType:
     if n_process is None:
         n_process = multiprocessing.cpu_count()
     if labels and len(labels) != n_process + 1:
@@ -1056,6 +1061,7 @@ async def create_actor_pool(address: str,
         labels[0] if labels else None,
         pool_cls.gen_internal_address(main_process_index, external_addresses[0]),
         external_addresses[0],
+        modules=modules,
         kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
@@ -1066,6 +1072,7 @@ async def create_actor_pool(address: str,
             pool_cls.gen_internal_address(sub_process_index, external_addresses[i + 1]),
             external_addresses[i + 1],
             env=envs[i] if envs else None,
+            modules=modules
             kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({
