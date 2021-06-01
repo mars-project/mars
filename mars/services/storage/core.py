@@ -233,7 +233,8 @@ class StorageHandlerActor(mo.Actor):
         try:
             data_info = await self._storage_manager_ref.get_data_info(
                 session_id, data_key)
-            yield self._get_data(data_info, conditions)
+            data = yield self._get_data(data_info, conditions)
+            raise mo.Return(data)
         except DataNotExist:
             if error == 'raise':
                 raise

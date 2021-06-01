@@ -82,18 +82,19 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
         self._session_id = session_id
         self._address = address
 
-    async def get(self, data_key: str, conditions: List = None) -> Any:
+    async def get(self,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise') -> Any:
         path = f'{self._address}/api/session/{self._session_id}/storage/{data_key}'
-        if conditions is None:
-            res = await self._request_url(path)
-        else:
-            body = serialize_serializable({
-                'conditions': conditions,
-            })
-            res = await self._request_url(
-                path, method='POST',
-                headers={'Content-Type': 'application/octet-stream'},
-                body=body)
+        params = dict(error=error)
+        if conditions is not None:
+            params['conditions'] = conditions
+        body = serialize_serializable(params)
+        res = await self._request_url(
+            path, method='POST',
+            headers={'Content-Type': 'application/octet-stream'},
+            body=body)
         return deserialize_serializable(res.body)
 
     async def put(self, data_key: str,

@@ -21,7 +21,10 @@ from ..core import DataInfo
 
 class AbstractStorageAPI(ABC):
     @abstractmethod
-    async def get(self, data_key: str, conditions: List = None) -> Any:
+    async def get(self,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise') -> Any:
         """
         Get object by data key.
 
@@ -32,6 +35,9 @@ class AbstractStorageAPI(ABC):
 
         conditions: List
             Index conditions to pushdown
+
+        error: str
+            raise or ignore
 
         Returns
         -------
