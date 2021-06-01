@@ -64,10 +64,6 @@ class KubernetesClusterClient:
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)
 
-    def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
-        self._session._sess.rescale_workers(
-            new_scale, min_workers=min_workers, wait=wait, timeout=timeout)
-
 
 class KubernetesCluster:
     _supervisor_config_cls = MarsSupervisorsConfig
