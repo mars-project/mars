@@ -22,9 +22,10 @@ from weakref import WeakSet, WeakKeyDictionary
 import numpy as np
 
 from ...serialization.serializables import FieldTypes, TupleField
+from ...typing import OperandType, TileableType, ChunkType
+from ...utils import on_serialize_shape, on_deserialize_shape, on_serialize_nsplits
 from ..base import Base
 from ..mode import enter_mode, is_build_mode
-from ..typing import OperandType, TileableType, ChunkType
 from .chunks import Chunk
 from .core import EntityData, Entity
 from .executable import _ExecutableMixin
@@ -122,15 +123,6 @@ class OperandTilesHandler:
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register
-
-
-def on_serialize_nsplits(value):
-    if value is None:
-        return None
-    new_nsplits = []
-    for dim_splits in value:
-        new_nsplits.append(tuple(None if np.isnan(v) else v for v in dim_splits))
-    return tuple(new_nsplits)
 
 
 class _ChunksIndexer:
@@ -375,18 +367,6 @@ class Tileable(Entity):
 
 
 TILEABLE_TYPE = (Tileable, TileableData)
-
-
-def on_serialize_shape(shape):
-    if shape:
-        return tuple(s if not np.isnan(s) else -1 for s in shape)
-    return shape
-
-
-def on_deserialize_shape(shape):
-    if shape:
-        return tuple(s if s != -1 else np.nan for s in shape)
-    return shape
 
 
 class HasShapeTileableData(TileableData):

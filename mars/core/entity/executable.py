@@ -15,8 +15,8 @@
 from typing import List
 from weakref import WeakKeyDictionary, ref
 
+from ...typing import SessionType, TileableType
 from ..mode import enter_mode
-from ..typing import SessionType, TileableType
 
 
 class _TileableSession:

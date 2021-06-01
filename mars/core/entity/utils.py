@@ -14,8 +14,8 @@
 
 from typing import List, Union, Generator
 
+from ...typing import TileableType, ChunkType
 from ...utils import has_unknown_shape, calc_nsplits
-from ..typing import TileableType, ChunkType
 
 
 def refresh_tileable_shape(tileable):

@@ -21,12 +21,12 @@ try:
 except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
+from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_object_overhead, calc_data_size
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
-from ..typing import TileableType, ChunkType, OperandType
 
 
 _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()

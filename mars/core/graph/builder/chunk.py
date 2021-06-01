@@ -15,10 +15,10 @@
 from typing import List, Dict, Union, Set, Generator, Iterable
 
 from ....core import FUSE_CHUNK_TYPE
+from ....typing import EntityType, TileableType, ChunkType
 from ....utils import copy_tileables, build_fetch
 from ...entity.tileables import handler
 from ...mode import enter_mode
-from ...typing import EntityType, TileableType, ChunkType
 from ..entity import TileableGraph, ChunkGraph
 from .base import AbstractGraphBuilder
 

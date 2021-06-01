@@ -15,8 +15,8 @@
 import itertools
 from typing import List, Union
 
+from ....typing import TileableType
 from ...mode import enter_mode
-from ...typing import TileableType
 from ..entity import TileableGraph, ChunkGraph
 from .tileable import TileableGraphBuilder
 from .chunk import ChunkGraphBuilder

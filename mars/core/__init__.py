@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# noinspection PyUnresolvedReferences
+from ..typing import ChunkType, TileableType, EntityType, OperandType
 from .entity import Entity, EntityData, ENTITY_TYPE, \
     Chunk, ChunkData, CHUNK_TYPE, \
     Tileable, TileableData, TILEABLE_TYPE, \
@@ -25,4 +27,3 @@ from .entity import Entity, EntityData, ENTITY_TYPE, \
 from .graph import DirectedGraph, DAG, GraphContainsCycleError, \
     TileableGraph, ChunkGraph, TileableGraphBuilder, ChunkGraphBuilder
 from .mode import enter_mode, is_build_mode, is_eager_mode, is_kernel_mode
-from .typing import ChunkType, TileableType, EntityType, OperandType

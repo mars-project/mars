@@ -26,8 +26,8 @@ from ..config import options, option_context, get_global_option
 from ..core import TileableGraph, enter_mode
 from ..core.operand import Fetch
 from ..lib.aio import create_lock
+from ..typing import TileableType
 from ..utils import classproperty, copy_tileables, build_fetch, implements
-from .typing import TileableType
 
 
 class ExecutionInfo(ABC):

@@ -20,8 +20,8 @@ import textwrap
 import weakref
 from typing import List, Callable, Type
 
+from ..typing import OperandType, TileableType, SessionType
 from .context import Context
-from .typing import OperandType, TileableType, SessionType
 
 
 class _LogWrapper:

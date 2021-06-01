@@ -16,7 +16,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Set, Union, Generator
 
-from ...typing import EntityType
+from ....typing import EntityType
 from ..entity import EntityGraph, TileableGraph, ChunkGraph
 
 

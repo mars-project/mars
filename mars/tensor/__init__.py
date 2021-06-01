@@ -61,7 +61,6 @@ from .einsum import einsum
 from .images import imread
 # noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex, r_, c_
-from .core import mutable_tensor
 
 from . import random
 from . import fft
@@ -71,7 +70,7 @@ from . import special
 from . import stats
 
 # types
-from .core import Tensor, MutableTensor
+from .core import Tensor
 # noinspection PyUnresolvedReferences
 from ..core import ExecutableTuple
 
