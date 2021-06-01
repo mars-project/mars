@@ -23,6 +23,7 @@ from mars.tensor.datasource import tensor, empty, eye, ones, zeros
 from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, array, block
 from mars.tests import new_test_session
 
+
 @pytest.fixture(scope='module')
 def setup():
     sess = new_test_session(default=True)

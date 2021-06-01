@@ -28,8 +28,6 @@ from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     Tileable, TileableType, ChunkType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
-from ....dataframe.core import DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
-    SERIES_GROUPBY_CHUNK_TYPE
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph

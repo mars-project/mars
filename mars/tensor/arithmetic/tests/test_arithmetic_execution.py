@@ -55,7 +55,6 @@ def _get_func(op):
     return op
 
 
-
 def _get_sparse_func(op):
     from mars.lib.sparse.core import issparse
 

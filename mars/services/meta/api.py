@@ -209,13 +209,6 @@ class MetaAPI(AbstractMetaAPI):
             get_chunk_metas.append(self._meta_store.get_meta.delay(*args, **kwargs))
         return await self._meta_store.get_meta.batch(*get_chunk_metas)
 
-    @get_chunk_meta.batch
-    async def batch_get_chunk_meta(self, args_list, kwargs_list):
-        get_chunk_metas = []
-        for args, kwargs in zip(args_list, kwargs_list):
-            get_chunk_metas.append(self._meta_store.get_meta.delay(*args, **kwargs))
-        return await self._meta_store.get_meta.batch(*get_chunk_metas)
-
     @extensible
     async def del_chunk_meta(self,
                              object_id: str):

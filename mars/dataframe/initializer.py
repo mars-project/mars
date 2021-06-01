@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from ..core import ENTITY_TYPE, OutputType
+from ..core import ENTITY_TYPE
 from ..serialization.serializables import SerializableMeta
 from ..tensor import tensor as astensor, stack
 from ..tensor.core import TENSOR_TYPE
@@ -28,7 +28,6 @@ from .datasource.index import from_pandas as from_pandas_index, \
     from_tileable as from_tileable_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
-from .fetch import DataFrameFetch
 
 
 class InitializerMeta(SerializableMeta):

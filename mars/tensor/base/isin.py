@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError, recursive_tile
+from ...core import recursive_tile
 from ...serialization.serializables import KeyField, BoolField
 from ...utils import has_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin

@@ -17,7 +17,7 @@ import pickle  # nosec  # pylint: disable=import_pickle
 import cloudpickle
 
 from .... import opcodes
-from ....core import OutputType, TilesError, recursive_tile
+from ....core import OutputType, recursive_tile
 from ....core.context import get_context
 from ....core.operand import OperandStage, MergeDictOperand
 from ....serialization.serializables import KeyField, BytesField, DictField, Int32Field, \

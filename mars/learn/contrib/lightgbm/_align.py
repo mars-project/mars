@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .... import opcodes
-from ....core import ExecutableTuple, TilesError, get_output_types, recursive_tile
+from ....core import ExecutableTuple, get_output_types, recursive_tile
 from ....serialization.serializables import AnyField
 from ....utils import has_unknown_shape
 from ...operands import LearnOperand, LearnOperandMixin

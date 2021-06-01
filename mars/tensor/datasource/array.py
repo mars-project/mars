@@ -21,7 +21,6 @@ from ...lib.sparse import SparseNDArray
 from ...serialization.serializables import FieldTypes, NDArrayField, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
-from ..fetch import TensorFetch
 from ..utils import get_chunk_slices
 from ..array_utils import array_module
 from .core import TensorNoInput

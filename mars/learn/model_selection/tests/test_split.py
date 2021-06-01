@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import unittest
 
 import numpy as np
 import pandas as pd
