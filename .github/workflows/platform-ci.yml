@@ -151,9 +151,6 @@ jobs:
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
             mv .coverage build/.coverage.test_tensor.file
 
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
-            mv .coverage build/.coverage.test_cluster.file
-
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then

@@ -300,9 +300,9 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if op.output_types[0] == OutputType.dataframe:
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
         else:
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
 
     @classmethod
     def execute(cls, ctx, op):
