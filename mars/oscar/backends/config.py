@@ -37,7 +37,8 @@ class ActorPoolConfig:
                       internal_address: str,
                       external_address: Union[str, List[str]],
                       env: Dict = None,
-                      modules: List[str] = None):
+                      modules: List[str] = None,
+                      kwargs: Dict = None):
         pools: Dict = self._conf['pools']
         if not isinstance(external_address, list):
             external_address = [external_address]
@@ -46,7 +47,8 @@ class ActorPoolConfig:
             'internal_address': internal_address,
             'external_address': external_address,
             'env': env,
-            'modules': modules
+            'modules': modules,
+            'kwargs': kwargs or {},
         }
         for addr in external_address:
             mapping: Dict = self._conf['mapping']

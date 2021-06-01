@@ -50,8 +50,9 @@ class RayActorBackend(BaseActorBackend):
         pg = get_placement_group(pg_name) if pg_name else None
         if not pg:
             bundle_index = -1
+        num_cpus = kwargs.get('main_pool_cpus', 0)
         actor_handle = ray.remote(RayMainPool).options(
-            num_cpus=0,  # main pool doesn't do horse work, mark it use no cpu.
+            num_cpus=num_cpus,
             name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(address, n_process, **kwargs)
         return actor_handle
