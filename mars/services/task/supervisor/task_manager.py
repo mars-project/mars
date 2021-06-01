@@ -151,7 +151,7 @@ class TaskProcessor:
         tileable = tileable.data if hasattr(tileable, 'data') else tileable
         return self.tile_context[tileable]
 
-    def _update_tileable_params(self,
+    def _update_tileable_params(self,  # pylint: disable=no-self-use
                                 tileable: TileableType,
                                 tiled: TileableType):
         tiled.refresh_params()

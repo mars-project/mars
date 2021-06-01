@@ -22,11 +22,11 @@ from typing import Any, Dict
 
 import numpy as np
 
-from ..core import Entity, HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
-    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode, recursive_tile
+from ..core import HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
+    OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode
 from ..core.entity.utils import refresh_tileable_shape
 from ..serialization.serializables import Serializable, FieldTypes, \
-    DataTypeField, ListField, TupleField, BoolField, StringField, AnyField, ReferenceField
+    DataTypeField, ListField, TupleField, StringField, AnyField, ReferenceField
 from ..utils import on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices, fetch_corner_data
 

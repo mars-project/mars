@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pickle
+import pickle  # nosec  # pylint: disable=import_pickle
 from typing import Dict, List, Union
 
 from .core import Serializer, buffered, pickle_buffers, unpickle_buffers

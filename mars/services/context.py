@@ -82,7 +82,7 @@ class ThreadedServiceContext(Context):
             self._cluster_api.get_all_bands())
         n_cpu = 0
         for band, size in all_bands.items():
-            addr, band_name = band
+            _, band_name = band
             if band_name.startswith('numa-'):
                 n_cpu += size
         return n_cpu

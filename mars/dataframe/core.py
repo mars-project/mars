@@ -1323,10 +1323,7 @@ class BaseDataFrameChunkData(ChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: pd.DataFrame) -> Dict[str, Any]:
-        try:
-            parse_index(data.index, store_data=False)
-        except:
-            print(data)
+        parse_index(data.index, store_data=False)
         return {
             'shape': data.shape,
             'index_value': parse_index(data.index, store_data=False),

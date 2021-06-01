@@ -232,7 +232,7 @@ class Session(AbstractAsyncSession):
             result[chunk] = slice_obj
         return result
 
-    def _process_result(self, tileable, result):
+    def _process_result(self, tileable, result):  # pylint: disable=no-self-use
         return sort_dataframe_result(tileable, result)
 
     @alru_cache(cache_exceptions=False)
@@ -358,7 +358,7 @@ class WebSession(Session):
             # create new session
             await session_api.create_session(session_id)
         else:
-            session_address = await session_api.get_session_address(session_id)
+            await session_api.get_session_address(session_id)
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)

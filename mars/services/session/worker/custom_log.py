@@ -44,7 +44,7 @@ class CustomLogActor(mo.Actor):
 
     @classmethod
     def clear_custom_log_dirs(cls, paths: List[str]):
-        [shutil.rmtree(path, ignore_errors=True) for path in paths]
+        _ = [shutil.rmtree(path, ignore_errors=True) for path in paths]
 
     @classmethod
     async def fetch_logs(cls,

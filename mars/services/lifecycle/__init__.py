@@ -15,6 +15,3 @@
 from .api import LifecycleAPI, MockLifecycleAPI, \
     AbstractLifecycleAPI, WebLifecycleAPI
 from .errors import TileableNotTracked
-
-from .api import LifecycleAPI, MockLifecycleAPI
-from .errors import TileableNotTracked

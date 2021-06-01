@@ -265,8 +265,8 @@ class classproperty:
 
 def lazy_import(name: str,
                 package: str = None,
-                globals: Dict = None,
-                locals: Dict = None,
+                globals: Dict = None,  # pylint: disable=redefined-builtin
+                locals: Dict = None,  # pylint: disable=redefined-builtin
                 rename: str = None):
     rename = rename or name
     prefix_name = name.split('.', 1)[0]

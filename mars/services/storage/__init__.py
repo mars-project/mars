@@ -15,4 +15,3 @@
 from .api import StorageAPI, MockStorageAPI, WebStorageAPI
 from .core import DataInfo
 from .errors import DataNotExist
-from .errors import DataNotExist
