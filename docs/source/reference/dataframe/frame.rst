@@ -144,6 +144,7 @@ Reindexing / selection / label manipulation
 .. autosummary::
    :toctree: generated/
 
+   DataFrame.add_prefix
    DataFrame.drop
    DataFrame.drop_duplicates
    DataFrame.duplicated
