@@ -20,7 +20,7 @@ import pytest
 from mars.core import tile
 from mars.tensor.datasource import tensor as from_ndarray
 from mars.tensor.random import beta, rand, choice, multivariate_normal, \
-    randint, randn, permutation, TensorPermutation, shuffle
+    randint, randn, permutation, TensorPermutation, shuffle, RandomState
 
 
 def test_random():
@@ -48,6 +48,10 @@ def test_random():
     assert arr.shape == (3, 2, 2)
     assert len(arr.chunks) == 12
     assert arr.chunks[0].op.dtype == np.dtype('f8')
+
+
+def test_same_key():
+    assert RandomState(0).rand(10).key == RandomState(0).rand(10).key
 
 
 def test_choice():

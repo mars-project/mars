@@ -310,11 +310,6 @@ class TensorSeedOperandMixin(object):
             return [field for field in self._FIELDS
                     if field not in TensorRandomOperand._FIELDS]
 
-    def _update_key(self):
-        self._key = tokenize(type(self).__name__,
-                             *tuple(getattr(self, k, None) for k in self._keys_))
-        return self
-
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
     _seed = Int32Field('seed')

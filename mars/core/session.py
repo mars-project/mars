@@ -413,7 +413,8 @@ def gen_submit_tileable_graph(
                     tileable_to_copied[tileable]
             continue
         outputs = tileable.op.outputs
-        inputs = tileable.inputs
+        inputs = tileable.inputs \
+            if session not in tileable._executed_sessions else []
         new_inputs = []
         all_inputs_processed = True
         for inp in inputs:
