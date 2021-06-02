@@ -28,8 +28,8 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
-    
-    
+
+
 def test_reshape_execution(setup):
     x = ones((1, 2, 3), chunk_size=[4, 3, 5])
     y = x.reshape(3, 2)
@@ -70,7 +70,7 @@ def test_reshape_execution(setup):
         x = tensor(data, chunk_size=chunk_size)
         x = x[x[:, 0, 0] < 0.7]
         y = x.reshape(-1, 20)
-        assert np.isnan(y.shape[0]) is True
+        assert np.isnan(y.shape[0])
         res = y.execute().fetch()
         expected = data[data[:, 0, 0] < 0.7].reshape(-1, 20)
         np.testing.assert_array_equal(res, expected)

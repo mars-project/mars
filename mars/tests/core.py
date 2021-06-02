@@ -17,7 +17,6 @@ import functools
 import os
 import logging
 import sys
-import unittest
 from typing import Dict
 
 import numpy as np
@@ -100,7 +99,6 @@ def print_async_entrance(func):
 def require_cupy(func):
     if pytest:
         func = pytest.mark.cuda(func)
-    func = unittest.skipIf(cupy is None, reason='cupy not installed')(func)
     func = pytest.mark.skipif(cupy is None, reason='cupy not installed')(func)
     return func
 
@@ -108,7 +106,6 @@ def require_cupy(func):
 def require_cudf(func):
     if pytest:
         func = pytest.mark.cuda(func)
-    func = unittest.skipIf(cudf is None, reason='cudf not installed')(func)
     func = pytest.mark.skipif(cudf is None, reason='cudf not installed')(func)
     return func
 
@@ -116,7 +113,6 @@ def require_cudf(func):
 def require_ray(func):
     if pytest:
         func = pytest.mark.ray(func)
-    func = unittest.skipIf(ray is None, reason='ray not installed')(func)
     func = pytest.mark.skipif(ray is None, reason='ray not installed')(func)
     return func
 
@@ -124,7 +120,8 @@ def require_ray(func):
 def require_hadoop(func):
     if pytest:
         func = pytest.mark.hadoop(func)
-    func = unittest.skipIf(not os.environ.get('WITH_HADOOP'), 'Only run when hadoop is installed')(func)
+    func = pytest.mark.skipif(not os.environ.get('WITH_HADOOP'),
+                              reason='Only run when hadoop is installed')(func)
     return func
 
 
