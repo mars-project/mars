@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import operator
-import unittest
 from dataclasses import dataclass
 from functools import partial
 from typing import Callable
@@ -797,7 +796,3 @@ def test_series_and_tensor(setup):
     result = r.execute().fetch()
     expected = a_raw | s_raw
     pd.testing.assert_series_equal(result, expected)
-
-
-if __name__ == '__main__':  # pragma: no cover
-    unittest.main()

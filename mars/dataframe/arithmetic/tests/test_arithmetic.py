@@ -14,7 +14,6 @@
 
 import itertools
 import operator
-import unittest
 from dataclasses import dataclass
 from typing import Callable
 
@@ -1241,7 +1240,3 @@ def test_not():
         assert c2.index == c1.index
         pd.testing.assert_index_equal(c2.columns_value.to_pandas(), c1.columns_value.to_pandas())
         pd.testing.assert_index_equal(c2.index_value.to_pandas(), c1.index_value.to_pandas())
-
-
-if __name__ == '__main__':  # pragma: no cover
-    unittest.main()

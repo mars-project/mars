@@ -43,10 +43,6 @@ ray = lazy_import('ray', globals=globals())
 logger = logging.getLogger(__name__)
 
 
-class TestCase(unittest.TestCase):
-    pass
-
-
 def flaky(o=None, *args, **kwargs):
     platform = kwargs.pop('platform', '')
     if _raw_flaky is None or not sys.platform.startswith(platform):

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import random
-import unittest
 from collections import OrderedDict
 from distutils.version import LooseVersion
 
@@ -416,7 +415,7 @@ def test_series_apply_execute(setup):
     pd.testing.assert_frame_equal(result, expected)
 
 
-@unittest.skipIf(pa is None, 'pyarrow not installed')
+@pytest.mark.skipif(pa is None, reason='pyarrow not installed')
 def test_apply_with_arrow_dtype_execution(setup):
     df1 = pd.DataFrame({'a': [1, 2, 1],
                         'b': ['a', 'b', 'a']})
@@ -551,7 +550,7 @@ def test_transform_execute(setup):
         options.chunk_store_limit = old_chunk_store_limit
 
 
-@unittest.skipIf(pa is None, 'pyarrow not installed')
+@pytest.mark.skipif(pa is None, reason='pyarrow not installed')
 def test_transform_with_arrow_dtype_execution(setup):
     df1 = pd.DataFrame({'a': [1, 2, 1],
                         'b': ['a', 'b', 'a']})
