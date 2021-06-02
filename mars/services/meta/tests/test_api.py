@@ -29,15 +29,11 @@ from mars.utils import get_next_port
 
 
 t = mt.random.rand(10, 10)
-t = tile(t)
 df = md.DataFrame(t)
-df = tile(df)
 series = df[0]
-series = tile(series)
 index = df.index
-index = tile(index)
 obj = mr.spawn(lambda: 3)
-obj = tile(obj)
+t, df, series, index, obj = tile(t, df, series, index, obj)
 
 test_objects = [t, df, series, index, obj]
 
@@ -113,7 +109,7 @@ async def test_meta_web_api():
         await session_api.create_session(session_id)
 
         t = mt.random.rand(10, 10)
-        t = t.tiles()
+        t = tile(t)
 
         meta_api = await MetaAPI.create(session_id, pool.external_address)
         web_api = WebMetaAPI(session_id, f'http://localhost:{web_port}')
