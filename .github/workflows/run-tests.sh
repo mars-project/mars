@@ -14,10 +14,10 @@ if [ -n "$WITH_CYTHON" ]; then
 fi
 if [ -z "$NO_COMMON_TESTS" ]; then
   mkdir -p build
-  pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/tensor mars/dataframe \
-    mars/learn mars/remote mars/storage mars/lib
-  mv .coverage build/.coverage.tensor.file
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --ignore mars/tensor --ignore mars/dataframe \
+  pytest $PYTEST_CONFIG mars/remote mars/storage mars/lib
+  mv .coverage build/.coverage.tileable.file
+
+  pytest $PYTEST_CONFIG --forked --ignore mars/tensor --ignore mars/dataframe \
     --ignore mars/learn --ignore mars/remote mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report

@@ -1,9 +1,13 @@
+# this configuration is for mars.tensor module as
+# coverage.py currently doesn't support measuring
+# gevent with threading.
+
 [run]
 branch = True
 relative_files = True
 cover_pylib = False
-concurrency = multiprocessing,gevent
 parallel = True
+concurrency = multiprocessing,thread
 plugins = Cython.Coverage
 include =
     mars/*
@@ -15,7 +19,6 @@ omit =
     mars/lib/futures/*
     mars/lib/enum.py
     mars/lib/six.py
-    mars/lib/gipc.pyx
     mars/lib/nvutils.py
     mars/lib/tblib/*
     mars/lib/uhashring/*
