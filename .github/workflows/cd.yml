@@ -29,7 +29,7 @@ jobs:
           PYTHON: ${{ matrix.python-version }}
         shell: bash
         run: |
-          source ./.github/workflows/install-conda.sh
+          source ./ci/install-conda.sh
           python -m pip install --upgrade pip setuptools wheel coverage;
 
       - name: Install dependencies
@@ -39,7 +39,7 @@ jobs:
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         shell: bash
         run: |
-          source ./.github/workflows/reload-env.sh
+          source ./ci/reload-env.sh
           export DEFAULT_VENV=$VIRTUAL_ENV
 
           if [[ "$PYTHON" =~ "3.9" ]]; then
@@ -59,5 +59,5 @@ jobs:
           BUILD_STATIC: ${{ matrix.build-static }}
           PYPI_PWD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          source ./.github/workflows/reload-env.sh
+          source ./ci/reload-env.sh
           source ./.github/workflows/upload-packages.sh
