@@ -527,7 +527,10 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
                                  observed=v.observed, mutated=v.mutated)
         return grouped.groupby_obj
     elif isinstance(v, (str, bytes)):
-        return [r[1] for r in chunk_results]
+        result = [r[1] for r in chunk_results]
+        if len(result) == 1:
+            return result[0]
+        return result
     else:
         result = None
         for cr in chunk_results:
