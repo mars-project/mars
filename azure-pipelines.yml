@@ -101,7 +101,7 @@ jobs:
     - bash: |
         set -e
         source ci/reload-env.sh
-        pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/$(mars.test.module)
+        pytest $PYTEST_CONFIG mars/$(mars.test.module)
         coverage report
         coverage xml
       displayName: 'Run tests'
