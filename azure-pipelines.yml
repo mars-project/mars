@@ -1,0 +1,107 @@
+trigger:
+  branches:
+    include:
+    - '*'
+
+pr:
+- master
+- v*.*
+
+pool:
+  vmImage: 'ubuntu-latest'
+strategy:
+  matrix:
+    DataFrame:
+      mars.test.module: 'dataframe'
+    Learn:
+      mars.test.module: 'learn'
+    Tensor:
+      mars.test.module: 'tensor'
+
+variables:
+  PYTHON: '3.8'
+
+steps:
+  - powershell: |
+      $header = @{ Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN" }
+      $buildsUrl = "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_apis/build/builds?api-version=6.0"
+      $builds = Invoke-RestMethod -Uri $buildsUrl -Method Get -Header $header
+      $buildsToStop = $builds.value.Where({ ($_.status -eq 'inProgress') -and ($_.definition.name -eq '$(Build.DefinitionName)') -and ($_.id -ne '$(Build.BuildId)') })
+      ForEach($build in $buildsToStop)
+      {
+          $build.status = "cancelling"
+          $body = $build | ConvertTo-Json -Depth 10
+          $urlToCancel = "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_apis/build/builds/" + $build.id + "?api-version=6.0"
+          Write-Output "Cancelling $urlToCancel"
+          Invoke-RestMethod -Uri $urlToCancel -Method Patch -ContentType application/json -Header $header -Body $body -SkipHttpErrorCheck
+      }
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+    displayName: 'Cancel previous jobs'
+
+  - bash: |
+      set -e
+      source ci/install-conda.sh
+    displayName: 'Install conda'
+
+  - bash: |
+      set -e
+      source ci/reload-env.sh
+      export DEFAULT_VENV=$VIRTUAL_ENV
+
+      if [[ ! "$PYTHON" =~ "3.9" ]]; then
+        conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
+      fi
+
+      # todo remove this when fastparquet release new version
+      if [[ "$PYTHON" =~ "3.6" ]]; then
+        pip install numpy\<1.20.0
+      fi
+
+      pip install -r requirements-dev.txt
+      pip install -r requirements-extra.txt
+      pip install virtualenv flaky flake8
+
+      if [ -z "$NO_COMMON_TESTS" ]; then
+        if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
+          pip install h5py zarr matplotlib
+          conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
+            "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
+        fi
+
+        conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
+
+        if [[ "$(mars.test.module)" == "learn" ]]; then
+          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+            conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
+              libxgboost py-xgboost xgboost lightgbm tensorflow
+          fi
+          if [[ "$PYTHON" =~ "3.6" ]]; then
+            pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu fastparquet
+          fi
+          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
+            pip install torch torchvision
+            pip install statsmodels tsfresh
+          fi
+        fi
+      fi
+      conda list -n test
+    displayName: 'Install dependencies'
+
+  - bash: |
+      set -e
+      source ci/reload-env.sh
+      source ci/build-ext.sh
+    displayName: 'Build cython extensions'
+
+  - bash: |
+      set -e
+      source ci/reload-env.sh
+      pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/$(mars.test.module)
+      coverage report
+      coverage xml
+    displayName: 'Run tests'
+
+  - bash: |
+      bash <(curl -s https://codecov.io/bash)
+    displayName: 'Upload coverage'

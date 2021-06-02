@@ -35,7 +35,7 @@ def is_kernel_mode():
         return bool(_internal_mode.kernel)
     except AttributeError:
         _internal_mode.kernel = None
-        return bool(_internal_mode)
+        return False
 
 
 def is_build_mode():
