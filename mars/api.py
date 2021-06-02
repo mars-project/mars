@@ -15,7 +15,6 @@
 import itertools
 import logging
 import random
-import time
 import uuid
 
 from .actors import new_client, ActorNotExist
