@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, recursive_tile
-from ...serialization.serializables import KeyField, ListField, AnyField
+from ...serialization.serializables import KeyField, TupleField, AnyField
 from ...tensor import tensor as astensor
 from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE
@@ -31,7 +31,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUE
 
     _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
 
     def __init__(self, indexes=None, value=None, **kw):
@@ -50,13 +50,13 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
                        for index in self._indexes]
-        self._indexes = new_indexes
+        self._indexes = tuple(new_indexes)
         if isinstance(self._value, ENTITY_TYPE):
             self._value = next(inputs_iter)
 
     def __call__(self, a, index, value):
         inputs = filter_inputs([a] + list(index) + [value])
-        self._indexes = list(index)
+        self._indexes = tuple(index)
         self._value = value
         return self.new_tensor(inputs, a.shape, order=a.order)
 
@@ -81,7 +81,7 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 
         if is_value_tensor and value.ndim > 0:
             if has_unknown_shape(indexed, value):
-                yield
+                yield indexed.chunks + [indexed]
 
             value = yield from recursive_tile(
                 broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False))
@@ -148,7 +148,7 @@ def _setitem(a, item, value):
 
     # __setitem__ on a view should be still a view, see GH #732.
     op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                             indexes=list(index), value=value,
+                             indexes=tuple(index), value=value,
                              create_view=a.op.create_view)
     ret = op(a, index, value)
     a.data = ret.data
