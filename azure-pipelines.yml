@@ -26,7 +26,7 @@ steps:
       $header = @{ Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN" }
       $buildsUrl = "$(System.TeamFoundationCollectionUri)$(System.TeamProject)/_apis/build/builds?api-version=6.0"
       $builds = Invoke-RestMethod -Uri $buildsUrl -Method Get -Header $header
-      $buildsToStop = $builds.value.Where({ ($_.status -eq 'inProgress') -and ($_.definition.name -eq '$(Build.DefinitionName)') -and ($_.id -ne '$(Build.BuildId)') })
+      $buildsToStop = $builds.value.Where({ ($_.status -eq 'inProgress') -and ($_.sourceBranch -eq '$(Build.SourceBranch)') -and ($_.definition.name -eq '$(Build.DefinitionName)') -and ($_.id -ne '$(Build.BuildId)') })
       ForEach($build in $buildsToStop)
       {
           $build.status = "cancelling"
