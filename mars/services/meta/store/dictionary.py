@@ -80,15 +80,15 @@ class DictMetaStore(AbstractMetaStore):
                        error: str = 'raise') -> Dict:
         return self._get_meta(object_id, fields=fields, error=error)
 
-    def _del_meta(self, object_id: str):
-        del self._store[object_id]
-
     @get_meta.batch
     async def batch_get_meta(self, args_list, kwargs_list):
         metas = []
         for args, kwargs in zip(args_list, kwargs_list):
             metas.append(self._get_meta(*args, **kwargs))
         return metas
+
+    def _del_meta(self, object_id: str):
+        del self._store[object_id]
 
     @implements(AbstractMetaStore.del_meta)
     @extensible

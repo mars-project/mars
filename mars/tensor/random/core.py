@@ -22,7 +22,6 @@ import numpy as np
 from ...config import options
 from ...core import recursive_tile
 from ...serialization.serializables import FieldTypes, TupleField, Int32Field
-from ...utils import tokenize
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..utils import decide_chunk_sizes, gen_random_seeds, broadcast_shape
 from ..array_utils import array_module, device

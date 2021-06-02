@@ -108,7 +108,8 @@ class Context(ABC):
     @abstractmethod
     def get_chunks_meta(self,
                         data_keys: List[str],
-                        fields: List[str] = None) -> List[Dict]:
+                        fields: List[str] = None,
+                        error='raise') -> List[Dict]:
         """
         Get meta of chunks.
 
@@ -118,6 +119,8 @@ class Context(ABC):
             Data keys.
         fields : list
             Fields to filter.
+        error : str
+            raise, ignore
 
         Returns
         -------

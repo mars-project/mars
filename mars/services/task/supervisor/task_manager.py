@@ -25,7 +25,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple, Type, Optional
 from .... import oscar as mo
 from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
-    Tileable, TileableType, ChunkType, enter_mode
+    TileableType, ChunkType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
 from ....optimization.logical.core import OptimizationRecords
@@ -64,11 +64,11 @@ class TaskProcessor:
                 '_config', 'tileable_optimization_records', \
                 'chunk_optimization_records_list', '_done'
 
-    tile_context: Dict[Tileable, Tileable]
+    tile_context: Dict[TileableType, TileableType]
 
     def __init__(self,
                  task: Task,
-                 tiled_context: Dict[Tileable, Tileable] = None,
+                 tiled_context: Dict[TileableType, TileableType] = None,
                  config: Config = None):
         self._task = task
         self.tileable_graph = task.tileable_graph
@@ -96,7 +96,7 @@ class TaskProcessor:
 
     def _fill_fetch_tileable_with_chunks(self, tileable_graph: TileableGraph):
         for t in tileable_graph:
-            if isinstance(t.op, Fetch):
+            if isinstance(t.op, Fetch) and t in self.tile_context:
                 tiled = self.tile_context[t]
                 t._chunks = tiled.chunks
                 t._nsplits = tiled.nsplits
@@ -147,7 +147,7 @@ class TaskProcessor:
         else:  # pragma: no cover
             self._done.clear()
 
-    def get_tiled(self, tileable):
+    def get_tiled(self, tileable: TileableType):
         tileable = tileable.data if hasattr(tileable, 'data') else tileable
         return self.tile_context[tileable]
 
@@ -508,7 +508,7 @@ class TaskStageInfo:
 
 @dataclass
 class ResultTileableInfo:
-    tileable: Tileable
+    tileable: TileableType
     processor: TaskProcessor
 
 
@@ -622,7 +622,7 @@ class TaskManagerActor(mo.Actor):
         tiled_context = dict()
         for tileable in graph:
             if isinstance(tileable.op, Fetch) and tileable.is_coarse():
-                info = self._tileable_key_to_info[tileable.key][0]
+                info = self._tileable_key_to_info[tileable.key][-1]
                 tiled = info.processor.tile_context[info.tileable]
                 tiled_context[tileable] = build_fetch(tiled).data
         return tiled_context
@@ -642,11 +642,12 @@ class TaskManagerActor(mo.Actor):
         loop = asyncio.get_running_loop()
 
         try:
+            raw_tileable_context = task_processor.tile_context.copy()
             # optimization, run it in executor,
             # since optimization may be a CPU intensive operation
             tileable_graph = await loop.run_in_executor(None, task_processor.optimize)
             # incref fetch tileables to ensure fetch data not deleted
-            await self._incref_fetch_tileables(tileable_graph)
+            await self._incref_fetch_tileables(tileable_graph, raw_tileable_context)
 
             chunk_graph_iter = task_processor.tile(tileable_graph)
             lifecycle_processed_tileables = set()
@@ -717,14 +718,18 @@ class TaskManagerActor(mo.Actor):
                                           processor=task_processor)
                 self._tileable_key_to_info[tileable.key].append(info)
             await self._decref_when_finish(
-                stages, lifecycle_processed_tileables, tileable_graph)
+                stages, lifecycle_processed_tileables,
+                tileable_graph, raw_tileable_context)
         finally:
             task_processor.done = True
 
-    async def _incref_fetch_tileables(self, tileable_graph: TileableGraph):
+    async def _incref_fetch_tileables(self,
+                                      tileable_graph: TileableGraph,
+                                      raw_tileable_context: Dict[TileableType, TileableType]):
         # incref fetch tileables in tileable graph to prevent them from deleting
-        to_incref_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
-                                   if isinstance(tileable.op, Fetch) and tileable.is_coarse()]
+        to_incref_tileable_keys = [
+            tileable.op.source_key for tileable in tileable_graph
+            if isinstance(tileable.op, Fetch) and tileable in raw_tileable_context]
         await self._lifecycle_api.incref_tileables(to_incref_tileable_keys)
 
     async def _track_and_incref_result_tileables(self,
@@ -764,7 +769,8 @@ class TaskManagerActor(mo.Actor):
     async def _decref_when_finish(self,
                                   stages: List[TaskStageInfo],
                                   result_tileables: Set[TileableType],
-                                  tileable_graph: TileableGraph):
+                                  tileable_graph: TileableGraph,
+                                  raw_tileable_context: Dict[TileableType, TileableType]):
         decref_chunks = []
         error_or_cancelled = False
         for stage in stages:
@@ -788,8 +794,9 @@ class TaskManagerActor(mo.Actor):
         await self._lifecycle_api.decref_chunks(
             [c.key for c in decref_chunks])
 
-        fetch_tileable_keys = [tileable.op.source_key for tileable in tileable_graph
-                               if isinstance(tileable.op, Fetch) and tileable.is_coarse()]
+        fetch_tileable_keys = [
+            tileable.op.source_key for tileable in tileable_graph
+            if isinstance(tileable.op, Fetch) and tileable in raw_tileable_context]
 
         if error_or_cancelled:
             # if task failed or cancelled, roll back tileable incref

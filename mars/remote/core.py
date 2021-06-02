@@ -117,6 +117,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         pure_depends = []
         for inp in op.inputs:
             if cls._no_prepare(inp):  # pragma: no cover
+                # trigger execution
+                yield
                 # if input is tensor, DataFrame etc,
                 # do not prepare data, because the data may be to huge,
                 # and users can choose to fetch slice of the data themselves

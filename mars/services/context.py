@@ -89,12 +89,13 @@ class ThreadedServiceContext(Context):
 
     async def _get_chunks_meta(self,
                                data_keys: List[str],
-                               fields: List[str] = None) -> List[Dict]:
+                               fields: List[str] = None,
+                               error: str = 'raise') -> List[Dict]:
         # get chunks meta
         get_metas = []
         for data_key in data_keys:
             meta = self._meta_api.get_chunk_meta.delay(
-                data_key, fields=fields)
+                data_key, fields=fields, error=error)
             get_metas.append(meta)
         metas = await self._meta_api.get_chunk_meta.batch(*get_metas)
         return metas
@@ -124,8 +125,9 @@ class ThreadedServiceContext(Context):
     @implements(Context.get_chunks_meta)
     def get_chunks_meta(self,
                         data_keys: List[str],
-                        fields: List[str] = None) -> List[Dict]:
-        return self._call(self._get_chunks_meta(data_keys, fields=fields))
+                        fields: List[str] = None,
+                        error='raise') -> List[Dict]:
+        return self._call(self._get_chunks_meta(data_keys, fields=fields, error=error))
 
     @implements(Context.create_remote_object)
     def create_remote_object(self,
