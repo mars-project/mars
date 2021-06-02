@@ -836,16 +836,6 @@ def test_memory_usage():
     assert r.chunks[0].op.stage == OperandStage.reduce
 
 
-def test_rebalance():
-    raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
-    df = from_pandas_df(raw)
-
-    df2 = df.rebalance()
-    df2 = tile(df2)
-
-    assert isinstance(df2.op, type(df.op))
-
-
 def test_shift():
     rs = np.random.RandomState(0)
     raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),

@@ -32,7 +32,7 @@ from .utils import read_buffers, write_buffers
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer', '_channel_type'
+    __slots__ = 'reader', 'writer', '_channel_type', '_lock'
 
     name = 'socket'
 
@@ -50,6 +50,8 @@ class SocketChannel(Channel):
         self.writer = writer
         self._channel_type = channel_type
 
+        self._lock = asyncio.Lock()
+
     @property
     @implements(Channel.type)
     def type(self) -> ChannelType:
@@ -64,7 +66,10 @@ class SocketChannel(Channel):
 
         # write buffers
         write_buffers(self.writer, buffers)
-        await self.writer.drain()
+        async with self._lock:
+            # add lock, or when parallel send,
+            # assertion error may be raised
+            await self.writer.drain()
 
     @implements(Channel.recv)
     async def recv(self):
