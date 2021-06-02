@@ -34,8 +34,8 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
-    
-    
+
+
 def test_bool_indexing_execution(setup):
     raw = np.random.random((11, 8, 12, 14))
     arr = tensor(raw, chunk_size=6)

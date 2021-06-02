@@ -14,7 +14,7 @@
 
 from typing import List, Dict, Union, Set, Generator, Iterable
 
-from ....core import FUSE_CHUNK_TYPE
+from ....core import FUSE_CHUNK_TYPE, CHUNK_TYPE, TILEABLE_TYPE
 from ....typing import EntityType, TileableType, ChunkType
 from ....utils import copy_tileables, build_fetch
 from ...entity.tileables import handler
@@ -66,6 +66,9 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
     def _select_inputs(self, inputs: List[ChunkType]):
         new_inputs = []
         for inp in inputs:
+            # TODO: remove it when fuse chunk is deprecated
+            if isinstance(inp, FUSE_CHUNK_TYPE):
+                inp = inp.chunk
             if inp in self._processed_chunks:
                 # gen fetch
                 if inp not in self._chunk_to_fetch:
@@ -86,9 +89,10 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
         process_tile_iter = (
             (tileable, self._tile(tileable))
             for tileable in tileable_graph.topological_iter())
-        visited = set()
         chunk_graph = None
         while True:
+            to_be_updated_tileables = []
+            visited = set()
             if chunk_graph is not None:
                 # last tiled chunks, add them to processed
                 # so that fetch chunk can be generated
@@ -111,10 +115,14 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
                     continue
 
                 try:
-                    chunks = next(process_tile)
-                    if chunks is None:
+                    need_processed = next(process_tile)
+                    if need_processed is None:
                         chunks = []
-                    chunks = [self._get_data(c) for c in chunks]
+                    else:
+                        chunks = [self._get_data(c) for c in need_processed
+                                  if isinstance(c, CHUNK_TYPE)]
+                        to_be_updated_tileables.extend([t for t in need_processed
+                                                        if isinstance(t, TILEABLE_TYPE)])
                     # not finished yet
                     self._add_nodes(chunk_graph, chunks, visited)
                     need_process_tiles.append((tileable, process_tile))
@@ -170,6 +178,8 @@ class ChunkGraphBuilder(AbstractGraphBuilder):
             # yield chunk graph for upcoming optimization and execution
             yield chunk_graph
 
+            for t in to_be_updated_tileables:
+                t.refresh_params()
             if not need_process_tiles:
                 break
 

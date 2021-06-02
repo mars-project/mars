@@ -57,7 +57,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         if self.create_view:
             a = self.input
             op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                                     indexes=self._indexes, value=new_output)
+                                     indexes=tuple(self._indexes),
+                                     value=new_output)
             return op(a, self._indexes, new_output)
 
     def on_input_modify(self, new_input):
