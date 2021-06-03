@@ -18,6 +18,9 @@ from typing import Dict, List, Union
 
 import yaml
 
+DEFAULT_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
+
 
 def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
     readies = [0] * len(selectors)
@@ -58,6 +61,8 @@ def load_service_config_file(path: str) -> Dict:
             path = None
         elif os.path.isfile(inherit_path):
             path = inherit_path
+        elif inherit_path == '@default':
+            path = DEFAULT_CONFIG_FILE
         elif inherit_path.startswith('@mars'):
             path = inherit_path.replace('@mars', mars_path)
         else:

@@ -1,4 +1,4 @@
-inherits: ../config.yml
+inherits: '@default'
 task:
   task_processor_cls: mars.services.task.supervisor.tests.CheckedTaskProcessor
   subtask_processor_cls: mars.services.task.worker.tests.CheckedSubtaskProcessor

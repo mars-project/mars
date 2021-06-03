@@ -18,8 +18,10 @@ import pytest
 
 from mars.deploy.utils import load_service_config_file
 
+_cwd = os.path.abspath(os.getcwd())
 
-@pytest.mark.parametrize('cwd', [os.getcwd(), os.path.dirname(os.getcwd())])
+
+@pytest.mark.parametrize('cwd', [_cwd, os.path.dirname(_cwd)])
 def test_load_service_config(cwd):
     old_cwd = os.getcwd()
     try:
@@ -27,6 +29,7 @@ def test_load_service_config(cwd):
         cfg = load_service_config_file(
             os.path.join(os.path.dirname(__file__), 'inherit_test_cfg2.yml'))
 
+        assert 'services' in cfg
         assert cfg['test_list'] == ['item1', 'item2', 'item3']
         assert set(cfg['test_dict'].keys()) == {'key1', 'key2', 'key3'}
         assert set(cfg['test_dict']['key2'].values()) == {'val2_modified'}
