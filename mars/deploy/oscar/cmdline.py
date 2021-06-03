@@ -123,7 +123,7 @@ class OscarCommandRunner:
         if args.ports is not None:
             self.ports = [int(p) for p in args.ports.split(',')]
 
-        if args.endpoint is not None and args.host is not None:
+        if args.endpoint is not None and args.host is not None:  # pragma: no cover
             raise ValueError('Cannot specify host and endpoint at the same time')
         elif args.endpoint is None and len(self.ports or []) == 1:
             default_host = os.environ.get('MARS_CONTAINER_IP', '0.0.0.0')

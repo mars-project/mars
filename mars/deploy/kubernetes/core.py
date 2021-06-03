@@ -128,14 +128,6 @@ class K8SClusterBackend(AbstractClusterBackend):
                 await self._get_pod_to_ep(service_type, filter_ready=filter_ready)
         return sorted(a for a in self._service_pod_to_ep[service_type].values() if a is not None)
 
-    async def is_all_supervisors_ready(self):
-        from .config import MarsSupervisorsConfig
-        await self._get_endpoints_by_service_type(MarsSupervisorsConfig.rc_name, update=True)
-        pod_to_ep = self._service_pod_to_ep[MarsSupervisorsConfig.rc_name]
-        if not pod_to_ep:
-            return False
-        return all(a is not None for a in pod_to_ep.values())
-
     async def _watch_service(self, service_type, linger=10):
         from urllib3.exceptions import ReadTimeoutError
         from kubernetes import watch

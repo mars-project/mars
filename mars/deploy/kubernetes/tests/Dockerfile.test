@@ -12,7 +12,7 @@ COPY docker-logging.conf /srv/logging.conf
 COPY build_ext.sh /srv/build_ext.sh
 COPY entrypoint.sh /srv/entrypoint.sh
 COPY graceful_stop.sh /srv/graceful_stop.sh
-COPY config.yml /srv/config.yml
+COPY test_kube_config.yml /srv/config.yml
 
 RUN echo "import coverage; coverage.process_startup()" > \
     $(/opt/conda/bin/python -c "import site; print(site.getsitepackages()[-1])")/coverage.pth

@@ -64,9 +64,6 @@ class NodeInfoUploaderActor(mo.Actor):
         # upload info in time to reduce latency
         await self.upload_node_info(False)
 
-    def is_node_ready(self):
-        return self._upload_enabled
-
     async def upload_node_info(self, call_next: bool = True):
         try:
             if not self._info.env:
