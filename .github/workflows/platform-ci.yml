@@ -161,12 +161,7 @@ jobs:
         run: |
           sudo docker stop vineyard || true
 
-      - name: Prepare coverage token
-        if: success() && github.repository == 'mars-project/mars'
-        run: cp .github/codecov-upstream.yml .codecov.yml
-
       - name: Report coverage data
-        uses: codecov/codecov-action@v1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+        shell: bash
+        run: |
+          bash <(curl -s https://codecov.io/bash)
