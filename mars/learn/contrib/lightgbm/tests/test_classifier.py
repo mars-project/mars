@@ -21,8 +21,7 @@ import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 
 try:
     import lightgbm
@@ -31,37 +30,29 @@ except ImportError:
     lightgbm = LGBMClassifier = None
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    n_rows = 1000
-    n_columns = 10
-    chunk_size = 200
-    rs = mt.random.RandomState(0)
-    X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-    y_raw = rs.rand(n_rows, chunk_size=chunk_size)
-    filter = rs.rand(n_rows, chunk_size=chunk_size) < 0.8
-    X = X_raw[filter]
-    y = y_raw[filter]
+setup = setup
 
-    X_df = md.DataFrame(X)
-    x_sparse = np.random.rand(n_rows, n_columns)
-    x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
-    X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)[filter]
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y_raw = rs.rand(n_rows, chunk_size=chunk_size)
+filter = rs.rand(n_rows, chunk_size=chunk_size) < 0.8
+X = X_raw[filter]
+y = y_raw[filter]
 
-    with option_context({'show_progress': False}):
-        try:
-            yield X, y, X_df, X_sparse
-        finally:
-            sess.stop_server()
+X_df = md.DataFrame(X)
+x_sparse = np.random.rand(n_rows, n_columns)
+x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
+X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)[filter]
 
 
 @pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
 def test_local_classifier(setup):
-    X, y, X_df, X_sparse = setup
-    y = (y * 10).astype(mt.int32)
+    y_data = (y * 10).astype(mt.int32)
     classifier = LGBMClassifier(n_estimators=2)
-    classifier.fit(X, y, eval_set=[(X, y)], verbose=True)
+    classifier.fit(X, y_data, eval_set=[(X, y_data)], verbose=True)
     prediction = classifier.predict(X)
 
     assert prediction.ndim == 1
@@ -70,10 +61,11 @@ def test_local_classifier(setup):
     assert isinstance(prediction, mt.Tensor)
 
     # test sparse tensor
-    X_sparse = X_sparse
+    X_sparse_data = X_sparse
     classifier = LGBMClassifier(n_estimators=2)
-    classifier.fit(X_sparse, y, eval_set=[(X_sparse, y)], verbose=True)
-    prediction = classifier.predict(X_sparse)
+    classifier.fit(X_sparse_data, y_data,
+                   eval_set=[(X_sparse_data, y_data)], verbose=True)
+    prediction = classifier.predict(X_sparse_data)
 
     assert prediction.ndim == 1
     assert prediction.shape[0] == len(X)
@@ -87,10 +79,10 @@ def test_local_classifier(setup):
     assert prediction_empty.shape == (0,)
 
     # test dataframe
-    X_df = X_df
+    X_df_data = X_df
     classifier = LGBMClassifier(n_estimators=2)
-    classifier.fit(X_df, y, verbose=True)
-    prediction = classifier.predict(X_df)
+    classifier.fit(X_df_data, y_data, verbose=True)
+    prediction = classifier.predict(X_df_data)
 
     assert prediction.ndim == 1
     assert prediction.shape[0] == len(X)
@@ -102,7 +94,7 @@ def test_local_classifier(setup):
 
     # test weight
     weights = [mt.random.rand(X.shape[0]), md.Series(mt.random.rand(X.shape[0]))]
-    y_df = md.DataFrame(y)
+    y_df = md.DataFrame(y_data)
     for weight in weights:
         classifier = LGBMClassifier(n_estimators=2)
         classifier.fit(X, y_df, sample_weight=weight, verbose=True)
@@ -117,7 +109,7 @@ def test_local_classifier(setup):
             X, y_df, sample_weight=mt.random.rand(1, 1), verbose=True)
 
     # test binary classifier
-    new_y = (y > 0.5).astype(mt.int32)
+    new_y = (y_data > 0.5).astype(mt.int32)
     classifier = LGBMClassifier(n_estimators=2)
     classifier.fit(X, new_y, verbose=True)
 

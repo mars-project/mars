@@ -14,9 +14,8 @@
 
 import pytest
 
-from mars.config import option_context
 from mars.learn.contrib.tsfresh import MarsDistributor
-from mars.tests import new_test_session
+from mars.tests import setup
 
 try:
     import tsfresh
@@ -27,15 +26,7 @@ try:
 except ImportError:
     tsfresh = None
 
-
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.mark.skipif(tsfresh is None, reason='tsfresh not installed')

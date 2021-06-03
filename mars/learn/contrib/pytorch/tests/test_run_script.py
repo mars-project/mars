@@ -16,24 +16,13 @@ import os
 
 import pytest
 
-from mars.config import option_context
 from mars.learn.contrib.pytorch import run_pytorch_script
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.utils import lazy_import
 
+setup = setup
+
 torch_installed = lazy_import('torch', globals=globals()) is not None
-
-
-@pytest.fixture(scope='module')
-def setup():
-    # TODO: use 2 workers
-    sess = new_test_session(default=True)
-
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')

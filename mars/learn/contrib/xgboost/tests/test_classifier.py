@@ -21,44 +21,33 @@ import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.config import option_context
 from mars.learn.contrib.xgboost import XGBClassifier
-from mars.tests import new_test_session
+from mars.tests import setup
 
 try:
     import xgboost
 except ImportError:
     xgboost = None
 
-
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    n_rows = 1000
-    n_columns = 10
-    chunk_size = 200
-    rs = mt.random.RandomState(0)
-    X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-    y = rs.rand(n_rows, chunk_size=chunk_size)
-    X_df = md.DataFrame(X)
-
-    with option_context({'show_progress': False}):
-        try:
-            yield X, y, X_df
-        finally:
-            sess.stop_server()
+setup = setup
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y_raw = rs.rand(n_rows, chunk_size=chunk_size)
+X_df_raw = md.DataFrame(X_raw)
 
 
 @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
 def test_local_classifier(setup):
-    X, y, X_df = setup
-    y = (y * 10).astype(mt.int32)
+    y = (y_raw * 10).astype(mt.int32)
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
-    classifier.fit(X, y, eval_set=[(X, y)])
-    prediction = classifier.predict(X)
+    classifier.fit(X_raw, y, eval_set=[(X_raw, y)])
+    prediction = classifier.predict(X_raw)
 
     assert prediction.ndim == 1
-    assert prediction.shape[0] == len(X)
+    assert prediction.shape[0] == len(X_raw)
 
     history = classifier.evals_result()
 
@@ -72,71 +61,71 @@ def test_local_classifier(setup):
     assert len(history['validation_0']) == 1
     assert len(history['validation_0'][eval_metric]) == 2
 
-    prob = classifier.predict_proba(X)
-    assert prob.shape == X.shape
+    prob = classifier.predict_proba(X_raw)
+    assert prob.shape == X_raw.shape
 
     # test dataframe
-    X_df = X_df
+    X_df = X_df_raw
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
     classifier.fit(X_df, y)
     prediction = classifier.predict(X_df)
 
     assert prediction.ndim == 1
-    assert prediction.shape[0] == len(X)
+    assert prediction.shape[0] == len(X_raw)
 
     # test weight
-    weights = [mt.random.rand(X.shape[0]), md.Series(mt.random.rand(X.shape[0])),
-               md.DataFrame(mt.random.rand(X.shape[0]))]
+    weights = [mt.random.rand(X_raw.shape[0]), md.Series(mt.random.rand(X_raw.shape[0])),
+               md.DataFrame(mt.random.rand(X_raw.shape[0]))]
     y_df = md.DataFrame(y)
     for weight in weights:
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X, y_df, sample_weights=weight)
-        prediction = classifier.predict(X)
+        classifier.fit(X_raw, y_df, sample_weights=weight)
+        prediction = classifier.predict(X_raw)
 
         assert prediction.ndim == 1
-        assert prediction.shape[0] == len(X)
+        assert prediction.shape[0] == len(X_raw)
 
     # should raise error if weight.ndim > 1
     with pytest.raises(ValueError):
         XGBClassifier(verbosity=1, n_estimators=2).fit(
-            X, y_df, sample_weights=mt.random.rand(1, 1))
+            X_raw, y_df, sample_weights=mt.random.rand(1, 1))
 
     # test binary classifier
     new_y = (y > 0.5).astype(mt.int32)
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
-    classifier.fit(X, new_y)
-    prediction = classifier.predict(X)
+    classifier.fit(X_raw, new_y)
+    prediction = classifier.predict(X_raw)
 
     assert prediction.ndim == 1
-    assert prediction.shape[0] == len(X)
+    assert prediction.shape[0] == len(X_raw)
 
     # test predict data with unknown shape
-    X2 = X[X[:, 0] > 0.1].astype(mt.int32)
+    X2 = X_raw[X_raw[:, 0] > 0.1].astype(mt.int32)
     prediction = classifier.predict(X2)
 
     assert prediction.ndim == 1
 
     # test train with unknown shape
-    cond = X[:, 0] > 0
-    X3 = X[cond]
+    cond = X_raw[:, 0] > 0
+    X3 = X_raw[cond]
     y3 = y[cond]
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
     classifier.fit(X3, y3)
-    prediction = classifier.predict(X)
+    prediction = classifier.predict(X_raw)
 
     assert prediction.ndim == 1
-    assert prediction.shape[0] == len(X)
+    assert prediction.shape[0] == len(X_raw)
 
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
     with pytest.raises(TypeError):
-        classifier.fit(X, y, wrong_param=1)
-    classifier.fit(X, y)
+        classifier.fit(X_raw, y, wrong_param=1)
+    classifier.fit(X_raw, y)
     with pytest.raises(TypeError):
-        classifier.predict(X, wrong_param=1)
+        classifier.predict(X_raw, wrong_param=1)
 
 
 @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
-def test_local_classifier_from_to_parquet():
+def test_local_classifier_from_to_parquet(setup):
     n_rows = 1000
     n_columns = 10
     rs = np.random.RandomState(0)

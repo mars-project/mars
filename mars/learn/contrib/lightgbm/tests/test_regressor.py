@@ -16,8 +16,7 @@ import pandas as pd
 import pytest
 
 import mars.tensor as mt
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 
 try:
     import lightgbm
@@ -26,26 +25,18 @@ except ImportError:
     lightgbm = LGBMRegressor = None
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    n_rows = 1000
-    n_columns = 10
-    chunk_size = 200
-    rs = mt.random.RandomState(0)
-    X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-    y = rs.randint(0, 10, n_rows, chunk_size=chunk_size)
+setup = setup
 
-    with option_context({'show_progress': False}):
-        try:
-            yield X, y
-        finally:
-            sess.stop_server()
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y = rs.randint(0, 10, n_rows, chunk_size=chunk_size)
 
 
 @pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
 def test_local_regressor(setup):
-    X, y = setup
     regressor = LGBMRegressor(n_estimators=2)
     regressor.fit(X, y, verbose=True)
     prediction = regressor.predict(X)

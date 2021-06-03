@@ -18,9 +18,8 @@ import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.config import option_context
 from mars.learn.contrib.xgboost import MarsDMatrix, train, predict
-from mars.tests import new_test_session
+from mars.tests import setup
 
 try:
     import xgboost
@@ -28,33 +27,23 @@ try:
 except ImportError:
     xgboost = None
 
+setup = setup
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    n_rows = 1000
-    n_columns = 10
-    chunk_size = 200
-    rs = mt.random.RandomState(0)
-    X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-    y = rs.rand(n_rows, chunk_size=chunk_size)
-    X_df = md.DataFrame(X)
-    y_series = md.Series(y)
-    x_sparse = np.random.rand(n_rows, n_columns)
-    x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
-    X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
-
-    with option_context({'show_progress': False}):
-        try:
-            yield X, X_df, y, y_series, X_sparse
-        finally:
-            sess.stop_server()
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y = rs.rand(n_rows, chunk_size=chunk_size)
+X_df = md.DataFrame(X)
+y_series = md.Series(y)
+x_sparse = np.random.rand(n_rows, n_columns)
+x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
+X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
 
 
 @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
 def test_local_predict_tensor(setup):
-    X, _, y, _, X_sparse = setup
-
     dtrain = MarsDMatrix(X, y)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
@@ -74,8 +63,6 @@ def test_local_predict_tensor(setup):
 
 @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
 def test_local_predict_dataframe(setup):
-    _, X_df, _, y_series, X_sparse = setup
-
     dtrain = MarsDMatrix(X_df, y_series)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
