@@ -47,7 +47,9 @@ logger = logging.getLogger(__name__)
 def setup():
     from ..deploy.oscar.tests.session import new_test_session
 
-    sess = new_test_session(default=True)
+    sess = new_test_session(address='test://127.0.0.1',
+                            init_local=True,
+                            default=True)
     with option_context({'show_progress': False}):
         try:
             yield sess

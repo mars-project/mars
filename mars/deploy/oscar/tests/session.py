@@ -18,7 +18,6 @@ import uuid
 from ....core import OBJECT_TYPE
 from ....core.session import register_session_cls, _wrap_in_thread
 from ....core.session import AbstractSession, SyncSession, _ensure_loop
-from ....oscar.backends.router import Router
 from ....tests.core import _check_args, ObjectCheckMixin
 from ..session import Session
 
@@ -54,8 +53,6 @@ class CheckedSession(ObjectCheckMixin, Session):
                 # enable check for task and subtask processor
                 kwargs['config'] = CONFIG_FILE
         session = await super().init(address, session_id, **kwargs)
-        # reset global router
-        Router.set_instance(Router(list(), None))
         return session
 
     @staticmethod

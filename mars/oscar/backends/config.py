@@ -63,7 +63,7 @@ class ActorPoolConfig:
     def get_process_indexes(self):
         return list(self._conf['pools'])
 
-    def get_process_index(self, external_address):
+    def get_process_index(self, external_address: str):
         for process_index, conf in self._conf['pools'].items():
             if external_address in conf['external_address']:
                 return process_index

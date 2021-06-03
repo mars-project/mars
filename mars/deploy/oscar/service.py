@@ -20,7 +20,7 @@ import yaml
 from ...services import start_services, stop_services, NodeRole
 
 
-def _load_config(filename=None):
+def load_config(filename=None):
     # use default config
     if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
@@ -34,7 +34,7 @@ async def start_supervisor(address: str,
                            modules: Union[List, str, None] = None,
                            config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     lookup_address = lookup_address or address
     if config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
@@ -45,7 +45,7 @@ async def start_supervisor(address: str,
 async def stop_supervisor(address: str,
                           config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     await stop_services(NodeRole.SUPERVISOR, address, config)
 
 
@@ -55,7 +55,7 @@ async def start_worker(address: str,
                        modules: Union[List, str, None] = None,
                        config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     if config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
     if config['cluster'].get('resource') is None:
@@ -67,5 +67,5 @@ async def start_worker(address: str,
 async def stop_worker(address: str,
                       config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     await stop_services(NodeRole.WORKER, address, config)
