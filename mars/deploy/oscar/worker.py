@@ -36,6 +36,7 @@ class WorkerCommandRunner(OscarCommandRunner):
         parser.add_argument('--n-io-process', help='num of IO processes', default='1')
 
     def parse_args(self, parser, argv, environ=None):
+        environ = environ or os.environ
         args = super().parse_args(parser, argv, environ=environ)
 
         if self.config.get('cluster', {}).get('backend', 'fixed') == 'fixed' \
@@ -53,6 +54,13 @@ class WorkerCommandRunner(OscarCommandRunner):
         band_to_slot['numa-0'] = n_cpu
         for i in range(n_gpu):  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1
+
+        storage_config = self.config['storage'] = self.config.get('storage', {})
+        plasma_config = storage_config['plasma'] = storage_config.get('plasma', {})
+        if 'MARS_CACHE_MEM_SIZE' in environ:
+            plasma_config['store_memory'] = environ['MARS_CACHE_MEM_SIZE']
+        if 'MARS_PLASMA_DIRS' in environ:
+            plasma_config['plasma_directory'] = environ['MARS_PLASMA_DIRS']
 
         return args
 

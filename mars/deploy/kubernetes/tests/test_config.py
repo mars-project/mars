@@ -36,15 +36,15 @@ class Test(unittest.TestCase):
                          'mars-pod-reader-binding')
 
         service_config_dict = ServiceConfig(
-            'mars-test-service', 'NodePort', 'mars/service-type=marsscheduler', 7103, 7103).build()
+            'mars-test-service', 'NodePort', 'mars/service-type=marssupervisor', 7103, 7103).build()
         self.assertEqual(service_config_dict['metadata']['name'], 'mars-test-service')
 
     def testSupervisorObject(self):
-        scheduler_config = MarsSupervisorsConfig(
+        supervisor_config = MarsSupervisorsConfig(
             1, cpu=2, memory='10g', limit_resources=False, modules=['mars.test_mod'])
-        scheduler_config.add_simple_envs(dict(TEST_ENV='test_val'))
+        supervisor_config.add_simple_envs(dict(TEST_ENV='test_val'))
 
-        supervisor_config_dict = scheduler_config.build()
+        supervisor_config_dict = supervisor_config.build()
         self.assertEqual(supervisor_config_dict['metadata']['name'], 'marssupervisor')
         self.assertEqual(supervisor_config_dict['spec']['replicas'], 1)
 

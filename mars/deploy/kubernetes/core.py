@@ -150,6 +150,8 @@ class K8SClusterBackend(AbstractClusterBackend):
                 try:
                     event = await self._spawn_in_pool(next, streamer, StopIteration)
                     if event is StopIteration:
+                        # todo change this into a continuous watch
+                        #  when watching in a master node is implemented
                         return
                 except (ReadTimeoutError, StopIteration):
                     new_pods = set(await self._get_endpoints_by_service_type(service_type, update=True))

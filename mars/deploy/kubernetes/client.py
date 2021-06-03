@@ -278,7 +278,7 @@ class KubernetesCluster:
 
                     if len(supervisors) == self._supervisor_num:
                         break
-                except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                     if time.time() - start_time > self._timeout:
                         raise TimeoutError('Wait for kubernetes cluster timed out') from None
 
@@ -306,7 +306,7 @@ class KubernetesCluster:
             return self._external_web_endpoint
         except:  # noqa: E722
             if self._log_when_fail:  # pargma: no cover
-                logger.exception('Error when creating cluster')
+                logger.error('Error when creating cluster')
                 for name, log in self._load_cluster_logs().items():
                     logger.error('Error logs for %s:\n%s', name, log)
             self.stop()
