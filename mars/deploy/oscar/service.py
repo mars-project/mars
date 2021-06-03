@@ -15,9 +15,8 @@
 import os
 from typing import List, Dict, Union
 
-import yaml
-
 from ...services import start_services, stop_services, NodeRole
+from ..utils import load_service_config_file
 
 
 def _load_config(filename=None):
@@ -25,8 +24,7 @@ def _load_config(filename=None):
     if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'config.yml')
-    with open(filename) as f:
-        return yaml.safe_load(f)
+    return load_service_config_file(filename)
 
 
 async def start_supervisor(address: str,

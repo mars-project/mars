@@ -1,0 +1,6 @@
+inherits: inherit_test_cfg1.yml
+test_dict:
+  key2:
+    key2_key1:
+      val2_modified
+  key3: val3

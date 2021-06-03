@@ -15,20 +15,20 @@
 import asyncio
 import logging
 import os
-import yaml
 from typing import Union, Dict, List
 
-from mars.oscar.backends.ray.driver import RayActorDriver
-from mars.oscar.backends.ray.utils import (
+from ... import oscar as mo
+from ...core.session import _new_session, AbstractSession
+from ...oscar.backends.ray.driver import RayActorDriver
+from ...oscar.backends.ray.utils import (
     process_placement_to_address,
     node_placement_to_address,
 )
+from ...utils import lazy_import
+from ..utils import load_service_config_file
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
-from ... import oscar as mo
-from ...core.session import _new_session, AbstractSession
-from ...utils import lazy_import
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)
@@ -44,8 +44,7 @@ def _load_config(filename=None):
     if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'rayconfig.yml')
-    with open(filename) as f:
-        return yaml.safe_load(f)
+    return load_service_config_file(filename)
 
 
 async def new_cluster(cluster_name: str,
