@@ -31,7 +31,7 @@ class _TileableSession:
                 s = s.to_sync()
                 try:
                     s.decref(key)
-                except RuntimeError:
+                except (RuntimeError, ConnectionError):
                     pass
         self.tileable = ref(tileable, cb)
 

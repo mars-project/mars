@@ -32,7 +32,8 @@ except ImportError:
     from unittest import mock
 _mock = mock
 
-from mars.utils import lazy_import
+from ..config import option_context
+from ..utils import lazy_import
 
 
 cupy = lazy_import('cupy', globals=globals())
@@ -40,6 +41,18 @@ cudf = lazy_import('cudf', globals=globals())
 ray = lazy_import('ray', globals=globals())
 
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope='module')
+def setup():
+    from ..deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
 
 
 def flaky(o=None, *args, **kwargs):

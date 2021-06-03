@@ -27,20 +27,12 @@ except ImportError:
 
 from mars import tensor as mt
 from mars.core import TileableGraphBuilder, TileableGraph, ChunkGraphBuilder
-from mars.config import options, option_context
+from mars.config import options
 from mars.learn.cluster import KMeans, k_means
 from mars.learn.cluster._kmeans import _init_centroids
-from mars.tests import new_test_session
+from mars.tests import setup
 
-
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.mark.skipif(KMeans is None, reason='scikit-learn not installed')

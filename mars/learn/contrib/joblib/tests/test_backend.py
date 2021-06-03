@@ -14,11 +14,6 @@
 
 import numpy as np
 import pytest
-
-from mars.config import option_context
-from mars.learn.contrib.joblib import register_mars_backend
-from mars.tests import new_test_session
-
 try:
     import joblib
     import sklearn
@@ -28,16 +23,11 @@ try:
 except ImportError:
     joblib = sklearn = None
 
+from mars.learn.contrib.joblib import register_mars_backend
+from mars.tests import setup
 
-@pytest.fixture(scope='module')
-def setup():
-    register_mars_backend()
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+register_mars_backend()
+setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

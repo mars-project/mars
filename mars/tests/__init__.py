@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..deploy.oscar.tests.session import new_test_session, CONFIG_FILE
+from .core import setup
