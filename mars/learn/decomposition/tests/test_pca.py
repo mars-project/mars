@@ -26,20 +26,12 @@ except ImportError:
     sklearn = None
 
 import mars.tensor as mt
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 if sklearn:
     from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 iris = mt.tensor(datasets.load_iris().data)

@@ -28,26 +28,18 @@ except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
 import mars.tensor as mt
-from mars.config import option_context
 from mars.core import tile
 from mars.learn.neighbors import NearestNeighbors
 from mars.learn.proxima.core import proxima
 from mars.lib.sparse import SparseNDArray
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tests.core import require_cupy
 from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
     
 def test_nearest_neighbors(setup):

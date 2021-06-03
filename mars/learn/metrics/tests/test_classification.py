@@ -21,22 +21,13 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 import mars.tensor as mt
-from mars.config import option_context
 from mars.learn.metrics import accuracy_score
 from mars.learn.metrics._classification import _check_targets
 from mars.lib.sparse import SparseNDArray
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
-
+setup = setup
 
 IND = 'multilabel-indicator'
 MC = 'multiclass'

@@ -18,20 +18,12 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import option_context
 from mars.tensor.datasource import tensor, empty, eye, ones, zeros
 from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, array, block
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
     
     
 def test_concatenate_execution(setup):

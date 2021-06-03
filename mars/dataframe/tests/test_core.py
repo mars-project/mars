@@ -16,12 +16,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.config import option_context
 from mars.core import tile
 from mars.dataframe import cut
 from mars.dataframe.initializer import DataFrame, Series, Index
 from mars.lib.groupby_wrapper import wrapped_groupby
-from mars.tests import new_test_session
+from mars.tests import setup
+
+setup = setup
 
 
 def test_dataframe_params():
@@ -135,16 +136,6 @@ def test_dataframe_dir():
     dir_result = set(dir(df))
     for c in df.dtypes.index:
         assert c in dir_result
-
-
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
 
 
 def test_to_frame_or_series(setup):

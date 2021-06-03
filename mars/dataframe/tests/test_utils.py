@@ -26,17 +26,10 @@ from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
     infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
     
 def test_decide_dataframe_chunks():

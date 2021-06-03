@@ -22,25 +22,17 @@ import pytest
 from mars import dataframe as md
 from mars import tensor as mt
 from mars import execute, fetch
-from mars.config import option_context
 from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
     expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
     hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
     isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
     trapz, shape, to_gpu, to_cpu, swapaxes
 from mars.tensor.datasource import tensor, ones, zeros, arange
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tests.core import require_cupy
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 def test_rechunk_execution(setup):

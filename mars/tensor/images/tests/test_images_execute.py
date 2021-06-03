@@ -22,19 +22,11 @@ try:
 except ImportError:
     Image = None
 
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tensor.images import imread
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.mark.skipif(not Image, reason='Pillow not installed')

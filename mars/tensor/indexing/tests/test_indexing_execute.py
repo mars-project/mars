@@ -18,22 +18,15 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import options, option_context
+from mars.config import options
 from mars.tensor.datasource import tensor, arange, zeros
 from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero, fill_diagonal
 from mars.tensor import mod, stack, hstack
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 def test_bool_indexing_execution(setup):

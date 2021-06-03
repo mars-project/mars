@@ -18,22 +18,14 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import option_context
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
     nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod
 from mars.utils import ignore_warning
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
     
     
 def test_sum_prod_execution(setup):

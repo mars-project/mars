@@ -32,20 +32,13 @@ import mars.dataframe as md
 import mars.remote as mr
 from mars.config import option_context
 from mars.core.session import execute, fetch, fetch_log
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
 test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
     
 
 def test_session_async_execute(setup):
@@ -150,6 +143,8 @@ def test_multiple_output_execute(setup):
 
 
 def test_closed_session():
+    from ..deploy.oscar.tests.session import new_test_session
+
     session = new_test_session(default=True)
     with option_context({'show_progress': False}):
         arr = mt.ones((10, 10))
@@ -363,6 +358,8 @@ task:
 
 @pytest.fixture
 def fetch_log_setup():
+    from ..deploy.oscar.tests.session import new_test_session
+
     with tempfile.TemporaryDirectory() as temp_dir:
         config = CONFIG.format(custom_log_dir=temp_dir)
         sess = new_test_session(default=True,

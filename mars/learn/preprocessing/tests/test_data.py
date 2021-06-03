@@ -23,20 +23,12 @@ except ImportError:
     sklearn = None
 
 from mars import tensor as mt
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 if sklearn:
     from mars.learn.preprocessing import MinMaxScaler, minmax_scale
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 def assert_correct_incr(i, batch_start, batch_stop, n, chunk_size,

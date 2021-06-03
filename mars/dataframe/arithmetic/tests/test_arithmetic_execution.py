@@ -22,24 +22,16 @@ import pandas as pd
 import pytest
 
 from mars import tensor as mt
-from mars.config import option_context
 from mars.dataframe import to_datetime
 from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tensor.datasource import array as from_array
 from mars.utils import dataslots
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @dataslots

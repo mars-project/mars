@@ -15,24 +15,15 @@
 # limitations under the License.
 
 import numpy as np
-import pytest
 
-from mars.config import option_context
 from mars.lib.mkl_interface import mkl_free_buffers
 from mars.tensor.datasource import tensor
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
     
 def test_fft_execution(setup):

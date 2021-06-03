@@ -16,27 +16,18 @@
 
 import numpy as np
 import scipy.sparse as sps
-import pytest
 
-from mars.config import option_context
 from mars.learn.datasets.samples_generator import make_low_rank_matrix
 from mars.lib.sparse import issparse, SparseNDArray
 from mars.tensor.datasource import tensor, diag, ones, arange
 from mars.tensor.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.random import uniform
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.utils import ignore_warning
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 def test_qr_execution(setup):

@@ -33,27 +33,18 @@ try:
     from numcodecs import Zstd, Delta, Blosc
 except ImportError:  # pragma: no cover
     zarr = None
-
-from mars.config import option_context
-from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
-from mars.tests import new_test_session
-
 try:
     import vineyard
 except ImportError:
     vineyard = None
 
+from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
+from mars.tests import setup
+
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.mark.skipif(tiledb is None, reason='tiledb not installed')

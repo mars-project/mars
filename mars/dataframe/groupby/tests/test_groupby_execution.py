@@ -24,20 +24,12 @@ except ImportError:  # pragma: no cover
     pa = None
 
 import mars.dataframe as md
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tests.core import assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 class MockReduction1(md.CustomReduction):

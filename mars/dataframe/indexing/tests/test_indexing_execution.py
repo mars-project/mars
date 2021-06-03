@@ -29,21 +29,13 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 import mars.tensor as mt
-from mars.config import option_context
 from mars.dataframe.datasource.read_csv import DataFrameReadCSV
 from mars.dataframe.datasource.read_sql import DataFrameReadSQL
 from mars.dataframe.datasource.read_parquet import DataFrameReadParquet
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.mark.parametrize('chunk_size', [2, (2, 3)])

@@ -22,7 +22,7 @@ import pytest
 import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe import DataFrame
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tests.core import flaky
 
 try:
@@ -45,14 +45,7 @@ except ImportError:
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 def test_to_csv_execution(setup):

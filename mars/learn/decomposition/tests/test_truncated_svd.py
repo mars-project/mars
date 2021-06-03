@@ -23,10 +23,11 @@ except ImportError:
     sklearn = None
 
 import mars.tensor as mt
-from mars.config import option_context
-from mars.tests import new_test_session
+from mars.tests import setup
 if sklearn:
     from mars.learn.decomposition import TruncatedSVD
+
+setup = setup
 
 # Make an X that looks somewhat like a small tf-idf matrix.
 # XXX newer versions of SciPy >0.16 have scipy.sparse.rand for this.
@@ -39,16 +40,6 @@ X.data[:] = 1 + np.log(X.data)
 Xdense = X.A
 n_samples = n_samples
 n_features = n_features
-
-
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

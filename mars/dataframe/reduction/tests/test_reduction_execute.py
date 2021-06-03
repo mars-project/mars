@@ -27,21 +27,14 @@ from mars.config import option_context
 from mars.core.session import get_default_session, SyncSession
 from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
-from mars.tests import new_test_session
+from mars.tests import setup
 from mars.tests.core import require_cudf, require_cupy
 from mars.utils import lazy_import
 
 cp = lazy_import('cupy', rename='cp', globals=globals())
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
 
 
 @pytest.fixture

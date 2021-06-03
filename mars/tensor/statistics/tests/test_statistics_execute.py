@@ -16,7 +16,6 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import option_context
 from mars.utils import ignore_warning
 from mars.tensor.datasource import arange, tensor, empty
 from mars.tensor.statistics import average, cov, corrcoef, ptp, \
@@ -25,17 +24,10 @@ from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-from mars.tests import new_test_session
+from mars.tests import setup
 
 
-@pytest.fixture(scope='module')
-def setup():
-    sess = new_test_session(default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
+setup = setup
     
     
 def test_average_execution(setup):
