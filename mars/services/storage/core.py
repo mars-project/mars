@@ -626,6 +626,9 @@ class StorageManagerActor(mo.Actor):
                        data_info: DataInfo,
                        object_info: ObjectInfo = None):
         self._data_manager.put(session_id, data_key, data_info, object_info)
+        if object_info is None:
+            # for shuffle operands, data may not exists
+            return
         if object_info.size is not None and data_info.memory_size != object_info.size:
             self.update_quota(object_info.size - data_info.memory_size, data_info.level)
 
