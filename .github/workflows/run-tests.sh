@@ -2,12 +2,12 @@
 set -e
 if [ -n "$WITH_CYTHON" ]; then
   mkdir -p build
-  pytest $PYTEST_CONFIG --cov-config .coveragerc --ignore-glob "*/integrated/*" mars/tests
-  mv .coverage build/.coverage.non-fork.file
-
   export POOL_START_METHOD=forkserver
 
-  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --cov-config .coveragerc mars/oscar
+  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --forked mars/tests mars/core/graph
+  mv .coverage build/.coverage.non-oscar.file
+
+  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --forked mars/oscar
   mv .coverage build/.coverage.oscar_ctx.file
 
   coverage combine build/ && coverage report
