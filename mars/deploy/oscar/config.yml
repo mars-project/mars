@@ -1,27 +1,5 @@
-services:
-  - cluster
-  - session
-  - storage
-  - meta
-  - lifecycle
-  - task
-  - web
-cluster:
-  backend: fixed
-  node_timeout: 120
-  node_check_interval: 1
-session:
-  custom_log_dir: null
+inherits: base_config.yml
 storage:
   backends: [shared_memory]
   plasma:
     store_memory: 20%
-  default_config:
-    transfer_block_size: 5 * 1024 ** 2
-meta:
-  store: dict
-task:
-  default_config:
-    optimize_tileable_graph: yes
-    optimize_chunk_graph: yes
-    fuse_enabled: yes

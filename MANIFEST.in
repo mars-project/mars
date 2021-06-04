@@ -2,10 +2,11 @@ include requirements.txt
 include requirements-*.txt
 global-include *.pyx
 global-include *.pxd
+global-include *.yml
 global-exclude *.c*
+global-exclude */**/tests/*.yml
 include mars/.git-branch
 include mars/lib/mmh3_src/*
-include mars/deploy/oscar/.yml
 recursive-include mars/web/static *
 recursive-include mars/web/templates *
 global-exclude .DS_Store

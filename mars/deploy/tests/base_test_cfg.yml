@@ -1,0 +1,9 @@
+inherits: '@default'
+test_list:
+  - item1
+  - item2
+test_dict:
+  key1: val1
+  key2:
+    key2_key1:
+      val2

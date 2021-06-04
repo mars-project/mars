@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import time
+from typing import Dict, List, Union
+
+import yaml
+
+DEFAULT_CONFIG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
 
 
 def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
@@ -30,3 +37,48 @@ def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
         if timeout and timeout + start_time < time.time():
             raise TimeoutError('Wait cluster start timeout')
         time.sleep(1)
+
+
+def load_service_config_file(path: str) -> Dict:
+    import mars
+    mars_path = os.path.dirname(os.path.abspath(mars.__file__))
+
+    cfg_stack = []  # type: List[Dict]
+    cfg_file_set = set()
+    path = os.path.abspath(path)
+
+    while path is not None:
+        if path in cfg_file_set:  # pragma: no cover
+            raise ValueError('Recursive config inherit detected')
+
+        with open(path) as file:
+            cfg = yaml.safe_load(file)
+        cfg_stack.append(cfg)
+        cfg_file_set.add(path)
+
+        inherit_path = cfg.pop('inherits', None)
+        if not inherit_path:
+            path = None
+        elif os.path.isfile(inherit_path):
+            path = inherit_path
+        elif inherit_path == '@default':
+            path = DEFAULT_CONFIG_FILE
+        elif inherit_path.startswith('@mars'):
+            path = inherit_path.replace('@mars', mars_path)
+        else:
+            path = os.path.join(os.path.dirname(path), inherit_path)
+
+    def _override_cfg(src: Union[Dict, List], override: Union[Dict, List]):
+        if isinstance(override, dict):
+            for key, val in override.items():
+                if key not in src or not isinstance(val, (list, dict)):
+                    src[key] = val
+                else:
+                    _override_cfg(src[key], override[key])
+        else:
+            src.extend(override)
+
+    cfg = cfg_stack[-1]
+    for new_cfg in cfg_stack[-2::-1]:
+        _override_cfg(cfg, new_cfg)
+    return cfg
