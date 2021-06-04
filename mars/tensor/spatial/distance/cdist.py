@@ -20,7 +20,7 @@ import numpy as np
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
 from ....serialization.serializables import KeyField, AnyField, Float16Field
-from ....utils import has_unknown_shape, require_module
+from ....utils import has_unknown_shape, require_module, ensure_own_data
 from ...operands import TensorOperand, TensorOperandMixin
 from ...core import TensorOrder
 from ...datasource import tensor as astensor
@@ -190,7 +190,8 @@ class TensorCdist(TensorOperand, TensorOperandMixin):
             if op.vi is not None:
                 kw['VI'] = next(inputs_iter)
 
-        ctx[op.outputs[0].key] = cdist(xa, xb, metric=op.metric, **kw)
+        ctx[op.outputs[0].key] = cdist(
+            ensure_own_data(xa), ensure_own_data(xb), metric=op.metric, **kw)
 
 
 @require_module('scipy.spatial.distance')

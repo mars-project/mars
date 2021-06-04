@@ -571,13 +571,18 @@ class StorageManagerActor(mo.Actor):
                 try:
                     meta_api = await self._get_meta_api(session_id)
                     if address is None:
+                        # we get meta using main key when fetch shuffle data
+                        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
                         address = (await meta_api.get_chunk_meta(
-                            data_key, fields=['bands']))['bands'][0][0]
+                            main_key, fields=['bands']))['bands'][0][0]
                     sender_ref = await mo.actor_ref(
                         address=address, uid=SenderManagerActor.default_uid())
                     yield sender_ref.send_data(session_id, data_key,
                                                self.address, level)
-                    await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
+                    if not isinstance(data_key, tuple):
+                        # no need to update meta for shuffle data
+                        await meta_api.add_chunk_bands(
+                            data_key, [(address, band_name or 'numa-0')])
                 except KeyError:
                     if error == 'raise':
                         raise DataNotExist(f'Data {session_id, data_key} not exists')
@@ -620,42 +625,43 @@ class StorageManagerActor(mo.Actor):
         return [self._data_manager.get_info(*args, **kwargs)
                 for args, kwargs in zip(args_list, kwargs_list)]
 
-    def _put_data_info(self,
-                       session_id: str,
-                       data_key: str,
-                       data_info: DataInfo,
-                       object_info: ObjectInfo = None):
+    async def _put_data_info(self,
+                             session_id: str,
+                             data_key: str,
+                             data_info: DataInfo,
+                             object_info: ObjectInfo = None):
         self._data_manager.put(session_id, data_key, data_info, object_info)
         if object_info is None:
             # for shuffle operands, data may not exists
             return
         if object_info.size is not None and data_info.memory_size != object_info.size:
-            self.update_quota(object_info.size - data_info.memory_size, data_info.level)
+            await self.update_quota(object_info.size - data_info.memory_size, data_info.level)
 
     @extensible
-    def put_data_info(self,
-                      session_id: str,
-                      data_key: str,
-                      data_info: DataInfo,
-                      object_info: ObjectInfo = None):
-        return self._put_data_info(session_id, data_key, data_info,
-                                   object_info=object_info)
+    async def put_data_info(self,
+                            session_id: str,
+                            data_key: str,
+                            data_info: DataInfo,
+                            object_info: ObjectInfo = None):
+        await self._put_data_info(
+            session_id, data_key, data_info, object_info=object_info)
 
     @put_data_info.batch
-    def batch_put_data_info(self, args_list, kwargs_list):
+    async def batch_put_data_info(self, args_list, kwargs_list):
         for args, kwargs in zip(args_list, kwargs_list):
-            self._put_data_info(*args, **kwargs)
+            await self._put_data_info(*args, **kwargs)
 
     async def fetch_data_info(self,
                               session_id: str,
                               data_key: str) -> DataInfo:
+        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
         meta_api = await self._get_meta_api(session_id)
         address = (await meta_api.get_chunk_meta(
-            data_key, fields=['bands']))['bands'][0][0]
+            main_key, fields=['bands']))['bands'][0][0]
         remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
                                                 address=address)
         data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
-        self.put_data_info(session_id, data_key, data_info, None)
+        await self.put_data_info(session_id, data_key, data_info, None)
         raise mo.Return(data_info)
 
     @extensible

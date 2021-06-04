@@ -20,7 +20,7 @@ from ....dataframe.core import DATAFRAME_TYPE
 from ....serialization.serializables import KeyField, Float64Field, ListField, BoolField
 from ....tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ....tensor import tensor as astensor
-from ....utils import has_unknown_shape
+from ....utils import has_unknown_shape, ensure_own_data
 from ...operands import LearnOperand, LearnOperandMixin
 from ...utils import convert_to_tensor_or_dataframe, concat_chunks
 
@@ -247,7 +247,8 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
         data, label, weight, missing, feature_names, feature_types = tup
         data = data.spmatrix if hasattr(data, 'spmatrix') else data
-        return DMatrix(data, label=label, missing=missing, weight=weight,
+        return DMatrix(ensure_own_data(data), label=ensure_own_data(label),
+                       missing=missing, weight=ensure_own_data(weight),
                        feature_names=feature_names, feature_types=feature_types,
                        nthread=-1)
 

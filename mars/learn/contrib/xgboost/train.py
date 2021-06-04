@@ -17,11 +17,12 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
-from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
+from .... import opcodes as OperandDef
 from ....core import OutputType
 from ....core.context import get_context
 from ....core.operand import MergeDictOperand
-from .... import opcodes as OperandDef
+from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
+from ....utils import ensure_own_data
 from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
@@ -144,10 +145,12 @@ class XGBTrain(MergeDictOperand):
 
         from xgboost import train, rabit
 
-        dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key])
+        dtrain = ToDMatrix.get_xgb_dmatrix(
+            ensure_own_data(ctx[op.dtrain.key]))
         evals = tuple()
         if op.evals is not None:
-            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key]) for t in op.evals]
+            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(
+                ensure_own_data(ctx[t[0].key])) for t in op.evals]
             evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
         params = op.params
 

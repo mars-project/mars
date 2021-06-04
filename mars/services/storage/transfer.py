@@ -28,14 +28,14 @@ DEFAULT_TRANSFER_BLOCK_SIZE = 5 * 1024 ** 2
 class TransferMessage(Serializable):
     data: Any = AnyField('data')
     session_id: str = StringField('session_id')
-    data_key: str = StringField('data_key')
+    data_key: str = AnyField('data_key')
     level: StorageLevel = ReferenceField('level', StorageLevel)
     is_eof: bool = BoolField('is_eof')
 
     def __init__(self,
                  data: Any = None,
                  session_id: str = None,
-                 data_key: str = None,
+                 data_key: Union[str, tuple] = None,
                  level: StorageLevel = None,
                  is_eof: bool = None):
         super().__init__(data=data,

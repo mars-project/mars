@@ -1353,3 +1353,12 @@ def register_asyncio_task_timeout_detector(
                 check_interval, task_timeout_seconds, task_exclude_filters))
     else:
         return None
+
+
+def ensure_own_data(data: np.ndarray) -> np.ndarray:
+    if not isinstance(data, np.ndarray):
+        return data
+    if not data.flags['OWNDATA']:
+        return data.copy()
+    else:
+        return data

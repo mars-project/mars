@@ -23,7 +23,7 @@ from ....serialization.serializables import KeyField, BytesField, DictField
 from ....dataframe.core import SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE
 from ....dataframe.utils import parse_index
 from ....tensor.core import TENSOR_TYPE, TensorOrder
-from ....utils import has_unknown_shape
+from ....utils import has_unknown_shape, ensure_own_data
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 from .dmatrix import ToDMatrix, check_data
 
@@ -131,7 +131,7 @@ class XGBPredict(LearnOperand, LearnOperandMixin):
 
         raw_data = data = ctx[op.data.key]
         if isinstance(data, tuple):
-            data = ToDMatrix.get_xgb_dmatrix(data)
+            data = ToDMatrix.get_xgb_dmatrix(ensure_own_data(data))
         else:
             data = data.spmatrix if hasattr(data, 'spmatrix') else data
             data = DMatrix(data)
