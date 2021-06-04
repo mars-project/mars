@@ -19,13 +19,12 @@ except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
 from ... import opcodes as OperandDef
-from ...core.operand import Operand
 from ...serialization.serializables import FieldTypes, DictField, \
     TupleField, StringField, Int64Field, KeyField
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import sps
 from ..datasource import tensor as astensor
-from ..operands import TensorOperandMixin
+from ..operands import TensorOperandMixin, TensorOperand
 from ..utils import get_tiledb_ctx
 from .core import TensorDataStore
 from .utils import check_tiledb_array_with_tensor, get_tiledb_schema_from_tensor
@@ -150,7 +149,7 @@ class TensorTileDBDataStore(TensorDataStore):
                                            shape=chunk.shape)
 
 
-class TensorTileDBConsolidate(TensorOperandMixin, Operand):
+class TensorTileDBConsolidate(TensorOperandMixin, TensorOperand):
     _op_type_ = OperandDef.TENSOR_STORE_TILEDB_CONSOLIDATE
 
     _tiledb_config = DictField('tiledb_config')

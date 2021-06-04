@@ -25,6 +25,7 @@ from ....tensor.core import TensorOrder
 from ....tensor.arithmetic import abs as mt_abs
 from ....tensor.spatial.distance import cdist
 from ....tensor.array_utils import as_same_device, device
+from ....utils import ensure_own_data
 from .core import PairwiseDistances
 
 
@@ -103,7 +104,8 @@ class ManhattanDistances(PairwiseDistances):
         with device(device_id):
             if sklearn_manhattan_distances is not None:
                 ctx[out.key] = sklearn_manhattan_distances(
-                    x, y, sum_over_features=op.sum_over_features)
+                    ensure_own_data(x), ensure_own_data(y),
+                    sum_over_features=op.sum_over_features)
             else:  # pragma: no cover
                 # we cannot support sparse
                 raise NotImplementedError('cannot support calculate manhattan '

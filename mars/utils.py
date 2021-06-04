@@ -18,7 +18,6 @@ import asyncio
 import dataclasses
 import functools
 import importlib
-import inspect
 import io
 import itertools
 import logging
@@ -365,19 +364,6 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
 
     # object chunk
     return sys.getsizeof(dt)
-
-
-def _get_mod_logger():
-    mod_logger = None
-    cur_frame = inspect.currentframe()
-    while cur_frame.f_globals.get('__name__') == __name__:
-        cur_frame = cur_frame.f_back
-    frame_globals = cur_frame.f_globals
-    for logger_name in ('logger', 'LOG', 'LOGGER'):
-        if logger_name in frame_globals:
-            mod_logger = frame_globals[logger_name]
-            break
-    return mod_logger
 
 
 def build_fetch_chunk(chunk: ChunkType,
