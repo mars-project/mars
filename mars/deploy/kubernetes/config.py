@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
+
 from ... import __version__ as mars_version
 from ...utils import parse_readable_size
 
@@ -162,7 +164,7 @@ class PortConfig:
         }
 
 
-class VolumeConfig:
+class VolumeConfig(abc.ABC):
     """
     Base configuration builder for Kubernetes volumes
     """
@@ -170,8 +172,9 @@ class VolumeConfig:
         self.name = name
         self.mount_path = mount_path
 
+    @abc.abstractmethod
     def build(self):
-        raise NotImplementedError
+        """Build volume config"""
 
     def build_mount(self):
         return {
@@ -254,45 +257,32 @@ class ProbeConfig:
         })
 
 
-class ExecProbeConfig(ProbeConfig):
+class TcpSocketProbeConfig(ProbeConfig):
     """
-    Configuration builder for Kubernetes probes by executing commands
+    Configuration builder for TCP liveness and readiness probes
     """
-    def __init__(self, command, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._command = command
-
-    def build(self):
-        result = {
-            'exec': {'command': self._command}
-        }
-        result.update(super().build())
-        return result
-
-
-class TcpProbeConfig(ProbeConfig):
-    """
-    Configuration builder for Kubernetes probes by checking TCP ports
-    """
-    def __init__(self, port, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, port: int, **kwargs):
+        super().__init__(**kwargs)
         self._port = port
 
     def build(self):
-        result = {
-            'tcpSocket': {'port': self._port}
-        }
-        result.update(super().build())
-        return result
+        ret = super().build()
+        ret['tcpSocket'] = {'port': self._port}
+        return ret
 
 
-class ReplicationControllerConfig:
+class ReplicationConfig(abc.ABC):
     """
     Base configuration builder for Kubernetes replication controllers
     """
+
+    _default_kind = 'ReplicationController'
+
     def __init__(self, name, image, replicas, resource_request=None, resource_limit=None,
-                 liveness_probe=None, readiness_probe=None, pre_stop_command=None):
+                 liveness_probe=None, readiness_probe=None, pre_stop_command=None,
+                 kind=None):
         self._name = name
+        self._kind = kind or self._default_kind
         self._image = image
         self._replicas = replicas
         self._ports = []
@@ -332,8 +322,9 @@ class ReplicationControllerConfig:
     def add_volume(self, vol):
         self._volumes.append(vol)
 
+    @abc.abstractmethod
     def build_container_command(self):
-        raise NotImplementedError
+        """Output container command"""
 
     def build_container(self):
         resources_dict = {
@@ -367,7 +358,7 @@ class ReplicationControllerConfig:
 
     def build(self):
         return {
-            'kind': 'ReplicationController',
+            'kind': self._kind,
             'metadata': {
                 'name': self._name,
             },
@@ -383,11 +374,12 @@ class ReplicationControllerConfig:
         }
 
 
-class MarsReplicationControllerConfig(ReplicationControllerConfig):
+class MarsReplicationConfig(ReplicationConfig, abc.ABC):
     """
     Base configuration builder for replication controllers for Mars
     """
     rc_name = None
+    default_readiness_port = 15031
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
                  memory_limit_ratio=None, image=None, modules=None, volumes=None,
@@ -455,28 +447,35 @@ class MarsReplicationControllerConfig(ReplicationControllerConfig):
         return result
 
 
-class MarsSchedulersConfig(MarsReplicationControllerConfig):
+class MarsSupervisorsConfig(MarsReplicationConfig):
     """
-    Configuration builder for Mars scheduler service
+    Configuration builder for Mars supervisor service
     """
-    rc_name = 'marsscheduler'
+    rc_name = 'marssupervisor'
+
+    def __init__(self, *args, **kwargs):
+        self._web_port = kwargs.pop('web_port', None)
+        self._readiness_port = kwargs.pop('readiness_port', self.default_readiness_port)
+        super().__init__(*args, **kwargs)
+        if self._web_port:
+            self.add_port(self._web_port)
 
     def config_readiness_probe(self):
-        readiness_cmd = [
-            '/srv/entrypoint.sh', self.get_local_app_module('probe'),
-        ]
-        return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=10)
+        return TcpSocketProbeConfig(
+            self._readiness_port, timeout=60, failure_thresh=10)
 
     def build_container_command(self):
         cmd = [
-            '/srv/entrypoint.sh', self.get_local_app_module('scheduler'),
+            '/srv/entrypoint.sh', self.get_local_app_module('supervisor'),
         ]
         if self._service_port:
             cmd += ['-p', str(self._service_port)]
+        if self._web_port:
+            cmd += ['-w', str(self._web_port)]
         return cmd
 
 
-class MarsWorkersConfig(MarsReplicationControllerConfig):
+class MarsWorkersConfig(MarsReplicationConfig):
     """
     Configuration builder for Mars worker service
     """
@@ -488,6 +487,7 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
         self._limit_resources = kwargs['limit_resources'] = kwargs.get('limit_resources', True)
         worker_cache_mem = kwargs.pop('worker_cache_mem', None)
         min_cache_mem = kwargs.pop('min_cache_mem', None)
+        self._readiness_port = kwargs.pop('readiness_port', self.default_readiness_port)
 
         super().__init__(*args, **kwargs)
 
@@ -512,33 +512,12 @@ class MarsWorkersConfig(MarsReplicationControllerConfig):
             self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
 
     def config_readiness_probe(self):
-        readiness_cmd = [
-            '/srv/entrypoint.sh', self.get_local_app_module('probe'),
-        ]
-        return ExecProbeConfig(readiness_cmd, timeout=60, failure_thresh=10)
+        return TcpSocketProbeConfig(
+            self._readiness_port, timeout=60, failure_thresh=10)
 
     def build_container_command(self):
         cmd = [
             '/srv/entrypoint.sh', self.get_local_app_module('worker'),
-        ]
-        if self._service_port:
-            cmd += ['-p', str(self._service_port)]
-        return cmd
-
-
-class MarsWebsConfig(MarsReplicationControllerConfig):
-    """
-    Configuration builder for Mars web service
-    """
-    rc_name = 'marsweb'
-
-    def config_readiness_probe(self):
-        if self._service_port:
-            return TcpProbeConfig(self._service_port, timeout=60, failure_thresh=10)
-
-    def build_container_command(self):
-        cmd = [
-            '/srv/entrypoint.sh', self.get_local_app_module('web'),
         ]
         if self._service_port:
             cmd += ['-p', str(self._service_port)]

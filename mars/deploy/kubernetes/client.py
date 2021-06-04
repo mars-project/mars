@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import logging
 import random
@@ -20,10 +21,11 @@ import time
 import uuid
 from urllib.parse import urlparse
 
-from ...session import new_session
+from ...core.session import new_session
+from ...services.cluster.api import WebClusterAPI
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
-    MarsSchedulersConfig, MarsWorkersConfig, MarsWebsConfig
+    MarsSupervisorsConfig, MarsWorkersConfig
 
 try:
     from kubernetes.client.rest import ApiException as K8SApiException
@@ -52,35 +54,35 @@ class KubernetesClusterClient:
         return self._session
 
     def start(self):
-        self._endpoint = self._cluster.start()
-        self._session = new_session(self._endpoint).as_default()
+        try:
+            self._endpoint = self._cluster.start()
+            self._session = new_session(self._endpoint, default=True)
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+            self.stop()
+            raise
 
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)
 
-    def rescale_workers(self, new_scale, min_workers=None, wait=True, timeout=None):
-        self._session._sess.rescale_workers(
-            new_scale, min_workers=min_workers, wait=wait, timeout=timeout)
-
 
 class KubernetesCluster:
-    _scheduler_config_cls = MarsSchedulersConfig
+    _supervisor_config_cls = MarsSupervisorsConfig
     _worker_config_cls = MarsWorkersConfig
-    _web_config_cls = MarsWebsConfig
     _default_service_port = 7103
+    _default_web_port = 7104
 
     def __init__(self, kube_api_client=None, image=None, namespace=None,
-                 scheduler_num=1, scheduler_cpu=None, scheduler_mem=None,
-                 scheduler_mem_limit_ratio=None,
+                 supervisor_num=1, supervisor_cpu=None, supervisor_mem=None,
+                 supervisor_mem_limit_ratio=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
                  worker_min_cache_mem=None, worker_mem_limit_ratio=None,
-                 web_num=1, web_cpu=None, web_mem=None, web_mem_limit_ratio=None,
-                 service_type=None, timeout=None, **kwargs):
+                 web_port=None, service_type=None, timeout=None, **kwargs):
         from kubernetes import client as kube_client
 
         self._api_client = kube_api_client
         self._core_api = kube_client.CoreV1Api(kube_api_client)
+        self._apps_api = kube_client.AppsV1Api(kube_api_client)
         self._rbac_api = kube_client.RbacAuthorizationV1Api(kube_api_client)
 
         self._namespace = namespace
@@ -114,14 +116,16 @@ class KubernetesCluster:
         _override_envs = functools.partial(_override_dict, extra_envs)
         _override_labels = functools.partial(_override_dict, extra_labels)
 
-        self._scheduler_num = scheduler_num
-        self._scheduler_cpu = scheduler_cpu
-        self._scheduler_mem = scheduler_mem
-        self._scheduler_mem_limit_ratio = scheduler_mem_limit_ratio
-        self._scheduler_extra_modules = _override_modules(kwargs.pop('scheduler_extra_modules', []))
-        self._scheduler_extra_env = _override_envs(kwargs.pop('scheduler_extra_env', None))
-        self._scheduler_extra_labels = _override_labels(kwargs.pop('scheduler_extra_labels', None))
-        self._scheduler_service_port = kwargs.pop('scheduler_service_port', None) or service_port
+        self._supervisor_num = supervisor_num
+        self._supervisor_cpu = supervisor_cpu
+        self._supervisor_mem = supervisor_mem
+        self._supervisor_mem_limit_ratio = supervisor_mem_limit_ratio
+        self._supervisor_extra_modules = _override_modules(kwargs.pop('supervisor_extra_modules', []))
+        self._supervisor_extra_env = _override_envs(kwargs.pop('supervisor_extra_env', None))
+        self._supervisor_extra_labels = _override_labels(kwargs.pop('supervisor_extra_labels', None))
+        self._supervisor_service_port = kwargs.pop('supervisor_service_port', None) or service_port
+        self._web_port = web_port or self._default_web_port
+        self._external_web_endpoint = None
 
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
@@ -135,15 +139,6 @@ class KubernetesCluster:
         self._worker_extra_env = _override_envs(kwargs.pop('worker_extra_env', None))
         self._worker_extra_labels = _override_labels(kwargs.pop('worker_extra_labels', None))
         self._worker_service_port = kwargs.pop('worker_service_port', None) or service_port
-
-        self._web_num = web_num
-        self._web_cpu = web_cpu
-        self._web_mem = web_mem
-        self._web_mem_limit_ratio = web_mem_limit_ratio
-        self._web_extra_modules = _override_modules(kwargs.pop('web_extra_modules', []))
-        self._web_extra_env = _override_envs(kwargs.pop('web_extra_env', None))
-        self._web_extra_labels = _override_labels(kwargs.pop('web_extra_labels', None))
-        self._web_service_port = kwargs.pop('web_service_port', None) or service_port
 
     @property
     def namespace(self):
@@ -164,8 +159,8 @@ class KubernetesCluster:
             raise NotImplementedError(f'Service type {self._service_type} not supported')
 
         service_config = ServiceConfig(
-            'marsservice', service_type='NodePort', port=self._web_service_port,
-            selector={'mars/service-type': MarsWebsConfig.rc_name},
+            'marsservice', service_type='NodePort', port=self._web_port,
+            selector={'mars/service-type': MarsSupervisorsConfig.rc_name},
         )
         self._core_api.create_namespaced_service(self._namespace, service_config.build())
 
@@ -175,7 +170,7 @@ class KubernetesCluster:
         port = svc_data['spec']['ports'][0]['node_port']
 
         web_pods = self._core_api.list_namespaced_pod(
-            self._namespace, label_selector='mars/service-type=' + MarsWebsConfig.rc_name).to_dict()
+            self._namespace, label_selector='mars/service-type=' + MarsSupervisorsConfig.rc_name).to_dict()
         host_ip = random.choice(web_pods['items'])['status']['host_ip']
 
         # docker desktop use a VM to hold docker processes, hence
@@ -223,18 +218,18 @@ class KubernetesCluster:
             'mars-pod-operator-binding', self._namespace, 'mars-pod-operator', 'default')
         self._rbac_api.create_namespaced_role_binding(self._namespace, role_binding_config.build())
 
-    def _create_schedulers(self):
-        schedulers_config = self._scheduler_config_cls(
-            self._scheduler_num, image=self._image, cpu=self._scheduler_cpu,
-            memory=self._scheduler_mem, memory_limit_ratio=self._scheduler_mem_limit_ratio,
-            modules=self._scheduler_extra_modules, volumes=self._extra_volumes,
-            service_port=self._scheduler_service_port,
+    def _create_supervisors(self):
+        supervisors_config = self._supervisor_config_cls(
+            self._supervisor_num, image=self._image, cpu=self._supervisor_cpu,
+            memory=self._supervisor_mem, memory_limit_ratio=self._supervisor_mem_limit_ratio,
+            modules=self._supervisor_extra_modules, volumes=self._extra_volumes,
+            service_port=self._supervisor_service_port, web_port=self._web_port,
             pre_stop_command=self._pre_stop_command,
         )
-        schedulers_config.add_simple_envs(self._scheduler_extra_env)
-        schedulers_config.add_labels(self._scheduler_extra_labels)
+        supervisors_config.add_simple_envs(self._supervisor_extra_env)
+        supervisors_config.add_labels(self._supervisor_extra_labels)
         self._core_api.create_namespaced_replication_controller(
-            self._namespace, schedulers_config.build())
+            self._namespace, supervisors_config.build())
 
     def _create_workers(self):
         workers_config = self._worker_config_cls(
@@ -252,36 +247,42 @@ class KubernetesCluster:
         self._core_api.create_namespaced_replication_controller(
             self._namespace, workers_config.build())
 
-    def _create_webs(self):
-        webs_config = self._web_config_cls(
-            self._web_num, image=self._image, cpu=self._web_cpu, memory=self._web_mem,
-            memory_limit_ratio=self._web_mem_limit_ratio, modules=self._web_extra_modules,
-            volumes=self._extra_volumes, service_port=self._web_service_port,
-            pre_stop_command=self._pre_stop_command,
-        )
-        webs_config.add_simple_envs(self._web_extra_env)
-        webs_config.add_labels(self._web_extra_labels)
-        self._core_api.create_namespaced_replication_controller(
-            self._namespace, webs_config.build())
-
     def _create_services(self):
-        self._create_schedulers()
+        self._create_supervisors()
         self._create_workers()
-        self._create_webs()
 
     def _wait_services_ready(self):
         min_worker_num = int(self._min_worker_num or self._worker_num)
-        limits = [self._scheduler_num, min_worker_num, self._web_num]
+        limits = [self._supervisor_num, min_worker_num]
         selectors = [
-            'mars/service-type=' + MarsSchedulersConfig.rc_name,
+            'mars/service-type=' + MarsSupervisorsConfig.rc_name,
             'mars/service-type=' + MarsWorkersConfig.rc_name,
-            'mars/service-type=' + MarsWebsConfig.rc_name,
-            ]
+        ]
+        start_time = time.time()
         logger.debug('Start waiting pods to be ready')
         wait_services_ready(selectors, limits,
                             lambda sel: self._get_ready_pod_count(sel),
                             timeout=self._timeout)
         logger.info('All service pods ready.')
+        self._timeout -= time.time() - start_time
+
+    def _wait_web_ready(self):
+        loop = asyncio.get_event_loop()
+
+        async def get_supervisors():
+            start_time = time.time()
+            while True:
+                try:
+                    cluster_api = WebClusterAPI(self._external_web_endpoint)
+                    supervisors = await cluster_api.get_supervisors()
+
+                    if len(supervisors) == self._supervisor_num:
+                        break
+                except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+                    if time.time() - start_time > self._timeout:
+                        raise TimeoutError('Wait for kubernetes cluster timed out') from None
+
+        loop.run_until_complete(get_supervisors())
 
     def _load_cluster_logs(self):
         log_dict = dict()
@@ -299,7 +300,10 @@ class KubernetesCluster:
             self._create_services()
 
             self._wait_services_ready()
-            return self._create_kube_service()
+
+            self._external_web_endpoint = self._create_kube_service()
+            self._wait_web_ready()
+            return self._external_web_endpoint
         except:  # noqa: E722
             if self._log_when_fail:  # pargma: no cover
                 logger.error('Error when creating cluster')
@@ -327,17 +331,17 @@ class KubernetesCluster:
                         raise TimeoutError
 
 
-def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu=None,
-                scheduler_mem=None, worker_num=1, worker_cpu=None, worker_mem=None,
+def new_cluster(kube_api_client=None, image=None, supervisor_num=1, supervisor_cpu=None,
+                supervisor_mem=None, worker_num=1, worker_cpu=None, worker_mem=None,
                 worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
                 web_num=1, web_cpu=None, web_mem=None, service_type=None,
                 timeout=None, **kwargs):
     """
     :param kube_api_client: Kubernetes API client, can be created with ``new_client_from_config``
     :param image: Docker image to use, ``marsproject/mars:<mars version>`` by default
-    :param scheduler_num: Number of schedulers in the cluster, 1 by default
-    :param scheduler_cpu: Number of CPUs for every scheduler
-    :param scheduler_mem: Memory size for every scheduler
+    :param supervisor_num: Number of supervisors in the cluster, 1 by default
+    :param supervisor_cpu: Number of CPUs for every supervisor
+    :param supervisor_mem: Memory size for every supervisor
     :param worker_num: Number of workers in the cluster, 1 by default
     :param worker_cpu: Number of CPUs for every worker
     :param worker_mem: Memory size for every worker
@@ -352,8 +356,8 @@ def new_cluster(kube_api_client=None, image=None, scheduler_num=1, scheduler_cpu
     """
     cluster_cls = kwargs.pop('cluster_cls', KubernetesCluster)
     cluster = cluster_cls(
-        kube_api_client, image=image, scheduler_num=scheduler_num, scheduler_cpu=scheduler_cpu,
-        scheduler_mem=scheduler_mem, worker_num=worker_num, worker_cpu=worker_cpu,
+        kube_api_client, image=image, supervisor_num=supervisor_num, supervisor_cpu=supervisor_cpu,
+        supervisor_mem=supervisor_mem, worker_num=worker_num, worker_cpu=worker_cpu,
         worker_mem=worker_mem, worker_spill_paths=worker_spill_paths, worker_cache_mem=worker_cache_mem,
         min_worker_num=min_worker_num, web_num=web_num, web_cpu=web_cpu, web_mem=web_mem,
         service_type=service_type, timeout=timeout, **kwargs)

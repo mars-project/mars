@@ -96,3 +96,24 @@ class SupervisorLocatorActor(mo.Actor):
                 self._watch_events.remove(event)
 
         return waiter()
+
+    async def wait_all_supervisors_ready(self):
+        expected_supervisors = await self._backend.get_expected_supervisors()
+        if set(self._supervisors or []) == set(expected_supervisors):
+            return
+
+        event = asyncio.Event()
+        self._watch_events.add(event)
+
+        async def waiter():
+            while True:
+                await event.wait()
+
+                expected_supervisors = await self._backend.get_expected_supervisors()
+                if set(self._supervisors) == set(expected_supervisors):
+                    self._watch_events.remove(event)
+                    return
+                else:
+                    event.clear()
+
+        return waiter()

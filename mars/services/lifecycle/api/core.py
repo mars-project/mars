@@ -28,6 +28,7 @@ class AbstractLifecycleAPI(ABC):
             List of tileable keys.
         """
 
+    @abstractmethod
     async def get_all_chunk_ref_counts(self) -> Dict[str, int]:
         """
         Get all chunk keys' ref counts.

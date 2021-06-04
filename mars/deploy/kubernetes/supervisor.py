@@ -13,26 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-
-from ...actors import ActorNotExist, new_client
-from .core import ReadinessActor
+from ..oscar.supervisor import SupervisorCommandRunner
+from .core import K8SServiceMixin
 
 
-def main():
-    """
-    Readiness probe for Mars schedulers and workers
-    """
-    client = new_client()
-    try:
-        ref = client.actor_ref(ReadinessActor.default_uid(),
-                               address='127.0.0.1:' + os.environ['MARS_K8S_SERVICE_PORT'])
-        sys.exit(0 if client.has_actor(ref) else 1)
-    except (ActorNotExist, ConnectionRefusedError) as ex:  # noqa: E722
-        sys.stderr.write(f'Probe error: {ex}')
-        sys.exit(1)
+class K8SSupervisorCommandRunner(K8SServiceMixin, SupervisorCommandRunner):
+    async def start_services(self):
+        await super().start_services()
+        await self.start_readiness_server()
 
+    async def stop_services(self):
+        await self.stop_readiness_server()
+        await super().stop_services()
+
+
+main = K8SSupervisorCommandRunner()
 
 if __name__ == '__main__':   # pragma: no branch
     main()

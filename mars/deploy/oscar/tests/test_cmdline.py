@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import asyncio
 import os
 import subprocess
@@ -24,6 +25,7 @@ import pytest
 import mars.tensor as mt
 from mars.core.session import new_session
 from mars.deploy.oscar.cmdline import OscarCommandRunner
+from mars.deploy.oscar.worker import WorkerCommandRunner
 from mars.services import NodeRole
 from mars.services.cluster import ClusterAPI
 from mars.utils import get_next_port, kill_process_tree
@@ -150,3 +152,38 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
                 proc.wait(3)
             except subprocess.TimeoutExpired:
                 kill_process_tree(proc.pid)
+
+
+def test_parse_args():
+    parser = argparse.ArgumentParser(description='TestService')
+    app = WorkerCommandRunner()
+    app.config_args(parser)
+
+    task_detail = """
+    {
+      "cluster": {
+        "supervisor": ["sv1", "sv2"],
+        "worker": ["worker1", "worker2"]
+      },
+      "task": {
+        "type": "worker",
+        "index": 0
+      }
+    }
+    """
+
+    env = {
+        'MARS_LOAD_MODULES': 'extra.module',
+        'MARS_TASK_DETAIL': task_detail,
+        'MARS_CACHE_MEM_SIZE': '20M',
+        'MARS_PLASMA_DIRS': '/dev/shm',
+    }
+    args = app.parse_args(parser, ['-p', '10324'], env)
+    assert args.host == 'worker1'
+    assert args.endpoint == 'worker1:10324'
+    assert args.supervisors == 'sv1,sv2'
+    assert 'extra.module' in args.load_modules
+    assert app.config['storage']['plasma'] == {
+        'store_memory': '20M',
+        'plasma_directory': '/dev/shm',
+    }

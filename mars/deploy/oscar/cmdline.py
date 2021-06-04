@@ -14,7 +14,9 @@
 
 import argparse
 import asyncio
+import faulthandler
 import glob
+import importlib
 import json
 import os
 import signal
@@ -39,6 +41,8 @@ class OscarCommandRunner:
     _port_file_prefix = 'mars_service_process'
 
     def __init__(self):
+        faulthandler.enable()
+
         self.args = None
         self.ports = None
         self.config = {}
@@ -48,6 +52,7 @@ class OscarCommandRunner:
 
     def config_args(self, parser):
         parser.add_argument('-e', '--endpoint', help='endpoint of the service')
+        parser.add_argument('-H', '--host', help='host name of the service')
         parser.add_argument('-p', '--ports', help='ports of the service, must equal to'
                                                   'num of processes')
         parser.add_argument('-c', '--config', help='service configuration')
@@ -109,15 +114,31 @@ class OscarCommandRunner:
 
     @classmethod
     def get_default_config_file(cls):
-        mod_file_path = os.path.dirname(__import__(cls.__module__).__file__)
+        mod_file_path = os.path.dirname(importlib.import_module(cls.__module__).__file__)
         return os.path.join(mod_file_path, 'config.yml')
 
     def parse_args(self, parser, argv, environ=None):
         environ = environ or os.environ
         args = parser.parse_args(argv)
 
+        if 'MARS_TASK_DETAIL' in environ:
+            task_detail = json.loads(environ['MARS_TASK_DETAIL'])
+            task_type, task_index = task_detail['task']['type'], task_detail['task']['index']
+
+            args.host = args.host or task_detail['cluster'][task_type][task_index]
+            args.supervisors = args.supervisors or ','.join(task_detail['cluster']['supervisor'])
+
+        args.ports = args.ports or os.environ.get('MARS_BIND_PORT')
         if args.ports is not None:
             self.ports = [int(p) for p in args.ports.split(',')]
+
+        if args.endpoint is not None and args.host is not None:  # pragma: no cover
+            raise ValueError('Cannot specify host and endpoint at the same time')
+        elif args.endpoint is None and len(self.ports or []) == 1:
+            default_host = os.environ.get(
+                'MARS_BIND_HOST', os.environ.get('MARS_CONTAINER_IP', '0.0.0.0'))
+            args.endpoint = (args.host or default_host) + f':{self.ports[0]}'
+            self.ports = None
 
         load_modules = []
         for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):

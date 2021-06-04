@@ -66,7 +66,8 @@ def _find_service_entries(node_role: NodeRole,
 
 async def start_services(node_role: NodeRole, config: Dict,
                          modules: Union[List, str, None] = None,
-                         address: str = None):
+                         address: str = None,
+                         mark_ready: bool = True):
     if modules is None:
         modules = []
     elif isinstance(modules, str):
@@ -93,7 +94,7 @@ async def start_services(node_role: NodeRole, config: Dict,
     for entries in svc_entries_list:
         await asyncio.gather(*[entry(config, address=address) for entry in entries])
 
-    if 'cluster' in service_names:
+    if mark_ready and 'cluster' in service_names:
         from .cluster import ClusterAPI
         cluster_api = await ClusterAPI.create(address)
         await cluster_api.mark_node_ready()
