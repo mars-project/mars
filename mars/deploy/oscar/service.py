@@ -34,7 +34,8 @@ async def start_supervisor(address: str,
     if not config or isinstance(config, str):
         config = _load_config(config)
     lookup_address = lookup_address or address
-    if config['cluster'].get('lookup_address') is None:
+    backend = config['cluster'].get('backend', 'fixed')
+    if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
     await start_services(NodeRole.SUPERVISOR, config,
                          modules=modules, address=address)
@@ -51,15 +52,17 @@ async def start_worker(address: str,
                        lookup_address: str,
                        band_to_slots: Dict[str, int],
                        modules: Union[List, str, None] = None,
-                       config: Dict = None):
+                       config: Dict = None,
+                       mark_ready: bool = True):
     if not config or isinstance(config, str):
         config = _load_config(config)
-    if config['cluster'].get('lookup_address') is None:
+    backend = config['cluster'].get('backend', 'fixed')
+    if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
     if config['cluster'].get('resource') is None:
         config['cluster']['resource'] = band_to_slots
-    await start_services(NodeRole.WORKER, config,
-                         modules=modules, address=address)
+    await start_services(NodeRole.WORKER, config, modules=modules,
+                         address=address, mark_ready=mark_ready)
 
 
 async def stop_worker(address: str,

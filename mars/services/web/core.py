@@ -18,7 +18,7 @@ import logging
 import re
 import sys
 from collections import defaultdict
-from typing import Callable, Dict, NamedTuple, Optional
+from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 from tornado import httpclient, web
 
@@ -73,9 +73,11 @@ class _WebApiDef(NamedTuple):
     arg_filter: Optional[Dict] = None
 
 
-def web_api(sub_pattern: str, method: str, arg_filter: Optional[Dict] = None):
+def web_api(sub_pattern: str, method: Union[str, List[str]],
+            arg_filter: Optional[Dict] = None):
     if not sub_pattern.endswith('$'):  # pragma: no branch
         sub_pattern += '$'
+    methods = method if isinstance(method, list) else [method]
 
     def wrapper(func):
         @functools.wraps(func)
@@ -93,8 +95,10 @@ def web_api(sub_pattern: str, method: str, arg_filter: Optional[Dict] = None):
                 self.write(serialize_serializable((exc, tb)))
                 self.set_status(500, err_msg)
 
-        wrapped._web_api_def = _WebApiDef(sub_pattern, re.compile(sub_pattern),
-                                          method, arg_filter)
+        wrapped._web_api_defs = [
+            _WebApiDef(sub_pattern, re.compile(sub_pattern), m, arg_filter)
+            for m in methods
+        ]
         return wrapped
 
     return wrapper
@@ -116,10 +120,11 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
         cls._method_to_handlers = defaultdict(dict)
         for attr in dir(cls):
             handle_func = getattr(cls, attr, None)
-            if not hasattr(handle_func, '_web_api_def'):
+            if not hasattr(handle_func, '_web_api_defs'):
                 continue
-            web_api_def = getattr(handle_func, '_web_api_def')  # type: _WebApiDef
-            cls._method_to_handlers[web_api_def.method.lower()][handle_func] = web_api_def
+            web_api_defs = getattr(handle_func, '_web_api_defs')  # type: List[_WebApiDef]
+            for api_def in web_api_defs:
+                cls._method_to_handlers[api_def.method.lower()][handle_func] = api_def
 
     @classmethod
     def get_root_pattern(cls):
@@ -163,6 +168,8 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
     post = _make_handle_http_method('post')
     patch = _make_handle_http_method('patch')
     delete = _make_handle_http_method('delete')
+
+    del _make_handle_http_method
 
 
 class MarsWebAPIClientMixin:

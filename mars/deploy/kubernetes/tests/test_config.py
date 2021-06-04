@@ -16,8 +16,8 @@
 import unittest
 
 from mars.deploy.kubernetes.config import NamespaceConfig, RoleConfig, \
-    RoleBindingConfig, ServiceConfig, EmptyDirVolumeConfig, MarsSchedulersConfig, \
-    MarsWorkersConfig, MarsWebsConfig
+    RoleBindingConfig, ServiceConfig, EmptyDirVolumeConfig, MarsSupervisorsConfig, \
+    MarsWorkersConfig
 
 
 class Test(unittest.TestCase):
@@ -36,19 +36,19 @@ class Test(unittest.TestCase):
                          'mars-pod-reader-binding')
 
         service_config_dict = ServiceConfig(
-            'mars-test-service', 'NodePort', 'mars/service-type=marsscheduler', 7103, 7103).build()
+            'mars-test-service', 'NodePort', 'mars/service-type=marssupervisor', 7103, 7103).build()
         self.assertEqual(service_config_dict['metadata']['name'], 'mars-test-service')
 
-    def testSchedulerObject(self):
-        scheduler_config = MarsSchedulersConfig(
+    def testSupervisorObject(self):
+        supervisor_config = MarsSupervisorsConfig(
             1, cpu=2, memory='10g', limit_resources=False, modules=['mars.test_mod'])
-        scheduler_config.add_simple_envs(dict(TEST_ENV='test_val'))
+        supervisor_config.add_simple_envs(dict(TEST_ENV='test_val'))
 
-        scheduler_config_dict = scheduler_config.build()
-        self.assertEqual(scheduler_config_dict['metadata']['name'], 'marsscheduler')
-        self.assertEqual(scheduler_config_dict['spec']['replicas'], 1)
+        supervisor_config_dict = supervisor_config.build()
+        self.assertEqual(supervisor_config_dict['metadata']['name'], 'marssupervisor')
+        self.assertEqual(supervisor_config_dict['spec']['replicas'], 1)
 
-        container_dict = scheduler_config_dict['spec']['template']['spec']['containers'][0]
+        container_dict = supervisor_config_dict['spec']['template']['spec']['containers'][0]
         self.assertEqual(int(container_dict['resources']['requests']['memory']), 10 * 1024 ** 3)
 
         container_envs = dict((p['name'], p) for p in container_dict['env'])
@@ -101,7 +101,3 @@ class Test(unittest.TestCase):
         container_dict = worker_config_dict['spec']['template']['spec']['containers'][0]
         volume_mounts = dict((v['name'], v) for v in container_dict['volumeMounts'])
         self.assertNotIn('shm-volume', volume_mounts)
-
-    def testWebObject(self):
-        webs_config_dict = MarsWebsConfig(1).build()
-        self.assertEqual(webs_config_dict['metadata']['name'], 'marsweb')

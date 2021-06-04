@@ -14,7 +14,7 @@
 
 import os
 import time
-from typing import Dict, List, Union
+from typing import Callable, Dict, List, Union
 
 import yaml
 
@@ -22,7 +22,8 @@ DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
 
 
-def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
+def wait_services_ready(selectors: List, min_counts: List[int],
+                        count_fun: Callable, timeout=None):
     readies = [0] * len(selectors)
     start_time = time.time()
     while True:

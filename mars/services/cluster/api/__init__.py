@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...web.__main__ import WebApplication
-from .core import K8SServiceMixin
-
-
-class K8SWebApplication(K8SServiceMixin, WebApplication):
-    def start(self):
-        self.write_pid_file()
-        self.wait_all_schedulers_ready()
-        super().start()
-
-
-main = K8SWebApplication()
-
-if __name__ == '__main__':   # pragma: no branch
-    main()
+from .core import AbstractClusterAPI
+from .oscar import ClusterAPI, MockClusterAPI
+from .web import WebClusterAPI

@@ -61,7 +61,10 @@ class SupervisorCommandRunner(OscarCommandRunner):
 
     async def stop_services(self):
         if self._endpoint_file_name is not None:  # pragma: no branch
-            os.unlink(self._endpoint_file_name)
+            try:
+                os.unlink(self._endpoint_file_name)
+            except OSError:  # pragma: no cover
+                pass
         return await stop_supervisor(self.pool.external_address, self.config)
 
 

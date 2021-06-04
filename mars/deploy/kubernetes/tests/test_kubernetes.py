@@ -19,7 +19,6 @@ import os
 import shutil
 import subprocess
 import tempfile
-import time
 import unittest
 import uuid
 from contextlib import contextmanager
@@ -118,8 +117,9 @@ class Test(unittest.TestCase):
 
             log_processes = []
             for item in pod_items['items']:
-                log_processes.append(subprocess.Popen(['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
-                                                       item['metadata']['name']]))
+                log_processes.append(subprocess.Popen(
+                    ['kubectl', 'logs', '-f', '-n', cluster_client.namespace,
+                    item['metadata']['name']]))
 
             yield cluster_client
 
@@ -128,7 +128,7 @@ class Test(unittest.TestCase):
             pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
             for item in pod_items['items']:
                 p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
-                                      item['metadata']['name'], '/srv/graceful_stop.sh'])
+                                      item['metadata']['name'], '--', '/srv/graceful_stop.sh'])
                 procs.append(p)
             for p in procs:
                 p.wait()
@@ -145,47 +145,15 @@ class Test(unittest.TestCase):
 
     def testRunInKubernetes(self):
         with self._start_kube_cluster(
-            extra_labels={'mars-test/group': 'test-label-name'},
-            extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
-        ) as cluster_client:
+                extra_labels={'mars-test/group': 'test-label-name'},
+                extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'}):
             a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
-            b = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
+            b = mt.ones((100, 100), chunk_size=20) * 2 * 1 + 1
             c = (a * b * 2 + 1).sum()
-            r = cluster_client.session.run(c, timeout=600)
+            r = c.execute().fetch()
 
             expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
             assert_array_equal(r, expected.sum())
-
-    def testRescale(self):
-        from mars.deploy.kubernetes.config import MarsWorkersConfig
-
-        api_client = k8s_config.new_client_from_config()
-        kube_api = k8s_client.CoreV1Api(api_client)
-
-        with self._start_kube_cluster() as cluster_client:
-            cluster_client.rescale_workers(2)
-
-            worker_items = kube_api.list_namespaced_pod(
-                cluster_client.namespace,
-                label_selector=f'mars/service-type={MarsWorkersConfig.rc_name}').to_dict()
-            self.assertEqual(len(worker_items['items']), 2)
-            self.assertEqual(cluster_client._session._sess.count_workers(), 2)
-
-            cluster_client.rescale_workers(1)
-
-            self.assertEqual(cluster_client._session._sess.count_workers(), 1)
-
-            start_check_time = time.time()
-            n_workers = 2
-            while time.time() - start_check_time < 60:
-                worker_items = kube_api.list_namespaced_pod(
-                    cluster_client.namespace,
-                    label_selector=f'mars/service-type={MarsWorkersConfig.rc_name}').to_dict()
-                n_workers = len([w for w in worker_items['items'] if w['status']['phase'] == 'Running'])
-                if n_workers == 1:
-                    break
-                time.sleep(1)
-            self.assertEqual(n_workers, 1)
 
     @mock.patch('kubernetes.client.CoreV1Api.create_namespaced_replication_controller',
                 new=lambda *_, **__: None)

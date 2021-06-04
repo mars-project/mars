@@ -42,10 +42,13 @@ async def start(config: dict, address: str):
         address of actor pool
     """
     svc_config = config['cluster']
+    backend = svc_config.get('backend', 'fixed')
+    lookup_address = svc_config.get('lookup_address',
+                                    address if backend == 'fixed' else None)
     await mo.create_actor(
         SupervisorLocatorActor,
-        backend_name=svc_config.get('backend', 'fixed'),
-        lookup_address=svc_config.get('lookup_address'),
+        backend_name=backend,
+        lookup_address=lookup_address,
         uid=SupervisorLocatorActor.default_uid(),
         address=address)
     await mo.create_actor(

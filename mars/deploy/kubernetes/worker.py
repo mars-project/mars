@@ -13,23 +13,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...worker.__main__ import WorkerApplication
-from .core import K8SServiceMixin, ReadinessActor
+import logging
+
+from ..oscar.worker import WorkerCommandRunner
+from .core import K8SServiceMixin
+
+logger = logging.getLogger(__name__)
 
 
-class K8SWorkerApplication(K8SServiceMixin, WorkerApplication):
+class K8SWorkerCommandRunner(K8SServiceMixin, WorkerCommandRunner):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._readiness_ref = None
 
-    def start(self):
+    async def start_services(self):
+        from ..oscar.worker import start_worker
+        from ...services.cluster import ClusterAPI
+
         self.write_pid_file()
-        self.wait_all_schedulers_ready()
-        super().start()
-        self._readiness_ref = self.pool.create_actor(ReadinessActor, uid=ReadinessActor.default_uid())
+        await start_worker(
+            self.pool.external_address, self.args.supervisors,
+            self.band_to_slot, list(self.args.load_modules), self.config,
+            mark_ready=False)
+        await self.wait_all_supervisors_ready()
+
+        cluster_api = await ClusterAPI.create(self.args.endpoint)
+        await cluster_api.mark_node_ready()
+
+        await self.start_readiness_server()
+
+    async def stop_services(self):
+        await self.stop_readiness_server()
+        await super().stop_services()
 
 
-main = K8SWorkerApplication()
+main = K8SWorkerCommandRunner()
 
 if __name__ == '__main__':   # pragma: no branch
     main()

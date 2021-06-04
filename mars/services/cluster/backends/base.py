@@ -34,7 +34,7 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
+    def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         """
         Watch changes of supervisors
 
@@ -52,7 +52,18 @@ class AbstractClusterBackend(ABC):
         Returns
         -------
         out : List[str]
-            List of ssupervisors
+            List of supervisors
+        """
+
+    @abstractmethod
+    async def get_expected_supervisors(self) -> List[str]:
+        """
+        Get list of all supervisors expected to create
+
+        Returns
+        -------
+        out : List[str]
+            List of expected supervisors
         """
 
 

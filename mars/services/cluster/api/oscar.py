@@ -15,14 +15,15 @@
 import asyncio
 from typing import List, Dict, Union, Type, TypeVar
 
-from ... import oscar as mo
-from ...lib.aio import alru_cache
-from ..core import NodeRole, BandType
+from .... import oscar as mo
+from ....lib.aio import alru_cache
+from ...core import NodeRole, BandType
+from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
 
 
-class ClusterAPI:
+class ClusterAPI(AbstractClusterAPI):
     def __init__(self, address: str):
         self._address = address
         self._locator_ref = None
@@ -30,9 +31,9 @@ class ClusterAPI:
         self._node_info_ref = None
 
     async def _init(self):
-        from .locator import SupervisorLocatorActor
-        from .uploader import NodeInfoUploaderActor
-        from .supervisor.node_info import NodeInfoCollectorActor
+        from ..locator import SupervisorLocatorActor
+        from ..uploader import NodeInfoUploaderActor
+        from ..supervisor.node_info import NodeInfoCollectorActor
 
         self._locator_ref = await mo.actor_ref(SupervisorLocatorActor.default_uid(),
                                                address=self._address)
@@ -202,13 +203,19 @@ class ClusterAPI:
         """
         await self._uploader_ref.mark_node_ready()
 
+    async def wait_all_supervisors_ready(self):
+        """
+        Wait till all expected supervisors are ready
+        """
+        await self._locator_ref.wait_all_supervisors_ready()
+
 
 class MockClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
-        from .locator import SupervisorLocatorActor
-        from .uploader import NodeInfoUploaderActor
-        from .supervisor.node_info import NodeInfoCollectorActor
+        from ..locator import SupervisorLocatorActor
+        from ..uploader import NodeInfoUploaderActor
+        from ..supervisor.node_info import NodeInfoCollectorActor
 
         dones, _ = await asyncio.wait([
             mo.create_actor(SupervisorLocatorActor, 'fixed', address,

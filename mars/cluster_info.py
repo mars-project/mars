@@ -158,12 +158,6 @@ class ClusterInfoActor(FunctionActor):
     def is_distributed(self):
         return self._distributed
 
-    def rescale_workers(self, new_scale):
-        try:
-            return self._discoverer.rescale_workers(new_scale)
-        except AttributeError:
-            raise NotImplementedError from None
-
 
 class HasClusterInfoActor(PromiseActor):
     cluster_info_uid = None
