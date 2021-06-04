@@ -39,7 +39,8 @@ y_raw = rs.rand(n_rows, chunk_size=chunk_size)
 X_df_raw = md.DataFrame(X_raw)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skip
+# @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
 def test_local_classifier(setup):
     y = (y_raw * 10).astype(mt.int32)
     classifier = XGBClassifier(verbosity=1, n_estimators=2)
@@ -124,7 +125,8 @@ def test_local_classifier(setup):
         classifier.predict(X_raw, wrong_param=1)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skip
+# @pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
 def test_local_classifier_from_to_parquet(setup):
     n_rows = 1000
     n_columns = 10
