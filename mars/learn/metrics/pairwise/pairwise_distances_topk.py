@@ -29,7 +29,7 @@ from ....serialization.serializables import KeyField, BoolField, DictField, Int6
 from ....tensor.core import TensorOrder
 from ....tensor.merge import TensorConcatenate
 from ....tensor.array_utils import as_same_device, device, get_array_module
-from ....utils import has_unknown_shape, parse_readable_size
+from ....utils import has_unknown_shape, parse_readable_size, ensure_own_data
 from ...utils import gen_batches
 from ...utils.validation import _num_samples
 from .core import PairwiseDistances
@@ -157,7 +157,9 @@ def _pariwise_distance_chunked(X, Y, reduce_func=None, metric='euclidean',
         else:
             X_chunk = X[sl]
         # call pairwise op's execute method to get the result
-        D_chunk = pairwise_distances(X_chunk, Y, metric=metric, **kwds)
+        D_chunk = pairwise_distances(
+            ensure_own_data(X_chunk), ensure_own_data(Y),
+            metric=metric, **kwds)
         if ((X is Y or Y is None) and metric == 'euclidean'):
             # zeroing diagonal, taking care of aliases of "euclidean",
             # i.e. "l2"
