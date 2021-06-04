@@ -75,9 +75,6 @@ jobs:
 
         export NO_SERIALIZE_IN_TEST_EXECUTOR=1
         mkdir -p build
-        python -m pytest $PYTEST_CONFIG --timeout=1500 \
-          mars/dataframe mars/learn mars/remote mars/storage mars/tensor
-        mv .coverage build/.coverage.tensor.file
         if [[ $UNAME == "darwin" ]]; then
           python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
             mars/oscar mars/storage mars/lib mars/tests

@@ -93,11 +93,11 @@ class _ExecutableMixin:
     def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
 
+        session = _get_session(self, session)
+        self._check_session(session, 'fetch')
         return fetch(self, session=session, **kw)
 
     def fetch(self, session: SessionType = None, **kw):
-        session = _get_session(self, session)
-        self._check_session(session, 'fetch')
         return self._fetch(session=session, **kw)
 
     def fetch_log(self,
@@ -198,6 +198,8 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
 
+        session = _get_session(self, session)
+        self._check_session(session, 'fetch')
         return fetch(*self, session=session, **kw)
 
     def fetch(self, session: SessionType = None, **kw):

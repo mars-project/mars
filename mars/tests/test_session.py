@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import sys
 import tempfile
 from collections import namedtuple
@@ -21,7 +22,6 @@ from collections import namedtuple
 import numpy as np
 import pandas as pd
 import pytest
-import yaml
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -32,13 +32,24 @@ import mars.dataframe as md
 import mars.remote as mr
 from mars.config import option_context
 from mars.core.session import execute, fetch, fetch_log
-from mars.tests import setup
+from mars.deploy.utils import load_service_config_file
 
 
 test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')
 
 
-setup = setup
+@pytest.fixture
+def setup():
+    from ..deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(address='127.0.0.1',
+                            init_local=True,
+                            default=True)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
     
 
 def test_session_async_execute(setup):
@@ -326,33 +337,9 @@ def test_iter(setup):
 
 
 CONFIG = """
-services:
-  - cluster
-  - session
-  - storage
-  - meta
-  - lifecycle
-  - task
-  - web
-cluster:
-  backend: fixed
-  node_timeout: 120
-  node_check_interval: 1
+inherits: '@default'
 session:
-  custom_log_dir: {custom_log_dir}
-storage:
-  backends: [shared_memory]
-  plasma:
-    store_memory: 20M
-meta:
-  store: dict
-task:
-  default_config:
-    optimize_tileable_graph: yes
-    optimize_chunk_graph: yes
-    fuse_enabled: yes
-  task_processor_cls: mars.services.task.supervisor.tests.CheckedTaskProcessor
-  subtask_processor_cls: mars.services.task.worker.tests.CheckedSubtaskProcessor
+  custom_log_dir: '{custom_log_dir}'
 """
 
 
@@ -361,9 +348,9 @@ def fetch_log_setup():
     from ..deploy.oscar.tests.session import new_test_session
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        config = CONFIG.format(custom_log_dir=temp_dir)
+        config = io.StringIO(CONFIG.format(custom_log_dir=temp_dir))
         sess = new_test_session(default=True,
-                                config=yaml.safe_load(config),
+                                config=load_service_config_file(config),
                                 n_cpu=8)
         with option_context({'show_progress': False}):
             try:

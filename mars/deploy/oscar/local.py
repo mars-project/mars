@@ -77,14 +77,14 @@ class LocalCluster:
         return self._supervisor_pool.external_address
 
     async def start(self):
-        from ...services.web.supervisor import WebActor
-
         await self._start_supervisor_pool()
         await self._start_worker_pools()
         # start service
         await self._start_service()
 
         if self._web:
+            from ...services.web.supervisor import WebActor
+
             web_actor = await mo.actor_ref(WebActor.default_uid(),
                                            address=self.supervisor_address)
             self.web_address = await web_actor.get_web_address()

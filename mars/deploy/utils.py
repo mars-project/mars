@@ -14,7 +14,7 @@
 
 import os
 import time
-from typing import Dict, List, Union
+from typing import Dict, List, Union, TextIO
 
 import yaml
 
@@ -39,20 +39,24 @@ def wait_services_ready(selectors, min_counts, count_fun, timeout=None):
         time.sleep(1)
 
 
-def load_service_config_file(path: str) -> Dict:
+def load_service_config_file(path: Union[str, TextIO]) -> Dict:
     import mars
     mars_path = os.path.dirname(os.path.abspath(mars.__file__))
 
     cfg_stack = []  # type: List[Dict]
     cfg_file_set = set()
-    path = os.path.abspath(path)
+    if isinstance(path, str):
+        path = os.path.abspath(path)
 
     while path is not None:
         if path in cfg_file_set:  # pragma: no cover
             raise ValueError('Recursive config inherit detected')
 
-        with open(path) as file:
-            cfg = yaml.safe_load(file)
+        if not hasattr(path, 'read'):
+            with open(path) as file:
+                cfg = yaml.safe_load(file)
+        else:
+            cfg = yaml.safe_load(path)
         cfg_stack.append(cfg)
         cfg_file_set.add(path)
 
