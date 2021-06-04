@@ -21,7 +21,7 @@ import signal
 import tempfile
 from typing import List
 
-import yaml
+from ..utils import load_service_config_file
 
 # make sure coverage is handled when starting with subprocess.Popen
 if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
@@ -55,7 +55,7 @@ class OscarCommandRunner:
         parser.add_argument('-s', '--supervisors',
                             help='endpoint of supervisors, needed for workers and webs '
                                  'when kv-store argument is not available, or when you '
-                                 'need to use multiple schedulers without kv-store')
+                                 'need to use multiple supervisors without kv-store')
         parser.add_argument('--log-level', help='log level')
         parser.add_argument('--log-format', help='log format')
         parser.add_argument('--log-conf', help='log config file, logging.conf by default')
@@ -107,6 +107,11 @@ class OscarCommandRunner:
                 pass
         return endpoints
 
+    @classmethod
+    def get_default_config_file(cls):
+        mod_file_path = os.path.dirname(__import__(cls.__module__).__file__)
+        return os.path.join(mod_file_path, 'config.yml')
+
     def parse_args(self, parser, argv, environ=None):
         environ = environ or os.environ
         args = parser.parse_args(argv)
@@ -124,9 +129,8 @@ class OscarCommandRunner:
             self.config = json.loads(args.config)
         else:
             if args.config_file is None:
-                args.config_file = os.path.join(os.path.dirname(__file__), 'config.yml')
-            with open(args.config_file, 'r') as config_file:
-                self.config = yaml.safe_load(config_file)
+                args.config_file = self.get_default_config_file()
+            self.config = load_service_config_file(args.config_file)
 
         if args.supervisors is None:
             args.supervisors = ','.join(self._collect_supervisors_from_dir())
