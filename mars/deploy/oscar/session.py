@@ -238,8 +238,8 @@ class Session(AbstractAsyncSession):
     @alru_cache(cache_exceptions=False)
     async def _get_storage_api(self, address: str):
         if urlparse(self.address).scheme == 'http':
-            from mars.services.storage.web import WebStorageAPI
-            storage_api = await WebStorageAPI.create(self.address, self._session_id, address)
+            from mars.services.storage.api import WebStorageAPI
+            storage_api = WebStorageAPI(self._session_id, self.address)
         else:
             storage_api = await StorageAPI.create(self._session_id, address)
         return storage_api

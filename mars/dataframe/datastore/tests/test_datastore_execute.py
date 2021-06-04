@@ -18,13 +18,6 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
-
-import mars.dataframe as md
-from mars.config import option_context
-from mars.dataframe import DataFrame
-from mars.tests import setup
-from mars.tests.core import flaky
-
 try:
     import vineyard
 except ImportError:
@@ -41,6 +34,10 @@ try:
     import fastparquet
 except ImportError:
     fastparquet = None
+
+import mars.dataframe as md
+from mars.dataframe import DataFrame
+from mars.tests import setup
 
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
@@ -150,22 +147,6 @@ def test_to_sql():
         written = pd.read_sql(table_name2, con=engine, index_col='index') \
             .sort_index(ascending=False)
         pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
-
-
-@pytest.mark.skipif(vineyard is None, reason='vineyard not installed')
-@flaky(max_runs=3)
-def test_to_vineyard():
-    ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
-    with option_context({'vineyard.socket': ipc_socket}):
-        df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
-                        chunk_size=2)
-        object_id = df1.to_vineyard().execute().fetch()
-        df2 = md.from_vineyard(object_id)
-
-        df1_value = df1.execute().fetch()
-        df2_value = df2.execute().fetch()
-        pd.testing.assert_frame_equal(
-            df1_value.reset_index(drop=True), df2_value.reset_index(drop=True))
 
 
 @pytest.mark.skipif(pa is None, reason='pyarrow not installed')

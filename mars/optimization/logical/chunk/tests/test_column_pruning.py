@@ -53,9 +53,9 @@ def test_groupby_read_csv(gen_data1):
     chunk2 = context[df2.data].chunks[0].data
     records = optimize(chunk_graph)
     opt_chunk1 = records.get_optimization_result(chunk1)
-    assert opt_chunk1 is not None
+    assert opt_chunk1 is None
     opt_chunk2 = records.get_optimization_result(chunk2)
     assert opt_chunk2 is not None
-    assert opt_chunk1.op.usecols == ['a', 'b']
+    assert opt_chunk2.op.usecols == ['a', 'b']
     # original tileable should not be modified
     assert chunk2.inputs[0] is chunk1

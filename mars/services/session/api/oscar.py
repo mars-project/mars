@@ -159,8 +159,11 @@ class SessionAPI(AbstractSessionAPI):
 
     @classmethod
     async def new_custom_log_dir(cls, address: str, session_id: str):
-        ref = await mo.actor_ref(mo.ActorRef(
-            address, CustomLogActor.default_uid()))
+        try:
+            ref = await mo.actor_ref(mo.ActorRef(
+                address, CustomLogActor.default_uid()))
+        except mo.ActorNotExist:
+            return
         return await ref.new_custom_log_dir(session_id)
 
     async def fetch_tileable_op_logs(self,

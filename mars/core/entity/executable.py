@@ -189,8 +189,11 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return self
 
         session = _get_session(self, session)
-        execute(*self, session=session, **kw)
-        return self
+        ret = execute(*self, session=session, **kw)
+        if kw.get('wait', True):
+            return self
+        else:
+            return ret
 
     def _fetch(self, session: SessionType = None, **kw):
         from ..session import fetch
