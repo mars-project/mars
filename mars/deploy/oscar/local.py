@@ -50,7 +50,7 @@ class LocalCluster:
                  n_gpu: Union[int, str] = 'auto',
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
-                 web: bool = True):
+                 web: Union[bool, str] = 'auto'):
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
@@ -103,7 +103,9 @@ class LocalCluster:
             self._worker_pools.append(worker_pool)
 
     async def _start_service(self):
-        await start_supervisor(self.supervisor_address, config=self._config)
+        self._web = await start_supervisor(
+            self.supervisor_address, config=self._config,
+            web=self._web)
         for worker_pool in self._worker_pools:
             await start_worker(
                 worker_pool.external_address,

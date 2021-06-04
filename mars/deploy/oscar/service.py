@@ -30,15 +30,31 @@ def load_config(filename=None):
 async def start_supervisor(address: str,
                            lookup_address: str = None,
                            modules: Union[List, str, None] = None,
-                           config: Dict = None):
+                           config: Dict = None,
+                           web: Union[str, bool] = 'auto'):
     if not config or isinstance(config, str):
         config = load_config(config)
     lookup_address = lookup_address or address
     backend = config['cluster'].get('backend', 'fixed')
     if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
-    await start_services(NodeRole.SUPERVISOR, config,
-                         modules=modules, address=address)
+    if web:
+        # try to append web to services
+        config['services'].append('web')
+    try:
+        await start_services(NodeRole.SUPERVISOR, config,
+                             modules=modules, address=address)
+    except ImportError:
+        if web == 'auto':
+            config['services'] = [service for service in config['services']
+                                  if service != 'web']
+            await start_services(NodeRole.SUPERVISOR, config,
+                                 modules=modules, address=address)
+            return False
+        else:  # pragma: no cover
+            raise
+    else:
+        return bool(web)
 
 
 async def stop_supervisor(address: str,
