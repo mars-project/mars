@@ -268,6 +268,7 @@ class SubtaskGraphScheduler:
                 # subtask graph finished, update result chunks' meta
                 await self._update_chunks_meta(
                     self._task_stage_info.chunk_graph)
+            await self._scheduling_api.finish_subtasks([result.subtask_id])
             self._schedule_done()
             self.set_task_info(result.error, result.traceback)
             return
@@ -299,6 +300,11 @@ class SubtaskGraphScheduler:
             self._done.set()
 
     async def schedule(self):
+        if len(self._subtask_graph) == 0:
+            # no subtask to schedule, set status to done
+            self._schedule_done()
+            return
+
         # schedule independent subtasks
         indep_subtasks = list(self._subtask_graph.iter_indep())
         await self._schedule_subtasks(indep_subtasks)
