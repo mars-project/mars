@@ -912,12 +912,14 @@ def calc_object_overhead(chunk: ChunkType,
     if isinstance(chunk, DATAFRAME_CHUNK_TYPE) \
             and chunk.dtypes is not None:
         n_strings = len([dt for dt in chunk.dtypes if is_object_dtype(dt)])
-        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value \
+                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
             n_strings += 1
     elif isinstance(chunk, SERIES_CHUNK_TYPE) \
             and chunk.dtype is not None:
         n_strings = 1 if is_object_dtype(chunk.dtype) else 0
-        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value \
+                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
             n_strings += 1
     elif isinstance(chunk, INDEX_CHUNK_TYPE) \
             and chunk.dtype is not None:
