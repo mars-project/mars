@@ -411,7 +411,7 @@ class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSour
         first_chunk_raw_bytes = op.first_chunk_raw_bytes
         raw_bytes = file_size(op.path, storage_options=op.storage_options)
         if op.num_group_rows:
-            raw_bytes = np.ceil(np.divide(raw_bytes, op.num_row_groups)) \
+            raw_bytes = np.ceil(np.divide(raw_bytes, op.num_group_rows)) \
                 .astype(np.int64).item()
 
         estimated_row_num = np.ceil(

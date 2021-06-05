@@ -368,10 +368,11 @@ class SubtaskProcessor:
             self.result.progress = progress
             if abs(last_progress - progress) >= eps:
                 # report progress
-                fut = self.notify_task_manager_result(
-                    self._supervisor_address, self.result)
-                if fut:
-                    await fut
+                if not self.result.status.is_done:
+                    fut = self.notify_task_manager_result(
+                        self._supervisor_address, self.result)
+                    if fut:
+                        await fut
             await asyncio.sleep(interval)
             last_progress = progress
 

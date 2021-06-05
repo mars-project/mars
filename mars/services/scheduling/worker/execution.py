@@ -239,13 +239,13 @@ class SubtaskExecutionActor(mo.Actor):
             subtask_info.result.progress = 1.0
             subtask_info.result.error = exc
             subtask_info.result.traceback = tb
-            raise
         finally:
             if subtask_info.result.status == SubtaskStatus.running:
                 subtask_info.result = yield run_aiotask
 
             self._subtask_info.pop(subtask.subtask_id, None)
             if self._global_slot_ref is not None:
+                # make sure slot is released before marking tasks as finished
                 yield self._global_slot_ref.release_subtask_slots(
                     (self.address, band_name), subtask.session_id, subtask.subtask_id)
                 logger.debug('Slot released for band %s after subtask %s',

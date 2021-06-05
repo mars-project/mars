@@ -278,7 +278,7 @@ class TileableOperandMixin:
                 store_size = max(exec_size // len(outputs),
                                  total_out_size // max(len(chunk_sizes), 1))
             try:
-                if out.is_sparse():
+                if getattr(out, 'dtype', None) is not None and out.is_sparse():
                     max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
                 else:
                     max_sparse_size = np.nan

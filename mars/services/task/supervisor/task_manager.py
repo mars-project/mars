@@ -27,7 +27,6 @@ from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     TileableType, ChunkType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
-from ....lib.aio import alru_cache
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -215,7 +214,6 @@ class SubtaskGraphScheduler:
         self._subtask_to_results: Dict[Subtask, SubtaskResult] = dict()
 
         self._band_manager: Dict[BandType, mo.ActorRef] = dict()
-        self._band_queue: Dict[BandType, BandQueue] = defaultdict(BandQueue)
 
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
@@ -224,11 +222,6 @@ class SubtaskGraphScheduler:
 
     def is_cancelled(self):
         return self._cancelled.is_set()
-
-    @alru_cache
-    async def _get_subtask_api(self, band: BandType):
-        from ...subtask import SubtaskAPI
-        return await SubtaskAPI.create(band[0])
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
         if not subtasks:
@@ -268,9 +261,14 @@ class SubtaskGraphScheduler:
                 # subtask graph finished, update result chunks' meta
                 await self._update_chunks_meta(
                     self._task_stage_info.chunk_graph)
-            await self._scheduling_api.finish_subtasks([result.subtask_id])
-            self._schedule_done()
-            self.set_task_info(result.error, result.traceback)
+
+            await self._scheduling_api.finish_subtasks([result.subtask_id],
+                                                       schedule_next=not error_or_cancelled)
+            if self._task_stage_info.task_result.status != TaskStatus.terminated:
+                self.set_task_info(result.error, result.traceback)
+                if not all_done and error_or_cancelled:
+                    await self._scheduling_api.cancel_subtasks(list(self._submitted_subtask_ids))
+                self._schedule_done()
             return
 
         # push success subtasks to queue if they are ready
@@ -288,9 +286,6 @@ class SubtaskGraphScheduler:
 
     def _schedule_done(self):
         self._done.set()
-        for q in self._band_queue.values():
-            # put None into queue to indicate done
-            q.put(None)
 
     @contextmanager
     def _ensure_done_set(self):
@@ -317,7 +312,7 @@ class SubtaskGraphScheduler:
             # already finished, ignore cancel
             return
         self._cancelled.set()
-        # cancel band schedules
+        # cancel running subtasks
         await self._scheduling_api.cancel_subtasks(list(self._submitted_subtask_ids))
         self._done.set()
 
@@ -368,6 +363,7 @@ class TaskStageInfo:
     subtask_graph: SubtaskGraph = None
     subtask_graph_scheduler: SubtaskGraphScheduler = None
     subtask_results: Dict[str, SubtaskResult] = None
+    subtask_result_is_set: Dict[str, bool] = None
 
     def __init__(self,
                  task_id: str,
@@ -379,6 +375,7 @@ class TaskStageInfo:
         self.task_result = TaskResult(
             task_id, task_info.session_id, TaskStatus.pending)
         self.subtask_results = dict()
+        self.subtask_result_is_set = dict()
 
 
 @dataclass
@@ -751,8 +748,12 @@ class TaskManagerActor(mo.Actor):
         except KeyError:  # pragma: no cover
             raise TaskNotExist(f'Task {subtask_result.task_id} does not exist')
 
+        if task_stage_info.subtask_result_is_set.get(subtask_result.subtask_id):
+            return
+
         task_stage_info.subtask_results[subtask_result.subtask_id] = subtask_result
         if subtask_result.status.is_done:
+            task_stage_info.subtask_result_is_set[subtask_result.subtask_id] = True
             subtask = task_stage_info.subtask_graph_scheduler.subtask_id_to_subtask[
                 subtask_result.subtask_id]
             await self._decref_input_subtasks(subtask, task_stage_info.subtask_graph)
