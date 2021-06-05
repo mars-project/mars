@@ -27,15 +27,15 @@ async def start(config: Dict, address: str):
     config
         Service config.
         {
-            "task" : {
+            "subtask" : {
 
             }
         }
     address : str
         Actor pool address.
     """
-    task_config = config.get('task', dict())
-    subtask_processor_cls = task_config.get('subtask_processor_cls')
+    subtask_config = config.get('subtask', dict())
+    subtask_processor_cls = subtask_config.get('subtask_processor_cls')
     await mo.create_actor(SubtaskManagerActor,
                           subtask_processor_cls=subtask_processor_cls,
                           address=address,

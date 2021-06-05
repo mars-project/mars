@@ -26,7 +26,7 @@ async def test_meta_service():
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "task"],
+            "services": ["cluster", "session", "meta"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,

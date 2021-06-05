@@ -20,9 +20,10 @@ from ...cluster import ClusterAPI
 
 
 class SessionManagerActor(mo.Actor):
-    def __init__(self):
+    def __init__(self, service_config: Optional[Dict] = None):
         self._session_refs: Dict[str, mo.ActorRef] = dict()
         self._cluster_api: Optional[ClusterAPI] = None
+        self._service_config = service_config or dict()
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
@@ -35,7 +36,8 @@ class SessionManagerActor(mo.Actor):
 
         address = (await self._cluster_api.get_supervisors_by_keys([session_id]))[0]
         session_actor_ref = await mo.create_actor(
-            SessionActor, session_id, address=address,
+            SessionActor, session_id, self._service_config,
+            address=address,
             uid=SessionActor.gen_uid(session_id),
             allocate_strategy=mo.allocate_strategy.Random())
         self._session_refs[session_id] = session_actor_ref
@@ -96,12 +98,15 @@ class SessionManagerActor(mo.Actor):
 
 
 class SessionActor(mo.Actor):
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, service_config: Dict):
         self._session_id = session_id
 
         self._meta_api = None
         self._lifecycle_api = None
         self._task_api = None
+        self._scheduling_api = None
+
+        self._service_config = service_config
 
     @classmethod
     def gen_uid(cls, session_id):
@@ -110,14 +115,25 @@ class SessionActor(mo.Actor):
     async def create_services(self):
         from ...meta import MetaAPI
         from ...lifecycle import LifecycleAPI
+        from ...scheduling import SchedulingAPI
         from ...task import TaskAPI
 
-        self._meta_api = await MetaAPI.create_session(
-            self._session_id, self.address)
-        self._lifecycle_api = await LifecycleAPI.create_session(
-            self._session_id, self.address)
-        self._task_api = await TaskAPI.create_session(
-            self._session_id, self.address)
+        services = set(self._service_config['services'])
+
+        self._meta_api = self._scheduling_api = self._task_api = None
+
+        if services and 'meta' in services:
+            self._meta_api = await MetaAPI.create_session(
+                self._session_id, self.address)
+        if services and 'lifecycle' in services:
+            self._lifecycle_api = await LifecycleAPI.create_session(
+                self._session_id, self.address)
+        if services and 'scheduling' in services:
+            self._scheduling_api = await SchedulingAPI.create_session(
+                self._session_id, self.address, self._service_config)
+        if services and 'task' in services:
+            self._task_api = await TaskAPI.create_session(
+                self._session_id, self.address)
 
     async def get_last_idle_time(self):
         if self._task_api is None:
@@ -127,9 +143,14 @@ class SessionActor(mo.Actor):
     async def __pre_destroy__(self):
         from ...meta import MetaAPI
         from ...lifecycle import LifecycleAPI
+        from ...scheduling import SchedulingAPI
         from ...task import TaskAPI
 
-        if self._meta_api:
+        if self._task_api:
             await TaskAPI.destroy_session(self._session_id, self.address)
+        if self._lifecycle_api:
             await LifecycleAPI.destroy_session(self._session_id, self.address)
+        if self._meta_api:
             await MetaAPI.destroy_session(self._session_id, self.address)
+        if self._scheduling_api:
+            await SchedulingAPI.destroy_session(self._session_id, self.address)

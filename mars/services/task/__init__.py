@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from .api import AbstractTaskAPI, TaskAPI, WebTaskAPI
-from .core import Task, TaskStatus, TaskResult, Subtask, \
-    SubtaskStatus, SubtaskResult, new_task_id
-from .errors import TaskNotExist, SubtaskNotExist, SlotOccupiedAlready
+from .config import task_options
+from .core import Task, TaskStatus, TaskResult, new_task_id
+from .errors import TaskNotExist

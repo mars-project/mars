@@ -310,6 +310,9 @@ cdef class DirectedGraph:
             return f'"{val}"'
         return val
 
+    def _extract_operands(self, node):
+        return [node.op]
+
     def to_dot(self, graph_attrs=None, node_attrs=None, trunc_key=5, result_chunk_keys=None):
         sio = StringIO()
         sio.write('digraph {\n')
@@ -328,32 +331,32 @@ cdef class DirectedGraph:
 
         visited = set()
         for node in self.iter_nodes():
-            op = node.op
-            op_name = type(op).__name__
-            if op.stage is not None:
-                op_name = f'{op_name}:{op.stage.name}'
-            if op.key in visited:
-                continue
-            for input_chunk in (op.inputs or []):
-                if input_chunk.key not in visited:
-                    sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" {chunk_style}\n')
-                    visited.add(input_chunk.key)
-                if op.key not in visited:
-                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
-                    visited.add(op.key)
-                sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:5]}"\n')
+            for op in self._extract_operands(node):
+                op_name = type(op).__name__
+                if op.stage is not None:
+                    op_name = f'{op_name}:{op.stage.name}'
+                if op.key in visited:
+                    continue
+                for input_chunk in (op.inputs or []):
+                    if input_chunk.key not in visited:
+                        sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" {chunk_style}\n')
+                        visited.add(input_chunk.key)
+                    if op.key not in visited:
+                        sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
+                        visited.add(op.key)
+                    sio.write(f'"Chunk:{input_chunk.key[:trunc_key]}" -> "{op_name}:{op.key[:5]}"\n')
 
-            for output_chunk in (op.outputs or []):
-                if output_chunk.key not in visited:
-                    tmp_chunk_style = chunk_style
-                    if result_chunk_keys and output_chunk.key in result_chunk_keys:
-                        tmp_chunk_style = '[shape=box,style=filled,fillcolor=cadetblue1]'
-                    sio.write(f'"Chunk:{output_chunk.key[:trunc_key]}" {tmp_chunk_style}\n')
-                    visited.add(output_chunk.key)
-                if op.key not in visited:
-                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
-                    visited.add(op.key)
-                sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> "Chunk:{output_chunk.key[:5]}"\n')
+                for output_chunk in (op.outputs or []):
+                    if output_chunk.key not in visited:
+                        tmp_chunk_style = chunk_style
+                        if result_chunk_keys and output_chunk.key in result_chunk_keys:
+                            tmp_chunk_style = '[shape=box,style=filled,fillcolor=cadetblue1]'
+                        sio.write(f'"Chunk:{output_chunk.key[:trunc_key]}" {tmp_chunk_style}\n')
+                        visited.add(output_chunk.key)
+                    if op.key not in visited:
+                        sio.write(f'"{op_name}:{op.key[:trunc_key]}" {operand_style}\n')
+                        visited.add(op.key)
+                    sio.write(f'"{op_name}:{op.key[:trunc_key]}" -> "Chunk:{output_chunk.key[:5]}"\n')
 
         sio.write('}')
         return sio.getvalue()

@@ -55,7 +55,7 @@ class ActorCaller:
                     except (ConnectionError, BrokenPipeError):
                         # close failed, ignore it
                         pass
-                    raise ServerClosed(f'Remote server {client.dest_address} closed')
+                    raise ServerClosed(f'Remote server {client.dest_address} closed') from None
                 future = self._client_to_message_futures[client].pop(message.message_id)
                 future.set_result(message)
             except DeserializeMessageFailed as e:  # pragma: no cover

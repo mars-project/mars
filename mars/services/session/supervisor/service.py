@@ -34,6 +34,6 @@ async def start(config: Dict, address: str):
     address : str
         Actor pool address.
     """
-    await mo.create_actor(SessionManagerActor,
+    await mo.create_actor(SessionManagerActor, config,
                           uid=SessionManagerActor.default_uid(),
                           address=address)

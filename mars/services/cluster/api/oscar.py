@@ -147,7 +147,7 @@ class ClusterAPI(AbstractClusterAPI):
         return await self._node_info_ref.get_nodes_info(
             nodes=nodes, role=role, env=env, resource=resource, state=state)
 
-    async def get_all_bands(self) -> Dict[BandType, int]:
+    async def get_all_bands(self, role: NodeRole = None, watch: bool = False) -> Dict[BandType, int]:
         """
         Get all bands that can be used for computation.
 
@@ -156,7 +156,9 @@ class ClusterAPI(AbstractClusterAPI):
         band_to_slots : dict
             Band to n_slot.
         """
-        return await self._node_info_ref.get_all_bands()
+        if watch:
+            return await self._node_info_ref.watch_all_bands(role)
+        return await self._node_info_ref.get_all_bands(role)
 
     async def get_bands(self):
         """
@@ -226,6 +228,7 @@ class MockClusterAPI(ClusterAPI):
                             address=address),
             mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
                             interval=kw.get('upload_interval'),
+                            band_to_slots=kw.get('band_to_slots'),
                             use_gpu=kw.get('use_gpu', False),
                             uid=NodeInfoUploaderActor.default_uid(),
                             address=address),

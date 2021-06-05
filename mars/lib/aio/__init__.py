@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import contextlib
 import sys
 
 from .file import AioFileObject, AioFilesystem
@@ -27,6 +28,10 @@ if sys.version_info[:2] < (3, 7):
     asyncio.run = run
     asyncio.get_running_loop = get_running_loop
     asyncio.create_task = asyncio.ensure_future
+
+    # patch async generator
+    from async_generator import asynccontextmanager
+    contextlib.asynccontextmanager = asynccontextmanager
 
 
 def create_lock(loop=None):

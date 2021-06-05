@@ -60,6 +60,9 @@ async def test_api(actor_pool):
     assert pool_addr in nodes_info
     assert 'custom_usage' in nodes_info[pool_addr]['resource']['numa-0']
 
+    bands = await api.get_all_bands()
+    assert (pool_addr, 'numa-0') in bands
+
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(api.get_supervisors(watch=True), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
@@ -67,6 +70,8 @@ async def test_api(actor_pool):
             [TestActor.default_uid()], watch=True), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(api.watch_nodes(NodeRole.WORKER), timeout=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(api.get_all_bands(watch=True), timeout=0.1)
 
 
 @pytest.mark.asyncio
