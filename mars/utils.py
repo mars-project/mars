@@ -1109,7 +1109,8 @@ class _ExtensibleCallable:
             return await self.func(*args, **kwargs)
         except NotImplementedError:
             if self.batch_func:
-                return (await self.batch_func([args], [kwargs]))[0]
+                ret = await self.batch_func([args], [kwargs])
+                return None if ret is None else ret[0]
             raise
 
     def _sync_call(self, *args, **kwargs):
@@ -1150,9 +1151,13 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         else:
             # this function has no batch implementation
             # call it separately
-            coros = [self.func(*d.args, **d.kwargs)
+            tasks = [asyncio.create_task(self.func(*d.args, **d.kwargs))
                      for d in delays]
-            return await asyncio.gather(*coros)
+            try:
+                return await asyncio.gather(*tasks)
+            except asyncio.CancelledError:
+                [task.cancel() for task in tasks]
+                return await asyncio.gather(*tasks)
 
     def _sync_batch(self, *delays):
         if self.batch_func:

@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import asyncio
-import functools
 import importlib
 import sys
 import time
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Set, Tuple, Type, Optional
+from typing import Any, Dict, Iterable, List, Set, Type, Optional
 
 from .... import oscar as mo
 from ....config import Config
@@ -28,6 +27,7 @@ from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     TileableType, ChunkType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch, Fuse
+from ....lib.aio import alru_cache
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -36,11 +36,12 @@ from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
 from ...core import BandType
 from ...lifecycle.api import LifecycleAPI
-from ...meta.api import MetaAPI
+from ...meta import MetaAPI
+from ...scheduling import SchedulingAPI
+from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..analyzer import GraphAnalyzer
 from ..config import task_options
-from ..core import Task, TaskResult, TaskStatus, Subtask, SubtaskResult, \
-    SubtaskStatus, SubtaskGraph, new_task_id
+from ..core import Task, TaskResult, TaskStatus, new_task_id
 from ..errors import TaskNotExist
 
 
@@ -216,66 +217,25 @@ class SubtaskGraphScheduler:
         self._band_manager: Dict[BandType, mo.ActorRef] = dict()
         self._band_queue: Dict[BandType, BandQueue] = defaultdict(BandQueue)
 
-        self._band_schedules = []
-
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
+
+        self._submitted_subtask_ids = set()
 
     def is_cancelled(self):
         return self._cancelled.is_set()
 
-    async def _get_band_subtask_manager(self, band: BandType):
-        from ..worker.subtask import BandSubtaskManagerActor
-
-        if band in self._band_manager:
-            return self._band_manager[band]
-
-        manger_ref = await mo.actor_ref(
-            band[0], BandSubtaskManagerActor.gen_uid(band[1]))
-        self._band_manager[band] = manger_ref
-        return manger_ref
-
-    @functools.lru_cache(30)
-    def _calc_expect_band(self, inp_subtasks: Tuple[Subtask]):
-        if len(inp_subtasks) == 1 and inp_subtasks[0].virtual:
-            # virtual node, get predecessors of virtual node
-            calc_subtasks = self._subtask_graph.predecessors(inp_subtasks[0])
-        else:
-            calc_subtasks = inp_subtasks
-
-        # calculate a expect band
-        sorted_size_inp_subtask = sorted(
-            calc_subtasks, key=lambda st: self._subtask_to_results[st].data_size,
-            reverse=True)
-        expect_bands = [self._subtask_to_bands[subtask]
-                        for subtask in sorted_size_inp_subtask]
-        return expect_bands
-
-    def _get_subtask_band(self, subtask: Subtask):
-        if subtask.expect_band is not None:
-            # start, already specified band
-            self._subtask_to_bands[subtask] = band = subtask.expect_band
-            return band
-        else:
-            inp_subtasks = self._subtask_graph.predecessors(subtask)
-            # calculate a expect band
-            expect_bands = self._calc_expect_band(tuple(inp_subtasks))
-            subtask.expect_bands = expect_bands
-            self._subtask_to_bands[subtask] = band = subtask.expect_band
-            return band
-
-    async def _direct_submit_subtasks(self, subtasks: List[Subtask]):
-        for subtask in subtasks[::-1]:
-            band = self._get_subtask_band(subtask)
-            # push subtask to queues
-            self._band_queue[band].put(subtask)
+    @alru_cache
+    async def _get_subtask_api(self, band: BandType):
+        from ...subtask import SubtaskAPI
+        return await SubtaskAPI.create(band[0])
 
     async def _schedule_subtasks(self, subtasks: List[Subtask]):
-        if self._scheduling_api is not None:
-            return await self._scheduling_api.submit_subtasks(
-                subtasks, [subtask.priority for subtask in subtasks])
-        else:
-            return await self._direct_submit_subtasks(subtasks)
+        if not subtasks:
+            return
+        self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
+        return await self._scheduling_api.add_subtasks(
+            subtasks, [(subtask.priority,) for subtask in subtasks])
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []
@@ -298,6 +258,7 @@ class SubtaskGraphScheduler:
         subtask_id = result.subtask_id
         subtask = self.subtask_id_to_subtask[subtask_id]
         self._subtask_to_results[subtask] = result
+        self._submitted_subtask_ids.difference_update([result.subtask_id])
 
         all_done = len(self._subtask_to_results) == len(self._subtask_graph)
         error_or_cancelled = result.status in (SubtaskStatus.errored, SubtaskStatus.cancelled)
@@ -322,33 +283,13 @@ class SubtaskGraphScheduler:
                 # all predecessors finished
                 to_schedule_subtasks.append(succ_subtask)
         await self._schedule_subtasks(to_schedule_subtasks)
+        await self._scheduling_api.finish_subtasks([result.subtask_id])
 
     def _schedule_done(self):
         self._done.set()
         for q in self._band_queue.values():
             # put None into queue to indicate done
             q.put(None)
-        # cancel band schedules
-        if not self._cancelled.is_set():
-            _ = [schedule.cancel() for schedule in self._band_schedules]
-
-    async def _run_subtask(self,
-                           subtask_runner,
-                           subtask: Subtask,
-                           tasks: Dict):
-        try:
-            await subtask_runner.run_subtask(subtask)
-        except:  # noqa: E722  # pragma: no cover  # pylint: disable=bare-except
-            _, err, traceback = sys.exc_info()
-            subtask_result = SubtaskResult(
-                subtask_id=subtask.subtask_id,
-                session_id=subtask.session_id,
-                task_id=subtask.task_id,
-                status=SubtaskStatus.errored,
-                error=err,
-                traceback=traceback)
-            await self.set_subtask_result(subtask_result)
-        del tasks[subtask]
 
     @contextmanager
     def _ensure_done_set(self):
@@ -357,93 +298,21 @@ class SubtaskGraphScheduler:
         finally:
             self._done.set()
 
-    async def _schedule_band(self, band: BandType):
-        with self._ensure_done_set():
-            manager_ref = await self._get_band_subtask_manager(band)
-            tasks = dict()
-
-            q = self._band_queue[band]
-            while not self._done.is_set():
-                # wait for data
-                try:
-                    # await finish when sth enqueued.
-                    # note that now we don't get subtask from queue,
-                    # just ensure the process can be continued.
-                    # since the slot is released after subtask runner
-                    # notifies task manager, we will get subtask when slot released,
-                    # so that subtask with higher priority is fetched
-                    await q
-                except asyncio.CancelledError:
-                    pass
-
-                if not self._cancelled.is_set() and not self._done.is_set():
-                    try:
-                        subtask_runner = await manager_ref.get_free_slot()
-                    except asyncio.CancelledError:
-                        subtask_runner = None
-                else:
-                    subtask_runner = None
-
-                # now get subtask, the subtask that can run with higher priority
-                # has been pushed before slot released
-                subtask = q.get()
-
-                done = subtask is None or \
-                       self._done.is_set() or \
-                       self._cancelled.is_set()
-                if done and subtask_runner:
-                    # finished or cancelled, given back slot
-                    await manager_ref.mark_slot_free(subtask_runner)
-
-                if self._cancelled.is_set():
-                    # force to free running slots
-                    free_slots = []
-                    for subtask_runner, _ in tasks.values():
-                        free_slots.append(
-                            manager_ref.free_slot(subtask_runner))
-                    await asyncio.gather(*free_slots)
-                elif not done:
-                    coro = self._run_subtask(subtask_runner, subtask, tasks)
-                    tasks[subtask] = (subtask_runner, asyncio.create_task(coro))
-
-            # done, block until all tasks finish
-            if not self._cancelled.is_set():
-                try:
-                    await asyncio.gather(*[v[1] for v in tasks.values()])
-                except asyncio.CancelledError:
-                    pass
-
     async def schedule(self):
-        if self._scheduling_api is None:
-            # use direct submit
-            for band in self._bands:
-                self._band_schedules.append(
-                    asyncio.create_task(self._schedule_band(band)))
-
-        if len(self._subtask_graph) == 0:
-            # no subtask to schedule, set status to done
-            self._schedule_done()
-            return
-
         # schedule independent subtasks
         indep_subtasks = list(self._subtask_graph.iter_indep())
         await self._schedule_subtasks(indep_subtasks)
 
         # wait for completion
         await self._done.wait()
-        # wait for schedules to complete
-        try:
-            await asyncio.gather(*self._band_schedules)
-        except asyncio.CancelledError:
-            pass
 
     async def cancel(self):
         if self._done.is_set():
             # already finished, ignore cancel
             return
         self._cancelled.set()
-        _ = [s.cancel() for s in self._band_schedules]
-        await asyncio.gather(*self._band_schedules)
+        # cancel band schedules
+        await self._scheduling_api.cancel_subtasks(list(self._submitted_subtask_ids))
         self._done.set()
 
     def set_task_info(self, error=None, traceback=None):
@@ -522,9 +391,7 @@ class TaskManagerActor(mo.Actor):
     _meta_api: Optional[MetaAPI]
     _lifecycle_api: Optional[LifecycleAPI]
 
-    def __init__(self,
-                 session_id: str,
-                 use_scheduling=True):
+    def __init__(self, session_id: str):
         self._session_id = session_id
         self._config = None
         self._task_processor_cls = None
@@ -537,11 +404,12 @@ class TaskManagerActor(mo.Actor):
         self._cluster_api = None
         self._meta_api = None
         self._lifecycle_api = None
-        self._use_scheduling = use_scheduling
+        self._scheduling_api = None
         self._last_idle_time = None
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
+        self._scheduling_api = await SchedulingAPI.create(self._session_id, self.address)
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
         self._lifecycle_api = await LifecycleAPI.create(
             self._session_id, self.address)
@@ -700,14 +568,14 @@ class TaskManagerActor(mo.Actor):
                 await self._incref_after_analyze(subtask_graph, chunk_graph.results)
 
                 # schedule subtask graph
-                # TODO(qinxuye): pass scheduling API to scheduler when it's ready
                 chunk_optimization_records = None
                 if task_processor.chunk_optimization_records_list:
                     chunk_optimization_records = \
                         task_processor.chunk_optimization_records_list[-1]
                 subtask_scheduler = SubtaskGraphScheduler(
                     subtask_graph, list(available_bands), task_stage_info,
-                    self._meta_api, chunk_optimization_records)
+                    self._meta_api, chunk_optimization_records,
+                    self._scheduling_api)
                 task_stage_info.subtask_graph_scheduler = subtask_scheduler
                 await subtask_scheduler.schedule()
 

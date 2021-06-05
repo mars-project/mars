@@ -14,9 +14,9 @@
 
 from typing import Any, Dict
 
-from .....core import OperandType
-from .....tests.core import _check_args, ObjectCheckMixin
-from ..subtask import SubtaskProcessor
+from mars.core import OperandType
+from mars.services.subtask.worker.subtask import SubtaskProcessor
+from mars.tests.core import _check_args, ObjectCheckMixin
 
 
 class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):

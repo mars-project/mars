@@ -17,12 +17,14 @@ from typing import Dict
 
 import numpy as np
 
-from .....core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
-from .....core.operand import Fetch
-from .....tests.core import _check_args, ObjectCheckMixin
-from ...analyzer import GraphAnalyzer
-from ...core import SubtaskGraph, BandType
-from ..task_manager import TaskProcessor, TaskStageInfo
+from mars.core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
+from mars.core.operand import Fetch
+from mars.tests.core import _check_args, ObjectCheckMixin
+from mars.services.core import BandType
+from mars.services.subtask import SubtaskGraph
+from mars.services.task.analyzer import GraphAnalyzer
+from mars.services.task.supervisor.task_manager \
+    import TaskProcessor, TaskStageInfo
 
 
 class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):

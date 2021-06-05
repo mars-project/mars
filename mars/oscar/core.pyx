@@ -187,6 +187,7 @@ cdef class _Actor:
         cdef list tasks, values
         cdef object coro
         cdef bint extract_tuple = False
+        cdef bint cancelled = False
         cdef set dones, pending
 
         if inspect.isawaitable(result):
@@ -203,7 +204,7 @@ cdef class _Actor:
                 if is_async_generator(res_item):
                     value = asyncio.create_task(self._run_actor_async_generator(res_item))
                     tasks.append(value)
-                elif asyncio.iscoroutine(res_item):
+                elif inspect.isawaitable(res_item):
                     value = asyncio.create_task(res_item)
                     tasks.append(value)
                 else:
@@ -214,6 +215,7 @@ cdef class _Actor:
                 try:
                     dones, pending = await asyncio.wait(tasks)
                 except asyncio.CancelledError:
+                    cancelled = True
                     for task in tasks:
                         task.cancel()
                     # wait till all tasks return cancelled
@@ -223,6 +225,10 @@ cdef class _Actor:
                     result = list(dones)[0].result()
                 else:
                     result = tuple(t.result() if t in dones else t for t in values)
+
+                if cancelled:
+                    # raise in case no CancelledError raised
+                    raise asyncio.CancelledError
 
         return result
 

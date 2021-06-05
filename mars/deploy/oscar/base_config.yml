@@ -5,6 +5,8 @@ services:
   - meta
   - lifecycle
   - task
+  - scheduling
+  - subtask
 cluster:
   backend: fixed
   node_timeout: 120

@@ -23,7 +23,7 @@ from mars.core import TileableType, OperandType
 from mars.deploy.oscar.service import load_config
 from mars.deploy.oscar.tests.session import new_test_session, CONFIG_FILE
 from mars.services.task.supervisor.tests import CheckedTaskProcessor
-from mars.services.task.worker.tests import CheckedSubtaskProcessor
+from mars.services.subtask.worker.tests import CheckedSubtaskProcessor
 
 
 class FakeCheckedTaskProcessor(CheckedTaskProcessor):
@@ -81,7 +81,7 @@ def test_check_task_processor(setup):
 
 def test_check_subtask_processor(setup):
     config = load_config(CONFIG_FILE)
-    config['task']['subtask_processor_cls'] = \
+    config['subtask']['subtask_processor_cls'] = \
         'mars.deploy.oscar.tests.' \
         'test_checked_session.FakeCheckedSubtaskProcessor'
 

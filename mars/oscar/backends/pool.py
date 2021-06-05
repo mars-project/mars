@@ -828,7 +828,7 @@ class MainActorPoolBase(ActorPoolBase):
                     processor.result = await super().handle_control_command(message)
             elif message.control_message_type == ControlMessageType.stop:
                 timeout, force = message.content if message.content is not None \
-                    else (None, None)
+                    else (None, False)
                 await self.stop_sub_pool(
                     message.address,
                     self.sub_processes[message.address],

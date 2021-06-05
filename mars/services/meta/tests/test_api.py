@@ -89,7 +89,7 @@ async def test_meta_web_api():
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "task", "web"],
+            "services": ["cluster", "session", "meta", "web"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,

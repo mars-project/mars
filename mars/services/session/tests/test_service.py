@@ -33,7 +33,7 @@ async def test_session_service(test_web):
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "task"],
+            "services": ["cluster", "session", "meta"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
@@ -72,7 +72,8 @@ async def test_get_last_idle_time():
                                              subprocess_start_method='spawn')
     async with sv_pool, worker_pool:
         config = {
-            "services": ["cluster", "session", "meta", "task"],
+            "services": ["cluster", "session", "meta", "lifecycle", "task",
+                         "scheduling", "subtask"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
@@ -144,7 +145,8 @@ async def test_dmap():
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "task"],
+            "services": ["cluster", "session", "meta", "lifecycle", "task",
+                         "scheduling", "subtask"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
