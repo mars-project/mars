@@ -26,8 +26,9 @@ setup = setup
 
 
 def test_base_execution(setup):
-    raw1 = np.random.randint(10, size=(10, 10, 10))
-    raw2 = np.random.randint(10, size=(10, 10, 10))
+    rs = np.random.RandomState(0)
+    raw1 = rs.randint(10, size=(10, 10, 10))
+    raw2 = rs.randint(10, size=(10, 10, 10))
     arr1 = tensor(raw1, chunk_size=5)
     arr2 = tensor(raw2, chunk_size=5)
 
@@ -56,8 +57,9 @@ def test_unary_execution(setup):
         return func1(abs(sin((func2(arr)))))
 
     tested = set()
+    rs = np.random.RandomState(0)
     for func1, func2 in _gen_pairs(_new_unary_ufunc):
-        raw = np.random.random((8, 8, 8))
+        raw = rs.random((8, 8, 8))
         arr1 = tensor(raw, chunk_size=4)
 
         arr2 = _normalize_by_sin(func1, func2, arr1)
@@ -68,7 +70,7 @@ def test_unary_execution(setup):
     # make sure all functions tested
     assert tested == set(_new_unary_ufunc)
 
-    raw = np.random.randint(100, size=(8, 8, 8))
+    raw = rs.randint(100, size=(8, 8, 8))
     arr1 = tensor(raw, chunk_size=4)
     arr2 = arccosh(1 + abs(invert(arr1)))
     res = arr2.execute(fuse_enabled=False).fetch()
@@ -84,8 +86,9 @@ def test_bin_execution(setup):
     _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})[:3]
 
     tested = set()
+    rs = np.random.RandomState(0)
     for func1, func2 in _gen_pairs(_new_bin_ufunc):
-        raw = np.random.random((9, 9, 9))
+        raw = rs.random((9, 9, 9))
         arr1 = tensor(raw, chunk_size=5)
 
         arr2 = func1(1, func2(2, arr1))
@@ -98,7 +101,7 @@ def test_bin_execution(setup):
 
     tested = set()
     for func1, func2 in _gen_pairs(_sp_bin_ufunc):
-        raw = np.random.randint(1, 100, size=(10, 10, 10))
+        raw = rs.randint(1, 100, size=(10, 10, 10))
         arr1 = tensor(raw, chunk_size=6)
 
         arr2 = func1(10, func2(arr1, 5))
@@ -111,8 +114,9 @@ def test_bin_execution(setup):
 
 
 def test_reduction_execution(setup):
-    raw1 = np.random.randint(5, size=(8, 8, 8))
-    raw2 = np.random.randint(5, size=(8, 8, 8))
+    rs = np.random.RandomState(0)
+    raw1 = rs.randint(5, size=(8, 8, 8))
+    raw2 = rs.randint(5, size=(8, 8, 8))
     arr1 = tensor(raw1, chunk_size=4)
     arr2 = tensor(raw2, chunk_size=4)
 
@@ -144,7 +148,8 @@ def test_reduction_execution(setup):
 
 
 def test_bool_reduction_execution(setup):
-    raw = np.random.randint(5, size=(8, 8, 8))
+    rs = np.random.RandomState(0)
+    raw = rs.randint(5, size=(8, 8, 8))
     arr = tensor(raw, chunk_size=4)
 
     res = (arr > 3).sum(axis=1).execute().fetch()
@@ -155,7 +160,8 @@ def test_bool_reduction_execution(setup):
 
 
 def test_order_execution(setup):
-    raw = np.asfortranarray(np.random.rand(4, 5, 6))
+    rs = np.random.RandomState(0)
+    raw = np.asfortranarray(rs.rand(4, 5, 6))
     arr = tensor(raw, chunk_size=3)
 
     res = (arr * 3 + 1).execute().fetch()
