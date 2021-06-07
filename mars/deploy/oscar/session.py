@@ -366,6 +366,7 @@ class WebSession(Session):
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
+        from ...services.cluster import ClusterAPI
 
         session_api = WebSessionAPI(address)
         if new:
@@ -376,7 +377,9 @@ class WebSession(Session):
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
+        cluster_api = ClusterAPI(address)
 
         return cls(address, session_id,
                    session_api, meta_api,
-                   lifecycle_api, task_api)
+                   lifecycle_api, task_api,
+                   cluster_api)

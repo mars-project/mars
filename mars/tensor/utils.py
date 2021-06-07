@@ -17,7 +17,6 @@
 import inspect
 import itertools
 import operator
-import uuid
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import lru_cache, reduce, wraps
