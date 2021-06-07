@@ -15,6 +15,7 @@
 import pytest
 
 from mars.learn.contrib.tsfresh import MarsDistributor
+from mars.core.session import new_session, get_default_session
 from mars.tests import setup
 
 try:
@@ -33,8 +34,9 @@ setup = setup
 def test_distributed_ts_fresh(setup):
     robot_execution_failures.download_robot_execution_failures()
     df, y = robot_execution_failures.load_robot_execution_failures()
-
-    dist = MarsDistributor()
+    default_session = get_default_session()
+    sync_session = new_session(default_session.address)
+    dist = MarsDistributor(session=sync_session)
 
     df = df.iloc[:200].copy()
 

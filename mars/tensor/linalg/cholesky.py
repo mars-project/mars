@@ -264,10 +264,10 @@ def cholesky(a, lower=False):
     """
     a = astensor(a)
 
-    if a.ndim != 2:
+    if a.ndim != 2:  # pragma: no cover
         raise LinAlgError(f'{a.ndim}-dimensional array given. '
                           'Tensor must be two-dimensional')
-    if a.shape[0] != a.shape[1]:
+    if a.shape[0] != a.shape[1]:  # pragma: no cover
         raise LinAlgError('Input must be square')
 
     cho = np.linalg.cholesky(np.array([[1, 2], [2, 5]], dtype=a.dtype))

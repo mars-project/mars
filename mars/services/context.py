@@ -232,6 +232,12 @@ class ThreadedServiceSession(AbstractSyncSession):
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return fut.result()
 
+    @implements(AbstractSyncSession.get_total_n_cpu)
+    def get_total_n_cpu(self):
+        coro = self._session.get_total_n_cpu()
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
     @implements(AbstractSyncSession.to_async)
     def to_async(self):
         return self._session

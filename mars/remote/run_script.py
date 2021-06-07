@@ -120,7 +120,7 @@ class RunScript(MergeDictOperand):
         envs['MARS_SESSION_ID'] = str(ctx.session_id)
         envs['RANK'] = str(op.rank)
         envs['WORLD_SIZE'] = str(op.world_size)
-        envs['MARS_SCHEDULER_ADDRESS'] = ctx.supervisor_address
+        envs['MARS_SUPERVISOR_ADDRESS'] = ctx.supervisor_address
         return envs
 
     @classmethod

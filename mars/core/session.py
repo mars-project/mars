@@ -237,6 +237,16 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         chunk_key_to_logs
         """
 
+    @abstractmethod
+    async def get_total_n_cpu(self):
+        """
+        Get number of cluster cpus.
+
+        Returns
+        -------
+        number_of_cpu: int
+        """
+
     async def stop_server(self):
         """
         Stop server.
@@ -325,6 +335,16 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         Returns
         -------
         chunk_key_to_logs
+        """
+
+    @abstractmethod
+    def get_total_n_cpu(self):
+        """
+        Get number of cluster cpus.
+
+        Returns
+        -------
+        number_of_cpu: int
         """
 
     def fetch_log(self,
@@ -710,6 +730,12 @@ class SyncSession(AbstractSyncSession):
         return _loop.run_until_complete(
             self._session.fetch_tileable_op_logs(tileable_op_key,
                                                  offsets, sizes))
+
+    @implements(AbstractSyncSession.get_total_n_cpu)
+    @_wrap_in_thread
+    def get_total_n_cpu(self):
+        return _loop.run_until_complete(
+            self._session.get_total_n_cpu())
 
     @_wrap_in_thread
     def destroy(self):

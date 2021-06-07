@@ -26,6 +26,7 @@ from ...core.operand import Fetch
 from ...core.session import AbstractAsyncSession, register_session_cls, \
     ExecutionInfo as AbstractExecutionInfo, gen_submit_tileable_graph
 from ...lib.aio import alru_cache
+from ...services.cluster import ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
@@ -76,12 +77,14 @@ class Session(AbstractAsyncSession):
                  meta_api: AbstractMetaAPI,
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
+                 cluster_api: ClusterAPI,
                  client: ClientType = None):
         super().__init__(address, session_id)
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
+        self._cluster_api = cluster_api
         self.client = client
 
         self._tileable_to_fetch = WeakKeyDictionary()
@@ -101,9 +104,11 @@ class Session(AbstractAsyncSession):
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
+        cluster_api = await ClusterAPI.create(session_address)
         return cls(address, session_id,
                    session_api, meta_api,
-                   lifecycle_api, task_api)
+                   lifecycle_api, task_api,
+                   cluster_api)
 
     @classmethod
     @implements(AbstractAsyncSession.init)
@@ -330,6 +335,15 @@ class Session(AbstractAsyncSession):
                                      sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
         return await self._session_api.fetch_tileable_op_logs(
             self.session_id, tileable_op_key, offsets, sizes)
+
+    async def get_total_n_cpu(self):
+        all_bands = await self._cluster_api.get_all_bands()
+        n_cpu = 0
+        for band, size in all_bands.items():
+            _, band_name = band
+            if band_name.startswith('numa-'):
+                n_cpu += size
+        return n_cpu
 
     async def destroy(self):
         await super().destroy()

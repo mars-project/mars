@@ -212,6 +212,15 @@ def test_cholesky_execution(setup):
     res = t.execute().fetch()
     np.testing.assert_allclose(res, symmetric_data)
 
+    a = tensor(symmetric_data, chunk_size=(2, 3))
+
+    L = cholesky(a, lower=True)
+    U = cholesky(a)
+    t = L.dot(U)
+
+    res = t.execute().fetch()
+    np.testing.assert_allclose(res, symmetric_data)
+
 
 def test_lu_execution(setup):
     np.random.seed(1)
