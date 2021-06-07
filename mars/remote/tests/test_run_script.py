@@ -47,7 +47,7 @@ def test_local_run_script_with_exec(setup):
 
 
 def test_run_with_file(setup):
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'script_for_test.py')
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sample_script.py')
     assert run_script(
         path, n_workers=2
     )['status'] == 'ok'
