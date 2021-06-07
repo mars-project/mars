@@ -39,13 +39,11 @@ class WorkerSlotManagerActor(mo.Actor):
             GlobalSlotManagerActor.default_uid()])
 
         band_to_slots = await self._cluster_api.get_bands()
-        tasks = []
         for band, n_slot in band_to_slots.items():
-            tasks.append(asyncio.create_task(mo.create_actor(
+            await mo.create_actor(
                 BandSlotManagerActor, band[1], n_slot, self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
-                address=self.address)))
-        await asyncio.gather(*tasks)
+                address=self.address)
 
 
 class BandSlotManagerActor(mo.Actor):
@@ -71,17 +69,13 @@ class BandSlotManagerActor(mo.Actor):
 
     async def __post_create__(self):
         strategy = IdleLabel(self._band_name, 'worker_slot_control')
-        task_dict = dict()
         for slot_id in range(self._n_slots):
-            task_dict[slot_id] = asyncio.create_task(mo.create_actor(
+            self._slot_control_refs[slot_id] = await mo.create_actor(
                 BandSlotControlActor,
                 self.ref(), self._band_name, slot_id,
                 uid=BandSlotControlActor.gen_uid(self._band_name, slot_id),
                 address=self.address,
-                allocate_strategy=strategy))
-        if task_dict:
-            await asyncio.gather(*task_dict.values())
-            self._slot_control_refs = {k: fut.result() for k, fut in task_dict.items()}
+                allocate_strategy=strategy)
 
     async def acquire_free_slot(self, session_stid: Tuple[str, str]):
         yield self._semaphore.acquire()

@@ -47,6 +47,7 @@ class SubtaskExecutionInfo:
     band_name: str
     supervisor_address: str
     result: SubtaskResult = field(default_factory=SubtaskResult)
+    cancelling: bool = False
     slot_id: Optional[int] = None
     kill_timeout: Optional[int] = None
 
@@ -187,6 +188,7 @@ class SubtaskExecutionActor(mo.Actor):
                                             status=SubtaskStatus.pending)
         slot_id = batch_quota_req = run_aiotask = None
         quota_ref = slot_manager = None
+
         try:
             quota_ref = await self._get_band_quota_ref(band_name)
             slot_manager = await self._get_slot_manager_ref(band_name)
@@ -197,7 +199,7 @@ class SubtaskExecutionActor(mo.Actor):
             loop = asyncio.get_running_loop()
             _store_size, calc_size = yield loop.run_in_executor(
                 self._size_pool, self._estimate_sizes, subtask, input_sizes)
-            if subtask_info.kill_timeout is not None:
+            if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
             batch_quota_req = self._build_quota_request(
@@ -206,15 +208,21 @@ class SubtaskExecutionActor(mo.Actor):
             quota_aiotask = asyncio.create_task(
                 quota_ref.request_batch_quota(batch_quota_req))
             yield quota_aiotask
+            if subtask_info.cancelling:
+                raise asyncio.CancelledError
 
             slot_task = asyncio.create_task(slot_manager.acquire_free_slot(
                 (subtask.session_id, subtask.subtask_id)))
             slot_id = subtask_info.slot_id = yield slot_task
+            if subtask_info.cancelling:
+                raise asyncio.CancelledError
 
             subtask_info.result.status = SubtaskStatus.running
             run_aiotask = asyncio.create_task(
                 subtask_api.run_subtask_in_slot(band_name, slot_id, subtask))
             yield asyncio.shield(run_aiotask)
+            if subtask_info.cancelling:
+                raise asyncio.CancelledError
         except asyncio.CancelledError as ex:
             if slot_id is not None:
                 cancel_task = asyncio.create_task(subtask_api.cancel_subtask_in_slot(band_name, slot_id))
@@ -224,6 +232,8 @@ class SubtaskExecutionActor(mo.Actor):
                 except asyncio.TimeoutError:
                     slot_manager_ref = await self._get_slot_manager_ref(subtask_info.band_name)
                     yield slot_manager_ref.kill_slot(slot_id)
+                    # since slot is restored, it is not occupied by now
+                    slot_id = None
 
                     try:
                         yield run_aiotask
@@ -269,9 +279,12 @@ class SubtaskExecutionActor(mo.Actor):
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
         subtask_info = self._subtask_info[subtask_id]
-        subtask_info.kill_timeout = kill_timeout
+        if not subtask_info.cancelling:
+            subtask_info.kill_timeout = kill_timeout
+            subtask_info.cancelling = True
 
-        subtask_info.aio_task.cancel()
+            subtask_info.aio_task.cancel()
+
         try:
             yield subtask_info.aio_task
         except asyncio.CancelledError:

@@ -14,6 +14,7 @@
 
 import asyncio
 import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import Tuple
 
@@ -216,10 +217,11 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     chunk_graph.add_node(remote_result)
     chunk_graph.add_edge(input1, remote_result)
 
-    subtask = Subtask('test_task', session_id=session_id, chunk_graph=chunk_graph)
+    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+                      chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(1)
 
     with Timer() as timer:
         await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
@@ -239,7 +241,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
 
-    subtask = Subtask('test_task2', session_id=session_id, chunk_graph=chunk_graph)
+    subtask = Subtask(f'test_task2_{uuid.uuid4()}', session_id=session_id, chunk_graph=chunk_graph)
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, 'numa-0', pool.external_address),
         timeout=30)
