@@ -29,7 +29,7 @@ from ...serialization.serializables import DataTypeField
 from ..operands import TensorFuse
 from .. import arithmetic, reduction
 from ..array_utils import as_same_device
-from .core import TensorFuseChunkMixin, estimate_fuse_size
+from .core import TensorFuseChunkMixin
 
 
 class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
@@ -69,10 +69,6 @@ class TensorNeFuseChunk(TensorFuse, TensorFuseChunkMixin):
         if chunk.ndim == 0 and res.ndim == 1 and res.size == 0:
             res = res.dtype.type(0)
         ctx[chunk.key] = res
-
-    @classmethod
-    def estimate_size(cls, ctx, op):
-        estimate_fuse_size(ctx, op)
 
 
 # execution part

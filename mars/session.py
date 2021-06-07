@@ -13,3 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .core.session import new_session, execute, fetch, fetch_log, stop_server  # noqa: F401
+# register
+from .deploy.oscar.session import Session
+del Session

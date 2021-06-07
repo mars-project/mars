@@ -31,8 +31,8 @@ import mars.tensor as mt
 import mars.dataframe as md
 import mars.remote as mr
 from mars.config import option_context
-from mars.core.session import execute, fetch, fetch_log
 from mars.deploy.utils import load_service_config_file
+from mars.session import execute, fetch, fetch_log
 
 
 test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')

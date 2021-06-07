@@ -144,6 +144,6 @@ class DataFrameSortOperand(DataFrameOperand):
     @classmethod
     def tile(cls, op: "DataFrameSortOperand"):
         if op.nrows is not None:
-            return cls._tile_head(op)
+            return (yield from cls._tile_head(op))
         else:
             return (yield from cls._tile(op))

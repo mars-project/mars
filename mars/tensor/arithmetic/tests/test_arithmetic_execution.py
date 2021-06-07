@@ -105,26 +105,27 @@ def test_base_order_execution(setup):
 
 
 def test_ufunc_execution(setup):
-    from mars.tensor.arithmetic import add, square, arccosh, mod
+    from mars.tensor.arithmetic import UNARY_UFUNC, BIN_UFUNC, arccosh, \
+        invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
 
-    _normal_unary_ufunc = [square]
-    _normal_bin_ufunc = [add]
-    _sp_unary_ufunc = [arccosh]
-    _sp_bin_ufunc = [mod]
+    _sp_unary_ufunc = {arccosh, invert}
+    _sp_bin_ufunc = {mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp}
 
-    data1 = np.random.random((5, 9, 4))
-    data2 = np.random.random((5, 9, 4))
+    data1 = np.random.random((5, 6, 2))
+    data2 = np.random.random((5, 6, 2))
     rand = np.random.random()
     arr1 = tensor(data1, chunk_size=3)
     arr2 = tensor(data2, chunk_size=3)
 
-    for func in _normal_unary_ufunc:
+    _new_unary_ufunc = UNARY_UFUNC - _sp_unary_ufunc
+    for func in _new_unary_ufunc:
         res_tensor = func(arr1)
         res = res_tensor.execute().fetch()
         expected = _get_func(res_tensor.op._func_name)(data1)
         np.testing.assert_array_almost_equal(res, expected)
 
-    for func in _normal_bin_ufunc:
+    _new_bin_ufunc = BIN_UFUNC - _sp_bin_ufunc
+    for func in _new_bin_ufunc:
         res_tensor1 = func(arr1, arr2)
         res_tensor2 = func(arr1, rand)
         res_tensor3 = func(rand, arr1)

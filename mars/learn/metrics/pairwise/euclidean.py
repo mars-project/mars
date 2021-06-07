@@ -16,6 +16,7 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
+from ....config import options
 from ....core import recursive_tile
 from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
@@ -132,7 +133,7 @@ class EuclideanDistances(PairwiseDistances):
         if YY is None:
             YY = row_norms(Y, squared=True)[np.newaxis, :]
 
-        X, Y = yield from cls._adjust_chunk_sizes(X, Y, out)
+        X, Y = yield from cls._adjust_chunk_sizes(op, X, Y, out)
 
         distances = -2 * X.dot(Y.T)
         if distances.issparse():
@@ -229,6 +230,7 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
     X, Y = EuclideanDistances.check_pairwise_arrays(X, Y)
     op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
                             y_norm_squared=Y_norm_squared, squared=squared,
-                            dtype=np.dtype(dtype))
+                            dtype=np.dtype(dtype),
+                            chunk_store_limit=options.chunk_store_limit)
     return op(X, Y=Y, Y_norm_squared=Y_norm_squared,
               X_norm_squared=X_norm_squared)

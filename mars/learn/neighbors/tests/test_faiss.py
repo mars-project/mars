@@ -64,7 +64,7 @@ def test_manual_build_faiss_index(setup):
     X = mt.tensor(x, chunk_size=50)
     index = build_faiss_index(X, 'Flat', None, random_state=0,
                               same_distribution=True)
-    faiss_index = _load_index(index.execute().fetch()[0], -1)
+    faiss_index = _load_index(index.execute().fetch(), -1)
 
     faiss_index.nprob = 10
     _, indices = faiss_index.search(y, k=5)
@@ -75,7 +75,7 @@ def test_manual_build_faiss_index(setup):
     X = mt.tensor(x, chunk_size=10)
     index = build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
                               same_distribution=True)
-    faiss_index = _load_index(index.execute().fetch()[0], -1)
+    faiss_index = _load_index(index.execute().fetch(), -1)
 
     assert isinstance(faiss_index, faiss.IndexIVFFlat)
     assert faiss_index.ntotal == n
@@ -107,7 +107,7 @@ def test_manual_build_faiss_index(setup):
     X = mt.tensor(x, chunk_size=50)
     index = build_faiss_index(X, 'IVF30,Flat', 30, random_state=0,
                               same_distribution=True)
-    faiss_index = _load_index(index.execute().fetch()[0], -1)
+    faiss_index = _load_index(index.execute().fetch(), -1)
 
     assert isinstance(faiss_index, faiss.IndexIVFFlat)
     assert faiss_index.ntotal == n
@@ -121,44 +121,47 @@ def test_manual_build_faiss_index(setup):
         build_faiss_index(X, 'Flat', None, metric='unknown_metric')
 
 
-@pytest.mark.skipif(faiss is None, reason='faiss not installed')
-def test_faiss_query(setup):
-    d = 8
-    n = 50
-    n_test = 10
-    x = np.random.RandomState(0).rand(n, d).astype(np.float32)
-    y = np.random.RandomState(1).rand(n_test, d).astype(np.float32)
+d = 8
+n = 50
+n_test = 10
+x = np.random.RandomState(0).rand(n, d).astype(np.float32)
+y = np.random.RandomState(1).rand(n_test, d).astype(np.float32)
 
-    test_tensors = [
+
+@pytest.mark.skipif(faiss is None, reason='faiss not installed')
+@pytest.mark.parametrize(
+    'X, Y', [
         # multi chunks
         (mt.tensor(x, chunk_size=(20, 5)), mt.tensor(y, chunk_size=5)),
         # one chunk
         (mt.tensor(x, chunk_size=50), mt.tensor(y, chunk_size=10))
     ]
+)
+@pytest.mark.parametrize(
+    'metric', ['l2', 'cosine']
+)
+def test_faiss_query(setup, X, Y, metric):
+    faiss_index = build_faiss_index(X, 'Flat', None, metric=metric,
+                                    random_state=0)
+    d, i = faiss_query(faiss_index, Y, 5, nprobe=10)
+    distance, indices = fetch(*execute(d, i))
 
-    for X, Y in test_tensors:
-        for metric in ['l2', 'cosine']:
-            faiss_index = build_faiss_index(X, 'Flat', None, metric=metric,
-                                            random_state=0)
-            d, i = faiss_query(faiss_index, Y, 5, nprobe=10)
-            distance, indices = fetch(*execute(d, i))
+    nn = NearestNeighbors(metric=metric)
+    nn.fit(x)
+    expected_distance, expected_indices = nn.kneighbors(y, 5)
 
-            nn = NearestNeighbors(metric=metric)
-            nn.fit(x)
-            expected_distance, expected_indices = nn.kneighbors(y, 5)
+    np.testing.assert_array_equal(indices, expected_indices.fetch())
+    np.testing.assert_almost_equal(
+        distance, expected_distance.fetch(), decimal=4)
 
-            np.testing.assert_array_equal(indices, expected_indices.fetch())
-            np.testing.assert_almost_equal(
-                distance, expected_distance.fetch(), decimal=4)
-
-            # test other index
-            X2 = X.astype(np.float64)
-            Y2 = y.astype(np.float64)
-            faiss_index = build_faiss_index(X2, 'PCAR6,IVF8_HNSW32,SQ8', 10,
-                                            random_state=0, return_index_type='object')
-            d, i = faiss_query(faiss_index, Y2, 5, nprobe=10)
-            # test execute only
-            execute(d, i)
+    # test other index
+    X2 = X.astype(np.float64)
+    Y2 = y.astype(np.float64)
+    faiss_index = build_faiss_index(X2, 'PCAR6,IVF8_HNSW32,SQ8', 10,
+                                    random_state=0, return_index_type='object')
+    d, i = faiss_query(faiss_index, Y2, 5, nprobe=10)
+    # test execute only
+    execute(d, i)
 
 
 @pytest.mark.skipif(faiss is None, reason='faiss not installed')

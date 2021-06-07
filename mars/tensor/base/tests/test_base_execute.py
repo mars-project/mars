@@ -813,7 +813,7 @@ def test_searchsorted_execution(setup):
     raw = np.sort(np.random.randint(100, size=(16,)))
 
     # test different chunk_size, 3 will have combine, 6 will skip combine
-    for chunk_size in (5, 8):
+    for chunk_size in (3, 8):
         arr = tensor(raw, chunk_size=chunk_size)
 
         # test scalar, with value in the middle

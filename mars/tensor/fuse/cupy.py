@@ -19,7 +19,7 @@ from string import ascii_letters
 from ...utils import tokenize
 from ..operands import TensorFuse
 from .. import arithmetic
-from .core import TensorFuseChunkMixin, estimate_fuse_size
+from .core import TensorFuseChunkMixin
 
 
 class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
@@ -33,10 +33,6 @@ class TensorCpFuseChunk(TensorFuse, TensorFuseChunkMixin):
         chunk = op.outputs[0]
         func = cp.ElementwiseKernel(*_evaluate(chunk))
         ctx[chunk.key] = func(*[ctx[i.key] for i in op.inputs])
-
-    @classmethod
-    def estimate_size(cls, ctx, op):
-        estimate_fuse_size(ctx, op)
 
 
 # execution part

@@ -16,8 +16,8 @@ import itertools
 
 import numpy as np
 
-from ....config import options
 from ....core import recursive_tile
+from ....serialization.serializables import Int64Field
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....tensor import tensor as astensor
 from ....utils import has_unknown_shape
@@ -26,6 +26,8 @@ from ...utils import check_array
 
 class PairwiseDistances(TensorOperand, TensorOperandMixin):
     _op_module_ = 'learn'
+
+    chunk_store_limit = Int64Field('chunk_store_limit')
 
     @staticmethod
     def _return_float_dtype(X, Y):
@@ -126,12 +128,12 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
         return x, y
 
     @classmethod
-    def _adjust_chunk_sizes(cls, X, Y, out):
+    def _adjust_chunk_sizes(cls, op, X, Y, out):
         max_x_chunk_size = max(X.nsplits[0])
         max_y_chunk_size = max(Y.nsplits[0])
         itemsize = out.dtype.itemsize
         max_chunk_bytes = max_x_chunk_size * max_y_chunk_size * itemsize
-        chunk_store_limit = options.chunk_store_limit * 2  # scale 2 times
+        chunk_store_limit = op.chunk_store_limit * 2  # scale 2 times
         if max_chunk_bytes > chunk_store_limit:
             adjust_succeeded = False
             # chunk is too huge, try to rechunk X and Y

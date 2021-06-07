@@ -25,7 +25,7 @@ import numpy as np
 
 from ...core import Tileable, recursive_tile
 from ...core.operand import OperandStage
-from ...utils import calc_nsplits, merge_chunks, has_unknown_shape
+from ...utils import calc_nsplits, has_unknown_shape
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
 from ..operands import TensorShuffleProxy
 from ..utils import slice_split, calc_sliced_size, broadcast_shape, unify_chunks, \
@@ -956,38 +956,6 @@ class NDArrayIndexesHandler(IndexesHandler):
 
     def create_context(self, op):
         return TensorIndexHandlerContext(op)
-
-    @classmethod
-    def aggregate_result(cls,
-                         context: IndexHandlerContext,
-                         chunk_index_result: List[Tuple]):
-        if len(chunk_index_result) == 1:
-            result = chunk_index_result[0][1]
-        else:
-            result = merge_chunks(chunk_index_result)
-
-        # check if there is any fancy index
-        fancy_index_infos = context.get_indexes(IndexType.fancy_index)
-
-        if len(fancy_index_infos) == 0:
-            # no fancy index, just return
-            return result
-
-        handler = fancy_index_infos[0].handler
-        if not handler.need_postprocess(context):
-            # no postprocess, just return
-            return result
-
-        fancy_index_shape = fancy_index_infos[0].shape_unified_index.shape
-        raw_positions = \
-            calc_pos(fancy_index_shape, fancy_index_infos[0].split_info[1])
-        # reorder the result as the order of fancy indexes
-        if isinstance(result, np.ndarray):
-            return result[
-                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
-        else:
-            return result.iloc[
-                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
 
 
 class TensorIndexesHandler(IndexesHandler):

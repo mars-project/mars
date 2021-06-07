@@ -21,7 +21,12 @@ import pytest
 
 import mars.dataframe as md
 from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
+from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 from mars.optimization.logical.tileable import optimize
+from mars.tests import setup
+
+
+setup = setup
 
 
 @pytest.fixture(scope='module')
@@ -35,8 +40,16 @@ def prepare_data():
         yield tempdir, df
 
 
+def _execute_iloc(*_):  # pragma: no cover
+    raise ValueError('cannot run iloc')
+
+
+_iloc_operand_executors = {DataFrameIlocGetItem: _execute_iloc,
+                           SeriesIlocGetItem: _execute_iloc}
+
+
 @enter_mode(build=True)
-def test_read_csv_head(prepare_data):
+def test_read_csv_head(prepare_data, setup):
     tempdir, pdf = prepare_data
     file_path = os.path.join(tempdir, 'test.csv')
     pdf.to_csv(file_path, index=False)
@@ -52,6 +65,11 @@ def test_read_csv_head(prepare_data):
     assert opt_df2.op.nrows == 5
     assert len(graph) == 1
     assert opt_df2 in graph.results
+
+    result = df2.execute(extra_config={
+        'operand_executors': _iloc_operand_executors}).fetch()
+    expected = pdf.head(5)
+    pd.testing.assert_frame_equal(result, expected)
 
     # test multiple head
     df3 = df1.head(10)
@@ -84,7 +102,7 @@ def test_read_csv_head(prepare_data):
 
 
 @enter_mode(build=True)
-def test_read_parquet_head(prepare_data):
+def test_read_parquet_head(prepare_data, setup):
     tempdir, pdf = prepare_data
     dirname = os.path.join(tempdir, 'test_parquet')
     os.makedirs(dirname)
@@ -103,9 +121,14 @@ def test_read_parquet_head(prepare_data):
     assert len(graph) == 1
     assert opt_df2 in graph.results
 
+    result = df2.execute(extra_config={
+        'operand_executors': _iloc_operand_executors}).fetch()
+    expected = pdf.head(5)
+    pd.testing.assert_frame_equal(result, expected)
+
 
 @enter_mode(build=True)
-def test_sort_head(prepare_data):
+def test_sort_head(prepare_data, setup):
     _, pdf = prepare_data
 
     df1 = md.DataFrame(pdf, chunk_size=20)
@@ -119,6 +142,11 @@ def test_sort_head(prepare_data):
     assert opt_df2.op.nrows == 10
     assert len(graph) == 2
     assert opt_df2 in graph.results
+
+    result = df2.execute(extra_config={
+        'operand_executors': _iloc_operand_executors}).fetch()
+    expected = pdf.sort_values(by='b').head(10)
+    pd.testing.assert_frame_equal(result, expected)
 
     pdf2 = pdf.copy()
     pdf2.set_index('b', inplace=True)
@@ -134,10 +162,15 @@ def test_sort_head(prepare_data):
     assert len(graph) == 2
     assert opt_df2 in graph.results
 
+    result = df2.execute(extra_config={
+        'operand_executors': _iloc_operand_executors}).fetch()
+    expected = pdf2.sort_index().head(10)
+    pd.testing.assert_frame_equal(result, expected)
+
 
 @pytest.mark.parametrize('chunk_size', [5, 10])
 @enter_mode(build=True)
-def test_value_counts_head(prepare_data, chunk_size):
+def test_value_counts_head(prepare_data, setup, chunk_size):
     _, pdf = prepare_data
     df = md.DataFrame(pdf, chunk_size=chunk_size)
 
@@ -151,6 +184,11 @@ def test_value_counts_head(prepare_data, chunk_size):
     assert opt_df2.op.nrows == 3
     assert len(graph) == 3
     assert opt_df2 in graph.results
+
+    result = df2.execute(extra_config={
+        'operand_executors': _iloc_operand_executors}).fetch()
+    expected = pdf['a'].value_counts().head(3)
+    pd.testing.assert_series_equal(result, expected)
 
 
 @enter_mode(build=True)

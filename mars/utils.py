@@ -512,7 +512,7 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
                                  group_keys=v.group_keys, squeeze=v.squeeze,
                                  observed=v.observed, mutated=v.mutated)
         return grouped.groupby_obj
-    elif isinstance(v, (str, bytes)):
+    elif isinstance(v, (str, bytes, memoryview)):
         result = [r[1] for r in chunk_results]
         if len(result) == 1:
             return result[0]
@@ -1158,7 +1158,7 @@ class _ExtensibleWrapper(_ExtensibleCallable):
             try:
                 return await asyncio.gather(*tasks)
             except asyncio.CancelledError:
-                [task.cancel() for task in tasks]
+                _ = [task.cancel() for task in tasks]
                 return await asyncio.gather(*tasks)
 
     def _sync_batch(self, *delays):

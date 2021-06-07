@@ -97,7 +97,8 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_dataframes(None, df.shape, dtypes=op.dtypes,
                                      index_value=df.index_value,
                                      columns_value=df.columns_value,
-                                     chunks=out_chunks, nsplits=chunk_size)
+                                     chunks=out_chunks, nsplits=chunk_size,
+                                     **df.extra_params)
 
     @classmethod
     def execute(cls, ctx, op):
