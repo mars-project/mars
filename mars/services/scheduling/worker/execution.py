@@ -213,11 +213,11 @@ class SubtaskExecutionActor(mo.Actor):
 
             subtask_info.result.status = SubtaskStatus.running
             run_aiotask = asyncio.create_task(
-                subtask_api.run_subtask_in_slot(slot_id, subtask))
+                subtask_api.run_subtask_in_slot(band_name, slot_id, subtask))
             yield asyncio.shield(run_aiotask)
         except asyncio.CancelledError as ex:
             if slot_id is not None:
-                cancel_task = asyncio.create_task(subtask_api.cancel_subtask_in_slot(slot_id))
+                cancel_task = asyncio.create_task(subtask_api.cancel_subtask_in_slot(band_name, slot_id))
                 try:
                     yield asyncio.wait_for(asyncio.shield(cancel_task),
                                            subtask_info.kill_timeout)

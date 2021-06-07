@@ -56,26 +56,21 @@ class SubtaskManagerActor(mo.Actor):
 
         band_to_slots = await self._cluster_api.get_bands()
         supervisor_address = (await self._cluster_api.get_supervisors())[0]
-        tasks = []
         for band, n_slot in band_to_slots.items():
-            tasks.append(asyncio.create_task(
-                self._create_band_runner_actors(band[1], n_slot, supervisor_address)))
-        await asyncio.gather(*tasks)
+            await self._create_band_runner_actors(band[1], n_slot, supervisor_address)
 
     async def _create_band_runner_actors(self, band_name: str, n_slots: int,
                                          supervisor_address: str):
         strategy = IdleLabel(band_name, 'subtask_runner')
         band = (self.address, band_name)
-        tasks = []
         for slot_id in range(n_slots):
-            tasks.append(asyncio.create_task(mo.create_actor(
+            await mo.create_actor(
                 SubtaskRunnerActor,
                 supervisor_address, band,
                 subtask_processor_cls=self._subtask_processor_cls,
-                uid=SubtaskRunnerActor.gen_uid(slot_id),
+                uid=SubtaskRunnerActor.gen_uid(band_name, slot_id),
                 address=self.address,
-                allocate_strategy=strategy)))
-        await asyncio.gather(*tasks)
+                allocate_strategy=strategy)
 
 
 class DataStore(dict):
@@ -198,6 +193,11 @@ class SubtaskProcessor:
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
         return execute(ctx, op)
 
+    async def done(self):
+        if self.result.status == SubtaskStatus.running:
+            self.result.status = SubtaskStatus.succeeded
+        self.result.progress = 1.0
+
     async def run(self):
         self.result.status = SubtaskStatus.running
 
@@ -209,7 +209,7 @@ class SubtaskProcessor:
             self._gen_chunk_key_to_data_keys()
             ref_counts = self._init_ref_counts()
 
-            asyncio.create_task(
+            report_progress = asyncio.create_task(
                 self.report_progress_periodically())
 
             await self._load_input_data()
@@ -351,12 +351,17 @@ class SubtaskProcessor:
             self.result.status = SubtaskStatus.errored
             self.result.progress = 1.0
             _, self.result.error, self.result.traceback = sys.exc_info()
+            await self.done()
             raise
         finally:
             pass
 
-        self.result.status = SubtaskStatus.succeeded
-        self.result.progress = 1.0
+        await self.done()
+        report_progress.cancel()
+        try:
+            await report_progress
+        except asyncio.CancelledError:
+            pass
         return self.result
 
     async def report_progress_periodically(self, interval=.5, eps=0.001):
@@ -385,8 +390,8 @@ class _SubtaskRunningInfo:
 
 class SubtaskRunnerActor(mo.Actor):
     @classmethod
-    def gen_uid(cls, slot_id: int):
-        return f'slot_{slot_id}_subtask_runner'
+    def gen_uid(cls, band_name: str, slot_id: int):
+        return f'slot_{band_name}_{slot_id}_subtask_runner'
 
     def __init__(self,
                  supervisor_address: str,
