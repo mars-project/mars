@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core.session import new_session, execute, fetch, fetch_log, stop_server  # noqa: F401
+from .core.session import new_session, execute, fetch, fetch_log, stop_server  # noqa: F401  # pylint: disable=unused-import
 # register
 from .deploy.oscar.session import Session
 del Session

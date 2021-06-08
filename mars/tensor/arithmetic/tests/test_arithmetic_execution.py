@@ -324,7 +324,7 @@ def test_arctan2_execution(setup):
 
 
 def test_frexp_execution(setup):
-    data1 = np.random.random((5, 9, 4))
+    data1 = np.random.RandomState(0).random((5, 9, 4))
 
     arr1 = tensor(data1.copy(), chunk_size=3)
 

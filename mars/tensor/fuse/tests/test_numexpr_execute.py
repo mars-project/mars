@@ -80,10 +80,11 @@ def test_unary_execution(setup):
 
 @ignore_warning
 def test_bin_execution(setup):
-    from mars.tensor.arithmetic import BIN_UFUNC, mod, bitand, bitxor, rshift, ldexp
+    from mars.tensor.arithmetic import BIN_UFUNC, mod, fmod, \
+        bitand, bitor, bitxor, lshift, rshift, ldexp
 
-    _sp_bin_ufunc = [mod, bitand, bitxor, rshift]
-    _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})[:3]
+    _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]
+    _new_bin_ufunc = list(BIN_UFUNC - set(_sp_bin_ufunc) - {ldexp})
 
     tested = set()
     rs = np.random.RandomState(0)
