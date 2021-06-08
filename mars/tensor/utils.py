@@ -17,12 +17,12 @@
 import inspect
 import itertools
 import operator
-import uuid
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import lru_cache, reduce, wraps
 from math import ceil
 from numbers import Integral
+from typing import Dict, List, Union
 
 import numpy as np
 try:
@@ -30,7 +30,7 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tildb = None
 
-from ..core import ExecutableTuple
+from ..core import ExecutableTuple, recursive_tile
 from ..utils import lazy_import
 from ..lib.mmh3 import hash_from_buffer
 
@@ -314,7 +314,8 @@ def calc_object_length(obj, size=None):
         return len(obj)
 
 
-def slice_split(index, sizes):
+def slice_split(index: Union[int, slice],
+                sizes: List[int]) -> Dict[int, Union[int, slice]]:
     size = sum(sizes)
 
     if isinstance(index, Integral):
@@ -480,7 +481,8 @@ def unify_nsplits(*tensor_axes):
     for t, axes in tensor_axes:
         new_chunk = dict((i, axes_unified_splits[ax]) for ax, i in zip(axes, range(t.ndim))
                          if ax in axes_unified_splits)
-        res.append(t.rechunk(new_chunk)._inplace_tile())
+        t = yield from recursive_tile(t.rechunk(new_chunk))
+        res.append(t)
 
     return tuple(res)
 
@@ -492,7 +494,7 @@ def unify_chunks(*tensors):
     if len(tensor_axes) < 2:
         return tuple(t[0] if isinstance(t, tuple) else t for t in tensors)
 
-    return unify_nsplits(*tensor_axes)
+    return (yield from unify_nsplits(*tensor_axes))
 
 
 def check_out_param(out, t, casting):
@@ -608,101 +610,6 @@ def check_random_state(seed):
         return seed
     raise ValueError(f'{seed} cannot be used to seed a mt.random.RandomState'
                      ' instance')
-
-
-def create_fetch_tensor(chunk_size, shape, dtype, tensor_key=None, tensor_id=None, chunk_keys=None):
-    """
-    Construct Fetch tensor on the fly, using given chunk_size, shape, dtype,
-    as well as possible tensor_key, tensor_id and chunk keys.
-    """
-    from ..config import options
-    from .fetch import TensorFetch
-
-    if not isinstance(dtype, np.dtype):
-        dtype = np.dtype(dtype)
-    if chunk_keys is None:
-        chunk_keys = itertools.repeat(None)
-
-    # compute chunks
-    chunk_size = chunk_size or options.chunk_size
-    chunk_size = decide_chunk_sizes(shape, chunk_size, dtype.itemsize)
-    chunk_size_idxes = (range(len(size)) for size in chunk_size)
-
-    fetch_op = TensorFetch(dtype=dtype).reset_key()
-
-    chunks = []
-    for chunk_shape, chunk_idx, chunk_key in zip(itertools.product(*chunk_size),
-                                                 itertools.product(*chunk_size_idxes),
-                                                 chunk_keys):
-        chunk = fetch_op.copy().reset_key().new_chunk(None, shape=chunk_shape, index=chunk_idx,
-                                                      _key=chunk_key, hex=uuid.uuid4().hex)
-        chunks.append(chunk)
-    return fetch_op.copy().new_tensor(None, shape=shape, dtype=dtype, nsplits=chunk_size,
-                                      chunks=chunks, _key=tensor_key, _id=tensor_id, hex=uuid.uuid4().hex)
-
-
-def create_mutable_tensor(name, chunk_size, shape, dtype, chunk_keys=None, chunk_eps=None):
-    """
-    Construct MutableTensor on the fly, using given name, chunk_size, shape, dtype,
-    as well as possible chunk keys.
-    """
-    from .core import MutableTensor, MutableTensorData
-    tensor = create_fetch_tensor(chunk_size, shape, dtype, chunk_keys=chunk_keys)
-    return MutableTensor(data=MutableTensorData(name=name, op=None, shape=shape, dtype=tensor.dtype,
-                                                nsplits=tensor.nsplits, key=tensor.key, chunks=tensor.chunks,
-                                                chunk_eps=chunk_eps))
-
-
-def setitem_as_records(nsplits_acc, output_chunk, value, ts, is_scalar):
-    """
-    Turns a `__setitem__`  to a list of index-value records.
-
-    Parameters:
-    :arg nsplits_acc:
-        Accumulate nsplits arrays of the output tensor chunks.
-
-    :arg output_chunk:
-        A chunk in the output of the `__setitem__` op.
-
-    :arg value:
-        The scalar or ndarray value that are set to the tensor.
-
-    :arg ts:
-        The timestamp value will be contained in the records.
-
-    :arg is_scalar:
-        Whether the value should be treat as scalar value, including tuple
-        for structured arrays.
-
-    :returns:
-        A list of `[index, value, timestamp]`.
-    """
-    # prepare chunk value
-    if is_scalar:
-        chunk_value = value
-    else:
-        chunk_value_slice = tuple(slice(nsplits_acc[i][output_chunk.index[i]],
-                                        nsplits_acc[i][output_chunk.index[i] + 1])
-                                  for i in range(len(output_chunk.index)))
-        chunk_value = value[chunk_value_slice]
-
-    input_chunk = output_chunk.op.input
-
-    input_indices = []  # index in the chunk of the mutable tensor
-    value_indices = []  # index in the chunk of the assigned value
-    for d, s in zip(output_chunk.op.indexes, input_chunk.shape):
-        # expand the index (slice)
-        idx = np.r_[slice(*d.indices(s)) if isinstance(d, slice) else d]
-        input_indices.append(idx)
-        if not isinstance(d, Integral):
-            value_indices.append(np.arange(len(idx)))
-
-    records = []
-    for chunk_idx, value_idx in zip(itertools.product(*input_indices),
-                                    itertools.product(*value_indices)):
-        new_value = chunk_value if is_scalar else chunk_value[value_idx]
-        records.append((np.ravel_multi_index(chunk_idx, input_chunk.shape), ts, new_value))
-    return records
 
 
 def filter_inputs(inputs):

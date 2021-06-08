@@ -18,10 +18,10 @@ from typing import Dict
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import ValueType, KeyField, StringField, BytesField, TupleField
+from ...serialization.serializables import FieldTypes, KeyField, \
+    StringField, BytesField, TupleField
 from ...lib.filesystem import get_fs, FSMap
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from .core import TensorDataStore
 
 
@@ -56,7 +56,7 @@ class TensorToZarrDataStore(TensorDataStore):
     _dataset = StringField('dataset')
     _zarr_options = BytesField('zarr_options', on_serialize=pickle.dumps,
                                on_deserialize=pickle.loads)
-    _axis_offsets = TupleField('axis_offsets', ValueType.int32)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.int32)
 
     def __init__(self, path=None, group=None, dataset=None, zarr_options=None,
                  axis_offsets=None, **kw):
@@ -91,7 +91,8 @@ class TensorToZarrDataStore(TensorDataStore):
     def tile(cls, op):
         import zarr
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         in_tensor = op.input
 
         # create dataset

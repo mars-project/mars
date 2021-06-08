@@ -137,7 +137,10 @@ class StrSerializer(Serializer):
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         if header.get('unicode'):
-            return buffers[0].decode()
+            buffer = buffers[0]
+            if isinstance(buffer, memoryview):
+                buffer = buffer.tobytes()
+            return buffer.decode()
         return buffers[0]
 
 
@@ -276,7 +279,12 @@ class DictSerializer(CollectionSerializer):
                 key = context[key.id]
             ret[key] = real_value
 
-        ret = obj_type(zip(keys, values))
+        try:
+            ret = obj_type(zip(keys, values))
+        except TypeError:
+            # defaultdict
+            ret = obj_type()
+            ret.update(zip(keys, values))
         for k, v in zip(keys, values):
             if isinstance(k, Placeholder):
                 k.callbacks.append(partial(_key_replacer, k))
@@ -316,11 +324,6 @@ class Placeholder:
 
 
 def serialize(obj, context: Dict = None):
-    # todo remove this when gevent dependency removed
-    # workaround for traceback pickling error
-    from ..lib.tblib import pickling_support
-    pickling_support.install()
-
     def _wrap_headers(_obj, _serializer_name, _header, _buffers):
         if _header.get('serializer') == 'ref':
             return _header, _buffers

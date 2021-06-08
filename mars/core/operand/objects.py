@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ... import opcodes
 from ...serialization.serializables import BoolField
 from ..entity import OutputType, register_fetch_class
-from .base import Operand, VirtualOperand
+from .base import Operand
 from .core import TileableOperandMixin
 from .fetch import FetchMixin, Fetch
 from .fuse import Fuse, FuseChunkMixin
@@ -85,29 +84,3 @@ class MergeDictOperand(ObjectOperand, ObjectOperandMixin):
         assert op.merge
         inputs = [ctx[inp.key] for inp in op.inputs]
         ctx[op.outputs[0].key] = next(inp for inp in inputs if inp)
-
-
-class SuccessorsExclusive(ObjectOperandMixin, VirtualOperand):
-    _op_module_ = 'core'
-    _op_type_ = opcodes.SUCCESSORS_EXCLUSIVE
-
-    def _new_chunks(self, inputs, kws=None, **kw):
-        from ...context import get_context, RunningMode
-
-        ctx = get_context()
-        if ctx.running_mode == RunningMode.local:
-            # set inputs to None if local
-            inputs = None
-        return super()._new_chunks(inputs, kws=kws, **kw)
-
-    @classmethod
-    def execute(cls, ctx, op):
-        from ...context import RunningMode
-
-        # only for local
-        if ctx.running_mode == RunningMode.local:
-            ctx[op.outputs[0].key] = ctx.create_lock()
-        else:  # pragma: no cover
-            raise RuntimeError('Cannot execute SuccessorsExclusive '
-                               'which is a virtual operand '
-                               'for the distributed runtime')

@@ -35,9 +35,20 @@ class NDArraySerializer(Serializer):
             order = 'F'
         elif not obj.flags.c_contiguous:
             obj = np.ascontiguousarray(obj)
+        try:
+            desc = np.lib.format.dtype_to_descr(obj.dtype)
+            dtype_new_order = None
+        except ValueError:
+            # for structured dtype, array[[field2, field1]] will create a view,
+            # and dtype_to_desc will fail due to the order
+            fields = obj.dtype.fields
+            new_fields = sorted(fields, key=lambda k: fields[k][1])
+            desc = np.lib.format.dtype_to_descr(obj.dtype[new_fields])
+            dtype_new_order = list(fields)
         header.update(dict(
             pickle=False,
-            descr=np.lib.format.dtype_to_descr(obj.dtype),
+            descr=desc,
+            dtype_new_order=dtype_new_order,
             shape=list(obj.shape),
             strides=list(obj.strides),
             order=order
@@ -49,6 +60,9 @@ class NDArraySerializer(Serializer):
             return unpickle_buffers(buffers)
 
         dtype = np.lib.format.descr_to_dtype(header['descr'])
+        dtype_new_order = header['dtype_new_order']
+        if dtype_new_order:
+            dtype = dtype[dtype_new_order]
         return np.ndarray(
             shape=tuple(header['shape']), dtype=dtype,
             buffer=buffers[0], strides=tuple(header['strides']),

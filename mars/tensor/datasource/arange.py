@@ -18,7 +18,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from ...config import options
 from ..utils import decide_chunk_sizes
 from .core import TensorNoInput

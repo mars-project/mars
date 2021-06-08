@@ -22,10 +22,9 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, TilesError
-from ...serialize import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
 from ...tensor.core import TensorOrder
-from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite
 
@@ -75,7 +74,7 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
         out = op.outputs[0]
 
         if not (hasattr(y, 'shape') and y.ndim == 2 and y.shape[1] > 1):
-            result = mt.array(False)._inplace_tile()
+            result = yield from recursive_tile(mt.array(False))
             return [result]
         else:
             unique_y = op.unique_y
@@ -244,7 +243,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         y = op.y
 
         chunk_inputs = []
-        is_multilabel_chunk = recursive_tile(is_multilabel(y)).chunks[0]
+        is_multilabel_chunk = (yield from recursive_tile(is_multilabel(y))).chunks[0]
         chunk_inputs.append(is_multilabel_chunk)
 
         if not isinstance(y, ENTITY_TYPE):
@@ -252,27 +251,27 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
                 y = np.asarray(y)
             y = mt.asarray(y)
         if np.isnan(y.size):  # pragma: no cover
-            raise TilesError('y has unknown shape')
+            yield
 
         chunk_op = TypeOfTarget(is_multilabel=is_multilabel_chunk,
                                 y_shape=y.shape, y_dtype=y.dtype)
 
         if y.ndim <= 2 and y.size > 0 and y.dtype == object:
-            first_value_chunk = recursive_tile(y[(0,) * y.ndim]).chunks[0]
+            first_value_chunk = (yield from recursive_tile(y[(0,) * y.ndim])).chunks[0]
             chunk_inputs.append(first_value_chunk)
             chunk_op._first_value = first_value_chunk
 
         if y.dtype.kind == 'f':
-            check_float_chunk = recursive_tile(mt.any(y != y.astype(int))).chunks[0]
+            check_float_chunk = (yield from recursive_tile(mt.any(y != y.astype(int)))).chunks[0]
             chunk_inputs.append(check_float_chunk)
             chunk_op._check_float = check_float_chunk
 
-            assert_all_finite_chunk = recursive_tile(assert_all_finite(y)).chunks[0]
+            assert_all_finite_chunk = (yield from recursive_tile(assert_all_finite(y))).chunks[0]
             chunk_inputs.append(assert_all_finite_chunk)
             chunk_op._assert_all_finite = assert_all_finite_chunk
 
         if y.size > 0:
-            unique_y_chunk = recursive_tile(mt.unique(y, aggregate_size=1)).chunks[0]
+            unique_y_chunk = (yield from recursive_tile(mt.unique(y, aggregate_size=1))).chunks[0]
             chunk_inputs.append(unique_y_chunk)
             chunk_op._unique_y = unique_y_chunk
 

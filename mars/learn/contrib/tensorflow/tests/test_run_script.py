@@ -12,39 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import os
 
+import pytest
+
 from mars.learn.contrib.tensorflow import run_tensorflow_script
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 
 try:
     import tensorflow
 except ImportError:
     tensorflow = None
 
+setup = setup
 
-@unittest.skipIf(tensorflow is None, 'tensorflow not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
+@pytest.mark.skipif(tensorflow is None, reason='tensorflow not installed')
+def test_local_run_tensor_flow_script(setup):
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
+    assert run_tensorflow_script(
+        path, n_workers=1, command_argv=['multiple'],
+        port=2222)['status'] == 'ok'
 
-    def testLocalRunTensorFlowScript(self):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
-        self.assertEqual(run_tensorflow_script(
-            path, n_workers=2, command_argv=['multiple'],
-            port=2222, run_kwargs={'n_parallel': 2}
-        )['status'], 'ok')
+    with pytest.raises(ValueError):
+        run_tensorflow_script(path, n_workers=0)
 
-        with self.assertRaises(ValueError):
-            run_tensorflow_script(path, n_workers=0)
-
-        with self.assertRaises(ValueError):
-            run_tensorflow_script(path, 2, n_ps=-1)
+    with pytest.raises(ValueError):
+        run_tensorflow_script(path, 2, n_ps=-1)

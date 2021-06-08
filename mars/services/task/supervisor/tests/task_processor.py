@@ -13,12 +13,18 @@
 # limitations under the License.
 
 import itertools
+from typing import Dict
 
 import numpy as np
 
-from .....core import TileableType, OBJECT_TYPE
-from .....tests.core import _check_args, ObjectCheckMixin
-from ..task_manager import TaskProcessor
+from mars.core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
+from mars.core.operand import Fetch
+from mars.tests.core import _check_args, ObjectCheckMixin
+from mars.services.core import BandType
+from mars.services.subtask import SubtaskGraph
+from mars.services.task.analyzer import GraphAnalyzer
+from mars.services.task.supervisor.task_manager \
+    import TaskProcessor, TaskStageInfo
 
 
 class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
@@ -78,3 +84,26 @@ class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
             self._check_nsplits(tiled)
             self._tileable_checked[tileable.key] = True
         return super()._update_tileable_params(tileable, tiled)
+
+    @enter_mode(build=True)
+    def analyze(self,
+                chunk_graph: ChunkGraph,
+                available_bands: Dict[BandType, int],
+                task_stage_info: TaskStageInfo) -> SubtaskGraph:
+        # record shapes generated in tile
+        for n in chunk_graph:
+            self._raw_chunk_shapes[n.key] = getattr(n, 'shape', None)
+        task = self._task
+        analyzer = GraphAnalyzer(chunk_graph, available_bands,
+                                 task.fuse_enabled, task.extra_config,
+                                 task_stage_info)
+        subtask_graph = analyzer.gen_subtask_graph()
+        results = set(analyzer._chunk_to_copied[c]
+                      for c in chunk_graph.results
+                      if not isinstance(c.op, Fetch))
+        for subtask in subtask_graph:
+            if all(c not in results for c in subtask.chunk_graph.results):
+                if subtask.extra_config is None:
+                    subtask.extra_config = dict()
+                subtask.extra_config['check_all'] = False
+        return subtask_graph

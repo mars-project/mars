@@ -13,24 +13,22 @@
 # limitations under the License.
 
 import builtins
+import inspect
 import itertools
 from operator import attrgetter
-from typing import List, Callable
+from typing import List, Callable, Generator
 from weakref import WeakSet, WeakKeyDictionary
 
 import numpy as np
 
 from ...serialization.serializables import FieldTypes, TupleField
+from ...typing import OperandType, TileableType, ChunkType
+from ...utils import on_serialize_shape, on_deserialize_shape, on_serialize_nsplits
 from ..base import Base
 from ..mode import enter_mode, is_build_mode
-from ..typing import OperandType, TileableType, ChunkType
 from .chunks import Chunk
 from .core import EntityData, Entity
 from .executable import _ExecutableMixin
-
-
-class TilesError(Exception):
-    partial_tiled_chunks: List[ChunkType]
 
 
 class NotSupportTile(Exception):
@@ -56,6 +54,32 @@ class OperandTilesHandler:
     def get_handler(cls, op: OperandType) -> Callable[[OperandType], List[TileableType]]:
         op_cls = cls._get_op_cls(op)
         return cls._handlers.get(op_cls, op_cls.tile)
+
+    @classmethod
+    def tile(cls, tileables: List[TileableType]) \
+            -> Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
+        op = tileables[0].op
+        tile_handler = cls.get_handler(op)
+        if inspect.isgeneratorfunction(tile_handler):
+            # op.tile can be a generator function,
+            # each time an operand yield some chunks,
+            # they will be put into ChunkGraph and executed first.
+            # After execution, resume from the yield place.
+            tiled_result = yield from tile_handler(op)
+        else:
+            # without iterative tiling
+            tiled_result = tile_handler(op)
+
+        if not isinstance(tiled_result, list):
+            tiled_result = [tiled_result]
+        tiled_results = [t.data if hasattr(t, 'data') else t
+                         for t in tiled_result]
+        assert len(tileables) == len(tiled_results)
+        if any(inspect.isgenerator(r) for r in tiled_results):  # pragma: no cover
+            raise TypeError(f'tiled result cannot be generator '
+                            f'when tiling {op}')
+        cls._assign_to(tiled_results, tileables)
+        return tileables
 
     @classmethod
     def _assign_to(cls,
@@ -96,55 +120,9 @@ class OperandTilesHandler:
             raise NotImplementedError(
                 f'{type(op)} does not support tile') from cause
 
-    def inplace_tile(self, to_tile):
-        if not to_tile.is_coarse():
-            return to_tile
-        dispatched = self.dispatch(to_tile.op)
-        self._assign_to([d.data for d in dispatched], to_tile.op.outputs)
-        return to_tile
-
-    @classmethod
-    def tiles(cls, to_tile: TileableType):
-        from ..graph.builder.legacy import _build_graph, get_tiled
-
-        _build_graph([to_tile], tiled=True, fuse_enabled=False)
-        return get_tiled(to_tile)
-
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register
-
-
-def tile(tileable, *tileables: TileableType):
-    from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-
-    target_tileables = [tileable] + list(tileables)
-    target_tileables = [t.data if hasattr(t, 'data') else t
-                        for t in target_tileables]
-
-    tileable_graph = TileableGraph(target_tileables)
-    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
-    next(tileable_graph_builder.build())
-
-    # tile
-    tile_context = dict()
-    chunk_graph_builder = ChunkGraphBuilder(
-        tileable_graph, fuse_enabled=False, tile_context=tile_context)
-    next(chunk_graph_builder.build())
-
-    if len(tileables) == 0:
-        return tile_context[target_tileables[0]]
-    else:
-        return [tile_context[t] for t in target_tileables]
-
-
-def on_serialize_nsplits(value):
-    if value is None:
-        return None
-    new_nsplits = []
-    for dim_splits in value:
-        new_nsplits.append(tuple(None if np.isnan(v) else v for v in dim_splits))
-    return tuple(new_nsplits)
 
 
 class _ChunksIndexer:
@@ -333,9 +311,6 @@ class TileableData(EntityData, _ExecutableMixin):
     def detach(self, entity):
         self._entities.discard(entity)
 
-    def _inplace_tile(self):
-        return handler.inplace_tile(self)
-
 
 class Tileable(Entity):
     __slots__ = '__weakref__',
@@ -392,18 +367,6 @@ class Tileable(Entity):
 
 
 TILEABLE_TYPE = (Tileable, TileableData)
-
-
-def on_serialize_shape(shape):
-    if shape:
-        return tuple(s if not np.isnan(s) else -1 for s in shape)
-    return shape
-
-
-def on_deserialize_shape(shape):
-    if shape:
-        return tuple(s if s != -1 else np.nan for s in shape)
-    return shape
 
 
 class HasShapeTileableData(TileableData):

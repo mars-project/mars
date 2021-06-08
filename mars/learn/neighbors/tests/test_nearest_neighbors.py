@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
-
+import pytest
 try:
     import faiss
 except ImportError:  # pragma: no cover
@@ -30,185 +28,133 @@ except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
 import mars.tensor as mt
-from mars.core import get_tiled
-from mars.session import new_session
+from mars.core import tile
 from mars.learn.neighbors import NearestNeighbors
 from mars.learn.proxima.core import proxima
 from mars.lib.sparse import SparseNDArray
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 from mars.tests.core import require_cupy
 from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
 
 
-@unittest.skipIf(SkNearestNeighbors is None, 'scikit-learn not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+setup = setup
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
+    
+def test_nearest_neighbors(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 5)
+    raw_Y = rs.rand(8, 5)
 
-    def testNearestNeighbors(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 5)
-        raw_Y = rs.rand(8, 5)
+    X = mt.tensor(raw_X)
+    Y = mt.tensor(raw_Y)
 
-        X = mt.tensor(raw_X)
-        Y = mt.tensor(raw_Y)
+    raw_sparse_x = sps.random(10, 5, density=0.5, format='csr', random_state=rs)
+    raw_sparse_y = sps.random(8, 5, density=0.4, format='csr', random_state=rs)
 
-        raw_sparse_x = sps.random(10, 5, density=0.5, format='csr', random_state=rs)
-        raw_sparse_y = sps.random(8, 5, density=0.4, format='csr', random_state=rs)
+    X_sparse = mt.tensor(raw_sparse_x)
+    Y_sparse = mt.tensor(raw_sparse_y)
 
-        X_sparse = mt.tensor(raw_sparse_x)
-        Y_sparse = mt.tensor(raw_sparse_y)
+    metric_func = lambda u, v: np.sqrt(((u-v)**2).sum())
 
-        metric_func = lambda u, v: np.sqrt(((u-v)**2).sum())
+    _ = NearestNeighbors(algorithm='auto', metric='precomputed', metric_params={})
 
-        _ = NearestNeighbors(algorithm='auto', metric='precomputed', metric_params={})
+    with pytest.raises(ValueError):
+        _ = NearestNeighbors(algorithm='unknown')
 
-        with self.assertRaises(ValueError):
-            _ = NearestNeighbors(algorithm='unknown')
+    with pytest.raises(ValueError):
+        _ = NearestNeighbors(algorithm='kd_tree', metric=metric_func)
 
-        with self.assertRaises(ValueError):
-            _ = NearestNeighbors(algorithm='kd_tree', metric=metric_func)
+    with pytest.raises(ValueError):
+        _ = NearestNeighbors(algorithm='auto', metric='unknown')
 
-        with self.assertRaises(ValueError):
-            _ = NearestNeighbors(algorithm='auto', metric='unknown')
+    assert_warns(SyntaxWarning, NearestNeighbors, metric_params={'p': 1})
 
-        assert_warns(SyntaxWarning, NearestNeighbors, metric_params={'p': 1})
+    with pytest.raises(ValueError):
+        _ = NearestNeighbors(metric='wminkowski', p=0)
 
-        with self.assertRaises(ValueError):
-            _ = NearestNeighbors(metric='wminkowski', p=0)
+    with pytest.raises(ValueError):
+        _ = NearestNeighbors(algorithm='auto', metric='minkowski', p=0)
 
-        with self.assertRaises(ValueError):
-            _ = NearestNeighbors(algorithm='auto', metric='minkowski', p=0)
+    nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=1)
+    nn.fit(X)
+    assert nn.effective_metric_ == 'manhattan'
 
-        nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=1)
-        nn.fit(X)
-        self.assertEqual(nn.effective_metric_, 'manhattan')
+    nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=2)
+    nn.fit(X)
+    assert nn.effective_metric_ == 'euclidean'
 
-        nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=2)
-        nn.fit(X)
-        self.assertEqual(nn.effective_metric_, 'euclidean')
+    nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=np.inf)
+    nn.fit(X)
+    assert nn.effective_metric_ == 'chebyshev'
 
-        nn = NearestNeighbors(algorithm='auto', metric='minkowski', p=np.inf)
-        nn.fit(X)
-        self.assertEqual(nn.effective_metric_, 'chebyshev')
+    nn2 = NearestNeighbors(algorithm='auto', metric='minkowski')
+    nn2.fit(nn)
+    assert nn2._fit_method == nn._fit_method
 
-        nn2 = NearestNeighbors(algorithm='auto', metric='minkowski')
-        nn2.fit(nn)
-        self.assertEqual(nn2._fit_method, nn._fit_method)
+    nn = NearestNeighbors(algorithm='auto', metric='minkowski')
+    ball_tree = SkBallTree(raw_X)
+    nn.fit(ball_tree)
+    assert nn._fit_method == 'ball_tree'
 
-        nn = NearestNeighbors(algorithm='auto', metric='minkowski')
-        ball_tree = SkBallTree(raw_X)
-        nn.fit(ball_tree)
-        self.assertEqual(nn._fit_method, 'ball_tree')
+    nn = NearestNeighbors(algorithm='auto', metric='minkowski')
+    kd_tree = SkKDTree(raw_X)
+    nn.fit(kd_tree)
+    assert nn._fit_method == 'kd_tree'
 
-        nn = NearestNeighbors(algorithm='auto', metric='minkowski')
-        kd_tree = SkKDTree(raw_X)
-        nn.fit(kd_tree)
-        self.assertEqual(nn._fit_method, 'kd_tree')
-
-        with self.assertRaises(ValueError):
-            nn = NearestNeighbors()
-            nn.fit(np.random.rand(0, 10))
-
-        nn = NearestNeighbors(algorithm='ball_tree')
-        assert_warns(UserWarning, nn.fit, X_sparse)
-
-        nn = NearestNeighbors(metric='haversine')
-        with self.assertRaises(ValueError):
-            nn.fit(X_sparse)
-
-        nn = NearestNeighbors(metric=metric_func, n_neighbors=1)
-        nn.fit(X)
-        self.assertEqual(nn._fit_method, 'ball_tree')
-
-        nn = NearestNeighbors(metric='sqeuclidean', n_neighbors=1)
-        nn.fit(X)
-        self.assertEqual(nn._fit_method, 'brute')
-
-        with self.assertRaises(ValueError):
-            nn = NearestNeighbors(n_neighbors=-1)
-            nn.fit(X)
-
-        with self.assertRaises(TypeError):
-            nn = NearestNeighbors(n_neighbors=1.3)
-            nn.fit(X)
-
+    with pytest.raises(ValueError):
         nn = NearestNeighbors()
+        nn.fit(np.random.rand(0, 10))
+
+    nn = NearestNeighbors(algorithm='ball_tree')
+    assert_warns(UserWarning, nn.fit, X_sparse)
+
+    nn = NearestNeighbors(metric='haversine')
+    with pytest.raises(ValueError):
+        nn.fit(X_sparse)
+
+    nn = NearestNeighbors(metric=metric_func, n_neighbors=1)
+    nn.fit(X)
+    assert nn._fit_method == 'ball_tree'
+
+    nn = NearestNeighbors(metric='sqeuclidean', n_neighbors=1)
+    nn.fit(X)
+    assert nn._fit_method == 'brute'
+
+    with pytest.raises(ValueError):
+        nn = NearestNeighbors(n_neighbors=-1)
         nn.fit(X)
-        with self.assertRaises(ValueError):
-            nn.kneighbors(Y, n_neighbors=-1)
-        with self.assertRaises(TypeError):
-            nn.kneighbors(Y, n_neighbors=1.3)
-        with self.assertRaises(ValueError):
-            nn.kneighbors(Y, n_neighbors=11)
 
-        nn = NearestNeighbors(algorithm='ball_tree')
+    with pytest.raises(TypeError):
+        nn = NearestNeighbors(n_neighbors=1.3)
         nn.fit(X)
-        with self.assertRaises(ValueError):
-            nn.kneighbors(Y_sparse)
 
-    def testNearestNeighborsExecution(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 5)
-        raw_Y = rs.rand(8, 5)
+    nn = NearestNeighbors()
+    nn.fit(X)
+    with pytest.raises(ValueError):
+        nn.kneighbors(Y, n_neighbors=-1)
+    with pytest.raises(TypeError):
+        nn.kneighbors(Y, n_neighbors=1.3)
+    with pytest.raises(ValueError):
+        nn.kneighbors(Y, n_neighbors=11)
 
-        X = mt.tensor(raw_X, chunk_size=7)
-        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+    nn = NearestNeighbors(algorithm='ball_tree')
+    nn.fit(X)
+    with pytest.raises(ValueError):
+        nn.kneighbors(Y_sparse)
 
-        for algo in ['brute', 'ball_tree', 'kd_tree', 'auto']:
-            for metric in ['minkowski', 'manhattan']:
-                nn = NearestNeighbors(n_neighbors=3,
-                                      algorithm=algo,
-                                      metric=metric)
-                nn.fit(X)
 
-                ret = nn.kneighbors(Y)
+def test_nearest_neighbors_execution(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 5)
+    raw_Y = rs.rand(8, 5)
 
-                snn = SkNearestNeighbors(n_neighbors=3,
-                                         algorithm=algo,
-                                         metric=metric)
-                snn.fit(raw_X)
-                expected = snn.kneighbors(raw_Y)
+    X = mt.tensor(raw_X, chunk_size=7)
+    Y = mt.tensor(raw_Y, chunk_size=(5, 3))
 
-                result = [r.fetch() for r in ret]
-                np.testing.assert_almost_equal(result[0], expected[0])
-                np.testing.assert_almost_equal(result[1], expected[1])
-
-                if nn._tree is not None:
-                    self.assertIsInstance(nn._tree.fetch(), type(snn._tree))
-
-                # test return_distance=False
-                ret = nn.kneighbors(Y, return_distance=False)
-
-                result = ret.fetch()
-                np.testing.assert_almost_equal(result, expected[1])
-
-                # test y is x
-                ret = nn.kneighbors()
-
-                expected = snn.kneighbors()
-
-                result = [r.fetch() for r in ret]
-                np.testing.assert_almost_equal(result[0], expected[0])
-                np.testing.assert_almost_equal(result[1], expected[1])
-
-                # test y is x, and return_distance=False
-                ret = nn.kneighbors(return_distance=False)
-
-                result = ret.fetch()
-                np.testing.assert_almost_equal(result, expected[1])
-
-        # test callable metric
-        metric = lambda u, v: np.sqrt(((u-v)**2).sum())
-        for algo in ['brute', 'ball_tree']:
+    for algo in ['brute', 'ball_tree', 'kd_tree', 'auto']:
+        for metric in ['minkowski', 'manhattan']:
             nn = NearestNeighbors(n_neighbors=3,
                                   algorithm=algo,
                                   metric=metric)
@@ -226,206 +172,253 @@ class Test(unittest.TestCase):
             np.testing.assert_almost_equal(result[0], expected[0])
             np.testing.assert_almost_equal(result[1], expected[1])
 
-        # test sparse
-        raw_sparse_x = sps.random(10, 5, density=0.5, format='csr', random_state=rs)
-        raw_sparse_y = sps.random(8, 5, density=0.4, format='csr', random_state=rs)
+            if nn._tree is not None:
+                assert isinstance(nn._tree.fetch(), type(snn._tree))
 
-        X = mt.tensor(raw_sparse_x, chunk_size=7)
-        Y = mt.tensor(raw_sparse_y, chunk_size=5)
+            # test return_distance=False
+            ret = nn.kneighbors(Y, return_distance=False)
 
-        nn = NearestNeighbors(n_neighbors=3)
+            result = ret.fetch()
+            np.testing.assert_almost_equal(result, expected[1])
+
+            # test y is x
+            ret = nn.kneighbors()
+
+            expected = snn.kneighbors()
+
+            result = [r.fetch() for r in ret]
+            np.testing.assert_almost_equal(result[0], expected[0])
+            np.testing.assert_almost_equal(result[1], expected[1])
+
+            # test y is x, and return_distance=False
+            ret = nn.kneighbors(return_distance=False)
+
+            result = ret.fetch()
+            np.testing.assert_almost_equal(result, expected[1])
+
+    # test callable metric
+    metric = lambda u, v: np.sqrt(((u-v)**2).sum())
+    for algo in ['brute', 'ball_tree']:
+        nn = NearestNeighbors(n_neighbors=3,
+                              algorithm=algo,
+                              metric=metric)
         nn.fit(X)
 
         ret = nn.kneighbors(Y)
 
-        snn = SkNearestNeighbors(n_neighbors=3)
-        snn.fit(raw_sparse_x)
-        expected = snn.kneighbors(raw_sparse_y)
+        snn = SkNearestNeighbors(n_neighbors=3,
+                                 algorithm=algo,
+                                 metric=metric)
+        snn.fit(raw_X)
+        expected = snn.kneighbors(raw_Y)
 
         result = [r.fetch() for r in ret]
         np.testing.assert_almost_equal(result[0], expected[0])
         np.testing.assert_almost_equal(result[1], expected[1])
 
-        # test input with unknown shape
-        X = mt.tensor(raw_X, chunk_size=7)
-        X = X[X[:, 0] > 0.1]
-        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
-        Y = Y[Y[:, 0] > 0.1]
+    # test sparse
+    raw_sparse_x = sps.random(10, 5, density=0.5, format='csr', random_state=rs)
+    raw_sparse_y = sps.random(8, 5, density=0.4, format='csr', random_state=rs)
 
-        nn = NearestNeighbors(n_neighbors=3)
-        nn.fit(X)
+    X = mt.tensor(raw_sparse_x, chunk_size=7)
+    Y = mt.tensor(raw_sparse_y, chunk_size=5)
 
-        ret = nn.kneighbors(Y)
+    nn = NearestNeighbors(n_neighbors=3)
+    nn.fit(X)
 
-        x2 = raw_X[raw_X[:, 0] > 0.1]
-        y2 = raw_Y[raw_Y[:, 0] > 0.1]
-        snn = SkNearestNeighbors(n_neighbors=3)
-        snn.fit(x2)
-        expected = snn.kneighbors(y2)
+    ret = nn.kneighbors(Y)
 
-        result = ret.fetch()
-        self.assertEqual(nn._fit_method, snn._fit_method)
-        np.testing.assert_almost_equal(result[0], expected[0])
-        np.testing.assert_almost_equal(result[1], expected[1])
+    snn = SkNearestNeighbors(n_neighbors=3)
+    snn.fit(raw_sparse_x)
+    expected = snn.kneighbors(raw_sparse_y)
 
-        # test fit a sklearn tree
-        nn = NearestNeighbors(n_neighbors=3)
-        nn.fit(snn._tree)
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0], expected[0])
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-        ret = nn.kneighbors(Y)
-        result = ret.fetch()
-        self.assertEqual(nn._fit_method, snn._fit_method)
-        np.testing.assert_almost_equal(result[0], expected[0])
-        np.testing.assert_almost_equal(result[1], expected[1])
+    # test input with unknown shape
+    X = mt.tensor(raw_X, chunk_size=7)
+    X = X[X[:, 0] > 0.1]
+    Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+    Y = Y[Y[:, 0] > 0.1]
 
-    def testKNeighborsGraphExecution(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 5)
-        raw_Y = rs.rand(8, 5)
+    nn = NearestNeighbors(n_neighbors=3)
+    nn.fit(X)
 
-        X = mt.tensor(raw_X, chunk_size=7)
-        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+    ret = nn.kneighbors(Y)
 
-        neigh = NearestNeighbors(n_neighbors=3)
-        neigh.fit(X)
-        sklearn_neigh = SkNearestNeighbors(n_neighbors=3)
-        sklearn_neigh.fit(raw_X)
+    x2 = raw_X[raw_X[:, 0] > 0.1]
+    y2 = raw_Y[raw_Y[:, 0] > 0.1]
+    snn = SkNearestNeighbors(n_neighbors=3)
+    snn.fit(x2)
+    expected = snn.kneighbors(y2)
 
-        for mode in ['connectivity', 'distance']:
-            graph = neigh.kneighbors_graph(Y, mode=mode)
-            result = graph.fetch()
+    result = ret.fetch()
+    assert nn._fit_method == snn._fit_method
+    np.testing.assert_almost_equal(result[0], expected[0])
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-            self.assertIsInstance(result, SparseNDArray)
-            self.assertGreater(len(get_tiled(graph).chunks), 1)
+    # test fit a sklearn tree
+    nn = NearestNeighbors(n_neighbors=3)
+    nn.fit(snn._tree)
 
-            expected = sklearn_neigh.kneighbors_graph(raw_Y, mode=mode)
+    ret = nn.kneighbors(Y)
+    result = ret.fetch()
+    assert nn._fit_method == snn._fit_method
+    np.testing.assert_almost_equal(result[0], expected[0])
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-            np.testing.assert_array_equal(result.toarray(),
-                                          expected.toarray())
 
-            graph2 = neigh.kneighbors_graph(mode=mode)
-            result2 = graph2.fetch()
+def test_k_neighbors_graph_execution(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 5)
+    raw_Y = rs.rand(8, 5)
 
-            self.assertIsInstance(result2, SparseNDArray)
-            self.assertGreater(len(get_tiled(graph2).chunks), 1)
+    X = mt.tensor(raw_X, chunk_size=7)
+    Y = mt.tensor(raw_Y, chunk_size=(5, 3))
 
-            expected2 = sklearn_neigh.kneighbors_graph(mode=mode)
+    neigh = NearestNeighbors(n_neighbors=3)
+    neigh.fit(X)
+    sklearn_neigh = SkNearestNeighbors(n_neighbors=3)
+    sklearn_neigh.fit(raw_X)
 
-            np.testing.assert_array_equal(result2.toarray(),
-                                          expected2.toarray())
+    for mode in ['connectivity', 'distance']:
+        graph = neigh.kneighbors_graph(Y, mode=mode)
+        result = graph.fetch()
 
-        X = [[0], [3], [1]]
+        assert isinstance(result, SparseNDArray)
+        assert len(tile(graph).chunks) > 1
 
-        neigh = NearestNeighbors(n_neighbors=2)
-        sklearn_neigh = SkNearestNeighbors(n_neighbors=2)
-        neigh.fit(X)
-        sklearn_neigh.fit(X)
+        expected = sklearn_neigh.kneighbors_graph(raw_Y, mode=mode)
 
-        A = neigh.kneighbors_graph(X).fetch()
-        expected_A = sklearn_neigh.kneighbors_graph(X)
-        np.testing.assert_array_equal(A.toarray(), expected_A.toarray())
+        np.testing.assert_array_equal(result.toarray(),
+                                      expected.toarray())
 
-        # test wrong mode
-        with self.assertRaises(ValueError):
-            _ = neigh.kneighbors_graph(mode='unknown')
+        graph2 = neigh.kneighbors_graph(mode=mode)
+        result2 = graph2.fetch()
 
-    @unittest.skipIf(faiss is None, 'faiss not installed')
-    def testFaissNearestNeighborsExecution(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 5)
-        raw_Y = rs.rand(8, 5)
+        assert isinstance(result2, SparseNDArray)
 
-        # test faiss execution
-        X = mt.tensor(raw_X, chunk_size=7)
-        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+        expected2 = sklearn_neigh.kneighbors_graph(mode=mode)
 
-        nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
-        nn.fit(X)
+        np.testing.assert_array_equal(result2.toarray(),
+                                      expected2.toarray())
 
-        ret = nn.kneighbors(Y)
+    X = [[0], [3], [1]]
 
-        snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
-        snn.fit(raw_X)
-        expected = snn.kneighbors(raw_Y)
+    neigh = NearestNeighbors(n_neighbors=2)
+    sklearn_neigh = SkNearestNeighbors(n_neighbors=2)
+    neigh.fit(X)
+    sklearn_neigh.fit(X)
 
-        result = [r.fetch() for r in ret]
-        np.testing.assert_almost_equal(result[0], expected[0], decimal=6)
-        np.testing.assert_almost_equal(result[1], expected[1])
+    A = neigh.kneighbors_graph(X).fetch()
+    expected_A = sklearn_neigh.kneighbors_graph(X)
+    np.testing.assert_array_equal(A.toarray(), expected_A.toarray())
 
-        # test return_distance=False
-        ret = nn.kneighbors(Y, return_distance=False)
+    # test wrong mode
+    with pytest.raises(ValueError):
+        _ = neigh.kneighbors_graph(mode='unknown')
 
-        result = ret.fetch()
-        np.testing.assert_almost_equal(result, expected[1])
 
-        # test y is x
-        ret = nn.kneighbors()
+@pytest.mark.skipif(faiss is None, reason='faiss not installed')
+def test_faiss_nearest_neighbors_execution(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 5)
+    raw_Y = rs.rand(8, 5)
 
-        expected = snn.kneighbors()
+    # test faiss execution
+    X = mt.tensor(raw_X, chunk_size=7)
+    Y = mt.tensor(raw_Y, chunk_size=(5, 3))
 
-        result = [r.fetch() for r in ret]
-        np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
-        np.testing.assert_almost_equal(result[1], expected[1])
+    nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
+    nn.fit(X)
 
-    @unittest.skipIf(proxima is None, 'proxima not installed')
-    def testProximaNearestNeighborsExecution(self):
-        rs = np.random.RandomState(0)
-        raw_X = rs.rand(10, 5).astype('float32')
-        raw_Y = rs.rand(8, 5).astype('float32')
+    ret = nn.kneighbors(Y)
 
-        # test faiss execution
-        X = mt.tensor(raw_X, chunk_size=6)
-        Y = mt.tensor(raw_Y, chunk_size=(5, 3))
+    snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
+    snn.fit(raw_X)
+    expected = snn.kneighbors(raw_Y)
 
-        nn = NearestNeighbors(n_neighbors=3, algorithm='proxima', metric='l2')
-        nn.fit(X)
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0], expected[0], decimal=6)
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-        ret = nn.kneighbors(Y)
+    # test return_distance=False
+    ret = nn.kneighbors(Y, return_distance=False)
 
-        snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
-        snn.fit(raw_X)
-        expected = snn.kneighbors(raw_Y)
+    result = ret.fetch()
+    np.testing.assert_almost_equal(result, expected[1])
 
-        result = [r.fetch() for r in ret]
-        np.testing.assert_almost_equal(result[0], expected[0], decimal=6)
-        np.testing.assert_almost_equal(result[1], expected[1])
+    # test y is x
+    ret = nn.kneighbors()
 
-        # test return_distance=False
-        ret = nn.kneighbors(Y, return_distance=False)
+    expected = snn.kneighbors()
 
-        result = ret.fetch()
-        np.testing.assert_almost_equal(result, expected[1])
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-        # test y is x
-        ret = nn.kneighbors()
 
-        expected = snn.kneighbors()
+@pytest.mark.skipif(proxima is None, reason='proxima not installed')
+def test_proxima_nearest_neighbors_execution(setup):
+    rs = np.random.RandomState(0)
+    raw_X = rs.rand(10, 5).astype('float32')
+    raw_Y = rs.rand(8, 5).astype('float32')
 
-        result = [r.fetch() for r in ret]
-        np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
-        np.testing.assert_almost_equal(result[1], expected[1])
+    # test faiss execution
+    X = mt.tensor(raw_X, chunk_size=6)
+    Y = mt.tensor(raw_Y, chunk_size=(5, 3))
 
-    @require_cupy
-    @unittest.skipIf(cupy is None or faiss is None, 'either cupy or faiss not installed')
-    def testGPUFaissNearestNeighborsExecution(self):
-        rs = np.random.RandomState(0)
+    nn = NearestNeighbors(n_neighbors=3, algorithm='proxima', metric='l2')
+    nn.fit(X)
 
-        raw_X = rs.rand(10, 5)
-        raw_Y = rs.rand(8, 5)
+    ret = nn.kneighbors(Y)
 
-        # test faiss execution
-        X = mt.tensor(raw_X, chunk_size=7).to_gpu()
-        Y = mt.tensor(raw_Y, chunk_size=8).to_gpu()
+    snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
+    snn.fit(raw_X)
+    expected = snn.kneighbors(raw_Y)
 
-        nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
-        nn.fit(X)
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0], expected[0], decimal=6)
+    np.testing.assert_almost_equal(result[1], expected[1])
 
-        ret = nn.kneighbors(Y)
+    # test return_distance=False
+    ret = nn.kneighbors(Y, return_distance=False)
 
-        snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
-        snn.fit(raw_X)
-        expected = snn.kneighbors(raw_Y)
+    result = ret.fetch()
+    np.testing.assert_almost_equal(result, expected[1])
 
-        result = [r.fetch() for r in ret]
-        np.testing.assert_almost_equal(result[0].get(), expected[0], decimal=6)
-        np.testing.assert_almost_equal(result[1].get(), expected[1])
+    # test y is x
+    ret = nn.kneighbors()
+
+    expected = snn.kneighbors()
+
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0], expected[0], decimal=5)
+    np.testing.assert_almost_equal(result[1], expected[1])
+
+
+@require_cupy
+@pytest.mark.skipif(cupy is None or faiss is None, reason='either cupy or faiss not installed')
+def test_gpu_faiss_nearest_neighbors_execution():
+    rs = np.random.RandomState(0)
+
+    raw_X = rs.rand(10, 5)
+    raw_Y = rs.rand(8, 5)
+
+    # test faiss execution
+    X = mt.tensor(raw_X, chunk_size=7).to_gpu()
+    Y = mt.tensor(raw_Y, chunk_size=8).to_gpu()
+
+    nn = NearestNeighbors(n_neighbors=3, algorithm='faiss', metric='l2')
+    nn.fit(X)
+
+    ret = nn.kneighbors(Y)
+
+    snn = SkNearestNeighbors(n_neighbors=3, algorithm='auto', metric='l2')
+    snn.fit(raw_X)
+    expected = snn.kneighbors(raw_Y)
+
+    result = [r.fetch() for r in ret]
+    np.testing.assert_almost_equal(result[0].get(), expected[0], decimal=6)
+    np.testing.assert_almost_equal(result[1].get(), expected[1])

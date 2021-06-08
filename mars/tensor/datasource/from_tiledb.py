@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, DictField, TupleField, StringField, Int64Field
+from ...serialization.serializables import FieldTypes, DictField, \
+    TupleField, StringField, Int64Field
 from ...lib.sparse.core import sps
 from ...lib.sparse import SparseNDArray
 from ..core import TensorOrder
@@ -27,12 +28,12 @@ class TensorTileDBDataSource(TensorNoInput):
     # URI of array to open
     _tiledb_uri = StringField('tiledb_uri')
     # tiledb dim start
-    _tiledb_dim_starts = TupleField('tiledb_dim_starts', ValueType.int64)
+    _tiledb_dim_starts = TupleField('tiledb_dim_starts', FieldTypes.int64)
     # encryption key to decrypt if provided
     _tiledb_key = StringField('tiledb_key')
     # open array at a given timestamp if provided
     _tiledb_timestamp = Int64Field('tiledb_timestamp')
-    _axis_offsets = TupleField('axis_offsets', ValueType.int64)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.int64)
 
     def __init__(self, tiledb_config=None, tiledb_uri=None, tiledb_dim_starts=None,
                  tiledb_key=None, tiledb_timstamp=None, **kw):

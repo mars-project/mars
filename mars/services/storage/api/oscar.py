@@ -27,6 +27,9 @@ APIType = TypeVar('APIType', bound='StorageAPI')
 
 
 class StorageAPI(AbstractStorageAPI):
+    _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
+    _storage_manager_ref: Union[StorageManagerActor, mo.ActorRef]
+
     def __init__(self,
                  address: str,
                  session_id: str):
@@ -34,10 +37,10 @@ class StorageAPI(AbstractStorageAPI):
         self._session_id = session_id
 
     async def _init(self):
-        self._storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
-            await mo.actor_ref(self._address, StorageManagerActor.default_uid())
+        self._storage_handler_ref = await mo.actor_ref(
+            self._address, StorageHandlerActor.default_uid())
+        self._storage_manager_ref = await mo.actor_ref(
+            self._address, StorageManagerActor.default_uid())
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -68,49 +71,42 @@ class StorageAPI(AbstractStorageAPI):
         return api
 
     @extensible
-    async def get(self, data_key: str, conditions: List = None) -> Any:
-        """
-        Get object by data key.
-
-        Parameters
-        ----------
-        data_key: str
-            date key to get.
-
-        conditions: List
-            Index conditions to pushdown
-
-        Returns
-        -------
-            object
-        """
+    async def get(self,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise') -> Any:
         return await self._storage_handler_ref.get(
-            self._session_id, data_key, conditions)
+            self._session_id, data_key, conditions, error)
+
+    @get.batch
+    async def batch_get(self, args_list, kwargs_list):
+        gets = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            gets.append(
+                self._storage_handler_ref.get.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.get.batch(*gets)
 
     @extensible
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        """
-        Put object into storage.
-
-        Parameters
-        ----------
-        data_key: str
-            data key to put.
-        obj: object
-            object to put.
-        level: StorageLevel
-            the storage level to put into, MEMORY as default
-
-        Returns
-        -------
-        object information: ObjectInfo
-            the put object information
-        """
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
+
+    @put.batch
+    async def batch_put(self, args_list, kwargs_list):
+        puts = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            if kwargs.get('level', None) is None:
+                kwargs['level'] = StorageLevel.MEMORY
+            puts.append(
+                self._storage_handler_ref.put.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.put.batch(*puts)
 
     @extensible
     async def get_infos(self, data_key: str) -> List[DataInfo]:
@@ -145,12 +141,23 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.delete(
             self._session_id, data_key, error=error)
 
+    @delete.batch
+    async def batch_delete(self, args_list, kwargs_list):
+        deletes = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            deletes.append(
+                self._storage_handler_ref.delete.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.delete.batch(*deletes)
+
     @extensible
     async def fetch(self,
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
                     band_name: str = None,
-                    dest_address: str = None):
+                    dest_address: str = None,
+                    error: str = 'raise'):
         """
         Fetch object from remote worker ot load object from disk.
 
@@ -164,9 +171,12 @@ class StorageAPI(AbstractStorageAPI):
             put data on specific band
         dest_address:
             destination address for data
+        error: str
+            raise or ignore
         """
         await self._storage_manager_ref.fetch(
-            self._session_id, data_key, level, band_name, dest_address)
+            self._session_id, data_key, level,
+            band_name, dest_address, error)
 
     @extensible
     async def unpin(self, data_key: str):

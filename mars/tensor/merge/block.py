@@ -18,6 +18,7 @@ import functools
 import itertools
 import operator
 import numpy as np
+
 from ..datasource.empty import empty
 from ..datasource.array import array
 

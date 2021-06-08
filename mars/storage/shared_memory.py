@@ -165,9 +165,16 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
-        shm = SharedMemory(name=object_id)
-        shm.unlink()
-        shm.close()
+        try:
+            shm = SharedMemory(name=object_id)
+            shm.unlink()
+            shm.close()
+        except FileNotFoundError:
+            if sys.platform == 'win32':
+                # skip file not found error for windows
+                pass
+            else:  # pragma: no cover
+                raise
         try:
             self._object_ids.remove(object_id)
         except KeyError:  # pragma: no cover

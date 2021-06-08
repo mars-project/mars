@@ -20,7 +20,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import IndexField, DataTypeField, KeyField, BoolField
+from ...serialization.serializables import IndexField, DataTypeField, KeyField, BoolField
 from ...tensor.utils import get_chunk_slices
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, decide_series_chunk_size

@@ -12,14 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
-
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
-from mars.learn.contrib.joblib import register_mars_backend
-
+import pytest
 try:
     import joblib
     import sklearn
@@ -29,28 +23,24 @@ try:
 except ImportError:
     joblib = sklearn = None
 
+from mars.learn.contrib.joblib import register_mars_backend
+from mars.tests import setup
 
-@unittest.skipIf(joblib is None, 'joblib not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        register_mars_backend()
+register_mars_backend()
+setup = setup
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
 
-    @unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-    def testSKLearnSVCTrain(self):
-        digits = load_digits()
-        param_space = {
-            'C': np.logspace(-6, 6, 30),
-            'gamma': np.logspace(-8, 8, 30),
-            'tol': np.logspace(-4, -1, 30),
-            'class_weight': [None, 'balanced'],
-        }
-        model = SVC(kernel='rbf')
-        search = RandomizedSearchCV(model, param_space, cv=5, n_iter=10, verbose=10)
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+def test_sk_learn_svc_train(setup):
+    digits = load_digits()
+    param_space = {
+        'C': np.logspace(-6, 6, 30),
+        'gamma': np.logspace(-8, 8, 30),
+        'tol': np.logspace(-4, -1, 30),
+        'class_weight': [None, 'balanced'],
+    }
+    model = SVC(kernel='rbf')
+    search = RandomizedSearchCV(model, param_space, cv=5, n_iter=5, verbose=10)
 
-        with joblib.parallel_backend('mars', n_parallel=16):
-            search.fit(digits.data, digits.target)
+    with joblib.parallel_backend('mars', n_parallel=16):
+        search.fit(digits.data, digits.target)

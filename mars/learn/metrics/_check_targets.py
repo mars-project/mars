@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, ExecutableTuple, TilesError
-from ...context import get_context
-from ...serialize import AnyField, KeyField
+from ...core import ENTITY_TYPE, ExecutableTuple, recursive_tile
+from ...core.context import get_context
+from ...serialization.serializables import AnyField, KeyField
 from ...tensor.core import TENSOR_TYPE, TensorOrder
-from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils.multiclass import type_of_target
 from ..utils import check_consistent_length, column_or_1d
@@ -99,18 +98,17 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         for y in (op.y_true, op.y_pred):
             if isinstance(y, ENTITY_TYPE):
                 if np.isnan(y.size):  # pragma: no cover
-                    raise TilesError('input has unknown shape')
+                    yield
 
         check_consistent_length(y_true, y_pred)
 
+        # make sure type_true and type_pred executed first
+        chunks = [op.type_true.chunks[0], op.type_pred.chunks[0]]
+        yield chunks
+
         ctx = get_context()
-        try:
-            type_true, type_pred = ctx.get_chunk_results(
-                [op.type_true.chunks[0].key,
-                 op.type_pred.chunks[0].key])
-        except (KeyError, AttributeError):
-            raise TilesError('type_true and type_pred '
-                             'needs to be executed first')
+        type_true, type_pred = ctx.get_chunks_result(
+            [c.key for c in chunks])
 
         y_type = {type_true, type_pred}
         if y_type == {"binary", "multiclass"}:
@@ -147,9 +145,9 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         if not isinstance(y_type, TENSOR_TYPE):
             y_type = mt.tensor(y_type, dtype=object)
 
-        y_type = recursive_tile(y_type)
-        y_true = recursive_tile(y_true)
-        y_pred = recursive_tile(y_pred)
+        y_type = yield from recursive_tile(y_type)
+        y_true = yield from recursive_tile(y_true)
+        y_pred = yield from recursive_tile(y_pred)
 
         kws = [out.params for out in op.outputs]
         kws[0].update(dict(nsplits=(), chunks=[y_type.chunks[0]]))

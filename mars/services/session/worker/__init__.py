@@ -12,6 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-async def start(*_, **__):
-    return
+from .custom_log import CustomLogActor
+from .service import start

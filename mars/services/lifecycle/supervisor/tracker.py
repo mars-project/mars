@@ -49,7 +49,19 @@ class LifecycleTrackerActor(mo.Actor):
 
     @extensible
     def track(self, tileable_key: str, chunk_keys: List[str]):
-        self._tileable_key_to_chunk_keys[tileable_key] = chunk_keys
+        if tileable_key not in self._tileable_key_to_chunk_keys:
+            self._tileable_key_to_chunk_keys[tileable_key] = []
+        chunk_keys_set = set(self._tileable_key_to_chunk_keys[tileable_key])
+        incref_chunk_keys = []
+        tileable_ref_count = self._tileable_ref_counts.get(tileable_key, 0)
+        for chunk_key in chunk_keys:
+            if chunk_key in chunk_keys_set:
+                continue
+            if tileable_ref_count > 0:
+                incref_chunk_keys.extend([chunk_key] * tileable_ref_count)
+            self._tileable_key_to_chunk_keys[tileable_key].append(chunk_key)
+        if incref_chunk_keys:
+            self.incref_chunks(incref_chunk_keys)
 
     def incref_chunks(self, chunk_keys: List[str]):
         for chunk_key in chunk_keys:
@@ -71,6 +83,8 @@ class LifecycleTrackerActor(mo.Actor):
         return self._remove_chunks(to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
+        if not to_remove_chunk_keys:
+            return
         # get meta
         get_metas = []
         for to_remove_chunk_key in to_remove_chunk_keys:
@@ -135,17 +149,15 @@ class LifecycleTrackerActor(mo.Actor):
                 self._tileable_key_to_chunk_keys[tileable_key])
 
     async def decref_tileables(self, tileable_keys: List[str]):
-        to_remove_chunk_keys = []
+        decref_chunk_keys = []
         for tileable_key in tileable_keys:
             if tileable_key not in self._tileable_key_to_chunk_keys:
                 raise TileableNotTracked(f'tileable {tileable_key} '
                                          f'not tracked before')
             self._tileable_ref_counts[tileable_key] -= 1
 
-            to_remove_chunk_keys.extend(self._get_remove_chunk_keys(
-                self._tileable_key_to_chunk_keys[tileable_key]))
-
-        return self._remove_chunks(to_remove_chunk_keys)
+            decref_chunk_keys.extend(self._tileable_key_to_chunk_keys[tileable_key])
+        return await self.decref_chunks(decref_chunk_keys)
 
     def get_tileable_ref_counts(self, tileable_keys: List[str]) -> List[int]:
         return [self._tileable_ref_counts[tileable_key]

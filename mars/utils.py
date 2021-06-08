@@ -18,11 +18,11 @@ import asyncio
 import dataclasses
 import functools
 import importlib
-import inspect
 import io
 import itertools
 import logging
 import numbers
+import operator
 import os
 import pickle
 import pkgutil
@@ -34,21 +34,18 @@ import sys
 import threading
 import time
 import warnings
-import weakref
 import zlib
 from abc import ABC
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import List, Dict, Tuple, Union, Callable, Optional
+from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
 import numpy as np
 import pandas as pd
-import cloudpickle
 
 from ._utils import to_binary, to_str, to_text, TypeDispatcher, \
     tokenize, tokenize_int, register_tokenizer, insert_reversed_tuple, ceildiv
-from .config import options
-from .lib.tblib import Traceback
+from .typing import ChunkType, TileableType, EntityType, OperandType
 
 logger = logging.getLogger(__name__)
 random.seed(int(time.time()) * os.getpid())
@@ -88,25 +85,25 @@ class AttributeDict(dict):
                 f"'AttributeDict' object has no attribute {item}")
 
 
-def on_serialize_shape(shape):
+def on_serialize_shape(shape: Tuple[int]):
     if shape:
         return tuple(s if not np.isnan(s) else -1 for s in shape)
     return shape
 
 
-def on_deserialize_shape(shape):
+def on_deserialize_shape(shape: Tuple[int]):
     if shape:
         return tuple(s if s != -1 else np.nan for s in shape)
     return shape
 
 
-def on_serialize_numpy_type(value):
+def on_serialize_numpy_type(value: np.dtype):
     if value is pd.NaT:
         value = None
     return value.item() if isinstance(value, np.generic) else value
 
 
-def on_serialize_nsplits(value):
+def on_serialize_nsplits(value: Tuple[Tuple[int]]):
     if value is None:
         return None
     new_nsplits = []
@@ -118,7 +115,8 @@ def on_serialize_nsplits(value):
 _memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
 
 
-def calc_size_by_str(value, total):
+def calc_size_by_str(value: Union[str, int],
+                     total: Union[int]) -> Optional[int]:
     if value is None:
         return None
     if isinstance(value, int):
@@ -130,7 +128,7 @@ def calc_size_by_str(value, total):
         return int(mem_limit)
 
 
-def parse_readable_size(value):
+def parse_readable_size(value: Union[str, int, float]) -> Tuple[float, bool]:
     if isinstance(value, numbers.Number):
         return float(value), False
 
@@ -150,7 +148,7 @@ def parse_readable_size(value):
         raise ValueError(f'Unknown limitation value: {value}')
 
 
-def readable_size(size, trunc=False):
+def readable_size(size: int, trunc: bool = False) -> str:
     if size < 1024:
         ret_size = size
         size_unit = ''
@@ -200,7 +198,7 @@ HIGH_PORT_BOUND = 65535
 _local_occupied_ports = set()
 
 
-def _get_ports_from_netstat():
+def _get_ports_from_netstat() -> Set[int]:
     import subprocess
     while True:
         p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
@@ -226,7 +224,8 @@ def _get_ports_from_netstat():
             continue
 
 
-def get_next_port(typ=None, occupy=True):
+def get_next_port(typ: int = None,
+                  occupy: bool = True) -> int:
     import psutil
     try:
         conns = psutil.net_connections()
@@ -251,11 +250,11 @@ def get_next_port(typ=None, occupy=True):
 
 
 @functools.lru_cache(200)
-def mod_hash(val, modulus):
+def mod_hash(val: int, modulus: int):
     return tokenize_int(val) % modulus
 
 
-class classproperty(object):
+class classproperty:
     def __init__(self, f):
         self.f = f
 
@@ -263,7 +262,11 @@ class classproperty(object):
         return self.f(owner)
 
 
-def lazy_import(name, package=None, globals=None, locals=None, rename=None):
+def lazy_import(name: str,
+                package: str = None,
+                globals: Dict = None,  # pylint: disable=redefined-builtin
+                locals: Dict = None,  # pylint: disable=redefined-builtin
+                rename: str = None):
     rename = rename or name
     prefix_name = name.split('.', 1)[0]
 
@@ -285,11 +288,8 @@ def lazy_import(name, package=None, globals=None, locals=None, rename=None):
         return None
 
 
-def serialize_serializable(serializable, compress=False, serialize_method=None):
+def serialize_serializable(serializable, compress: bool = False):
     from .serialization import serialize
-
-    serialize_method = serialize_method or options.serialize_method
-    assert serialize_method == 'pickle'
 
     bio = io.BytesIO()
     header, buffers = serialize(serializable)
@@ -307,10 +307,7 @@ def serialize_serializable(serializable, compress=False, serialize_method=None):
     return ser_graph
 
 
-serialize_graph = serialize_serializable
-
-
-def deserialize_serializable(ser_serializable):
+def deserialize_serializable(ser_serializable: bytes):
     from .serialization import deserialize
 
     bio = io.BytesIO(ser_serializable)
@@ -318,18 +315,6 @@ def deserialize_serializable(ser_serializable):
     header2 = pickle.loads(bio.read(s_header_length))
     buffers2 = [bio.read(s) for s in header2['buf_sizes']]
     return deserialize(header2, buffers2)
-
-
-deserialize_graph = deserialize_serializable
-
-
-def register_mars_serializer_on_ray(obj_type):
-    from mars.serialization import serialize, deserialize
-
-    def deserializer(to_deserialize):
-        return deserialize(*to_deserialize)
-
-    register_ray_serializer(obj_type, serializer=serialize, deserializer=deserializer)
 
 
 def register_ray_serializer(obj_type, serializer=None, deserializer=None):
@@ -351,7 +336,7 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
                     obj_type, serializer=serializer, deserializer=deserializer)
 
 
-def calc_data_size(dt, shape=None):
+def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     if dt is None:
         return 0
 
@@ -381,154 +366,9 @@ def calc_data_size(dt, shape=None):
     return sys.getsizeof(dt)
 
 
-def _get_mod_logger():
-    mod_logger = None
-    cur_frame = inspect.currentframe()
-    while cur_frame.f_globals.get('__name__') == __name__:
-        cur_frame = cur_frame.f_back
-    frame_globals = cur_frame.f_globals
-    for logger_name in ('logger', 'LOG', 'LOGGER'):
-        if logger_name in frame_globals:
-            mod_logger = frame_globals[logger_name]
-            break
-    return mod_logger
-
-
-def log_unhandled(func):
-    mod_logger = _get_mod_logger()
-    if not mod_logger:
-        return func
-
-    func_name = getattr(func, '__qualname__', func.__module__ + func.__name__)
-    func_args = inspect.getfullargspec(func)
-
-    @functools.wraps(func)
-    def _wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except:  # noqa: E722
-            kwcopy = kwargs.copy()
-            kwcopy.update(zip(func_args.args, args))
-            if getattr(func, '__closure__', None) is not None:
-                kwargs.update(zip(
-                    func.__code__.co_freevars + getattr(func.__code__, 'co_cellvars', ()),
-                    [getattr(c, 'cell_contents', None) for c in func.__closure__],
-                ))
-
-            messages = []
-            for k, v in kwcopy.items():
-                if 'key' in k:
-                    messages.append(f'{k}={v}')
-
-            err_msg = f'Unexpected exception occurred in {func_name}.'
-            if messages:
-                err_msg += ' ' + ' '.join(messages)
-            mod_logger.exception(err_msg)
-            raise
-    return _wrapped
-
-
-def build_tileable_graph(tileables, executed_tileable_keys, graph=None):
-    from .core import TileableGraph, enter_mode
-    from .core.graph.builder.legacy import TileableGraphBuilder
-    from .core.operand import Fetch
-
-    with enter_mode(build=True):
-        node_to_copy = weakref.WeakKeyDictionary()
-        node_to_fetch = weakref.WeakKeyDictionary()
-        copied = weakref.WeakSet()
-
-        def replace_with_fetch_or_copy(n):
-            n = n.data if hasattr(n, 'data') else n
-            if n in copied:
-                return n
-            if n.key in executed_tileable_keys:
-                if n not in node_to_fetch:
-                    c = node_to_copy[n] = node_to_fetch[n] = build_fetch(n).data
-                    copied.add(c)
-                return node_to_fetch[n]
-            if n not in node_to_copy:
-                copy_op = n.op.copy()
-                params = []
-                for o in n.op.outputs:
-                    p = o.params.copy()
-                    p.update(o.extra_params)
-                    p['_key'] = o.key
-                    if isinstance(o.op, Fetch):
-                        # chunks may be generated in the remote functions,
-                        # thus bring chunks and nsplits for serialization
-                        p['chunks'] = o.chunks
-                        p['nsplits'] = o.nsplits
-                    params.append(p)
-                copies = copy_op.new_tileables([replace_with_fetch_or_copy(inp) for inp in n.inputs],
-                                               kws=params, output_limit=len(params))
-                for o, copy in zip(n.op.outputs, copies):
-                    node_to_copy[o] = copy.data
-                    copied.add(copy.data)
-            return node_to_copy[n]
-
-        graph = TileableGraph(tileables)
-        tileable_graph_builder = TileableGraphBuilder(
-            graph, node_processor=replace_with_fetch_or_copy)
-        return next(iter(tileable_graph_builder.build()))
-
-
-def build_exc_info(exc_type, *args, **kwargs):
-    try:
-        raise exc_type(*args, **kwargs)
-    except exc_type:
-        exc_info = sys.exc_info()
-        tb = exc_info[-1]
-        back_frame = tb.tb_frame.f_back
-        tb_builder = object.__new__(Traceback)
-        tb_builder.tb_frame = back_frame
-        tb_builder.tb_lineno = back_frame.f_lineno
-        tb_builder.tb_next = tb.tb_next
-        return exc_info[:2] + (tb_builder.as_traceback(),)
-
-
-class BlacklistSet(object):
-    def __init__(self, expire_time):
-        self._key_time = dict()
-        self._expire_time = expire_time
-
-    def add(self, key):
-        self._key_time[key] = time.time()
-
-    def remove(self, key):
-        t = self._key_time[key]
-        del self._key_time[key]
-        if t < time.time() - self._expire_time:
-            raise KeyError(key)
-
-    def update(self, keys):
-        t = time.time()
-        for k in keys:
-            self._key_time[k] = t
-
-    def __contains__(self, item):
-        try:
-            if self._key_time[item] >= time.time() - self._expire_time:
-                return True
-            else:
-                del self._key_time[item]
-                return False
-        except KeyError:
-            return False
-
-    def __iter__(self):
-        rmv_list = []
-        exp_time = time.time() - self._expire_time
-        for k, t in self._key_time.items():
-            if t >= exp_time:
-                yield k
-            else:
-                rmv_list.append(k)
-        for k in rmv_list:
-            del self._key_time[k]
-
-
-def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
+def build_fetch_chunk(chunk: ChunkType,
+                      input_chunk_keys: List[str] = None,
+                      **kwargs) -> ChunkType:
     from .core.operand import ShuffleProxy
 
     chunk_op = chunk.op
@@ -554,7 +394,7 @@ def build_fetch_chunk(chunk, input_chunk_keys=None, **kwargs):
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
-def build_fetch_tileable(tileable):
+def build_fetch_tileable(tileable: TileableType) -> TileableType:
     if tileable.is_coarse():
         chunks = None
     else:
@@ -571,7 +411,7 @@ def build_fetch_tileable(tileable):
                                 _key=tileable.key, _id=tileable.id, **params)[0]
 
 
-def build_fetch(entity):
+def build_fetch(entity: EntityType) -> EntityType:
     from .core import CHUNK_TYPE, ENTITY_TYPE
     if isinstance(entity, CHUNK_TYPE):
         return build_fetch_chunk(entity)
@@ -581,7 +421,7 @@ def build_fetch(entity):
         raise TypeError(f'Type {type(entity)} not supported')
 
 
-def get_chunk_mapper_id(chunk):
+def get_chunk_mapper_id(chunk: ChunkType) -> str:
     op = chunk.op
     try:
         return op.mapper_id
@@ -593,7 +433,7 @@ def get_chunk_mapper_id(chunk):
             raise
 
 
-def get_chunk_reducer_index(chunk):
+def get_chunk_reducer_index(chunk: ChunkType) -> Tuple[int]:
     op = chunk.op
     try:
         return op.reducer_index
@@ -605,17 +445,26 @@ def get_chunk_reducer_index(chunk):
             raise
 
 
-def merge_chunks(chunk_results):
+def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     """
     Concatenate chunk results according to index.
-    :param chunk_results: list of tuple, {(chunk_idx, chunk_result), ...,}
-    :return:
+
+    Parameters
+    ----------
+    chunk_results : list of tuple, {(chunk_idx, chunk_result), ...,}
+
+    Returns
+    -------
+    Data
     """
+    from .lib.groupby_wrapper import GroupByWrapper
     from .lib.sparse import SparseNDArray
     from .tensor.array_utils import get_array_module
 
-    chunk_results = sorted(chunk_results, key=lambda x: x[0])
+    chunk_results = sorted(chunk_results, key=operator.itemgetter(0))
     v = chunk_results[0][1]
+    if len(chunk_results) == 1 and not (chunk_results[0][0]):
+        return v
     if isinstance(v, (np.ndarray, SparseNDArray)):
         xp = get_array_module(v)
         ndim = v.ndim
@@ -624,7 +473,10 @@ def merge_chunks(chunk_results):
             for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
                 new_chunks.append((idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
             chunk_results = new_chunks
-        concat_result = xp.concatenate([c[1] for c in chunk_results])
+        to_concat = [c[1] for c in chunk_results]
+        if len(to_concat) == 1:
+            return to_concat[0]
+        concat_result = xp.concatenate(to_concat)
         return concat_result
     elif isinstance(v, pd.DataFrame):
         concats = []
@@ -633,23 +485,64 @@ def merge_chunks(chunk_results):
         return pd.concat(concats, axis='index')
     elif isinstance(v, pd.Series):
         return pd.concat([c[1] for c in chunk_results])
+    elif isinstance(v, pd.Index):
+        df = pd.concat([pd.DataFrame(index=r[1])
+                        for r in chunk_results])
+        return df.index
+    elif isinstance(v, pd.Categorical):
+        categories = [r[1] for r in chunk_results]
+        arrays = [np.asarray(r) for r in categories]
+        array = np.concatenate(arrays)
+        return pd.Categorical(array, categories=categories[0].categories,
+                              ordered=categories[0].ordered)
+    elif isinstance(v, GroupByWrapper):
+        df = pd.concat([r[1].obj for r in chunk_results], axis=0)
+        if not isinstance(v.keys, list):
+            keys = v.keys
+        else:
+            keys = []
+            for idx, k in enumerate(v.keys):
+                if isinstance(k, pd.Series):
+                    keys.append(pd.concat([r[1].keys[idx] for r in chunk_results]))
+                else:
+                    keys.append(k)
+        grouped = GroupByWrapper(df, None, keys=keys, axis=v.axis, level=v.level,
+                                 exclusions=v.exclusions, selection=v.selection,
+                                 as_index=v.as_index, sort=v.sort,
+                                 group_keys=v.group_keys, squeeze=v.squeeze,
+                                 observed=v.observed, mutated=v.mutated)
+        return grouped.groupby_obj
+    elif isinstance(v, (str, bytes, memoryview)):
+        result = [r[1] for r in chunk_results]
+        if len(result) == 1:
+            return result[0]
+        return result
     else:
         result = None
         for cr in chunk_results:
-            if not cr[1]:
+            if cr[1] is None:
+                continue
+            if isinstance(cr[1], dict) and not cr[1]:
                 continue
             if result is None:
                 result = cr[1]
+                result = result.item() if hasattr(result, 'item') else result
             else:
                 raise TypeError(f'unsupported type {type(v)}')
         return result
 
 
-def calc_nsplits(chunk_idx_to_shape):
+def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tuple[int]]:
     """
-    Calculate a tiled entity's nsplits
-    :param chunk_idx_to_shape: Dict type, {chunk_idx: chunk_shape}
-    :return: nsplits
+    Calculate a tiled entity's nsplits.
+
+    Parameters
+    ----------
+    chunk_idx_to_shape : Dict type, {chunk_idx: chunk_shape}
+
+    Returns
+    -------
+    nsplits
     """
     ndim = len(next(iter(chunk_idx_to_shape)))
     tileable_nsplits = []
@@ -663,7 +556,7 @@ def calc_nsplits(chunk_idx_to_shape):
     return tuple(tileable_nsplits)
 
 
-def sort_dataframe_result(df, result):
+def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
     """ sort DataFrame on client according to `should_be_monotonic` attribute """
     if hasattr(df, 'index_value'):
         if getattr(df.index_value, 'should_be_monotonic', False):
@@ -674,7 +567,7 @@ def sort_dataframe_result(df, result):
     return result
 
 
-def numpy_dtype_from_descr_json(obj):
+def numpy_dtype_from_descr_json(obj: Union[list, np.dtype]) -> np.dtype:
     """
     Construct numpy dtype from it's np.dtype.descr.
 
@@ -687,24 +580,18 @@ def numpy_dtype_from_descr_json(obj):
     return obj
 
 
-def check_chunks_unknown_shape(tileables, error_cls):
-    for t in tileables:
-        for ns in t.nsplits:
-            if any(np.isnan(s) for s in ns):
-                raise error_cls(f'Input tileable {t} has chunks with unknown shape')
-
-
-def has_unknown_shape(tiled):
-    if getattr(tiled, 'shape', None) is None:
-        return False
-    if any(pd.isnull(s) for s in tiled.shape):
-        return True
-    if any(pd.isnull(s) for s in itertools.chain(*tiled.nsplits)):
-        return True
+def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
+    for tileable in tiled_tileables:
+        if getattr(tileable, 'shape', None) is None:
+            continue
+        if any(pd.isnull(s) for s in tileable.shape):
+            return True
+        if any(pd.isnull(s) for s in itertools.chain(*tileable.nsplits)):
+            return True
     return False
 
 
-def sbytes(x):
+def sbytes(x: Any) -> bytes:
     # NB: bytes() in Python 3 has different semantic with Python 2, see: help(bytes)
     from numbers import Number
     if x is None or isinstance(x, Number):
@@ -719,7 +606,7 @@ def sbytes(x):
         return bytes(x)
 
 
-def kill_process_tree(pid, include_parent=True):
+def kill_process_tree(pid: int , include_parent: bool = True):
     try:
         import psutil
     except ImportError:  # pragma: no cover
@@ -752,7 +639,7 @@ def kill_process_tree(pid, include_parent=True):
         shutil.rmtree(plasma_sock_dir, ignore_errors=True)
 
 
-def copy_tileables(tileables: List, **kwargs):
+def copy_tileables(tileables: List[TileableType], **kwargs):
     inputs = kwargs.pop('inputs', None)
     copy_key = kwargs.pop('copy_key', True)
     copy_id = kwargs.pop('copy_id', True)
@@ -780,7 +667,7 @@ def copy_tileables(tileables: List, **kwargs):
     return op.new_tileables(inputs, kws=kws, output_limit=len(kws))
 
 
-def require_not_none(obj):
+def require_not_none(obj: Any):
     def wrap(func):
         if obj is not None:
             return func
@@ -803,7 +690,8 @@ def require_module(module: str):
     return wrap
 
 
-def ignore_warning(func):
+def ignore_warning(func: Callable):
+    @functools.wraps(func)
     def inner(*args, **kwargs):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -811,7 +699,7 @@ def ignore_warning(func):
     return inner
 
 
-def flatten(nested_iterable):
+def flatten(nested_iterable: Union[List, Tuple]) -> List:
     """
     Flatten a nested iterable into a list.
 
@@ -843,7 +731,8 @@ def flatten(nested_iterable):
     return flattened
 
 
-def stack_back(flattened, raw):
+def stack_back(flattened: List,
+               raw: Union[List, Tuple]) -> Union[List, Tuple]:
     """
     Organize a new iterable from a flattened list according to raw iterable.
 
@@ -887,31 +776,10 @@ def stack_back(flattened, raw):
     return _stack(result, raw)
 
 
-def recursive_tile(tileable):
-    q = [tileable]
-    while q:
-        t = q[-1]
-        cs = [c for c in t.inputs if c.is_coarse()]
-        if cs:
-            q.extend(cs)
-            continue
-        t._inplace_tile()
-        q.pop()
-
-    return tileable
-
-
-def replace_inputs(obj, old, new):
-    new_inputs = []
-    for inp in obj.inputs or []:
-        if inp is old:
-            new_inputs.append(new)
-        else:
-            new_inputs.append(inp)
-    obj.inputs = new_inputs
-
-
-def build_fuse_chunk(fused_chunks, fuse_op_cls, op_kw=None, chunk_kw=None):
+def build_fuse_chunk(fused_chunks: List[ChunkType],
+                     fuse_op_cls: Type[OperandType],
+                     op_kw: Dict = None,
+                     chunk_kw: Dict = None) -> ChunkType:
     from .core.graph import ChunkGraph
 
     fuse_graph = ChunkGraph(fused_chunks)
@@ -931,7 +799,7 @@ def build_fuse_chunk(fused_chunks, fuse_op_cls, op_kw=None, chunk_kw=None):
         _chunk=tail_chunk, **(chunk_kw or dict()))
 
 
-def adapt_mars_docstring(doc):
+def adapt_mars_docstring(doc: str) -> str:
     """
     Adapt numpy-style docstrings to Mars docstring.
 
@@ -965,37 +833,6 @@ def adapt_mars_docstring(doc):
                 lines[-1] += '.execute()'
         lines.append(line)
     return '\n'.join(lines)
-
-
-def prune_chunk_graph(chunk_graph, result_chunk_keys):
-    from .core.operand import Fetch
-
-    key_to_fetch_chunk = {c.key: c for c in chunk_graph
-                          if isinstance(c.op, Fetch)}
-
-    reverse_chunk_graph = chunk_graph.build_reversed()
-    marked = set()
-    for c in reverse_chunk_graph.topological_iter():
-        if c.key in result_chunk_keys or \
-                any(inp in marked for inp in reverse_chunk_graph.iter_predecessors(c)):
-            for o in c.op.outputs:
-                marked.add(o)
-                if o.key in key_to_fetch_chunk:
-                    # for multi outputs, if one of the output is replaced by fetch
-                    # keep the fetch chunk as marked,
-                    # or the node will be lost in the chunk graph and serialize would fail
-                    marked.add(key_to_fetch_chunk[o.key])
-    for n in list(chunk_graph):
-        if n not in marked:
-            chunk_graph.remove_node(n)
-
-    chunk_graph.results = [r for r in chunk_graph.results
-                           if r.key in result_chunk_keys]
-
-
-@functools.lru_cache(500)
-def serialize_function(function, pickle_protocol=None):
-    return cloudpickle.dumps(function, protocol=pickle_protocol)
 
 
 class FixedSizeFileObject:
@@ -1056,7 +893,7 @@ class FixedSizeFileObject:
         return getattr(self._file_obj, item)
 
 
-def is_object_dtype(dtype):
+def is_object_dtype(dtype: np.dtype) -> bool:
     try:
         return np.issubdtype(dtype, np.object_) \
                or np.issubdtype(dtype, np.unicode_) \
@@ -1065,7 +902,8 @@ def is_object_dtype(dtype):
         return False
 
 
-def calc_object_overhead(chunk, shape):
+def calc_object_overhead(chunk: ChunkType,
+                         shape: Tuple[int]) -> int:
     from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
 
     if not shape or np.isnan(shape[0]) or getattr(chunk, 'dtypes', None) is None:
@@ -1074,12 +912,14 @@ def calc_object_overhead(chunk, shape):
     if isinstance(chunk, DATAFRAME_CHUNK_TYPE) \
             and chunk.dtypes is not None:
         n_strings = len([dt for dt in chunk.dtypes if is_object_dtype(dt)])
-        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value \
+                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
             n_strings += 1
     elif isinstance(chunk, SERIES_CHUNK_TYPE) \
             and chunk.dtype is not None:
         n_strings = 1 if is_object_dtype(chunk.dtype) else 0
-        if is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value \
+                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
             n_strings += 1
     elif isinstance(chunk, INDEX_CHUNK_TYPE) \
             and chunk.dtype is not None:
@@ -1089,7 +929,8 @@ def calc_object_overhead(chunk, shape):
     return n_strings * shape[0] * OBJECT_FIELD_OVERHEAD
 
 
-def arrow_array_to_objects(obj):
+def arrow_array_to_objects(obj: Union[pd.DataFrame, pd.Series]) \
+        -> Union[pd.DataFrame, pd.Series]:
     from .dataframe.arrays import ArrowDtype
 
     if isinstance(obj, pd.DataFrame):
@@ -1109,28 +950,26 @@ def arrow_array_to_objects(obj):
     return obj
 
 
-def enter_current_session(func):
+def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
-        from .session import Session
-        from .context import ContextBase
+        from .core.session import AbstractSession, get_default_session
 
         # skip in some test cases
         if not hasattr(ctx, 'get_current_session'):
             return func(cls, ctx, op)
 
         session = ctx.get_current_session()
-        prev_default_session = Session.default
+        prev_default_session = get_default_session()
         session.as_default()
 
         try:
-            if isinstance(ctx, ContextBase):
-                with ctx:
-                    result = func(cls, ctx, op)
-            else:
-                result = func(cls, ctx, op)
+            result = func(cls, ctx, op)
         finally:
-            Session._set_default_session(prev_default_session)
+            if prev_default_session:
+                prev_default_session.as_default()
+            else:
+                AbstractSession.reset_default()
 
         return result
 
@@ -1182,7 +1021,7 @@ def quiet_stdio():
                 _io_quiet_local.is_wrapped = False
 
 
-def implements(f):
+def implements(f: Callable):
     def decorator(g):
         g.__doc__ = f.__doc__
         return g
@@ -1204,7 +1043,8 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         raise TypeError("not a path-like object")
 
 
-def find_objects(nested, types):
+def find_objects(nested: Union[List, Dict],
+                 types: Union[Type, Tuple[Type]]) -> List:
     found = []
     stack = [nested]
 
@@ -1222,7 +1062,8 @@ def find_objects(nested, types):
     return found
 
 
-def replace_objects(nested, mapping):
+def replace_objects(nested: Union[List, Dict],
+                    mapping: Dict) -> Union[List, Dict]:
     if not mapping:
         return nested
 
@@ -1312,9 +1153,13 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         else:
             # this function has no batch implementation
             # call it separately
-            coros = [self.func(*d.args, **d.kwargs)
+            tasks = [asyncio.create_task(self.func(*d.args, **d.kwargs))
                      for d in delays]
-            return await asyncio.gather(*coros)
+            try:
+                return await asyncio.gather(*tasks)
+            except asyncio.CancelledError:
+                _ = [task.cancel() for task in tasks]
+                return await asyncio.gather(*tasks)
 
     def _sync_batch(self, *delays):
         if self.batch_func:
@@ -1407,6 +1252,24 @@ def dataslots(cls):
     return cls
 
 
+def get_params_fields(chunk):
+    from .dataframe.core import DATAFRAME_CHUNK_TYPE, \
+        DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+
+    fields = list(chunk.params)
+    if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
+        fields.remove('dtypes')
+        fields.remove('columns_value')
+    elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
+        fields.remove('dtypes')
+        fields.remove('key_dtypes')
+        fields.remove('columns_value')
+    elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
+        fields.remove('key_dtypes')
+
+    return fields
+
+
 # Please refer to https://bugs.python.org/issue41451
 try:
     class _Dummy(ABC):
@@ -1483,3 +1346,12 @@ def register_asyncio_task_timeout_detector(
                 check_interval, task_timeout_seconds, task_exclude_filters))
     else:
         return None
+
+
+def ensure_own_data(data: np.ndarray) -> np.ndarray:
+    if not isinstance(data, np.ndarray):
+        return data
+    if not data.flags['OWNDATA']:
+        return data.copy()
+    else:
+        return data

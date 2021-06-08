@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .api import ClusterAPI, MockClusterAPI
-from .core import NodeInfo
+from .core import NodeInfo, NodeRole

@@ -14,220 +14,168 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.core import get_tiled
 from mars.config import option_context
-from mars.session import new_session
-from mars.tensor.operands import TensorOperand, TensorOperandMixin
 from mars.dataframe.datasource.dataframe import from_pandas
+from mars.tests import setup
+
+setup = setup
+    
+    
+def test_base_execute(setup):
+    with option_context({'eager_mode': True}):
+        a_data = np.random.rand(10, 10)
+        a = mt.tensor(a_data, chunk_size=6)
+        np.testing.assert_array_equal(a.fetch(), a_data)
+
+        r1 = a + 1
+        np.testing.assert_array_equal(r1.fetch(), a_data + 1)
+
+        r2 = 2 * r1
+        np.testing.assert_array_equal(r2.fetch(), (a_data + 1) * 2)
+
+        # test add with out
+        b = mt.ones((10, 10), chunk_size=6)
+        np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
+
+        mt.add(a, b, out=b)
+        np.testing.assert_array_equal(b.fetch(), a_data + 1)
+
+        # test tensor dot
+        c_data1 = np.random.rand(10, 10)
+        c_data2 = np.random.rand(10, 10)
+        c1 = mt.tensor(c_data1, chunk_size=6)
+        c2 = mt.tensor(c_data2, chunk_size=6)
+        r3 = c1.dot(c2)
+        np.testing.assert_array_almost_equal(r3.fetch(), c_data1.dot(c_data2))
 
 
-class TileFailOp(TensorOperand, TensorOperandMixin):
-    @classmethod
-    def tile(cls, op):
-        raise ValueError
+def test_multiple_output_execute(setup):
+    with option_context({'eager_mode': True}):
+        data = np.random.random((5, 9))
+
+        arr1 = mt.tensor(data.copy(), chunk_size=3)
+        result = mt.modf(arr1)
+        expected = np.modf(data)
+
+        np.testing.assert_array_equal(result[0].fetch(), expected[0])
+        np.testing.assert_array_equal(result[1].fetch(), expected[1])
+
+        arr3 = mt.tensor(data.copy(), chunk_size=3)
+        result1, result2, result3 = mt.split(arr3, 3, axis=1)
+        expected = np.split(data, 3, axis=1)
+
+        np.testing.assert_array_equal(result1.fetch(), expected[0])
+        np.testing.assert_array_equal(result2.fetch(), expected[1])
+        np.testing.assert_array_equal(result3.fetch(), expected[2])
 
 
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        new_session().as_default()
+def test_mixed_config(setup):
+    a = mt.ones((10, 10), chunk_size=6)
+    with pytest.raises(ValueError):
+        a.fetch()
 
-    def testBaseExecute(self):
-        with option_context({'eager_mode': True}):
-            a_data = np.random.rand(10, 10)
-            a = mt.tensor(a_data, chunk_size=3)
-            np.testing.assert_array_equal(a.fetch(), a_data)
+    with option_context({'eager_mode': True}):
+        b = mt.ones((10, 10), chunk_size=(6, 8))
+        np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
 
-            r1 = a + 1
-            np.testing.assert_array_equal(r1.fetch(), a_data + 1)
+        r = b + 1
+        np.testing.assert_array_equal(r.fetch(), np.ones((10, 10)) * 2)
 
-            r2 = 2 * r1
-            np.testing.assert_array_equal(r2.fetch(), (a_data + 1) * 2)
+        r2 = b.dot(b)
+        np.testing.assert_array_equal(r2.fetch(), np.ones((10, 10)) * 10)
 
-            # test add with out
-            b = mt.ones((10, 10), chunk_size=3)
-            np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
+    c = mt.ones((10, 10), chunk_size=6)
+    with pytest.raises(ValueError):
+        c.fetch()
+    np.testing.assert_array_equal(c.execute(), np.ones((10, 10)))
 
-            mt.add(a, b, out=b)
-            np.testing.assert_array_equal(b.fetch(), a_data + 1)
+    r = c.dot(c)
+    with pytest.raises(ValueError):
+        r.fetch()
+    np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
 
-            # test tensor dot
-            c_data1 = np.random.rand(10, 10)
-            c_data2 = np.random.rand(10, 10)
-            c1 = mt.tensor(c_data1, chunk_size=4)
-            c2 = mt.tensor(c_data2, chunk_size=4)
-            r3 = c1.dot(c2)
-            np.testing.assert_array_almost_equal(r3.fetch(), c_data1.dot(c_data2))
 
-    def testMultipleOutputExecute(self):
-        with option_context({'eager_mode': True}):
-            data = np.random.random((5, 9))
+def test_index(setup):
+    with option_context({'eager_mode': True}):
+        a = mt.random.rand(10, 5, chunk_size=5)
+        idx = slice(0, 5), slice(0, 5)
+        a[idx] = 1
+        np.testing.assert_array_equal(a.fetch()[idx], np.ones((5, 5)))
 
-            arr1 = mt.tensor(data.copy(), chunk_size=3)
-            result = mt.modf(arr1)
-            expected = np.modf(data)
+        split1, split2 = mt.split(a, 2)
+        np.testing.assert_array_equal(split1.fetch(), np.ones((5, 5)))
 
-            np.testing.assert_array_equal(result[0].fetch(), expected[0])
-            np.testing.assert_array_equal(result[1].fetch(), expected[1])
+        # test bool indexing
+        a = mt.random.rand(8, 8, chunk_size=4)
+        set_value = mt.ones((2, 2)) * 2
+        a[4:6, 4:6] = set_value
+        b = a[a > 1]
+        assert b.shape == (4,)
+        np.testing.assert_array_equal(b.fetch(), np.ones((4,)) * 2)
 
-            arr3 = mt.tensor(data.copy(), chunk_size=3)
-            result1, result2, result3 = mt.split(arr3, 3, axis=1)
-            expected = np.split(data, 3, axis=1)
+        c = b.reshape((2, 2))
+        assert c.shape == (2, 2)
+        np.testing.assert_array_equal(c.fetch(), np.ones((2, 2)) * 2)
 
-            np.testing.assert_array_equal(result1.fetch(), expected[0])
-            np.testing.assert_array_equal(result2.fetch(), expected[1])
-            np.testing.assert_array_equal(result3.fetch(), expected[2])
 
-    def testMixedConfig(self):
-        a = mt.ones((10, 10), chunk_size=3)
-        with self.assertRaises(ValueError):
-            a.fetch()
+def test_repr_tensor(setup):
+    a = mt.ones((10, 10), chunk_size=3)
+    assert a.key in repr(a)
 
-        with option_context({'eager_mode': True}):
-            b = mt.ones((10, 10), chunk_size=(3, 4))
-            np.testing.assert_array_equal(b.fetch(), np.ones((10, 10)))
+    assert repr(np.ones((10, 10))) not in repr(a)
+    assert str(np.ones((10, 10))) not in str(a)
 
-            r = b + 1
-            np.testing.assert_array_equal(r.fetch(), np.ones((10, 10)) * 2)
+    with option_context({'eager_mode': True}):
+        a = mt.ones((10, 10))
+        assert repr(np.ones((10, 10))) == repr(a)
+        assert str(np.ones((10, 10))) == str(a)
 
-            r2 = b.dot(b)
-            np.testing.assert_array_equal(r2.fetch(), np.ones((10, 10)) * 10)
 
-        c = mt.ones((10, 10), chunk_size=3)
-        with self.assertRaises(ValueError):
-            c.fetch()
-        np.testing.assert_array_equal(c.execute(), np.ones((10, 10)))
+def test_repr_dataframe(setup):
+    x = pd.DataFrame(np.ones((10, 10)))
 
-        r = c.dot(c)
-        with self.assertRaises(ValueError):
-            r.fetch()
-        np.testing.assert_array_equal(r.execute(), np.ones((10, 10)) * 10)
-
-    def testIndex(self):
-        with option_context({'eager_mode': True}):
-            a = mt.random.rand(10, 5, chunk_size=5)
-            idx = slice(0, 5), slice(0, 5)
-            a[idx] = 1
-            np.testing.assert_array_equal(a.fetch()[idx], np.ones((5, 5)))
-
-            split1, split2 = mt.split(a, 2)
-            np.testing.assert_array_equal(split1.fetch(), np.ones((5, 5)))
-
-            # test bool indexing
-            a = mt.random.rand(8, 8, chunk_size=4)
-            set_value = mt.ones((2, 2)) * 2
-            a[4:6, 4:6] = set_value
-            b = a[a > 1]
-            self.assertEqual(b.shape, (4,))
-            np.testing.assert_array_equal(b.fetch(), np.ones((4,)) * 2)
-
-            c = b.reshape((2, 2))
-            self.assertEqual(c.shape, (2, 2))
-            np.testing.assert_array_equal(c.fetch(), np.ones((2, 2)) * 2)
-
-    def testFetch(self):
-        from mars.session import Session
-
-        with option_context({'eager_mode': True}):
-            arr1 = mt.ones((10, 5), chunk_size=4)
-            np.testing.assert_array_equal(arr1, np.ones((10, 5)))
-
-            sess = Session.default_or_local()
-            executor = sess._sess._executor
-            executor.chunk_result[get_tiled(arr1).chunks[0].key] = np.ones((4, 4)) * 2
-
-            arr2 = mt.ones((10, 5), chunk_size=4) - 1
-            result = arr2.fetch()
-            np.testing.assert_array_equal(result[:4, :4], np.ones((4, 4)))
-            np.testing.assert_array_equal(result[8:, :4], np.zeros((2, 4)))
-
-    def testKernelMode(self):
-        from mars.session import Session
-
-        t1 = mt.random.rand(10, 10, chunk_size=3)
-        t2 = mt.ones((8, 8), chunk_size=6)
-
-        with option_context({'eager_mode': True}):
-            sess = Session()
-            executor = sess._sess._executor
-
-            t_tiled = t1.tiles()
-
-            with self.assertRaises(ValueError):
-                t_tiled.fetch()
-            self.assertEqual(0, len(executor.chunk_result))
-
-            result = sess.run(t2)
-            self.assertEqual(4, len(executor.chunk_result))
-            np.testing.assert_array_equal(result, np.ones((8, 8)))
-
-    def testReprTensor(self):
-        a = mt.ones((10, 10), chunk_size=3)
-        self.assertIn(a.key, repr(a))
-
-        self.assertNotIn(repr(np.ones((10, 10))), repr(a))
-        self.assertNotIn(str(np.ones((10, 10))), str(a))
-
-        with option_context({'eager_mode': True}):
-            a = mt.ones((10, 10))
-            self.assertEqual(repr(np.ones((10, 10))), repr(a))
-            self.assertEqual(str(np.ones((10, 10))), str(a))
-
-    def testReprDataFrame(self):
-        x = pd.DataFrame(np.ones((10, 10)))
-
-        with option_context({'eager_mode': True}):
-            a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
-            self.assertIn(repr(x), repr(a))
-            self.assertIn(str(x), str(a))
-
+    with option_context({'eager_mode': True}):
         a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
-        self.assertNotIn(repr(x), repr(a))
-        self.assertNotIn(str(x), str(a))
+        assert repr(x) in repr(a)
+        assert str(x) in str(a)
 
-    def testRuntimeError(self):
-        with option_context({'eager_mode': True}):
-            a = mt.zeros((10, 10))
-            with self.assertRaises(ValueError):
-                op = TileFailOp()
-                b = op.new_tileable(None)
-                b.build_graph(tiled=True)
+    a = md.DataFrame(np.ones((10, 10)), chunk_size=3)
+    assert repr(x) not in repr(a)
+    assert str(x) not in str(a)
 
-            r = a + 1
-            self.assertIn(repr(np.zeros((10, 10)) + 1), repr(r))
-            np.testing.assert_array_equal(r.fetch(), np.zeros((10, 10)) + 1)
 
-    def testView(self):
-        with option_context({'eager_mode': True}):
-            data = np.random.rand(10, 20)
-            a = mt.tensor(data, chunk_size=5)
-            b = a[0][1:4]
-            b[1] = 10
+def test_view(setup):
+    with option_context({'eager_mode': True}):
+        data = np.random.rand(10, 20)
+        a = mt.tensor(data, chunk_size=5)
+        b = a[0][1:4]
+        b[1] = 10
 
-            npa = data.copy()
-            npb = npa[0][1:4]
-            npb[1] = 10
+        npa = data.copy()
+        npb = npa[0][1:4]
+        npb[1] = 10
 
-            np.testing.assert_array_equal(a.fetch(), npa)
-            np.testing.assert_array_equal(b.fetch(), npb)
+        np.testing.assert_array_equal(a.fetch(), npa)
+        np.testing.assert_array_equal(b.fetch(), npb)
 
-    def testDataFrame(self):
-        with option_context({'eager_mode': True}):
-            from mars.dataframe.arithmetic import add
 
-            data1 = pd.DataFrame(np.random.rand(10, 10))
-            df1 = from_pandas(data1, chunk_size=5)
-            pd.testing.assert_frame_equal(df1.fetch(), data1)
+def test_dataframe(setup):
+    with option_context({'eager_mode': True}):
+        from mars.dataframe.arithmetic import add
 
-            data2 = pd.DataFrame(np.random.rand(10, 10))
-            df2 = from_pandas(data2, chunk_size=6)
-            pd.testing.assert_frame_equal(df2.fetch(), data2)
+        data1 = pd.DataFrame(np.random.rand(10, 10))
+        df1 = from_pandas(data1, chunk_size=5)
+        pd.testing.assert_frame_equal(df1.fetch(), data1)
 
-            df3 = add(df1, df2)
-            pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)
+        data2 = pd.DataFrame(np.random.rand(10, 10))
+        df2 = from_pandas(data2, chunk_size=6)
+        pd.testing.assert_frame_equal(df2.fetch(), data2)
+
+        df3 = add(df1, df2)
+        pd.testing.assert_frame_equal(df3.fetch(), data1 + data2)

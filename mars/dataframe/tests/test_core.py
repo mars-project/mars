@@ -14,12 +14,15 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from mars.core import tile
 from mars.dataframe import cut
 from mars.dataframe.initializer import DataFrame, Series, Index
 from mars.lib.groupby_wrapper import wrapped_groupby
-from mars.tests.core import TestBase
+from mars.tests import setup
+
+setup = setup
 
 
 def test_dataframe_params():
@@ -126,105 +129,102 @@ def test_groupby_params():
     params.pop('index', None)
     grouped.params = params
     grouped.refresh_params()
+    
+    
+def test_dataframe_dir():
+    df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
+    dir_result = set(dir(df))
+    for c in df.dtypes.index:
+        assert c in dir_result
 
 
-class Test(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.ctx, self.executor = self._create_test_context()
+def test_to_frame_or_series(setup):
+    raw = pd.Series(np.random.rand(10), name='col')
+    series = Series(raw)
 
-    def testDataFrameDir(self):
-        df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
-        dir_result = set(dir(df))
-        for c in df.dtypes.index:
-            self.assertIn(c, dir_result)
+    r = series.to_frame()
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(), result)
 
-    def testToFrameOrSeries(self):
-        raw = pd.Series(np.random.rand(10), name='col')
-        series = Series(raw)
+    r = series.to_frame(name='new_name')
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
 
-        r = series.to_frame()
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(), result)
+    series = series[series > 0.1]
+    r = series.to_frame(name='new_name')
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw[raw > 0.1].to_frame(name='new_name'), result)
 
-        r = series.to_frame(name='new_name')
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
+    raw = pd.Index(np.random.rand(10), name='col')
+    index = Index(raw)
 
-        series = series[series > 0.1]
-        r = series.to_frame(name='new_name')
-        result = self.executor.execute_dataframes([r])[0]
-        pd.testing.assert_frame_equal(raw[raw > 0.1].to_frame(name='new_name'), result)
+    r = index.to_frame()
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(), result)
 
-        raw = pd.Index(np.random.rand(10), name='col')
-        index = Index(raw)
+    r = index.to_frame(index=False)
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(index=False), result)
 
-        r = index.to_frame()
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(), result)
+    r = index.to_frame(name='new_name')
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
 
-        r = index.to_frame(index=False)
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(index=False), result)
+    r = index.to_series()
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(raw.to_series(), result)
 
-        r = index.to_frame(name='new_name')
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(name='new_name'), result)
+    r = index.to_series(index=pd.RangeIndex(0, 10))
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(raw.to_series(index=pd.RangeIndex(0, 10)), result)
 
-        r = index.to_series()
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_series_equal(raw.to_series(), result)
+    r = index.to_series(name='new_name')
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
 
-        r = index.to_series(index=pd.RangeIndex(0, 10))
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_series_equal(raw.to_series(index=pd.RangeIndex(0, 10)), result)
+    raw = pd.MultiIndex.from_tuples([('A', 'E'), ('B', 'F'), ('C', 'G')])
+    index = Index(raw, tupleize_cols=True)
 
-        r = index.to_series(name='new_name')
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+    r = index.to_frame()
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(), result)
 
-        raw = pd.MultiIndex.from_tuples([('A', 'E'), ('B', 'F'), ('C', 'G')])
-        index = Index(raw, tupleize_cols=True)
+    with pytest.raises(TypeError):
+        index.to_frame(name='XY')
 
-        r = index.to_frame()
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(), result)
+    with pytest.raises(ValueError):
+        index.to_frame(name=['X', 'Y', 'Z'])
 
-        with self.assertRaises(TypeError):
-            index.to_frame(name='XY')
+    r = index.to_frame(name=['X', 'Y'])
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(raw.to_frame(name=['X', 'Y']), result)
 
-        with self.assertRaises(ValueError):
-            index.to_frame(name=['X', 'Y', 'Z'])
+    r = index.to_series(name='new_name')
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
 
-        r = index.to_frame(name=['X', 'Y'])
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_frame_equal(raw.to_frame(name=['X', 'Y']), result)
 
-        r = index.to_series(name='new_name')
-        result = self.executor.execute_dataframe(r, concat=True)[0]
-        pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+def test_key_value(setup):
+    raw = pd.DataFrame(np.random.rand(4, 3), columns=list('ABC'))
+    df = DataFrame(raw)
 
-    def testKeyValue(self):
-        raw = pd.DataFrame(np.random.rand(4, 3), columns=list('ABC'))
-        df = DataFrame(raw)
+    result = df.values.execute().fetch()
+    np.testing.assert_array_equal(result, raw.values)
 
-        result = self.executor.execute_dataframe(df.values, concat=True)[0]
-        np.testing.assert_array_equal(result, raw.values)
+    result = df.keys().execute().fetch()
+    pd.testing.assert_index_equal(result, raw.keys())
 
-        result = self.executor.execute_dataframe(df.keys(), concat=True)[0]
-        pd.testing.assert_index_equal(result, raw.keys())
+    raw = pd.Series(np.random.rand(10))
+    s = Series(raw)
 
-        raw = pd.Series(np.random.rand(10))
-        s = Series(raw)
+    result = s.values.execute().fetch()
+    np.testing.assert_array_equal(result, raw.values)
 
-        result = self.executor.execute_dataframe(s.values, concat=True)[0]
-        np.testing.assert_array_equal(result, raw.values)
+    result = s.keys().execute().fetch()
+    pd.testing.assert_index_equal(result, raw.keys())
 
-        result = self.executor.execute_dataframe(s.keys(), concat=True)[0]
-        pd.testing.assert_index_equal(result, raw.keys())
+    raw = pd.Index(np.random.rand(10))
+    idx = Index(raw)
 
-        raw = pd.Index(np.random.rand(10))
-        idx = Index(raw)
-
-        result = self.executor.execute_dataframe(idx.values, concat=True)[0]
-        np.testing.assert_array_equal(result, raw.values)
+    result = idx.values.execute().fetch()
+    np.testing.assert_array_equal(result, raw.values)

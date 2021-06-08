@@ -20,10 +20,10 @@ import logging
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, TupleField, StringField, ValueType
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...serialization.serializables import FieldTypes, KeyField, TupleField, StringField
+from ...utils import has_unknown_shape
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorOperandMixin, TensorMapReduceOperand, TensorShuffleProxy
@@ -36,12 +36,12 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.RESHAPE
 
     _input = KeyField('input')
-    _newshape = TupleField('newshape', ValueType.int64)
+    _newshape = TupleField('newshape', FieldTypes.int64)
     _order = StringField('order')
 
-    _axis_offsets = TupleField('axis_offsets', ValueType.uint64)
-    _oldshape = TupleField('oldshape', ValueType.uint64)
-    _new_chunk_size = TupleField('new_chunk_size', ValueType.uint64)
+    _axis_offsets = TupleField('axis_offsets', FieldTypes.uint64)
+    _oldshape = TupleField('oldshape', FieldTypes.uint64)
+    _new_chunk_size = TupleField('new_chunk_size', FieldTypes.uint64)
 
     def __init__(self, newshape=None, order=None, axis_offsets=None, oldshape=None,
                  new_chunk_size=None, **kw):
@@ -229,7 +229,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         tensor = op.outputs[0]
 
         # check unknown shape
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         if any(np.isnan(s) for s in tensor.shape):
             # -1 exists in newshape and input tensor has unknown shape
@@ -244,7 +245,7 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
             if getattr(op, '_reshape_with_shuffle', True):
                 result.op.extra_params['_reshape_with_shuffle'] = True
             result = result.transpose()
-            return [recursive_tile(result)]
+            return [(yield from recursive_tile(result))]
 
         if len(in_tensor.chunks) == 1:
             # 1 chunk
@@ -258,7 +259,8 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
         try:
             rechunk_nsplits, reshape_nsplits = cls._gen_reshape_rechunk_nsplits(
                 in_tensor.shape, tensor.shape, in_tensor.nsplits)
-            rechunked_tensor = in_tensor.rechunk(rechunk_nsplits)._inplace_tile()
+            rechunked_tensor = yield from recursive_tile(
+                in_tensor.rechunk(rechunk_nsplits))
             in_idxes = itertools.product(*[range(len(s)) for s in rechunk_nsplits])
             out_idxes = itertools.product(*[range(len(s)) for s in reshape_nsplits])
             out_shape = itertools.product(*[s for s in reshape_nsplits])
@@ -280,8 +282,9 @@ class TensorReshape(TensorMapReduceOperand, TensorOperandMixin):
                 return cls._tile_as_shuffle(op)
 
             # shape incompatible, we will first do flatten, then reshape to the new shape
-            return [in_tensor.reshape(-1, order=tensor.op.order)._inplace_tile().reshape(
-                tensor.shape, order=tensor.op.order)._inplace_tile()]
+            return [(yield from recursive_tile(
+                in_tensor.reshape(-1, order=tensor.op.order)
+                    .reshape(tensor.shape, order=tensor.op.order)))]
 
     @classmethod
     def estimate_size(cls, ctx, op):

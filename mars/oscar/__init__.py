@@ -25,5 +25,5 @@ from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
 from .utils import create_actor_ref
 
 # make sure methods are registered
-from .backends import mars, ray
-del mars, ray
+from .backends import mars, ray, test
+del mars, ray, test

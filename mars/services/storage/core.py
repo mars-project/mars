@@ -25,7 +25,7 @@ from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
-from ...utils import calc_data_size, dataslots
+from ...utils import calc_data_size, dataslots, extensible
 from ..cluster import ClusterAPI
 from ..meta import MetaAPI
 from .errors import DataNotExist
@@ -160,11 +160,15 @@ class DataManager:
 
     def get_info(self,
                  session_id: str,
-                 data_key: str) -> DataInfo:
+                 data_key: str,
+                 error: str = 'raise') -> Union[DataInfo, None]:
         # if the data is stored in multiply levels,
         # return the lowest level info
-        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
-            raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+        if (session_id, data_key) not in self._data_key_to_info:
+            if error == 'raise':
+                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+            else:
+                return None
         infos = sorted(self._data_key_to_info.get((session_id, data_key)),
                        key=lambda x: x.data_info.level)
         return infos[0].data_info
@@ -184,9 +188,12 @@ class DataManager:
 
 
 class StorageHandlerActor(mo.Actor):
+
+    _storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]
+
     def __init__(self,
                  storage_init_params: Dict,
-                 storage_manager_ref: mo.ActorRef):
+                 storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]):
         self._storage_init_params = storage_init_params
         self._storage_manager_ref = storage_manager_ref
 
@@ -199,66 +206,185 @@ class StorageHandlerActor(mo.Actor):
                 if client.level & level:
                     clients[level] = client
 
-    async def get(self,
-                  session_id: str,
-                  data_key: str,
-                  conditions: List = None):
-        data_info = await self._storage_manager_ref.get_data_info(
-            session_id, data_key)
+    async def _get_data(self, data_info, conditions):
         if conditions is None:
             res = yield self._clients[data_info.level].get(
                 data_info.object_id)
-            raise mo.Return(res)
         else:
             try:
-                data = await self._clients[data_info.level].get(
+                res = yield self._clients[data_info.level].get(
                     data_info.object_id, conditions=conditions)
-                raise mo.Return(data)
             except NotImplementedError:
-                data = yield self._clients[data_info.level].get(
+                data = yield await self._clients[data_info.level].get(
                     data_info.object_id)
                 try:
                     sliced_value = data.iloc[tuple(conditions)]
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
-                raise mo.Return(sliced_value)
+                res = sliced_value
+        raise mo.Return(res)
 
+    @extensible
+    async def get(self,
+                  session_id: str,
+                  data_key: str,
+                  conditions: List = None,
+                  error: str = 'raise'):
+        try:
+            data_info = await self._storage_manager_ref.get_data_info(
+                session_id, data_key)
+            data = yield self._get_data(data_info, conditions)
+            raise mo.Return(data)
+        except DataNotExist:
+            if error == 'raise':
+                raise
+
+    def _get_data_info(self,
+                       session_id: str,
+                       data_key: str,
+                       conditions: List = None,
+                       error: str = 'raise'):
+        info = self._storage_manager_ref.get_data_info.delay(
+            session_id, data_key, error)
+        return info, conditions
+
+    @get.batch
+    async def batch_get(self, args_list, kwargs_list):
+        infos = []
+        conditions_list = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            info, conditions = self._get_data_info(*args, **kwargs)
+            infos.append(info)
+            conditions_list.append(conditions)
+        data_infos = await self._storage_manager_ref.get_data_info.batch(*infos)
+        results = []
+        for data_info, conditions in zip(data_infos, conditions_list):
+            if data_info is None:
+                results.append(None)
+            else:
+                result = yield self._get_data(data_info, conditions)
+                results.append(result)
+        raise mo.Return(results)
+
+    @extensible
     async def put(self,
                   session_id: str,
                   data_key: str,
                   obj: object,
                   level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
-        await self._storage_manager_ref.request_quota(size, level=level)
+        await self._storage_manager_ref.request_quota(size, level)
         object_info = await self._clients[level].put(obj)
-        if object_info.size is not None and size != object_info.size:
-            await self._storage_manager_ref.update_quota(
-                object_info.size - size, level=level)
         data_info = _build_data_info(object_info, level, size)
         await self._storage_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
         return data_info
 
+    @classmethod
+    def _get_put_arg(cls,
+                     session_id: str,
+                     data_key: str,
+                     obj: object,
+                     level: StorageLevel):
+        return session_id, data_key, obj, level, calc_data_size(obj)
+
+    @put.batch
+    async def batch_put(self, args_list, kwargs_list):
+        objs = []
+        data_keys = []
+        session_id = None
+        level = last_level = None
+        sizes = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            session_id, data_key, obj, level, size = \
+                self._get_put_arg(*args, **kwargs)
+            if last_level is not None:
+                assert last_level == level
+            last_level = level
+            objs.append(obj)
+            data_keys.append(data_key)
+            sizes.append(size)
+
+        await self._storage_manager_ref.request_quota(
+            sum(sizes), level)
+
+        data_infos = []
+        put_infos = []
+        for size, data_key, obj in zip(sizes, data_keys, objs):
+            object_info = await self._clients[level].put(obj)
+            data_info = _build_data_info(object_info, level, size)
+            data_infos.append(data_info)
+            put_infos.append(
+                self._storage_manager_ref.put_data_info.delay(
+                    session_id, data_key, data_info, object_info))
+        await self._storage_manager_ref.put_data_info.batch(*put_infos)
+        return data_infos
+
+    def _get_data_infos_arg(self,
+                           session_id: str,
+                           data_key: str,
+                           error: str):
+        infos = self._storage_manager_ref.get_data_infos.delay(
+            session_id, data_key, error)
+        return infos, session_id, data_key
+
+    @extensible
     async def delete(self,
                      session_id: str,
                      data_key: str,
-                     error='raise'):
+                     error: str):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
-        try:
-            infos = await self._storage_manager_ref.get_data_infos(
-                session_id, data_key)
-        except DataNotExist:
-            if error == 'raise':
-                raise
-            else:
-                return
-        for info in infos or []:
+
+        infos = await self._storage_manager_ref.get_data_infos(
+            session_id, data_key, error)
+        if not infos:
+            return
+
+        for info in infos:
             level = info.level
             await self._storage_manager_ref.delete_data_info(
                 session_id, data_key, level)
             yield self._clients[level].delete(info.object_id)
             await self._storage_manager_ref.release_quota(info.store_size, level)
+
+    @delete.batch
+    async def batch_delete(self, args_list, kwargs_list):
+        get_infos = []
+        session_id = None
+        data_keys = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            infos, session_id, data_key = self._get_data_infos_arg(*args, **kwargs)
+            get_infos.append(infos)
+            data_keys.append(data_key)
+        infos_list = await self._storage_manager_ref.get_data_infos.batch(*get_infos)
+
+        delete_infos = []
+        to_removes = []
+        level_sizes = defaultdict(lambda: 0)
+        for infos, data_key in zip(infos_list, data_keys):
+            if not infos:
+                # data not exist and error == 'ignore'
+                continue
+            for info in infos:
+                level = info.level
+                delete_infos.append(
+                    self._storage_manager_ref.delete_data_info.delay(
+                        session_id, data_key, level))
+                to_removes.append((level, info.object_id))
+                level_sizes[level] += info.store_size
+
+        if not delete_infos:
+            # no data to remove
+            return
+
+        await self._storage_manager_ref.delete_data_info.batch(*delete_infos)
+        for level, object_id in to_removes:
+            yield self._clients[level].delete(object_id)
+        releases = []
+        for level, size in level_sizes.items():
+            releases.append(self._storage_manager_ref.release_quota.delay(size, level))
+        await self._storage_manager_ref.release_quota.batch(*releases)
 
     async def open_reader(self,
                           session_id: str,
@@ -324,27 +450,26 @@ class StorageManagerActor(mo.Actor):
 
         # setup storage backend
         quotas = dict()
-
         for backend, setup_params in self._storage_configs.items():
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
                     quotas[level] = StorageQuota(client.size)
-        self._quotas = quotas
 
         # create handler actors for every process
-        strategy = IdleLabel(None, 'storage_handler')
-        self._storage_handler_refs = []
+        strategy = IdleLabel(None, 'StorageHandler')
         while True:
             try:
-                handler_ref = await mo.create_actor(
-                    StorageHandlerActor, self._init_params,
-                    self.ref(), uid=StorageHandlerActor.default_uid(),
-                    address=self.address, allocate_strategy=strategy)
-                self._storage_handler_refs.append(handler_ref)
+                await mo.create_actor(StorageHandlerActor,
+                                      self._init_params,
+                                      self.ref(),
+                                      uid=StorageHandlerActor.default_uid(),
+                                      address=self.address,
+                                      allocate_strategy=strategy)
             except NoIdleSlot:
                 break
 
+        self._quotas = quotas
         self._storage_handler = await mo.actor_ref(address=self.address,
                                                    uid=StorageHandlerActor.default_uid())
 
@@ -402,11 +527,23 @@ class StorageManagerActor(mo.Actor):
                            level: StorageLevel):
         await self._quotas[level].update(size)
 
+    async def _release_quota(self,
+                             size: int,
+                             level: StorageLevel
+                             ):
+        await self._quotas[level].release(size)
+
+    @extensible
     async def release_quota(self,
                             size: int,
                             level: StorageLevel
                             ):
-        await self._quotas[level].release(size)
+        await self._release_quota(size, level)
+
+    @release_quota.batch
+    async def batch_release_quota(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            await self._release_quota(*args, **kwargs)
 
     def get_quota(self, level: StorageLevel):
         return self._quotas[level].total_size, self._quotas[level].used_size
@@ -416,8 +553,12 @@ class StorageManagerActor(mo.Actor):
                     data_key: str,
                     level: StorageLevel,
                     address: str,
-                    band_name: str):
+                    band_name: str,
+                    error: str):
         from .transfer import SenderManagerActor
+
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
 
         try:
             info = self._data_manager.get_info(session_id, data_key)
@@ -427,50 +568,113 @@ class StorageManagerActor(mo.Actor):
             try:
                 yield self._storage_handler.fetch(session_id, data_key)
             except NotImplementedError:
-                meta_api = await self._get_meta_api(session_id)
-                if address is None:
-                    address = (await meta_api.get_chunk_meta(
-                        data_key, fields=['bands']))['bands'][0][0]
-                sender_ref = await mo.actor_ref(
-                    address=address, uid=SenderManagerActor.default_uid())
-                yield sender_ref.send_data(session_id, data_key,
-                                           self.address, level)
-                await meta_api.add_chunk_bands(data_key, [(address, band_name or 'numa-0')])
+                try:
+                    meta_api = await self._get_meta_api(session_id)
+                    if address is None:
+                        # we get meta using main key when fetch shuffle data
+                        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
+                        address = (await meta_api.get_chunk_meta(
+                            main_key, fields=['bands']))['bands'][0][0]
+                    sender_ref = await mo.actor_ref(
+                        address=address, uid=SenderManagerActor.default_uid())
+                    yield sender_ref.send_data(session_id, data_key,
+                                               self.address, level)
+                    if not isinstance(data_key, tuple):
+                        # no need to update meta for shuffle data
+                        await meta_api.add_chunk_bands(
+                            data_key, [(address, band_name or 'numa-0')])
+                except KeyError:
+                    if error == 'raise':
+                        raise DataNotExist(f'Data {session_id, data_key} not exists')
 
+    def _get_data_infos(self,
+                        session_id: str,
+                        data_key: str,
+                        error: str) -> Union[List[DataInfo], None]:
+        try:
+            return self._data_manager.get_infos(session_id, data_key)
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
+
+    @extensible
     def get_data_infos(self,
                        session_id: str,
-                       data_key: str) -> List[DataInfo]:
-        return self._data_manager.get_infos(session_id, data_key)
+                       data_key: str,
+                       error: str = 'raise') -> List[DataInfo]:
+        return self._get_data_infos(session_id, data_key, error)
 
+    @get_data_infos.batch
+    def batch_get_data_infos(self, args_list, kwargs_list) -> List[List[DataInfo]]:
+        result = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            result.append(self._get_data_infos(*args, **kwargs))
+        return result
+
+    @extensible
     def get_data_info(self,
                       session_id: str,
-                      data_key: str) -> DataInfo:
-        return self._data_manager.get_info(session_id, data_key)
-
-    def put_data_info(self,
-                      session_id: str,
                       data_key: str,
-                      data_info: DataInfo,
-                      object_info: Union[ObjectInfo] = None):
+                      error: str = 'raise') -> Union[DataInfo, None]:
+        return self._data_manager.get_info(session_id, data_key, error)
+
+    @get_data_info.batch
+    def batch_get_data_info(self, args_list, kwargs_list) -> List[DataInfo]:
+        return [self._data_manager.get_info(*args, **kwargs)
+                for args, kwargs in zip(args_list, kwargs_list)]
+
+    async def _put_data_info(self,
+                             session_id: str,
+                             data_key: str,
+                             data_info: DataInfo,
+                             object_info: ObjectInfo = None):
         self._data_manager.put(session_id, data_key, data_info, object_info)
+        if object_info is None:
+            # for shuffle operands, data may not exists
+            return
+        if object_info.size is not None and data_info.memory_size != object_info.size:
+            await self.update_quota(object_info.size - data_info.memory_size, data_info.level)
+
+    @extensible
+    async def put_data_info(self,
+                            session_id: str,
+                            data_key: str,
+                            data_info: DataInfo,
+                            object_info: ObjectInfo = None):
+        await self._put_data_info(
+            session_id, data_key, data_info, object_info=object_info)
+
+    @put_data_info.batch
+    async def batch_put_data_info(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            await self._put_data_info(*args, **kwargs)
 
     async def fetch_data_info(self,
                               session_id: str,
                               data_key: str) -> DataInfo:
+        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
         meta_api = await self._get_meta_api(session_id)
         address = (await meta_api.get_chunk_meta(
-            data_key, fields=['bands']))['bands'][0][0]
+            main_key, fields=['bands']))['bands'][0][0]
         remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
                                                 address=address)
         data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
-        self.put_data_info(session_id, data_key, data_info, None)
+        await self.put_data_info(session_id, data_key, data_info, None)
         raise mo.Return(data_info)
 
+    @extensible
     def delete_data_info(self,
                          session_id: str,
                          data_key: str,
                          level: StorageLevel):
         self._data_manager.delete(session_id, data_key, level)
+
+    @delete_data_info.batch
+    def batch_delete_data_info(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._data_manager.delete(*args, *kwargs)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)

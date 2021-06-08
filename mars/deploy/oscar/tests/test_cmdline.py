@@ -28,12 +28,21 @@ from mars.deploy.oscar.cmdline import OscarCommandRunner
 from mars.deploy.oscar.worker import WorkerCommandRunner
 from mars.services import NodeRole
 from mars.services.cluster import ClusterAPI
+from mars.tests import flaky
 from mars.utils import get_next_port, kill_process_tree
 
 
-def _wait_supervisor_ready(supervisor_pid, timeout=120):
+class _ProcessExitedException(Exception):
+    pass
+
+
+def _wait_supervisor_ready(supervisor_proc: subprocess.Popen, timeout=120):
     start_time = time.time()
+    supervisor_pid = supervisor_proc.pid
     while True:
+        if supervisor_proc.poll() is not None:
+            raise _ProcessExitedException
+
         try:
             ep_file_name = OscarCommandRunner._build_endpoint_file_path(pid=supervisor_pid)
             with open(ep_file_name, 'r') as ep_file:
@@ -46,10 +55,14 @@ def _wait_supervisor_ready(supervisor_pid, timeout=120):
             time.sleep(0.1)
 
 
-def _wait_worker_ready(supervisor_addr, n_supervisors=1, n_workers=1, timeout=120):
+def _wait_worker_ready(supervisor_addr, worker_proc: subprocess.Popen,
+                       n_supervisors=1, n_workers=1, timeout=120):
     async def wait_for_workers():
         start_time = time.time()
         while True:
+            if worker_proc.poll() is not None:
+                raise _ProcessExitedException
+
             try:
                 cluster_api = await ClusterAPI.create(supervisor_addr)
                 sv_info = await cluster_api.get_nodes_info(role=NodeRole.SUPERVISOR, resource=True)
@@ -111,6 +124,7 @@ def _reload_args(args):
 
 @pytest.mark.parametrize('supervisor_args,worker_args,use_web_addr',
                          list(start_params.values()), ids=list(start_params.keys()))
+@flaky(rerun_filter=lambda *args: issubclass(args[0][0], _ProcessExitedException))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     sv_proc = w_proc = None
     try:
@@ -119,7 +133,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
 
         oscar_port = _get_labelled_port('supervisor', create=False)
         if not oscar_port:
-            oscar_ep = _wait_supervisor_ready(sv_proc.pid)
+            oscar_ep = _wait_supervisor_ready(sv_proc)
         else:
             oscar_ep = f'127.0.0.1:{oscar_port}'
 
@@ -131,7 +145,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
 
         w_proc = subprocess.Popen(
             _reload_args(worker_args), env=os.environ.copy())
-        _wait_worker_ready(oscar_ep)
+        _wait_worker_ready(oscar_ep, w_proc)
 
         new_session(api_ep, default=True)
         data = np.random.rand(10, 10)

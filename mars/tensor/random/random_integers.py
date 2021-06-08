@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int64Field
+from ...serialization.serializables import Int64Field
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
@@ -29,10 +30,10 @@ class TensorRandomIntegers(TensorSimpleRandomData, TensorRandomOperandMixin):
     _high = Int64Field('high')
     _func_name = 'random_integers'
 
-    def __init__(self, state=None, size=None, low=None, high=None,
+    def __init__(self, size=None, low=None, high=None,
                  dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, _low=low, _high=high,
+        super().__init__(_size=size, _low=low, _high=high,
                          dtype=dtype, **kw)
 
     @property
@@ -129,6 +130,7 @@ def random_integers(random_state, low, high=None, size=None, chunk_size=None, gp
     >>> plt.show()
     """
     size = random_state._handle_size(size)
-    op = TensorRandomIntegers(state=random_state.to_numpy(), size=size, dtype=np.dtype(int),
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorRandomIntegers(seed=seed, size=size, dtype=np.dtype(int),
                               low=low, high=high, gpu=gpu)
     return op(chunk_size=chunk_size)

@@ -18,10 +18,9 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...lib.sparse.core import issparse, get_array_module, cp, cps, sps
 from ...lib.sparse import SparseNDArray
+from ...serialization.serializables import FieldTypes, NDArrayField, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
-from ...serialize import ValueType, NDArrayField, TupleField
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
-from ..fetch import TensorFetch
 from ..utils import get_chunk_slices
 from ..array_utils import array_module
 from .core import TensorNoInput
@@ -71,7 +70,7 @@ class CSRMatrixDataSource(TensorNoInput):
     _indices = NDArrayField('indices')
     _indptr = NDArrayField('indptr')
     _data = NDArrayField('data')
-    _shape = TupleField('shape', ValueType.int64,
+    _shape = TupleField('shape', FieldTypes.int64,
                         on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
     def __init__(self, indices=None, indptr=None, data=None, shape=None, **kw):
@@ -187,17 +186,6 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
         return t
     else:
         raise ValueError(f'Cannot create tensor by given data: {data}')
-
-
-def named_tensor(name, session=None):
-    from ...session import Session
-
-    sess = session or Session.default_or_local()
-    tileable_infos = sess.get_named_tileable_infos(name=name)
-    fetch_op = TensorFetch()
-    return fetch_op.new_tensor([], shape=tileable_infos.tileable_shape,
-                               _key=tileable_infos.tileable_key,
-                               kws=[tileable_infos.tileable_extra_meta])
 
 
 def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):

@@ -21,7 +21,7 @@ from ... import opcodes
 from ...config import options
 from ...core import ENTITY_TYPE, Entity, OutputType, get_output_types
 from ...core.operand import OperandStage
-from ...serialize import StringField, AnyField, BoolField, Int64Field
+from ...serialization.serializables import StringField, AnyField, BoolField, Int64Field
 from ..align import align_dataframe_dataframe, align_dataframe_series, align_series_series
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
@@ -298,6 +298,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         for out_idx, df_chunk in zip(out_chunk_indexes, left_chunks):
             series_chunk = right_chunks[out_idx[1]]
             kw = dict(shape=(nsplits[0][out_idx[0]], nsplits[1][out_idx[1]]),
+                      index_value=df_chunk.index_value,
                       columns_value=df_chunk.columns_value)
             out_chunk = op.copy().reset_key().new_chunk([df_chunk, series_chunk], index=out_idx, **kw)
             out_chunks.append(out_chunk)
@@ -318,6 +319,7 @@ class FillNA(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for idx, left_chunk, right_chunk in zip(range(out_shape[0]), left_chunks, right_chunks):
             out_chunk = op.copy().reset_key().new_chunk([left_chunk, right_chunk],
+                                                        index_value=left_chunk.index_value,
                                                         shape=(np.nan,), index=(idx,))
             out_chunks.append(out_chunk)
 

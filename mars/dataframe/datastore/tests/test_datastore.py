@@ -12,33 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import pandas as pd
 
+from mars.core import tile
 from mars.dataframe import DataFrame
 
 
-class Test(unittest.TestCase):
-    def testToCSV(self):
-        raw = pd.DataFrame(np.random.rand(10, 5))
-        df = DataFrame(raw, chunk_size=4)
+def test_to_csv():
+    raw = pd.DataFrame(np.random.rand(10, 5))
+    df = DataFrame(raw, chunk_size=4)
 
-        r = df.to_csv('*.csv')
-        r = r.tiles()
+    r = df.to_csv('*.csv')
+    r = tile(r)
 
-        self.assertEqual(r.chunk_shape[1], 1)
-        for i, c in enumerate(r.chunks):
-            self.assertEqual(type(c.op).__name__, 'DataFrameToCSV')
-            self.assertIs(c.inputs[0], r.inputs[0].chunks[i].data)
+    assert r.chunk_shape[1] == 1
+    for i, c in enumerate(r.chunks):
+        assert type(c.op).__name__ == 'DataFrameToCSV'
+        assert c.inputs[0] is r.inputs[0].chunks[i].data
 
-        # test one file
-        r = df.to_csv('out.csv')
-        r = r.tiles()
+    # test one file
+    r = df.to_csv('out.csv')
+    r = tile(r)
 
-        self.assertEqual(r.chunk_shape[1], 1)
-        for i, c in enumerate(r.chunks):
-            self.assertEqual(len(c.inputs), 2)
-            self.assertIs(c.inputs[0].inputs[0], r.inputs[0].chunks[i].data)
-            self.assertEqual(type(c.inputs[1].op).__name__, 'DataFrameToCSVStat')
+    assert r.chunk_shape[1] == 1
+    for i, c in enumerate(r.chunks):
+        assert len(c.inputs) == 2
+        assert c.inputs[0].inputs[0] is r.inputs[0].chunks[i].data
+        assert type(c.inputs[1].op).__name__ == 'DataFrameToCSVStat'

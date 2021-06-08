@@ -19,7 +19,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core.operand import OperandStage
-from ...serialize import Int32Field, ListField, StringField, ValueType
+from ...serialization.serializables import FieldTypes, Int32Field, ListField, StringField
 from ...tensor.merge import TensorConcatenate
 from ...utils import get_next_port
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
@@ -30,7 +30,7 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
 
     _socket_type = Int32Field('socket_type')
     _index = Int32Field('index')
-    _workers = ListField('workers', ValueType.string)
+    _workers = ListField('workers', FieldTypes.string)
     _tileable_key = StringField('tileable_key')
 
     def __init__(self, workers=None, socket_type=None, tileable_key=None, index=None, **kw):

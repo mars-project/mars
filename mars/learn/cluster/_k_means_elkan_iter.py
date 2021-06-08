@@ -15,12 +15,12 @@
 import numpy as np
 
 from ... import opcodes
-from ...core import OutputType, TilesError
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, Int32Field, BoolField
+from ...serialization.serializables import KeyField, Int32Field, BoolField
 from ...tensor.array_utils import as_same_device, device, cp, sparse
 from ...tensor.core import TensorOrder
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin
 from ._k_means_common import _execute_merge_update, _relocate_empty_clusters
 from ._k_means_elkan import init_bounds_dense, init_bounds_sparse, \
@@ -98,12 +98,13 @@ class KMeansElkanInitBounds(LearnOperand, LearnOperandMixin):
     @classmethod
     def tile(cls, op: "KMeansElkanInitBounds"):
         # unify chunks on axis 0
-        check_chunks_unknown_shape(
-            [op.centers, op.center_half_distances], TilesError)
+        if has_unknown_shape(op.centers, op.center_half_distances):
+            yield
         x = op.x
-        centers = op.centers.rechunk(op.centers.shape)._inplace_tile()
-        center_half_distances = op.center_half_distances.rechunk(
-            op.center_half_distances.shape)._inplace_tile()
+        centers = yield from recursive_tile(
+            op.centers.rechunk(op.centers.shape))
+        center_half_distances = yield from recursive_tile(
+            op.center_half_distances.rechunk(op.center_half_distances.shape))
 
         out_chunks = [list() for _ in range(op.output_limit)]
         for c in x.chunks:
@@ -300,20 +301,22 @@ class KMeansElkanUpdate(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op: "KMeansElkanUpdate"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         x = op.x
         if x.chunk_shape[1] != 1:  # pragma: no cover
-            x = x.rechunk({1: x.shape[1]})._inplace_tile()
-        sample_weight = op.sample_weight.rechunk({0: x.nsplits[0]})._inplace_tile()
-        labels = op.labels.rechunk({0: x.nsplits[0]})._inplace_tile()
-        upper_bounds = op.upper_bounds.rechunk({0: x.nsplits[0]})._inplace_tile()
-        lower_bounds = op.lower_bounds.rechunk({0: x.nsplits[0],
-                                                1: op.lower_bounds.shape[1]})._inplace_tile()
-        centers_old = op.centers_old.rechunk(op.centers_old.shape)._inplace_tile()
-        center_half_distances = op.center_half_distances.rechunk(
-            op.center_half_distances.shape)._inplace_tile()
-        distance_next_center = op.distance_next_center.rechunk(
-            op.distance_next_center.shape)._inplace_tile()
+            x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
+        sample_weight = yield from recursive_tile(op.sample_weight.rechunk({0: x.nsplits[0]}))
+        labels = yield from recursive_tile(op.labels.rechunk({0: x.nsplits[0]}))
+        upper_bounds = yield from recursive_tile(op.upper_bounds.rechunk({0: x.nsplits[0]}))
+        lower_bounds = yield from recursive_tile(
+            op.lower_bounds.rechunk({0: x.nsplits[0],
+                                     1: op.lower_bounds.shape[1]}))
+        centers_old = yield from recursive_tile(op.centers_old.rechunk(op.centers_old.shape))
+        center_half_distances = yield from recursive_tile(op.center_half_distances.rechunk(
+            op.center_half_distances.shape))
+        distance_next_center = yield from recursive_tile(op.distance_next_center.rechunk(
+            op.distance_next_center.shape))
 
         out_chunks = [list() for _ in range(op.output_limit)]
         for i in range(x.chunk_shape[0]):

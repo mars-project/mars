@@ -16,12 +16,13 @@ import pandas as pd
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, OutputType, TilesError
-from ...serialize import ValueType, ListField, StringField, BoolField, AnyField
-from ...utils import lazy_import, check_chunks_unknown_shape
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
+from ...serialization.serializables import FieldTypes, ListField, StringField, \
+    BoolField, AnyField
+from ...utils import lazy_import, has_unknown_shape
+from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 from ..utils import parse_index, build_empty_df, build_empty_series, \
     standardize_range_index, validate_axis
-from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -95,10 +96,14 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
         if not all(inputs[i].nsplits[1 - axis] == inputs[i + 1].nsplits[1 - axis]
                    for i in range(len(inputs) - 1)):
             # need rechunk
-            check_chunks_unknown_shape(inputs, TilesError)
+            if has_unknown_shape(*inputs):
+                yield
             normalized_nsplits = {1 - axis: inputs[0].nsplits[1 - axis]}
-            inputs = [inp.rechunk(normalized_nsplits)._inplace_tile()
-                      for inp in inputs]
+            new_inputs = []
+            for inp in inputs:
+                new_inputs.append(
+                    (yield from recursive_tile(inp.rechunk(normalized_nsplits))))
+            inputs = new_inputs
 
         out_chunks = []
         nsplits = []
@@ -132,37 +137,61 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_series(cls, op):
-        from ..indexing.iloc import SeriesIlocGetItem
+        from ..datasource.from_tensor import DataFrameFromTensor
+        from ..indexing.iloc import SeriesIlocGetItem, DataFrameIlocGetItem
 
         out = op.outputs[0]
         inputs = op.inputs
         out_chunks = []
 
         if op.axis == 1:
-            check_chunks_unknown_shape(inputs, TilesError)
-            inputs = [item.rechunk(op.inputs[0].nsplits)._inplace_tile() for item in inputs]
+            if has_unknown_shape(*inputs):
+                yield
+            new_inputs = []
+            for inp in inputs:
+                new_inputs.append(
+                    (yield from recursive_tile(inp.rechunk(op.inputs[0].nsplits))))
+            inputs = new_inputs
 
         cum_index = 0
+        offset = 0
         nsplits = []
         for series in inputs:
             for c in series.chunks:
                 if op.axis == 0:
                     index = (c.index[0] + cum_index,)
                     shape = c.shape
+                    iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
+                    out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
+                                                        index_value=c.index_value,
+                                                        dtype=c.dtype,
+                                                        name=c.name))
                 else:
                     index = (c.index[0], cum_index)
                     shape = (c.shape[0], 1)
-                iloc_op = SeriesIlocGetItem(indexes=(slice(None),))
-                out_chunks.append(iloc_op.new_chunk([c], shape=shape, index=index,
-                                                    index_value=c.index_value,
-                                                    dtype=c.dtype,
-                                                    name=c.name))
+                    to_frame_op = DataFrameFromTensor(input_=c)
+                    if c.name:
+                        dtypes = pd.Series([c.dtype], index=[c.name])
+                    else:
+                        dtypes = pd.Series([c.dtype], index=pd.RangeIndex(offset, offset + 1))
+                    df_chunk = to_frame_op.new_chunk(
+                        [c], shape=shape, index=index, index_value=c.index_value,
+                        columns_value=parse_index(dtypes.index, store_data=True),
+                        dtypes=dtypes)
+                    iloc_op = DataFrameIlocGetItem(indexes=[slice(None)] * 2)
+                    out_chunks.append(iloc_op.new_chunk([df_chunk], shape=df_chunk.shape,
+                                                        index=index,
+                                                        dtypes=df_chunk.dtypes,
+                                                        index_value=df_chunk.index_value,
+                                                        columns_value=df_chunk.columns_value))
+
             if op.axis == 0:
                 nsplits.extend(series.nsplits[0])
                 cum_index += len(series.nsplits[op.axis])
             else:
                 nsplits.append(1)
                 cum_index += 1
+                offset += 1
 
         if op.ignore_index:
             out_chunks = standardize_range_index(out_chunks)
@@ -186,9 +215,9 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if isinstance(op.inputs[0], SERIES_TYPE):
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
         else:
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -439,7 +468,7 @@ class DataFrameConcat(DataFrameOperand, DataFrameOperandMixin):
 class GroupByConcat(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.GROUPBY_CONCAT
 
-    _groups = ListField('groups', ValueType.key)
+    _groups = ListField('groups', FieldTypes.key)
     _groupby_params = AnyField('groupby_params')
 
     def __init__(self, groups=None, groupby_params=None, output_types=None, **kw):

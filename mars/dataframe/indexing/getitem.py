@@ -20,11 +20,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import ENTITY_TYPE, OutputType, TilesError
-from ...serialize import AnyField, Int32Field, BoolField
+from ...core import ENTITY_TYPE, OutputType, recursive_tile
+from ...serialization.serializables import AnyField, Int32Field, BoolField
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import tensor as astensor
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..align import align_dataframe_series, align_dataframe_dataframe
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE, DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
 from ..merge import DataFrameConcat
@@ -269,7 +269,7 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         if op.col_names is not None:
             return cls.tile_with_columns(op)
         else:
-            return cls.tile_with_mask(op)
+            return (yield from cls.tile_with_mask(op))
 
     @classmethod
     def tile_with_mask(cls, op):
@@ -290,7 +290,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             else:
                 # tensor
                 nsplits = in_df.nsplits
-                mask = mask.rechunk(nsplits[:mask.ndim])._inplace_tile()
+                mask = yield from recursive_tile(
+                    mask.rechunk(nsplits[:mask.ndim]))
                 out_shape = in_df.chunk_shape
                 df_chunks = in_df.chunks
                 mask_chunks = mask.chunks
@@ -310,7 +311,8 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                                                             columns_value=df_chunk.columns_value)
                 out_chunks.append(out_chunk)
         else:
-            check_chunks_unknown_shape([in_df], TilesError)
+            if has_unknown_shape(in_df):
+                yield
             nsplits_acc = np.cumsum((0,) + in_df.nsplits[0])
             for idx in range(in_df.chunk_shape[0]):
                 for idxj in range(in_df.chunk_shape[1]):

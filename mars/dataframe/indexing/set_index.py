@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import AnyField, BoolField
+from ...serialization.serializables import AnyField, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, parse_index
 
@@ -78,13 +78,16 @@ class DataFrameSetIndex(DataFrameOperand, DataFrameOperandMixin):
                 input_chunk = in_df.cix[row_idx, col_idx]
                 if op.drop and input_chunk.key == index_chunk.key:
                     new_shape = (input_chunk.shape[0], input_chunk.shape[1] - 1)
-                    columns = parse_index(input_chunk.columns_value.to_pandas().drop(op.keys), store_data=True)
+                    selected = input_chunk.columns_value.to_pandas().drop(op.keys)
+                    columns = parse_index(selected, store_data=True)
+                    dtypes = input_chunk.dtypes.loc[selected]
                 else:
                     new_shape = input_chunk.shape
                     columns = input_chunk.columns_value
+                    dtypes = input_chunk.dtypes
                 out_op = op.copy().reset_key()
                 out_chunk = out_op.new_chunk([index_chunk, input_chunk],
-                                             shape=new_shape, dtypes=out_df.dtypes, index=input_chunk.index,
+                                             shape=new_shape, dtypes=dtypes, index=input_chunk.index,
                                              index_value=parse_index(pd.Int64Index([])),
                                              columns_value=columns)
                 out_chunks.append(out_chunk)

@@ -17,9 +17,10 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import ValueType, KeyField, ListField, AnyField
-from ...utils import recursive_tile, lazy_import
+from ...serialization.serializables import FieldTypes, KeyField, ListField, AnyField
+from ...utils import lazy_import
 from ..core import SERIES_TYPE
 from ..initializer import DataFrame, Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -33,7 +34,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DESCRIBE
 
     _input = KeyField('input')
-    _percentiles = ListField('percentiles', ValueType.float64)
+    _percentiles = ListField('percentiles', FieldTypes.float64)
     _include = AnyField('include')
     _exclude = AnyField('exclude')
 
@@ -97,9 +98,10 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
             return cls._tile_one_chunk(op)
 
         if isinstance(inp, SERIES_TYPE):
-            return cls._tile_series(op)
+            result = yield from cls._tile_series(op)
         else:
-            return cls._tile_dataframe(op)
+            result = yield from cls._tile_dataframe(op)
+        return result
 
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -132,7 +134,8 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
         t = mt.concatenate(values).rechunk(len(names))
         ret = Series(t, index=index, name=series.name)
-        return [recursive_tile(ret)]
+        ret = yield from recursive_tile(ret)
+        return [ret]
 
     @classmethod
     def _tile_dataframe(cls, op):
@@ -142,7 +145,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
         columns = dtypes.index.tolist()
 
         if df.chunk_shape[1] > 1:
-            df = df.rechunk({1: df.shape[1]})._inplace_tile()
+            df = df.rechunk({1: df.shape[1]})
 
         # check dtypes if selected all fields
         # to reduce graph scale
@@ -150,11 +153,13 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
             df = df[columns]
 
         # perform aggregation together
-        aggregation = recursive_tile(df.agg(['count', 'mean', 'std', 'min', 'max']))
+        aggregation = yield from recursive_tile(
+            df.agg(['count', 'mean', 'std', 'min', 'max']))
         # calculate percentiles
         percentiles = None
         if len(op.percentiles) > 0:
-            percentiles = recursive_tile(df.quantile(op.percentiles))
+            percentiles = yield from recursive_tile(
+                df.quantile(op.percentiles))
 
         chunk_op = DataFrameDescribe(output_types=op.output_types,
                                      stage=OperandStage.agg,

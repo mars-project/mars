@@ -21,7 +21,7 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...core.operand import OperandStage
-from ...serialize import BoolField, Int64Field
+from ...serialization.serializables import BoolField, Int64Field
 from ...utils import ceildiv, lazy_import
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..core import IndexValue

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 from collections import OrderedDict
 from distutils.version import LooseVersion
 
@@ -20,111 +19,110 @@ import numpy as np
 import pandas as pd
 
 from mars import dataframe as md
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 
 
-class Test(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.executor = ExecutorForTest()
+setup = setup
 
-    def testDataFrameExpandingAgg(self):
-        raw = pd.DataFrame({'a': np.random.randint(100, size=(10,)),
-                            'b': np.random.rand(10),
-                            'c': np.random.randint(100, size=(10,)),
-                            'd': ['c' * i for i in np.random.randint(4, size=10)]
-                            })
-        raw.b[:3] = np.nan
-        raw.b[5:7] = np.nan
 
-        df = md.DataFrame(raw, chunk_size=(10, 3))
+def test_dataframe_expanding_agg(setup):
+    raw = pd.DataFrame({'a': np.random.randint(100, size=(10,)),
+                        'b': np.random.rand(10),
+                        'c': np.random.randint(100, size=(10,)),
+                        'd': ['c' * i for i in np.random.randint(4, size=10)]
+                        })
+    raw.b[:3] = np.nan
+    raw.b[5:7] = np.nan
 
-        r = df.expanding().agg(['sum'])
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(['sum']))
+    df = md.DataFrame(raw, chunk_size=(10, 3))
 
-        df = md.DataFrame(raw, chunk_size=(3, 2))
+    r = df.expanding().agg(['sum'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(['sum']))
 
-        aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
+    df = md.DataFrame(raw, chunk_size=(3, 2))
 
-        for fun_name in aggs:
-            r = df.expanding().agg(fun_name)
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                          raw.expanding().agg(fun_name))
+    aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
 
-        r = df.expanding().agg(['sum'])
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(['sum']))
+    for fun_name in aggs:
+        r = df.expanding().agg(fun_name)
+        pd.testing.assert_frame_equal(r.execute().fetch(),
+                                      raw.expanding().agg(fun_name))
 
-        r = df.expanding().agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(aggs))
+    r = df.expanding().agg(['sum'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(['sum']))
 
-        agg_dict = {'c': 'sum'}
-        r = df.expanding().agg(agg_dict)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(agg_dict))
+    r = df.expanding().agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(aggs))
 
-        agg_dict = OrderedDict([('a', ['sum', 'var']), ('b', 'var')])
-        r = df.expanding().agg(agg_dict)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(agg_dict))
+    agg_dict = {'c': 'sum'}
+    r = df.expanding().agg(agg_dict)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(agg_dict))
 
-        r = df.expanding(0).agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(0).agg(aggs))
+    agg_dict = OrderedDict([('a', ['sum', 'var']), ('b', 'var')])
+    r = df.expanding().agg(agg_dict)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(agg_dict))
 
-        r = df.expanding(2).agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(2).agg(aggs))
+    r = df.expanding(0).agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding(0).agg(aggs))
 
-        if LooseVersion(pd.__version__) < '1.0.0':
-            r = df.expanding(2).agg(aggs, _count_always_valid=False)
-            raw_r = raw.expanding(2).agg(aggs)
-            raw_r.iloc[0, :] = np.nan
-            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0], raw_r)
+    r = df.expanding(2).agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding(2).agg(aggs))
 
-        agg_dict = OrderedDict([('a', ['min', 'max']), ('b', 'max'), ('c', 'sum')])
-        r = df.expanding(2).agg(agg_dict)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(2).agg(agg_dict))
+    if LooseVersion(pd.__version__) < '1.0.0':
+        r = df.expanding(2).agg(aggs, _count_always_valid=False)
+        raw_r = raw.expanding(2).agg(aggs)
+        raw_r.iloc[0, :] = np.nan
+        pd.testing.assert_frame_equal(r.execute().fetch(), raw_r)
 
-    def testSeriesExpandingAgg(self):
-        raw = pd.Series(np.random.rand(10), name='a')
-        raw[:3] = np.nan
-        raw[5:7] = np.nan
+    agg_dict = OrderedDict([('a', ['min', 'max']), ('b', 'max'), ('c', 'sum')])
+    r = df.expanding(2).agg(agg_dict)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding(2).agg(agg_dict))
 
-        series = md.Series(raw, chunk_size=10)
 
-        r = series.expanding().agg(['sum'])
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(['sum']))
+def test_series_expanding_agg(setup):
+    raw = pd.Series(np.random.rand(10), name='a')
+    raw[:3] = np.nan
+    raw[5:7] = np.nan
 
-        r = series.expanding().agg('sum')
-        pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                       raw.expanding().agg('sum'))
+    series = md.Series(raw, chunk_size=10)
 
-        series = md.Series(raw, chunk_size=3)
+    r = series.expanding().agg(['sum'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(['sum']))
 
-        aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
+    r = series.expanding().agg('sum')
+    pd.testing.assert_series_equal(r.execute().fetch(),
+                                   raw.expanding().agg('sum'))
 
-        for fun_name in aggs:
-            r = series.expanding().agg(fun_name)
-            pd.testing.assert_series_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                           raw.expanding().agg(fun_name))
+    series = md.Series(raw, chunk_size=3)
 
-        r = series.expanding().agg(['sum'])
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(['sum']))
+    aggs = ['sum', 'count', 'min', 'max', 'mean', 'var', 'std']
 
-        r = series.expanding().agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding().agg(aggs))
+    for fun_name in aggs:
+        r = series.expanding().agg(fun_name)
+        pd.testing.assert_series_equal(r.execute().fetch(),
+                                       raw.expanding().agg(fun_name))
 
-        r = series.expanding(2).agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(2).agg(aggs))
+    r = series.expanding().agg(['sum'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(['sum']))
 
-        r = series.expanding(0).agg(aggs)
-        pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
-                                      raw.expanding(0).agg(aggs))
+    r = series.expanding().agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding().agg(aggs))
+
+    r = series.expanding(2).agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding(2).agg(aggs))
+
+    r = series.expanding(0).agg(aggs)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  raw.expanding(0).agg(aggs))

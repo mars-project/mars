@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Float64Field, BoolField
+from ...serialization.serializables import Float64Field, BoolField
 from ..array_utils import device, as_same_device
 from .core import TensorBinOp
 

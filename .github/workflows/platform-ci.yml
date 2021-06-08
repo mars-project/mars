@@ -9,14 +9,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-vineyard, 3.8-ray]
+        python-version: [3.8-kubernetes, 3.8-ray] # [3.8-kubernetes, 3.8-hadoop, 3.8-vineyard, 3.8-ray]
         include:
           - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
-          - { os: ubuntu-latest, python-version: 3.8-hadoop, no-common-tests: 1,
-              no-deploy: 1, with-hadoop: "with hadoop" }
-          - { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
-              no-deploy: 1, with-vineyard: "with vineyard" }
+          #- { os: ubuntu-latest, python-version: 3.8-hadoop, no-common-tests: 1,
+          #    no-deploy: 1, with-hadoop: "with hadoop" }
+          #- { os: ubuntu-latest, python-version: 3.8-vineyard, no-common-tests: 1,
+          #    no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
               no-deploy: 1, with-ray: "with ray" }
 
@@ -122,31 +122,28 @@ jobs:
 
           if [ -n "$WITH_HADOOP" ]; then
             source $CONDA/bin/activate test
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m hadoop
+            pytest $PYTEST_CONFIG -m hadoop
             coverage report
           fi
           if [ -n "$WITH_KUBERNETES" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc --forked mars/deploy/kubernetes
+            pytest $PYTEST_CONFIG --forked mars/deploy/kubernetes
             coverage report
           fi
           if [ -n "$WITH_VINEYARD" ]; then
             export VINEYARD_IPC_SOCKET=/tmp/vineyard/vineyard.sock
             mkdir -p build
 
-            pytest $PYTEST_CONFIG --cov-config .coveragerc mars/storage/tests/test_libs.py
+            pytest $PYTEST_CONFIG mars/storage/tests/test_libs.py
             mv .coverage build/.coverage.test_lib.file
 
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/dataframe/datastore/tests/test_datastore_execute.py \
+            pytest $PYTEST_CONFIG mars/dataframe/datastore/tests/test_datastore_execute.py \
                                                                     mars/tensor/datastore/tests/test_datastore_execute.py -k "vineyard"
             mv .coverage build/.coverage.test_tensor.file
-
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/deploy/local/tests/test_cluster.py -k "VineyardEnabledTest"
-            mv .coverage build/.coverage.test_cluster.file
 
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded -m ray
+            pytest $PYTEST_CONFIG -m ray
             coverage report
           fi
           coverage xml

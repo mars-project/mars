@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 import mars.tensor as mt
-import mars.dataframe as md
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 
 try:
     import statsmodels
@@ -25,35 +23,27 @@ try:
 except ImportError:  # pragma: no cover
     statsmodels = MarsDistributedModel = MarsResults = None
 
+setup = setup
 
-@unittest.skipIf(statsmodels is None, 'statsmodels not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        n_rows = 1000
-        n_columns = 10
-        chunk_size = 20
-        rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
-        self.X_df = md.DataFrame(self.X, chunk_size=(100, 5))
-        self.y_s = md.Series(self.y, chunk_size=100)
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y = rs.rand(n_rows, chunk_size=chunk_size)
+filter = rs.rand(n_rows, chunk_size=chunk_size) < 0.8
+X = X[filter]
+y = y[filter]
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
 
-    def testLocalTrainPredict(self):
-        model = MarsDistributedModel(num_partitions=10)
-        result = model.fit(self.y, self.X, alpha=0.2, session=self.session)
-        self.assertIsInstance(result, MarsResults)
-        predict_tensor = result.predict(self.X, session=self.session)
-        predicted = predict_tensor.fetch(session=self.session)
-        self.assertEqual(predicted.shape, self.y.shape)
+@pytest.mark.skipif(statsmodels is None, reason='statsmodels not installed')
+def test_distributed_stats_models(setup):
+    y_data = (y * 10).astype(mt.int32)
+    model = MarsDistributedModel(factor=1.2)
+    result = model.fit(y_data, X, alpha=0.2)
+    prediction = result.predict(X)
 
-        model = MarsDistributedModel(num_partitions=10)
-        result = model.fit(self.y_s, self.X_df, alpha=0.2, session=self.session)
-        self.assertIsInstance(result, MarsResults)
-        predict_tensor = result.predict(self.X_df, session=self.session)
-        predicted = predict_tensor.fetch(session=self.session)
-        self.assertEqual(predicted.shape, self.y.shape)
+    X.execute()
+
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X)

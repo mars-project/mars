@@ -17,10 +17,10 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 
-from ...serialize import KeyField, BoolField
+from ...serialization.serializables import KeyField, BoolField
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...utils import check_chunks_unknown_shape
+from ...core import recursive_tile
+from ...utils import has_unknown_shape
 from ..operands import TensorHasInput, TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..core import TensorOrder
@@ -57,11 +57,13 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
 
         tensor = op.outputs[0]
         in_tensor = op.input
-        check_chunks_unknown_shape([in_tensor], TilesError)
+        if has_unknown_shape(in_tensor):
+            yield
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]
-            in_tensor = in_tensor.rechunk([nsplits, nsplits])._inplace_tile()
+            in_tensor = yield from recursive_tile(
+                in_tensor.rechunk([nsplits, nsplits]))
 
         lower_chunks, upper_chunks = {}, {}
         for i in range(in_tensor.chunk_shape[0]):
@@ -262,10 +264,10 @@ def cholesky(a, lower=False):
     """
     a = astensor(a)
 
-    if a.ndim != 2:
+    if a.ndim != 2:  # pragma: no cover
         raise LinAlgError(f'{a.ndim}-dimensional array given. '
                           'Tensor must be two-dimensional')
-    if a.shape[0] != a.shape[1]:
+    if a.shape[0] != a.shape[1]:  # pragma: no cover
         raise LinAlgError('Input must be square')
 
     cho = np.linalg.cholesky(np.array([[1, 2], [2, 5]], dtype=a.dtype))

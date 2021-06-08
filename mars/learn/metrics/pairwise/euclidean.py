@@ -16,10 +16,11 @@ import numpy as np
 
 from .... import opcodes as OperandDef
 from .... import tensor as mt
-from ....core import TilesError
-from ....serialize import KeyField, BoolField
+from ....config import options
+from ....core import recursive_tile
+from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
-from ....utils import recursive_tile, check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 from ...utils import check_array
 from ...utils.extmath import row_norms
 from .core import PairwiseDistances
@@ -114,13 +115,16 @@ class EuclideanDistances(PairwiseDistances):
         out = op.outputs[0]
 
         if X.dtype == np.float32:
-            check_chunks_unknown_shape([X, Y], TilesError)
+            if has_unknown_shape(X, Y):
+                yield
             # rechunk
             new_nsplit = max(max(X.nsplits[0]) // 2, 1)
-            X = recursive_tile(X.rechunk({0: new_nsplit}).astype(np.float64))
+            X = yield from recursive_tile(
+                X.rechunk({0: new_nsplit}).astype(np.float64))
             if Y is not X:
                 new_nsplit = max(max(Y.nsplits[0]) // 2, 1)
-                Y = recursive_tile(Y.rechunk({0: new_nsplit}).astype(np.float64))
+                Y = yield from recursive_tile(
+                    Y.rechunk({0: new_nsplit}).astype(np.float64))
 
         XX = op.x_norm_squared
         if XX is None:
@@ -129,7 +133,7 @@ class EuclideanDistances(PairwiseDistances):
         if YY is None:
             YY = row_norms(Y, squared=True)[np.newaxis, :]
 
-        X, Y = cls._adjust_chunk_sizes(X, Y, out)
+        X, Y = yield from cls._adjust_chunk_sizes(op, X, Y, out)
 
         distances = -2 * X.dot(Y.T)
         if distances.issparse():
@@ -143,7 +147,7 @@ class EuclideanDistances(PairwiseDistances):
 
         distances = distances if op.squared else mt.sqrt(distances)
         distances = distances.astype(out.dtype, copy=False)
-        return [recursive_tile(distances)]
+        return [(yield from recursive_tile(distances))]
 
 
 def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
@@ -226,6 +230,7 @@ def euclidean_distances(X, Y=None, Y_norm_squared=None, squared=False,
     X, Y = EuclideanDistances.check_pairwise_arrays(X, Y)
     op = EuclideanDistances(x=X, y=Y, x_norm_squared=X_norm_squared,
                             y_norm_squared=Y_norm_squared, squared=squared,
-                            dtype=np.dtype(dtype))
+                            dtype=np.dtype(dtype),
+                            chunk_store_limit=options.chunk_store_limit)
     return op(X, Y=Y, Y_norm_squared=Y_norm_squared,
               X_norm_squared=X_norm_squared)

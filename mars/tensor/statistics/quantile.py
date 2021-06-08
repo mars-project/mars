@@ -17,10 +17,11 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, StringField, BoolField
-from ...core import ENTITY_TYPE, TilesError
-from ...utils import check_chunks_unknown_shape, recursive_tile
-from ...context import get_context
+from ...core import ENTITY_TYPE, recursive_tile
+from ...core.context import get_context
+from ...serialization.serializables import KeyField, AnyField, \
+    StringField, BoolField
+from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from ..base import moveaxis, where
 from ..indexing import take
@@ -293,25 +294,27 @@ class TensorQuantile(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
         if isinstance(op.q, TENSOR_TYPE):
+            # trigger execution of `q`
+            yield op.q.chunks
+
             ctx = get_context()
             # get q's data
             q_chunk_keys = [c.key for c in op.q.chunks]
-            metas = ctx.get_chunk_metas(q_chunk_keys)
-            if any(meta is None for meta in metas):
-                raise TilesError('q has to be executed if it\' a tensor')
-            q_data = ctx.get_chunk_results(q_chunk_keys)
+            q_data = ctx.get_chunks_result(q_chunk_keys)
             op._q = q = np.concatenate(q_data)
             if not _quantile_is_valid(q):
                 raise ValueError(op.q_error_msg)
         else:
+            if has_unknown_shape(*op.inputs):
+                yield
             q = np.asarray(op.q)
 
         if len(op.a.chunks) == 1 and (op.out is None or len(op.out.chunks) == 1):
             return cls._tile_one_chunk(op, q)
         else:
-            return [recursive_tile(cls._tile(op, q))]
+            tiled = yield from recursive_tile(cls._tile(op, q))
+            return [tiled]
 
     @classmethod
     def execute(cls, ctx, op):

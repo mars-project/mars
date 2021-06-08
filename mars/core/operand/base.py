@@ -23,6 +23,7 @@ from ...serialization.serializables import SerializableMeta, FieldTypes, \
     ListField, DictField, ReferenceField
 from ...serialization.core import Placeholder
 from ...serialization.serializables.core import SerializableSerializer
+from ...typing import OperandType
 from ...utils import AttributeDict
 from ..base import Base
 from ..entity.core import Entity, EntityData
@@ -30,7 +31,6 @@ from ..entity.chunks import Chunk
 from ..entity.tileables import Tileable
 from ..entity.output_types import OutputType
 from ..mode import enter_mode
-from ..typing import OperandType
 
 
 class OperandMetaclass(SerializableMeta):

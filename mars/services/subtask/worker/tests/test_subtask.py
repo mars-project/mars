@@ -61,7 +61,6 @@ async def actor_pool():
         await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
         await MockSchedulingAPI.create(session_id, pool.external_address)
-        # await MockTaskAPI.create(session_id, pool.external_address)
 
         # create configuration
         await mo.create_actor(TaskConfigurationActor, dict(),
@@ -101,7 +100,7 @@ async def test_subtask_success(actor_pool):
 
     subtask = _gen_subtask(b, session_id)
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
     asyncio.create_task(subtask_runner.run_subtask(subtask))
     await asyncio.sleep(0)
     await subtask_runner.wait_subtask()
@@ -132,7 +131,7 @@ async def test_subtask_failure(actor_pool):
 
     subtask = _gen_subtask(c, session_id)
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
     with pytest.raises(FloatingPointError):
         await subtask_runner.run_subtask(subtask)
     result = await subtask_runner.get_subtask_result()
@@ -145,7 +144,7 @@ async def test_subtask_failure(actor_pool):
 async def test_cancel_subtask(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid(0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
 
     def sleep(timeout: int):
         time.sleep(timeout)

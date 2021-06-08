@@ -19,7 +19,7 @@ except ImportError:
     Image = None
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from ...config import options
 from ...lib.filesystem import open_file, glob, file_size
 from ...utils import ceildiv

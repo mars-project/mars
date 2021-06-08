@@ -14,7 +14,7 @@
 
 from typing import List
 
-from ....core import OperandType, TileableType
+from ....core import OperandType, TileableType, CHUNK_TYPE
 from ....dataframe.base.value_counts import DataFrameValueCounts
 from ....dataframe.datasource.core import HeadOptimizedDataSource
 from ....dataframe.sort.core import DataFrameSortOperand
@@ -66,19 +66,21 @@ class HeadPushDown(OptimizationRule):
 
         new_input_op = input_node.op.copy()
         new_input_op._key = input_node.op.key
-        new_input_op._nrows = max(nrows, head)
+        new_input_op._nrows = nrows = max(nrows, head)
         new_input_params = input_node.params.copy()
         new_input_params['shape'] = (nrows,) + input_node.shape[1:]
         pandas_index = node.index_value.to_pandas()[:nrows]
         new_input_params['index_value'] = parse_index(pandas_index, node)
         new_input_params.update(input_node.extra_params)
-        new_input_node = new_input_op.new_tileable(
-            op.inputs, kws=[new_input_params]).data
-        new_input_node._key = node.key
-        new_input_node._id = node.id
+        new_entity = new_input_op.new_tileable \
+            if not isinstance(node, CHUNK_TYPE) else new_input_op.new_chunk
+        new_input_node = new_entity(
+            input_node.inputs, kws=[new_input_params]).data
 
         if new_input_node.op.nrows == head and \
                 self._graph.count_successors(input_node) == 1:
+            new_input_node._key = node.key
+            new_input_node._id = node.id
             # just remove the input data
             self._graph.add_node(new_input_node)
             for succ in self._graph.successors(node):
@@ -103,7 +105,9 @@ class HeadPushDown(OptimizationRule):
             new_op._key = op.key
             params = node.params.copy()
             params.update(node.extra_params)
-            new_node = new_op.new_tileable(
+            new_entity = new_op.new_tileable \
+                if not isinstance(node, CHUNK_TYPE) else new_op.new_chunk
+            new_node = new_entity(
                 [new_input_node], kws=[params]).data
             self._replace_node(node, new_node)
 

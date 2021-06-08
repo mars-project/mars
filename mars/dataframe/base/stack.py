@@ -18,9 +18,9 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import TilesError
-from ...serialize import KeyField, AnyField, BoolField
-from ...utils import check_chunks_unknown_shape
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField, AnyField, BoolField
+from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, parse_index
 
@@ -93,8 +93,10 @@ class DataFrameStack(DataFrameOperand, DataFrameOperandMixin):
 
         if input_df.chunk_shape[1] > 1:
             # rechunk into 1 chunk on axis 1
-            check_chunks_unknown_shape([input_df], TilesError)
-            input_df = input_df.rechunk({1: input_df.shape[1]})._inplace_tile()
+            if has_unknown_shape(input_df):
+                yield
+            input_df = yield from recursive_tile(
+                input_df.rechunk({1: input_df.shape[1]}))
 
         out_chunks = []
         for c in input_df.chunks:

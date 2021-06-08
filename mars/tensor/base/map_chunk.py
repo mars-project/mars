@@ -15,12 +15,12 @@
 import numpy as np
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, CHUNK_TYPE, TilesError
-from ...custom_log import redirect_custom_log
-from ...serialize import FunctionField, BoolField, TupleField, \
-    DictField
+from ...core import ENTITY_TYPE, CHUNK_TYPE, recursive_tile
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import FunctionField, BoolField, \
+    TupleField, DictField
 from ...utils import enter_current_session, quiet_stdio, \
-    find_objects, replace_objects, check_chunks_unknown_shape
+    find_objects, replace_objects, has_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
 
 
@@ -90,9 +90,12 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         out = op.outputs[0]
 
         new_inputs = [op.inputs[0]]
-        check_chunks_unknown_shape(op.inputs[1:], TilesError)
+        if has_unknown_shape(*op.inputs[1:]):
+            yield
         for other_inp in op.inputs[1:]:
-            new_inputs.append(other_inp.rechunk(other_inp.shape)._inplace_tile())
+            other_inp = yield from recursive_tile(
+                other_inp.rechunk(other_inp.shape))
+            new_inputs.append(other_inp)
 
         chunks = []
         for c in inp.chunks:

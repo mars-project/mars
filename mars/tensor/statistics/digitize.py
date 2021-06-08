@@ -17,10 +17,10 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import KeyField, AnyField, BoolField
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField, AnyField, BoolField
 from ...lib.sparse.core import get_array_module
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..array_utils import as_same_device, device
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
@@ -70,8 +70,9 @@ class TensorDigitize(TensorHasInput, TensorOperandMixin):
         bins = op.bins
         if len(op.inputs) == 2:
             # bins is TensorData
-            check_chunks_unknown_shape([bins], TilesError)
-            bins = bins.rechunk(tensor.shape)._inplace_tile().chunks[0]
+            if has_unknown_shape(bins):
+                yield
+            bins = (yield from recursive_tile(bins.rechunk(tensor.shape))).chunks[0]
 
         out_chunks = []
         for c in in_tensor.chunks:

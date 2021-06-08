@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
-
-from mars.session import new_session
-
+import pytest
 try:
     import sklearn
 
@@ -26,59 +22,55 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 from mars import tensor as mt
-from mars.tests.core import ExecutorForTest
 from mars.learn.metrics.pairwise import haversine_distances
+from mars.tests import setup
 
 
-@unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+setup = setup
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
 
-    def testHaversineDistancesOp(self):
-        # shape[1] != 2
-        with self.assertRaises(ValueError):
-            haversine_distances(mt.random.rand(10, 3))
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+def test_haversine_distances_op():
+    # shape[1] != 2
+    with pytest.raises(ValueError):
+        haversine_distances(mt.random.rand(10, 3))
 
-        # shape[1] != 2
-        with self.assertRaises(ValueError):
-            haversine_distances(mt.random.rand(10, 2), mt.random.rand(11, 3))
+    # shape[1] != 2
+    with pytest.raises(ValueError):
+        haversine_distances(mt.random.rand(10, 2), mt.random.rand(11, 3))
 
-        # cannot support sparse
-        with self.assertRaises(TypeError):
-            haversine_distances(mt.random.randint(10, size=(10, 2), density=0.5))
+    # cannot support sparse
+    with pytest.raises(TypeError):
+        haversine_distances(mt.random.randint(10, size=(10, 2), density=0.5))
 
-    def testHaversineDistancesExecution(self):
-        raw_x = np.random.rand(30, 2)
-        raw_y = np.random.rand(21, 2)
 
-        # one chunk
-        x1 = mt.tensor(raw_x, chunk_size=30)
-        y1 = mt.tensor(raw_y, chunk_size=30)
+raw_x = np.random.rand(30, 2)
+raw_y = np.random.rand(21, 2)
 
-        # multiple chunks
-        x2 = mt.tensor(raw_x, chunk_size=(11, 1))
-        y2 = mt.tensor(raw_y, chunk_size=(17, 1))
+# one chunk
+x1 = mt.tensor(raw_x, chunk_size=30)
+y1 = mt.tensor(raw_y, chunk_size=30)
 
-        for x, y in [(x1, y1), (x2, y2)]:
-            for use_sklearn in [True, False]:
-                distance = haversine_distances(x, y)
-                distance.op._use_sklearn = use_sklearn
+# multiple chunks
+x2 = mt.tensor(raw_x, chunk_size=(11, 1))
+y2 = mt.tensor(raw_y, chunk_size=(17, 1))
 
-                result = self.executor.execute_tensor(distance, concat=True)[0]
-                expected = sk_haversine_distances(raw_x, raw_y)
-                np.testing.assert_array_equal(result, expected)
 
-                # test x is y
-                distance = haversine_distances(x)
-                distance.op._use_sklearn = use_sklearn
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+@pytest.mark.parametrize('x, y', [(x1, y1), (x2, y2)])
+@pytest.mark.parametrize('use_sklearn', [True, False])
+def test_haversine_distances_execution(setup, x, y, use_sklearn):
+    distance = haversine_distances(x, y)
+    distance.op._use_sklearn = use_sklearn
 
-                result = self.executor.execute_tensor(distance, concat=True)[0]
-                expected = sk_haversine_distances(raw_x, raw_x)
-                np.testing.assert_array_equal(result, expected)
+    result = distance.execute().fetch()
+    expected = sk_haversine_distances(raw_x, raw_y)
+    np.testing.assert_array_equal(result, expected)
+
+    # test x is y
+    distance = haversine_distances(x)
+    distance.op._use_sklearn = use_sklearn
+
+    result = distance.execute().fetch()
+    expected = sk_haversine_distances(raw_x, raw_x)
+    np.testing.assert_array_equal(result, expected)

@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import multiprocessing
-
 import pandas as pd
 
 from .... import remote as mr
-from ....session import Session
+from ....core.session import get_default_session
 from ....utils import ceildiv
 
 try:
@@ -28,21 +26,17 @@ try:
             as DistributorBaseClass
     except ImportError:  # pragma: no cover
         from tsfresh.utilities.distribution import DistributorBaseClass
-except ImportError:
+except ImportError:  # pragma: no cover
     DistributorBaseClass = object
 
 
 class MarsDistributor(DistributorBaseClass):
     def __init__(self, session=None):
-        self._session = session or Session.default_or_local()
+        self._session = session or get_default_session()
 
     def calculate_best_chunk_size(self, data_length):
-        if not hasattr(self._session, 'get_workers_meta'):
-            return ceildiv(data_length, multiprocessing.cpu_count())
-        else:
-            metas = self._session.get_workers_meta()
-            n_cores = sum(m['hardware']['cpu_total'] for m in metas.values())
-            return ceildiv(data_length, n_cores)
+        n_cores = self._session.get_total_n_cpu()
+        return ceildiv(data_length, n_cores)
 
     def distribute(self, func, partitioned_chunks, kwargs):
         def _wrapped_func(*args, **kw):
@@ -53,7 +47,7 @@ class MarsDistributor(DistributorBaseClass):
                 def _wrapped_value_counts(obj, *args, **kw):
                     try:
                         return old_value_counts(obj, *args, **kw)
-                    except ValueError:
+                    except ValueError:  # pragma: no cover
                         return old_value_counts(obj.copy(), *args, **kw)
 
                 pd.Series.value_counts = _wrapped_value_counts

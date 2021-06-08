@@ -20,7 +20,7 @@ import pytest
 import mars.tensor as mt
 from mars.config import option_context
 from mars.core import TileableType, OperandType
-from mars.deploy.oscar.service import _load_config
+from mars.deploy.oscar.service import load_config
 from mars.deploy.oscar.tests.session import new_test_session, CONFIG_FILE
 from mars.services.task.supervisor.tests import CheckedTaskProcessor
 from mars.services.subtask.worker.tests import CheckedSubtaskProcessor
@@ -60,7 +60,7 @@ def test_checked_session(setup):
 
 
 def test_check_task_processor(setup):
-    config = _load_config(CONFIG_FILE)
+    config = load_config(CONFIG_FILE)
     config['task']['task_processor_cls'] = \
         'mars.deploy.oscar.tests.' \
         'test_checked_session.FakeCheckedTaskProcessor'
@@ -80,7 +80,7 @@ def test_check_task_processor(setup):
 
 
 def test_check_subtask_processor(setup):
-    config = _load_config(CONFIG_FILE)
+    config = load_config(CONFIG_FILE)
     config['subtask']['subtask_processor_cls'] = \
         'mars.deploy.oscar.tests.' \
         'test_checked_session.FakeCheckedSubtaskProcessor'

@@ -13,6 +13,5 @@
 # limitations under the License.
 
 from .builder import TileableGraphBuilder, ChunkGraphBuilder
-from .builder.legacy import get_tiled
 from .core import DirectedGraph, DAG, GraphContainsCycleError
 from .entity import TileableGraph, ChunkGraph, EntityGraph

@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from ... import opcodes as OperandDef
-from ...serialize import BoolField, KeyField
+from ...serialization.serializables import BoolField, KeyField
 from ..utils import to_numpy
 from ..core import TensorOrder
 from .core import TensorHasInput

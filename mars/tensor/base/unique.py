@@ -18,12 +18,12 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import TilesError
+from ...core import recursive_tile
 from ...core.operand import OperandStage
 from ...lib import sparse
 from ...lib.sparse.core import get_array_module as get_sparse_array_module
-from ...serialize import BoolField, Int32Field, Int64Field
-from ...utils import check_chunks_unknown_shape
+from ...serialization.serializables import BoolField, Int32Field, Int64Field
+from ...utils import has_unknown_shape
 from ..operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -163,16 +163,21 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
     def _tile_via_shuffle(cls, op):
         # rechunk the axes except the axis to do unique into 1 chunk
         inp = op.inputs[0]
+        if has_unknown_shape(inp):
+            yield
+
         if inp.ndim > 1:
             new_chunk_size = dict()
             for axis in range(inp.ndim):
                 if axis == op.axis:
                     continue
                 if np.isnan(inp.shape[axis]):
-                    raise TilesError(f'input tensor has unknown shape on axis {axis}')
+                    yield
                 new_chunk_size[axis] = inp.shape[axis]
-            check_chunks_unknown_shape([inp], TilesError)
-            inp = inp.rechunk(new_chunk_size)._inplace_tile()
+            if has_unknown_shape(inp):
+                yield
+            inp = yield from recursive_tile(
+                inp.rechunk(new_chunk_size))
 
         aggregate_size = op.aggregate_size
         if aggregate_size is None:
@@ -251,7 +256,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         if len(op.inputs[0].chunks) == 1:
             return cls._tile_one_chunk(op)
         else:
-            return cls._tile_via_shuffle(op)
+            return (yield from cls._tile_via_shuffle(op))
 
     @classmethod
     def _execute_map(cls, ctx, op: "TensorUnique"):

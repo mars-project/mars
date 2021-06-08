@@ -16,8 +16,11 @@
 from typing import Dict, List, Any, Union
 
 from .... import oscar as mo
+from ....core import ChunkType
 from ....core.operand import Fuse
-from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE
+from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
+    DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
+    SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 from ....lib.aio import alru_cache
 from ....utils import extensible
 from ...core import BandType
@@ -110,10 +113,12 @@ class MetaAPI(AbstractMetaAPI):
                                 store_size: int = None,
                                 **extra):
         params = tileable.params.copy()
-        if isinstance(tileable, DATAFRAME_TYPE):
+        if isinstance(tileable, (DATAFRAME_TYPE, DATAFRAME_GROUPBY_TYPE,
+                                 SERIES_GROUPBY_TYPE)):
             # dataframe needs some special process for now
             del params['columns_value']
             del params['dtypes']
+            params.pop('key_dtypes', None)
             params['dtypes_value'] = tileable.dtypes_value
         params['nsplits'] = tileable.nsplits
         params.update(extra)
@@ -134,48 +139,77 @@ class MetaAPI(AbstractMetaAPI):
                                 object_id: str):
         return await self._meta_store.del_meta(object_id)
 
-    @extensible
-    async def set_chunk_meta(self,
-                             chunk,
-                             memory_size: int = None,
-                             store_size: int = None,
-                             bands: List[BandType] = None,
-                             **extra):
+    @classmethod
+    def _extract_chunk_meta(cls,
+                            chunk: ChunkType,
+                            memory_size: int = None,
+                            store_size: int = None,
+                            bands: List[BandType] = None,
+                            **extra):
         if isinstance(chunk.op, Fuse):
             # fuse op
             chunk = chunk.chunk
         params = chunk.params.copy()
-        if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
+        if isinstance(chunk, (DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE,
+                              SERIES_GROUPBY_CHUNK_TYPE)):
             # dataframe chunk needs some special process for now
             params.pop('columns_value', None)
             params.pop('dtypes', None)
+            params.pop('key_dtypes', None)
         params.update(extra)
-        meta = get_meta_type(type(chunk))(object_id=chunk.key,
+        return get_meta_type(type(chunk))(object_id=chunk.key,
                                           **params,
                                           bands=bands,
                                           memory_size=memory_size,
                                           store_size=store_size)
+
+    @extensible
+    async def set_chunk_meta(self,
+                             chunk: ChunkType,
+                             memory_size: int = None,
+                             store_size: int = None,
+                             bands: List[BandType] = None,
+                             **extra):
+        meta = self._extract_chunk_meta(
+            chunk, memory_size=memory_size, store_size=store_size,
+            bands=bands, **extra)
         return await self._meta_store.set_meta(chunk.key, meta)
+
+    @set_chunk_meta.batch
+    async def batch_set_chunk_meta(self, args_list, kwargs_list):
+        set_chunk_metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            chunk = args[0]
+            meta = self._extract_chunk_meta(*args, **kwargs)
+            set_chunk_metas.append(self._meta_store.set_meta.delay(chunk.key, meta))
+        return await self._meta_store.set_meta.batch(*set_chunk_metas)
 
     @extensible
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None,
                              error='raise'):
-        if error not in ('raise', 'ignore'):  # pragma: no cover
-            raise ValueError('error must be raise or ignore')
-        try:
-            return await self._meta_store.get_meta(object_id, fields=fields)
-        except KeyError:
-            if error == 'raise':
-                raise
-            else:
-                return
+        return await self._meta_store.get_meta(
+            object_id, fields=fields, error=error)
+
+    @get_chunk_meta.batch
+    async def batch_get_chunk_meta(self, args_list, kwargs_list):
+        get_chunk_metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            get_chunk_metas.append(self._meta_store.get_meta.delay(*args, **kwargs))
+        return await self._meta_store.get_meta.batch(*get_chunk_metas)
 
     @extensible
     async def del_chunk_meta(self,
                              object_id: str):
         return await self._meta_store.del_meta(object_id)
+
+    @del_chunk_meta.batch
+    async def batch_del_chunk_meta(self, args_list, kwargs_list):
+        del_chunk_metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            del_chunk_metas.append(self._meta_store.del_meta.delay(*args, **kwargs))
+        return await self._meta_store.del_meta.batch(*del_chunk_metas)
 
     @extensible
     async def add_chunk_bands(self,

@@ -19,10 +19,10 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, TilesError
-from ...custom_log import redirect_custom_log
-from ...serialize import KeyField, AnyField, StringField
-from ...utils import check_chunks_unknown_shape, enter_current_session, quiet_stdio
+from ...core import OutputType, recursive_tile
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import KeyField, AnyField, StringField
+from ...utils import has_unknown_shape, enter_current_session, quiet_stdio
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series
@@ -118,8 +118,9 @@ class DataFrameMap(DataFrameOperand, DataFrameOperandMixin):
         arg = op.arg
         if len(op.inputs) == 2:
             # make sure arg has known shape when it's a md.Series
-            check_chunks_unknown_shape([op.arg], TilesError)
-            arg = op.arg.rechunk(op.arg.shape)._inplace_tile()
+            if has_unknown_shape(op.arg):
+                yield
+            arg = yield from recursive_tile(op.arg.rechunk(op.arg.shape))
 
         out_chunks = []
         for chunk in in_series.chunks:

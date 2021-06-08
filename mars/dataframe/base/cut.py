@@ -19,12 +19,14 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, TilesError
-from ...context import get_context
-from ...serialize import KeyField, AnyField, BoolField, Int32Field, StringField
+from ...core import ENTITY_TYPE, ExecutableTuple, OutputType, \
+    recursive_tile
+from ...core.context import get_context
+from ...serialization.serializables import KeyField, AnyField, \
+    BoolField, Int32Field, StringField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE, TensorOrder
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import SERIES_TYPE, INDEX_TYPE
 from ..datasource.index import from_pandas as asindex
 from ..initializer import Series as asseries
@@ -43,16 +45,12 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
     _precision = Int32Field('precision')
     _include_lowest = BoolField('include_lowest')
     _duplicates = StringField('duplicates')
-    _input_min = KeyField('input_min')
-    _input_max = KeyField('input_max')
 
     def __init__(self, bins=None, right=None, labels=None, retbins=None,
-                 precision=None, include_lowest=None, duplicates=None,
-                 input_min=None, input_max=None, **kw):
+                 precision=None, include_lowest=None, duplicates=None, **kw):
         super().__init__(_bins=bins, _right=right, _labels=labels,
                          _retbins=retbins, _precision=precision,
-                         _include_lowest=include_lowest, _duplicates=duplicates,
-                         _input_min=input_min, _input_max=input_max, **kw)
+                         _include_lowest=include_lowest, _duplicates=duplicates, **kw)
 
     @property
     def input(self):
@@ -87,14 +85,6 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         return self._duplicates
 
     @property
-    def input_min(self):
-        return self._input_min
-
-    @property
-    def input_max(self):
-        return self._input_max
-
-    @property
     def output_limit(self):
         return 1 if not self._retbins else 2
 
@@ -102,10 +92,6 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs)
         self._input = next(inputs_iter)
-        if self._input_min is not None:
-            self._input_min = next(inputs_iter)
-        if self._input_max is not None:
-            self._input_max = next(inputs_iter)
         if isinstance(self._bins, ENTITY_TYPE):
             self._bins = next(inputs_iter)
         if isinstance(self._labels, ENTITY_TYPE):
@@ -122,11 +108,6 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
             raise ValueError('Cannot cut empty array')
 
         inputs = [x]
-        if isinstance(self.bins, Integral):
-            self._input_min = input_min = x.min()
-            self._input_max = input_max = x.max()
-            inputs.extend([input_min, input_max])
-
         if self._labels is not None and \
                 not isinstance(self._labels, (bool, ENTITY_TYPE)):
             self._labels = np.asarray(self._labels)
@@ -216,31 +197,35 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
     def tile(cls, op):
         if isinstance(op.bins, ENTITY_TYPE):
             # check op.bins chunk shapes
-            check_chunks_unknown_shape([op.bins], TilesError)
-            bins = op.bins.rechunk(op.bins.shape)._inplace_tile()
+            if has_unknown_shape(op.bins):
+                yield
+            bins = yield from recursive_tile(
+                op.bins.rechunk(op.bins.shape))
         else:
             bins = op.bins
 
         if isinstance(op.labels, ENTITY_TYPE):
             # check op.labels chunk shapes
-            check_chunks_unknown_shape([op.labels], TilesError)
-            labels = op.labels.rechunk(op.labels.shape)._inplace_tile()
+            if has_unknown_shape(op.labels):
+                yield
+            labels = yield from recursive_tile(
+                op.labels.rechunk(op.labels.shape))
         else:
             labels = op.labels
 
-        if op.input_min is not None:
-            # check if input_min and input_max executed
-            input_min_chunk = op.input_min.chunks[0]
-            input_max_chunk = op.input_max.chunks[0]
+        if isinstance(op.bins, Integral):
+            input_min, input_max = yield from recursive_tile(
+                op.input.min(), op.input.max())
+            input_min_chunk = input_min.chunks[0]
+            input_max_chunk = input_max.chunks[0]
+
+            # let input min and max execute first
+            yield [input_min_chunk, input_max_chunk]
+
             ctx = get_context()
             keys = [input_min_chunk.key, input_max_chunk.key]
-            metas = ctx.get_chunk_metas(keys)
-            if any(meta is None for meta in metas):
-                # not executed before
-                raise TilesError('min and max of x have not been executed yet')
-
             # get min and max of x
-            min_val, max_val = ctx.get_chunk_results(keys)
+            min_val, max_val = ctx.get_chunks_result(keys)
             # calculate bins
             if np.isinf(min_val) or np.isinf(max_val):
                 raise ValueError('cannot specify integer `bins` '
@@ -263,8 +248,6 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
         for c in op.input.chunks:
             chunk_op = op.copy().reset_key()
             chunk_inputs = [c]
-            # make sure input_min and input_max reset
-            chunk_op._input_min = chunk_op._input_max = None
             chunk_op._bins = bins
             # do not return bins always for chunk
             chunk_op._retbins = False
@@ -319,8 +302,9 @@ class DataFrameCut(DataFrameOperand, DataFrameOperandMixin):
                     bins = bins.astype(outs[1].dtype, copy=False)
                 convert = \
                     astensor if not isinstance(bins, pd.IntervalIndex) else asindex
-                bins_chunks.append(
-                    convert(bins, chunk_size=len(bins))._inplace_tile().chunks[0])
+                converted = yield from recursive_tile(
+                    convert(bins, chunk_size=len(bins)))
+                bins_chunks.append(converted.chunks[0])
             bins_kw['nsplits'] = ((len(bins),),)
             kws.append(bins_kw)
         new_op = op.copy()

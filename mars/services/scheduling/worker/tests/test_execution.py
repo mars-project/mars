@@ -14,6 +14,7 @@
 
 import asyncio
 import time
+import uuid
 from contextlib import asynccontextmanager
 from typing import Tuple
 
@@ -22,11 +23,13 @@ import pytest
 
 import mars.oscar as mo
 import mars.remote as mr
-from mars.core import ChunkGraph
+from mars.core import ChunkGraph, ChunkGraphBuilder, \
+    TileableGraph, TileableGraphBuilder
 from mars.remote.core import RemoteFunction
 from mars.services.scheduling.worker import SubtaskExecutionActor, \
     QuotaActor, BandSlotManagerActor
 from mars.services.cluster import MockClusterAPI
+from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
@@ -95,9 +98,10 @@ async def actor_pool(request):
 
     async with pool:
         session_id = 'test_session'
-        await MockClusterAPI.create(pool.external_address)
+        await MockClusterAPI.create(pool.external_address, band_to_slots={'numa-0': n_slots})
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        await MockLifecycleAPI.create(session_id, pool.external_address)
         await MockSubtaskAPI.create(pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address,
                                                   storage_manger_cls=MockStorageManagerActor)
@@ -213,10 +217,11 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     chunk_graph.add_node(remote_result)
     chunk_graph.add_edge(input1, remote_result)
 
-    subtask = Subtask('test_task', session_id=session_id, chunk_graph=chunk_graph)
+    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+                      chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(1)
 
     with Timer() as timer:
         await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
@@ -231,9 +236,12 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 
     # test if slot is restored
     remote_tileable = mr.spawn(delay_fun, args=(0.5, None))
-    chunk_graph = remote_tileable.build_graph(tiled=True)
+    graph = TileableGraph([remote_tileable.data])
+    next(TileableGraphBuilder(graph).build())
 
-    subtask = Subtask('test_task2', session_id=session_id, chunk_graph=chunk_graph)
+    chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
+
+    subtask = Subtask(f'test_task2_{uuid.uuid4()}', session_id=session_id, chunk_graph=chunk_graph)
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, 'numa-0', pool.external_address),
         timeout=30)

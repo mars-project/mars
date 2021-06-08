@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
+import pytest
 
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
     ascontiguousarray, asfortranarray
@@ -25,812 +25,820 @@ from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_spl
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, topk, to_gpu, to_cpu
-from mars.core.graph import get_tiled
 
 
-class Test(unittest.TestCase):
-    def testArray(self):
-        a = tensor([0, 1, 2], chunk_size=2)
+def test_array():
+    a = tensor([0, 1, 2], chunk_size=2)
 
-        b = array(a)
-        self.assertIsNot(a, b)
+    b = array(a)
+    assert a is not b
 
-        c = asarray(a)
-        self.assertIs(a, c)
+    c = asarray(a)
+    assert a is c
 
-    def testAscontiguousarray(self):
-        # dtype different
-        raw_a = np.asfortranarray(np.random.rand(2, 4))
-        raw_b = np.ascontiguousarray(raw_a, dtype='f4')
 
-        a = tensor(raw_a, chunk_size=2)
-        b = ascontiguousarray(a, dtype='f4')
+def test_ascontiguousarray():
+    # dtype different
+    raw_a = np.asfortranarray(np.random.rand(2, 4))
+    raw_b = np.ascontiguousarray(raw_a, dtype='f4')
 
-        self.assertEqual(a.dtype, raw_a.dtype)
-        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
-        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+    a = tensor(raw_a, chunk_size=2)
+    b = ascontiguousarray(a, dtype='f4')
 
-        self.assertEqual(b.dtype, raw_b.dtype)
-        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
-        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
 
-        # no copy
-        raw_a = np.random.rand(2, 4)
-        raw_b = np.ascontiguousarray(raw_a)
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
-        a = tensor(raw_a, chunk_size=2)
-        b = ascontiguousarray(a)
+    # no copy
+    raw_a = np.random.rand(2, 4)
+    raw_b = np.ascontiguousarray(raw_a)
 
-        self.assertEqual(a.dtype, raw_a.dtype)
-        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
-        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+    a = tensor(raw_a, chunk_size=2)
+    b = ascontiguousarray(a)
 
-        self.assertEqual(b.dtype, raw_b.dtype)
-        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
-        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
 
-    def testAsfortranarray(self):
-        # dtype different
-        raw_a = np.random.rand(2, 4)
-        raw_b = np.asfortranarray(raw_a, dtype='f4')
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
-        a = tensor(raw_a, chunk_size=2)
-        b = asfortranarray(a, dtype='f4')
 
-        self.assertEqual(a.dtype, raw_a.dtype)
-        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
-        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+def test_asfortranarray():
+    # dtype different
+    raw_a = np.random.rand(2, 4)
+    raw_b = np.asfortranarray(raw_a, dtype='f4')
 
-        self.assertEqual(b.dtype, raw_b.dtype)
-        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
-        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+    a = tensor(raw_a, chunk_size=2)
+    b = asfortranarray(a, dtype='f4')
 
-        # no copy
-        raw_a = np.asfortranarray(np.random.rand(2, 4))
-        raw_b = np.asfortranarray(raw_a)
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
 
-        a = tensor(raw_a, chunk_size=2)
-        b = asfortranarray(a)
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
-        self.assertEqual(a.dtype, raw_a.dtype)
-        self.assertEqual(a.flags['C_CONTIGUOUS'], raw_a.flags['C_CONTIGUOUS'])
-        self.assertEqual(a.flags['F_CONTIGUOUS'], raw_a.flags['F_CONTIGUOUS'])
+    # no copy
+    raw_a = np.asfortranarray(np.random.rand(2, 4))
+    raw_b = np.asfortranarray(raw_a)
 
-        self.assertEqual(b.dtype, raw_b.dtype)
-        self.assertEqual(b.flags['C_CONTIGUOUS'], raw_b.flags['C_CONTIGUOUS'])
-        self.assertEqual(b.flags['F_CONTIGUOUS'], raw_b.flags['F_CONTIGUOUS'])
+    a = tensor(raw_a, chunk_size=2)
+    b = asfortranarray(a)
 
-    def testDir(self):
-        a = tensor([0, 1, 2], chunk_size=2)
-        tensor_dir = dir(a)
-        for attr in dir(a.data):
-            self.assertIn(attr, tensor_dir)
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
 
-    def testCopyto(self):
-        a = ones((10, 20), chunk_size=3)
-        b = ones(10, chunk_size=4)
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
-        with self.assertRaises(ValueError):
-            copyto(a, b)
 
-        tp = type(a.op)
-        b = ones(20, chunk_size=4)
+def test_dir():
+    a = tensor([0, 1, 2], chunk_size=2)
+    tensor_dir = dir(a)
+    for attr in dir(a.data):
+        assert attr in tensor_dir
+
+
+def test_copyto():
+    a = ones((10, 20), chunk_size=3)
+    b = ones(10, chunk_size=4)
+
+    with pytest.raises(ValueError):
         copyto(a, b)
 
-        self.assertIsInstance(a.op, TensorCopyTo)
-        self.assertIs(a.inputs[0], b.data)
-        self.assertIsInstance(a.inputs[1].op, tp)
+    tp = type(a.op)
+    b = ones(20, chunk_size=4)
+    copyto(a, b)
 
-        a = a.tiles()
+    assert isinstance(a.op, TensorCopyTo)
+    assert a.inputs[0] is b.data
+    assert isinstance(a.inputs[1].op, tp)
 
-        self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
-        self.assertEqual(len(a.chunks[0].inputs), 2)
+    a = tile(a)
 
-        a = ones((10, 20), chunk_size=3, dtype='i4')
-        b = ones(20, chunk_size=4, dtype='f8')
+    assert isinstance(a.chunks[0].op, TensorCopyTo)
+    assert len(a.chunks[0].inputs) == 2
 
-        with self.assertRaises(TypeError):
-            copyto(a, b)
+    a = ones((10, 20), chunk_size=3, dtype='i4')
+    b = ones(20, chunk_size=4, dtype='f8')
 
-        b = ones(20, chunk_size=4, dtype='i4')
-        copyto(a, b, where=b > 0)
+    with pytest.raises(TypeError):
+        copyto(a, b)
 
-        self.assertIsNotNone(a.op.where)
+    b = ones(20, chunk_size=4, dtype='i4')
+    copyto(a, b, where=b > 0)
 
-        a = a.tiles()
+    assert a.op.where is not None
 
-        self.assertIsInstance(a.chunks[0].op, TensorCopyTo)
-        self.assertEqual(len(a.chunks[0].inputs), 3)
+    a = tile(a)
 
-        with self.assertRaises(ValueError):
-            copyto(a, a, where=np.ones(30, dtype='?'))
+    assert isinstance(a.chunks[0].op, TensorCopyTo)
+    assert len(a.chunks[0].inputs) == 3
 
-    def testAstype(self):
-        arr = ones((10, 20, 30), chunk_size=3)
+    with pytest.raises(ValueError):
+        copyto(a, a, where=np.ones(30, dtype='?'))
 
-        arr2 = arr.astype(np.int32)
-        arr2 = arr2.tiles()
 
-        self.assertEqual(arr2.shape, (10, 20, 30))
-        self.assertTrue(np.issubdtype(arr2.dtype, np.int32))
-        self.assertEqual(arr2.op.casting, 'unsafe')
+def test_astype():
+    arr = ones((10, 20, 30), chunk_size=3)
 
-        with self.assertRaises(TypeError):
-            arr.astype(np.int32, casting='safe')
+    arr2 = arr.astype(np.int32)
+    arr2 = tile(arr2)
 
-        arr3 = arr.astype(arr.dtype, order='F')
-        self.assertTrue(arr3.flags['F_CONTIGUOUS'])
-        self.assertFalse(arr3.flags['C_CONTIGUOUS'])
+    assert arr2.shape == (10, 20, 30)
+    assert np.issubdtype(arr2.dtype, np.int32) is True
+    assert arr2.op.casting == 'unsafe'
 
-        arr3 = arr3.tiles()
+    with pytest.raises(TypeError):
+        arr.astype(np.int32, casting='safe')
 
-        self.assertEqual(arr3.chunks[0].order.value, 'F')
+    arr3 = arr.astype(arr.dtype, order='F')
+    assert arr3.flags['F_CONTIGUOUS'] is True
+    assert arr3.flags['C_CONTIGUOUS'] is False
 
-    def testTranspose(self):
-        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
+    arr3 = tile(arr3)
 
-        arr2 = transpose(arr)
-        arr2 = arr2.tiles()
+    assert arr3.chunks[0].order.value == 'F'
 
-        self.assertEqual(arr2.shape, (30, 20, 10))
-        self.assertEqual(len(arr2.chunks), 126)
-        self.assertEqual(arr2.chunks[0].shape, (5, 3, 4))
-        self.assertEqual(arr2.chunks[-1].shape, (5, 2, 2))
 
-        with self.assertRaises(ValueError):
-            transpose(arr, axes=(1, 0))
+def test_transpose():
+    arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
 
-        arr3 = transpose(arr, (-2, 2, 0))
-        arr3 = arr3.tiles()
+    arr2 = transpose(arr)
+    arr2 = tile(arr2)
 
-        self.assertEqual(arr3.shape, (20, 30, 10))
-        self.assertEqual(len(arr3.chunks), 126)
-        self.assertEqual(arr3.chunks[0].shape, (3, 5, 4))
-        self.assertEqual(arr3.chunks[-1].shape, (2, 5, 2))
+    assert arr2.shape == (30, 20, 10)
+    assert len(arr2.chunks) == 126
+    assert arr2.chunks[0].shape == (5, 3, 4)
+    assert arr2.chunks[-1].shape == (5, 2, 2)
 
-        arr4 = arr.transpose(-2, 2, 0)
-        arr4 = arr4.tiles()
+    with pytest.raises(ValueError):
+        transpose(arr, axes=(1, 0))
 
-        self.assertEqual(arr4.shape, (20, 30, 10))
-        self.assertEqual(len(arr4.chunks), 126)
-        self.assertEqual(arr4.chunks[0].shape, (3, 5, 4))
-        self.assertEqual(arr4.chunks[-1].shape, (2, 5, 2))
+    arr3 = transpose(arr, (-2, 2, 0))
+    arr3 = tile(arr3)
 
-        arr5 = arr.T
-        arr5 = arr5.tiles()
+    assert arr3.shape == (20, 30, 10)
+    assert len(arr3.chunks) == 126
+    assert arr3.chunks[0].shape == (3, 5, 4)
+    assert arr3.chunks[-1].shape == (2, 5, 2)
 
-        self.assertEqual(arr5.shape, (30, 20, 10))
-        self.assertEqual(len(arr5.chunks), 126)
-        self.assertEqual(arr5.chunks[0].shape, (5, 3, 4))
-        self.assertEqual(arr5.chunks[-1].shape, (5, 2, 2))
+    arr4 = arr.transpose(-2, 2, 0)
+    arr4 = tile(arr4)
 
-    def testSwapaxes(self):
-        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
-        arr2 = arr.swapaxes(0, 1)
-        arr2 = arr2.tiles()
-        arr = get_tiled(arr)
+    assert arr4.shape == (20, 30, 10)
+    assert len(arr4.chunks) == 126
+    assert arr4.chunks[0].shape == (3, 5, 4)
+    assert arr4.chunks[-1].shape == (2, 5, 2)
 
-        self.assertEqual(arr2.shape, (20, 10, 30))
-        self.assertEqual(len(arr.chunks), len(arr2.chunks))
+    arr5 = arr.T
+    arr5 = tile(arr5)
 
-    def testBroadcastTo(self):
-        arr = ones((10, 5), chunk_size=2)
-        arr2 = broadcast_to(arr, (20, 10, 5))
-        arr2 = arr2.tiles()
-        arr = get_tiled(arr)
+    assert arr5.shape == (30, 20, 10)
+    assert len(arr5.chunks) == 126
+    assert arr5.chunks[0].shape == (5, 3, 4)
+    assert arr5.chunks[-1].shape == (5, 2, 2)
 
-        self.assertEqual(arr2.shape, (20, 10, 5))
-        self.assertEqual(len(arr2.chunks), len(arr.chunks))
-        self.assertEqual(arr2.chunks[0].shape, (20, 2, 2))
 
-        arr = ones((10, 5, 1), chunk_size=2)
-        arr3 = broadcast_to(arr, (5, 10, 5, 6))
-        arr3 = arr3.tiles()
-        arr = get_tiled(arr)
+def test_swapaxes():
+    arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
+    arr2 = arr.swapaxes(0, 1)
+    arr, arr2 = tile(arr, arr2)
 
-        self.assertEqual(arr3.shape, (5, 10, 5, 6))
-        self.assertEqual(len(arr3.chunks), len(arr.chunks))
-        self.assertEqual(arr3.nsplits, ((5,), (2, 2, 2, 2, 2), (2, 2, 1), (6,)))
-        self.assertEqual(arr3.chunks[0].shape, (5, 2, 2, 6))
+    assert arr2.shape == (20, 10, 30)
+    assert len(arr.chunks) == len(arr2.chunks)
 
-        arr = ones((10, 1), chunk_size=2)
-        arr4 = broadcast_to(arr, (20, 10, 5))
-        arr4 = arr4.tiles()
-        arr = get_tiled(arr)
 
-        self.assertEqual(arr4.shape, (20, 10, 5))
-        self.assertEqual(len(arr4.chunks), len(arr.chunks))
-        self.assertEqual(arr4.chunks[0].shape, (20, 2, 5))
+def test_broadcast_to():
+    arr = ones((10, 5), chunk_size=2)
+    arr2 = broadcast_to(arr, (20, 10, 5))
+    arr, arr2 = tile(arr, arr2)
 
-        with self.assertRaises(ValueError):
-            broadcast_to(arr, (10,))
+    assert arr2.shape == (20, 10, 5)
+    assert len(arr2.chunks) == len(arr.chunks)
+    assert arr2.chunks[0].shape == (20, 2, 2)
 
-        with self.assertRaises(ValueError):
-            broadcast_to(arr, (5, 1))
+    arr = ones((10, 5, 1), chunk_size=2)
+    arr3 = broadcast_to(arr, (5, 10, 5, 6))
+    arr, arr3 = tile(arr, arr3)
 
-        arr = ones((4, 5), chunk_size=2)
-        with self.assertRaises((ValueError)):
-            broadcast_to(arr[arr < 2], (3, 20))
-
-    def testWhere(self):
-        cond = tensor([[True, False], [False, True]], chunk_size=1)
-        x = tensor([1, 2], chunk_size=1)
-        y = tensor([3, 4], chunk_size=1)
-
-        arr = where(cond, x, y)
-        arr = arr.tiles()
-
-        self.assertEqual(len(arr.chunks), 4)
-        self.assertTrue(np.array_equal(arr.chunks[0].inputs[0].op.data, [[True]]))
-        self.assertTrue(np.array_equal(arr.chunks[0].inputs[1].op.data, [1]))
-        self.assertTrue(np.array_equal(arr.chunks[0].inputs[2].op.data, [3]))
-        self.assertTrue(np.array_equal(arr.chunks[1].inputs[0].op.data, [[False]]))
-        self.assertTrue(np.array_equal(arr.chunks[1].inputs[1].op.data, [2]))
-        self.assertTrue(np.array_equal(arr.chunks[1].inputs[2].op.data, [4]))
-        self.assertTrue(np.array_equal(arr.chunks[2].inputs[0].op.data, [[False]]))
-        self.assertTrue(np.array_equal(arr.chunks[2].inputs[1].op.data, [1]))
-        self.assertTrue(np.array_equal(arr.chunks[2].inputs[2].op.data, [3]))
-        self.assertTrue(np.array_equal(arr.chunks[3].inputs[0].op.data, [[True]]))
-        self.assertTrue(np.array_equal(arr.chunks[3].inputs[1].op.data, [2]))
-        self.assertTrue(np.array_equal(arr.chunks[3].inputs[2].op.data, [4]))
-
-        with self.assertRaises(ValueError):
-            where(cond, x)
-
-        x = arange(9.).reshape(3, 3)
-        y = where(x < 5, x, -1)
-
-        self.assertEqual(y.dtype, np.float64)
-
-    def testArgwhere(self):
-        cond = tensor([[True, False], [False, True]], chunk_size=1)
-        indices = argwhere(cond)
-
-        self.assertTrue(np.isnan(indices.shape[0]))
-        self.assertEqual(indices.shape[1], 2)
-
-        indices = indices.tiles()
-
-        self.assertEqual(indices.nsplits[1], (1, 1))
-
-    def testArgwhereOrder(self):
-        data = np.asfortranarray([[True, False], [False, True]])
-        cond = tensor(data, chunk_size=1)
-        indices = argwhere(cond)
-
-        self.assertTrue(indices.flags['F_CONTIGUOUS'])
-        self.assertFalse(indices.flags['C_CONTIGUOUS'])
-
-        indices = indices.tiles()
-
-        self.assertEqual(indices.chunks[0].order.value, 'F')
-
-    def testArraySplit(self):
-        a = arange(8, chunk_size=2)
-
-        splits = array_split(a, 3)
-        self.assertEqual(len(splits), 3)
-        self.assertEqual([s.shape[0] for s in splits], [3, 3, 2])
-
-        splits[0].tiles()
-        splits = [get_tiled(s) for s in splits]
-        self.assertEqual(splits[0].nsplits, ((2, 1),))
-        self.assertEqual(splits[1].nsplits, ((1, 2),))
-        self.assertEqual(splits[2].nsplits, ((2,),))
-
-        a = arange(7, chunk_size=2)
-
-        splits = array_split(a, 3)
-        self.assertEqual(len(splits), 3)
-        self.assertEqual([s.shape[0] for s in splits], [3, 2, 2])
+    assert arr3.shape == (5, 10, 5, 6)
+    assert len(arr3.chunks) == len(arr.chunks)
+    assert arr3.nsplits == ((5,), (2, 2, 2, 2, 2), (2, 2, 1), (6,))
+    assert arr3.chunks[0].shape == (5, 2, 2, 6)
 
-        splits[0].tiles()
-        splits = [get_tiled(s) for s in splits]
-        self.assertEqual(splits[0].nsplits, ((2, 1),))
-        self.assertEqual(splits[1].nsplits, ((1, 1),))
-        self.assertEqual(splits[2].nsplits, ((1, 1),))
+    arr = ones((10, 1), chunk_size=2)
+    arr4 = broadcast_to(arr, (20, 10, 5))
+    arr, arr4 = tile(arr, arr4)
 
-    def testSplit(self):
-        a = arange(9, chunk_size=2)
+    assert arr4.shape == (20, 10, 5)
+    assert len(arr4.chunks) == len(arr.chunks)
+    assert arr4.chunks[0].shape == (20, 2, 5)
 
-        splits = split(a, 3)
-        self.assertEqual(len(splits), 3)
-        self.assertTrue(all(s.shape == (3,) for s in splits))
+    with pytest.raises(ValueError):
+        broadcast_to(arr, (10,))
 
-        splits[0].tiles()
-        splits = [get_tiled(s) for s in splits]
-        self.assertEqual(splits[0].nsplits, ((2, 1),))
-        self.assertEqual(splits[1].nsplits, ((1, 2),))
-        self.assertEqual(splits[2].nsplits, ((2, 1),))
+    with pytest.raises(ValueError):
+        broadcast_to(arr, (5, 1))
 
-        a = arange(8, chunk_size=2)
+    arr = ones((4, 5), chunk_size=2)
+    with pytest.raises((ValueError)):
+        broadcast_to(arr[arr < 2], (3, 20))
 
-        splits = split(a, [3, 5, 6, 10])
-        self.assertEqual(len(splits), 5)
-        self.assertEqual(splits[0].shape, (3,))
-        self.assertEqual(splits[1].shape, (2,))
-        self.assertEqual(splits[2].shape, (1,))
-        self.assertEqual(splits[3].shape, (2,))
-        self.assertEqual(splits[4].shape, (0,))
 
-        splits[0].tiles()
-        splits = [get_tiled(s) for s in splits]
-        self.assertEqual(splits[0].nsplits, ((2, 1),))
-        self.assertEqual(splits[1].nsplits, ((1, 1),))
-        self.assertEqual(splits[2].nsplits, ((1,),))
-        self.assertEqual(splits[3].nsplits, ((2,),))
-        self.assertEqual(splits[4].nsplits, ((0,),))
+def test_where():
+    cond = tensor([[True, False], [False, True]], chunk_size=1)
+    x = tensor([1, 2], chunk_size=1)
+    y = tensor([3, 4], chunk_size=1)
 
-        a = tensor(np.asfortranarray(np.random.rand(9, 10)), chunk_size=4)
-        splits = split(a, 3)
-        self.assertTrue(splits[0].flags['F_CONTIGUOUS'])
-        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
-        self.assertTrue(splits[1].flags['F_CONTIGUOUS'])
-        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
-        self.assertTrue(splits[2].flags['F_CONTIGUOUS'])
-        self.assertFalse(splits[0].flags['C_CONTIGUOUS'])
+    arr = where(cond, x, y)
+    arr = tile(arr)
 
-        for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
-            splits = split(a, (3,5))
-            self.assertEqual(len(splits), 3)
+    assert len(arr.chunks) == 4
+    np.testing.assert_equal(arr.chunks[0].inputs[0].op.data, [[True]])
+    np.testing.assert_equal(arr.chunks[0].inputs[1].op.data, [1])
+    np.testing.assert_equal(arr.chunks[0].inputs[2].op.data, [3])
+    np.testing.assert_equal(arr.chunks[1].inputs[0].op.data, [[False]])
+    np.testing.assert_equal(arr.chunks[1].inputs[1].op.data, [2])
+    np.testing.assert_equal(arr.chunks[1].inputs[2].op.data, [4])
+    np.testing.assert_equal(arr.chunks[2].inputs[0].op.data, [[False]])
+    np.testing.assert_equal(arr.chunks[2].inputs[1].op.data, [1])
+    np.testing.assert_equal(arr.chunks[2].inputs[2].op.data, [3])
+    np.testing.assert_equal(arr.chunks[3].inputs[0].op.data, [[True]])
+    np.testing.assert_equal(arr.chunks[3].inputs[1].op.data, [2])
+    np.testing.assert_equal(arr.chunks[3].inputs[2].op.data, [4])
 
-    def testSqueeze(self):
-        data = np.array([[[0], [1], [2]]])
-        x = tensor(data)
+    with pytest.raises(ValueError):
+        where(cond, x)
 
-        t = squeeze(x)
-        self.assertEqual(t.shape, (3,))
-        self.assertIsNotNone(t.dtype)
+    x = arange(9.).reshape(3, 3)
+    y = where(x < 5, x, -1)
 
-        t = squeeze(x, axis=0)
-        self.assertEqual(t.shape, (3, 1))
+    assert y.dtype == np.float64
 
-        with self.assertRaises(ValueError):
-            squeeze(x, axis=1)
 
-        t = squeeze(x, axis=2)
-        self.assertEqual(t.shape, (1, 3))
+def test_argwhere():
+    cond = tensor([[True, False], [False, True]], chunk_size=1)
+    indices = argwhere(cond)
 
-    def testResultType(self):
-        x = tensor([2, 3], dtype='i4')
-        y = 3
-        z = np.array([3, 4], dtype='f4')
+    assert np.isnan(indices.shape[0])
+    assert indices.shape[1] == 2
 
-        r = result_type(x, y, z)
-        e = np.result_type(x.dtype, y, z)
-        self.assertEqual(r, e)
+    indices = tile(indices)
 
-    def testRepeat(self):
-        a = arange(10, chunk_size=2).reshape(2, 5)
+    assert indices.nsplits[1] == (1, 1)
 
-        t = repeat(a, 3)
-        self.assertEqual(t.shape, (30,))
 
-        t = repeat(a, 3, axis=0)
-        self.assertEqual(t.shape, (6, 5))
+def test_argwhere_order():
+    data = np.asfortranarray([[True, False], [False, True]])
+    cond = tensor(data, chunk_size=1)
+    indices = argwhere(cond)
 
-        t = repeat(a, 3, axis=1)
-        self.assertEqual(t.shape, (2, 15))
+    assert indices.flags['F_CONTIGUOUS'] is True
+    assert indices.flags['C_CONTIGUOUS'] is False
 
-        t = repeat(a, [3], axis=1)
-        self.assertEqual(t.shape, (2, 15))
+    indices = tile(indices)
 
-        t = repeat(a, [3, 4], axis=0)
-        self.assertEqual(t.shape, (7, 5))
+    assert indices.chunks[0].order.value == 'F'
 
-        with self.assertRaises(ValueError):
-            repeat(a, [3, 4], axis=1)
 
-        a = tensor(np.random.randn(10), chunk_size=5)
+def test_array_split():
+    a = arange(8, chunk_size=2)
 
-        t = repeat(a, 3)
-        t = t.tiles()
-        self.assertEqual(sum(t.nsplits[0]), 30)
+    splits = array_split(a, 3)
+    assert len(splits) == 3
+    assert [s.shape[0] for s in splits] == [3, 3, 2]
 
-        a = tensor(np.random.randn(100), chunk_size=10)
+    splits = tile(*splits)
+    assert splits[0].nsplits == ((2, 1),)
+    assert splits[1].nsplits == ((1, 2),)
+    assert splits[2].nsplits == ((2,),)
 
-        t = repeat(a, 3)
-        t = t.tiles()
-        self.assertEqual(sum(t.nsplits[0]), 300)
+    a = arange(7, chunk_size=2)
 
-        a = tensor(np.random.randn(4))
-        b = tensor((4,))
+    splits = array_split(a, 3)
+    assert len(splits) == 3
+    assert [s.shape[0] for s in splits] == [3, 2, 2]
 
-        t = repeat(a, b)
+    splits = tile(*splits)
+    assert splits[0].nsplits == ((2, 1),)
+    assert splits[1].nsplits == ((1, 1),)
+    assert splits[2].nsplits == ((1, 1),)
 
-        t = t.tiles()
-        self.assertTrue(np.isnan(t.nsplits[0]))
 
-    def testIsIn(self):
-        element = 2 * arange(4, chunk_size=1).reshape(2, 2)
-        test_elements = [1, 2, 4, 8]
+def test_split():
+    a = arange(9, chunk_size=2)
 
-        mask = isin(element, test_elements)
-        self.assertEqual(mask.shape, (2, 2))
-        self.assertEqual(mask.dtype, np.bool_)
+    splits = split(a, 3)
+    assert len(splits) == 3
+    assert all(s.shape == (3,) for s in splits) is True
 
-        mask = mask.tiles()
-        element = get_tiled(element)
+    splits = tile(*splits)
+    assert splits[0].nsplits == ((2, 1),)
+    assert splits[1].nsplits == ((1, 2),)
+    assert splits[2].nsplits == ((2, 1),)
 
-        self.assertEqual(len(mask.chunks), len(element.chunks))
-        self.assertEqual(len(mask.op.test_elements.chunks), 1)
-        self.assertIs(mask.chunks[0].inputs[0], element.chunks[0].data)
+    a = arange(8, chunk_size=2)
 
-        element = 2 * arange(4, chunk_size=1).reshape(2, 2)
-        test_elements = tensor([1, 2, 4, 8], chunk_size=2)
+    splits = split(a, [3, 5, 6, 10])
+    assert len(splits) == 5
+    assert splits[0].shape == (3,)
+    assert splits[1].shape == (2,)
+    assert splits[2].shape == (1,)
+    assert splits[3].shape == (2,)
+    assert splits[4].shape == (0,)
 
-        mask = isin(element, test_elements, invert=True)
-        self.assertEqual(mask.shape, (2, 2))
-        self.assertEqual(mask.dtype, np.bool_)
+    splits = tile(*splits)
+    assert splits[0].nsplits == ((2, 1),)
+    assert splits[1].nsplits == ((1, 1),)
+    assert splits[2].nsplits == ((1,),)
+    assert splits[3].nsplits == ((2,),)
+    assert splits[4].nsplits == ((0,),)
 
-        mask = mask.tiles()
-        element = get_tiled(element)
+    a = tensor(np.asfortranarray(np.random.rand(9, 10)), chunk_size=4)
+    splits = split(a, 3)
+    assert splits[0].flags['F_CONTIGUOUS'] is True
+    assert splits[0].flags['C_CONTIGUOUS'] is False
+    assert splits[1].flags['F_CONTIGUOUS'] is True
+    assert splits[0].flags['C_CONTIGUOUS'] is False
+    assert splits[2].flags['F_CONTIGUOUS'] is True
+    assert splits[0].flags['C_CONTIGUOUS'] is False
 
-        self.assertEqual(len(mask.chunks), len(element.chunks))
-        self.assertEqual(len(mask.op.test_elements.chunks), 1)
-        self.assertIs(mask.chunks[0].inputs[0], element.chunks[0].data)
-        self.assertTrue(mask.chunks[0].op.invert)
+    for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
+        splits = split(a, (3,5))
+        assert len(splits) == 3
 
-    def testCreateView(self):
-        arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
-        arr2 = transpose(arr)
-        self.assertTrue(arr2.op.create_view)
 
-        arr3 = transpose(arr)
-        self.assertTrue(arr3.op.create_view)
+def test_squeeze():
+    data = np.array([[[0], [1], [2]]])
+    x = tensor(data)
 
-        arr4 = arr.swapaxes(0, 1)
-        self.assertTrue(arr4.op.create_view)
+    t = squeeze(x)
+    assert t.shape == (3,)
+    assert t.dtype is not None
 
-        arr5 = moveaxis(arr, 1, 0)
-        self.assertTrue(arr5.op.create_view)
+    t = squeeze(x, axis=0)
+    assert t.shape == (3, 1)
 
-        arr6 = atleast_1d(1)
-        self.assertTrue(arr6.op.create_view)
+    with pytest.raises(ValueError):
+        squeeze(x, axis=1)
 
-        arr7 = atleast_2d([1, 1])
-        self.assertTrue(arr7.op.create_view)
+    t = squeeze(x, axis=2)
+    assert t.shape == (1, 3)
 
-        arr8 = atleast_3d([1, 1])
-        self.assertTrue(arr8.op.create_view)
 
-        arr9 = arr[:3, [1, 2, 3]]
-        # no view cuz of fancy indexing
-        self.assertFalse(arr9.op.create_view)
+def test_result_type():
+    x = tensor([2, 3], dtype='i4')
+    y = 3
+    z = np.array([3, 4], dtype='f4')
 
-        arr9[0][0][0] = 100
-        self.assertFalse(arr9.op.create_view)
+    r = result_type(x, y, z)
+    e = np.result_type(x.dtype, y, z)
+    assert r == e
 
-        arr10 = arr[:3, None, :5]
-        self.assertTrue(arr10.op.create_view)
 
-        arr10[0][0][0] = 100
-        self.assertFalse(arr10.op.create_view)
+def test_repeat():
+    a = arange(10, chunk_size=2).reshape(2, 5)
 
-        data = np.array([[[0], [1], [2]]])
-        x = tensor(data)
+    t = repeat(a, 3)
+    assert t.shape == (30,)
 
-        t = squeeze(x)
-        self.assertTrue(t.op.create_view)
+    t = repeat(a, 3, axis=0)
+    assert t.shape == (6, 5)
 
-        y = x.reshape(3)
-        self.assertTrue(y.op.create_view)
+    t = repeat(a, 3, axis=1)
+    assert t.shape == (2, 15)
 
-    def testRavel(self):
-        arr = ones((10, 5), chunk_size=2)
-        flat_arr = ravel(arr)
-        self.assertEqual(flat_arr.shape, (50,))
+    t = repeat(a, [3], axis=1)
+    assert t.shape == (2, 15)
 
-    def testSearchsorted(self):
-        raw = np.sort(np.random.randint(100, size=(16,)))
-        arr = tensor(raw, chunk_size=3).cumsum()
+    t = repeat(a, [3, 4], axis=0)
+    assert t.shape == (7, 5)
 
-        t1 = searchsorted(arr, 10)
+    with pytest.raises(ValueError):
+        repeat(a, [3, 4], axis=1)
 
-        self.assertEqual(t1.shape, ())
-        self.assertEqual(t1.flags['C_CONTIGUOUS'],
-                         np.searchsorted(raw.cumsum(), 10).flags['C_CONTIGUOUS'])
-        self.assertEqual(t1.flags['F_CONTIGUOUS'],
-                         np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS'])
+    a = tensor(np.random.randn(10), chunk_size=5)
 
-        t1 = t1.tiles()
+    t = repeat(a, 3)
+    t = tile(t)
+    assert sum(t.nsplits[0]) == 30
 
-        self.assertEqual(t1.nsplits, ())
-        self.assertEqual(len(t1.chunks), 1)
-        self.assertEqual(t1.chunks[0].op.stage, OperandStage.reduce)
+    a = tensor(np.random.randn(100), chunk_size=10)
 
-        with self.assertRaises(ValueError):
-            searchsorted(np.random.randint(10, size=(14, 14)), 1)
+    t = repeat(a, 3)
+    t = tile(t)
+    assert sum(t.nsplits[0]) == 300
 
-        with self.assertRaises(ValueError):
-            searchsorted(arr, 10, side='both')
+    a = tensor(np.random.randn(4))
+    b = tensor((4,))
 
-        with self.assertRaises(ValueError):
-            searchsorted(arr.tosparse(), 10)
+    t = repeat(a, b)
 
-        raw2 = np.asfortranarray(np.sort(np.random.randint(100, size=(16,))))
-        arr = tensor(raw2, chunk_size=3)
-        to_search = np.asfortranarray([[1, 2], [3, 4]])
+    t = tile(t)
+    assert np.isnan(t.nsplits[0])
 
-        t1 = searchsorted(arr, to_search)
-        expected = np.searchsorted(raw2, to_search)
 
-        self.assertEqual(t1.shape, to_search.shape)
-        self.assertEqual(t1.flags['C_CONTIGUOUS'], expected.flags['C_CONTIGUOUS'])
-        self.assertEqual(t1.flags['F_CONTIGUOUS'], expected.flags['F_CONTIGUOUS'])
+def test_isin():
+    element = 2 * arange(4, chunk_size=1).reshape(2, 2)
+    test_elements = [1, 2, 4, 8]
 
-    def testToGPU(self):
-        x = tensor(np.random.rand(10, 10), chunk_size=3)
+    mask = isin(element, test_elements)
+    assert mask.shape == (2, 2)
+    assert mask.dtype == np.bool_
 
-        gx = to_gpu(x)
+    mask, element = tile(mask, element)
 
-        self.assertEqual(gx.dtype, x.dtype)
-        self.assertEqual(gx.order, x.order)
-        self.assertTrue(gx.op.gpu)
+    assert len(mask.chunks) == len(element.chunks)
+    assert len(mask.op.test_elements.chunks) == 1
+    assert mask.chunks[0].inputs[0] is element.chunks[0].data
 
-        gx = gx.tiles()
-        x = get_tiled(x)
+    element = 2 * arange(4, chunk_size=1).reshape(2, 2)
+    test_elements = tensor([1, 2, 4, 8], chunk_size=2)
 
-        self.assertEqual(gx.chunks[0].dtype, x.chunks[0].dtype)
-        self.assertEqual(gx.chunks[0].order, x.chunks[0].order)
-        self.assertTrue(gx.chunks[0].op.gpu)
+    mask = isin(element, test_elements, invert=True)
+    assert mask.shape == (2, 2)
+    assert mask.dtype == np.bool_
 
-    def testToCPU(self):
-        x = tensor(np.random.rand(10, 10), chunk_size=3, gpu=True)
+    mask, element = tile(mask, element)
 
-        cx = to_cpu(x)
+    assert len(mask.chunks) == len(element.chunks)
+    assert len(mask.op.test_elements.chunks) == 1
+    assert mask.chunks[0].inputs[0] is element.chunks[0].data
+    assert mask.chunks[0].op.invert is True
 
-        self.assertEqual(cx.dtype, x.dtype)
-        self.assertEqual(cx.order, x.order)
-        self.assertFalse(cx.op.gpu)
 
-        cx = cx.tiles()
-        x = get_tiled(x)
+def test_create_view():
+    arr = ones((10, 20, 30), chunk_size=[4, 3, 5])
+    arr2 = transpose(arr)
+    assert arr2.op.create_view is True
 
-        self.assertEqual(cx.chunks[0].dtype, x.chunks[0].dtype)
-        self.assertEqual(cx.chunks[0].order, x.chunks[0].order)
-        self.assertFalse(cx.chunks[0].op.gpu)
+    arr3 = transpose(arr)
+    assert arr3.op.create_view is True
 
-    def testUnique(self):
-        x = unique(np.int64(1))
+    arr4 = arr.swapaxes(0, 1)
+    assert arr4.op.create_view is True
 
-        self.assertEqual(len(x.shape), 1)
-        self.assertTrue(np.isnan(x.shape[0]))
-        self.assertEqual(x.dtype, np.dtype(np.int64))
+    arr5 = moveaxis(arr, 1, 0)
+    assert arr5.op.create_view is True
 
-        x = x.tiles()
+    arr6 = atleast_1d(1)
+    assert arr6.op.create_view is True
 
-        self.assertEqual(len(x.chunks), 1)
-        self.assertEqual(len(x.chunks[0].shape), 1)
-        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
-        self.assertEqual(x.chunks[0].dtype, np.dtype(np.int64))
+    arr7 = atleast_2d([1, 1])
+    assert arr7.op.create_view is True
 
-        x, indices = unique(0.1, return_index=True)
+    arr8 = atleast_3d([1, 1])
+    assert arr8.op.create_view is True
 
-        self.assertEqual(len(x.shape), 1)
-        self.assertTrue(np.isnan(x.shape[0]))
-        self.assertEqual(x.dtype, np.dtype(np.float64))
-        self.assertEqual(len(indices.shape), 1)
-        self.assertTrue(np.isnan(indices.shape[0]))
-        self.assertEqual(indices.dtype, np.dtype(np.intp))
+    arr9 = arr[:3, [1, 2, 3]]
+    # no view cuz of fancy indexing
+    assert arr9.op.create_view is False
 
-        x = x.tiles()
-        indices = get_tiled(indices)
+    arr9[0][0][0] = 100
+    assert arr9.op.create_view is False
 
-        self.assertEqual(len(x.chunks), 1)
-        self.assertEqual(len(x.chunks[0].shape), 1)
-        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
-        self.assertEqual(x.chunks[0].dtype, np.dtype(np.float64))
-        self.assertEqual(len(indices.chunks), 1)
-        self.assertEqual(len(indices.chunks[0].shape), 1)
-        self.assertTrue(np.isnan(indices.chunks[0].shape[0]))
-        self.assertEqual(indices.chunks[0].dtype, np.dtype(np.intp))
+    arr10 = arr[:3, None, :5]
+    assert arr10.op.create_view is True
 
-        with self.assertRaises(np.AxisError):
-            unique(0.1, axis=1)
+    arr10[0][0][0] = 100
+    assert arr10.op.create_view is False
 
-        raw = np.random.randint(10, size=(10), dtype=np.int64)
-        a = tensor(raw, chunk_size=4)
+    data = np.array([[[0], [1], [2]]])
+    x = tensor(data)
 
-        x = unique(a, aggregate_size=2)
+    t = squeeze(x)
+    assert t.op.create_view is True
 
-        self.assertEqual(len(x.shape), len(raw.shape))
-        self.assertTrue(np.isnan(x.shape[0]))
-        self.assertEqual(x.dtype, np.dtype(np.int64))
+    y = x.reshape(3)
+    assert y.op.create_view is True
 
-        x = x.tiles()
 
-        self.assertEqual(len(x.chunks), 2)
-        self.assertEqual(x.nsplits, ((np.nan, np.nan),))
-        for i in range(2):
-            self.assertEqual(x.chunks[i].shape, (np.nan,))
-            self.assertEqual(x.chunks[i].dtype, raw.dtype)
+def test_ravel():
+    arr = ones((10, 5), chunk_size=2)
+    flat_arr = ravel(arr)
+    assert flat_arr.shape == (50,)
 
-        raw = np.random.randint(10, size=(10, 20), dtype=np.int64)
-        a = tensor(raw, chunk_size=(4, 6))
 
-        x, indices, inverse, counts = \
-            unique(a, axis=1, aggregate_size=2, return_index=True,
-                   return_inverse=True, return_counts=True)
+def test_searchsorted():
+    raw = np.sort(np.random.randint(100, size=(16,)))
+    arr = tensor(raw, chunk_size=3).cumsum()
 
-        self.assertEqual(x.shape, (10, np.nan))
-        self.assertEqual(x.dtype, np.dtype(np.int64))
-        self.assertEqual(indices.shape, (np.nan,))
-        self.assertEqual(indices.dtype, np.dtype(np.intp))
-        self.assertEqual(inverse.shape, (20,))
-        self.assertEqual(inverse.dtype, np.dtype(np.intp))
-        self.assertEqual(counts.shape, (np.nan,))
-        self.assertEqual(counts.dtype, np.dtype(np.int_))
+    t1 = searchsorted(arr, 10)
 
-        x = x.tiles()
-        indices, inverse, counts = \
-            get_tiled(indices), get_tiled(inverse), get_tiled(counts)
+    assert t1.shape == ()
+    assert t1.flags['C_CONTIGUOUS'] == np.searchsorted(raw.cumsum(), 10).flags['C_CONTIGUOUS']
+    assert t1.flags['F_CONTIGUOUS'] == np.searchsorted(raw.cumsum(), 10).flags['F_CONTIGUOUS']
 
-        self.assertEqual(len(x.chunks), 2)
-        self.assertEqual(x.nsplits, ((10,), (np.nan, np.nan)))
-        for i in range(2):
-            self.assertEqual(x.chunks[i].shape, (10, np.nan))
-            self.assertEqual(x.chunks[i].dtype, raw.dtype)
-            self.assertEqual(x.chunks[i].index, (0, i))
+    t1 = tile(t1)
 
-        self.assertEqual(len(indices.chunks), 2)
-        self.assertEqual(indices.nsplits, ((np.nan, np.nan),))
-        for i in range(2):
-            self.assertEqual(indices.chunks[i].shape, (np.nan,))
-            self.assertEqual(indices.chunks[i].dtype, raw.dtype)
-            self.assertEqual(indices.chunks[i].index, (i,))
+    assert t1.nsplits == ()
+    assert len(t1.chunks) == 1
+    assert t1.chunks[0].op.stage == OperandStage.reduce
 
-        self.assertEqual(len(inverse.chunks), 4)
-        self.assertEqual(inverse.nsplits, ((6, 6, 6, 2),))
-        for i in range(4):
-            self.assertEqual(inverse.chunks[i].shape, ((6, 6, 6, 2)[i],))
-            self.assertEqual(inverse.chunks[i].dtype, np.dtype(np.int64))
-            self.assertEqual(inverse.chunks[i].index, (i,))
+    with pytest.raises(ValueError):
+        searchsorted(np.random.randint(10, size=(14, 14)), 1)
 
-        self.assertEqual(len(counts.chunks), 2)
-        self.assertEqual(counts.nsplits, ((np.nan, np.nan),))
-        for i in range(2):
-            self.assertEqual(counts.chunks[i].shape, (np.nan,))
-            self.assertEqual(counts.chunks[i].dtype, np.dtype(np.int_))
-            self.assertEqual(counts.chunks[i].index, (i,))
+    with pytest.raises(ValueError):
+        searchsorted(arr, 10, side='both')
 
-    def testSort(self):
-        a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
+    with pytest.raises(ValueError):
+        searchsorted(arr.tosparse(), 10)
 
-        sa = sort(a)
-        self.assertEqual(type(sa.op).__name__, 'TensorSort')
+    raw2 = np.asfortranarray(np.sort(np.random.randint(100, size=(16,))))
+    arr = tensor(raw2, chunk_size=3)
+    to_search = np.asfortranarray([[1, 2], [3, 4]])
 
-        sa = sa.tiles()
+    t1 = searchsorted(arr, to_search)
+    expected = np.searchsorted(raw2, to_search)
 
-        self.assertEqual(len(sa.chunks), 2)
-        for c in sa.chunks:
-            self.assertEqual(type(c.op).__name__, 'TensorSort')
-            self.assertEqual(type(c.inputs[0].op).__name__, 'ArrayDataSource')
+    assert t1.shape == to_search.shape
+    assert t1.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
+    assert t1.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
 
-        a = tensor(np.random.rand(100), chunk_size=(10))
 
-        sa = sort(a)
-        self.assertEqual(type(sa.op).__name__, 'TensorSort')
+def test_to_gpu():
+    x = tensor(np.random.rand(10, 10), chunk_size=3)
 
-        sa = sa.tiles()
+    gx = to_gpu(x)
 
-        for c in sa.chunks:
-            self.assertEqual(type(c.op).__name__, 'PSRSShuffle')
-            self.assertEqual(c.op.stage, OperandStage.reduce)
-            self.assertEqual(c.shape, (np.nan,))
+    assert gx.dtype == x.dtype
+    assert gx.order == x.order
+    assert gx.op.gpu is True
 
-        a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
-                   chunk_size=(10, 5))
-        sa = sort(a)
-        self.assertSequenceEqual(sa.op.order, ['id', 'size'])
+    gx, x = tile(gx, x)
 
-        with self.assertRaises(ValueError):
-            sort(a, order=['unknown_field'])
+    assert gx.chunks[0].dtype == x.chunks[0].dtype
+    assert gx.chunks[0].order == x.chunks[0].order
+    assert gx.chunks[0].op.gpu is True
 
-        with self.assertRaises(np.AxisError):
-            sort(np.random.rand(100), axis=1)
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), kind='non_valid_kind')
+def test_to_cpu():
+    x = tensor(np.random.rand(10, 10), chunk_size=3, gpu=True)
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), parallel_kind='non_valid_parallel_kind')
+    cx = to_cpu(x)
 
-        with self.assertRaises(TypeError):
-            sort(np.random.rand(100), psrs_kinds='non_valid_psrs_kinds')
+    assert cx.dtype == x.dtype
+    assert cx.order == x.order
+    assert cx.op.gpu is False
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), psrs_kinds=['quicksort'] * 2)
+    cx, x = tile(cx, x)
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
+    assert cx.chunks[0].dtype == x.chunks[0].dtype
+    assert cx.chunks[0].order == x.chunks[0].order
+    assert cx.chunks[0].op.gpu is False
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), psrs_kinds=[None, None, None])
 
-        with self.assertRaises(ValueError):
-            sort(np.random.rand(100), psrs_kinds=['quicksort', 'mergesort', None])
+def test_unique():
+    x = unique(np.int64(1))
 
-    def testPartition(self):
-        a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
+    assert len(x.shape) == 1
+    assert np.isnan(x.shape[0])
+    assert x.dtype == np.dtype(np.int64)
 
-        pa = partition(a, [4, 9])
-        self.assertEqual(type(pa.op).__name__, 'TensorPartition')
+    x = tile(x)
 
-        pa = pa.tiles()
+    assert len(x.chunks) == 1
+    assert len(x.chunks[0].shape) == 1
+    assert np.isnan(x.chunks[0].shape[0])
+    assert x.chunks[0].dtype == np.dtype(np.int64)
 
-        self.assertEqual(len(pa.chunks), 2)
-        for c in pa.chunks:
-            self.assertEqual(type(c.op).__name__, 'TensorPartition')
-            self.assertEqual(type(c.inputs[0].op).__name__, 'ArrayDataSource')
+    x, indices = unique(0.1, return_index=True)
 
-        a = tensor(np.random.rand(100), chunk_size=(10))
+    assert len(x.shape) == 1
+    assert np.isnan(x.shape[0])
+    assert x.dtype == np.dtype(np.float64)
+    assert len(indices.shape) == 1
+    assert np.isnan(indices.shape[0])
+    assert indices.dtype == np.dtype(np.intp)
 
-        pa = partition(a, 4)
-        self.assertEqual(type(pa.op).__name__, 'TensorPartition')
+    x, indices = tile(x, indices)
 
-        pa = pa.tiles()
+    assert len(x.chunks) == 1
+    assert len(x.chunks[0].shape) == 1
+    assert np.isnan(x.chunks[0].shape[0])
+    assert x.chunks[0].dtype == np.dtype(np.float64)
+    assert len(indices.chunks) == 1
+    assert len(indices.chunks[0].shape) == 1
+    assert np.isnan(indices.chunks[0].shape[0])
+    assert indices.chunks[0].dtype == np.dtype(np.intp)
 
-        for c in pa.chunks:
-            self.assertEqual(type(c.op).__name__, 'PartitionMerged')
-            self.assertEqual(c.shape, (np.nan,))
+    with pytest.raises(np.AxisError):
+        unique(0.1, axis=1)
 
-        a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
-                   chunk_size=(10, 5))
-        pa = partition(a, 3)
-        self.assertSequenceEqual(pa.op.order, ['id', 'size'])
+    raw = np.random.randint(10, size=(10), dtype=np.int64)
+    a = tensor(raw, chunk_size=4)
 
-        with self.assertRaises(ValueError):
-            partition(a, 4, order=['unknown_field'])
+    x = unique(a, aggregate_size=2)
 
-        with self.assertRaises(np.AxisError):
-            partition(np.random.rand(100), 4, axis=1)
+    assert len(x.shape) == len(raw.shape)
+    assert np.isnan(x.shape[0])
+    assert x.dtype == np.dtype(np.int64)
 
-        with self.assertRaises(ValueError):
-            partition(np.random.rand(100), 4, kind='non_valid_kind')
+    x = tile(x)
 
-        with self.assertRaises(ValueError):
-            partition(np.random.rand(10), 10)
+    assert len(x.chunks) == 2
+    assert x.nsplits == ((np.nan, np.nan),)
+    for i in range(2):
+        assert x.chunks[i].shape == (np.nan,)
+        assert x.chunks[i].dtype == raw.dtype
 
-        with self.assertRaises(TypeError):
-            partition(np.random.rand(10), tensor([1.0, 2.0]))
+    raw = np.random.randint(10, size=(10, 20), dtype=np.int64)
+    a = tensor(raw, chunk_size=(4, 6))
 
-        with self.assertRaises(ValueError):
-            partition(np.random.rand(10), tensor([[1, 2]]))
+    x, indices, inverse, counts = \
+        unique(a, axis=1, aggregate_size=2, return_index=True,
+               return_inverse=True, return_counts=True)
 
-        with self.assertRaises(ValueError):
-            partition(np.random.rand(10), [-11, 2])
+    assert x.shape == (10, np.nan)
+    assert x.dtype == np.dtype(np.int64)
+    assert indices.shape == (np.nan,)
+    assert indices.dtype == np.dtype(np.intp)
+    assert inverse.shape == (20,)
+    assert inverse.dtype == np.dtype(np.intp)
+    assert counts.shape == (np.nan,)
+    assert counts.dtype == np.dtype(np.int_)
 
-    def testTopk(self):
-        raw = np.random.rand(20)
-        a = tensor(raw, chunk_size=10)
+    x, indices, inverse, counts = tile(x, indices, inverse, counts)
 
-        t = topk(a, 2)
-        t = t.tiles()
-        self.assertEqual(t.op.parallel_kind, 'tree')
+    assert len(x.chunks) == 2
+    assert x.nsplits == ((10,), (np.nan, np.nan))
+    for i in range(2):
+        assert x.chunks[i].shape == (10, np.nan)
+        assert x.chunks[i].dtype == raw.dtype
+        assert x.chunks[i].index == (0, i)
 
-        t = topk(a, 3)
-        t = t.tiles()
-        self.assertEqual(t.op.parallel_kind, 'psrs')
+    assert len(indices.chunks) == 2
+    assert indices.nsplits == ((np.nan, np.nan),)
+    for i in range(2):
+        assert indices.chunks[i].shape == (np.nan,)
+        assert indices.chunks[i].dtype == raw.dtype
+        assert indices.chunks[i].index == (i,)
 
-        t = topk(sort(a), 3)
-        t = t.tiles()
-        # k is less than 100
-        self.assertEqual(t.op.parallel_kind, 'tree')
+    assert len(inverse.chunks) == 4
+    assert inverse.nsplits == ((6, 6, 6, 2),)
+    for i in range(4):
+        assert inverse.chunks[i].shape == ((6, 6, 6, 2)[i],)
+        assert inverse.chunks[i].dtype == np.dtype(np.int64)
+        assert inverse.chunks[i].index == (i,)
 
-        with self.assertRaises(ValueError):
-            topk(a, 3, parallel_kind='unknown')
+    assert len(counts.chunks) == 2
+    assert counts.nsplits == ((np.nan, np.nan),)
+    for i in range(2):
+        assert counts.chunks[i].shape == (np.nan,)
+        assert counts.chunks[i].dtype == np.dtype(np.int_)
+        assert counts.chunks[i].index == (i,)
 
-    def testMapChunk(self):
-        raw = np.random.rand(20)
-        a = tensor(raw, chunk_size=10)
 
-        mapped = a.map_chunk(lambda x: x * 0.5).tiles()
-        self.assertTrue(np.issubdtype(mapped.dtype, np.floating))
-        self.assertEqual(mapped.shape, (np.nan,))
-        self.assertEqual(len(mapped.chunks), 2)
+def test_sort():
+    a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
 
-        mapped = a.map_chunk(lambda x: x * 0.5, elementwise=True).tiles()
-        self.assertTrue(np.issubdtype(mapped.dtype, np.floating))
-        self.assertEqual(mapped.shape, (20,))
-        self.assertEqual(len(mapped.chunks), 2)
+    sa = sort(a)
+    assert type(sa.op).__name__ == 'TensorSort'
+
+    sa = tile(sa)
+
+    assert len(sa.chunks) == 2
+    for c in sa.chunks:
+        assert type(c.op).__name__ == 'TensorSort'
+        assert type(c.inputs[0].op).__name__ == 'ArrayDataSource'
+
+    a = tensor(np.random.rand(100), chunk_size=(10))
+
+    sa = sort(a)
+    assert type(sa.op).__name__ == 'TensorSort'
+
+    sa = tile(sa)
+
+    for c in sa.chunks:
+        assert type(c.op).__name__ == 'PSRSShuffle'
+        assert c.op.stage == OperandStage.reduce
+        assert c.shape == (np.nan,)
+
+    a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
+               chunk_size=(10, 5))
+    sa = sort(a)
+    assert sa.op.order == ['id', 'size']
+
+    with pytest.raises(ValueError):
+        sort(a, order=['unknown_field'])
+
+    with pytest.raises(np.AxisError):
+        sort(np.random.rand(100), axis=1)
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), kind='non_valid_kind')
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), parallel_kind='non_valid_parallel_kind')
+
+    with pytest.raises(TypeError):
+        sort(np.random.rand(100), psrs_kinds='non_valid_psrs_kinds')
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), psrs_kinds=['quicksort'] * 2)
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), psrs_kinds=['non_valid_kind'] * 3)
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), psrs_kinds=[None, None, None])
+
+    with pytest.raises(ValueError):
+        sort(np.random.rand(100), psrs_kinds=['quicksort', 'mergesort', None])
+
+
+def test_partition():
+    a = tensor(np.random.rand(10, 10), chunk_size=(5, 10))
+
+    pa = partition(a, [4, 9])
+    assert type(pa.op).__name__ == 'TensorPartition'
+
+    pa = tile(pa)
+
+    assert len(pa.chunks) == 2
+    for c in pa.chunks:
+        assert type(c.op).__name__ == 'TensorPartition'
+        assert type(c.inputs[0].op).__name__ == 'ArrayDataSource'
+
+    a = tensor(np.random.rand(100), chunk_size=(10))
+
+    pa = partition(a, 4)
+    assert type(pa.op).__name__ == 'TensorPartition'
+
+    pa = tile(pa)
+
+    for c in pa.chunks:
+        assert type(c.op).__name__ == 'PartitionMerged'
+        assert c.shape == (np.nan,)
+
+    a = tensor(np.empty((10, 10), dtype=[('id', np.int32), ('size', np.int64)]),
+               chunk_size=(10, 5))
+    pa = partition(a, 3)
+    assert pa.op.order == ['id', 'size']
+
+    with pytest.raises(ValueError):
+        partition(a, 4, order=['unknown_field'])
+
+    with pytest.raises(np.AxisError):
+        partition(np.random.rand(100), 4, axis=1)
+
+    with pytest.raises(ValueError):
+        partition(np.random.rand(100), 4, kind='non_valid_kind')
+
+    with pytest.raises(ValueError):
+        partition(np.random.rand(10), 10)
+
+    with pytest.raises(TypeError):
+        partition(np.random.rand(10), tensor([1.0, 2.0]))
+
+    with pytest.raises(ValueError):
+        partition(np.random.rand(10), tensor([[1, 2]]))
+
+    with pytest.raises(ValueError):
+        partition(np.random.rand(10), [-11, 2])
+
+
+def test_topk():
+    raw = np.random.rand(20)
+    a = tensor(raw, chunk_size=10)
+
+    t = topk(a, 2)
+    t = tile(t)
+    assert t.op.parallel_kind == 'tree'
+
+    t = topk(a, 3)
+    t = tile(t)
+    assert t.op.parallel_kind == 'psrs'
+
+    t = topk(sort(a), 3)
+    t = tile(t)
+    # k is less than 100
+    assert t.op.parallel_kind == 'tree'
+
+    with pytest.raises(ValueError):
+        topk(a, 3, parallel_kind='unknown')
+
+
+def test_map_chunk():
+    raw = np.random.rand(20)
+    a = tensor(raw, chunk_size=10)
+
+    mapped = tile(a.map_chunk(lambda x: x * 0.5))
+    assert np.issubdtype(mapped.dtype, np.floating) is True
+    assert mapped.shape == (np.nan,)
+    assert len(mapped.chunks) == 2
+
+    mapped = tile(a.map_chunk(lambda x: x * 0.5, elementwise=True))
+    assert np.issubdtype(mapped.dtype, np.floating) is True
+    assert mapped.shape == (20,)
+    assert len(mapped.chunks) == 2

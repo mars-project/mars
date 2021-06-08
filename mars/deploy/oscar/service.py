@@ -19,7 +19,7 @@ from ...services import start_services, stop_services, NodeRole
 from ..utils import load_service_config_file
 
 
-def _load_config(filename=None):
+def load_config(filename=None):
     # use default config
     if not filename:  # pragma: no cover
         d = os.path.dirname(os.path.abspath(__file__))
@@ -30,21 +30,37 @@ def _load_config(filename=None):
 async def start_supervisor(address: str,
                            lookup_address: str = None,
                            modules: Union[List, str, None] = None,
-                           config: Dict = None):
+                           config: Dict = None,
+                           web: Union[str, bool] = 'auto'):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     lookup_address = lookup_address or address
     backend = config['cluster'].get('backend', 'fixed')
     if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
-    await start_services(NodeRole.SUPERVISOR, config,
-                         modules=modules, address=address)
+    if web:
+        # try to append web to services
+        config['services'].append('web')
+    try:
+        await start_services(NodeRole.SUPERVISOR, config,
+                             modules=modules, address=address)
+    except ImportError:
+        if web == 'auto':
+            config['services'] = [service for service in config['services']
+                                  if service != 'web']
+            await start_services(NodeRole.SUPERVISOR, config,
+                                 modules=modules, address=address)
+            return False
+        else:  # pragma: no cover
+            raise
+    else:
+        return bool(web)
 
 
 async def stop_supervisor(address: str,
                           config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     await stop_services(NodeRole.SUPERVISOR, address, config)
 
 
@@ -55,7 +71,7 @@ async def start_worker(address: str,
                        config: Dict = None,
                        mark_ready: bool = True):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     backend = config['cluster'].get('backend', 'fixed')
     if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
@@ -68,5 +84,5 @@ async def start_worker(address: str,
 async def stop_worker(address: str,
                       config: Dict = None):
     if not config or isinstance(config, str):
-        config = _load_config(config)
+        config = load_config(config)
     await stop_services(NodeRole.WORKER, address, config)

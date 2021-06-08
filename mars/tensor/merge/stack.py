@@ -19,9 +19,8 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import Int32Field
-from ...utils import check_chunks_unknown_shape
+from ...serialization.serializables import Int32Field
+from ...utils import has_unknown_shape
 from ..utils import unify_chunks, check_out_param
 from ..array_utils import as_same_device, device
 from ..operands import TensorOperand, TensorOperandMixin
@@ -62,13 +61,14 @@ class TensorStack(TensorOperand, TensorOperandMixin):
     def tile(cls, op):
         from ..indexing.slice import TensorSlice
 
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         if len(set([inp.shape for inp in op.inputs])) != 1:
             # check shape again when input has unknown shape
             raise ValueError('all input tensors must have the same shape')
 
-        inputs = unify_chunks(*op.inputs)
+        inputs = yield from unify_chunks(*op.inputs)
         output = op.outputs[0]
         axis = op.axis
 

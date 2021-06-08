@@ -16,10 +16,11 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import TilesError
-from ...custom_log import redirect_custom_log
-from ...serialize import KeyField, FunctionField, TupleField, DictField, BoolField
-from ...utils import enter_current_session, check_chunks_unknown_shape, quiet_stdio
+from ...core import recursive_tile
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import KeyField, FunctionField, \
+    TupleField, DictField, BoolField
+from ...utils import enter_current_session, has_unknown_shape, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_empty_df, build_series, parse_index, \
     validate_output_types
@@ -124,9 +125,10 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([inp], TilesError)
+            if has_unknown_shape(inp):
+                yield
             # if input is a DataFrame, make sure 1 chunk on axis columns
-            inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
+            inp = yield from recursive_tile(inp.rechunk({1: inp.shape[1]}))
 
         out_chunks = []
         nsplits = [[]] if out.ndim == 1 else [[], [out.shape[1]]]
@@ -157,6 +159,7 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
                 out_chunk = chunk_op.new_chunk([chunk], shape=shape,
                                                index_value=index_value,
                                                name=out.name,
+                                               dtype=out.dtype,
                                                index=(chunk.index[0],))
                 out_chunks.append(out_chunk)
                 nsplits[0].append(out_chunk.shape[0])

@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .initializer import DataFrame, Series, Index, named_dataframe, named_series
+from .initializer import DataFrame, Series, Index
 # do imports to register operands
 from .base.cut import cut
 from .base.eval import mars_eval as eval  # pylint: disable=redefined-builtin
@@ -23,7 +23,6 @@ from .base.qcut import qcut
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_index import series_from_index
 from .datasource.from_records import from_records
-from .datasource.from_vineyard import from_vineyard
 from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet

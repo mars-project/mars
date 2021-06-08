@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core.operand import OperandStage
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ...utils import lazy_import
 from ..operands import OutputType
 from ..utils import parse_index, hash_dataframe_on, gen_unknown_index_value, standardize_range_index
@@ -44,8 +44,11 @@ class DataFrameDropDuplicates(DuplicateOperand):
         return self._ignore_index
 
     @classmethod
-    def _get_shape(cls, input_shape):
-        return (np.nan,) + input_shape[1:]
+    def _get_shape(cls, input_shape, op):
+        shape = (np.nan,) + input_shape[1:]
+        if op.output_types[0] == OutputType.dataframe and len(shape) == 1:
+            shape += (3,)
+        return shape
 
     @classmethod
     def _gen_tileable_params(cls, op: "DataFrameDropDuplicates", input_params):
@@ -55,7 +58,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
         else:
             params['index_value'] = gen_unknown_index_value(
                 input_params['index_value'], op.keep, op.subset, type(op).__name__)
-        params['shape'] = cls._get_shape(input_params['shape'])
+        params['shape'] = cls._get_shape(input_params['shape'], op)
         return params
 
     def __call__(self, inp, inplace=False):
@@ -73,7 +76,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
         inp = op.inputs[0]
         chunk_params = input_params.copy()
         chunk_params['index'] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
-        chunk_params['shape'] = cls._get_shape(input_params['shape'])
+        chunk_params['shape'] = cls._get_shape(input_params['shape'], op)
         chunk_params['index_value'] = gen_unknown_index_value(
             input_params['index_value'], input_chunk)
         if inp.ndim == 2:
@@ -83,6 +86,13 @@ class DataFrameDropDuplicates(DuplicateOperand):
             chunk_params['name'] = inp.name
             chunk_params['dtype'] = inp.dtype
         return chunk_params
+
+    @classmethod
+    def _get_map_output_types(cls, input_chunk, method: str):
+        if method == 'subset_tree':
+            return [OutputType.dataframe]
+        else:
+            return input_chunk.op.output_types
 
     @classmethod
     def _tile_shuffle(cls, op: "DataFrameDropDuplicates", inp):

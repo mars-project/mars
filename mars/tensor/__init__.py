@@ -15,13 +15,13 @@
 # limitations under the License.
 
 
-from .datasource import tensor, named_tensor, array, asarray, ascontiguousarray, asfortranarray, \
+from .datasource import tensor, array, asarray, ascontiguousarray, asfortranarray, \
     scalar, empty, empty_like, ones, ones_like, zeros, zeros_like, \
     full, full_like, arange, diag, diagflat, eye, identity, linspace, \
     meshgrid, indices, tril, triu, fromtiledb, fromtiledb as from_tiledb, from_dataframe, \
-    fromhdf5, fromhdf5 as from_hdf5, fromzarr, fromzarr as from_zarr, from_vineyard
+    fromhdf5, fromhdf5 as from_hdf5, fromzarr, fromzarr as from_zarr
 from .datastore import totiledb, totiledb as to_tiledb, tohdf5, tohdf5 as to_hdf5, \
-    tozarr, tozarr as to_zarr, tovineyard, tovineyard as to_vineyard  # pylint: disable=reimported
+    tozarr, tozarr as to_zarr  # pylint: disable=reimported
 from .base import result_type, ndim, copyto, transpose, where, broadcast_to, broadcast_arrays, \
     expand_dims, rollaxis, swapaxes, moveaxis, ravel, atleast_1d, atleast_2d, atleast_3d, argwhere, \
     array_split, split, hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \
@@ -61,7 +61,6 @@ from .einsum import einsum
 from .images import imread
 # noinspection PyUnresolvedReferences
 from .lib.index_tricks import mgrid, ogrid, ndindex, r_, c_
-from .core import mutable_tensor
 
 from . import random
 from . import fft
@@ -71,7 +70,7 @@ from . import special
 from . import stats
 
 # types
-from .core import Tensor, MutableTensor
+from .core import Tensor
 # noinspection PyUnresolvedReferences
 from ..core import ExecutableTuple
 

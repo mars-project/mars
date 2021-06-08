@@ -22,10 +22,11 @@ from functools import reduce
 import numpy as np
 
 from .... import opcodes
-from ....context import get_context, RunningMode
-from ....core import ExecutableTuple, OutputType
+from ....core import ExecutableTuple, OutputType, recursive_tile
+from ....core.context import get_context
 from ....core.operand import MergeDictOperand
-from ....serialize import DictField, Int32Field, KeyField, ListField, StringField, ValueType
+from ....serialization.serializables import FieldTypes, DictField, Int32Field, \
+    KeyField, ListField, StringField
 from ...utils import concat_chunks, collect_ports
 from ._align import align_data_set
 from .core import LGBMModelType, get_model_cls_from_type
@@ -38,19 +39,19 @@ class LGBMTrain(MergeDictOperand):
 
     _model_type = Int32Field('model_type', on_serialize=lambda x: x.value,
                              on_deserialize=LGBMModelType)
-    _params = DictField('params', key_type=ValueType.string)
+    _params = DictField('params', key_type=FieldTypes.string)
     _data = KeyField('data')
     _label = KeyField('label')
     _sample_weight = KeyField('sample_weight')
     _init_score = KeyField('init_score')
-    _kwds = DictField('kwds', key_type=ValueType.string)
+    _kwds = DictField('kwds', key_type=FieldTypes.string)
 
-    _eval_datas = ListField('eval_datas', ValueType.key)
-    _eval_labels = ListField('eval_labels', ValueType.key)
-    _eval_sample_weights = ListField('eval_sample_weights', ValueType.key)
-    _eval_init_scores = ListField('eval_init_scores', ValueType.key)
+    _eval_datas = ListField('eval_datas', FieldTypes.key)
+    _eval_labels = ListField('eval_labels', FieldTypes.key)
+    _eval_sample_weights = ListField('eval_sample_weights', FieldTypes.key)
+    _eval_init_scores = ListField('eval_init_scores', FieldTypes.key)
 
-    _workers = ListField('workers', ValueType.string)
+    _workers = ListField('workers', FieldTypes.string)
     _worker_id = Int32Field('worker_id')
     _worker_ports = KeyField('worker_ports')
 
@@ -164,8 +165,8 @@ class LGBMTrain(MergeDictOperand):
     @staticmethod
     def _get_data_chunks_workers(ctx, data):
         # data_chunk.inputs is concat, and concat's input is the co-allocated chunks
-        metas = ctx.get_chunk_metas([c.key for c in data.chunks])
-        return [m.workers[0] for m in metas]
+        metas = ctx.get_chunks_meta([c.key for c in data.chunks], fields=['bands'])
+        return [m['bands'][0][0] for m in metas]
 
     @staticmethod
     def _concat_chunks_by_worker(chunks, chunk_workers):
@@ -180,75 +181,67 @@ class LGBMTrain(MergeDictOperand):
     @classmethod
     def tile(cls, op: "LGBMTrain"):
         ctx = get_context()
-        if ctx.running_mode != RunningMode.distributed:
-            assert all(len(inp.chunks) == 1 for inp in op.inputs)
+        data = op.data
+        worker_to_args = defaultdict(dict)
 
+        workers = cls._get_data_chunks_workers(ctx, data)
+
+        for arg in ['_data', '_label', '_sample_weight', '_init_score']:
+            if getattr(op, arg) is not None:
+                for worker, chunk in cls._concat_chunks_by_worker(
+                        getattr(op, arg).chunks, workers).items():
+                    worker_to_args[worker][arg] = chunk
+
+        if op.eval_datas:
+            eval_workers_list = [cls._get_data_chunks_workers(ctx, d) for d in op.eval_datas]
+            extra_workers = reduce(operator.or_, (set(w) for w in eval_workers_list)) - set(workers)
+            worker_remap = dict(zip(extra_workers, itertools.cycle(workers)))
+            if worker_remap:
+                eval_workers_list = [[worker_remap.get(w, w) for w in wl] for wl in eval_workers_list]
+
+            for arg in ['_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
+                if getattr(op, arg):
+                    for tileable, eval_workers in zip(getattr(op, arg), eval_workers_list):
+                        for worker, chunk in cls._concat_chunks_by_worker(
+                                tileable.chunks, eval_workers).items():
+                            if arg not in worker_to_args[worker]:
+                                worker_to_args[worker][arg] = []
+                            worker_to_args[worker][arg].append(chunk)
+
+        out_chunks = []
+        workers = list(set(workers))
+        for worker_id, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([inp.chunks[0] for inp in op.inputs],
-                                           shape=(1,), index=(0,))
-            new_op = op.copy()
-            return new_op.new_tileables(op.inputs, chunks=[out_chunk], nsplits=((1,),))
-        else:
-            data = op.data
-            worker_to_args = defaultdict(dict)
+            chunk_op.expect_worker = worker
 
-            workers = cls._get_data_chunks_workers(ctx, data)
+            input_chunks = []
+            concat_args = worker_to_args.get(worker, {})
+            for arg in ['_data', '_label', '_sample_weight', '_init_score',
+                        '_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
+                arg_val = getattr(op, arg)
+                if arg_val:
+                    arg_chunk = concat_args.get(arg)
+                    setattr(chunk_op, arg, arg_chunk)
+                    if isinstance(arg_chunk, list):
+                        input_chunks.extend(arg_chunk)
+                    else:
+                        input_chunks.append(arg_chunk)
 
-            for arg in ['_data', '_label', '_sample_weight', '_init_score']:
-                if getattr(op, arg) is not None:
-                    for worker, chunk in cls._concat_chunks_by_worker(
-                            getattr(op, arg).chunks, workers).items():
-                        worker_to_args[worker][arg] = chunk
+            worker_ports_chunk = (yield from recursive_tile(
+                collect_ports(workers, op.data))).chunks[0]
+            input_chunks.append(worker_ports_chunk)
 
-            if op.eval_datas:
-                eval_workers_list = [cls._get_data_chunks_workers(ctx, d) for d in op.eval_datas]
-                extra_workers = reduce(operator.or_, (set(w) for w in eval_workers_list)) - set(workers)
-                worker_remap = dict(zip(extra_workers, itertools.cycle(workers)))
-                if worker_remap:
-                    eval_workers_list = [[worker_remap.get(w, w) for w in wl] for wl in eval_workers_list]
+            chunk_op._workers = workers
+            chunk_op._worker_ports = worker_ports_chunk
+            chunk_op._worker_id = worker_id
 
-                for arg in ['_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
-                    if getattr(op, arg):
-                        for tileable, eval_workers in zip(getattr(op, arg), eval_workers_list):
-                            for worker, chunk in cls._concat_chunks_by_worker(
-                                    tileable.chunks, eval_workers).items():
-                                if arg not in worker_to_args[worker]:
-                                    worker_to_args[worker][arg] = []
-                                worker_to_args[worker][arg].append(chunk)
+            data_chunk = concat_args['_data']
+            out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,), index=data_chunk.index[:1])
+            out_chunks.append(out_chunk)
 
-            out_chunks = []
-            workers = list(set(workers))
-            for worker_id, worker in enumerate(workers):
-                chunk_op = op.copy().reset_key()
-                chunk_op.expect_worker = worker
-
-                input_chunks = []
-                concat_args = worker_to_args.get(worker, {})
-                for arg in ['_data', '_label', '_sample_weight', '_init_score',
-                            '_eval_datas', '_eval_labels', '_eval_sample_weights', '_eval_init_scores']:
-                    arg_val = getattr(op, arg)
-                    if arg_val:
-                        arg_chunk = concat_args.get(arg)
-                        setattr(chunk_op, arg, arg_chunk)
-                        if isinstance(arg_chunk, list):
-                            input_chunks.extend(arg_chunk)
-                        else:
-                            input_chunks.append(arg_chunk)
-
-                worker_ports_chunk = collect_ports(workers, op.data)._inplace_tile().chunks[0]
-                input_chunks.append(worker_ports_chunk)
-
-                chunk_op._workers = workers
-                chunk_op._worker_ports = worker_ports_chunk
-                chunk_op._worker_id = worker_id
-
-                data_chunk = concat_args['_data']
-                out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,), index=data_chunk.index[:1])
-                out_chunks.append(out_chunk)
-
-            new_op = op.copy()
-            return new_op.new_tileables(op.inputs, chunks=out_chunks,
-                                        nsplits=((np.nan for _ in out_chunks),))
+        new_op = op.copy()
+        return new_op.new_tileables(op.inputs, chunks=out_chunks,
+                                    nsplits=((np.nan for _ in out_chunks),))
 
     @classmethod
     def execute(cls, ctx, op: "LGBMTrain"):
@@ -284,22 +277,21 @@ class LGBMTrain(MergeDictOperand):
         params = op.params.copy()
         # if model is trained, remove unsupported parameters
         params.pop('out_dtype_', None)
-        if ctx.running_mode == RunningMode.distributed:
-            worker_ports = ctx[op.worker_ports.key]
-            worker_ips = [worker.split(':', 1)[0] for worker in op.workers]
-            worker_endpoints = [f'{worker}:{port}' for worker, port in zip(worker_ips, worker_ports)]
+        worker_ports = ctx[op.worker_ports.key]
+        worker_ips = [worker.split(':', 1)[0] for worker in op.workers]
+        worker_endpoints = [f'{worker}:{port}' for worker, port in zip(worker_ips, worker_ports)]
 
-            params['machines'] = ','.join(worker_endpoints)
-            params['time_out'] = op.timeout
-            params['num_machines'] = len(worker_endpoints)
-            params['local_listen_port'] = worker_ports[op.worker_id]
+        params['machines'] = ','.join(worker_endpoints)
+        params['time_out'] = op.timeout
+        params['num_machines'] = len(worker_endpoints)
+        params['local_listen_port'] = worker_ports[op.worker_id]
 
-            if (op.tree_learner or '').lower() not in {'data', 'feature', 'voting'}:
-                logger.warning('Parameter tree_learner not set or set to incorrect value '
-                               f'{op.tree_learner}, using "data" as default')
-                params['tree_learner'] = 'data'
-            else:
-                params['tree_learner'] = op.tree_learner
+        if (op.tree_learner or '').lower() not in {'data', 'feature', 'voting'}:
+            logger.warning('Parameter tree_learner not set or set to incorrect value '
+                           f'{op.tree_learner}, using "data" as default')
+            params['tree_learner'] = 'data'
+        else:
+            params['tree_learner'] = op.tree_learner
 
         try:
             model_cls = get_model_cls_from_type(op.model_type)

@@ -16,16 +16,18 @@ import itertools
 
 import numpy as np
 
-from ....config import options
-from ....core import TilesError
+from ....core import recursive_tile
+from ....serialization.serializables import Int64Field
 from ....tensor.operands import TensorOperand, TensorOperandMixin
 from ....tensor import tensor as astensor
-from ....utils import check_chunks_unknown_shape
+from ....utils import has_unknown_shape
 from ...utils import check_array
 
 
 class PairwiseDistances(TensorOperand, TensorOperandMixin):
     _op_module_ = 'learn'
+
+    chunk_store_limit = Int64Field('chunk_store_limit')
 
     @staticmethod
     def _return_float_dtype(X, Y):
@@ -114,23 +116,24 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
     def _rechunk_cols_into_one(cls, x, y):
         y_is_x = y is x
         if x.chunk_shape[1] != 1 or y.chunk_shape[1] != 1:
-            check_chunks_unknown_shape([x, y], TilesError)
+            if has_unknown_shape([x, y]):
+                yield
 
-            x = x.rechunk({1: x.shape[1]})._inplace_tile()
+            x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
             if y_is_x:
                 y = x
             else:
-                y = y.rechunk({1: y.shape[1]})._inplace_tile()
+                y = yield from recursive_tile(y.rechunk({1: y.shape[1]}))
 
         return x, y
 
     @classmethod
-    def _adjust_chunk_sizes(cls, X, Y, out):
+    def _adjust_chunk_sizes(cls, op, X, Y, out):
         max_x_chunk_size = max(X.nsplits[0])
         max_y_chunk_size = max(Y.nsplits[0])
         itemsize = out.dtype.itemsize
         max_chunk_bytes = max_x_chunk_size * max_y_chunk_size * itemsize
-        chunk_store_limit = options.chunk_store_limit * 2  # scale 2 times
+        chunk_store_limit = op.chunk_store_limit * 2  # scale 2 times
         if max_chunk_bytes > chunk_store_limit:
             adjust_succeeded = False
             # chunk is too huge, try to rechunk X and Y
@@ -139,17 +142,18 @@ class PairwiseDistances(TensorOperand, TensorOperandMixin):
                 expected_y_chunk_size = max(int(chunk_store_limit / itemsize / max_x_chunk_size), 1)
                 if max_x_chunk_size * expected_y_chunk_size * itemsize <= chunk_store_limit:
                     adjust_succeeded = True
-                    Y = Y.rechunk({0: expected_y_chunk_size})._inplace_tile()
+                    Y = yield from recursive_tile(
+                        Y.rechunk({0: expected_y_chunk_size}))
             else:
                 # x is smaller, rechunk x is more efficient
                 expected_x_chunk_size = max(int(chunk_store_limit / itemsize / max_y_chunk_size), 1)
                 if max_y_chunk_size * expected_x_chunk_size * itemsize <= chunk_store_limit:
                     adjust_succeeded = True
-                    X = X.rechunk({0: expected_x_chunk_size})._inplace_tile()
+                    X = yield from recursive_tile(X.rechunk({0: expected_x_chunk_size}))
 
             if not adjust_succeeded:
                 expected_chunk_size = max(int(np.sqrt(chunk_store_limit / itemsize)), 1)
-                X = X.rechunk({0: expected_chunk_size})._inplace_tile()
-                Y = Y.rechunk({0: expected_chunk_size})._inplace_tile()
+                X = yield from recursive_tile(X.rechunk({0: expected_chunk_size}))
+                Y = yield from recursive_tile(Y.rechunk({0: expected_chunk_size}))
 
         return X, Y

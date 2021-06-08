@@ -25,16 +25,16 @@ import numpy as np
 from .... import opcodes
 from .... import tensor as mt
 from ....config import options
-from ....context import get_context, RunningMode
-from ....core import ENTITY_TYPE, TilesError, OutputType
+from ....core import ENTITY_TYPE, OutputType, recursive_tile
+from ....core.context import get_context
 from ....core.operand import OperandStage
 from ....lib.filesystem import get_fs, FileSystem
-from ....serialize import KeyField, StringField, Int32Field, Int64Field, \
+from ....serialization.serializables import KeyField, StringField, Int32Field, Int64Field, \
     DictField, AnyField, BytesField, BoolField
 from ....tensor.core import TensorOrder
-from ....utils import check_chunks_unknown_shape, Timer, ceildiv
+from ....utils import has_unknown_shape, Timer, ceildiv
 from ...operands import LearnOperand, LearnOperandMixin
-from ..core import proxima, validate_tensor
+from ..core import proxima, validate_tensor, get_proxima_type
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +181,8 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         ctx = get_context()
 
         # make sure all inputs have known chunk sizes
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         rechunk_size = dict()
         if tensor.chunk_shape[1] > 1:
@@ -189,7 +190,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
         if row_number is not None:
             rechunk_size[0] = tensor.shape[0] // row_number
         if len(rechunk_size) > 0:
-            tensor = tensor.rechunk(rechunk_size)._inplace_tile()
+            tensor = yield from recursive_tile(tensor.rechunk(rechunk_size))
 
         logger.warning(f"query chunks count: {len(tensor.chunks)} ")
 
@@ -207,8 +208,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
                 built_indexes.append([next(it) for it in iters])
 
         if hasattr(index, 'op'):
-            index_chunks_workers = [m.workers[0] if m.workers else None for m in
-                                    ctx.get_chunk_metas([c.key for c in index.chunks])]
+            index_chunks_workers = [m['bands'][0][0] for m in
+                                    ctx.get_chunks_meta(
+                                        [c.key for c in index.chunks], fields=['bands'])]
         else:
             index_chunks_workers = [None] * len(built_indexes[0])
 
@@ -339,19 +341,7 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             return
 
         inp = ctx[op.tensor.key]
-        check_expect_worker = True
         index_path = ctx[op.inputs[-1].key]
-
-        if hasattr(ctx, 'running_mode') and \
-                ctx.running_mode == RunningMode.distributed and check_expect_worker:
-            # check if the worker to execute is identical to
-            # the worker where built index
-            expect_worker = op.expect_worker
-            curr_worker = ctx.get_local_address()
-            if curr_worker:
-                assert curr_worker == expect_worker, \
-                    f'the worker({curr_worker}) to execute should be identical ' \
-                    f'to the worker({expect_worker}) where built index'
 
         with Timer() as timer:
             flow = proxima.IndexFlow(container_name='MMapFileContainer', container_params={},
@@ -373,7 +363,9 @@ class ProximaSearcher(LearnOperand, LearnOperandMixin):
             result_pks, result_distances = None, None
             while s_idx < len(vecs):
                 with Timer() as timer_s:
+                    tp = get_proxima_type(vecs.dtype)
                     result_pks_b, result_distances_b = proxima.IndexUtility.ann_search(searcher=flow,
+                                                                                       type=tp,
                                                                                        query=vecs[s_idx:e_idx],
                                                                                        topk=op.topk,
                                                                                        threads=op.threads)

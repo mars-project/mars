@@ -20,6 +20,7 @@ import mars.dataframe as md
 import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
+from mars.core import tile
 from mars.services import start_services, NodeRole
 from mars.services.cluster import MockClusterAPI
 from mars.services.session import MockSessionAPI, SessionAPI
@@ -28,15 +29,11 @@ from mars.utils import get_next_port
 
 
 t = mt.random.rand(10, 10)
-t = t.tiles()
 df = md.DataFrame(t)
-df = df.tiles()
 series = df[0]
-series = series.tiles()
 index = df.index
-index = index.tiles()
 obj = mr.spawn(lambda: 3)
-obj = obj.tiles()
+t, df, series, index, obj = tile(t, df, series, index, obj)
 
 test_objects = [t, df, series, index, obj]
 
@@ -112,7 +109,7 @@ async def test_meta_web_api():
         await session_api.create_session(session_id)
 
         t = mt.random.rand(10, 10)
-        t = t.tiles()
+        t = tile(t)
 
         meta_api = await MetaAPI.create(session_id, pool.external_address)
         web_api = WebMetaAPI(session_id, f'http://localhost:{web_port}')

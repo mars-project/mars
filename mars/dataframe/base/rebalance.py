@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialize import KeyField, Float64Field, Int64Field
+from ...serialization.serializables import KeyField, Float64Field, Int64Field
 from ...tensor.base.rebalance import RebalanceMixin
 from ..core import INDEX_TYPE
 from ..initializer import DataFrame as asdataframe, Series as asseries, Index as asindex

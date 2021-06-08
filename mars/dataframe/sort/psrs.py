@@ -18,12 +18,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...context import RunningMode
 from ...core.operand import OperandStage, MapReduceOperand
 from ...utils import lazy_import
-from ...serialize import Int32Field, ListField, StringField, BoolField
+from ...serialization.serializables import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
-from ..utils import standardize_range_index
+from ..core import IndexValue, OutputType
+from ..utils import standardize_range_index, parse_index
 from ..operands import DataFrameOperandMixin, DataFrameOperand, \
     DataFrameShuffleProxy
 
@@ -101,10 +101,16 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
 
     @classmethod
     def concat_and_pivot(cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks):
+        from .sort_values import DataFrameSortValues
+
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
         kind = None if op.psrs_kinds is None else op.psrs_kinds[1]
+        if isinstance(op, DataFrameSortValues):
+            output_types = op.output_types
+        else:
+            output_types = [OutputType.index]
         concat_pivot_op = DataFramePSRSConcatPivot(kind=kind, n_partition=axis_chunk_shape,
-                                                   output_types=op.output_types,
+                                                   output_types=output_types,
                                                    **cls._collect_op_properties(op))
         concat_pivot_shape = \
             sorted_chunks[0].shape[:op.axis] + (axis_chunk_shape - 1,) + \
@@ -113,7 +119,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         concat_pivot_chunk = concat_pivot_op.new_chunk(sampled_chunks,
                                                        shape=concat_pivot_shape,
                                                        index=concat_pivot_index,
-                                                       output_type=op.output_types[0])
+                                                       output_type=output_types[0])
         return concat_pivot_chunk
 
     @classmethod
@@ -128,9 +134,13 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
                                                          stage=OperandStage.map,
                                                          output_types=op.output_types,
                                                          **cls._collect_op_properties(op))
+            if isinstance(chunk_inputs[0].index_value.value, IndexValue.RangeIndex):
+                index_value = parse_index(pd.Int64Index([]))
+            else:
+                index_value = chunk_inputs[0].index_value
             kw = dict(shape=chunk_inputs[0].shape,
                       index=chunk_inputs[0].index,
-                      index_value=chunk_inputs[0].index_value)
+                      index_value=index_value)
             if op.outputs[0].ndim == 2:
                 kw.update(dict(columns_value=chunk_inputs[0].columns_value,
                                dtypes=chunk_inputs[0].dtypes))
@@ -167,7 +177,7 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
     def _tile_psrs(cls, op, in_data):
         out = op.outputs[0]
-        in_df, axis_chunk_shape, _, _ = cls.preprocess(op, in_data=in_data)
+        in_df, axis_chunk_shape, _, _ = yield from cls.preprocess(op, in_data=in_data)
 
         # stage 1: local sort and regular samples collected
         sorted_chunks, _, sampled_chunks = cls.local_sort_and_regular_sample(
@@ -359,8 +369,7 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
             ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
         by = op.by
-        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0'))) \
-            or getattr(ctx, 'running_mode', None) == RunningMode.distributed
+        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0')))
         if add_distinct_col and isinstance(a, xdf.DataFrame) and op.sort_type == 'sort_values':
             # when running under distributed mode, we introduce an extra column
             # to make sure pivots are distinct
@@ -598,8 +607,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _execute_reduce(cls, ctx, op: "DataFramePSRSShuffle"):
         out_chunk = op.outputs[0]
-        raw_inputs = list(op.iter_mapper_data(
-            ctx, pop=getattr(ctx, 'running_mode', None) == RunningMode.distributed))
+        raw_inputs = list(op.iter_mapper_data(ctx, pop=False))
 
         xdf = pd if isinstance(raw_inputs[0], (pd.DataFrame, pd.Series)) else cudf
         if xdf is pd:

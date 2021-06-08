@@ -19,10 +19,10 @@ from collections import defaultdict
 
 import numpy as np
 
-from ....context import get_context, RunningMode
 from .... import opcodes as OperandDef
+from ....core.context import get_context
 from ....remote.run_script import RunScript
-from ....serialize import BytesField, Int32Field, DictField, StringField
+from ....serialization.serializables import BytesField, Int32Field, DictField, StringField
 from ....utils import to_binary
 from ..utils import pick_workers
 
@@ -87,38 +87,24 @@ class RunTensorFlow(RunScript):
         n_workers = op.n_workers
 
         out_chunks = []
-        if ctx.running_mode != RunningMode.distributed:
-            worker_addr = '127.0.0.1'
-            port_iter = itertools.count(port)
+        worker_addresses = ctx.get_worker_addresses()
+        picked_workers = pick_workers(worker_addresses, op.n_roles)
+        worker_to_port_iter = defaultdict(lambda: itertools.count(port))
 
-            for i in range(op.n_roles):
-                chunk_op = op.copy().reset_key()
-                addr = f'{worker_addr}:{next(port_iter)}'
-                chunk_op._tf_task_type = tp = 'worker' if i < n_workers else 'ps'
-                chunk_op._tf_task_index = idx = i if i < n_workers else i - n_workers
-                cluster_conf[tp].append(addr)
-                chunk_op._tf_config = {'cluster': cluster_conf,
-                                       'task': {'type': tp, 'index': idx}}
-                out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
-        else:
-            worker_addresses = ctx.get_worker_addresses()
-            picked_workers = pick_workers(worker_addresses, op.n_roles)
-            worker_to_port_iter = defaultdict(lambda: itertools.count(port))
-
-            for i, worker in enumerate(picked_workers):
-                worker_addr = worker.rsplit(':', 1)[0]
-                chunk_op = op.copy().reset_key()
-                addr = f'{worker_addr}:{next(worker_to_port_iter[worker_addr])}'
-                # tell graph actor that the chunk should be executed on the exact worker
-                chunk_op.expect_worker = worker
-                tp = 'worker' if i < n_workers else 'ps'
-                chunk_op._tf_task_type = tp
-                idx = i if i < n_workers else i - n_workers
-                chunk_op._tf_task_index = idx
-                cluster_conf[tp].append(addr)
-                chunk_op._tf_config = {'cluster': cluster_conf,
-                                       'task': {'type': tp, 'index': idx}}
-                out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
+        for i, worker in enumerate(picked_workers):
+            worker_addr = worker.rsplit(':', 1)[0]
+            chunk_op = op.copy().reset_key()
+            addr = f'{worker_addr}:{next(worker_to_port_iter[worker_addr])}'
+            # tell graph actor that the chunk should be executed on the exact worker
+            chunk_op.expect_worker = worker
+            tp = 'worker' if i < n_workers else 'ps'
+            chunk_op._tf_task_type = tp
+            idx = i if i < n_workers else i - n_workers
+            chunk_op._tf_task_index = idx
+            cluster_conf[tp].append(addr)
+            chunk_op._tf_config = {'cluster': cluster_conf,
+                                   'task': {'type': tp, 'index': idx}}
+            out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
 
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, chunks=out_chunks,
@@ -135,7 +121,7 @@ class RunTensorFlow(RunScript):
         if op.merge:
             return super().execute(ctx, op)
 
-        assert ctx.get_local_address() == op.expect_worker
+        assert ctx.current_address.split(':')[0] == op.expect_worker.split(':')[0]
 
         super().execute(ctx, op)
 

@@ -26,12 +26,13 @@ class SubtaskAPI:
         return SubtaskAPI(address)
 
     @alru_cache
-    async def _get_runner_ref(self, slot_id: int):
+    async def _get_runner_ref(self, band_name: str, slot_id: int):
         from .worker.subtask import SubtaskRunnerActor
         return await mo.actor_ref(
-            SubtaskRunnerActor.gen_uid(slot_id), address=self._address)
+            SubtaskRunnerActor.gen_uid(band_name, slot_id), address=self._address)
 
     async def run_subtask_in_slot(self,
+                                  band_name: str,
                                   slot_id: int,
                                   subtask: Subtask):
         """
@@ -39,6 +40,7 @@ class SubtaskAPI:
 
         Parameters
         ----------
+        band_name
         subtask
         slot_id
 
@@ -46,11 +48,11 @@ class SubtaskAPI:
         -------
 
         """
-        ref = await self._get_runner_ref(slot_id)
+        ref = await self._get_runner_ref(band_name, slot_id)
         return await ref.run_subtask(subtask)
 
-    async def cancel_subtask_in_slot(self, slot_id: int):
-        ref = await self._get_runner_ref(slot_id)
+    async def cancel_subtask_in_slot(self, band_name: str, slot_id: int):
+        ref = await self._get_runner_ref(band_name, slot_id)
         await ref.cancel_subtask()
 
 

@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field, StringField
+from ...serialization.serializables import Int32Field, StringField
 from ...config import options
 from ..utils import decide_chunk_sizes, get_order
 from .diag import TensorDiagBase
@@ -57,7 +57,7 @@ class TensorEye(TensorNoInput, TensorDiagBase):
 
     @classmethod
     def tile(cls, op):
-        return TensorDiagBase.tile(op)
+        return (yield from TensorDiagBase.tile(op))
 
     @classmethod
     def execute(cls, ctx, op):

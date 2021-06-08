@@ -18,7 +18,7 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, StringField
+from ...serialization.serializables import KeyField, StringField
 from ...core import ExecutableTuple
 from ..array_utils import device, as_same_device
 from ..datasource import tensor as astensor
@@ -90,9 +90,9 @@ class TensorQR(TensorHasInput, TensorOperandMixin):
             ]
             return new_op.new_tensors(op.inputs, kws=kws)
         elif op.method == 'tsqr':
-            return TSQR.tile(op)
+            return (yield from TSQR.tile(op))
         elif op.method == 'sfqr':
-            return SFQR.tile(op)
+            return (yield from SFQR.tile(op))
         else:
             raise NotImplementedError('Only tsqr method supported for now')
 

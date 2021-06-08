@@ -167,12 +167,23 @@ class Optimizer(ABC):
         for node in graph:
             for succ in graph.successors(node):
                 new_inputs = []
-                for pred in graph.predecessors(succ):
+                input_opt = False
+                pred_iter = graph.iter_predecessors(succ)
+                inp_to_pred = dict()
+                for inp in succ.inputs:
+                    if inp not in inp_to_pred:
+                        pred = next(pred_iter)
+                        inp_to_pred[inp] = pred
+                    else:
+                        pred = inp_to_pred[inp]
                     optimized = records.get_optimization_result(pred)
                     if optimized is None:
                         optimized = pred
+                    if optimized is not inp:
+                        input_opt = True
                     new_inputs.append(optimized)
-                succ.inputs = new_inputs
+                if input_opt:
+                    succ.inputs = new_inputs
 
     @classmethod
     @enter_mode(build=True)

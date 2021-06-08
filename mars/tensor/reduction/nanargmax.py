@@ -17,7 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, TupleField
+from ...serialization.serializables import AnyField, TupleField
 from .core import TensorReduction, TensorArgReductionMixin
 
 

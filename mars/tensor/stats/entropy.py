@@ -14,16 +14,16 @@
 
 from math import log
 
+try:
+    from scipy.stats import entropy as sp_entropy
+except ImportError:
+    sp_entropy = None
+
 from ... import tensor as mt
 from ...tensor import special as mt_special
 from ..core import TENSOR_TYPE
 from ..datasource import tensor as astensor
 from ..utils import implement_scipy
-
-try:
-    from scipy.stats import entropy as sp_entropy
-except ImportError:
-    sp_entropy = None
 
 
 @implement_scipy(sp_entropy)

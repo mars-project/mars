@@ -68,7 +68,7 @@ jobs:
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
-            pip install h5py zarr matplotlib
+            pip install h5py zarr matplotlib fastparquet
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
               "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
           fi
@@ -76,17 +76,11 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
-            if [[ ! "$PYTHON" =~ "3.9" ]]; then
-              conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-                libxgboost py-xgboost xgboost lightgbm tensorflow
-            fi
-            if [[ "$PYTHON" =~ "3.6" ]]; then
-              pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu fastparquet
-            fi
-            if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
-              pip install torch torchvision
-              pip install statsmodels tsfresh
-            fi
+            conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
+              libxgboost py-xgboost xgboost lightgbm tensorflow
+            pip install faiss-cpu
+            pip install torch torchvision
+            pip install statsmodels tsfresh
           fi
         fi
         conda list -n test
@@ -101,7 +95,7 @@ jobs:
     - bash: |
         set -e
         source ci/reload-env.sh
-        pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded mars/$(mars.test.module)
+        pytest $PYTEST_CONFIG mars/$(mars.test.module)
         coverage report
         coverage xml
       displayName: 'Run tests'

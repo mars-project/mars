@@ -16,7 +16,6 @@ import sys
 
 import numpy as np
 import pandas as pd
-import pytest
 
 import mars.oscar as mo
 import mars.tensor as mt

@@ -13,12 +13,13 @@
 # limitations under the License.
 
 try:
-    from pyarrow.fs import HadoopFileSystem
+    from pyarrow.fs import HadoopFileSystem as _ArrowHadoopFileSystem
     from .arrow import HadoopFileSystem
+    del _ArrowHadoopFileSystem
 except ImportError:  # pragma: no cover
     try:
         # pyarrow < 2.0.0
-        from pyarrow import HadoopFileSystem as HadoopFileSystem
+        from pyarrow import HadoopFileSystem
     except ImportError:
         HadoopFileSystem = None
 

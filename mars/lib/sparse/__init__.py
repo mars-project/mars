@@ -24,8 +24,6 @@ from .matrix import SparseMatrix
 from .vector import SparseVector
 from .core import issparse, get_sparse_module
 
-from .coo import COONDArray
-
 
 def asarray(x, shape=None):
     from .core import issparse

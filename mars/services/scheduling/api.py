@@ -147,10 +147,12 @@ class SchedulingAPI(ABC):
         kill_timeout
             timeout seconds to kill actor process forcibly
         """
-        await self._manager_ref.cancel_subtasks(subtask_ids, kill_timeout=kill_timeout)
+        await self._manager_ref.cancel_subtasks(
+            subtask_ids, kill_timeout=kill_timeout)
 
     async def finish_subtasks(self,
-                              subtask_ids: List[str]):
+                              subtask_ids: List[str],
+                              schedule_next: bool = True):
         """
         Mark subtasks as finished, letting scheduling service to schedule
         next tasks in the ready queue
@@ -159,8 +161,10 @@ class SchedulingAPI(ABC):
         ----------
         subtask_ids
             ids of subtasks to mark as finished
+        schedule_next
+            whether to schedule succeeding subtasks
         """
-        await self._manager_ref.finish_subtasks(subtask_ids)
+        await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
 
 
 class MockSchedulingAPI(SchedulingAPI):

@@ -16,7 +16,8 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import KeyField, StringField, TupleField, DictField, BoolField
+from ...serialization.serializables import KeyField, StringField, \
+    TupleField, DictField, BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_series
 

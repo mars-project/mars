@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -113,5 +114,6 @@ def rayleigh(random_state, scale=1.0, size=None, chunk_size=None, gpu=None, dtyp
         dtype = np.random.RandomState().rayleigh(
             handle_array(scale), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorRayleigh(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorRayleigh(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(scale, chunk_size=chunk_size)

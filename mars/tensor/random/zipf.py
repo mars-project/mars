@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -29,9 +30,9 @@ class TensorZipf(TensorDistribution, TensorRandomOperandMixin):
     _a = AnyField('a')
     _func_name = 'zipf'
 
-    def __init__(self, size=None, state=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def a(self):
@@ -125,5 +126,6 @@ def zipf(random_state, a, size=None, chunk_size=None, gpu=None, dtype=None):
             handle_array(a), size=(0,)).dtype
 
     size = random_state._handle_size(size)
-    op = TensorZipf(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorZipf(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(a, chunk_size=chunk_size)

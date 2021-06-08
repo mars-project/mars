@@ -18,9 +18,9 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
-from ...core import ExecutableTuple, TilesError
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...core import ExecutableTuple, recursive_tile
+from ...serialization.serializables import KeyField
+from ...utils import has_unknown_shape
 from ..array_utils import device, as_same_device, is_sparse_module
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -116,22 +116,23 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
                                 gpu=in_tensor.op.gpu,
                                 chunk_size=(in_tensor.nsplits[0], max(in_tensor.nsplits[1])),
                                 order=in_tensor.order.value)
-            in_tensor = hstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            in_tensor = yield from recursive_tile(
+                hstack([in_tensor, zero_tensor]))
         elif in_tensor.shape[0] < in_tensor.shape[1]:
             zero_tensor = zeros((in_tensor.shape[1] - in_tensor.shape[0], in_tensor.shape[1]),
                                 dtype=in_tensor.dtype, sparse=in_tensor.issparse(),
                                 gpu=in_tensor.op.gpu,
                                 chunk_size=(max(in_tensor.nsplits[0]), in_tensor.nsplits[1]),
                                 order=in_tensor.order.value)
-            in_tensor = vstack([in_tensor, zero_tensor])
-            recursive_tile(in_tensor)
+            in_tensor = yield from recursive_tile(
+                vstack([in_tensor, zero_tensor]))
 
-        check_chunks_unknown_shape([in_tensor], TilesError)
+        if has_unknown_shape(in_tensor):
+            yield
         if in_tensor.nsplits[0] != in_tensor.nsplits[1]:
             # all chunks on diagonal should be square
             nsplits = in_tensor.nsplits[0]
-            in_tensor = in_tensor.rechunk([nsplits, nsplits])._inplace_tile()
+            in_tensor = yield from recursive_tile(in_tensor.rechunk([nsplits, nsplits]))
 
         p_chunks, p_invert_chunks, lower_chunks, l_permuted_chunks, upper_chunks = {}, {}, {}, {}, {}
         for i in range(in_tensor.chunk_shape[0]):
@@ -267,12 +268,12 @@ class TensorLU(TensorHasInput, TensorOperandMixin):
 
         p, l_, u = new_op.new_tensors(op.inputs, kws=kws)
         if raw_in_tensor.shape[0] > raw_in_tensor.shape[1]:
-            l_ = l_[:, :raw_in_tensor.shape[1]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]]._inplace_tile()
+            l_ = yield from recursive_tile(l_[:, :raw_in_tensor.shape[1]])
+            u = yield from recursive_tile(u[:raw_in_tensor.shape[1], :raw_in_tensor.shape[1]])
         else:
-            p = p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            l_ = l_[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]]._inplace_tile()
-            u = u[:raw_in_tensor.shape[0], :]._inplace_tile()
+            p = yield from recursive_tile(p[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]])
+            l_ = yield from recursive_tile(l_[:raw_in_tensor.shape[0], :raw_in_tensor.shape[0]])
+            u = yield from recursive_tile(u[:raw_in_tensor.shape[0], :])
         kws = [
             {'chunks': p.chunks, 'nsplits': p.nsplits, 'dtype': P.dtype,
              'shape': p.shape, 'order': p.order},

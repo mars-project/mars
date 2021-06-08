@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField
+from ...serialization.serializables import KeyField, AnyField
 from ...lib.sparse import SparseNDArray
 from ...lib.sparse.core import naked, cps, sps
 from .core import TensorHasInput

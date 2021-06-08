@@ -25,6 +25,10 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
 
         check_options = dict()
         kwargs = self.subtask.extra_config or dict()
+        self._operand_executors = operand_executors = \
+            kwargs.pop('operand_executors', dict())
+        for op, executor in operand_executors.items():
+            op.register_executor(executor)
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
@@ -37,4 +41,13 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             for out in op.outputs:
                 if out not in self._chunk_graph.result_chunks:
                     continue
+                if out.key not in ctx and \
+                        any(k[0] == out.key for k in ctx if isinstance(k, tuple)):
+                    # both shuffle mapper and reducer
+                    continue
                 self.assert_object_consistent(out, ctx[out.key])
+
+    async def done(self):
+        await super().done()
+        for op in self._operand_executors:
+            op.unregister_executor()

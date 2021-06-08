@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -30,9 +31,9 @@ class TensorVonmises(TensorDistribution, TensorRandomOperandMixin):
     _kappa = AnyField('kappa')
     _func_name = 'vonmises'
 
-    def __init__(self, size=None, state=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _state=state, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def mu(self):
@@ -134,5 +135,6 @@ def vonmises(random_state, mu, kappa, size=None, chunk_size=None, gpu=None, dtyp
             handle_array(mu), handle_array(kappa), size=(0,)).dtype
 
     size = random_state._handle_size(size)
-    op = TensorVonmises(size=size, state=random_state.to_numpy(), gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorVonmises(size=size, seed=seed, gpu=gpu, dtype=dtype)
     return op(mu, kappa, chunk_size=chunk_size)

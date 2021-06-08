@@ -18,9 +18,9 @@ from functools import partial
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import ValueType, Int32Field, \
+from ...serialization.serializables import FieldTypes, Int32Field, \
     ListField, StringField, BoolField, AnyField
 from ...utils import flatten, stack_back
 from ..core import TensorOrder
@@ -47,13 +47,13 @@ class PSRSOperandMixin:
         if not has_unknown_shape:
             axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
             if np.isnan(axis_shape) or any(np.isnan(s) for s in in_data.nsplits[op.axis]):
-                raise TilesError('fail to tile because either the shape of '
-                                 f'input data on axis {op.axis} has unknown shape or chunk shape')
+                yield
             chunk_size = int(axis_shape / axis_chunk_shape)
             chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
             if axis_shape % chunk_size > 0:
                 chunk_sizes[-1] += axis_shape % chunk_size
-            in_data = in_data.rechunk({op.axis: tuple(chunk_sizes)})._inplace_tile()
+            in_data = yield from recursive_tile(
+                in_data.rechunk({op.axis: tuple(chunk_sizes)}))
             axis_chunk_shape = in_data.chunk_shape[op.axis]
 
         left_chunk_shape = in_data.chunk_shape[:op.axis] + in_data.chunk_shape[op.axis + 1:]
@@ -347,7 +347,7 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_SORT_REGULAR_SMAPLE
 
     _axis = Int32Field('axis')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _kind = StringField('kind')
     _return_indices = BoolField('return_indices')
     _n_partition = Int32Field('n_partition')
@@ -437,7 +437,7 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_CONCAT_PIVOT
 
     _axis = Int32Field('axis')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _kind = StringField('kind')
 
     def __init__(self, axis=None, order=None, kind=None, dtype=None, gpu=None, **kw):
@@ -489,7 +489,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
     # for shuffle map
     _axis = Int32Field('axis')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _n_partition = Int32Field('n_partition')
     _input_sorted = BoolField('input_sorted')
 
@@ -689,7 +689,7 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
     _axis = Int32Field('axis')
-    _output_sizes = ListField('output_sizes', ValueType.int32)
+    _output_sizes = ListField('output_sizes', FieldTypes.int32)
 
     def __init__(self, return_value=None, return_indices=None, axis=None,
                  output_sizes=None, **kw):

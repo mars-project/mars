@@ -17,11 +17,11 @@
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import recursive_tile
 from ...lib.filesystem import open_file, get_fs
-from ...serialize import KeyField, AnyField, StringField, ListField, \
+from ...serialization.serializables import KeyField, AnyField, StringField, ListField, \
     BoolField, DictField
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 from ..datasource.read_parquet import check_engine
@@ -104,8 +104,10 @@ class DataFrameToParquet(DataFrameOperand, DataFrameOperandMixin):
 
         # make sure only 1 chunk on the column axis
         if in_df.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([in_df], TilesError)
-            in_df = in_df.rechunk({1: in_df.shape[1]})._inplace_tile()
+            if has_unknown_shape(in_df):
+                yield
+            in_df = yield from recursive_tile(
+                in_df.rechunk({1: in_df.shape[1]}))
 
         out_chunks = []
         for chunk in in_df.chunks:

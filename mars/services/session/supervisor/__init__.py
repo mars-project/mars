@@ -13,4 +13,5 @@
 # limitations under the License.
 
 from .core import SessionManagerActor, SessionActor
+from .custom_log import CustomLogMetaActor
 from .service import start

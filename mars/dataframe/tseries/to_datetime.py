@@ -20,8 +20,8 @@ import pandas as pd
 from pandas.api.types import is_scalar, is_dict_like
 
 from ... import opcodes
-from ...core import TilesError
-from ...serialize import KeyField, StringField, BoolField, AnyField
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField, StringField, BoolField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, INDEX_CHUNK_TYPE
@@ -156,9 +156,9 @@ class DataFrameToDatetime(DataFrameOperand, DataFrameOperandMixin):
         if isinstance(arg, DATAFRAME_TYPE):
             if np.isnan(arg.shape[0]) or \
                     any(np.isnan(s) for s in arg.nsplits[1]):  # pragma: no cover
-                raise TilesError('unknown chunk shape on columns axis')
+                yield
 
-            arg = arg.rechunk({1: arg.shape[1]})._inplace_tile()
+            arg = yield from recursive_tile(arg.rechunk({1: arg.shape[1]}))
 
         out_chunks = []
         for chunk in arg.chunks:

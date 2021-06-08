@@ -17,11 +17,11 @@ import itertools
 import numpy as np
 
 from .... import opcodes as OperandDef
-from ....core import TilesError
+from ....core import recursive_tile
 from ....core.operand import OperandStage
-from ....serialize import ValueType, KeyField, BoolField, TupleField
+from ....serialization.serializables import FieldTypes, KeyField, BoolField, TupleField
 from ....config import options
-from ....utils import check_chunks_unknown_shape, require_module, recursive_tile
+from ....utils import has_unknown_shape, require_module
 from ...core import TensorOrder
 from ...operands import TensorMapReduceOperand, TensorOperandMixin, TensorShuffleProxy
 from ...datasource import ascontiguousarray, array, zeros
@@ -37,9 +37,9 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
     _checks = BoolField('checks')
 
     _checks_input = KeyField('checks_input')
-    _x_shape = TupleField('x_shape', ValueType.int32)
-    _reduce_sizes = TupleField('reduce_sizes', ValueType.tuple)
-    _start_positions = TupleField('start_positions', ValueType.int32)
+    _x_shape = TupleField('x_shape', FieldTypes.int32)
+    _reduce_sizes = TupleField('reduce_sizes', FieldTypes.tuple)
+    _start_positions = TupleField('start_positions', FieldTypes.int32)
 
     def __init__(self, checks=None, checks_input=None, x_shape=None,
                  reduce_sizes=None, start_positions=None, **kw):
@@ -134,7 +134,7 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
         if len(op.input.chunks) == 1 and n_chunk == 1:
             return cls._tile_one_chunk(op)
         else:
-            return cls._tile_chunks(op, chunk_size)
+            return (yield from cls._tile_chunks(op, chunk_size))
 
     @classmethod
     def _tile_one_chunk(cls, op):
@@ -155,14 +155,16 @@ class TensorSquareform(TensorMapReduceOperand, TensorOperandMixin):
             return
 
         x = op.input
-        return recursive_tile(equal(x, x.T).all()).chunks[0]
+        ret = yield from recursive_tile(equal(x, x.T).all())
+        return ret.chunks[0]
 
     @classmethod
     def _tile_chunks(cls, op, chunk_size):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         out = op.outputs[0]
 
-        checks_input = cls._gen_checks_input(op)
+        checks_input = yield from cls._gen_checks_input(op)
 
         map_chunks = []
         cum_sizes = [[0] + np.cumsum(ns).tolist()

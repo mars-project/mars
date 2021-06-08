@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import Int32Field, Float64Field
+from ...core import recursive_tile
+from ...serialization.serializables import Int32Field, Float64Field
 from ..datasource import arange
 from ..operands import TensorOperand, TensorOperandMixin
 from ..core import TensorOrder
@@ -49,9 +50,9 @@ class TensorRFFTFreq(TensorOperand, TensorOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         t = arange(tensor.shape[0], dtype=op.dtype, gpu=op.gpu,
-                   chunk_size=tensor.extra_params.raw_chunk_size)._inplace_tile()
+                   chunk_size=tensor.extra_params.raw_chunk_size)
         t = t / (op.n * op.d)
-        t._inplace_tile()
+        t = yield from recursive_tile(t)
 
         new_op = op.copy()
         return new_op.new_tensors(None, tensor.shape, order=tensor.order,

@@ -18,7 +18,7 @@ from distutils.version import LooseVersion
 
 import pandas as pd
 
-from ....serialize import Int64Field, BoolField, Int32Field, Float64Field
+from ....serialization.serializables import Int64Field, BoolField, Int32Field, Float64Field
 from ...utils import validate_axis
 from ..core import Window
 

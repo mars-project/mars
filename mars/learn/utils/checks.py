@@ -20,13 +20,13 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, get_output_types
+from ...core import ENTITY_TYPE, get_output_types, recursive_tile
 from ...core.operand import OperandStage
 from ...config import options
-from ...serialize import KeyField, StringField, BoolField, DataTypeField
+from ...serialization.serializables import KeyField, StringField, BoolField, DataTypeField
 from ...tensor.core import TensorOrder, TENSOR_CHUNK_TYPE
 from ...tensor.array_utils import as_same_device, device, issparse, get_array_module
-from ...utils import ceildiv, recursive_tile
+from ...utils import ceildiv
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
@@ -269,11 +269,11 @@ class AssertAllFinite(LearnOperand, LearnOperandMixin):
 
         is_finite_chunk = check_nan_chunk = None
         if is_float:
-            is_finite_chunk = recursive_tile(
-                mt.isfinite(_safe_accumulator_op(mt.sum, x))).chunks[0]
+            is_finite_chunk = (yield from recursive_tile(
+                mt.isfinite(_safe_accumulator_op(mt.sum, x)))).chunks[0]
         elif x.dtype == np.dtype(object) and not op.allow_nan:
-            check_nan_chunk = recursive_tile(
-                (x != x).any()).chunks[0]
+            check_nan_chunk = (yield from recursive_tile(
+                (x != x).any())).chunks[0]
 
         map_chunks = []
         for c in x.chunks:

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List, Union, Generator
+
+from ...typing import TileableType, ChunkType
 from ...utils import has_unknown_shape, calc_nsplits
 
 
@@ -23,3 +26,56 @@ def refresh_tileable_shape(tileable):
         shape = tuple(sum(ns) for ns in nsplits)
         tileable._nsplits = nsplits
         tileable._shape = shape
+
+
+def tile(tileable, *tileables: TileableType):
+    from ..graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+
+    raw_tileables = target_tileables = [tileable] + list(tileables)
+    target_tileables = [t.data if hasattr(t, 'data') else t
+                        for t in target_tileables]
+
+    tileable_graph = TileableGraph(target_tileables)
+    tileable_graph_builder = TileableGraphBuilder(tileable_graph)
+    next(tileable_graph_builder.build())
+
+    # tile
+    tile_context = dict()
+    chunk_graph_builder = ChunkGraphBuilder(
+        tileable_graph, fuse_enabled=False, tile_context=tile_context)
+    next(chunk_graph_builder.build())
+
+    if len(tileables) == 0:
+        return type(tileable)(tile_context[target_tileables[0]])
+    else:
+        return [type(raw_t)(tile_context[t]) for raw_t, t
+                in zip(raw_tileables, target_tileables)]
+
+
+def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
+        Generator[List[ChunkType], List[ChunkType],
+                  Union[TileableType, List[TileableType]]]:
+    from .tileables import handler
+
+    return_list = len(tileables) > 0
+    if not return_list and isinstance(tileable, (list, tuple)):
+        return_list = True
+        raw = tileable
+        tileable = raw[0]
+        tileables = raw[1:]
+
+    to_tile = [tileable] + list(tileables)
+    q = [t for t in to_tile if t.is_coarse()]
+    while q:
+        t = q[-1]
+        cs = [c for c in t.inputs if c.is_coarse()]
+        if cs:
+            q.extend(cs)
+            continue
+        yield from handler.tile(t.op.outputs)
+        q.pop()
+
+    if not return_list:
+        return tileable
+    else:
+        return [tileable] + list(tileables)

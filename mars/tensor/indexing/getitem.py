@@ -17,9 +17,10 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, ListField, TupleField, Int32Field
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
+from ...serialization.serializables import FieldTypes, KeyField, ListField, \
+    TupleField, Int32Field
 from ..core import TENSOR_TYPE, TensorOrder
 from ..utils import split_indexes_into_chunks, calc_pos, filter_inputs
 from ..operands import TensorHasInput, TensorOperandMixin, TensorMapReduceOperand
@@ -56,7 +57,8 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
         if self.create_view:
             a = self.input
             op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                                     indexes=self._indexes, value=new_output)
+                                     indexes=tuple(self._indexes),
+                                     value=new_output)
             return op(a, self._indexes, new_output)
 
     def on_input_modify(self, new_input):
@@ -72,7 +74,7 @@ class TensorIndex(TensorHasInput, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         handler = TensorIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -119,8 +121,8 @@ class FancyIndexingDistribute(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_DISTRIBUTE
 
     _input = KeyField('input')
-    _dest_nsplits = TupleField('dest_nsplits', ValueType.tuple(ValueType.uint64))
-    _axes = TupleField('axes', ValueType.int32)
+    _dest_nsplits = TupleField('dest_nsplits', FieldTypes.tuple(FieldTypes.uint64))
+    _axes = TupleField('axes', FieldTypes.int32)
 
     def __init__(self, dest_nsplits=None, axes=None, **kw):
         super().__init__(_dest_nsplits=dest_nsplits, _axes=axes, **kw)
@@ -203,7 +205,7 @@ class FancyIndexingConcat(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.FANCY_INDEX_CONCAT
 
     _fancy_index_axis = Int32Field('fancy_index_axis')
-    _fancy_index_shape = TupleField('fancy_index_shape', ValueType.int64)
+    _fancy_index_shape = TupleField('fancy_index_shape', FieldTypes.int64)
 
     def __init__(self, fancy_index_axis=None, fancy_index_shape=None, **kw):
         super().__init__(_fancy_index_axis=fancy_index_axis,

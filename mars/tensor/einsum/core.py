@@ -20,7 +20,8 @@ from collections import defaultdict
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, StringField
+from ...core import recursive_tile
+from ...serialization.serializables import AnyField, StringField
 from ..array_utils import as_same_device, device
 from ..arithmetic.utils import chunk_tree_add
 from ..core import TensorOrder
@@ -85,7 +86,7 @@ class TensorEinsum(TensorOperand, TensorOperandMixin):
         for (t, axes) in tensor_axes:
             new_nsplits = tuple(decide_unify_split(*input_nsplits[ax]) if t.shape[j] > 1 else (t.shape[j],)
                                 for j, ax in enumerate(axes))
-            input_tensors.append(t.rechunk(new_nsplits)._inplace_tile())
+            input_tensors.append((yield from recursive_tile(t.rechunk(new_nsplits))))
 
         tensor_indexes = dict()
         output_axes = defaultdict(list)

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 import threading
 
 from ..config import options
@@ -70,10 +71,18 @@ class _EnterModeFuncWrapper:
                     mode_name_to_old_value[mode_name])
 
     def __call__(self, func):
-        @functools.wraps(func)
-        def _inner(*args, **kwargs):
-            with self:
-                return func(*args, **kwargs)
+        if not inspect.iscoroutinefunction(func):
+            # sync
+            @functools.wraps(func)
+            def _inner(*args, **kwargs):
+                with self:
+                    return func(*args, **kwargs)
+        else:
+            # async
+            @functools.wraps(func)
+            async def _inner(*args, **kwargs):
+                with self:
+                    return await func(*args, **kwargs)
 
         return _inner
 

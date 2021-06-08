@@ -15,166 +15,173 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 
-from mars.core import get_tiled
-from mars.tensor.random import beta, rand, choice, multivariate_normal, \
-    randint, randn, permutation, TensorPermutation, shuffle
+from mars.core import tile
 from mars.tensor.datasource import tensor as from_ndarray
-from mars.tests.core import TestBase
+from mars.tensor.random import beta, rand, choice, multivariate_normal, \
+    randint, randn, permutation, TensorPermutation, shuffle, RandomState
 
 
-class Test(TestBase):
-    def testRandom(self):
-        arr = rand(2, 3)
+def test_random():
+    arr = rand(2, 3)
 
-        self.assertIsNotNone(arr.dtype)
+    assert arr.dtype is not None
 
-        arr = beta(1, 2, chunk_size=2).tiles()
+    arr = tile(beta(1, 2, chunk_size=2))
 
-        self.assertEqual(arr.shape, ())
-        self.assertEqual(len(arr.chunks), 1)
-        self.assertEqual(arr.chunks[0].shape, ())
-        self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
+    assert arr.shape == ()
+    assert len(arr.chunks) == 1
+    assert arr.chunks[0].shape == ()
+    assert arr.chunks[0].op.dtype == np.dtype('f8')
 
-        arr = beta([1, 2], [3, 4], chunk_size=2).tiles()
+    arr = tile(beta([1, 2], [3, 4], chunk_size=2))
 
-        self.assertEqual(arr.shape, (2,))
-        self.assertEqual(len(arr.chunks), 1)
-        self.assertEqual(arr.chunks[0].shape, (2,))
-        self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
+    assert arr.shape == (2,)
+    assert len(arr.chunks) == 1
+    assert arr.chunks[0].shape == (2,)
+    assert arr.chunks[0].op.dtype == np.dtype('f8')
 
-        arr = beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
-                   chunk_size=1, size=(3, 2, 2)).tiles()
+    arr = tile(beta([[2, 3]], from_ndarray([[4, 6], [5, 2]], chunk_size=2),
+                    chunk_size=1, size=(3, 2, 2)))
 
-        self.assertEqual(arr.shape, (3, 2, 2))
-        self.assertEqual(len(arr.chunks), 12)
-        self.assertEqual(arr.chunks[0].op.dtype, np.dtype('f8'))
+    assert arr.shape == (3, 2, 2)
+    assert len(arr.chunks) == 12
+    assert arr.chunks[0].op.dtype == np.dtype('f8')
 
-    def testChoice(self):
-        t = choice(5, chunk_size=1)
-        self.assertEqual(t.shape, ())
-        t = t.tiles()
-        self.assertEqual(t.nsplits, ())
-        self.assertEqual(len(t.chunks), 1)
 
-        t = choice(5, 3, chunk_size=1)
-        self.assertEqual(t.shape, (3,))
-        t = t.tiles()
-        self.assertEqual(t.nsplits, ((1, 1, 1),))
+def test_same_key():
+    assert RandomState(0).rand(10).key == RandomState(0).rand(10).key
 
-        t = choice(5, 3, replace=False)
-        self.assertEqual(t.shape, (3,))
 
-        with self.assertRaises(ValueError):
-            choice(-1)
+def test_choice():
+    t = choice(5, chunk_size=1)
+    assert t.shape == ()
+    t = tile(t)
+    assert t.nsplits == ()
+    assert len(t.chunks) == 1
 
-        # a should be 1-d
-        with self.assertRaises(ValueError):
-            choice(np.random.rand(2, 2))
+    t = choice(5, 3, chunk_size=1)
+    assert t.shape == (3,)
+    t = tile(t)
+    assert t.nsplits == ((1, 1, 1),)
 
-        # p sum != 1
-        with self.assertRaises(ValueError):
-            choice(np.random.rand(3), p=[0.2, 0.2, 0.2])
+    t = choice(5, 3, replace=False)
+    assert t.shape == (3,)
 
-        # p should b 1-d
-        with self.assertRaises(ValueError):
-            choice(np.random.rand(3), p=[[0.2, 0.6, 0.2]])
+    with pytest.raises(ValueError):
+        choice(-1)
 
-        # replace=False, choice size cannot be greater than a.size
-        with self.assertRaises(ValueError):
-            choice(np.random.rand(10), 11, replace=False)
+    # a should be 1-d
+    with pytest.raises(ValueError):
+        choice(np.random.rand(2, 2))
 
-        # replace=False, choice size cannot be greater than a.size
-        with self.assertRaises(ValueError):
-            choice(np.random.rand(10), (3, 4), replace=False)
+    # p sum != 1
+    with pytest.raises(ValueError):
+        choice(np.random.rand(3), p=[0.2, 0.2, 0.2])
 
-    def testMultivariateNormal(self):
-        mean = [0, 0]
-        cov = [[1, 0], [0, 100]]
+    # p should b 1-d
+    with pytest.raises(ValueError):
+        choice(np.random.rand(3), p=[[0.2, 0.6, 0.2]])
 
-        t = multivariate_normal(mean, cov, 5000, chunk_size=500)
-        self.assertEqual(t.shape, (5000, 2))
-        self.assertEqual(t.op.size, (5000,))
+    # replace=False, choice size cannot be greater than a.size
+    with pytest.raises(ValueError):
+        choice(np.random.rand(10), 11, replace=False)
 
-        t = t.tiles()
-        self.assertEqual(t.nsplits, ((500,) * 10, (2,)))
-        self.assertEqual(len(t.chunks), 10)
-        c = t.chunks[0]
-        self.assertEqual(c.shape, (500, 2))
-        self.assertEqual(c.op.size, (500,))
+    # replace=False, choice size cannot be greater than a.size
+    with pytest.raises(ValueError):
+        choice(np.random.rand(10), (3, 4), replace=False)
 
-    def testRandint(self):
-        arr = randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunk_size=2).tiles()
 
-        self.assertEqual(arr.shape, (10, 9))
-        self.assertEqual(len(arr.chunks), 25)
-        self.assertEqual(arr.chunks[0].shape, (2, 2))
-        self.assertEqual(arr.chunks[0].op.dtype, np.float64)
-        self.assertEqual(arr.chunks[0].op.low, 1)
-        self.assertEqual(arr.chunks[0].op.high, 2)
-        self.assertEqual(arr.chunks[0].op.density, .01)
+def test_multivariate_normal():
+    mean = [0, 0]
+    cov = [[1, 0], [0, 100]]
 
-    def testUnexpectedKey(self):
-        with self.assertRaises(ValueError):
-            rand(10, 10, chunks=5)
+    t = multivariate_normal(mean, cov, 5000, chunk_size=500)
+    assert t.shape == (5000, 2)
+    assert t.op.size == (5000,)
 
-        with self.assertRaises(ValueError):
-            randn(10, 10, chunks=5)
+    t = tile(t)
+    assert t.nsplits == ((500,) * 10, (2,))
+    assert len(t.chunks) == 10
+    c = t.chunks[0]
+    assert c.shape == (500, 2)
+    assert c.op.size == (500,)
 
-    def testPermutation(self):
-        x = permutation(10)
 
-        self.assertEqual(x.shape, (10,))
-        self.assertIsInstance(x.op, TensorPermutation)
+def test_randint():
+    arr = tile(randint(1, 2, size=(10, 9), dtype='f8', density=.01, chunk_size=2))
 
-        x = x.tiles()
+    assert arr.shape == (10, 9)
+    assert len(arr.chunks) == 25
+    assert arr.chunks[0].shape == (2, 2)
+    assert arr.chunks[0].op.dtype == np.float64
+    assert arr.chunks[0].op.low == 1
+    assert arr.chunks[0].op.high == 2
+    assert arr.chunks[0].op.density == .01
 
-        self.assertEqual(len(x.chunks), 1)
-        self.assertIsInstance(x.chunks[0].op, TensorPermutation)
 
-        arr = from_ndarray([1, 4, 9, 12, 15], chunk_size=2)
-        x = permutation(arr)
+def test_unexpected_key():
+    with pytest.raises(ValueError):
+        rand(10, 10, chunks=5)
 
-        self.assertEqual(x.shape, (5,))
-        self.assertIsInstance(x.op, TensorPermutation)
+    with pytest.raises(ValueError):
+        randn(10, 10, chunks=5)
 
-        x = x.tiles()
-        arr = get_tiled(arr)
 
-        self.assertEqual(len(x.chunks), 3)
-        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
-        self.assertIs(x.chunks[0].inputs[0].inputs[0].inputs[0], arr.chunks[0].data)
+def test_permutation():
+    x = permutation(10)
 
-        arr = rand(3, 3, chunk_size=2)
-        x = permutation(arr)
+    assert x.shape == (10,)
+    assert isinstance(x.op, TensorPermutation)
 
-        self.assertEqual(x.shape, (3, 3))
-        self.assertIsInstance(x.op, TensorPermutation)
+    x = tile(x)
 
-        x = x.tiles()
-        arr = get_tiled(arr)
+    assert len(x.chunks) == 1
+    assert isinstance(x.chunks[0].op, TensorPermutation)
 
-        self.assertEqual(len(x.chunks), 4)
-        self.assertTrue(np.isnan(x.chunks[0].shape[0]))
-        self.assertEqual(x.chunks[0].shape[1], 2)
-        self.assertIs(x.cix[0, 0].inputs[0].inputs[0].inputs[0], arr.cix[0, 0].data)
-        self.assertIs(x.cix[0, 0].inputs[0].inputs[1].inputs[0], arr.cix[1, 0].data)
-        self.assertEqual(x.cix[0, 0].op.seed, x.cix[0, 1].op.seed)
-        self.assertEqual(x.cix[0, 0].inputs[0].inputs[0].inputs[0].op.seed,
-                         x.cix[1, 0].inputs[0].inputs[0].inputs[0].op.seed)
+    arr = from_ndarray([1, 4, 9, 12, 15], chunk_size=2)
+    x = permutation(arr)
 
-        with self.assertRaises(np.AxisError):
-            self.assertRaises(permutation('abc'))
+    assert x.shape == (5,)
+    assert isinstance(x.op, TensorPermutation)
 
-    def testShuffle(self):
-        with self.assertRaises(TypeError):
-            shuffle('abc')
+    x = tile(x)
+    arr = tile(arr)
 
-        x = rand(10, 10, chunk_size=2)
-        shuffle(x)
-        self.assertIsInstance(x.op, TensorPermutation)
+    assert len(x.chunks) == 3
+    assert np.isnan(x.chunks[0].shape[0])
+    assert x.chunks[0].inputs[0].inputs[0].inputs[0].key == arr.chunks[0].data.key
 
-        x = rand(10, 10, chunk_size=2)
-        shuffle(x, axis=1)
-        self.assertIsInstance(x.op, TensorPermutation)
-        self.assertEqual(x.op.axis, 1)
+    arr = rand(3, 3, chunk_size=2)
+    x = permutation(arr)
+
+    assert x.shape == (3, 3)
+    assert isinstance(x.op, TensorPermutation)
+
+    x = tile(x)
+    arr = tile(arr)
+
+    assert len(x.chunks) == 4
+    assert np.isnan(x.chunks[0].shape[0])
+    assert x.chunks[0].shape[1] == 2
+    assert x.cix[0, 0].op.seed == x.cix[0, 1].op.seed
+    assert x.cix[0, 0].inputs[0].inputs[0].inputs[0].op.seed == \
+           x.cix[1, 0].inputs[0].inputs[0].inputs[0].op.seed
+
+    with pytest.raises(np.AxisError):
+        pytest.raises(permutation('abc'))
+
+
+def test_shuffle():
+    with pytest.raises(TypeError):
+        shuffle('abc')
+
+    x = rand(10, 10, chunk_size=2)
+    shuffle(x)
+    assert isinstance(x.op, TensorPermutation)
+
+    x = rand(10, 10, chunk_size=2)
+    shuffle(x, axis=1)
+    assert isinstance(x.op, TensorPermutation)
+    assert x.op.axis == 1

@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
 import mars.tensor as mt
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 
 try:
     import lightgbm
@@ -24,56 +23,47 @@ try:
 except ImportError:
     lightgbm = LGBMRanker = None
 
+setup = setup
 
-@unittest.skipIf(lightgbm is None, 'LightGBM not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        n_rows = 1000
-        n_columns = 10
-        chunk_size = 20
-        rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y_raw = rs.rand(n_rows, chunk_size=chunk_size)
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
+@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+def test_local_ranker(setup):
+    y = (y_raw * 10).astype(mt.int32)
+    ranker = LGBMRanker(n_estimators=2)
+    ranker.fit(X_raw, y, group=[X_raw.shape[0]], verbose=True)
+    prediction = ranker.predict(X_raw)
 
-    def testLocalRanker(self):
-        X, y = self.X, self.y
-        y = (y * 10).astype(mt.int32)
-        ranker = LGBMRanker(n_estimators=2)
-        ranker.fit(X, y, group=[X.shape[0]], verbose=True)
-        prediction = ranker.predict(X)
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert isinstance(prediction, mt.Tensor)
+    result = prediction.fetch()
+    assert prediction.dtype == result.dtype
 
-        self.assertIsInstance(prediction, mt.Tensor)
-        result = prediction.fetch()
-        self.assertEqual(prediction.dtype, result.dtype)
+    # test weight
+    weight = mt.random.rand(X_raw.shape[0])
+    ranker = LGBMRanker(verbosity=1, n_estimators=2)
+    ranker.fit(X_raw, y, group=[X_raw.shape[0]], sample_weight=weight)
+    prediction = ranker.predict(X_raw)
 
-        # test weight
-        weight = mt.random.rand(X.shape[0])
-        ranker = LGBMRanker(verbosity=1, n_estimators=2)
-        ranker.fit(X, y, group=[X.shape[0]], sample_weight=weight)
-        prediction = ranker.predict(X)
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
+    result = prediction.fetch()
+    assert prediction.dtype == result.dtype
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
-        result = prediction.fetch()
-        self.assertEqual(prediction.dtype, result.dtype)
+    # test local model
+    X_np = X_raw.execute().fetch()
+    y_np = y.execute().fetch()
+    raw_ranker = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
+    raw_ranker.fit(X_np, y_np, group=[X_raw.shape[0]])
+    prediction = LGBMRanker(raw_ranker).predict(X_raw)
 
-        # test local model
-        X_np = X.execute(session=self.session).fetch(session=self.session)
-        y_np = y.execute(session=self.session).fetch(session=self.session)
-        raw_ranker = lightgbm.LGBMRanker(verbosity=1, n_estimators=2)
-        raw_ranker.fit(X_np, y_np, group=[X.shape[0]])
-        prediction = LGBMRanker(raw_ranker).predict(X)
-
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)

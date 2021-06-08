@@ -15,7 +15,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, TupleField
+from ...serialization.serializables import KeyField, TupleField
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import get_array_module, device

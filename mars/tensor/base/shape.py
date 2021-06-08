@@ -16,7 +16,7 @@ import numpy as np
 
 from ... import opcodes
 from ...core import ExecutableTuple
-from ...serialize import KeyField, Int32Field
+from ...serialization.serializables import KeyField, Int32Field
 from ...utils import calc_nsplits
 from ..core import TensorOrder
 from ..datasource import tensor as astensor
@@ -91,10 +91,11 @@ class TensorGetShape(TensorOperand, TensorOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        chunk_idx_tochunk_shapes = \
-            {c.index: cm.chunk_shape for c, cm
-             in zip(op.inputs, ctx.get_chunk_metas([c.key for c in op.inputs]))}
-        nsplits = calc_nsplits(chunk_idx_tochunk_shapes)
+        chunk_idx_to_chunk_shapes = \
+            {c.index: cm['shape'] for c, cm
+             in zip(op.inputs, ctx.get_chunks_meta([c.key for c in op.inputs],
+                                                   fields=['shape']))}
+        nsplits = calc_nsplits(chunk_idx_to_chunk_shapes)
         shape = tuple(sum(ns) for ns in nsplits)
         for o, s in zip(op.outputs, shape):
             ctx[o.key] = s

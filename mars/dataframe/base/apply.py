@@ -19,9 +19,9 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...core import OutputType
-from ...custom_log import redirect_custom_log
-from ...serialize import StringField, AnyField, BoolField, \
+from ...core import OutputType, recursive_tile
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import StringField, AnyField, BoolField, \
     TupleField, DictField, FunctionField
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
@@ -108,7 +108,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
             )
             if axis == 1:
                 chunk_size = chunk_size[::-1]
-            in_df = in_df.rechunk(chunk_size)._inplace_tile()
+            in_df = yield from recursive_tile(in_df.rechunk(chunk_size))
 
         chunks = []
         if out_df.ndim == 2:
@@ -185,7 +185,7 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         if op.inputs[0].ndim == 2:
-            return cls._tile_df(op)
+            return (yield from cls._tile_df(op))
         else:
             return cls._tile_series(op)
 

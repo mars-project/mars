@@ -16,11 +16,10 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, TilesError
-from ...context import get_context
-from ...serialize import AnyField, BoolField, KeyField
+from ...core import ENTITY_TYPE, recursive_tile
+from ...core.context import get_context
+from ...serialization.serializables import AnyField, BoolField, KeyField
 from ...tensor.core import TensorOrder
-from ...utils import recursive_tile
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ._check_targets import _check_targets
 
@@ -86,11 +85,12 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
+        # make sure type_true executed first
+        chunks = [op.type_true.chunks[0]]
+        yield chunks
+
         ctx = get_context()
-        try:
-            type_true = ctx.get_chunk_results([op.type_true.chunks[0].key])[0]
-        except (KeyError, AttributeError):
-            raise TilesError('type_true needed to be executed first')
+        type_true = ctx.get_chunks_result([chunks[0].key])[0]
 
         y_true, y_pred = op.y_true, op.y_pred
         if type_true.item().startswith('multilabel'):
@@ -100,7 +100,7 @@ class AccuracyScore(LearnOperand, LearnOperandMixin):
             score = mt.equal(y_true, y_pred)
 
         result = _weighted_sum(score, op.sample_weight, op.normalize)
-        return [recursive_tile(result)]
+        return [(yield from recursive_tile(result))]
 
 
 def _weighted_sum(sample_score, sample_weight, normalize=False):

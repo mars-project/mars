@@ -15,7 +15,7 @@
 from dataclasses import asdict
 from typing import Dict, List
 
-from ....utils import implements
+from ....utils import implements, extensible
 from ...core import BandType
 from ..core import _CommonMeta, _ChunkMeta
 from .base import AbstractMetaStore, register_meta_store
@@ -38,25 +38,68 @@ class DictMetaStore(AbstractMetaStore):
         # no extra kwargs.
         return dict()
 
+    def _set_meta(self,
+                  object_id: str,
+                  meta: _CommonMeta):
+        self._store[object_id] = meta
+
     @implements(AbstractMetaStore.set_meta)
+    @extensible
     async def set_meta(self,
                        object_id: str,
                        meta: _CommonMeta):
-        self._store[object_id] = meta
+        self._set_meta(object_id, meta)
+
+    @set_meta.batch
+    async def batch_set_meta(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._set_meta(*args, **kwargs)
+
+    def _get_meta(self,
+                  object_id: str,
+                  fields: List[str] = None,
+                  error: str = 'raise') -> Dict:
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+        try:
+            meta = asdict(self._store[object_id])
+            if fields:
+                return {k: meta[k] for k in fields}
+            return meta
+        except KeyError:
+            if error == 'raise':
+                raise
+            else:
+                return
 
     @implements(AbstractMetaStore.get_meta)
+    @extensible
     async def get_meta(self,
                        object_id: str,
-                       fields: List[str] = None) -> Dict:
-        meta = asdict(self._store[object_id])
-        if fields:
-            return {k: meta[k] for k in fields}
-        return meta
+                       fields: List[str] = None,
+                       error: str = 'raise') -> Dict:
+        return self._get_meta(object_id, fields=fields, error=error)
+
+    @get_meta.batch
+    async def batch_get_meta(self, args_list, kwargs_list):
+        metas = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            metas.append(self._get_meta(*args, **kwargs))
+        return metas
+
+    def _del_meta(self, object_id: str):
+        del self._store[object_id]
 
     @implements(AbstractMetaStore.del_meta)
+    @extensible
     async def del_meta(self,
                        object_id: str):
-        del self._store[object_id]
+        self._del_meta(object_id)
+
+    @del_meta.batch
+    async def batch_del_meta(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._del_meta(*args, **kwargs)
 
     @implements(AbstractMetaStore.add_chunk_bands)
     async def add_chunk_bands(self,

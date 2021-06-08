@@ -1,5 +1,5 @@
 inherits: base_config.yml
 storage:
-  backends: [plasma]
+  backends: [shared_memory]
   plasma:
     store_memory: 20%

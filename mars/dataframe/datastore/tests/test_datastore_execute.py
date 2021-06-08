@@ -14,18 +14,10 @@
 
 import os
 import tempfile
-import unittest
 
 import numpy as np
 import pandas as pd
-
-import mars.dataframe as md
-from mars.config import option_context
-from mars.dataframe import DataFrame
-from mars.deploy.local.core import new_cluster
-from mars.session import new_session
-from mars.tests.core import TestBase, flaky
-
+import pytest
 try:
     import vineyard
 except ImportError:
@@ -43,200 +35,169 @@ try:
 except ImportError:
     fastparquet = None
 
+import mars.dataframe as md
+from mars.dataframe import DataFrame
+from mars.tests import setup
+
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
 
-class Test(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.ctx, self.executor = self._create_test_context()
+setup = setup
 
-    def testToCSVExecution(self):
-        index = pd.RangeIndex(100, 0, -1, name='index')
-        raw = pd.DataFrame({
-            'col1': np.random.rand(100),
-            'col2': np.random.choice(['a', 'b', 'c'], (100,)),
-            'col3': np.arange(100)
-        }, index=index)
+
+def test_to_csv_execution(setup):
+    index = pd.RangeIndex(100, 0, -1, name='index')
+    raw = pd.DataFrame({
+        'col1': np.random.rand(100),
+        'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+        'col3': np.arange(100)
+    }, index=index)
+    df = DataFrame(raw, chunk_size=33)
+
+    with tempfile.TemporaryDirectory() as base_path:
+        # DATAFRAME TESTS
+        # test one file with dataframe
+        path = os.path.join(base_path, 'out.csv')
+
+        df.to_csv(path).execute()
+
+        result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
+        result.set_index('index', inplace=True)
+        pd.testing.assert_frame_equal(result, raw)
+
+        # test multi files with dataframe
+        path = os.path.join(base_path, 'out-*.csv')
+        df.to_csv(path).execute()
+
+        dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
+                           dtype=raw.dtypes.to_dict())
+               for i in range(4)]
+        result = pd.concat(dfs, axis=0)
+        result.set_index('index', inplace=True)
+        pd.testing.assert_frame_equal(result, raw)
+        pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.iloc[33: 66])
+
+        # test df with unknown shape
+        df2 = DataFrame(raw, chunk_size=(50, 2))
+        df2 = df2[df2['col1'] < 1]
+        path2 = os.path.join(base_path, 'out2.csv')
+        df2.to_csv(path2).execute()
+
+        result = pd.read_csv(path2, dtype=raw.dtypes.to_dict())
+        result.set_index('index', inplace=True)
+        pd.testing.assert_frame_equal(result, raw)
+
+        # SERIES TESTS
+        series = md.Series(raw.col1, chunk_size=33)
+
+        # test one file with series
+        path = os.path.join(base_path, 'out.csv')
+        series.to_csv(path).execute()
+
+        result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
+        result.set_index('index', inplace=True)
+        pd.testing.assert_frame_equal(result, raw.col1.to_frame())
+
+        # test multi files with series
+        path = os.path.join(base_path, 'out-*.csv')
+        series.to_csv(path).execute()
+
+        dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
+                           dtype=raw.dtypes.to_dict())
+               for i in range(4)]
+        result = pd.concat(dfs, axis=0)
+        result.set_index('index', inplace=True)
+        pd.testing.assert_frame_equal(result, raw.col1.to_frame())
+        pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.col1.to_frame().iloc[33: 66])
+
+
+@pytest.mark.skipif(sqlalchemy is None, reason='sqlalchemy not installed')
+def test_to_sql():
+    index = pd.RangeIndex(100, 0, -1, name='index')
+    raw = pd.DataFrame({
+        'col1': np.random.rand(100),
+        'col2': np.random.choice(['a', 'b', 'c'], (100,)),
+        'col3': np.arange(100).astype('int64'),
+    }, index=index)
+
+    with tempfile.TemporaryDirectory() as d:
+        table_name1 = 'test_table'
+        table_name2 = 'test_table2'
+        uri = 'sqlite:///' + os.path.join(d, 'test.db')
+
+        engine = sqlalchemy.create_engine(uri)
+
+        # test write dataframe
         df = DataFrame(raw, chunk_size=33)
+        df.to_sql(table_name1, con=engine).execute()
 
-        with tempfile.TemporaryDirectory() as base_path:
-            # DATAFRAME TESTS
-            # test one file with dataframe
-            path = os.path.join(base_path, 'out.csv')
+        written = pd.read_sql(table_name1, con=engine, index_col='index') \
+            .sort_index(ascending=False)
+        pd.testing.assert_frame_equal(raw, written)
 
-            r = df.to_csv(path)
-            self.executor.execute_dataframe(r)
+        # test write with existing table
+        with pytest.raises(ValueError):
+            df.to_sql(table_name1, con=uri).execute()
 
-            result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
-            result.set_index('index', inplace=True)
-            pd.testing.assert_frame_equal(result, raw)
+        # test write series
+        series = md.Series(raw.col1, chunk_size=33)
+        with engine.connect() as conn:
+            series.to_sql(table_name2, con=conn).execute()
 
-            # test multi files with dataframe
-            path = os.path.join(base_path, 'out-*.csv')
-            r = df.to_csv(path)
-            self.executor.execute_dataframe(r)
+        written = pd.read_sql(table_name2, con=engine, index_col='index') \
+            .sort_index(ascending=False)
+        pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
 
-            dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
-                               dtype=raw.dtypes.to_dict())
-                   for i in range(4)]
-            result = pd.concat(dfs, axis=0)
-            result.set_index('index', inplace=True)
-            pd.testing.assert_frame_equal(result, raw)
-            pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.iloc[33: 66])
 
-            with self.ctx:
-                # test df with unknown shape
-                df2 = DataFrame(raw, chunk_size=(50, 2))
-                df2 = df2[df2['col1'] < 1]
-                path2 = os.path.join(base_path, 'out2.csv')
-                r = df2.to_csv(path2)
-                self.executor.execute_dataframes([r])
+@pytest.mark.skipif(pa is None, reason='pyarrow not installed')
+def test_to_parquet_arrow_execution(setup):
+    raw = pd.DataFrame({
+        'col1': np.random.rand(100),
+        'col2': np.arange(100),
+        'col3': np.random.choice(['a', 'b', 'c'], (100,)),
+    })
+    df = DataFrame(raw, chunk_size=33)
 
-                result = pd.read_csv(path2, dtype=raw.dtypes.to_dict())
-                result.set_index('index', inplace=True)
-                pd.testing.assert_frame_equal(result, raw)
+    with tempfile.TemporaryDirectory() as base_path:
+        # DATAFRAME TESTS
+        path = os.path.join(base_path, 'out-*.parquet')
+        df.to_parquet(path).execute()
 
-            # SERIES TESTS
-            series = md.Series(raw.col1, chunk_size=33)
+        read_df = md.read_parquet(path)
+        result = read_df.execute().fetch()
+        result = result.sort_index()
+        pd.testing.assert_frame_equal(result, raw)
 
-            # test one file with series
-            path = os.path.join(base_path, 'out.csv')
-            r = series.to_csv(path)
-            self.executor.execute_dataframe(r)
+        read_df = md.read_parquet(path)
+        result = read_df.execute().fetch()
+        result = result.sort_index()
+        pd.testing.assert_frame_equal(result, raw)
 
-            result = pd.read_csv(path, dtype=raw.dtypes.to_dict())
-            result.set_index('index', inplace=True)
-            pd.testing.assert_frame_equal(result, raw.col1.to_frame())
+        # test read_parquet then to_parquet
+        read_df = md.read_parquet(path)
+        read_df.to_parquet(path).execute()
 
-            # test multi files with series
-            path = os.path.join(base_path, 'out-*.csv')
-            r = series.to_csv(path)
-            self.executor.execute_dataframe(r)
+        # test partition_cols
+        path = os.path.join(base_path, 'out-partitioned')
+        df.to_parquet(path, partition_cols=['col3']).execute()
 
-            dfs = [pd.read_csv(os.path.join(base_path, f'out-{i}.csv'),
-                               dtype=raw.dtypes.to_dict())
-                   for i in range(4)]
-            result = pd.concat(dfs, axis=0)
-            result.set_index('index', inplace=True)
-            pd.testing.assert_frame_equal(result, raw.col1.to_frame())
-            pd.testing.assert_frame_equal(dfs[1].set_index('index'), raw.col1.to_frame().iloc[33: 66])
+        read_df = md.read_parquet(path)
+        result = read_df.execute().fetch()
+        result['col3'] = result['col3'].astype('object')
+        pd.testing.assert_frame_equal(result.sort_values('col1').reset_index(drop=True),
+                                      raw.sort_values('col1').reset_index(drop=True))
 
-    @unittest.skipIf(sqlalchemy is None, 'sqlalchemy not installed')
-    def testToSQL(self):
-        index = pd.RangeIndex(100, 0, -1, name='index')
-        raw = pd.DataFrame({
-            'col1': np.random.rand(100),
-            'col2': np.random.choice(['a', 'b', 'c'], (100,)),
-            'col3': np.arange(100).astype('int64'),
-        }, index=index)
 
-        with tempfile.TemporaryDirectory() as d:
-            table_name1 = 'test_table'
-            table_name2 = 'test_table2'
-            uri = 'sqlite:///' + os.path.join(d, 'test.db')
+@pytest.mark.skipif(fastparquet is None, reason='fastparquet not installed')
+def test_to_parquet_fast_parquet_execution():
+    raw = pd.DataFrame({
+        'col1': np.random.rand(100),
+        'col2': np.arange(100),
+        'col3': np.random.choice(['a', 'b', 'c'], (100,)),
+    })
+    df = DataFrame(raw, chunk_size=33)
 
-            engine = sqlalchemy.create_engine(uri)
-
-            # test write dataframe
-            df = DataFrame(raw, chunk_size=33)
-            r = df.to_sql(table_name1, con=engine)
-            self.executor.execute_dataframe(r)
-
-            written = pd.read_sql(table_name1, con=engine, index_col='index') \
-                .sort_index(ascending=False)
-            pd.testing.assert_frame_equal(raw, written)
-
-            # test write with existing table
-            with self.assertRaises(ValueError):
-                df.to_sql(table_name1, con=uri).execute()
-
-            # test write series
-            series = md.Series(raw.col1, chunk_size=33)
-            with engine.connect() as conn:
-                r = series.to_sql(table_name2, con=conn)
-                self.executor.execute_dataframe(r)
-
-            written = pd.read_sql(table_name2, con=engine, index_col='index') \
-                .sort_index(ascending=False)
-            pd.testing.assert_frame_equal(raw.col1.to_frame(), written)
-
-    @unittest.skipIf(vineyard is None, 'vineyard not installed')
-    @flaky(max_runs=3)
-    def testToVineyard(self):
-        def run_with_given_session(session, **kw):
-            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
-            with option_context({'vineyard.socket': ipc_socket}):
-                df1 = DataFrame(pd.DataFrame(np.arange(12).reshape(3, 4), columns=['a', 'b', 'c', 'd']),
-                                chunk_size=2)
-                object_id = df1.to_vineyard().execute(session=session, **kw).fetch(session=session)
-                df2 = md.from_vineyard(object_id)
-
-                df1_value = df1.execute(session=session, **kw).fetch(session=session)
-                df2_value = df2.execute(session=session, **kw).fetch(session=session)
-                pd.testing.assert_frame_equal(
-                    df1_value.reset_index(drop=True), df2_value.reset_index(drop=True))
-
-        with new_session().as_default() as session:
-            run_with_given_session(session)
-
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=False) as cluster:
-            with new_session(cluster.endpoint).as_default() as session:
-                run_with_given_session(session, timeout=_exec_timeout)
-
-    @unittest.skipIf(pa is None, 'pyarrow not installed')
-    def testToParquetArrowExecution(self):
-        raw = pd.DataFrame({
-            'col1': np.random.rand(100),
-            'col2': np.arange(100),
-            'col3': np.random.choice(['a', 'b', 'c'], (100,)),
-        })
-        df = DataFrame(raw, chunk_size=33)
-
-        with tempfile.TemporaryDirectory() as base_path:
-            # DATAFRAME TESTS
-            path = os.path.join(base_path, 'out-*.parquet')
-            r = df.to_parquet(path)
-            self.executor.execute_dataframe(r)
-
-            read_df = md.read_parquet(path)
-            result = self.executor.execute_dataframe(read_df, concat=True)[0]
-            result = result.sort_index()
-            pd.testing.assert_frame_equal(result, raw)
-
-            read_df = md.read_parquet(path)
-            result = self.executor.execute_dataframe(read_df, concat=True)[0]
-            result = result.sort_index()
-            pd.testing.assert_frame_equal(result, raw)
-
-            # test read_parquet then to_parquet
-            read_df = md.read_parquet(path)
-            r = read_df.to_parquet(path)
-            self.executor.execute_dataframes([r])
-
-            # test partition_cols
-            path = os.path.join(base_path, 'out-partitioned')
-            r = df.to_parquet(path, partition_cols=['col3'])
-            self.executor.execute_dataframe(r)
-
-            read_df = md.read_parquet(path)
-            result = self.executor.execute_dataframe(read_df, concat=True)[0]
-            result['col3'] = result['col3'].astype('object')
-            pd.testing.assert_frame_equal(result.sort_values('col1').reset_index(drop=True),
-                                          raw.sort_values('col1').reset_index(drop=True))
-
-    @unittest.skipIf(fastparquet is None, 'fastparquet not installed')
-    def testToParquetFastParquetExecution(self):
-        raw = pd.DataFrame({
-            'col1': np.random.rand(100),
-            'col2': np.arange(100),
-            'col3': np.random.choice(['a', 'b', 'c'], (100,)),
-        })
-        df = DataFrame(raw, chunk_size=33)
-
-        with tempfile.TemporaryDirectory() as base_path:
-            # test fastparquet
-            path = os.path.join(base_path, 'out-fastparquet-*.parquet')
-            r = df.to_parquet(path, engine='fastparquet', compression='gzip')
-            self.executor.execute_dataframe(r)
+    with tempfile.TemporaryDirectory() as base_path:
+        # test fastparquet
+        path = os.path.join(base_path, 'out-fastparquet-*.parquet')
+        df.to_parquet(path, engine='fastparquet', compression='gzip').execute()

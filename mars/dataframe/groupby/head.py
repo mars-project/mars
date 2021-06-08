@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import OutputType, get_output_types
-from ...serialize import DictField, Int64Field
-from ...utils import recursive_tile
+from ...core import OutputType, get_output_types, recursive_tile
+from ...serialization.serializables import DictField, Int64Field
 from ..core import IndexValue
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_concatenated_rows_frame, parse_index
@@ -106,7 +105,7 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
                 pre_selection += [el for el in groupby_params['by'] if el not in pre_selection]
 
             if len(pre_selection) != in_df.shape[1]:
-                in_df = recursive_tile(in_df[pre_selection])
+                in_df = yield from recursive_tile(in_df[pre_selection])
 
         # generate pre chunks
         pre_chunks = []
@@ -126,9 +125,9 @@ class GroupByHead(DataFrameOperand, DataFrameOperandMixin):
                                         nsplits=new_nsplits, **in_df.params)
 
         # generate groupby
-        grouped = recursive_tile(pre_tiled.groupby(**groupby_params))
+        grouped = yield from recursive_tile(pre_tiled.groupby(**groupby_params))
         if selection:
-            grouped = recursive_tile(grouped[selection])
+            grouped = yield from recursive_tile(grouped[selection])
 
         # generate post chunks
         post_chunks = []

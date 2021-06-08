@@ -14,190 +14,194 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
+import pytest
 
+from mars.core import tile
 from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones, tensor
 from mars.tensor.merge import TensorConcatenate
 from mars.tensor.reduction import all, TensorMean, TensorArgmax, TensorArgmin
+    
+    
+def test_base_reduction():
+    sum = lambda x, *args, **kwargs: tile(x.sum(*args, **kwargs))
+    prod = lambda x, *args, **kwargs: tile(x.prod(*args, **kwargs))
+    max = lambda x, *args, **kwargs: tile(x.max(*args, **kwargs))
+    min = lambda x, *args, **kwargs: tile(x.min(*args, **kwargs))
+    all = lambda x, *args, **kwargs: tile(x.all(*args, **kwargs))
+    any = lambda x, *args, **kwargs: tile(x.any(*args, **kwargs))
+
+    for f in [sum, prod, max, min, all, any]:
+        res = f(ones((8, 8), chunk_size=8))
+        assert res.shape == ()
+
+        res = f(ones((10, 8), chunk_size=3))
+        assert res.dtype is not None
+        assert res.shape == ()
+
+        res = f(ones((10, 8), chunk_size=3), axis=0)
+        assert res.shape == (8,)
+
+        res = f(ones((10, 8), chunk_size=3), axis=1)
+        assert res.shape == (10,)
+
+        with pytest.raises(np.AxisError):
+            f(ones((10, 8), chunk_size=3), axis=2)
+
+        res = f(ones((10, 8), chunk_size=3), axis=-1)
+        assert res.shape == (10,)
+
+        with pytest.raises(np.AxisError):
+            f(ones((10, 8), chunk_size=3), axis=-3)
+
+        res = f(ones((10, 8), chunk_size=3), keepdims=True)
+        assert res.shape == (1, 1)
+
+        res = f(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
+        assert res.shape == (1, 8)
+
+        res = f(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
+        assert res.shape == (10, 1)
+
+        res = f(ones((10, 8, 10), chunk_size=3), axis=1)
+        assert res.shape == (10, 10)
+
+        res = f(ones((10, 8, 10), chunk_size=3), axis=1, keepdims=True)
+        assert res.shape == (10, 1, 10)
+
+        res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2))
+        assert res.shape == (8,)
+
+        res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2), keepdims=True)
+        assert res.shape == (1, 8, 1)
 
 
-class Test(unittest.TestCase):
-    def testBaseReduction(self):
-        sum = lambda x, *args, **kwargs: x.sum(*args, **kwargs).tiles()
-        prod = lambda x, *args, **kwargs: x.prod(*args, **kwargs).tiles()
-        max = lambda x, *args, **kwargs: x.max(*args, **kwargs).tiles()
-        min = lambda x, *args, **kwargs: x.min(*args, **kwargs).tiles()
-        all = lambda x, *args, **kwargs: x.all(*args, **kwargs).tiles()
-        any = lambda x, *args, **kwargs: x.any(*args, **kwargs).tiles()
+def test_mean_reduction():
+    mean = lambda x, *args, **kwargs: tile(x.mean(*args, **kwargs))
 
-        for f in [sum, prod, max, min, all, any]:
-            res = f(ones((8, 8), chunk_size=8))
-            self.assertEqual(res.shape, ())
+    res = mean(ones((10, 8), chunk_size=3))
+    assert res.shape == ()
+    assert res.dtype is not None
+    assert isinstance(res.chunks[0].op, TensorMean)
+    assert isinstance(res.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
+    assert res.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.combine
 
-            res = f(ones((10, 8), chunk_size=3))
-            self.assertIsNotNone(res.dtype)
-            self.assertEqual(res.shape, ())
+    res = mean(ones((8, 8), chunk_size=8))
+    assert res.shape == ()
 
-            res = f(ones((10, 8), chunk_size=3), axis=0)
-            self.assertEqual(res.shape, (8,))
+    res = mean(ones((10, 8), chunk_size=3), axis=0)
+    assert res.shape == (8,)
 
-            res = f(ones((10, 8), chunk_size=3), axis=1)
-            self.assertEqual(res.shape, (10,))
+    res = mean(ones((10, 8), chunk_size=3), axis=1)
+    assert res.shape == (10,)
 
-            with self.assertRaises(np.AxisError):
-                f(ones((10, 8), chunk_size=3), axis=2)
+    with pytest.raises(np.AxisError):
+        mean(ones((10, 8), chunk_size=3), axis=2)
 
-            res = f(ones((10, 8), chunk_size=3), axis=-1)
-            self.assertEqual(res.shape, (10,))
+    res = mean(ones((10, 8), chunk_size=3), axis=-1)
+    assert res.shape == (10,)
 
-            with self.assertRaises(np.AxisError):
-                f(ones((10, 8), chunk_size=3), axis=-3)
+    with pytest.raises(np.AxisError):
+        mean(ones((10, 8), chunk_size=3), axis=-3)
 
-            res = f(ones((10, 8), chunk_size=3), keepdims=True)
-            self.assertEqual(res.shape, (1, 1))
+    res = mean(ones((10, 8), chunk_size=3), keepdims=True)
+    assert res.shape == (1, 1)
 
-            res = f(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
-            self.assertEqual(res.shape, (1, 8))
+    res = mean(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
+    assert res.shape == (1, 8)
 
-            res = f(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
-            self.assertEqual(res.shape, (10, 1))
+    res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
+    assert res.shape == (10, 1)
+    assert isinstance(res.chunks[0].op, TensorMean)
+    assert res.chunks[0].op.stage == OperandStage.agg
+    assert isinstance(res.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
+    assert res.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.map
 
-            res = f(ones((10, 8, 10), chunk_size=3), axis=1)
-            self.assertEqual(res.shape, (10, 10))
 
-            res = f(ones((10, 8, 10), chunk_size=3), axis=1, keepdims=True)
-            self.assertEqual(res.shape, (10, 1, 10))
+def test_arg_reduction():
+    argmax = lambda x, *args, **kwargs: tile(x.argmax(*args, **kwargs))
+    argmin = lambda x, *args, **kwargs: tile(x.argmin(*args, **kwargs))
 
-            res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2))
-            self.assertEqual(res.shape, (8,))
+    res1 = argmax(ones((10, 8, 10), chunk_size=3))
+    res2 = argmin(ones((10, 8, 10), chunk_size=3))
+    assert res1.shape == ()
+    assert res1.dtype is not None
+    assert res2.shape == ()
+    assert isinstance(res1.chunks[0].op, TensorArgmax)
+    assert res1.chunks[0].op.stage == OperandStage.agg
+    assert isinstance(res2.chunks[0].op, TensorArgmin)
+    assert res2.chunks[0].op.stage == OperandStage.agg
+    assert isinstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
+    assert res1.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.combine
+    assert isinstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
+    assert res2.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.combine
 
-            res = f(ones((10, 8, 10), chunk_size=3), axis=(0, 2), keepdims=True)
-            self.assertEqual(res.shape, (1, 8, 1))
+    res1 = argmax(ones((10, 8), chunk_size=3), axis=1)
+    res2 = argmin(ones((10, 8), chunk_size=3), axis=1)
+    assert res1.shape == (10,)
+    assert res2.shape == (10,)
+    assert isinstance(res1.chunks[0].op, TensorArgmax)
+    assert res1.chunks[0].op.stage == OperandStage.agg
+    assert isinstance(res2.chunks[0].op, TensorArgmin)
+    assert res2.chunks[0].op.stage == OperandStage.agg
+    assert isinstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
+    assert isinstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
+    assert res1.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.map
+    assert isinstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
+    assert res2.chunks[0].inputs[0].inputs[0].op.stage == OperandStage.map
 
-    def testMeanReduction(self):
-        mean = lambda x, *args, **kwargs: x.mean(*args, **kwargs).tiles()
+    pytest.raises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
+    pytest.raises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
+    pytest.raises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=3))
+    pytest.raises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=-4))
 
-        res = mean(ones((10, 8), chunk_size=3))
-        self.assertEqual(res.shape, ())
-        self.assertIsNotNone(res.dtype)
-        self.assertIsInstance(res.chunks[0].op, TensorMean)
-        self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
-        self.assertEqual(res.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
 
-        res = mean(ones((8, 8), chunk_size=8))
-        self.assertEqual(res.shape, ())
+def test_cum_reduction():
+    cumsum = lambda x, *args, **kwargs: tile(x.cumsum(*args, **kwargs))
+    cumprod = lambda x, *args, **kwargs: tile(x.cumprod(*args, **kwargs))
 
-        res = mean(ones((10, 8), chunk_size=3), axis=0)
-        self.assertEqual(res.shape, (8,))
+    res1 = cumsum(ones((10, 8), chunk_size=3), axis=0)
+    res2 = cumprod(ones((10, 8), chunk_size=3), axis=0)
+    assert res1.shape == (10, 8)
+    assert res1.dtype is not None
+    assert res2.shape == (10, 8)
+    assert res2.dtype is not None
 
-        res = mean(ones((10, 8), chunk_size=3), axis=1)
-        self.assertEqual(res.shape, (10,))
+    res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=1)
+    res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=1)
+    assert res1.shape == (10, 8, 8)
+    assert res2.shape == (10, 8, 8)
 
-        with self.assertRaises(np.AxisError):
-            mean(ones((10, 8), chunk_size=3), axis=2)
+    res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=-2)
+    res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=-2)
+    assert res1.shape == (10, 8, 8)
+    assert res2.shape == (10, 8, 8)
 
-        res = mean(ones((10, 8), chunk_size=3), axis=-1)
-        self.assertEqual(res.shape, (10,))
+    with pytest.raises(np.AxisError):
+        cumsum(ones((10, 8), chunk_size=3), axis=2)
+    with pytest.raises(np.AxisError):
+        cumsum(ones((10, 8), chunk_size=3), axis=-3)
 
-        with self.assertRaises(np.AxisError):
-            mean(ones((10, 8), chunk_size=3), axis=-3)
 
-        res = mean(ones((10, 8), chunk_size=3), keepdims=True)
-        self.assertEqual(res.shape, (1, 1))
+def test_all_reduction():
+    o = tensor([False])
 
-        res = mean(ones((10, 8), chunk_size=3), axis=0, keepdims=True)
-        self.assertEqual(res.shape, (1, 8))
+    with pytest.raises(ValueError):
+        all([-1, 4, 5], out=o)
 
-        res = mean(ones((10, 8), chunk_size=3), axis=1, keepdims=True)
-        self.assertEqual(res.shape, (10, 1))
-        self.assertIsInstance(res.chunks[0].op, TensorMean)
-        self.assertEqual(res.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(res.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res.chunks[0].inputs[0].inputs[0].op, TensorMean)
-        self.assertEqual(res.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
 
-    def testArgReduction(self):
-        argmax = lambda x, *args, **kwargs: x.argmax(*args, **kwargs).tiles()
-        argmin = lambda x, *args, **kwargs: x.argmin(*args, **kwargs).tiles()
+def test_var_reduction():
+    var = lambda x, *args, **kwargs: tile(x.var(*args, **kwargs))
 
-        res1 = argmax(ones((10, 8, 10), chunk_size=3))
-        res2 = argmin(ones((10, 8, 10), chunk_size=3))
-        self.assertEqual(res1.shape, ())
-        self.assertIsNotNone(res1.dtype)
-        self.assertEqual(res2.shape, ())
-        self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
-        self.assertEqual(res1.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
-        self.assertEqual(res2.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
-        self.assertEqual(res1.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
-        self.assertEqual(res2.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.combine)
+    res1 = var(ones((10, 8), chunk_size=3), ddof=2)
+    assert res1.shape == ()
+    assert res1.op.ddof == 2
 
-        res1 = argmax(ones((10, 8), chunk_size=3), axis=1)
-        res2 = argmin(ones((10, 8), chunk_size=3), axis=1)
-        self.assertEqual(res1.shape, (10,))
-        self.assertEqual(res2.shape, (10,))
-        self.assertIsInstance(res1.chunks[0].op, TensorArgmax)
-        self.assertEqual(res1.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(res2.chunks[0].op, TensorArgmin)
-        self.assertEqual(res2.chunks[0].op.stage, OperandStage.agg)
-        self.assertIsInstance(res1.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res2.chunks[0].inputs[0].op, TensorConcatenate)
-        self.assertIsInstance(res1.chunks[0].inputs[0].inputs[0].op, TensorArgmax)
-        self.assertEqual(res1.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
-        self.assertIsInstance(res2.chunks[0].inputs[0].inputs[0].op, TensorArgmin)
-        self.assertEqual(res2.chunks[0].inputs[0].inputs[0].op.stage, OperandStage.map)
-
-        self.assertRaises(TypeError, lambda: argmax(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
-        self.assertRaises(TypeError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=(0, 1)))
-        self.assertRaises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=3))
-        self.assertRaises(np.AxisError, lambda: argmin(ones((10, 8, 10), chunk_size=3), axis=-4))
-
-    def testCumReduction(self):
-        cumsum = lambda x, *args, **kwargs: x.cumsum(*args, **kwargs).tiles()
-        cumprod = lambda x, *args, **kwargs: x.cumprod(*args, **kwargs).tiles()
-
-        res1 = cumsum(ones((10, 8), chunk_size=3), axis=0)
-        res2 = cumprod(ones((10, 8), chunk_size=3), axis=0)
-        self.assertEqual(res1.shape, (10, 8))
-        self.assertIsNotNone(res1.dtype)
-        self.assertEqual(res2.shape, (10, 8))
-        self.assertIsNotNone(res2.dtype)
-
-        res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=1)
-        res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=1)
-        self.assertEqual(res1.shape, (10, 8, 8))
-        self.assertEqual(res2.shape, (10, 8, 8))
-
-        res1 = cumsum(ones((10, 8, 8), chunk_size=3), axis=-2)
-        res2 = cumprod(ones((10, 8, 8), chunk_size=3), axis=-2)
-        self.assertEqual(res1.shape, (10, 8, 8))
-        self.assertEqual(res2.shape, (10, 8, 8))
-
-        with self.assertRaises(np.AxisError):
-            cumsum(ones((10, 8), chunk_size=3), axis=2)
-        with self.assertRaises(np.AxisError):
-            cumsum(ones((10, 8), chunk_size=3), axis=-3)
-
-    def testAllReduction(self):
-        o = tensor([False])
-
-        with self.assertRaises(ValueError):
-            all([-1, 4, 5], out=o)
-
-    def testVarReduction(self):
-        var = lambda x, *args, **kwargs: x.var(*args, **kwargs).tiles()
-
-        res1 = var(ones((10, 8), chunk_size=3), ddof=2)
-        self.assertEqual(res1.shape, ())
-        self.assertEqual(res1.op.ddof, 2)
-
-        res1 = var(ones((10, 8, 8), chunk_size=3), axis=1)
-        self.assertEqual(res1.shape, (10, 8))
+    res1 = var(ones((10, 8, 8), chunk_size=3), axis=1)
+    assert res1.shape == (10, 8)

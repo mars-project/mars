@@ -19,11 +19,11 @@ except ImportError:  # pragma: no cover
     SklearnDistanceMetric = None
 
 from .... import opcodes as OperandDef
-from ....serialize import KeyField, BoolField
+from ....core import recursive_tile
+from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tensor.indexing import fill_diagonal
 from ....tensor.array_utils import as_same_device, device
-from ....utils import recursive_tile
 from .core import PairwiseDistances
 
 
@@ -79,11 +79,11 @@ class HaversineDistances(PairwiseDistances):
         if len(x.chunks) == 1 and len(y.chunks) == 1:
             return cls._tile_one_chunk(op)
 
-        x, y = cls._rechunk_cols_into_one(x, y)
+        x, y = yield from cls._rechunk_cols_into_one(x, y)
         ret, = cls._tile_chunks(op, x, y)
         if y_is_x:
             fill_diagonal(ret, 0)
-        return [recursive_tile(ret)]
+        return [(yield from recursive_tile(ret))]
 
     @classmethod
     def execute(cls, ctx, op):

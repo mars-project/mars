@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import KeyField, AnyField
-from ...utils import recursive_tile
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField, AnyField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
 from ...tensor.utils import decide_unify_split, validate_axis
@@ -125,14 +124,14 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if any(np.isnan(ns) for ns in lhs.nsplits[-1]):
-            raise TilesError('lhs has unknown chunk shape on last axis')
+            yield
         if any(np.isnan(ns) for ns in rhs.nsplits[0]):
-            raise TilesError('rhs has unknown chunk shape on first axis')
+            yield
 
         nsplit = decide_unify_split(lhs.nsplits[-1], rhs.nsplits[0])
         lhs_axis = validate_axis(lhs.ndim, -1)
-        lhs = lhs.rechunk({lhs_axis: nsplit})._inplace_tile()
-        rhs = rhs.rechunk({0: nsplit})._inplace_tile()
+        lhs = yield from recursive_tile(lhs.rechunk({lhs_axis: nsplit}))
+        rhs = yield from recursive_tile(rhs.rechunk({0: nsplit}))
 
         # delegate computation to tensor
         lhs_tensor = lhs if isinstance(lhs, TENSOR_TYPE) else lhs.to_tensor()
@@ -156,7 +155,8 @@ class DataFrameDot(DataFrameOperand, DataFrameOperandMixin):
                 ret._columns_value = rhs.columns_value
                 ret._dtypes = rhs.dtypes
 
-        return [recursive_tile(ret)]
+        tiled = yield from recursive_tile(ret)
+        return [tiled]
 
 
 def dot(df_or_seris, other):

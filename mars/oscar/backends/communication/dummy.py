@@ -201,8 +201,10 @@ class DummyClient(Client):
 
         q1, q2 = asyncio.Queue(), asyncio.Queue()
         closed = asyncio.Event()
-        client_channel = DummyChannel(q1, q2, closed)
-        server_channel = DummyChannel(q2, q1, closed)
+        client_channel = DummyChannel(q1, q2, closed,
+                                      local_address=local_address)
+        server_channel = DummyChannel(q2, q1, closed,
+                                      dest_address=local_address)
 
         conn_coro = server.on_connected(server_channel)
         task = asyncio.create_task(conn_coro)

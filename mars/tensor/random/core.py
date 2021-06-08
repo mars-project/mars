@@ -20,8 +20,8 @@ from contextlib import contextmanager
 import numpy as np
 
 from ...config import options
-from ...serialize import ValueType, TupleField, Int32Field
-from ...utils import tokenize
+from ...core import recursive_tile
+from ...serialization.serializables import FieldTypes, TupleField, Int32Field
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ..utils import decide_chunk_sizes, gen_random_seeds, broadcast_shape
 from ..array_utils import array_module, device
@@ -30,7 +30,7 @@ from ..datasource import tensor as astensor
 from ..base import broadcast_to
 
 
-class RandomState(object):
+class RandomState:
     def __init__(self, seed=None):
         self._random_state = np.random.RandomState(seed=seed)
 
@@ -112,7 +112,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
                 t_nsplits = t.shape  # into 1 chunk
             rechunked = t.rechunk(t_nsplits)
             if rechunked is not t:
-                rechunked._inplace_tile()
+                yield from recursive_tile(rechunked)
                 changed = True
                 new_inputs.append(rechunked)
             else:
@@ -121,7 +121,7 @@ class TensorRandomOperandMixin(TensorOperandMixin):
             op.inputs = new_inputs
 
         idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
-        seeds = gen_random_seeds(len(idxes), op.state)
+        seeds = gen_random_seeds(len(idxes), np.random.RandomState(op.seed))
 
         out_chunks = []
         for seed, idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
@@ -144,7 +144,6 @@ class TensorRandomOperandMixin(TensorOperandMixin):
 
             chunk_op = op.copy().reset_key()
             chunk_op._seed = int(seed)
-            chunk_op._state = None
             chunk_op._size = size
             out_chunk = chunk_op.new_chunk(inputs, shape=shape, index=idx,
                                            order=tensor.order)
@@ -299,10 +298,6 @@ def RandomStateField(name, **kwargs):
 
 class TensorSeedOperandMixin(object):
     @property
-    def state(self):
-        return getattr(self, '_state', None)
-
-    @property
     def seed(self):
         return getattr(self, '_seed', None)
 
@@ -314,24 +309,24 @@ class TensorSeedOperandMixin(object):
             return [field for field in self._FIELDS
                     if field not in TensorRandomOperand._FIELDS]
 
-    def _update_key(self):
-        self._key = tokenize(type(self).__name__,
-                             *tuple(getattr(self, k, None) for k in self._keys_))
-        return self
-
 
 class TensorRandomOperand(TensorSeedOperandMixin, TensorOperand):
-    _state = RandomStateField('state')
     _seed = Int32Field('seed')
+
+    def __init__(self, seed=None, **kwargs):
+        super().__init__(_seed=seed, **kwargs)
+
+    @property
+    def seed(self):
+        return self._seed
 
 
 class TensorRandomMapReduceOperand(TensorSeedOperandMixin, TensorMapReduceOperand):
-    _state = RandomStateField('state')
     _seed = Int32Field('seed')
 
 
 class TensorDistribution(TensorRandomOperand):
-    _size = TupleField('size', ValueType.int64)
+    _size = TupleField('size', FieldTypes.int64)
 
     @property
     def size(self):
@@ -374,7 +369,7 @@ class TensorDistribution(TensorRandomOperand):
 
 
 class TensorSimpleRandomData(TensorRandomOperand):
-    _size = TupleField('size', ValueType.int64)
+    _size = TupleField('size', FieldTypes.int64)
 
     @property
     def size(self):

@@ -15,7 +15,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, Int32Field, StringField, ListField, BoolField
+from ...serialization.serializables import FieldTypes, Int32Field, \
+    StringField, ListField, BoolField
 from ...core import ExecutableTuple
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
@@ -31,8 +32,8 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
     _axis = Int32Field('axis')
     _kind = StringField('kind')
     _parallel_kind = StringField('parallel_kind')
-    _order = ListField('order', ValueType.string)
-    _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
+    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
     _need_align = BoolField('need_align')
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
@@ -110,7 +111,8 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
         to see explanation of parallel sorting by regular sampling
         """
         out_tensor = op.outputs[0]
-        in_tensor, axis_chunk_shape, out_idxes, need_align = cls.preprocess(op)
+        in_tensor, axis_chunk_shape, out_idxes, need_align = \
+            yield from cls.preprocess(op)
         axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
         return_value, return_indices = op.return_value, op.return_indices
 
@@ -216,7 +218,7 @@ class TensorSort(TensorOperand, TensorPSRSOperandMixin):
             return new_op.new_tensors([in_tensor], kws=kws)
         else:
             # use parallel sorting by regular sampling
-            return cls._tile_psrs(op)
+            return (yield from cls._tile_psrs(op))
 
     @classmethod
     def execute(cls, ctx, op):

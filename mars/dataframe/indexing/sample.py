@@ -18,15 +18,15 @@ import itertools
 import numpy as np
 
 from ... import opcodes
-from ...core import ENTITY_TYPE, get_output_types, TilesError
-from ...serialize import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
+from ...core import ENTITY_TYPE, get_output_types, recursive_tile
+from ...serialization.serializables import BoolField, AnyField, Int8Field, Int64Field, Float64Field, \
     KeyField
 from ...tensor import searchsorted
 from ...tensor.base import TensorMapChunk
 from ...tensor.merge import TensorConcatenate
 from ...tensor.random import RandomState as TensorRandomState, RandomStateField
 from ...tensor.utils import normalize_chunk_sizes, gen_random_seeds
-from ...utils import check_chunks_unknown_shape, recursive_tile, ceildiv
+from ...utils import has_unknown_shape, ceildiv
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import validate_axis, parse_index
 
@@ -174,6 +174,8 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._size = int(chunk_size)
 
                 params = data_chunk.params
+                params['index_value'] = parse_index(
+                    params['index_value'].to_pandas()[:0])
                 new_shape = list(data_chunk.shape)
                 new_shape[op.axis] = int(chunk_size)
                 params['shape'] = tuple(new_shape)
@@ -188,7 +190,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             mn_seed = gen_random_seeds(1, op.random_state)[0]
 
             # weights is specified, use weights to sample num of instances for each chunk
-            chunk_weights = recursive_tile(
+            chunk_weights = yield from recursive_tile(
                 weights.to_tensor().map_chunk(lambda x: x.sum(keepdims=True)))
             chunk_weights_chunk = TensorConcatenate(dtype=chunk_weights.dtype).new_chunk(
                 chunk_weights.chunks, shape=(len(chunk_weights.chunks),), index=(0,))
@@ -212,6 +214,8 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
                     input_chunks.append(weight_chunk)
 
                 params = data_chunk.params
+                params['index_value'] = parse_index(
+                    params['index_value'].to_pandas()[:0])
                 new_shape = list(data_chunk.shape)
                 new_shape[op.axis] = np.nan
                 params['shape'] = tuple(new_shape)
@@ -253,9 +257,11 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
                 # merge it into previous one
                 chunk_sizes[-2] += chunk_sizes[-1]
                 chunk_sizes = chunk_sizes[:-1]
-            in_df = in_df.rechunk({0: tuple(chunk_sizes)})._inplace_tile()
+            in_df = yield from recursive_tile(
+                in_df.rechunk({0: tuple(chunk_sizes)}))
             if isinstance(weights, ENTITY_TYPE):
-                weights = weights.rechunk({0: tuple(chunk_sizes)})._inplace_tile()
+                weights = yield from recursive_tile(
+                    weights.rechunk({0: tuple(chunk_sizes)}))
             if len(chunk_sizes) == 1:
                 return cls._tile_one_chunk(op, in_df, weights)
 
@@ -290,7 +296,7 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
         else:
             # weights specified, use weights to calculate cumulative probability
             # to distribute samples in each chunk
-            chunk_weights = recursive_tile(
+            chunk_weights = yield from recursive_tile(
                 weights.to_tensor().map_chunk(lambda x: x.sum(keepdims=True)))
             chunk_weights_chunk = TensorConcatenate(dtype=chunk_weights.dtype).new_chunk(
                 chunk_weights.chunks, shape=(len(chunk_weights.chunks),), index=(0,))
@@ -304,7 +310,8 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
 
         index_chunks = []
         # seek which chunk the final sample will select
-        chunk_sel = recursive_tile(searchsorted(cum_offsets, indices, side='right'))
+        chunk_sel = yield from recursive_tile(
+            searchsorted(cum_offsets, indices, side='right'))
         # for every chunk, select samples with bool indexing
         for idx, sampled_chunk in enumerate(sampled_chunks):
             chunk_index = chunk_sel.map_chunk(func=lambda x, i: x == i, args=(idx,),
@@ -314,7 +321,8 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
             sampled_df = sampled_df_op.new_tileable(
                 input_dfs, chunks=[sampled_chunk], nsplits=((s,) for s in sampled_chunk.shape),
                 **sampled_chunk.params)
-            index_chunk = recursive_tile(sampled_df.iloc[chunk_index]).chunks[0]
+            index_chunk = (yield from recursive_tile(
+                sampled_df.iloc[chunk_index])).chunks[0]
 
             chunk_idx = [0] * sampled_chunk.ndim
             chunk_idx[op.axis] = idx
@@ -335,28 +343,31 @@ class DataFrameSample(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op: "DataFrameSample"):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         in_df = op.inputs[0]
         if in_df.ndim == 2:
-            in_df = in_df.rechunk({(1 - op.axis): (in_df.shape[1 - op.axis],)})._inplace_tile()
+            in_df = yield from recursive_tile(
+                in_df.rechunk({(1 - op.axis): (in_df.shape[1 - op.axis],)}))
 
         if op.size is None:
             op._size = int(op.frac * in_df.shape[op.axis])
 
         weights = op.weights
         if isinstance(weights, ENTITY_TYPE):
-            weights = weights.rechunk({0: in_df.nsplits[op.axis]})._inplace_tile()
+            weights = yield from recursive_tile(
+                weights.rechunk({0: in_df.nsplits[op.axis]}))
         elif in_df.ndim > 1 and weights in in_df.dtypes.index:
-            weights = in_df[weights]._inplace_tile()
+            weights = yield from recursive_tile(in_df[weights])
 
         if len(in_df.chunks) == 1:
             return cls._tile_one_chunk(op, in_df, weights)
 
         if op.replace or op.always_multinomial:
-            return cls._tile_multinomial(op, in_df, weights)
+            return (yield from cls._tile_multinomial(op, in_df, weights))
         else:
-            return cls._tile_reservoirs(op, in_df, weights)
+            return (yield from cls._tile_reservoirs(op, in_df, weights))
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameSample"):

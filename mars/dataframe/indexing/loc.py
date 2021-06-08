@@ -23,7 +23,7 @@ from pandas.core.indexing import IndexingError
 from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE
 from ...core.operand import OperandStage
-from ...serialize import KeyField, ListField
+from ...serialization.serializables import KeyField, ListField
 from ...tensor.datasource import asarray
 from ...tensor.utils import calc_sliced_size, filter_inputs
 from ...utils import lazy_import
@@ -330,7 +330,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         handler = DataFrameLocIndexesHandler()
-        return [handler.handle(op)]
+        return [(yield from handler.handle(op))]
 
     @classmethod
     def execute(cls, ctx, op):

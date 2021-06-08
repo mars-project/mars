@@ -15,9 +15,9 @@
 import numpy as np
 
 from ... import opcodes
-from ...core import TilesError
-from ...serialize import KeyField, Float64Field, Int8Field
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField, Float64Field, Int8Field
+from ...utils import has_unknown_shape
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
 from ..datasource import tensor as astensor
@@ -84,8 +84,9 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
         if x is not None:
             x = astensor(x)
             # rechunk x to make x.nsplits == y.nsplits
-            check_chunks_unknown_shape([x, y], TilesError)
-            x = x.rechunk(y.nsplits)._inplace_tile()
+            if has_unknown_shape(x, y):
+                yield
+            x = yield from recursive_tile(x.rechunk(y.nsplits))
 
         if len(y.chunks) == 1:
             return cls._tile_one_chunk(op, y, x)
@@ -107,7 +108,7 @@ class TensorTrapz(TensorOperand, TensorOperandMixin):
         slice1[axis] = slice(1, None)
         slice2[axis] = slice(None, -1)
         ret = (d * (y[tuple(slice1)] + y[tuple(slice2)]) / 2.0).sum(axis)
-        return [recursive_tile(ret)]
+        return [(yield from recursive_tile(ret))]
 
     @classmethod
     def _tile_one_chunk(cls, op, y, x):

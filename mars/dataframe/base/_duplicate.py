@@ -17,11 +17,10 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ...config import options
-from ...context import get_context, RunningMode
-from ...core import OutputType, TilesError
+from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage, MapReduceOperand
-from ...serialize import AnyField, Int32Field, StringField, KeyField
-from ...utils import ceildiv, check_chunks_unknown_shape, lazy_import
+from ...serialization.serializables import AnyField, Int32Field, StringField, KeyField
+from ...utils import ceildiv, has_unknown_shape, lazy_import
 from ..initializer import DataFrame as asdataframe
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
 
@@ -64,7 +63,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         return self._shuffle_size
 
     @classmethod
-    def _get_shape(cls, input_shape):  # pragma: no cover
+    def _get_shape(cls, input_shape, op):  # pragma: no cover
         raise NotImplementedError
 
     @classmethod
@@ -99,12 +98,16 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         return new_op.new_tileables([inp], kws=[params])
 
     @classmethod
+    def _get_map_output_types(cls, input_chunk, method: str):
+        raise NotImplementedError
+
+    @classmethod
     def _gen_map_chunks(cls, op: "DuplicateOperand", inp, method, **kw):
         chunks = inp.chunks
         map_chunks = []
         for c in chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op._output_types = c.op.output_types
+            chunk_op._output_types = cls._get_map_output_types(c, method)
             chunk_op._method = method
             chunk_op.stage = OperandStage.map
             for k, v in kw.items():
@@ -117,6 +120,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
     def _gen_tree_chunks(cls, op: "DuplicateOperand", inp, method):
         from ..merge import DataFrameConcat
 
+        out = op.outputs[0]
         combine_size = options.combine_size
         new_chunks = cls._gen_map_chunks(op, inp, method)
         while len(new_chunks) > 1:
@@ -144,11 +148,17 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                 chunk_op._method = method
                 chunk_op.stage = \
                     OperandStage.combine if out_chunk_size > 1 else OperandStage.agg
-                if out_chunk_size > 1 or method == 'subset_tree':
+                if out_chunk_size > 1 and method == 'tree':
                     # for tree, chunks except last one should be dataframes,
+                    chunk_op._output_types = \
+                        [OutputType.dataframe] if out_chunk_size > 1 else \
+                            out.op.output_types
+                elif method == 'subset_tree':
                     # `subset_tree` will tile chunks that are always dataframes
-                    chunk_op._output_types = concat_chunk.op.output_types
+                    chunk_op._output_types = [OutputType.dataframe]
                 params = cls._gen_chunk_params(chunk_op, concat_chunk)
+                if out.ndim == 1 and out_chunk_size == 1:
+                    params['name'] = out.name
                 out_chunks.append(chunk_op.new_chunk([concat_chunk], kws=[params]))
             new_chunks = out_chunks
 
@@ -173,7 +183,7 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
         if subset is None:
             subset = inp.dtypes.index.tolist()
         # select subset first
-        subset_df = inp[subset]._inplace_tile()
+        subset_df = yield from recursive_tile(inp[subset])
         # tree aggregate subset
         subset_chunk = cls._gen_tree_chunks(op, subset_df, 'subset_tree')[0]
 
@@ -226,12 +236,19 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             put_back_op.stage = OperandStage.reduce
             put_back_op.reducer_phase = 'put_back'
             put_back_op.reducer_index = (i,)
-            put_back_chunk_params = map_chunks[i].params
+            if out.ndim == 2:
+                put_back_chunk_params = map_chunks[i].params
+            else:
+                put_back_chunk_params = out.params.copy()
+                map_chunk_params = map_chunks[i].params
+                put_back_chunk_params['index_value'] = map_chunk_params['index_value']
+                put_back_chunk_params['index'] = map_chunk_params['index'][:1]
             if out.ndim == 1:
                 put_back_chunk_params['index'] = (i,)
             else:
                 put_back_chunk_params['index'] = (i,) + put_back_chunk_params['index'][1:]
-            put_back_chunk_params['shape'] = cls._get_shape(map_chunks[i].op.input.shape)
+            put_back_chunk_params['shape'] = cls._get_shape(
+                map_chunks[i].op.input.shape, op)
             put_back_chunks.append(
                 put_back_op.new_chunk([put_back_proxy_chunk], kws=[put_back_chunk_params]))
 
@@ -254,13 +271,12 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
             return cls._tile_one_chunk(op)
 
         if inp.ndim == 2 and inp.chunk_shape[1] > 1:
-            check_chunks_unknown_shape([inp], TilesError)
-            inp = inp.rechunk({1: inp.shape[1]})._inplace_tile()
+            if has_unknown_shape(inp):
+                yield
+            inp = yield from recursive_tile(
+                inp.rechunk({1: inp.shape[1]}))
 
-        ctx = get_context()
-        default_tile = cls._tile_shuffle \
-            if getattr(ctx, 'running_mode', None) == RunningMode.distributed \
-            else cls._tile_tree
+        default_tile = cls._tile_tree
 
         if op.method == 'auto':
             # if method == 'auto', pick appropriate method
@@ -280,11 +296,13 @@ class DuplicateOperand(MapReduceOperand, DataFrameOperandMixin):
                     memory_usage += s_dtype.itemsize * inp.shape[0]
             if memory_usage <= options.chunk_store_limit:
                 # if subset is small enough, use method 'subset_tree'
-                return cls._tile_subset_tree(op, inp)
+                r = yield from cls._tile_subset_tree(op, inp)
+                return r
             else:
                 return default_tile(op, inp)
         elif op.method == 'subset_tree':
-            return cls._tile_subset_tree(op, inp)
+            r = yield from cls._tile_subset_tree(op, inp)
+            return r
         elif op.method == 'tree':
             return cls._tile_tree(op, inp)
         else:

@@ -15,13 +15,13 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
+from ...core import recursive_tile
 from ...lib.sparse.array import get_sparse_module, SparseNDArray
-from ...serialize import KeyField, Int64Field
+from ...serialization.serializables import KeyField, Int64Field
 from ...tensor.array_utils import as_same_device, device
 from ...tensor.core import TensorOrder
 from ...tensor.utils import decide_unify_split
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 
 
@@ -64,7 +64,8 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
         A_data, A_ind = op.a_data, op.a_ind
         out = op.outputs[0]
 
@@ -73,13 +74,16 @@ class KNeighborsGraph(LearnOperand, LearnOperandMixin):
             # mode == 'distance'
             axis0_chunk_sizes = decide_unify_split(A_data.nsplits[0],
                                                    A_ind.nsplits[0])
-            A_data = A_data.rechunk({0: axis0_chunk_sizes,
-                                     1: shape1})._inplace_tile()
-            A_ind = A_ind.rechunk({0: axis0_chunk_sizes,
-                                   1: shape1})._inplace_tile()
+            A_data = yield from recursive_tile(
+                A_data.rechunk({0: axis0_chunk_sizes,
+                                1: shape1}))
+            A_ind = yield from recursive_tile(
+                A_ind.rechunk({0: axis0_chunk_sizes,
+                               1: shape1}))
         else:
             # mode == 'connectivity'
-            A_ind = A_ind.rechunk({1: shape1})._inplace_tile()
+            A_ind = yield from recursive_tile(
+                A_ind.rechunk({1: shape1}))
 
         out_chunks = []
         for i, ind_c in enumerate(A_ind.chunks):

@@ -235,7 +235,7 @@ async def test_schedule_cancel(actor_pools):
     subtasks = []
     wait_tasks = []
     for task_id in range(6):
-        a = mr.spawn(_remote_fun, args=(0.5 - 0.01 * task_id,))
+        a = mr.spawn(_remote_fun, args=(1 - 0.01 * task_id,))
         subtask = _gen_subtask(a, session_id)
         subtask.subtask_id = f'test_schedule_queue_subtask_{task_id}'
         subtask.expect_bands = [(worker_pool.external_address, 'numa-0')]

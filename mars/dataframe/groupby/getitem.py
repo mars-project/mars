@@ -16,7 +16,7 @@ from collections.abc import Iterable
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import parse_index
 
@@ -70,7 +70,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
         return self.new_tileable([groupby], **params)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: 'GroupByIndex'):
         in_groupby = op.inputs[0]
         out_groupby = op.outputs[0]
 
@@ -85,6 +85,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
                 params['dtypes'] = out_groupby.dtypes
                 params['selection'] = op.selection
                 params['shape'] = (c.shape[0], len(op.selection))
+                params['columns_value'] = out_groupby.columns_value
 
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))
@@ -97,7 +98,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
         return new_op.new_tileables([in_groupby], **params)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: 'GroupByIndex'):
         in_data = ctx[op.inputs[0].key]
         ctx[op.outputs[0].key] = in_data[op.selection]
 

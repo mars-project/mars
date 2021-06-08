@@ -19,8 +19,8 @@ from numbers import Integral
 import numpy as np
 
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
-from ..utils import calc_sliced_size, broadcast_shape, replace_ellipsis, index_ndim
 from ..datasource import tensor as astensor
+from ..utils import calc_sliced_size, broadcast_shape, replace_ellipsis, index_ndim
 
 
 _INDEX_ERROR_MSG = 'only integers, slices (`:`), ellipsis (`...`), ' \

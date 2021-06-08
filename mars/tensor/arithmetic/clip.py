@@ -19,7 +19,7 @@ from numbers import Number
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField
+from ...serialization.serializables import KeyField, AnyField
 from ...core import ENTITY_TYPE
 from ..array_utils import as_same_device, device
 from ..core import Tensor

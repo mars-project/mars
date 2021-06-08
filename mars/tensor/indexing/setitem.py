@@ -17,10 +17,10 @@ from numbers import Integral
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
-from ...serialize import KeyField, ListField, AnyField
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, TupleField, AnyField
 from ...tensor import tensor as astensor
-from ...utils import check_chunks_unknown_shape, recursive_tile
+from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs
@@ -31,13 +31,11 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUE
 
     _input = KeyField('input')
-    _indexes = ListField('indexes')
+    _indexes = TupleField('indexes')
     _value = AnyField('value')
-    # input[indexes]
-    _indexed = KeyField('indexed')
 
-    def __init__(self, indexes=None, value=None, indexed=None, **kw):
-        super().__init__(_indexes=indexes, _value=value, _indexed=indexed, **kw)
+    def __init__(self, indexes=None, value=None, **kw):
+        super().__init__(_indexes=indexes, _value=value, **kw)
 
     @property
     def indexes(self):
@@ -47,29 +45,19 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     def value(self):
         return self._value
 
-    @property
-    def indexed(self):
-        return self._indexed
-
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
                        for index in self._indexes]
-        self._indexes = new_indexes
+        self._indexes = tuple(new_indexes)
         if isinstance(self._value, ENTITY_TYPE):
             self._value = next(inputs_iter)
-        if isinstance(self._indexed, ENTITY_TYPE):
-            self._indexed = next(inputs_iter)
 
     def __call__(self, a, index, value):
-        from .getitem import _getitem_nocheck
-
-        indexed = _getitem_nocheck(a, index, convert_bool_to_fancy=False)
-        inputs = filter_inputs([a] + list(index) + [value] + [indexed])
-        self._indexes = list(index)
+        inputs = filter_inputs([a] + list(index) + [value])
+        self._indexes = tuple(index)
         self._value = value
-        self._indexed = indexed
         return self.new_tensor(inputs, a.shape, order=a.order)
 
     def on_output_modify(self, new_output):
@@ -81,23 +69,26 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         return new_op.new_tensor(new_inputs, shape=self.outputs[0].shape)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "TensorIndexSetValue"):
         from ..base import broadcast_to
+        from .getitem import _getitem_nocheck
 
         tensor = op.outputs[0]
         value = op.value
-        indexed = op.indexed
+        indexed = yield from recursive_tile(
+            _getitem_nocheck(op.input, op.indexes, convert_bool_to_fancy=False))
         is_value_tensor = isinstance(value, TENSOR_TYPE)
 
         if is_value_tensor and value.ndim > 0:
-            check_chunks_unknown_shape([indexed, value], TilesError)
+            if has_unknown_shape(indexed, value):
+                yield indexed.chunks + [indexed]
 
-            value = recursive_tile(
-                broadcast_to(value, indexed.shape).astype(op.input.dtype))
+            value = yield from recursive_tile(
+                broadcast_to(value, indexed.shape).astype(op.input.dtype, copy=False))
             nsplits = indexed.nsplits
-            value = value.rechunk(nsplits)._inplace_tile()
+            value = yield from recursive_tile(value.rechunk(nsplits))
 
-        chunk_mapping = {c.op.input.index: c for c in op.indexed.chunks}
+        chunk_mapping = {c.op.input.index: c for c in indexed.chunks}
         out_chunks = []
         for chunk in indexed.op.input.chunks:
             index_chunk = chunk_mapping.get(chunk.index)
@@ -157,7 +148,7 @@ def _setitem(a, item, value):
 
     # __setitem__ on a view should be still a view, see GH #732.
     op = TensorIndexSetValue(dtype=a.dtype, sparse=a.issparse(),
-                             indexes=list(index), value=value,
+                             indexes=tuple(index), value=value,
                              create_view=a.op.create_view)
     ret = op(a, index, value)
     a.data = ret.data

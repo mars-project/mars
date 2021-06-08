@@ -23,8 +23,7 @@ import numpy as np
 from .. import opcodes
 from ..core import OutputType
 from ..core.operand import MergeDictOperand
-from ..context import RunningMode
-from ..serialize import BytesField, ListField, Int32Field, StringField, BoolField
+from ..serialization.serializables import BytesField, ListField, Int32Field, StringField, BoolField
 from ..utils import to_binary
 
 
@@ -121,8 +120,7 @@ class RunScript(MergeDictOperand):
         envs['MARS_SESSION_ID'] = str(ctx.session_id)
         envs['RANK'] = str(op.rank)
         envs['WORLD_SIZE'] = str(op.world_size)
-        if ctx.running_mode != RunningMode.local:
-            envs['MARS_SCHEDULER_ADDRESS'] = str(ctx._scheduler_address)
+        envs['MARS_SUPERVISOR_ADDRESS'] = ctx.supervisor_address
         return envs
 
     @classmethod

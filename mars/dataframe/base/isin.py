@@ -17,10 +17,10 @@ import pandas as pd
 from pandas.api.types import is_list_like
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
-from ...serialize import KeyField, AnyField
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -89,8 +89,9 @@ class DataFrameIsin(DataFrameOperand, DataFrameOperandMixin):
         if len(op.inputs) > 1:
             for value in op.inputs[1:]:
                 # make sure arg has known shape when it's a md.Series
-                check_chunks_unknown_shape([value], TilesError)
-                value = value.rechunk(value.shape)._inplace_tile()
+                if has_unknown_shape(value):
+                    yield
+                value = yield from recursive_tile(value.rechunk(value.shape))
                 values_inputs.append(value)
 
         out_chunks = []

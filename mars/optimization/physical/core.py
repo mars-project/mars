@@ -93,6 +93,8 @@ def optimize(graph: ChunkGraph,
     for engine in engines:
         optimizer_cls = _engine_to_optimizers[engine]
         optimizer = optimizer_cls(graph)
+        if not optimizer.is_available():
+            continue
         optimizer.optimize()
 
     return graph

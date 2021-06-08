@@ -19,7 +19,8 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, TupleField, StringField
+from ...serialization.serializables import FieldTypes, KeyField, \
+    TupleField, StringField
 from ...core import ExecutableTuple
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -31,7 +32,7 @@ class TensorUnravelIndex(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.UNRAVEL_INDEX
 
     _input = KeyField('input')
-    _dims = TupleField('dims', ValueType.int32)
+    _dims = TupleField('dims', FieldTypes.int32)
     _order = StringField('order')
 
     def __init__(self, dims=None, order=None, **kw):

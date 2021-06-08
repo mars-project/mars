@@ -20,7 +20,8 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField, BoolField, StringField, TupleField, SliceField
+from ...serialization.serializables import AnyField, BoolField, \
+    StringField, TupleField, SliceField
 from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
@@ -123,7 +124,7 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         c = itertools.count(inputs[0].ndim)
         tensor_axes = [(t, tuple(i if i != axis else next(c) for i in range(t.ndim)))
                        for t in inputs]
-        inputs = unify_chunks(*tensor_axes)
+        inputs = yield from unify_chunks(*tensor_axes)
 
         out_chunk_shape = [0 if i == axis else inputs[0].chunk_shape[i]
                            for i in range(inputs[0].ndim)]

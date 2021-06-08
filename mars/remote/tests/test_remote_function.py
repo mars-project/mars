@@ -16,15 +16,19 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from mars import dataframe as md
 from mars import tensor as mt
 from mars.core import tile
+from mars.core.session import get_default_session
 from mars.learn.utils import shuffle
-from mars.remote import spawn, ExecutableTuple
-from mars.session import new_session, Session
 from mars.lib.mmh3 import hash as mmh3_hash
-from mars.tests.core import TestBase, ExecutorForTest
+from mars.remote import spawn, ExecutableTuple
+from mars.tests import setup
+
+
+setup = setup
 
 
 def test_params():
@@ -41,149 +45,139 @@ def test_params():
     params.pop('index', None)
     r.params = params
     r.refresh_params()
+    
+    
+def test_remote_function(setup):
+    session = setup
+
+    def f1(x):
+        return x + 1
+
+    def f2(x, y, z=None):
+        return x * y * (z[0] + z[1])
+
+    rs = np.random.RandomState(0)
+    raw1 = rs.rand(10, 10)
+    raw2 = rs.rand(10, 10)
+
+    r1 = spawn(f1, raw1)
+    r2 = spawn(f1, raw2)
+    r3 = spawn(f2, (r1, r2), {'z': [r1, r2]})
+
+    result = r3.execute().fetch()
+    expected = (raw1 + 1) * (raw2 + 1) * (raw1 + 1 + raw2 + 1)
+    np.testing.assert_almost_equal(result, expected)
+
+    with pytest.raises(TypeError):
+        spawn(f2, (r1, r2), kwargs=())
+
+    session_id = session.session_id
+
+    def f():
+        assert get_default_session().session_id == session_id
+        return mt.ones((2, 3)).sum().to_numpy()
+
+    assert spawn(f).execute().fetch() == 6
 
 
-class Test(TestBase):
-    def setUp(self) -> None:
-        super().setUp()
-        self.executor = ExecutorForTest('numpy')
-        self.ctx, self.executor = self._create_test_context(self.executor)
-        self.ctx.__enter__()
+def test_multi_output(setup):
+    sentences = ['word1 word2', 'word2 word3', 'word3 word2 word1']
 
-    def tearDown(self) -> None:
-        self.ctx.__exit__(None, None, None)
+    def mapper(s):
+        word_to_count = defaultdict(lambda: 0)
+        for word in s.split():
+            word_to_count[word] += 1
 
-    def testRemoteFunction(self):
-        def f1(x):
-            return x + 1
+        downsides = [defaultdict(lambda: 0),
+                     defaultdict(lambda: 0)]
+        for word, count in word_to_count.items():
+            downsides[mmh3_hash(word) % 2][word] += count
 
-        def f2(x, y, z=None):
-            return x * y * (z[0] + z[1])
+        return downsides
 
-        rs = np.random.RandomState(0)
-        raw1 = rs.rand(10, 10)
-        raw2 = rs.rand(10, 10)
-
-        r1 = spawn(f1, raw1)
-        r2 = spawn(f1, raw2)
-        r3 = spawn(f2, (r1, r2), {'z': [r1, r2]})
-
-        result = self.executor.execute_tileables([r3])[0]
-        expected = (raw1 + 1) * (raw2 + 1) * (raw1 + 1 + raw2 + 1)
-        np.testing.assert_almost_equal(result, expected)
-
-        with self.assertRaises(TypeError):
-            spawn(f2, (r1, r2), kwargs=())
-
-        session = new_session()
-
-        def f():
-            assert Session.default.session_id == session.session_id
-            return mt.ones((2, 3)).sum().to_numpy()
-
-        self.assertEqual(spawn(f).execute(session=session).fetch(session=session), 6)
-
-    def testMultiOutput(self):
-        sentences = ['word1 word2', 'word2 word3', 'word3 word2 word1']
-
-        def mapper(s):
-            word_to_count = defaultdict(lambda: 0)
-            for word in s.split():
-                word_to_count[word] += 1
-
-            downsides = [defaultdict(lambda: 0),
-                         defaultdict(lambda: 0)]
+    def reducer(word_to_count_list):
+        d = defaultdict(lambda: 0)
+        for word_to_count in word_to_count_list:
             for word, count in word_to_count.items():
-                downsides[mmh3_hash(word) % 2][word] += count
+                d[word] += count
 
-            return downsides
+        return dict(d)
 
-        def reducer(word_to_count_list):
-            d = defaultdict(lambda: 0)
-            for word_to_count in word_to_count_list:
-                for word, count in word_to_count.items():
-                    d[word] += count
+    outs = [], []
+    for sentence in sentences:
+        out1, out2 = spawn(mapper, sentence, n_output=2)
+        outs[0].append(out1)
+        outs[1].append(out2)
 
-            return dict(d)
+    rs = []
+    for out in outs:
+        r = spawn(reducer, out)
+        rs.append(r)
 
-        outs = [], []
-        for sentence in sentences:
-            out1, out2 = spawn(mapper, sentence, n_output=2)
-            outs[0].append(out1)
-            outs[1].append(out2)
+    result = dict()
+    for wc in ExecutableTuple(rs).to_object():
+        result.update(wc)
 
-        rs = []
-        for out in outs:
-            r = spawn(reducer, out)
-            rs.append(r)
+    assert result == {'word1': 2, 'word2': 3, 'word3': 2}
 
-        result = dict()
-        for wc in ExecutableTuple(rs).to_object():
-            result.update(wc)
 
-        self.assertEqual(result, {'word1': 2, 'word2': 3, 'word3': 2})
+def test_chained_remote(setup):
+    def f(x):
+        return x + 1
 
-    def testChainedRemote(self):
-        def f(x):
-            return x + 1
+    def g(x):
+        return x * 2
 
-        def g(x):
-            return x * 2
+    s = spawn(g, spawn(f, 2))
 
-        s = spawn(g, spawn(f, 2))
+    result = s.execute().fetch()
+    assert result == 6
 
-        result = self.executor.execute_tileables([s])[0]
-        self.assertEqual(result, 6)
 
-    def testInputTileable(self):
-        def f(t, x):
-            return (t * x).sum().to_numpy()
+def test_input_tileable(setup):
+    def f(t, x):
+        return (t * x).sum().to_numpy()
 
-        rs = np.random.RandomState(0)
-        raw = rs.rand(5, 4)
+    rs = np.random.RandomState(0)
+    raw = rs.rand(5, 4)
 
-        t1 = mt.tensor(raw, chunk_size=3)
-        t2 = t1.sum(axis=0)
-        s = spawn(f, args=(t2, 3))
+    t1 = mt.tensor(raw, chunk_size=3)
+    t2 = t1.sum(axis=0)
+    s = spawn(f, args=(t2, 3))
 
-        sess = new_session()
-        sess._sess._executor = ExecutorForTest('numpy', storage=sess._context)
+    result = s.execute().fetch()
+    expected = (raw.sum(axis=0) * 3).sum()
+    assert pytest.approx(result) == expected
 
-        result = s.execute(session=sess).fetch(session=sess)
-        expected = (raw.sum(axis=0) * 3).sum()
-        self.assertAlmostEqual(result, expected)
+    df1 = md.DataFrame(raw, chunk_size=3)
+    df1.execute()
+    df2 = shuffle(df1)
+    df2.execute()
 
-        df1 = md.DataFrame(raw, chunk_size=3)
-        df1.execute(session=sess)
-        df2 = shuffle(df1)
-        df2.execute(session=sess)
+    def f2(input_df):
+        bonus = input_df.iloc[:, 0].fetch().sum()
+        return input_df.sum().to_pandas() + bonus
 
-        def f2(input_df):
-            bonus = input_df.iloc[:, 0].fetch().sum()
-            return input_df.sum().to_pandas() + bonus
+    for df in [df1, df2]:
+        s = spawn(f2, args=(df,))
 
-        for df in [df1, df2]:
-            s = spawn(f2, args=(df,))
+        result = s.execute().fetch()
+        expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
+        pd.testing.assert_series_equal(result, expected)
 
-            result = s.execute(session=sess).fetch(session=sess)
-            expected = pd.DataFrame(raw).sum() + raw[:, 0].sum()
-            pd.testing.assert_series_equal(result, expected)
 
-    def testUnknownShapeInputs(self):
-        def f(t, x):
-            assert all(not np.isnan(s) for s in t.shape)
-            return (t * x).sum().to_numpy(check_nsplits=False)
+def test_unknown_shape_inputs(setup):
+    def f(t, x):
+        assert all(not np.isnan(s) for s in t.shape)
+        return (t * x).sum().to_numpy(extra_config={'check_nsplits': False})
 
-        rs = np.random.RandomState(0)
-        raw = rs.rand(5, 4)
+    rs = np.random.RandomState(0)
+    raw = rs.rand(5, 4)
 
-        t1 = mt.tensor(raw, chunk_size=3)
-        t2 = t1[t1 > 0]
-        s = spawn(f, args=(t2, 3))
+    t1 = mt.tensor(raw, chunk_size=3)
+    t2 = t1[t1 > 0]
+    s = spawn(f, args=(t2, 3))
 
-        sess = new_session()
-        sess._sess._executor = ExecutorForTest('numpy', storage=sess._context)
-
-        result = s.execute(session=sess).fetch(session=sess)
-        expected = (raw[raw > 0] * 3).sum()
-        self.assertAlmostEqual(result, expected)
+    result = s.execute().fetch()
+    expected = (raw[raw > 0] * 3).sum()
+    assert pytest.approx(result) == expected

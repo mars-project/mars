@@ -48,7 +48,6 @@ class SubtaskManagerActor(mo.Actor):
         self._subtask_infos = dict()
 
         self._queueing_ref = None
-        self._queueing_ref = None
         self._global_slot_ref = None
 
     async def __post_create__(self):
@@ -87,11 +86,11 @@ class SubtaskManagerActor(mo.Actor):
         from ..worker.execution import SubtaskExecutionActor
         return await mo.actor_ref(SubtaskExecutionActor.default_uid(), address=band[0])
 
-    async def finish_subtasks(self, subtask_ids: List[str]):
+    async def finish_subtasks(self, subtask_ids: List[str], schedule_next: bool = True):
         band_tasks = defaultdict(lambda: 0)
         for subtask_id in subtask_ids:
             subtask_info = self._subtask_infos.pop(subtask_id, None)
-            if subtask_info is not None:
+            if schedule_next and subtask_info is not None:
                 for band in subtask_info.band_futures.keys():
                     band_tasks[band] += 1
 
@@ -123,6 +122,8 @@ class SubtaskManagerActor(mo.Actor):
         queued_subtask_ids = []
         single_cancel_tasks = []
 
+        task_api = await self._get_task_api()
+
         async def cancel_single_task(subtask, raw_tasks, cancel_tasks):
             if cancel_tasks:
                 await asyncio.wait(cancel_tasks)
@@ -131,7 +132,6 @@ class SubtaskManagerActor(mo.Actor):
             else:
                 dones = []
             if not dones or all(fut.cancelled() for fut in dones):
-                task_api = await self._get_task_api()
                 await task_api.set_subtask_result(SubtaskResult(
                     subtask_id=subtask.subtask_id,
                     session_id=subtask.session_id,

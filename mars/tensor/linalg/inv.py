@@ -18,7 +18,8 @@ import numpy as np
 from numpy.linalg import LinAlgError
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField
 from ..array_utils import as_same_device, device
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -71,27 +72,24 @@ class TensorInv(TensorHasInput, TensorOperandMixin):
             return cls._tile_one_chunk(op)
 
         b_eye = eye(in_tensor.shape[0], chunk_size=in_tensor.nsplits, sparse=is_sparse)
-        b_eye._inplace_tile()
 
         p, l, u = lu(in_tensor)
-        p._inplace_tile()
 
         # transposed p equals to inverse of p
         p_transpose = TensorTranspose(
-            dtype=p.dtype, sparse=p.op.sparse, axes=list(range(in_tensor.ndim))[::-1]).new_tensor([p], p.shape)
-        p_transpose._inplace_tile()
+            dtype=p.dtype, sparse=p.op.sparse,
+            axes=list(range(in_tensor.ndim))[::-1]).new_tensor([p], p.shape)
 
         b = tensordot(p_transpose, b_eye, axes=((p_transpose.ndim - 1,), (b_eye.ndim - 2,)))
-        b._inplace_tile()
 
         # as `l` is a lower matrix, `lower=True` should be specified.
         uy = solve_triangular(l, b, lower=True, sparse=op.sparse)
-        uy._inplace_tile()
 
         a_inv = solve_triangular(u, uy, sparse=op.sparse)
-        a_inv._inplace_tile()
+        a_inv = yield from recursive_tile(a_inv)
         return [a_inv]
 
+    @classmethod
     def execute(cls, ctx, op):
         (inp,), device_id, xp = as_same_device(
             [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)

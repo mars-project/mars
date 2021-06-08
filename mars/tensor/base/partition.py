@@ -17,10 +17,10 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import ValueType, KeyField, Int32Field, \
+from ...core import recursive_tile
+from ...serialization.serializables import FieldTypes, KeyField, Int32Field, \
     StringField, ListField, BoolField, AnyField
-from ...utils import check_chunks_unknown_shape, flatten, stack_back
+from ...utils import has_unknown_shape, flatten, stack_back
 from ...core import ENTITY_TYPE, ExecutableTuple
 from ..operands import TensorOperand, TensorShuffleProxy
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
@@ -106,7 +106,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
     _kth = AnyField('kth')
     _axis = Int32Field('axis')
     _kind = StringField('kind')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _need_align = BoolField('need_align')
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
@@ -207,7 +207,8 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
         out_tensor = op.outputs[0]
         return_value, return_indices = op.return_value, op.return_indices
         # preprocess, to make sure chunk shape on axis are approximately same
-        in_tensor, axis_chunk_shape, out_idxes, need_align = cls.preprocess(op)
+        in_tensor, axis_chunk_shape, out_idxes, need_align = \
+            yield from cls.preprocess(op)
         axis_offsets = [0] + np.cumsum(in_tensor.nsplits[op.axis]).tolist()[:-1]
 
         out_chunks, out_indices_chunks = [], []
@@ -285,13 +286,14 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
     def tile(cls, op):
         in_tensor = op.input
         if np.isnan(in_tensor.shape[op.axis]):
-            raise TilesError(f'Tensor has unknown shape on axis {op.axis}')
+            yield
 
         kth = op.kth
-        if isinstance(op.kth, TENSOR_TYPE):
+        if isinstance(kth, TENSOR_TYPE):
             # if `kth` is a tensor, make sure no unknown shape
-            check_chunks_unknown_shape([kth], TilesError)
-            kth = kth.rechunk(kth.shape)._inplace_tile()
+            if has_unknown_shape(kth):
+                yield
+            kth = yield from recursive_tile(kth.rechunk(kth.shape))
 
         return_value, return_indices = op.return_value, op.return_indices
         if in_tensor.chunk_shape[op.axis] == 1:
@@ -334,7 +336,7 @@ class TensorPartition(TensorOperand, ParallelPartitionMixin):
                 kws[-1]['chunks'] = out_indices_chunks
             return new_op.new_tensors([in_tensor], kws=kws)
         else:
-            return cls._tile_psrs(op, kth)
+            return (yield from cls._tile_psrs(op, kth))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -433,7 +435,7 @@ class PartitionMerged(TensorOperand, TensorPSRSOperandMixin):
 
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _kind = StringField('kind')
     _need_align = BoolField('need_align')
 

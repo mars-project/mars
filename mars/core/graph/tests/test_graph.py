@@ -16,7 +16,6 @@ import pytest
 
 import mars.tensor as mt
 from mars.core.graph import DAG, GraphContainsCycleError
-from mars.core.graph.builder.legacy import _build_graph
 
 
 def test_dag():
@@ -92,7 +91,7 @@ def test_to_dot():
     arr = mt.random.randint(10, size=(10, 8), chunk_size=4)
     arr_add = mt.random.randint(10, size=(10, 8), chunk_size=4)
     arr2 = arr + arr_add
-    graph = _build_graph([arr2], fuse_enabled=False, tiled=True)
+    graph = arr2.build_graph(fuse_enabled=False, tile=True)
 
     dot = str(graph.to_dot(trunc_key=5))
     assert all(str(n.op.key)[5] in dot for n in graph) is True

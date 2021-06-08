@@ -16,7 +16,7 @@ import warnings
 
 from ... import opcodes
 from ...core import get_output_types, OutputType
-from ...serialize import AnyField, StringField
+from ...serialization.serializables import AnyField, StringField
 from ..core import SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_series, validate_axis, parse_index
@@ -104,15 +104,15 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
 
             if op.columns_mapper is not None:
                 try:
-                    new_dtypes = dtypes_cache[c.index[0]]
+                    new_dtypes = dtypes_cache[c.index[1]]
                 except KeyError:
-                    new_dtypes = dtypes_cache[c.index[0]] = op._calc_renamed_df(c).dtypes
+                    new_dtypes = dtypes_cache[c.index[1]] = op._calc_renamed_df(c).dtypes
 
                 params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
                 params['dtypes'] = new_dtypes
             if op.index_mapper is not None:
                 params['index_value'] = out.index_value
-            if op.new_name is not None:
+            if out.ndim == 1:
                 params['name'] = out.name
 
             if isinstance(op.columns_mapper, dict):

@@ -23,7 +23,7 @@ from pandas._libs.tslibs import timezones
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import AnyField, Int64Field, BoolField, StringField
+from ...serialization.serializables import AnyField, Int64Field, BoolField, StringField
 from ...tensor.utils import decide_chunk_sizes
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index

@@ -19,12 +19,13 @@ except ImportError:  # pragma: no cover
     sklearn_manhattan_distances = None
 
 from .... import opcodes as OperandDef
-from ....serialize import KeyField, BoolField
+from ....core import recursive_tile
+from ....serialization.serializables import KeyField, BoolField
 from ....tensor.core import TensorOrder
 from ....tensor.arithmetic import abs as mt_abs
 from ....tensor.spatial.distance import cdist
 from ....tensor.array_utils import as_same_device, device
-from ....utils import recursive_tile
+from ....utils import ensure_own_data
 from .core import PairwiseDistances
 
 
@@ -87,12 +88,12 @@ class ManhattanDistances(PairwiseDistances):
         elif op.sum_over_features:
             # if x, y are not sparse and `sum_over_features` is True
             # just use cdist
-            return [recursive_tile(cdist(x, y, 'cityblock'))]
+            return [(yield from recursive_tile(cdist(x, y, 'cityblock')))]
         else:
             d = x[:, np.newaxis, :] - y[np.newaxis, :, :]
             d = mt_abs(d)
             d = d.reshape((-1, x.shape[1]))
-            return [recursive_tile(d)]
+            return [(yield from recursive_tile(d))]
 
     @classmethod
     def execute(cls, ctx, op):
@@ -103,7 +104,8 @@ class ManhattanDistances(PairwiseDistances):
         with device(device_id):
             if sklearn_manhattan_distances is not None:
                 ctx[out.key] = sklearn_manhattan_distances(
-                    x, y, sum_over_features=op.sum_over_features)
+                    ensure_own_data(x), ensure_own_data(y),
+                    sum_over_features=op.sum_over_features)
             else:  # pragma: no cover
                 # we cannot support sparse
                 raise NotImplementedError('cannot support calculate manhattan '

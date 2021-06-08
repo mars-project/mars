@@ -15,52 +15,17 @@
 from collections.abc import Iterable
 from functools import partial
 
-import numpy as np
-
 from .. import opcodes
-from ..core import ENTITY_TYPE, ChunkData
+from ..core import ENTITY_TYPE, TILEABLE_TYPE, ChunkData
+from ..core.custom_log import redirect_custom_log
 from ..core.operand import ObjectOperand
-from ..custom_log import redirect_custom_log
 from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE
-from ..serialize import FunctionField, ListField, DictField, \
+from ..serialization.serializables import FunctionField, ListField, DictField, \
     BoolField, Int32Field
 from ..tensor.core import TENSOR_TYPE
-from ..utils import build_fetch_tileable, calc_nsplits, \
-    enter_current_session, find_objects, replace_objects
+from ..utils import build_fetch_tileable, enter_current_session, \
+    find_objects, replace_objects, get_params_fields
 from .operands import RemoteOperandMixin
-
-
-class _TileablePlaceholder:
-    def __init__(self, tileable):
-        self.tileable = build_fetch_tileable(tileable)
-
-    def __getstate__(self):
-        fetch_op = self.tileable.op
-        fetch_tileable = self.tileable
-        chunk_infos = [(type(c.op), c.op.output_types, c.key, c.id, c.params)
-                       for c in fetch_tileable.chunks]
-        return type(fetch_op), fetch_op.id, fetch_op.output_types, \
-               fetch_tileable.params, fetch_tileable.nsplits, chunk_infos
-
-    def __setstate__(self, state):
-        fetch_op_type, fetch_op_id, output_types, params, nsplits, chunk_infos = state
-        params['nsplits'] = nsplits
-        chunks = []
-        for ci in chunk_infos:
-            chunk_op_type, chunk_op_output_types, chunk_key, chunk_id, chunk_params = ci
-            chunk = chunk_op_type(output_types=chunk_op_output_types).new_chunk(
-                None, _key=chunk_key, _id=chunk_id, kws=[chunk_params])
-            chunks.append(chunk)
-        params['chunks'] = chunks
-        self.tileable = fetch_op_type(
-            _id=fetch_op_id, output_types=output_types).new_tileable(None, kws=[params])
-
-    def __mars_tokenize__(self):
-        return self.__getstate__()
-
-    def __call__(self):  # pragma: no cover
-        # make itself serializable
-        pass
 
 
 class RemoteFunction(RemoteOperandMixin, ObjectOperand):
@@ -128,7 +93,7 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
                         mapping[raw_inp] = next(function_inputs)
                     else:
                         # in tile, set_inputs from chunk
-                        mapping[raw_inp] = _TileablePlaceholder(raw_inp)
+                        mapping[raw_inp] = build_fetch_tileable(raw_inp)
                 else:
                     mapping[raw_inp] = next(function_inputs)
         self._function_args = replace_objects(self._function_args, mapping)
@@ -152,6 +117,8 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         pure_depends = []
         for inp in op.inputs:
             if cls._no_prepare(inp):  # pragma: no cover
+                # trigger execution
+                yield
                 # if input is tensor, DataFrame etc,
                 # do not prepare data, because the data may be to huge,
                 # and users can choose to fetch slice of the data themselves
@@ -190,20 +157,15 @@ class RemoteFunction(RemoteOperandMixin, ObjectOperand):
         mapping = {inp: ctx[inp.key] for inp, is_pure_dep
                    in zip(op.inputs, op.pure_depends) if not is_pure_dep}
         for to_search in [op.function_args, op.function_kwargs]:
-            tileable_placeholders = find_objects(to_search, _TileablePlaceholder)
-            for ph in tileable_placeholders:
-                tileable = ph.tileable
-                chunk_index_to_shape = dict()
-                for chunk in tileable.chunks:
-                    if any(np.isnan(s) for s in chunk.shape):
-                        shape = ctx.get_chunk_metas([chunk.key], filter_fields=['chunk_shape'])[0][0]
-                        chunk._shape = shape
-                    chunk_index_to_shape[chunk.index] = chunk.shape
-                if any(any(np.isnan(s) for s in ns) for ns in tileable._nsplits):
-                    nsplits = calc_nsplits(chunk_index_to_shape)
-                    tileable._nsplits = nsplits
-                    tileable._shape = tuple(sum(ns) for ns in nsplits)
-                mapping[ph] = tileable
+            tileables = find_objects(to_search, TILEABLE_TYPE)
+            for tileable in tileables:
+                chunks = tileable.chunks
+                fields = get_params_fields(chunks[0])
+                metas = ctx.get_chunks_meta([chunk.key for chunk in chunks],
+                                            fields=fields)
+                for chunk, meta in zip(chunks, metas):
+                    chunk.params = {field: meta[field] for field in fields}
+                tileable.refresh_params()
 
         function = op.function
         function_args = replace_objects(op.function_args, mapping)

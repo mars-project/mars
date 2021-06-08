@@ -143,7 +143,6 @@ class OscarCommandRunner:
         load_modules = []
         for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
             load_modules.extend(mods.split(',') if mods else [])
-        load_modules.extend(['mars.executor'])
         args.load_modules = tuple(load_modules)
 
         if args.config is not None:

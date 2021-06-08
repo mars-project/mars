@@ -17,7 +17,8 @@ import itertools
 import numpy as np
 
 from ... import opcodes
-from ...serialize import AnyField, Int8Field, Int64Field
+from ...core import recursive_tile
+from ...serialization.serializables import AnyField, Int8Field, Int64Field
 from ..core import DATAFRAME_TYPE, OutputType
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, validate_axis
@@ -68,8 +69,9 @@ class DataFrameDiff(DataFrameOperandMixin, DataFrameOperand):
         axis = op.axis or 0
 
         if in_obj.chunk_shape[axis] > 1:
-            shift_chunks = DataFrameShift(periods=op.periods, axis=axis)(in_obj) \
-                ._inplace_tile().chunks
+            shifted = yield from recursive_tile(
+                DataFrameShift(periods=op.periods, axis=axis)(in_obj))
+            shift_chunks = shifted.chunks
         else:
             shift_chunks = itertools.repeat(None)
 

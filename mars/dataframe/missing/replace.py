@@ -16,9 +16,12 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import AnyField, Int32Field, ListField, StringField, ValueType
-from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE, SERIES_CHUNK_TYPE
+from ...serialization.serializables import FieldTypes, AnyField, Int32Field, \
+    ListField, StringField
+from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE, \
+    SERIES_CHUNK_TYPE
 from ..utils import build_df, build_series, parse_index
 
 
@@ -31,7 +34,7 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
     _regex = AnyField('regex')
     _method = StringField('method')
 
-    _fill_chunks = ListField('fill_chunks', ValueType.key)
+    _fill_chunks = ListField('fill_chunks', FieldTypes.key)
 
     def __init__(self, to_replace=None, value=None, limit=None, regex=None, method=None,
                  fill_chunks=None, **kw):
@@ -139,12 +142,13 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
         tileable_inputs_ex = []
         to_replace = op.to_replace
         if isinstance(to_replace, SERIES_TYPE):
-            to_replace = to_replace.rechunk((to_replace.shape[0],))._inplace_tile()
+            to_replace = yield from recursive_tile(
+                to_replace.rechunk((to_replace.shape[0],)))
             chunk_inputs_ex.append(to_replace.chunks[0])
             tileable_inputs_ex.append(to_replace)
         value = op.value
         if isinstance(value, SERIES_TYPE):
-            value = value.rechunk((value.shape[0],))._inplace_tile()
+            value = yield from recursive_tile(value.rechunk((value.shape[0],)))
             chunk_inputs_ex.append(value.chunks[0])
             tileable_inputs_ex.append(value)
 

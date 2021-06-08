@@ -75,16 +75,12 @@ jobs:
 
         export NO_SERIALIZE_IN_TEST_EXECUTOR=1
         mkdir -p build
-        python -m pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded --timeout=1500 \
-          mars/dataframe mars/learn mars/remote mars/serialize mars/storage mars/tensor
-        mv .coverage build/.coverage.tensor.file
         if [[ $UNAME == "darwin" ]]; then
-          python -m pytest $PYTEST_CONFIG --cov-config .coveragerc --forked --timeout=1500 \
-            --ignore mars/tests/test_kvstore.py mars/oscar mars/storage mars/deploy/local \
-            mars/web mars/lib mars/tests
+          python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
+            mars/oscar mars/storage mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         elif [[ $UNAME == "windows" ]]; then
-          python -m pytest $PYTEST_CONFIG --cov-config .coveragerc-threaded --timeout=1500 \
+          python -m pytest $PYTEST_CONFIG --timeout=1500 \
             mars/oscar
           mv .coverage build/.coverage.dist.file
         fi

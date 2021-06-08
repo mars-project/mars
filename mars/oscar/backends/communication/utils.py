@@ -73,7 +73,7 @@ async def read_buffers(header: Dict,
             chunk_size = CUDA_CHUNK_SIZE
             while offset < length:
                 read_size = chunk_size if (offset + chunk_size) < length else length - offset
-                content = await reader.read(read_size)
+                content = await reader.readexactly(read_size)
                 source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
                 cupy_pointer = CPMemoryPointer(cupy_memory, offset)
                 cupy_pointer.copy_from(source_mem, len(content))

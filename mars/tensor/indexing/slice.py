@@ -14,7 +14,7 @@
 
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, ListField
+from ...serialization.serializables import KeyField, ListField
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..array_utils import get_array_module
 from ..core import TensorOrder

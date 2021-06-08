@@ -16,9 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...core import ENTITY_TYPE
-from ...serialize import BoolField, AnyField, KeyField, Int32Field
-from ...utils import recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import BoolField, AnyField, KeyField, Int32Field
 from ...tensor.utils import filter_inputs
 from ..core import SERIES_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -160,7 +159,8 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         right = op.other
 
         _check_supported_methods(op.method)
-        return recursive_tile(cls._tile_pearson_cross(left, right, min_periods=op.min_periods))
+        return [(yield from recursive_tile(
+            cls._tile_pearson_cross(left, right, min_periods=op.min_periods)))]
 
     @classmethod
     def _tile_dataframe_cross(cls, op: "DataFrameCorr"):
@@ -173,7 +173,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
         result = cls._tile_pearson_cross(left, right, min_periods=op.min_periods)
         result = MarsDataFrame(result, index=left.dtypes.index, columns=right.dtypes.index)
-        return recursive_tile(result)
+        return [(yield from recursive_tile(result))]
 
     @classmethod
     def _tile_dataframe_align(cls, op: "DataFrameCorr"):
@@ -184,7 +184,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         result = cls._tile_pearson_align(left, right, axis=op.axis)
         if op.drop:
             result = result.dropna(axis=op.axis)
-        return recursive_tile(result)
+        return [(yield from recursive_tile(result))]
 
     @classmethod
     def tile(cls, op: "DataFrameCorr"):
@@ -192,11 +192,11 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         if len(inp.chunks) == 1 and (op.other is None or len(op.other.chunks) == 1):
             return cls._tile_single(op)
         elif isinstance(inp, SERIES_TYPE):
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
         elif op.axis is None:
-            return cls._tile_dataframe_cross(op)
+            return (yield from cls._tile_dataframe_cross(op))
         else:
-            return cls._tile_dataframe_align(op)
+            return (yield from cls._tile_dataframe_align(op))
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameCorr"):

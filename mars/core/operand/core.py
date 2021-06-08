@@ -21,12 +21,12 @@ try:
 except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
+from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_object_overhead, calc_data_size
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
-from ..typing import TileableType, ChunkType, OperandType
 
 
 _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
@@ -79,6 +79,8 @@ class TileableOperandMixin:
             getattr(self, '_update_key')()
 
         chunks = []
+        if isinstance(output_limit, float) and kws:
+            output_limit = len(kws)
         for j in range(output_limit):
             create_chunk_kw = kw.copy()
             if kws:
@@ -198,7 +200,7 @@ class TileableOperandMixin:
 
         tileables = self._new_tileables(inputs, kws=kws, **kw)
         if is_eager_mode():
-            ExecutableTuple(tileables).execute(fetch=False)
+            ExecutableTuple(tileables).execute()
         return tileables
 
     def new_tileable(self, inputs, kws=None, **kw) -> TileableType:
@@ -276,7 +278,7 @@ class TileableOperandMixin:
                 store_size = max(exec_size // len(outputs),
                                  total_out_size // max(len(chunk_sizes), 1))
             try:
-                if out.is_sparse():
+                if getattr(out, 'dtype', None) is not None and out.is_sparse():
                     max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
                 else:
                     max_sparse_size = np.nan

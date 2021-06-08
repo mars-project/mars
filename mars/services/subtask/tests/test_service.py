@@ -115,7 +115,7 @@ async def test_subtask_service(actor_pools):
     b = a + 1
 
     subtask = _gen_subtask(b, session_id)
-    await subtask_api.run_subtask_in_slot(0, subtask)
+    await subtask_api.run_subtask_in_slot('numa-0', 0, subtask)
 
     # check storage
     expected = np.ones((10, 10)) + 1
@@ -135,12 +135,12 @@ async def test_subtask_service(actor_pools):
     b = mr.spawn(sleep, 1)
 
     subtask2 = _gen_subtask(b, session_id)
-    asyncio.create_task(subtask_api.run_subtask_in_slot(0, subtask2))
+    asyncio.create_task(subtask_api.run_subtask_in_slot('numa-0', 0, subtask2))
     await asyncio.sleep(0.2)
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
         await asyncio.wait_for(
-            subtask_api.cancel_subtask_in_slot(0), timeout=2)
+            subtask_api.cancel_subtask_in_slot('numa-0', 0), timeout=2)
     # need 1 sec to reach timeout, then killing actor and wait for auto recovering
     # the time would not be over 5 sec
     assert timer.duration < 2

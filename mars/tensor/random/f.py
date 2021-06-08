@@ -17,7 +17,8 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import AnyField
+from ...serialization.serializables import AnyField
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
@@ -30,9 +31,9 @@ class TensorF(TensorDistribution, TensorRandomOperandMixin):
     _dfden = AnyField('dfden')
     _func_name = 'f'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     @property
     def dfnum(self):
@@ -138,5 +139,6 @@ def f(random_state, dfnum, dfden, size=None, chunk_size=None, gpu=None, dtype=No
         dtype = np.random.RandomState().f(
             handle_array(dfnum), handle_array(dfden), size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorF(state=random_state.to_numpy(), size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorF(seed=seed, size=size, gpu=gpu, dtype=dtype)
     return op(dfnum, dfden, chunk_size=chunk_size)

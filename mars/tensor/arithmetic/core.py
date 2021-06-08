@@ -18,12 +18,14 @@ import itertools
 
 import numpy as np
 
-from ...core import ExecutableTuple, TilesError
-from ...serialize import ValueType, AnyField, DictField, KeyField, StringField, ListField
-from ...utils import check_chunks_unknown_shape
+from ...core import ExecutableTuple
+from ...serialization.serializables import FieldTypes, AnyField, DictField, \
+    KeyField, StringField, ListField
+from ...utils import has_unknown_shape
 from ..core import Tensor, TensorOrder
 from ..datasource import tensor as astensor
-from ..utils import unify_chunks, broadcast_shape, check_out_param, filter_inputs, check_order
+from ..utils import unify_chunks, broadcast_shape, check_out_param, \
+    filter_inputs, check_order
 from ..operands import TensorOperandMixin, TensorOperand
 from ..array_utils import device, as_same_device, convert_order
 
@@ -34,8 +36,10 @@ class TensorElementWise(TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         if len(op.inputs) > 1:
-            check_chunks_unknown_shape(op.inputs, TilesError)
-        inputs = unify_chunks(*[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
+            if has_unknown_shape(*op.inputs):
+                yield
+        inputs = yield from unify_chunks(
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
 
         chunk_shapes = [t.chunk_shape for t in inputs]
         out_chunk_shape = broadcast_shape(*chunk_shapes)
@@ -57,8 +61,12 @@ class TensorElementWise(TensorOperandMixin):
                 nsplits[i][idx] = s
 
         new_op = op.copy().reset_key()
-        kws = [{'chunks': out_chunk, 'nsplits': nsplits, 'shape': o.shape, 'dtype': o.dtype}
-               for out_chunk, o in zip(out_chunks, op.outputs)]
+        kws = []
+        for out_chunk, o in zip(out_chunks, op.outputs):
+            params = o.params.copy()
+            params['chunks'] = out_chunk
+            params['nsplits'] = nsplits
+            kws.append(params)
         return new_op.new_tensors(list(inputs), kws=kws, output_limit=len(op.outputs))
 
 
@@ -141,7 +149,7 @@ class TensorBinOp(TensorOperand, TensorBinOpMixin):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, lhs=None, rhs=None, out=None, where=None, order=None, **kwargs):
         super().__init__(_lhs=lhs, _rhs=rhs, _out=out, _where=where, _order=order, **kwargs)
@@ -345,7 +353,7 @@ class TensorUnaryOp(TensorOperand, TensorUnaryOpMixin):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, out=None, where=None, order=None, **kwargs):
         super().__init__(_out=out, _where=where, _order=order, **kwargs)
@@ -621,7 +629,7 @@ class TensorMultiOp(TensorElementWiseWithInputs, TensorOperand):
     _where = KeyField('where')
     _casting = StringField('casting')
     _order = StringField('order')
-    _err = DictField('err', ValueType.string, ValueType.string)
+    _err = DictField('err', FieldTypes.string, FieldTypes.string)
 
     def __init__(self, args=None, out=None, where=None, casting=None,
                  order=None, err=None, **kwargs):

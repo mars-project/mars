@@ -14,166 +14,153 @@
 
 import os
 import tempfile
-import unittest
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.core.operand import Fuse
-from mars.session import new_session
 from mars.learn.contrib.xgboost import XGBClassifier
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 
 try:
     import xgboost
 except ImportError:
     xgboost = None
 
+setup = setup
+n_rows = 1000
+n_columns = 10
+chunk_size = 200
+rs = mt.random.RandomState(0)
+X_raw = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
+y_raw = rs.rand(n_rows, chunk_size=chunk_size)
+X_df_raw = md.DataFrame(X_raw)
 
-@unittest.skipIf(xgboost is None, 'XGBoost not installed')
-class Test(unittest.TestCase):
-    def setUp(self):
-        n_rows = 1000
-        n_columns = 10
-        chunk_size = 20
-        rs = mt.random.RandomState(0)
-        self.X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
-        self.y = rs.rand(n_rows, chunk_size=chunk_size)
-        self.X_df = md.DataFrame(self.X)
 
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+def test_local_classifier(setup):
+    y = (y_raw * 10).astype(mt.int32)
+    classifier = XGBClassifier(verbosity=1, n_estimators=2)
+    classifier.fit(X_raw, y, eval_set=[(X_raw, y)])
+    prediction = classifier.predict(X_raw)
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
 
-    def testLocalClassifier(self):
-        X, y = self.X, self.y
-        y = (y * 10).astype(mt.int32)
+    history = classifier.evals_result()
+
+    assert isinstance(prediction, mt.Tensor)
+    assert isinstance(history, dict)
+
+    assert list(history)[0] == 'validation_0'
+    # default metrics may differ, see https://github.com/dmlc/xgboost/pull/6183
+    eval_metric = list(history['validation_0'])[0]
+    assert eval_metric in ('merror', 'mlogloss')
+    assert len(history['validation_0']) == 1
+    assert len(history['validation_0'][eval_metric]) == 2
+
+    prob = classifier.predict_proba(X_raw)
+    assert prob.shape == X_raw.shape
+
+    # test dataframe
+    X_df = X_df_raw
+    classifier = XGBClassifier(verbosity=1, n_estimators=2)
+    classifier.fit(X_df, y)
+    prediction = classifier.predict(X_df)
+
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
+
+    # test weight
+    weights = [mt.random.rand(X_raw.shape[0]), md.Series(mt.random.rand(X_raw.shape[0])),
+               md.DataFrame(mt.random.rand(X_raw.shape[0]))]
+    y_df = md.DataFrame(y)
+    for weight in weights:
         classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X, y, eval_set=[(X, y)])
-        prediction = classifier.predict(X)
+        classifier.fit(X_raw, y_df, sample_weights=weight)
+        prediction = classifier.predict(X_raw)
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+        assert prediction.ndim == 1
+        assert prediction.shape[0] == len(X_raw)
 
-        history = classifier.evals_result()
+    # should raise error if weight.ndim > 1
+    with pytest.raises(ValueError):
+        XGBClassifier(verbosity=1, n_estimators=2).fit(
+            X_raw, y_df, sample_weights=mt.random.rand(1, 1))
 
-        self.assertIsInstance(prediction, mt.Tensor)
-        self.assertIsInstance(history, dict)
+    # test binary classifier
+    new_y = (y > 0.5).astype(mt.int32)
+    classifier = XGBClassifier(verbosity=1, n_estimators=2)
+    classifier.fit(X_raw, new_y)
+    prediction = classifier.predict(X_raw)
 
-        self.assertEqual(list(history)[0], 'validation_0')
-        # default metrics may differ, see https://github.com/dmlc/xgboost/pull/6183
-        eval_metric = list(history['validation_0'])[0]
-        self.assertIn(eval_metric, ('merror', 'mlogloss'))
-        self.assertEqual(len(history['validation_0']), 1)
-        self.assertEqual(len(history['validation_0'][eval_metric]), 2)
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
 
-        prob = classifier.predict_proba(X)
-        self.assertEqual(prob.shape, X.shape)
+    # test predict data with unknown shape
+    X2 = X_raw[X_raw[:, 0] > 0.1].astype(mt.int32)
+    prediction = classifier.predict(X2)
 
-        # test dataframe
-        X_df = self.X_df
-        classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X_df, y)
-        prediction = classifier.predict(X_df)
+    assert prediction.ndim == 1
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    # test train with unknown shape
+    cond = X_raw[:, 0] > 0
+    X3 = X_raw[cond]
+    y3 = y[cond]
+    classifier = XGBClassifier(verbosity=1, n_estimators=2)
+    classifier.fit(X3, y3)
+    prediction = classifier.predict(X_raw)
 
-        # test weight
-        weights = [mt.random.rand(X.shape[0]), md.Series(mt.random.rand(X.shape[0])),
-                   md.DataFrame(mt.random.rand(X.shape[0]))]
-        y_df = md.DataFrame(self.y)
-        for weight in weights:
-            classifier = XGBClassifier(verbosity=1, n_estimators=2)
-            classifier.fit(X, y_df, sample_weights=weight)
-            prediction = classifier.predict(X)
+    assert prediction.ndim == 1
+    assert prediction.shape[0] == len(X_raw)
 
-            self.assertEqual(prediction.ndim, 1)
-            self.assertEqual(prediction.shape[0], len(self.X))
+    classifier = XGBClassifier(verbosity=1, n_estimators=2)
+    with pytest.raises(TypeError):
+        classifier.fit(X_raw, y, wrong_param=1)
+    classifier.fit(X_raw, y)
+    with pytest.raises(TypeError):
+        classifier.predict(X_raw, wrong_param=1)
 
-        # should raise error if weight.ndim > 1
-        with self.assertRaises(ValueError):
-            XGBClassifier(verbosity=1, n_estimators=2).fit(
-                X, y_df, sample_weights=mt.random.rand(1, 1))
 
-        # test binary classifier
-        new_y = (self.y > 0.5).astype(mt.int32)
-        classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X, new_y)
-        prediction = classifier.predict(X)
+@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+def test_local_classifier_from_to_parquet(setup):
+    n_rows = 1000
+    n_columns = 10
+    rs = np.random.RandomState(0)
+    X = rs.rand(n_rows, n_columns)
+    y = rs.rand(n_rows)
+    df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
+    df['id'] = [f'i{i}' for i in range(n_rows)]
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+    booster = xgboost.train({}, xgboost.DMatrix(X, y),
+                            num_boost_round=2)
 
-        # test predict data with unknown shape
-        X2 = X[X[:, 0] > 0.1].astype(mt.int32)
-        prediction = classifier.predict(X2)
+    with tempfile.TemporaryDirectory() as d:
+        m_name = os.path.join(d, 'c.model')
+        result_dir = os.path.join(d, 'result')
+        os.mkdir(result_dir)
+        data_dir = os.path.join(d, 'data')
+        os.mkdir(data_dir)
 
-        self.assertEqual(prediction.ndim, 1)
+        booster.save_model(m_name)
 
-        # test train with unknown shape
-        cond = X[:, 0] > 0
-        X3 = X[cond]
-        y3 = y[cond]
-        classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        classifier.fit(X3, y3)
-        prediction = classifier.predict(X)
+        df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
+        df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
 
-        self.assertEqual(prediction.ndim, 1)
-        self.assertEqual(prediction.shape[0], len(self.X))
+        df = md.read_parquet(data_dir).set_index('id')
+        model = XGBClassifier()
+        model.load_model(m_name)
+        result = model.predict(df, run=False)
+        r = md.DataFrame(result).to_parquet(result_dir)
 
-        classifier = XGBClassifier(verbosity=1, n_estimators=2)
-        with self.assertRaises(TypeError):
-            classifier.fit(X, y, wrong_param=1)
-        classifier.fit(X, y)
-        with self.assertRaises(TypeError):
-            classifier.predict(X, wrong_param=1)
+        # tiles to ensure no iterative tiling exists
+        r.execute()
 
-    def testLocalClassifierFromToParquet(self):
-        n_rows = 1000
-        n_columns = 10
-        rs = np.random.RandomState(0)
-        X = rs.rand(n_rows, n_columns)
-        y = rs.rand(n_rows)
-        df = pd.DataFrame(X, columns=[f'c{i}' for i in range(n_columns)])
-        df['id'] = [f'i{i}' for i in range(n_rows)]
-
-        booster = xgboost.train({}, xgboost.DMatrix(X, y),
-                                num_boost_round=2)
-
-        with tempfile.TemporaryDirectory() as d:
-            m_name = os.path.join(d, 'c.model')
-            result_dir = os.path.join(d, 'result')
-            os.mkdir(result_dir)
-            data_dir = os.path.join(d, 'data')
-            os.mkdir(data_dir)
-
-            booster.save_model(m_name)
-
-            df.iloc[:500].to_parquet(os.path.join(d, 'data', 'data1.parquet'))
-            df.iloc[500:].to_parquet(os.path.join(d, 'data', 'data2.parquet'))
-
-            df = md.read_parquet(data_dir).set_index('id')
-            model = XGBClassifier()
-            model.load_model(m_name)
-            result = model.predict(df, run=False)
-            r = md.DataFrame(result).to_parquet(result_dir)
-
-            # tiles to ensure no iterative tiling exists
-            g = r.build_graph(tiled=True)
-            self.assertTrue(all(isinstance(n.op, Fuse) for n in g))
-            self.assertEqual(len(g), 2)
-            r.execute()
-
-            ret = md.read_parquet(result_dir).to_pandas().iloc[:, 0].to_numpy()
-            model2 = xgboost.XGBClassifier()
-            model2.load_model(m_name)
-            expected = model2.predict(X)
-            expected = np.stack([1 - expected, expected]).argmax(axis=0)
-            np.testing.assert_array_equal(ret, expected)
+        ret = md.read_parquet(result_dir).to_pandas().iloc[:, 0].to_numpy()
+        model2 = xgboost.XGBClassifier()
+        model2.load_model(m_name)
+        expected = model2.predict(X)
+        expected = np.stack([1 - expected, expected]).argmax(axis=0)
+        np.testing.assert_array_equal(ret, expected)

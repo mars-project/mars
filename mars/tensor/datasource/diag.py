@@ -19,9 +19,8 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import KeyField, Int32Field
-from ...utils import check_chunks_unknown_shape
+from ...serialization.serializables import KeyField, Int32Field
+from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE
 from ...lib.sparse import diag as sparse_diag
 from ...lib.sparse.core import issparse, get_array_module, get_sparse_module
@@ -63,7 +62,8 @@ class TensorDiagBase(object):
     @classmethod
     def tile(cls, op):
         if op.inputs:
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
         tensor = op.outputs[0]
 
         # op can be TensorDiag or TensorEye
@@ -149,7 +149,8 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
         k = op.k
         idx = itertools.count(0)
         if v.ndim == 2:
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
             chunks = []
             nsplit = []
 
@@ -182,7 +183,7 @@ class TensorDiag(TensorDiagBase, TensorHasInput):
             return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
                                       chunks=chunks, nsplits=(tuple(nsplit),))
         else:
-            return super().tile(op)
+            return (yield from super().tile(op))
 
     @property
     def k(self):

@@ -14,7 +14,7 @@
 
 from ...core import register_fetch_class, OutputType
 from ...core.operand import Fetch, FetchShuffle, FetchMixin
-from ...serialize import DataTypeField
+from ...serialization.serializables import DataTypeField
 from ..operands import TensorOperandMixin
 
 

@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
+
 import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, TilesError
-from ...serialize import KeyField, StringField, TupleField, DictField
+from ...core import OutputType, recursive_tile
+from ...serialization.serializables import KeyField, StringField, \
+    TupleField, DictField
 from ...tensor import tensor as astensor
 from ...tensor.core import TENSOR_TYPE
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..align import align_series_series
 from ..core import SERIES_TYPE
 from ..initializer import Series as asseries
@@ -72,7 +75,11 @@ class SeriesStringMethod(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        return _string_method_to_handlers[op.method].tile(op)
+        tiled = _string_method_to_handlers[op.method].tile(op)
+        if inspect.isgenerator(tiled):
+            return (yield from tiled)
+        else:
+            return tiled
 
     @classmethod
     def execute(cls, ctx, op):
@@ -227,9 +234,11 @@ class SeriesStringCatHandler(SeriesStringMethodBaseHandler):
         assert out.ndim != 0
 
         if isinstance(op.inputs[1], TENSOR_TYPE):
-            check_chunks_unknown_shape(op.inputs, TilesError)
+            if has_unknown_shape(*op.inputs):
+                yield
             # rechunk others as input
-            others = op.inputs[1].rechunk(op.input.nsplits)._inplace_tile()
+            others = yield from recursive_tile(
+                op.inputs[1].rechunk(op.input.nsplits))
             out_chunks = []
             for c in inp.chunks:
                 chunk_op = op.copy().reset_key()

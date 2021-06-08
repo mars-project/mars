@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import functools
 from typing import Dict, Optional
 
 from .... import oscar as mo
@@ -98,7 +99,8 @@ class SessionManagerActor(mo.Actor):
 
 
 class SessionActor(mo.Actor):
-    def __init__(self, session_id: str, service_config: Dict):
+    def __init__(self, session_id: str,
+                 service_config: Dict):
         self._session_id = session_id
 
         self._meta_api = None
@@ -108,9 +110,19 @@ class SessionActor(mo.Actor):
 
         self._service_config = service_config
 
+        self._custom_log_meta_ref = None
+
     @classmethod
     def gen_uid(cls, session_id):
         return f'{session_id}_session_actor'
+
+    async def __post_create__(self):
+        from .custom_log import CustomLogMetaActor
+
+        self._custom_log_meta_ref = await mo.create_actor(
+            CustomLogMetaActor, self._session_id,
+            address=self.address,
+            uid=CustomLogMetaActor.gen_uid(self._session_id))
 
     async def create_services(self):
         from ...meta import MetaAPI
@@ -140,6 +152,18 @@ class SessionActor(mo.Actor):
             return None
         return await self._task_api.get_last_idle_time()
 
+    async def create_remote_object(self, name: str,
+                                   object_cls, *args, **kwargs):
+        return await mo.create_actor(
+            RemoteObjectActor, object_cls, args, kwargs,
+            address=self.address, uid=name)
+
+    async def get_remote_object(self, name: str):
+        return await mo.actor_ref(mo.ActorRef(self.address, name))
+
+    async def destroy_remote_object(self, name: str):
+        return await mo.destroy_actor(mo.ActorRef(self.address, name))
+
     async def __pre_destroy__(self):
         from ...meta import MetaAPI
         from ...lifecycle import LifecycleAPI
@@ -154,3 +178,23 @@ class SessionActor(mo.Actor):
             await MetaAPI.destroy_session(self._session_id, self.address)
         if self._scheduling_api:
             await SchedulingAPI.destroy_session(self._session_id, self.address)
+
+            await mo.destroy_actor(self._custom_log_meta_ref)
+
+
+class RemoteObjectActor(mo.Actor):
+    def __init__(self, object_cls, args, kwargs):
+        self._object = object_cls(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        func = getattr(self._object, attr)
+        if not callable(func):  # pragma: no cover
+            return object.__getattribute__(self._object, attr)
+
+        @functools.wraps(func)
+        async def wrap(*args, **kwargs):
+            part_func = functools.partial(func, *args, **kwargs)
+            loop = asyncio.get_running_loop()
+            return loop.run_in_executor(None, part_func)
+
+        return wrap

@@ -50,7 +50,7 @@ class LocalCluster:
                  n_gpu: Union[int, str] = 'auto',
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
-                 web: bool = True):
+                 web: Union[bool, str] = 'auto'):
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
@@ -72,31 +72,46 @@ class LocalCluster:
         self.supervisor_address = None
         self.web_address = None
 
-    async def start(self):
-        from ...services.web.supervisor import WebActor
+    @property
+    def external_address(self):
+        return self._supervisor_pool.external_address
 
+    async def start(self):
+        await self._start_supervisor_pool()
+        await self._start_worker_pools()
+        # start service
+        await self._start_service()
+
+        if self._web:
+            from ...services.web.supervisor import WebActor
+
+            web_actor = await mo.actor_ref(WebActor.default_uid(),
+                                           address=self.supervisor_address)
+            self.web_address = await web_actor.get_web_address()
+
+    async def _start_supervisor_pool(self):
         self._supervisor_pool = await create_supervisor_actor_pool(
             self._address, n_process=0,
             subprocess_start_method=self._subprocess_start_method)
         self.supervisor_address = self._supervisor_pool.external_address
+
+    async def _start_worker_pools(self):
         for _ in range(self._n_worker):
             worker_pool = await create_worker_actor_pool(
                 self._address, self._band_to_slot,
                 subprocess_start_method=self._subprocess_start_method)
             self._worker_pools.append(worker_pool)
-        # start service
-        await start_supervisor(self.supervisor_address, config=self._config)
+
+    async def _start_service(self):
+        self._web = await start_supervisor(
+            self.supervisor_address, config=self._config,
+            web=self._web)
         for worker_pool in self._worker_pools:
             await start_worker(
                 worker_pool.external_address,
                 self.supervisor_address,
                 self._band_to_slot,
                 config=self._config)
-
-        if self._web:
-            web_actor = await mo.actor_ref(WebActor.default_uid(),
-                                           address=self.supervisor_address)
-            self.web_address = await web_actor.get_web_address()
 
     async def stop(self):
         for worker_pool in self._worker_pools:
@@ -124,7 +139,7 @@ class LocalClient:
                      backend: str = None) -> ClientType:
         backend = Session.name if backend is None else backend
         session = await _new_session(
-            cluster._supervisor_pool.external_address,
+            cluster.external_address,
             backend=backend, default=True)
         client = LocalClient(cluster, session)
         session.client = client

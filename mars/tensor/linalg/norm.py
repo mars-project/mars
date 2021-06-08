@@ -20,8 +20,9 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import ValueType, KeyField, AnyField, TupleField, BoolField
-from ...utils import recursive_tile
+from ...core import recursive_tile
+from ...serialization.serializables import FieldTypes, KeyField, \
+    AnyField, TupleField, BoolField
 from ..utils import validate_axis
 from ..array_utils import device, as_same_device
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -35,7 +36,7 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
 
     _input = KeyField('input')
     _ord = AnyField('ord')
-    _axis = TupleField('axis', ValueType.int32)
+    _axis = TupleField('axis', FieldTypes.int32)
     _keepdims = BoolField('keepdims')
 
     def __init__(self, ord=None, axis=None, keepdims=None, **kw):
@@ -95,8 +96,8 @@ class TensorNorm(TensorHasInput, TensorOperandMixin):
             new_op = op.copy()
             return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=out_chunks, nsplits=nsplits)
 
-        r = cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims)
-        recursive_tile(r)
+        r = yield from recursive_tile(
+            cls._norm(x.astype(op.outputs[0].dtype), ord, axis, keepdims))
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=r.chunks, nsplits=r.nsplits)
 

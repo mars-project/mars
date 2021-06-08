@@ -36,7 +36,7 @@ except ImportError:  # pragma: no cover
 import pytest
 
 from mars import utils
-from mars.tensor.fetch import TensorFetch
+from mars.core import tile
 import mars.tensor as mt
 
 
@@ -162,75 +162,6 @@ def test_tokenize():
     assert utils.tokenize(partial_f) != utils.tokenize(partial_f2)
 
 
-def test_build_tileable_graph():
-    a = mt.ones((10, 10), chunk_size=8)
-    b = mt.ones((10, 10), chunk_size=8)
-    c = (a + 1) * 2 + b
-
-    graph = utils.build_tileable_graph([c], set())
-    assert len(graph) == 5
-    a_data = next(n for n in graph if n.key == a.key)
-    assert graph.count_successors(a_data) == 1
-    assert graph.count_predecessors(a_data) == 0
-    c_data = next(n for n in graph if n.key == c.key)
-    assert graph.count_successors(c_data) == 0
-    assert graph.count_predecessors(c_data) == 2
-
-    graph = utils.build_tileable_graph([a, b, c], set())
-    assert len(graph) == 5
-
-    # test fetch replacement
-    a = mt.ones((10, 10), chunk_size=8)
-    b = mt.ones((10, 10), chunk_size=8)
-    c = (a + 1) * 2 + b
-    executed_keys = {a.key, b.key}
-
-    graph = utils.build_tileable_graph([c], executed_keys)
-    assert len(graph) == 5
-    assert a.data not in graph
-    assert b.data not in graph
-    assert any(isinstance(n.op, TensorFetch) for n in graph)
-    c_data = next(n for n in graph if n.key == c.key)
-    assert graph.count_successors(c_data) == 0
-    assert graph.count_predecessors(c_data) == 2
-
-    executed_keys = {(a + 1).key}
-    graph = utils.build_tileable_graph([c], executed_keys)
-    assert any(isinstance(n.op, TensorFetch) for n in graph)
-    assert len(graph) == 4
-
-    executed_keys = {((a + 1) * 2).key}
-    graph = utils.build_tileable_graph([c], executed_keys)
-    assert any(isinstance(n.op, TensorFetch) for n in graph)
-    assert len(graph) == 3
-
-    executed_keys = {c.key}
-    graph = utils.build_tileable_graph([c], executed_keys)
-    assert any(isinstance(n.op, TensorFetch) for n in graph)
-    assert len(graph) == 1
-
-
-def test_blacklist_set():
-    blset = utils.BlacklistSet(0.1)
-    blset.update([1, 2])
-    time.sleep(0.3)
-    blset.add(3)
-
-    with pytest.raises(KeyError):
-        blset.remove(2)
-
-    assert 1 not in blset
-    assert 2 not in blset
-    assert 3 in blset
-
-    blset.add(4)
-    time.sleep(0.3)
-    blset.add(5)
-    blset.add(6)
-
-    assert {5, 6} == set(blset)
-
-
 def test_lazy_import():
     old_sys_path = sys.path
     mock_mod = textwrap.dedent("""
@@ -265,7 +196,7 @@ def test_lazy_import():
 
 def test_chunks_indexer():
     a = mt.ones((3, 4, 5), chunk_size=2)
-    a = a.tiles()
+    a = tile(a)
 
     assert a.chunk_shape == (2, 2, 3)
 
@@ -306,14 +237,6 @@ def test_chunks_indexer():
     chunk_keys = [c.key for c in a.cix[:, :, :]]
     expected = [c.key for c in a.chunks]
     assert chunk_keys == expected
-
-
-def test_check_chunks_unknown_shape():
-    with pytest.raises(ValueError):
-        a = mt.random.rand(10, chunk_size=5)
-        mt.random.shuffle(a)
-        a = a.tiles()
-        utils.check_chunks_unknown_shape([a], ValueError)
 
 
 def test_insert_reversed_tuple():

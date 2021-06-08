@@ -17,8 +17,8 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...custom_log import redirect_custom_log
-from ...serialize import BoolField, TupleField, DictField, AnyField
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import BoolField, TupleField, DictField, AnyField
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_empty_df, build_empty_series, parse_index
@@ -150,7 +150,8 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             if op.output_types[0] == OutputType.dataframe:
                 ctx[op.outputs[0].key] = build_empty_df(out_chunk.dtypes)
             else:
-                ctx[op.outputs[0].key] = build_empty_series(out_chunk.dtype)
+                ctx[op.outputs[0].key] = build_empty_series(
+                    out_chunk.dtype, name=out_chunk.name)
             return
 
         if op.call_agg:

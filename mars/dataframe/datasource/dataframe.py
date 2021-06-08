@@ -17,7 +17,7 @@ import itertools
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialize import DataFrameField, SeriesField
+from ...serialization.serializables import DataFrameField, SeriesField
 from ...tensor.utils import get_chunk_slices
 from ..utils import decide_dataframe_chunk_sizes, parse_index
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -97,7 +97,8 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_dataframes(None, df.shape, dtypes=op.dtypes,
                                      index_value=df.index_value,
                                      columns_value=df.columns_value,
-                                     chunks=out_chunks, nsplits=chunk_size)
+                                     chunks=out_chunks, nsplits=chunk_size,
+                                     **df.extra_params)
 
     @classmethod
     def execute(cls, ctx, op):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import itertools
 from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
@@ -22,10 +23,9 @@ from numbers import Integral
 
 import numpy as np
 
-from ...core import Tileable, TilesError
+from ...core import Tileable, recursive_tile
 from ...core.operand import OperandStage
-from ...utils import check_chunks_unknown_shape, calc_nsplits, \
-    merge_chunks, recursive_tile
+from ...utils import calc_nsplits, has_unknown_shape
 from ..core import TENSOR_TYPE, Chunk, TensorOrder
 from ..operands import TensorShuffleProxy
 from ..utils import slice_split, calc_sliced_size, broadcast_shape, unify_chunks, \
@@ -295,7 +295,8 @@ class SliceIndexHandler(IndexHandler):
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
         # make sure input tileable has known chunk shapes
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -350,7 +351,8 @@ class IntegralIndexHandler(IndexHandler):
     def preprocess(self,
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -407,7 +409,8 @@ class NDArrayBoolIndexHandler(_BoolIndexHandler):
     def preprocess(self,
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -454,7 +457,10 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
                    index_info: IndexInfo,
                    context: IndexHandlerContext) -> None:
         # check both input tileable and index object itself
-        check_chunks_unknown_shape([context.tileable, index_info.raw_index], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
+        if has_unknown_shape(index_info.raw_index):
+            yield []
 
     def process(self,
                 index_info: IndexInfo,
@@ -464,7 +470,7 @@ class TensorBoolIndexHandler(_BoolIndexHandler):
         index = index_info.raw_index
         # rechunk index into the same chunk size
         nsplits = tileable.nsplits[input_axis: input_axis + index.ndim]
-        index = index.rechunk(nsplits)._inplace_tile()
+        index = yield from recursive_tile(index.rechunk(nsplits))
         is_first_bool_index = self._is_first_bool_index(context, index_info)
 
         other_index_to_iter = dict()
@@ -545,7 +551,8 @@ class NDArrayFancyIndexHandler(_FancyIndexHandler):
 
         # check if all ndarrays
         super().preprocess(index_info, context)
-        check_chunks_unknown_shape([context.tileable], TilesError)
+        if has_unknown_shape(context.tileable):
+            yield []
 
         fancy_index_infos = context.get_indexes(index_info.index_type)
         # unify shapes of all fancy indexes
@@ -684,16 +691,18 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         super().preprocess(index_info, context)
         to_check = [context.tileable] + \
             list(info.raw_index for info in fancy_index_infos)
-        check_chunks_unknown_shape(to_check, TilesError)
+        if has_unknown_shape(*to_check):
+            yield
 
         # unify shapes of all fancy indexes
         shape = broadcast_shape(
             *(info.raw_index.shape for info in fancy_index_infos))
         fancy_indexes = []
         for fancy_index_info in fancy_index_infos:
-            fancy_indexes.append(
-                broadcast_to(fancy_index_info.raw_index, shape)._inplace_tile())
-        shape_unified_fancy_indexes = unify_chunks(*fancy_indexes)
+            fancy_index = yield from recursive_tile(
+                broadcast_to(fancy_index_info.raw_index, shape))
+            fancy_indexes.append(fancy_index)
+        shape_unified_fancy_indexes = yield from unify_chunks(*fancy_indexes)
         for fancy_index_info, shape_unified_fancy_index in \
                 zip(fancy_index_infos, shape_unified_fancy_indexes):
             fancy_index_info.shape_unified_index = shape_unified_fancy_index
@@ -701,10 +710,12 @@ class TensorFancyIndexHandler(_FancyIndexHandler):
         fancy_index_axes = tuple(info.input_axis for info in fancy_index_infos)
 
         # stack fancy indexes into one
-        concat_fancy_index = recursive_tile(stack([fancy_index_info.shape_unified_index
-                                                   for fancy_index_info in fancy_index_infos]))
+        concat_fancy_index = yield from recursive_tile(
+            stack([fancy_index_info.shape_unified_index
+                   for fancy_index_info in fancy_index_infos]))
         concat_fancy_index = \
-            concat_fancy_index.rechunk({0: len(fancy_index_infos)})._inplace_tile()
+            yield from recursive_tile(
+                concat_fancy_index.rechunk({0: len(fancy_index_infos)}))
 
         self._shuffle_fancy_indexes(concat_fancy_index, context,
                                     index_info, fancy_index_axes)
@@ -891,8 +902,8 @@ class IndexesHandler(ABC):
             if not parsed:
                 raise TypeError(f'unable to parse index {index}')
 
-        self._preprocess(context, index_infos)
-        self._process(context, index_infos)
+        yield from self._preprocess(context, index_infos)
+        yield from self._process(context, index_infos)
         self._postprocess(context, index_infos)
 
         if return_context:
@@ -906,13 +917,17 @@ class IndexesHandler(ABC):
                     index_infos: List[IndexInfo]):
         # preprocess
         for index_info in index_infos:
-            index_info.handler.preprocess(index_info, context)
+            preprocess = index_info.handler.preprocess(index_info, context)
+            if inspect.isgenerator(preprocess):
+                yield from preprocess
 
     @classmethod
     def _process(cls, context, index_infos):
         # process
         for index_info in index_infos:
-            index_info.handler.process(index_info, context)
+            process = index_info.handler.process(index_info, context)
+            if inspect.isgenerator(process):
+                yield from process
 
         context.processed_chunks = context.out_chunks = out_chunks = []
         for chunk_index, chunk_index_info in context.chunk_index_to_info.items():
@@ -941,38 +956,6 @@ class NDArrayIndexesHandler(IndexesHandler):
 
     def create_context(self, op):
         return TensorIndexHandlerContext(op)
-
-    @classmethod
-    def aggregate_result(cls,
-                         context: IndexHandlerContext,
-                         chunk_index_result: List[Tuple]):
-        if len(chunk_index_result) == 1:
-            result = chunk_index_result[0][1]
-        else:
-            result = merge_chunks(chunk_index_result)
-
-        # check if there is any fancy index
-        fancy_index_infos = context.get_indexes(IndexType.fancy_index)
-
-        if len(fancy_index_infos) == 0:
-            # no fancy index, just return
-            return result
-
-        handler = fancy_index_infos[0].handler
-        if not handler.need_postprocess(context):
-            # no postprocess, just return
-            return result
-
-        fancy_index_shape = fancy_index_infos[0].shape_unified_index.shape
-        raw_positions = \
-            calc_pos(fancy_index_shape, fancy_index_infos[0].split_info[1])
-        # reorder the result as the order of fancy indexes
-        if isinstance(result, np.ndarray):
-            return result[
-                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
-        else:
-            return result.iloc[
-                (slice(None,),) * fancy_index_infos[0].output_axis + (raw_positions,)]
 
 
 class TensorIndexesHandler(IndexesHandler):

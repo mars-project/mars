@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
+
 import pytest
 import numpy as np
 
@@ -26,7 +28,7 @@ from mars.utils import get_next_port
 
 @pytest.mark.parametrize('test_web', [False, True])
 @pytest.mark.asyncio
-async def test_meta_service(test_web):
+async def test_session_service(test_web):
     pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
 
     async with pool:
@@ -135,3 +137,36 @@ async def test_get_last_idle_time():
         next(TileableGraphBuilder(graph).build())
         await task_api.submit_tileable_graph(graph, fuse_enabled=False)
         assert await session_api.get_last_idle_time() is None
+
+
+@pytest.mark.asyncio
+async def test_dmap():
+    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+
+    async with pool:
+        config = {
+            "services": ["cluster", "session", "meta", "lifecycle", "task",
+                         "scheduling", "subtask"],
+            "cluster": {
+                "backend": "fixed",
+                "lookup_address": pool.external_address,
+            },
+            "meta": {
+                "store": "dict"
+            }
+        }
+        await start_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)
+
+        session_api = await SessionAPI.create(pool.external_address)
+
+        session_id = 'test_session'
+        await session_api.create_session(session_id)
+        lock = await session_api.create_remote_object(session_id, 'my_lock',
+                                                      threading.Lock)
+        await lock.acquire()
+        lock = await session_api.get_remote_object(session_id, 'my_lock')
+        await lock.release()
+        with pytest.raises(AttributeError):
+            await lock.abc()
+        await session_api.destroy_remote_object(session_id, 'my_lock')

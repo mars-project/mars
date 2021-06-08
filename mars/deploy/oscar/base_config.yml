@@ -7,11 +7,12 @@ services:
   - task
   - scheduling
   - subtask
-  - web
 cluster:
   backend: fixed
   node_timeout: 120
   node_check_interval: 1
+session:
+  custom_log_dir: null
 storage:
   default_config:
     transfer_block_size: 5 * 1024 ** 2

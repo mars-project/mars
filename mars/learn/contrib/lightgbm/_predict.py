@@ -18,8 +18,9 @@ import numpy as np
 import pandas as pd
 
 from .... import opcodes
+from ....core import recursive_tile
 from ....dataframe.utils import parse_index
-from ....serialize import BoolField, BytesField, DictField, KeyField
+from ....serialization.serializables import BoolField, BytesField, DictField, KeyField
 from ....tensor.core import TENSOR_TYPE, TensorOrder
 from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
@@ -93,7 +94,7 @@ class LGBMPredict(LearnOperand, LearnOperandMixin):
         out_chunks = []
         data = op.data
         if data.chunk_shape[1] > 1:
-            data = data.rechunk({1: op.data.shape[1]})._inplace_tile()
+            data = yield from recursive_tile(data.rechunk({1: op.data.shape[1]}))
 
         for in_chunk in data.chunks:
             chunk_op = op.copy().reset_key()

@@ -17,6 +17,7 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ..utils import gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 
 
@@ -24,9 +25,9 @@ class TensorRand(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RAND
     _func_name = 'rand'
 
-    def __init__(self, state=None, size=None, dtype=None, **kw):
+    def __init__(self, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_size=size, dtype=dtype, **kw)
 
     def __call__(self, chunk_size=None):
         return self.new_tensor(None, None, raw_chunk_size=chunk_size)
@@ -75,7 +76,8 @@ def rand(random_state, *dn, **kw):
     if 'dtype' not in kw:
         kw['dtype'] = np.dtype('f8')
     chunk_size = kw.pop('chunk_size', None)
-    op = TensorRand(state=random_state.to_numpy(), size=dn, **kw)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorRand(seed=seed, size=dn, **kw)
 
     for key in op.extra_params:
         if not key.startswith('_'):

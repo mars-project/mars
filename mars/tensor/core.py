@@ -15,21 +15,19 @@
 # limitations under the License.
 
 import logging
-from collections import defaultdict
 from collections.abc import Iterable
-from datetime import datetime
 from enum import Enum
 from operator import attrgetter
 from typing import Any, Dict
 
 import numpy as np
 
-from ..core import Entity, HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
+from ..core import HasShapeTileable, ChunkData, Chunk, HasShapeTileableData, \
     OutputType, register_output_types, _ExecuteAndFetchMixin, is_build_mode
 from ..core.entity.utils import refresh_tileable_shape
 from ..serialization.serializables import Serializable, FieldTypes, \
-    DataTypeField, ListField, TupleField, BoolField, StringField, AnyField, ReferenceField
-from ..utils import log_unhandled, on_serialize_shape, on_deserialize_shape
+    DataTypeField, ListField, TupleField, StringField, AnyField, ReferenceField
+from ..utils import on_serialize_shape, on_deserialize_shape
 from .utils import get_chunk_slices, fetch_corner_data
 
 logger = logging.getLogger(__name__)
@@ -95,6 +93,7 @@ class TensorChunkData(ChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: np.ndarray) -> Dict[str, Any]:
+        data = np.asarray(data)
         order = TensorOrder.C_ORDER \
             if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
         return {
@@ -668,209 +667,6 @@ class flatiter(object):
 
 class Indexes(Serializable):
     indexes = AnyField('indexes')
-
-
-class MutableTensorData(TensorData):
-    __slots__ = ()
-
-    # required fields
-    _name = StringField('name')
-    _compression = BoolField("compression")
-    _chunk_eps = ListField('chunk_eps')
-
-    def __init__(self, name=None, op=None, shape=None, dtype=None, key=None, chunk_eps=None,
-                 nsplits=None, chunks=None, **kw):
-        super().__init__(op=op, shape=shape, dtype=dtype, nsplits=nsplits, chunks=chunks,
-                         _name=name, _key=key, _chunk_eps=chunk_eps, **kw)
-
-    @classmethod
-    def cls(cls, provider):
-        return super().cls(provider)
-
-    def __str__(self):
-        return f'MutableTensor(op={type(self.op).__name__}, name={self.name}, shape={self.shape})'
-
-    def __repr__(self):
-        return f'MutableTensor <op={type(self.op).__name__}, name={self.name}, shape={self.shape}, key={self.key}>'
-
-    @property
-    def params(self):
-        # params return the properties which useful to rebuild a new tileable object
-        return {
-            'shape': self.shape,
-            'dtype': self.dtype,
-            'name': self.name,
-            'compression': self.compression,
-            'chunk_eps': self.chunk_eps,
-        }
-
-    @params.setter
-    def params(self, new_params: Dict[str, Any]):  # pragma: no cover
-        params = new_params.copy()
-        shape = params.pop('shape', None)
-        if shape is not None:
-            self._shape = shape
-        dtype = params.pop('dtype', None)
-        if dtype is not None:
-            self._dtype = dtype
-        name = params.pop('name', None)
-        if name is not None:
-            self._name = name
-        compression = params.pop('compression', None)
-        if compression is not None:
-            self._compression = compression
-        chunk_eps = params.pop('chunk_eps', None)
-        if chunk_eps is not None:
-            self._chunk_eps = chunk_eps
-        if params:  # pragma: no cover
-            raise TypeError(f'Unknown params: {list(params)}')
-
-    @property
-    def name(self):
-        return getattr(self, '_name', None)
-
-    @property
-    def compression(self):
-        return getattr(self, '_compression', None)
-
-    @property
-    def chunk_eps(self):
-        return getattr(self, '_chunk_eps', None)
-
-
-class MutableTensor(Entity):
-    __slots__ = ("_chunk_to_endpoint", "_chunk_buffers", "_record_type", "_buffer_size")
-    _allow_data_type_ = (MutableTensorData,)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._chunk_buffers = defaultdict(lambda: [])
-        self._record_type = np.dtype([("index", np.uint32), ("ts", np.dtype('datetime64[ns]')), ("value", self.dtype)])
-        if self.chunks:
-            self._buffer_size = np.prod(self.chunks[0].shape)
-        else:
-            # MutableTensor doesn't hold chunks in LocalSession, thus we don't care the buffer
-            self._buffer_size = 0
-
-        if self._data.chunk_eps is not None:
-            self._chunk_to_endpoint = dict((c.key, ep) for c, ep in zip(self.chunks, self._data.chunk_eps))
-        else:
-            self._chunk_to_endpoint = dict()
-
-    def __len__(self):
-        return len(self._data)
-
-    @property
-    def name(self):
-        return self._data.name
-
-    @property
-    def chunk_to_endpoint(self):
-        return self._chunk_to_endpoint
-
-    def __setitem__(self, index, value):
-        from ..session import Session
-        session = Session.default_or_local()
-        return session.write_mutable_tensor(self, index, value)
-
-    def seal(self):
-        from ..session import Session
-        session = Session.default_or_local()
-        return session.seal(self)
-
-    @log_unhandled
-    def _do_write(self, tensor_index, value):
-        ''' Notes [buffer management of mutable tensor]:
-        Write operations on a mutable tensor are buffered at client. Every chunk has a
-        corresponding buffer in the form of
-
-            {chunk_key: [(index, ts, value)]}
-
-        Every time we write to a chunk, we will append the new operation records to
-        the list
-
-        At the end of write, if the buffer size exceeds `buffer_size`, the buffer will be send
-        to the corresponding worker.
-
-        The insights for above design are:
-
-        1. `append` on (small) list is fast
-        2. We try to flush the (affected) buffer to worker at the end of every write, the buffer
-           size is guaranteed to less than 2 * chunk_size.
-        '''
-        from .indexing.core import process_index, calc_shape
-        from .indexing.getitem import TensorIndex
-        from .utils import setitem_as_records
-
-        tensor_index = process_index(self.ndim, tensor_index)
-        output_shape = calc_shape(self.shape, tensor_index)
-
-        index_tensor_op = TensorIndex(dtype=self.dtype, sparse=False, indexes=list(tensor_index))
-        index_tensor = index_tensor_op.new_tensor([self], tuple(output_shape))._inplace_tile()
-        output_chunks = index_tensor.chunks
-
-        is_scalar = np.isscalar(value) or isinstance(value, tuple) and self.dtype.fields
-
-        if not is_scalar:
-            value = np.broadcast_to(value, output_shape).astype(self.dtype)
-
-        nsplits_acc = [np.cumsum((0,) + tuple(c.shape[i] for c in output_chunks
-                                              if all(idx == 0 for j, idx in enumerate(c.index) if j != i)))
-                       for i in range(len(output_chunks[0].shape))]
-
-        now = np.datetime64(datetime.now())
-        affected_chunk_keys = []
-
-        for output_chunk in output_chunks:
-            records = self._chunk_buffers[output_chunk.op.input.key]
-            records += setitem_as_records(nsplits_acc, output_chunk, value, now, is_scalar=is_scalar)
-            affected_chunk_keys.append(output_chunk.op.input.key)
-
-        # Try to flush affected chunks
-        return self._do_flush(self._buffer_size, affected_chunk_keys)
-
-    @log_unhandled
-    def _do_flush(self, buffer_size_limit=1, affected_chunk_keys=None):
-        chunk_records_to_send = []
-        affected_chunk_keys = affected_chunk_keys or self._chunk_buffers.keys()
-        for chunk_key in affected_chunk_keys:
-            records = self._chunk_buffers[chunk_key]
-            if len(records) >= buffer_size_limit:
-                chunk_records_to_send.append((chunk_key, self._chunk_to_endpoint[chunk_key],
-                                              np.array(records, dtype=self._record_type)))
-                self._chunk_buffers[chunk_key] = []
-        return chunk_records_to_send
-
-
-def mutable_tensor(name, shape=None, dtype=np.float_, fill_value=None, chunk_size=None):
-    """
-    Create or get a mutable tensor using the local or default session.
-
-    When `shape` is `None`, it will try to get the mutable tensor with name `name`. Otherwise,
-    it will try to create a mutable tensor using the provided `name` and `shape`.
-
-    Parameters
-    ----------
-    name : str
-        Name of the mutable tensor.
-    shape : int or sequence of ints
-        Shape of the new mutable tensor, e.g., ``(2, 3)`` or ``2``.
-    dtype : data-type, optional
-        The desired data-type for the mutable tensor, e.g., `mt.int8`.  Default is `mt.float_`.
-    chunk_size: int or tuple of ints, optional
-        Specifies chunk size for each dimension.
-    fill_value: scalar, optional
-        The created mutable tensor will be filled by `fill_value` defaultly, if the parameter is None,
-        the newly created mutable tensor will be initialized with `np.zeros`. See also `numpy.full`.
-    """
-    from ..session import Session
-    session = Session.default_or_local()
-
-    if shape is None:
-        return session.get_mutable_tensor(name)
-    else:
-        return session.create_mutable_tensor(name, shape=shape, dtype=np.dtype(dtype),
-                                             fill_value=fill_value, chunk_size=chunk_size)
 
 
 TENSOR_TYPE = (Tensor, TensorData)

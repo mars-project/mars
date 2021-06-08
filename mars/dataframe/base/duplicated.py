@@ -32,14 +32,14 @@ class DataFrameDuplicated(DuplicateOperand):
                          _shuffle_size=shuffle_size, **kw)
 
     @classmethod
-    def _get_shape(cls, input_shape):
+    def _get_shape(cls, input_shape, op):
         return (input_shape[0],)
 
     @classmethod
     def _gen_tileable_params(cls, op: "DataFrameDuplicated", input_params):
         # duplicated() always returns a Series
         return {
-            'shape': cls._get_shape(input_params['shape']),
+            'shape': cls._get_shape(input_params['shape'], op),
             'index_value': input_params['index_value'],
             'dtype': np.dtype(bool),
             'name': input_params.get('name')
@@ -52,9 +52,16 @@ class DataFrameDuplicated(DuplicateOperand):
         return self.new_tileable([inp], kws=[params])
 
     @classmethod
+    def _get_map_output_types(cls, input_chunk, method: str):
+        if method in ('tree', 'subset_tree'):
+            return [OutputType.dataframe]
+        else:
+            return input_chunk.op.output_types
+
+    @classmethod
     def _gen_chunk_params_default(cls, op: "DataFrameDuplicated", input_chunk):
         return {
-            'shape': cls._get_shape(input_chunk.shape),
+            'shape': cls._get_shape(input_chunk.shape, op),
             'index_value': input_chunk.index_value,
             'dtype': np.dtype(bool),
             'name': input_chunk.name if input_chunk.ndim == 1 else None,
@@ -63,22 +70,23 @@ class DataFrameDuplicated(DuplicateOperand):
 
     @classmethod
     def _get_intermediate_shape(cls, input_shape):
-        return (np.nan,) + input_shape[1:]
+        if len(input_shape) > 1:
+            s = input_shape[1:]
+        else:
+            s = (2,)
+        return (np.nan,) + s
 
     @classmethod
     def _gen_intermediate_chunk_params(cls, op: "DataFrameDuplicated", input_chunk):
         inp = op.input
         chunk_params = dict()
         chunk_params['index'] = input_chunk.index[:1] + (0,) * (inp.ndim - 1)
-        chunk_params['shape'] = cls._get_intermediate_shape(input_chunk.shape)
+        chunk_params['shape'] = shape = cls._get_intermediate_shape(input_chunk.shape)
         chunk_params['index_value'] = gen_unknown_index_value(
             input_chunk.index_value, input_chunk)
-        if inp.ndim == 2:
+        if inp.ndim == 2 and len(shape) == 2:
             chunk_params['columns_value'] = input_chunk.columns_value
             chunk_params['dtypes'] = input_chunk.dtypes
-        else:
-            chunk_params['name'] = inp.name
-            chunk_params['dtype'] = inp.dtype
         return chunk_params
 
     @classmethod
@@ -148,8 +156,9 @@ class DataFrameDuplicated(DuplicateOperand):
         duplicates = inp[~inp.iloc[:, -1]]
         dup_on_duplicated = cls._duplicated(duplicates, op)
         result[~inp.iloc[:, -1]] = dup_on_duplicated
-        if result.name == '_duplicated_':
-            result.name = None
+        expect_name = op.outputs[0].name
+        if result.name != expect_name:
+            result.name = expect_name
         result = result.astype(bool)
         ctx[op.outputs[0].key] = result
 

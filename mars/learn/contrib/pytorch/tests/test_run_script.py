@@ -13,33 +13,23 @@
 # limitations under the License.
 
 import os
-import unittest
+
+import pytest
 
 from mars.learn.contrib.pytorch import run_pytorch_script
-from mars.session import new_session
-from mars.tests.core import ExecutorForTest
+from mars.tests import setup
 from mars.utils import lazy_import
+
+setup = setup
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
-@unittest.skipIf(not torch_installed, 'pytorch not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
-
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
-
-    def testLocalRunPyTorchScript(self):
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pytorch_sample.py')
-        self.assertEqual(run_pytorch_script(
-            path, n_workers=2, command_argv=['multiple'],
-            port=9944, run_kwargs={'n_parallel': 2}
-        )['status'], 'ok')
-
-        with self.assertRaises(ValueError):
-            run_pytorch_script(path, n_workers=0)
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
+def test_distributed_run_py_torch_script(setup):
+    sess = setup
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'pytorch_sample.py')
+    assert run_pytorch_script(
+        path, n_workers=1, command_argv=['multiple'],
+        port=9945, session=sess)['status'] == 'ok'

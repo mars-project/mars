@@ -329,3 +329,8 @@ async def test_optimization(actor_pool):
         assert (await lifecycle_api.get_tileable_ref_counts([df3.key]))[0] == 1
         assert (await lifecycle_api.get_chunk_ref_counts(
             [c.key for c in result_tileables[1].chunks])) == [1] * len(result_tileables[1].chunks)
+
+        # test ref counts
+        assert (await lifecycle_api.get_tileable_ref_counts([df3.key]))[0] == 1
+        assert (await lifecycle_api.get_chunk_ref_counts(
+            [c.key for c in result_tileables[1].chunks])) == [1] * len(result_tileables[1].chunks)

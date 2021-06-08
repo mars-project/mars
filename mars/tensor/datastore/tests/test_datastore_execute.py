@@ -16,10 +16,10 @@ import os
 import shutil
 import tempfile
 import time
-import unittest
 
 import numpy as np
 import scipy.sparse as sps
+import pytest
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -33,215 +33,200 @@ try:
     from numcodecs import Zstd, Delta, Blosc
 except ImportError:  # pragma: no cover
     zarr = None
-
-from mars.config import option_context
-from mars.core import get_tiled
-from mars.deploy.local.core import new_cluster
-from mars.session import new_session
-from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr, \
-    from_vineyard, tovineyard
-from mars.tests.core import TestBase, ExecutorForTest, flaky
-
 try:
     import vineyard
 except ImportError:
     vineyard = None
 
+from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
+from mars.tests import setup
+
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
 
-class Test(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.executor = ExecutorForTest('numpy')
+setup = setup
 
-    @unittest.skipIf(tiledb is None, 'tiledb not installed')
-    def testStoreTileDBExecution(self):
-        ctx = tiledb.Ctx()
 
-        tempdir = tempfile.mkdtemp()
-        try:
-            # store TileDB dense array
-            expected = np.random.rand(8, 4, 3)
-            a = tensor(expected, chunk_size=(3, 3, 2))
-            save = totiledb(tempdir, a, ctx=ctx)
-            self.executor.execute_tensor(save)
+@pytest.mark.skipif(tiledb is None, reason='tiledb not installed')
+def test_store_tiledb_execution(setup):
+    ctx = tiledb.Ctx()
 
-            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
-                np.testing.assert_allclose(expected, arr.read_direct())
-        finally:
-            shutil.rmtree(tempdir)
+    tempdir = tempfile.mkdtemp()
+    try:
+        # store TileDB dense array
+        expected = np.random.rand(8, 4, 3)
+        a = tensor(expected, chunk_size=(3, 3, 2))
+        save = totiledb(tempdir, a, ctx=ctx)
+        save.execute()
 
-        tempdir = tempfile.mkdtemp()
-        try:
-            # store tensor with 1 chunk to TileDB dense array
-            a = arange(12)
-            save = totiledb(tempdir, a, ctx=ctx)
-            self.executor.execute_tensor(save)
+        with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
+            np.testing.assert_allclose(expected, arr.read_direct())
+    finally:
+        shutil.rmtree(tempdir)
 
-            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
-                np.testing.assert_allclose(np.arange(12), arr.read_direct())
-        finally:
-            shutil.rmtree(tempdir)
+    tempdir = tempfile.mkdtemp()
+    try:
+        # store tensor with 1 chunk to TileDB dense array
+        a = arange(12)
+        save = totiledb(tempdir, a, ctx=ctx)
+        save.execute()
 
-        tempdir = tempfile.mkdtemp()
-        try:
-            # store 2-d TileDB sparse array
-            expected = sps.random(8, 7, density=0.1)
-            a = tensor(expected, chunk_size=(3, 5))
-            save = totiledb(tempdir, a, ctx=ctx)
-            self.executor.execute_tensor(save)
+        with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
+            np.testing.assert_allclose(np.arange(12), arr.read_direct())
+    finally:
+        shutil.rmtree(tempdir)
 
-            with tiledb.SparseArray(uri=tempdir, ctx=ctx) as arr:
-                data = arr[:, :]
-                coords = data['coords']
-                value = data[arr.attr(0).name]
-                ij = tuple(coords[arr.domain.dim(k).name] for k in range(arr.ndim))
-                result = sps.coo_matrix((value, ij), shape=arr.shape)
+    tempdir = tempfile.mkdtemp()
+    try:
+        # store 2-d TileDB sparse array
+        expected = sps.random(8, 7, density=0.1)
+        a = tensor(expected, chunk_size=(3, 5))
+        save = totiledb(tempdir, a, ctx=ctx)
+        save.execute()
 
-                np.testing.assert_allclose(expected.toarray(), result.toarray())
-        finally:
-            shutil.rmtree(tempdir)
+        with tiledb.SparseArray(uri=tempdir, ctx=ctx) as arr:
+            data = arr[:, :]
+            coords = data['coords']
+            value = data[arr.attr(0).name]
+            ij = tuple(coords[arr.domain.dim(k).name] for k in range(arr.ndim))
+            result = sps.coo_matrix((value, ij), shape=arr.shape)
 
-        tempdir = tempfile.mkdtemp()
-        try:
-            # store TileDB dense array
-            expected = np.asfortranarray(np.random.rand(8, 4, 3))
-            a = tensor(expected, chunk_size=(3, 3, 2))
-            save = totiledb(tempdir, a, ctx=ctx)
-            self.executor.execute_tensor(save)
+            np.testing.assert_allclose(expected.toarray(), result.toarray())
+    finally:
+        shutil.rmtree(tempdir)
 
-            with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
-                np.testing.assert_allclose(expected, arr.read_direct())
-                self.assertEqual(arr.schema.cell_order, 'col-major')
-        finally:
-            shutil.rmtree(tempdir)
+    tempdir = tempfile.mkdtemp()
+    try:
+        # store TileDB dense array
+        expected = np.asfortranarray(np.random.rand(8, 4, 3))
+        a = tensor(expected, chunk_size=(3, 3, 2))
+        save = totiledb(tempdir, a, ctx=ctx)
+        save.execute()
 
-    @unittest.skipIf(h5py is None, 'h5py not installed')
-    def testStoreHDF5Execution(self):
-        raw = np.random.RandomState(0).rand(10, 20)
+        with tiledb.DenseArray(uri=tempdir, ctx=ctx) as arr:
+            np.testing.assert_allclose(expected, arr.read_direct())
+            assert arr.schema.cell_order == 'col-major'
+    finally:
+        shutil.rmtree(tempdir)
 
-        group_name = 'test_group'
-        dataset_name = 'test_dataset'
 
-        t1 = tensor(raw, chunk_size=20)
-        t2 = tensor(raw, chunk_size=9)
+@pytest.mark.skipif(h5py is None, reason='h5py not installed')
+def test_store_hdf5_execution(setup):
+    raw = np.random.RandomState(0).rand(10, 20)
 
-        with self.assertRaises(TypeError):
-            tohdf5(object(), t2)
+    group_name = 'test_group'
+    dataset_name = 'test_dataset'
 
-        ctx, executor = self._create_test_context(self.executor)
-        with ctx:
-            with tempfile.TemporaryDirectory() as d:
-                filename = os.path.join(d, f'test_store_{int(time.time())}.hdf5')
+    t1 = tensor(raw, chunk_size=20)
+    t2 = tensor(raw, chunk_size=9)
 
-                # test 1 chunk
-                r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
+    with pytest.raises(TypeError):
+        tohdf5(object(), t2)
 
-                executor.execute_tensor(r)
+    with tempfile.TemporaryDirectory() as d:
+        filename = os.path.join(d, f'test_store_{int(time.time())}.hdf5')
 
-                with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
-                    np.testing.assert_array_equal(result, raw)
+        # test 1 chunk
+        r = tohdf5(filename, t1, group=group_name, dataset=dataset_name)
+        r.execute()
 
-                # test filename
-                r = tohdf5(filename, t2, group=group_name, dataset=dataset_name)
+        with h5py.File(filename, 'r') as f:
+            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+            np.testing.assert_array_equal(result, raw)
 
-                executor.execute_tensor(r)
+        # test filename
+        r = tohdf5(filename, t2, group=group_name, dataset=dataset_name)
+        r.execute()
 
-                rt = get_tiled(r)
-                self.assertEqual(type(rt.chunks[0].inputs[1].op).__name__, 'SuccessorsExclusive')
-                self.assertEqual(len(rt.chunks[0].inputs[1].inputs), 0)
+        with h5py.File(filename, 'r') as f:
+            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+            np.testing.assert_array_equal(result, raw)
 
-                with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
-                    np.testing.assert_array_equal(result, raw)
+        with pytest.raises(ValueError):
+            tohdf5(filename, t2)
 
-                with self.assertRaises(ValueError):
-                    tohdf5(filename, t2)
+        with h5py.File(filename, 'r') as f:
+            # test file
+            r = tohdf5(f, t2, group=group_name, dataset=dataset_name)
+        r.execute()
 
-                with h5py.File(filename, 'r') as f:
-                    # test file
-                    r = tohdf5(f, t2, group=group_name, dataset=dataset_name)
+        with h5py.File(filename, 'r') as f:
+            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+            np.testing.assert_array_equal(result, raw)
 
-                executor.execute_tensor(r)
+        with pytest.raises(ValueError):
+            with h5py.File(filename, 'r') as f:
+                tohdf5(f, t2)
 
-                with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
-                    np.testing.assert_array_equal(result, raw)
+        with h5py.File(filename, 'r') as f:
+            # test dataset
+            ds = f[f'{group_name}/{dataset_name}']
+            # test file
+            r = tohdf5(ds, t2)
+        r.execute()
 
-                with self.assertRaises(ValueError):
-                    with h5py.File(filename, 'r') as f:
-                        tohdf5(f, t2)
+        with h5py.File(filename, 'r') as f:
+            result = np.asarray(f[f'{group_name}/{dataset_name}'])
+            np.testing.assert_array_equal(result, raw)
 
-                with h5py.File(filename, 'r') as f:
-                    # test dataset
-                    ds = f[f'{group_name}/{dataset_name}']
-                    # test file
-                    r = tohdf5(ds, t2)
 
-                executor.execute_tensor(r)
+@pytest.mark.skipif(zarr is None, reason='zarr not installed')
+def test_store_zarr_execution(setup):
+    raw = np.random.RandomState(0).rand(10, 20)
 
-                with h5py.File(filename, 'r') as f:
-                    result = np.asarray(f[f'{group_name}/{dataset_name}'])
-                    np.testing.assert_array_equal(result, raw)
+    group_name = 'test_group'
+    dataset_name = 'test_dataset'
 
-    @unittest.skipIf(zarr is None, 'zarr not installed')
-    def testStoreZarrExecution(self):
-        raw = np.random.RandomState(0).rand(10, 20)
+    t = tensor(raw, chunk_size=6)
 
-        group_name = 'test_group'
-        dataset_name = 'test_dataset'
+    with pytest.raises(TypeError):
+        tozarr(object(), t)
 
-        t = tensor(raw, chunk_size=6)
+    with tempfile.TemporaryDirectory() as d:
+        filename = os.path.join(d, f'test_store_{int(time.time())}.zarr')
+        path = f'{filename}/{group_name}/{dataset_name}'
 
-        with self.assertRaises(TypeError):
-            tozarr(object(), t)
+        r = tozarr(filename, t, group=group_name, dataset=dataset_name, compressor=Zstd(level=3))
+        r.execute()
 
-        with tempfile.TemporaryDirectory() as d:
-            filename = os.path.join(d, f'test_store_{int(time.time())}.zarr')
-            path = f'{filename}/{group_name}/{dataset_name}'
+        arr = zarr.open(path)
+        np.testing.assert_array_equal(arr, raw)
+        assert arr.compressor == Zstd(level=3)
 
-            r = tozarr(filename, t, group=group_name, dataset=dataset_name, compressor=Zstd(level=3))
-            self.executor.execute_tensor(r)
+        r = tozarr(path, t + 2)
+        r.execute()
 
-            arr = zarr.open(path)
-            np.testing.assert_array_equal(arr, raw)
-            self.assertEqual(arr.compressor, Zstd(level=3))
+        arr = zarr.open(path)
+        np.testing.assert_array_equal(arr, raw + 2)
 
-            r = tozarr(path, t + 2)
-            self.executor.execute_tensor(r)
+        filters = [Delta(dtype='i4')]
+        compressor = Blosc(cname='zstd', clevel=1, shuffle=Blosc.SHUFFLE)
+        arr = zarr.open(path, compressor=compressor, filters=filters)
 
-            arr = zarr.open(path)
-            np.testing.assert_array_equal(arr, raw + 2)
+        r = tozarr(arr, t + 1)
+        r.execute()
+        result = zarr.open_array(path)
+        np.testing.assert_array_equal(result, raw + 1)
 
-            filters = [Delta(dtype='i4')]
-            compressor = Blosc(cname='zstd', clevel=1, shuffle=Blosc.SHUFFLE)
-            arr = zarr.open(path, compressor=compressor, filters=filters)
 
-            r = tozarr(arr, t + 1)
-            self.executor.execute_tensor(r)
-            result = zarr.open_array(path)
-            np.testing.assert_array_equal(result, raw + 1)
-
-    @unittest.skipIf(vineyard is None, 'vineyard not installed')
-    @flaky(max_runs=3)
-    def testToVineyard(self):
-        def run_with_given_session(session, **kw):
-            ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
-            with option_context({'vineyard.socket': ipc_socket}):
-                tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
-                object_id = tovineyard(tensor1).execute(session=session, **kw).fetch(session=session)
-                tensor2 = from_vineyard(object_id)
-
-                tensor1_value = tensor1.execute(session=session, **kw).fetch(session=session)
-                tensor2_value = tensor2.execute(session=session, **kw).fetch(session=session)
-                np.testing.assert_array_equal(tensor1_value, tensor2_value)
-
-        with new_session().as_default() as session:
-            run_with_given_session(session)
-
-        with new_cluster(scheduler_n_process=2, worker_n_process=2,
-                         shared_memory='20M', web=False) as cluster:
-            with new_session(cluster.endpoint).as_default() as session:
-                run_with_given_session(session, timeout=_exec_timeout)
+# @pytest.mark.skipif(vineyard is None, reason='vineyard not installed')
+# @flaky(max_runs=3)
+# def test_to_vineyard():
+#     def run_with_given_session(session, **kw):
+#         ipc_socket = os.environ.get('VINEYARD_IPC_SOCKET', '/tmp/vineyard/vineyard.sock')
+#         with option_context({'vineyard.socket': ipc_socket}):
+#             tensor1 = tensor(np.arange(12).reshape(3, 4), chunk_size=2)
+#             object_id = tovineyard(tensor1).execute(session=session, **kw).fetch(session=session)
+#             tensor2 = from_vineyard(object_id)
+#
+#             tensor1_value = tensor1.execute(session=session, **kw).fetch(session=session)
+#             tensor2_value = tensor2.execute(session=session, **kw).fetch(session=session)
+#             np.testing.assert_array_equal(tensor1_value, tensor2_value)
+#
+#     with new_session().as_default() as session:
+#         run_with_given_session(session)
+#
+#     with new_cluster(scheduler_n_process=2, worker_n_process=2,
+#                      shared_memory='20M', web=False) as cluster:
+#         with new_session(cluster.endpoint).as_default() as session:
+#             run_with_given_session(session, timeout=_exec_timeout)

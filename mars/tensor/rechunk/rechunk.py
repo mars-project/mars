@@ -17,9 +17,8 @@ import itertools
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import TilesError
-from ...serialize import KeyField, AnyField, Int32Field, Int64Field
-from ...utils import check_chunks_unknown_shape
+from ...serialization.serializables import KeyField, AnyField, Int32Field, Int64Field
+from ...utils import has_unknown_shape
 from ..utils import calc_sliced_size
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..datasource import tensor as astensor
@@ -63,7 +62,8 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         tensor = astensor(op.input)
         chunk_size = get_nsplits(tensor, op.chunk_size, tensor.dtype.itemsize)
@@ -88,13 +88,7 @@ class TensorRechunk(TensorHasInput, TensorOperandMixin):
 def rechunk(tensor, chunk_size, threshold=None, chunk_size_limit=None,
             reassign_worker=False):
     if not any(np.isnan(s) for s in tensor.shape) and not tensor.is_coarse():
-        try:
-            check_chunks_unknown_shape([tensor], ValueError)
-        except ValueError:
-            # due to reason that tensor has unknown chunk shape,
-            # just ignore to hand over to operand
-            pass
-        else:
+        if not has_unknown_shape(tensor):
             # do client check only when tensor has no unknown shape,
             # otherwise, recalculate chunk_size in `tile`
             chunk_size = get_nsplits(tensor, chunk_size, tensor.dtype.itemsize)

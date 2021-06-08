@@ -18,8 +18,8 @@ from collections import OrderedDict
 import numpy as np
 
 from ... import opcodes
-from ...core import Entity, Chunk, CHUNK_TYPE, OutputType
-from ...serialize import AnyField, StringField
+from ...core import Entity, Chunk, CHUNK_TYPE, OutputType, recursive_tile
+from ...serialization.serializables import AnyField, StringField
 from ..core import IndexValue, DATAFRAME_TYPE, SERIES_TYPE, INDEX_CHUNK_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, validate_axis
@@ -98,7 +98,9 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
         inp = op.inputs[0]
         out = op.outputs[0]
         if len(op.inputs) > 1:
-            index_chunk = op.index.rechunk({0: (op.index.shape[0],)})._inplace_tile().chunks[0]
+            rechunked = yield from recursive_tile(
+                op.index.rechunk({0: (op.index.shape[0],)}))
+            index_chunk = rechunked.chunks[0]
         else:
             index_chunk = op.index
 
@@ -117,7 +119,8 @@ class DataFrameDrop(DataFrameOperandMixin, DataFrameOperand):
                     col_to_args[c.index[1]] = (new_dtypes, new_col_id)
 
                 params.update(dict(dtypes=new_dtypes, index=(c.index[0], new_col_id),
-                                   index_value=c.index_value))
+                                   index_value=c.index_value,
+                                   columns_value=parse_index(new_dtypes.index, store_data=True)))
                 if op.index is not None:
                     params.update(dict(shape=(np.nan, len(new_dtypes)),
                                        index_value=parse_index(None, (c.key, c.index_value.key))))

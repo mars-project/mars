@@ -20,11 +20,11 @@ except ImportError:  # pragma: no cover
     sps = None
 
 from ... import opcodes
-from ...core import ENTITY_TYPE
+from ...core import ENTITY_TYPE, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import KeyField, AnyField, StringField, Int64Field, BoolField
+from ...serialization.serializables import KeyField, AnyField, StringField, Int64Field, BoolField
 from ...tensor import tensor as astensor
-from ...utils import lazy_import, recursive_tile
+from ...utils import lazy_import
 from ..core import Index as DataFrameIndexType, INDEX_TYPE
 from ..initializer import Index as asindex
 from ..operands import DataFrameOperand, DataFrameOperandMixin
@@ -191,14 +191,14 @@ class DataFrameReindex(DataFrameOperand, DataFrameOperandMixin):
             return new_op.new_tileables(op.inputs, kws=[params])
 
         handler = DataFrameReindexHandler()
-        result = handler.handle(op)
+        result = yield from handler.handle(op)
         if op.method is None and op.fill_value is None:
             return [result]
         else:
             axis = 1 if op.columns is not None and op.index is None else 0
             result = result.fillna(value=op.fill_value, method=op.method,
                                    axis=axis, limit=op.limit)
-            return [recursive_tile(result)]
+            return [(yield from recursive_tile(result))]
 
     @classmethod
     def _get_value(cls, ctx, obj):

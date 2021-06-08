@@ -374,6 +374,8 @@ def refresh_index_value(tileable: ENTITY_TYPE):
             index_to_index_values[chunk.index] = chunk.index_value
     index_value = merge_index_value(
         index_to_index_values, store_data=False)
+    index_value._index_value.should_be_monotonic = getattr(
+        tileable.index_value, 'should_be_monotonic', None)
     tileable._index_value = index_value
 
 
@@ -383,8 +385,11 @@ def refresh_dtypes(tileable: ENTITY_TYPE):
         if c.index[0] == 0]
     dtypes = pd.concat(all_dtypes)
     tileable._dtypes = dtypes
-    tileable._columns_value = parse_index(
+    columns_values = parse_index(
         dtypes.index, store_data=True)
+    columns_values._index_value.should_be_monotonic = getattr(
+        tileable.columns_value, 'should_be_monotonic', None)
+    tileable._columns_value = columns_values
     tileable._dtypes_value = DtypesValue(
         key=tokenize(dtypes), value=dtypes)
 
@@ -492,7 +497,7 @@ class _ToPandasMixin(_ExecuteAndFetchMixin):
 class _BatchedFetcher:
     __slots__ = ()
 
-    def _iter(self, batch_size=1000, session=None):
+    def _iter(self, batch_size=1000, session=None, **kw):
         from .indexing.iloc import iloc
 
         size = self.shape[0]
@@ -501,9 +506,9 @@ class _BatchedFetcher:
         if n_batch > 1:
             for i in range(n_batch):
                 batch_data = iloc(self)[batch_size * i: batch_size * (i + 1)]
-                yield batch_data._fetch(session=session)
+                yield batch_data._fetch(session=session, **kw)
         else:
-            yield self._fetch(session=session)
+            yield self._fetch(session=session, **kw)
 
     def iterbatch(self, batch_size=1000, session=None, **kw):
         # trigger execution
@@ -514,16 +519,13 @@ class _BatchedFetcher:
         from .indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         batch_size = kw.pop('batch_size', 1000)
-        if len(kw) > 0:  # pragma: no cover
-            raise TypeError(
-                f"'{next(iter(kw))}' is an invalid keyword argument for this function")
-
         if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)):
             # see GH#1871
             # already iloc, do not trigger batch fetch
             return self._fetch(session=session, **kw)
         else:
-            batches = list(self._iter(batch_size=batch_size, session=session))
+            batches = list(self._iter(batch_size=batch_size,
+                                      session=session, **kw))
             return pd.concat(batches) if len(batches) > 1 else batches[0]
 
 
@@ -637,8 +639,8 @@ class Index(HasShapeTileable, _ToPandasMixin):
     _allow_data_type_ = (IndexData,)
     type_name = 'Index'
 
-    def __new__(cls, data: Union[pd.Index, IndexData], **_):
-        if not isinstance(data, pd.Index):
+    def __new__(cls, data: Union[pd.Index, IndexData] = None, **_):
+        if data is not None and not isinstance(data, pd.Index):
             # create corresponding Index class
             # according to type of index_value
             clz = globals()[type(data.index_value.value).__name__]
@@ -1285,6 +1287,7 @@ class BaseDataFrameChunkData(ChunkData):
         return {
             'shape': self.shape,
             'dtypes': self.dtypes,
+            'dtypes_value': self.dtypes_value,
             'index': self.index,
             'index_value': self.index_value,
             'columns_value': self.columns_value,
@@ -1299,8 +1302,19 @@ class BaseDataFrameChunkData(ChunkData):
         index_value = params.pop('index_value', None)
         if index_value is not None:
             self._index_value = index_value
+        dtypes = params.pop('dtypes', None)
+        if dtypes is not None:
+            self._dtypes = dtypes
+        columns_value = params.pop('columns_value', None)
+        if columns_value is not None:
+            self._columns_value = columns_value
         dtypes_value = params.pop('dtypes_value', None)
         if dtypes_value is not None:
+            if dtypes is None:
+                self._dtypes = dtypes_value.value
+            if columns_value is None:
+                self._columns_value = parse_index(
+                    self._dtypes.index, store_data=True)
             self._dtypes_value = dtypes_value
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
@@ -1309,6 +1323,7 @@ class BaseDataFrameChunkData(ChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: pd.DataFrame) -> Dict[str, Any]:
+        parse_index(data.index, store_data=False)
         return {
             'shape': data.shape,
             'index_value': parse_index(data.index, store_data=False),
@@ -1390,7 +1405,8 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
             'shape': self.shape,
             'dtypes': self.dtypes,
             'index_value': self.index_value,
-            'columns_value': self.columns_value
+            'columns_value': self.columns_value,
+            'dtypes_value': self.dtypes_value
         }
 
     def _set_params(self, new_params: Dict[str, Any]):
@@ -1401,15 +1417,20 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
         index_value = params.pop('index_value', None)
         if index_value is not None:
             self._index_value = index_value
-        dtypes_value = params.pop('dtypes_value', None)
-        if dtypes_value is not None:
-            self._dtypes_value = dtypes_value
         dtypes = params.pop('dtypes', None)
         if dtypes is not None:
             self._dtypes = dtypes
         columns_value = params.pop('columns_value', None)
         if columns_value is not None:
             self._columns_value = columns_value
+        dtypes_value = params.pop('dtypes_value', None)
+        if dtypes_value is not None:
+            if dtypes is None:
+                self._dtypes = dtypes_value.value
+            if columns_value is None:
+                self._columns_value = parse_index(
+                    self._dtypes.index, store_data=True)
+            self._dtypes_value = dtypes_value
         if params:  # pragma: no cover
             raise TypeError(f'Unknown params: {list(params)}')
 
@@ -1837,7 +1858,12 @@ class DataFrameGroupByChunkData(BaseDataFrameChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: GroupByWrapper) -> Dict[str, Any]:
-        return super().get_params_from_data(data.obj)
+        params = super().get_params_from_data(data.obj)
+        if data.selection:
+            dtypes = params['dtypes_value'].value[data.selection]
+            params['dtypes_value'] = DtypesValue(value=dtypes)
+            params['shape'] = data.shape
+        return params
 
     def __init__(self, key_dtypes=None, selection=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, _selection=selection, **kw)
@@ -1877,7 +1903,18 @@ class SeriesGroupByChunkData(BaseSeriesChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: GroupByWrapper):
-        return super().get_params_from_data(data.obj)
+        series_name = data.selection or data.obj.name
+        if hasattr(data.obj, 'dtype'):
+            dtype = data.obj.dtype
+        else:
+            dtype = data.obj.dtypes[series_name]
+
+        return {
+            'shape': (data.obj.shape[0],),
+            'dtype': dtype,
+            'index_value': parse_index(data.obj.index, store_data=False),
+            'name': series_name,
+        }
 
     def __init__(self, key_dtypes=None, **kw):
         super().__init__(_key_dtypes=key_dtypes, **kw)
@@ -1957,7 +1994,7 @@ class SeriesGroupByData(BaseSeriesData):
     def _set_params(self, new_params: Dict[str, Any]):
         params = new_params.copy()
         key_dtypes = params.pop('key_dtypes', None)
-        if key_dtypes:
+        if key_dtypes is not None:
             self._key_dtypes = key_dtypes
         super()._set_params(params)
 

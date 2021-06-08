@@ -17,7 +17,7 @@ import pandas as pd
 
 from ... import opcodes
 from ...core import OutputType
-from ...serialize import BoolField, AnyField
+from ...serialization.serializables import BoolField, AnyField
 from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand

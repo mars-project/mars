@@ -17,11 +17,11 @@ import itertools
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import OutputType, TilesError
-from ...serialize import KeyField, AnyField, Int32Field, Int64Field
+from ...core import OutputType
+from ...serialization.serializables import KeyField, AnyField, Int32Field, Int64Field
 from ...tensor.rechunk.core import get_nsplits, plan_rechunks, compute_rechunk_slices
 from ...tensor.utils import calc_sliced_size
-from ...utils import check_chunks_unknown_shape
+from ...utils import has_unknown_shape
 from ..initializer import DataFrame as asdataframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
 from ..utils import indexing_index_value, merge_index_value
@@ -70,7 +70,8 @@ class DataFrameRechunk(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         a = op.input
         a = asdataframe(a) if a.ndim == 2 else asseries(a)
@@ -108,13 +109,7 @@ def _get_chunk_size(a, chunk_size):
 
 def rechunk(a, chunk_size, threshold=None, chunk_size_limit=None, reassign_worker=False):
     if not any(pd.isna(s) for s in a.shape) and not a.is_coarse():
-        try:
-            check_chunks_unknown_shape([a], ValueError)
-        except ValueError:
-            # due to reason that tileable has unknown chunk shape,
-            # just ignore to hand over to operand
-            pass
-        else:
+        if not has_unknown_shape(a):
             # do client check only when no unknown shape,
             # real nsplits will be recalculated inside `tile`
             chunk_size = _get_chunk_size(a, chunk_size)

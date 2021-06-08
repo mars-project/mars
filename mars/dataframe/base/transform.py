@@ -19,9 +19,10 @@ import pandas as pd
 
 from ... import opcodes
 from ...config import options
-from ...core import OutputType
-from ...custom_log import redirect_custom_log
-from ...serialize import AnyField, BoolField, TupleField, DictField
+from ...core import OutputType, recursive_tile
+from ...core.custom_log import redirect_custom_log
+from ...serialization.serializables import AnyField, BoolField, \
+    TupleField, DictField
 from ...utils import enter_current_session, quiet_stdio
 from ..core import DATAFRAME_CHUNK_TYPE, DATAFRAME_TYPE
 from ..operands import DataFrameOperandMixin, DataFrameOperand
@@ -98,12 +99,12 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                               max(1, options.chunk_store_limit // in_df.shape[axis]))
                 if axis == 1:
                     chunk_size = chunk_size[::-1]
-                in_df = in_df.rechunk(chunk_size)._inplace_tile()
+                in_df = yield from recursive_tile(in_df.rechunk(chunk_size))
         elif isinstance(op.func, str) or \
                  (isinstance(op.func, list) and any(isinstance(e, str) for e in op.func)):
             # builtin cols handles whole columns, thus merge is needed
             if in_df.chunk_shape[0] > 1:
-                in_df = in_df.rechunk((in_df.shape[axis],))._inplace_tile()
+                in_df = yield from recursive_tile(in_df.rechunk((in_df.shape[axis],)))
 
         chunks = []
         axis_index_map = dict()
@@ -137,6 +138,8 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
                     if op.call_agg:
                         new_shape[op.axis] = np.nan
+                        params['index_value'] = parse_index(
+                            None, c.key, c.index_value.key)
                     new_columns_value = parse_index(new_dtypes.index)
                 else:
                     new_dtypes = out_df.dtypes

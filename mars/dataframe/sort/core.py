@@ -15,10 +15,10 @@
 import pandas as pd
 
 from ...config import options
-from ...core import TilesError
+from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import Int32Field, Int64Field, StringField, \
-    ListField, BoolField, ValueType
+from ...serialization.serializables import FieldTypes, Int32Field, Int64Field, \
+    StringField, ListField, BoolField
 from ...utils import ceildiv
 from ..operands import DataFrameOperand
 from ..utils import parse_index
@@ -32,7 +32,7 @@ class DataFrameSortOperand(DataFrameOperand):
     _na_position = StringField('na_position')
     _ignore_index = BoolField('ignore_index')
     _parallel_kind = StringField('parallel_kind')
-    _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
     _nrows = Int64Field('nrows')
 
     def __init__(self, axis=None, ascending=None, inplace=None, kind=None, na_position=None,
@@ -93,9 +93,8 @@ class DataFrameSortOperand(DataFrameOperand):
         if inp.ndim == 2:
             if inp.chunk_shape[1 - axis] > 1:  # pragma: no cover
                 if any(pd.isna(s) for s in inp.nsplits[1 - axis]):
-                    raise TilesError('Need to be executed first '
-                                     'due to unknown chunk shape')
-                inp = inp.rechunk({1 - axis: inp.shape[1 - axis]})._inplace_tile()
+                    yield
+                inp = yield from recursive_tile(inp.rechunk({1 - axis: inp.shape[1 - axis]}))
 
         out_chunks = []
         for c in inp.chunks:
@@ -145,6 +144,6 @@ class DataFrameSortOperand(DataFrameOperand):
     @classmethod
     def tile(cls, op: "DataFrameSortOperand"):
         if op.nrows is not None:
-            return cls._tile_head(op)
+            return (yield from cls._tile_head(op))
         else:
-            return cls._tile(op)
+            return (yield from cls._tile(op))

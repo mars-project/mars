@@ -16,7 +16,7 @@ import pandas as pd
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import ListField
+from ...serialization.serializables import ListField
 from ...tensor.base.sort import _validate_sort_psrs_kinds
 from ..utils import parse_index, validate_axis, build_concatenated_rows_frame
 from ..core import IndexValue
@@ -56,7 +56,7 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             if op.na_position != 'last':  # pragma: no cover
                 raise NotImplementedError('Only support puts NaNs at the end.')
             # use parallel sorting by regular sampling
-            return cls._tile_psrs(op, df)
+            return (yield from cls._tile_psrs(op, df))
 
     @classmethod
     def _tile_series(cls, op):
@@ -76,14 +76,14 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             if op.na_position != 'last':  # pragma: no cover
                 raise NotImplementedError('Only support puts NaNs at the end.')
             # use parallel sorting by regular sampling
-            return cls._tile_psrs(op, series)
+            return (yield from cls._tile_psrs(op, series))
 
     @classmethod
     def _tile(cls, op):
         if op.inputs[0].ndim == 2:
-            return cls._tile_dataframe(op)
+            return (yield from cls._tile_dataframe(op))
         else:
-            return cls._tile_series(op)
+            return (yield from cls._tile_series(op))
 
     @classmethod
     def execute(cls, ctx, op: "DataFrameSortValues"):

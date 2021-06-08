@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import pytest
 
-from mars.session import new_session
 from mars.learn.contrib.tsfresh import MarsDistributor
+from mars.core.session import new_session, get_default_session
+from mars.tests import setup
 
 try:
     import tsfresh
@@ -26,22 +27,21 @@ try:
 except ImportError:
     tsfresh = None
 
+setup = setup
 
-@unittest.skipIf(tsfresh is None, 'tsfresh not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        new_session().as_default()
 
-    def testLocalTSFresh(self):
-        robot_execution_failures.download_robot_execution_failures()
-        df, y = robot_execution_failures.load_robot_execution_failures()
+@pytest.mark.skipif(tsfresh is None, reason='tsfresh not installed')
+def test_distributed_ts_fresh(setup):
+    robot_execution_failures.download_robot_execution_failures()
+    df, y = robot_execution_failures.load_robot_execution_failures()
+    default_session = get_default_session()
+    sync_session = new_session(default_session.address)
+    dist = MarsDistributor(session=sync_session)
 
-        dist = MarsDistributor()
+    df = df.iloc[:200].copy()
 
-        df = df.iloc[:200]
-
-        extraction_settings = ComprehensiveFCParameters()
-        extract_features(df, column_id='id', column_sort='time',
-                         default_fc_parameters=extraction_settings,
-                         # we impute = remove all NaN features automatically
-                         impute_function=impute, distributor=dist)
+    extraction_settings = ComprehensiveFCParameters()
+    extract_features(df, column_id='id', column_sort='time',
+                     default_fc_parameters=extraction_settings,
+                     # we impute = remove all NaN features automatically
+                     impute_function=impute, distributor=dist)

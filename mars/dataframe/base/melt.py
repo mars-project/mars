@@ -16,7 +16,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes
-from ...serialize import AnyField, StringField
+from ...core import recursive_tile
+from ...serialization.serializables import AnyField, StringField
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_empty_df, parse_index, standardize_range_index
 
@@ -69,7 +70,7 @@ class DataFrameMelt(DataFrameOperand, DataFrameOperandMixin):
         inp = op.inputs[0]
         out = op.outputs[0]
 
-        inp = inp.rechunk({1: (inp.shape[1],)})._inplace_tile()
+        inp = yield from recursive_tile(inp.rechunk({1: (inp.shape[1],)}))
 
         chunks = []
         for c in inp.chunks:

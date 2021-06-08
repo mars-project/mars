@@ -35,7 +35,7 @@ except ImportError:
 from ... import opcodes as OperandDef
 from ...config import options
 from ...lib.filesystem import file_size, get_fs, glob, open_file
-from ...serialize import AnyField, BoolField, DictField, ListField,\
+from ...serialization.serializables import AnyField, BoolField, DictField, ListField,\
     StringField, Int32Field, Int64Field, BytesField
 from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
@@ -411,7 +411,7 @@ class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSour
         first_chunk_raw_bytes = op.first_chunk_raw_bytes
         raw_bytes = file_size(op.path, storage_options=op.storage_options)
         if op.num_group_rows:
-            raw_bytes = np.ceil(np.divide(raw_bytes, op.num_row_groups)) \
+            raw_bytes = np.ceil(np.divide(raw_bytes, op.num_group_rows)) \
                 .astype(np.int64).item()
 
         estimated_row_num = np.ceil(

@@ -19,9 +19,9 @@ from collections import defaultdict
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE, TilesError
-from ...serialize import Int32Field, Int64Field, AnyField, KeyField
-from ...utils import check_chunks_unknown_shape
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import Int32Field, Int64Field, AnyField, KeyField
+from ...utils import has_unknown_shape
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import filter_inputs, validate_axis, slice_split, calc_object_length
@@ -64,15 +64,17 @@ class TensorDelete(TensorHasInput, TensorOperandMixin):
         index_obj = op.index_obj
         axis = op.axis
         if axis is None:
-            inp = inp.flatten()._inplace_tile()
+            inp = yield from recursive_tile(inp.flatten())
             axis = 0
-        check_chunks_unknown_shape([inp], TilesError)
+        if has_unknown_shape(inp):
+            yield
 
         if isinstance(index_obj, int):
             index_obj = [index_obj]
 
         if isinstance(index_obj, ENTITY_TYPE):
-            index_obj = index_obj.rechunk(index_obj.shape)._inplace_tile()
+            index_obj = yield from recursive_tile(
+                index_obj.rechunk(index_obj.shape))
             offsets = np.cumsum([0] + list(inp.nsplits[axis]))
             out_chunks = []
             for c in inp.chunks:

@@ -110,9 +110,9 @@ class QuotaActor(mo.Actor):
         async def waiter():
             try:
                 await event.wait()
-            except asyncio.CancelledError:
+            except asyncio.CancelledError as ex:
                 await self.ref().remove_requests.tell(keys)
-                raise
+                raise ex
         return waiter()
 
     def remove_requests(self, keys):
@@ -281,11 +281,9 @@ class WorkerQuotaManagerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
 
         band_to_slots = await self._cluster_api.get_bands()
-        tasks = []
         for band in band_to_slots.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
-            tasks.append(asyncio.create_task(mo.create_actor(
+            await mo.create_actor(
                 MemQuotaActor, **band_config,
                 uid=MemQuotaActor.gen_uid(band[1]),
-                address=self.address)))
-        await asyncio.gather(*tasks)
+                address=self.address)

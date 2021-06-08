@@ -23,13 +23,13 @@ import numpy as np
 
 from .... import opcodes
 from .... import tensor as mt
-from ....context import get_context, RunningMode
-from ....lib.filesystem import get_fs, LocalFileSystem
-from ....core import OutputType, TilesError
+from ....lib.filesystem import get_fs
+from ....core import OutputType
+from ....core.context import get_context
 from ....core.operand import OperandStage
-from ....serialize import StringField, Int32Field, Int64Field, \
+from ....serialization.serializables import StringField, Int32Field, Int64Field, \
     DictField, BytesField, TupleField, DataTypeField
-from ....utils import check_chunks_unknown_shape, Timer
+from ....utils import has_unknown_shape, Timer
 from ...operands import LearnOperand, LearnOperandMixin
 from ..core import proxima, get_proxima_type, validate_tensor, \
     available_numpy_dtypes, rechunk_tensor, build_mmap_chunks
@@ -166,13 +166,6 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
         if index_path is not None:
             fs = get_fs(index_path, op.storage_options)
 
-        # check index_path for distributed
-        if getattr(ctx, 'running_mode', None) == RunningMode.distributed:
-            if index_path is not None:
-                if isinstance(fs, LocalFileSystem):
-                    raise ValueError('`index_path` cannot be local file dir '
-                                     'for distributed index building')
-
         if index_path is not None:
             # check if the index path is empty
             try:
@@ -185,7 +178,8 @@ class ProximaBuilder(LearnOperand, LearnOperandMixin):
                 fs.mkdir(index_path)
 
         # make sure all inputs have known chunk sizes
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         if op.column_number:
             index_chunk_size = op.inputs[0].shape[0] // op.column_number

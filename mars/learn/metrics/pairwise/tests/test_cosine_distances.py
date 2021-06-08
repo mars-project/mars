@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 import numpy as np
 import scipy.sparse as sps
-
-from mars.session import new_session
-
+import pytest
 try:
     import sklearn
 
@@ -26,47 +22,42 @@ try:
 except ImportError:
     sklearn = None
 
-from mars.tests.core import ExecutorForTest
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import cosine_distances
+from mars.tests import setup
 
 
-@unittest.skipIf(sklearn is None, 'scikit-learn not installed')
-class Test(unittest.TestCase):
-    def setUp(self) -> None:
-        self.session = new_session().as_default()
-        self._old_executor = self.session._sess._executor
-        self.executor = self.session._sess._executor = \
-            ExecutorForTest('numpy', storage=self.session._sess._context)
+setup = setup
 
-    def tearDown(self) -> None:
-        self.session._sess._executor = self._old_executor
+raw_dense_x = np.random.rand(25, 10)
+raw_dense_y = np.random.rand(17, 10)
 
-    def testCosineDistancesExecution(self):
-        raw_dense_x = np.random.rand(25, 10)
-        raw_dense_y = np.random.rand(17, 10)
+raw_sparse_x = sps.random(25, 10, density=0.5, format='csr', random_state=0)
+raw_sparse_y = sps.random(17, 10, density=0.4, format='csr', random_state=1)
 
-        raw_sparse_x = sps.random(25, 10, density=0.5, format='csr', random_state=0)
-        raw_sparse_y = sps.random(17, 10, density=0.4, format='csr', random_state=1)
+raw_x_ys = [
+    (raw_dense_x, raw_dense_y),
+    (raw_sparse_x, raw_sparse_y)
+]
 
-        for raw_x, raw_y in [
-            (raw_dense_x, raw_dense_y),
-            (raw_sparse_x, raw_sparse_y)
-        ]:
-            for chunk_size in (25, 6):
-                x = mt.tensor(raw_x, chunk_size=chunk_size)
-                y = mt.tensor(raw_y, chunk_size=chunk_size)
 
-                d = cosine_distances(x, y)
+@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
+@pytest.mark.parametrize('raw_x, raw_y', raw_x_ys)
+@pytest.mark.parametrize('chunk_size', [25, 6])
+def test_cosine_distances_execution(setup, raw_x, raw_y, chunk_size):
+    x = mt.tensor(raw_x, chunk_size=chunk_size)
+    y = mt.tensor(raw_y, chunk_size=chunk_size)
 
-                result = self.executor.execute_tensor(d, concat=True)[0]
-                expected = sk_cosine_distances(raw_x, raw_y)
+    d = cosine_distances(x, y)
 
-                np.testing.assert_almost_equal(np.asarray(result), expected)
+    result = d.execute().fetch()
+    expected = sk_cosine_distances(raw_x, raw_y)
 
-                d = cosine_distances(x)
+    np.testing.assert_almost_equal(np.asarray(result), expected)
 
-                result = self.executor.execute_tensor(d, concat=True)[0]
-                expected = sk_cosine_distances(raw_x)
+    d = cosine_distances(x)
 
-                np.testing.assert_almost_equal(np.asarray(result), expected)
+    result = d.execute().fetch()
+    expected = sk_cosine_distances(raw_x)
+
+    np.testing.assert_almost_equal(np.asarray(result), expected)

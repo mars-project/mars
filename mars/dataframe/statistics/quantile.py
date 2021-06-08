@@ -18,14 +18,13 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...core import ENTITY_TYPE
-from ...serialize import KeyField, AnyField, StringField, DataTypeField, \
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, AnyField, StringField, DataTypeField, \
     BoolField, Int32Field
 from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE
 from ...tensor.datasource import empty, tensor as astensor, \
     from_series as tensor_from_series, from_dataframe as tensor_from_dataframe
 from ...tensor.statistics.quantile import quantile as tensor_quantile
-from ...utils import recursive_tile
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..core import DATAFRAME_TYPE
 from ..datasource.from_tensor import series_from_tensor, dataframe_from_tensor
@@ -232,7 +231,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
                 r = dataframe_from_tensor(tr, index=op.q,
                                           columns=op.input.index_value.to_pandas())
 
-        return [recursive_tile(r)]
+        return (yield from recursive_tile(r))
 
     @classmethod
     def _tile_series(cls, op):
@@ -243,14 +242,16 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             r = t
         else:
             r = series_from_tensor(t, index=op.q, name=op.outputs[0].name)
-        return [recursive_tile(r)]
+        r = yield from recursive_tile(r)
+        return [r]
 
     @classmethod
     def tile(cls, op):
         if isinstance(op.input, DATAFRAME_TYPE):
-            return cls._tile_dataframe(op)
+            tiled = yield from cls._tile_dataframe(op)
         else:
-            return cls._tile_series(op)
+            tiled = yield from cls._tile_series(op)
+        return tiled
 
 
 def quantile_series(series, q=0.5, interpolation='linear'):

@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from ... import opcodes
-from ...serialize import KeyField
+from ...core import recursive_tile
+from ...serialization.serializables import KeyField
 from ..initializer import Index
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -57,7 +58,8 @@ class SeriesFromIndex(DataFrameOperand, DataFrameOperandMixin):
         index = op.index
 
         if index is not None:
-            index = op.index.rechunk({0: inp.nsplits[0]})._inplace_tile()
+            index = yield from recursive_tile(
+                op.index.rechunk({0: inp.nsplits[0]}))
 
         chunks = []
         for i, c in enumerate(inp.chunks):

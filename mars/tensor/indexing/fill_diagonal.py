@@ -15,9 +15,10 @@
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import KeyField, AnyField, BoolField, Int32Field
-from ...core import ENTITY_TYPE, TilesError
-from ...utils import check_chunks_unknown_shape, ceildiv, recursive_tile
+from ...core import ENTITY_TYPE, recursive_tile
+from ...serialization.serializables import KeyField, AnyField, \
+    BoolField, Int32Field
+from ...utils import has_unknown_shape, ceildiv
 from ..operands import TensorOperand, TensorOperandMixin
 from ..datasource import tensor as astensor
 from ..array_utils import as_same_device, device
@@ -100,10 +101,11 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
             val = val[:size]
 
         if is_val_tensor and val.ndim > 0:
-            val = recursive_tile(val)
+            val = yield from recursive_tile(val)
             val = val.rechunk({0: val.size})
 
-        return recursive_tile(val) if is_val_tensor else val
+        return (yield from recursive_tile(val)) \
+            if is_val_tensor else val
 
     @staticmethod
     def _gen_val(val, diag_idx, cum_sizes):
@@ -136,7 +138,7 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     def _tile_2d(cls, op, val):
         from ..datasource import diag
 
-        d = diag(op.input)._inplace_tile()
+        d = yield from recursive_tile(diag(op.input))
         index_to_diag_chunk = {c.inputs[0].index: c for c in d.chunks}
         cum_sizes = [0] + np.cumsum(d.nsplits[0]).tolist()
 
@@ -175,8 +177,8 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                 not np.all(np.diff(nsplits, axis=1) == 0):
             # need rechunk
             nsplit = decide_unify_split(*in_tensor.nsplits)
-            in_tensor = in_tensor.rechunk(
-                tuple(nsplit for _ in range(in_tensor.ndim)))._inplace_tile()
+            in_tensor = yield from recursive_tile(in_tensor.rechunk(
+                tuple(nsplit for _ in range(in_tensor.ndim))))
         cum_sizes = [0] + np.cumsum(in_tensor.nsplits[0]).tolist()
 
         out_chunks = []
@@ -229,13 +231,14 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         # input tensor must have no unknown chunk shape
-        check_chunks_unknown_shape(op.inputs, TilesError)
+        if has_unknown_shape(*op.inputs):
+            yield
 
         in_tensor = op.input
         is_in_tensor_tall = cls._is_tall(in_tensor)
 
         if op.val.ndim > 0:
-            val = cls._process_val(op.val, in_tensor, op.wrap)
+            val = yield from cls._process_val(op.val, in_tensor, op.wrap)
         else:
             val = op.val
 
@@ -255,11 +258,11 @@ class TensorFillDiagonal(TensorOperand, TensorOperandMixin):
                         sub_val = val
                     fill_diagonal(sub_tensor, sub_val, wrap=False)
                 out_tensor = concatenate(sub_tensors)
-                return [recursive_tile(out_tensor)]
+                return [(yield from recursive_tile(out_tensor))]
             else:
-                return cls._tile_2d(op, val)
+                return (yield from cls._tile_2d(op, val))
         else:
-            return cls._tile_nd(op, val)
+            return (yield from cls._tile_nd(op, val))
 
     @classmethod
     def execute(cls, ctx, op):

@@ -22,7 +22,7 @@ from ... import opcodes as OperandDef
 from ...core import ENTITY_TYPE, Entity, OutputType
 from ...core.operand import OperandStage, MapReduceOperand
 from ...lib.groupby_wrapper import wrapped_groupby
-from ...serialize import BoolField, Int32Field, AnyField
+from ...serialization.serializables import BoolField, Int32Field, AnyField
 from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
@@ -215,6 +215,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             map_op = op.copy().reset_key()
             map_op.stage = OperandStage.map
             map_op._shuffle_size = chunk_shape[0]
+            map_op._output_types = [output_type]
             chunk_inputs = [chunk]
             if len(op.inputs) > 1:
                 chunk_by = []
@@ -235,6 +236,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
         for out_idx in itertools.product(*(range(s) for s in chunk_shape)):
             reduce_op = op.copy().reset_key()
             reduce_op._by = None
+            reduce_op._output_types = [output_type]
             reduce_op.stage = OperandStage.reduce
             reduce_chunks.append(
                 reduce_op.new_chunk([proxy_chunk], shape=(np.nan, np.nan), index=out_idx))

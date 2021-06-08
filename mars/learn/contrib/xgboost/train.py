@@ -17,11 +17,12 @@ from collections import OrderedDict, defaultdict
 
 import numpy as np
 
-from ....serialize import ValueType, DictField, KeyField, ListField
-from ....core import OutputType
-from ....core.operand import MergeDictOperand
 from .... import opcodes as OperandDef
-from ....context import get_context, RunningMode
+from ....core import OutputType
+from ....core.context import get_context
+from ....core.operand import MergeDictOperand
+from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
+from ....utils import ensure_own_data
 from .start_tracker import StartTracker
 from .dmatrix import ToDMatrix
 
@@ -35,10 +36,10 @@ def _on_serialize_evals(evals_val):
 class XGBTrain(MergeDictOperand):
     _op_type_ = OperandDef.XGBOOST_TRAIN
 
-    _params = DictField('params', key_type=ValueType.string)
+    _params = DictField('params', key_type=FieldTypes.string)
     _dtrain = KeyField('dtrain')
     _evals = ListField('evals', on_serialize=_on_serialize_evals)
-    _kwargs = DictField('kwargs', key_type=ValueType.string)
+    _kwargs = DictField('kwargs', key_type=FieldTypes.string)
     _tracker = KeyField('tracker')
 
     def __init__(self, params=None, dtrain=None, evals=None, kwargs=None,
@@ -91,8 +92,9 @@ class XGBTrain(MergeDictOperand):
     @staticmethod
     def _get_dmatrix_chunks_workers(ctx, dmatrix):
         # dmatrix_chunk.inputs is concat, and concat's input is the coallocated chunks
-        metas = ctx.get_chunk_metas([c.inputs[0].inputs[0].key for c in dmatrix.chunks])
-        return [m.workers[0] for m in metas]
+        metas = ctx.get_chunks_meta(
+            [c.inputs[0].inputs[0].key for c in dmatrix.chunks], fields=['bands'])
+        return [m['bands'][0][0] for m in metas]
 
     @staticmethod
     def _get_dmatrix_worker_to_chunk(dmatrix, workers, ctx):
@@ -107,42 +109,34 @@ class XGBTrain(MergeDictOperand):
     @classmethod
     def tile(cls, op):
         ctx = get_context()
-        if ctx.running_mode != RunningMode.distributed:
-            assert all(len(inp.chunks) == 1 for inp in op.inputs)
 
+        inp = op.inputs[0]
+        in_chunks = inp.chunks
+        workers = cls._get_dmatrix_chunks_workers(ctx, inp)
+        n_chunk = len(in_chunks)
+        tracker_chunk = StartTracker(n_workers=n_chunk, pure_depends=[True] * n_chunk)\
+            .new_chunk(in_chunks, shape=())
+        out_chunks = []
+        worker_to_evals = defaultdict(list)
+        if op.evals is not None:
+            for dm, ev in op.evals:
+                worker_to_chunk = cls._get_dmatrix_worker_to_chunk(dm, workers, ctx)
+                for worker, chunk in worker_to_chunk.items():
+                    worker_to_evals[worker].append((chunk, ev))
+        for in_chunk, worker in zip(in_chunks, workers):
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([inp.chunks[0] for inp in op.inputs],
-                                           shape=(1,), index=(0,))
-            new_op = op.copy()
-            return new_op.new_tileables(op.inputs, chunks=[out_chunk], nsplits=((1,),))
-        else:
-            inp = op.inputs[0]
-            in_chunks = inp.chunks
-            workers = cls._get_dmatrix_chunks_workers(ctx, inp)
-            n_chunk = len(in_chunks)
-            tracker_chunk = StartTracker(n_workers=n_chunk, pure_depends=[True] * n_chunk)\
-                .new_chunk(in_chunks, shape=())
-            out_chunks = []
-            worker_to_evals = defaultdict(list)
-            if op.evals is not None:
-                for dm, ev in op.evals:
-                    worker_to_chunk = cls._get_dmatrix_worker_to_chunk(dm, workers, ctx)
-                    for worker, chunk in worker_to_chunk.items():
-                        worker_to_evals[worker].append((chunk, ev))
-            for in_chunk, worker in zip(in_chunks, workers):
-                chunk_op = op.copy().reset_key()
-                chunk_op.expect_worker = worker
-                chunk_op._tracker = tracker_chunk
-                chunk_evals = list(worker_to_evals.get(worker, list()))
-                chunk_op._evals = chunk_evals
-                input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
-                out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,),
-                                               index=in_chunk.index[:1])
-                out_chunks.append(out_chunk)
+            chunk_op.expect_worker = worker
+            chunk_op._tracker = tracker_chunk
+            chunk_evals = list(worker_to_evals.get(worker, list()))
+            chunk_op._evals = chunk_evals
+            input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
+            out_chunk = chunk_op.new_chunk(input_chunks, shape=(np.nan,),
+                                           index=in_chunk.index[:1])
+            out_chunks.append(out_chunk)
 
-            new_op = op.copy()
-            return new_op.new_tileables(op.inputs, chunks=out_chunks,
-                                        nsplits=((np.nan for _ in out_chunks),))
+        new_op = op.copy()
+        return new_op.new_tileables(op.inputs, chunks=out_chunks,
+                                    nsplits=((np.nan for _ in out_chunks),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -151,13 +145,14 @@ class XGBTrain(MergeDictOperand):
 
         from xgboost import train, rabit
 
-        dtrain = ToDMatrix.get_xgb_dmatrix(ctx[op.dtrain.key])
+        dtrain = ToDMatrix.get_xgb_dmatrix(
+            ensure_own_data(ctx[op.dtrain.key]))
         evals = tuple()
         if op.evals is not None:
-            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(ctx[t[0].key]) for t in op.evals]
+            eval_dmatrices = [ToDMatrix.get_xgb_dmatrix(
+                ensure_own_data(ctx[t[0].key])) for t in op.evals]
             evals = tuple((m, ev[1]) for m, ev in zip(eval_dmatrices, op.evals))
         params = op.params
-        params['nthread'] = ctx.get_ncores() or -1
 
         if op.tracker is None:
             # non distributed
@@ -169,7 +164,8 @@ class XGBTrain(MergeDictOperand):
         else:
             # distributed
             rabit_args = ctx[op.tracker.key]
-            rabit.init(rabit_args)
+            rabit.init([arg.tobytes() if isinstance(arg, memoryview) else arg
+                        for arg in rabit_args])
             try:
                 local_history = dict()
                 bst = train(params, dtrain, evals=evals, evals_result=local_history,

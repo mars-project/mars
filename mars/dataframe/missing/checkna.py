@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes
 from ...config import options
 from ...core import OutputType
-from ...serialize import BoolField
+from ...serialization.serializables import BoolField
 from ..operands import DataFrameOperand, DataFrameOperandMixin, \
     DATAFRAME_TYPE, SERIES_TYPE
 

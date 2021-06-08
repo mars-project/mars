@@ -20,7 +20,7 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialize import TupleField
+from ...serialization.serializables import TupleField
 from ...config import options
 from ..utils import decide_chunk_sizes, gen_random_seeds
 from .core import TensorRandomOperandMixin, TensorDistribution
@@ -33,9 +33,9 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     _alpha = TupleField('alpha')
     _func_name = 'dirichlet'
 
-    def __init__(self, alpha=None, state=None, size=None, dtype=None, **kw):
+    def __init__(self, alpha=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_alpha=alpha, _state=state, _size=size, dtype=dtype, **kw)
+        super().__init__(_alpha=alpha, _size=size, dtype=dtype, **kw)
 
     @property
     def alpha(self):
@@ -56,7 +56,7 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
         nsplits += ((len(op.alpha),),)
 
         idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
-        seeds = gen_random_seeds(len(idxes), op.state)
+        seeds = gen_random_seeds(len(idxes), np.random.RandomState(op.seed))
 
         out_chunks = []
         for seed, idx, shape in zip(seeds, idxes, itertools.product(*nsplits)):
@@ -154,5 +154,6 @@ def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, dtype=N
     if dtype is None:
         dtype = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
     size = random_state._handle_size(size)
-    op = TensorDirichlet(state=random_state.to_numpy(), alpha=alpha, size=size, gpu=gpu, dtype=dtype)
+    seed = gen_random_seeds(1, random_state.to_numpy())[0]
+    op = TensorDirichlet(seed=seed, alpha=alpha, size=size, gpu=gpu, dtype=dtype)
     return op(chunk_size=chunk_size)

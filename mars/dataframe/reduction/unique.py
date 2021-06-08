@@ -18,7 +18,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialize import StringField
+from ...serialization.serializables import StringField
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
@@ -56,7 +56,7 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def tile(cls, op):
         if op.method == 'tree':
-            return super().tile(op)
+            return (yield from super().tile(op))
         else:
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
 

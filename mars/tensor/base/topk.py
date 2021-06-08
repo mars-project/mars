@@ -18,11 +18,11 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...config import options
-from ...core import ExecutableTuple
+from ...core import ExecutableTuple, recursive_tile
 from ...core.operand import OperandStage
-from ...serialize import ValueType, KeyField, Int64Field, Int32Field, \
-    BoolField, StringField, ListField
-from ...utils import ceildiv, flatten, recursive_tile
+from ...serialization.serializables import FieldTypes, KeyField, \
+    Int64Field, Int32Field, BoolField, StringField, ListField
+from ...utils import ceildiv, flatten
 from ..array_utils import as_same_device, device
 from ..core import TensorOrder
 from ..datasource import tensor as astensor
@@ -39,9 +39,9 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
     _axis = Int32Field('axis')
     _largest = BoolField('largest')
     _sorted = BoolField('sorted')
-    _order = ListField('order', ValueType.string)
+    _order = ListField('order', FieldTypes.string)
     _parallel_kind = StringField('parallel_kind')
-    _psrs_kinds = ListField('psrs_kinds', ValueType.string)
+    _psrs_kinds = ListField('psrs_kinds', FieldTypes.string)
     _return_value = BoolField('return_value')
     _return_indices = BoolField('return_indices')
     _axis_offset = Int64Field('axis_offset',
@@ -191,7 +191,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         else:
             ret = [r[base_slcs + (slice(op.k),)] for r in ret]
 
-        ret = [recursive_tile(r) for r in ret]
+        ret = yield from recursive_tile(ret)
         new_op = op.copy()
         kws = [o.params for o in op.outputs]
         if return_value:
@@ -341,7 +341,7 @@ class TensorTopk(TensorOperand, TensorOperandMixin):
         else:
             assert parallel_kind == 'psrs'
             op._parallel_kind = 'psrs'
-            return cls._tile_via_psrs(op)
+            return (yield from cls._tile_via_psrs(op))
 
     @classmethod
     def execute(cls, ctx, op):

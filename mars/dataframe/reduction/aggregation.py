@@ -24,10 +24,10 @@ import pandas as pd
 
 from ... import opcodes, tensor as mars_tensor
 from ...config import options
-from ...core import OutputType, ENTITY_TYPE, enter_mode
+from ...core import OutputType, ENTITY_TYPE, enter_mode, recursive_tile
+from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperandStage
-from ...custom_log import redirect_custom_log
-from ...serialize import BoolField, AnyField, Int32Field, ListField, DictField
+from ...serialization.serializables import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_current_session
 from ..core import INDEX_CHUNK_TYPE
 from ..merge import DataFrameConcat
@@ -316,7 +316,8 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         nsplits = tuple((1,) * s for s in in_df.chunk_shape)
         tileable = tileable_op.new_tileable(out_df.inputs, chunks=chunks, nsplits=nsplits,
                                             shape=in_df.chunk_shape, dtype=out_df.dtype)
-        return [tileable.sum()._inplace_tile()]
+        ret = yield from recursive_tile(tileable.sum())
+        return [ret]
 
     @staticmethod
     def _add_functions(op: "DataFrameAggregate", compiler: ReductionCompiler,
@@ -511,7 +512,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
         if len(in_df.chunks) == 1:
             return cls._tile_single_chunk(op)
         elif in_df.ndim == 2 and op.raw_func == 'size':
-            return cls._tile_size(op)
+            return (yield from cls._tile_size(op))
         else:
             return cls._tile_tree(op)
 
