@@ -575,6 +575,8 @@ class StorageManagerActor(mo.Actor):
                         main_key = data_key[0] if isinstance(data_key, tuple) else data_key
                         address = (await meta_api.get_chunk_meta(
                             main_key, fields=['bands']))['bands'][0][0]
+                    if address == self.address:
+                        return
                     sender_ref = await mo.actor_ref(
                         address=address, uid=SenderManagerActor.default_uid())
                     yield sender_ref.send_data(session_id, data_key,

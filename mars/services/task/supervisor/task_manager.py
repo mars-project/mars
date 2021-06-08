@@ -26,7 +26,7 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     TileableType, ChunkType, enter_mode
 from ....core.context import set_context
-from ....core.operand import Fetch, Fuse
+from ....core.operand import Fetch, Fuse, ShuffleProxy
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -632,8 +632,14 @@ class TaskManagerActor(mo.Actor):
         for subtask in subtask_graph:
             # for subtask has successors, incref number of successors
             n = subtask_graph.count_successors(subtask)
-            incref_chunk_keys.extend(
-                [c.key for c in subtask.chunk_graph.results] * n)
+            for c in subtask.chunk_graph.results:
+                incref_chunk_keys.extend([c.key] * n)
+                # for shuffle reducer, incref its mapper chunk
+                for pre_graph in subtask_graph.predecessors(subtask):
+                    for chk in pre_graph.chunk_graph.results:
+                        if isinstance(chk.op, ShuffleProxy):
+                            incref_chunk_keys.extend(
+                                [map_chunk.key for map_chunk in chk.inputs])
         incref_chunk_keys.extend([c.key for c in chunk_results])
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
@@ -764,7 +770,11 @@ class TaskManagerActor(mo.Actor):
                                      subtask_graph: SubtaskGraph):
         decref_chunks = []
         for in_subtask in subtask_graph.iter_predecessors(subtask):
-            decref_chunks.extend(in_subtask.chunk_graph.results)
+            for result_chunk in in_subtask.chunk_graph.results:
+                # for reducer chunk, decref mapper chunks
+                if isinstance(result_chunk.op, ShuffleProxy):
+                    decref_chunks.extend(result_chunk.inputs)
+                decref_chunks.append(result_chunk)
         await self._lifecycle_api.decref_chunks([c.key for c in decref_chunks])
 
     def get_task_progress(self, task_id: str) -> float:

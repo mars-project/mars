@@ -92,6 +92,23 @@ async def test_iterative_tiling(create_cluster):
     assert df2.index_value.max_val <= 30
 
 
+@pytest.mark.asyncio
+async def test_execute_shuffle(create_cluster):
+    s = np.random.RandomState(0)
+    raw = pd.DataFrame(s.rand(100, 4), columns=list('abcd'))
+    df = md.DataFrame(raw, chunk_size=30)
+
+    session = get_default_session()
+    r = df.describe()
+    info = await session.execute(r)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    res = await session.fetch(r)
+    pd.testing.assert_frame_equal(res[0], raw.describe())
+
+
 async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await Session.init(web_address, session_id)

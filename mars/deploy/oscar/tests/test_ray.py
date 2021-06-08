@@ -67,6 +67,12 @@ async def test_iterative_tiling(ray_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
+async def test_execute_shuffle(ray_cluster, create_cluster):
+    await test_local.test_execute_shuffle(create_cluster)
+
+
+@require_ray
+@pytest.mark.asyncio
 def test_sync_execute(ray_cluster, create_cluster):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
