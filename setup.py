@@ -16,7 +16,7 @@ import os
 import platform
 import re
 import sys
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, Extension
 from distutils.sysconfig import get_config_var
 from distutils.version import LooseVersion
 
@@ -63,27 +63,6 @@ if os.environ.get('GIT_TAG') and re.search(r'v\d', os.environ['GIT_TAG']) \
     raise ValueError('Tag %r does not match source version %r'
                      % (os.environ['GIT_TAG'], version))
 
-requirements = []
-with open(os.path.join(repo_root, 'requirements.txt'), 'r') as f:
-    requirements.extend(f.read().splitlines())
-
-extra_requirements = []
-with open(os.path.join(repo_root, 'requirements-extra.txt'), 'r') as f:
-    extra_requirements.extend(f.read().splitlines())
-
-dev_requirements = []
-with open(os.path.join(repo_root, 'requirements-dev.txt'), 'r') as f:
-    dev_requirements.extend(f.read().splitlines())
-
-vineyard_requirements = []
-with open(os.path.join(repo_root, 'requirements-vineyard.txt'), 'r') as f:
-    vineyard_requirements.extend(f.read().splitlines())
-
-long_description = None
-if os.path.exists(os.path.join(repo_root, 'README.rst')):
-    with open(os.path.join(repo_root, 'README.rst'), encoding='utf-8') as f:
-        long_description = f.read()
-
 
 if os.path.exists(os.path.join(repo_root, '.git')):
     git_info = version_ns['get_git_info']()
@@ -126,41 +105,7 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
 
 
 setup_options = dict(
-    name='pymars',
     version=version,
-    description='MARS: a tensor-based unified framework for large-scale data computation.',
-    long_description=long_description,
-    long_description_content_type='text/x-rst',
-    author='Qin Xuye',
-    author_email='qin@qinxuye.me',
-    maintainer='Qin Xuye',
-    maintainer_email='qin@qinxuye.me',
-    url='http://github.com/mars-project/mars',
-    license='Apache License 2.0',
-    classifiers=[
-        'Operating System :: OS Independent',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: Implementation :: CPython',
-        'Topic :: Software Development :: Libraries',
-    ],
-    packages=find_packages(exclude=('*.tests.*', '*.tests')),
-    include_package_data=True,
-    entry_points={'console_scripts': [
-        'mars-scheduler = mars.scheduler.__main__:main',
-        'mars-worker = mars.worker.__main__:main',
-        'mars-web = mars.web.__main__:main',
-    ]},
-    python_requires='>=3.6',
-    install_requires=requirements,
     ext_modules=extensions,
-    extras_require={
-        'distributed': extra_requirements,
-        'dev': extra_requirements + dev_requirements,
-        'vineyard': vineyard_requirements,
-    }
 )
 setup(**setup_options)

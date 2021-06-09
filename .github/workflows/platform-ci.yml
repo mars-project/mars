@@ -46,12 +46,15 @@ jobs:
           source ./ci/reload-env.sh
           export DEFAULT_VENV=$VIRTUAL_ENV
 
-          pip install -r requirements-dev.txt
-          pip install -r requirements-extra.txt
+          source ./ci/rewrite-cov-config.sh
+
+          pip install numpy scipy cython
+          pip install -e ".[dev,distributed]"
+
           if [[ $UNAME == "windows" ]]; then
             pip install virtualenv flaky flake8
           else
-            pip install virtualenv flaky flake8 etcd-gevent ray
+            pip install virtualenv flaky flake8 ray
             if [ -n "$WITH_KUBERNETES" ]; then
               ./.github/workflows/install-minikube.sh
               pip install kubernetes
@@ -80,14 +83,6 @@ jobs:
             fi
           fi
           conda list -n test
-
-      - name: Build cython extensions
-        env:
-          WITH_CYTHON: ${{ matrix.with-cython }}
-        shell: bash
-        run: |
-          source ./ci/reload-env.sh
-          source ./ci/build-ext.sh
 
       - name: Prepare vineyard runtime
         if: ${{ matrix.with-vineyard }}
