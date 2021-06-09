@@ -218,8 +218,9 @@ async def test_iterative_tiling(actor_pool):
 async def test_shuffle(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 
-    raw = np.random.rand(10, 10)
-    raw2 = np.random.randint(10, size=(10,))
+    rs = np.random.RandomState(0)
+    raw = rs.rand(10, 10)
+    raw2 = rs.randint(10, size=(10,))
     a = mt.tensor(raw, chunk_size=5)
     b = mt.tensor(raw2, chunk_size=5)
     c = a[b]
@@ -247,6 +248,9 @@ async def test_shuffle(actor_pool):
     assert (await lifecycle_api.get_tileable_ref_counts([c.key]))[0] == 1
     assert (await lifecycle_api.get_chunk_ref_counts(
         [c.key for c in result_tileable.chunks])) == [1] * len(result_tileable.chunks)
+    await lifecycle_api.decref_tileables([c.key])
+    ref_counts = await lifecycle_api.get_all_chunk_ref_counts()
+    assert len(ref_counts) == 0
 
 
 @pytest.mark.asyncio

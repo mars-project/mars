@@ -26,7 +26,7 @@ from ....config import Config
 from ....core import TileableGraph, ChunkGraph, ChunkGraphBuilder, \
     TileableType, ChunkType, enter_mode
 from ....core.context import set_context
-from ....core.operand import Fetch, Fuse, ShuffleProxy
+from ....core.operand import Fetch, Fuse, MapReduceOperand, ShuffleProxy
 from ....optimization.logical.core import OptimizationRecords
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
@@ -773,7 +773,9 @@ class TaskManagerActor(mo.Actor):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
-                    decref_chunks.extend(result_chunk.inputs)
+                    outputs_num = len([r for r in subtask.chunk_graph.results
+                                       if isinstance(r.op, MapReduceOperand)])
+                    decref_chunks.extend(result_chunk.inputs * outputs_num)
                 decref_chunks.append(result_chunk)
         await self._lifecycle_api.decref_chunks([c.key for c in decref_chunks])
 
