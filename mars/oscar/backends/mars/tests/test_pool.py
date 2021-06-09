@@ -574,3 +574,26 @@ async def test_two_pools():
             Router.get_instance().get_internal_address(actor_ref4.address))
 
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
+
+
+@pytest.mark.asyncio
+async def test_parallel_allocate_idle_label():
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
+                                   subprocess_start_method=start_method,
+                                   labels=[None, 'my_label', 'my_label'])
+
+    class _Actor(Actor):
+        def get_pid(self):
+            return os.getpid()
+
+    ctx = get_context()
+    strategy = IdleLabel('my_label', 'tests')
+    tasks = [
+        ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
+        ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
+    ]
+    refs = await asyncio.gather(*tasks)
+    # outputs identical process ids, while the result should be different
+    assert len({await ref.get_pid() for ref in refs}) == 2

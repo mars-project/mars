@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures as futures
 import contextlib
 import itertools
+import threading
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
@@ -649,6 +650,7 @@ class MainActorPoolBase(ActorPoolBase):
         # states
         self._allocated_actors: allocated_type = \
             {addr: dict() for addr in self._config.get_external_addresses()}
+        self._allocation_lock = threading.Lock()
 
         self.sub_processes: Dict[str, SubProcessHandle] = dict()
 
@@ -668,9 +670,12 @@ class MainActorPoolBase(ActorPoolBase):
         with _ErrorProcessor(message_id=message.message_id,
                              protocol=message.protocol) as processor:
             allocate_strategy = message.allocate_strategy
-            # get allocated address according to corresponding strategy
-            address = allocate_strategy.get_allocated_address(
-                self._config, self._allocated_actors)
+            with self._allocation_lock:
+                # get allocated address according to corresponding strategy
+                address = allocate_strategy.get_allocated_address(
+                    self._config, self._allocated_actors)
+                # set placeholder to make sure this label is occupied
+                self._allocated_actors[address][None] = (allocate_strategy, message)
             if address == self.external_address:
                 # creating actor on main actor pool
                 result = await super().create_actor(message)
@@ -694,6 +699,9 @@ class MainActorPoolBase(ActorPoolBase):
                     self._allocated_actors[address][result.result] = \
                         (allocate_strategy, new_create_actor_message)
                 processor.result = result
+
+            # revert placeholder
+            self._allocated_actors[address].pop(None, None)
 
         return processor.result
 
