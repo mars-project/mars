@@ -46,8 +46,8 @@ jobs:
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON pyarrow
           fi
 
-          pip install -r requirements-dev.txt
-          pip install -r requirements-extra.txt
+          pip install numpy scipy cython
+          pip install -e ".[dev,distributed]"
           conda list -n test
 
       - name: Deploy packages

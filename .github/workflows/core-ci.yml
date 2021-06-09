@@ -48,9 +48,11 @@ jobs:
           pip install numpy\<1.20.0
         fi
 
-        pip install -r requirements-dev.txt
-        pip install -r requirements-extra.txt
-        pip install virtualenv flaky flake8 etcd-gevent
+        source ./ci/rewrite-cov-config.sh
+
+        pip install numpy scipy cython
+        pip install -e ".[dev,distributed]"
+        pip install virtualenv flaky flake8
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
@@ -73,7 +75,7 @@ jobs:
             pip install statsmodels tsfresh
           fi
           virtualenv testenv && source testenv/bin/activate
-          pip install -r requirements.txt && pip install pytest pytest-timeout
+          pip install -e . && pip install pytest pytest-timeout
           if [ -z "$DEFAULT_VENV" ]; then
             deactivate
           else
@@ -92,14 +94,6 @@ jobs:
         flake8 mars --count --select=E9,E111,E225,E302,E303,E901,E999,F7,F63,F82,F401,F811,F821,F822,F823,F841,W291,W292,W391,W605 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Build cython extensions
-      env:
-        WITH_CYTHON: ${{ matrix.with-cython }}
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-        source ./ci/build-ext.sh
 
     - name: Test with pytest
       env:

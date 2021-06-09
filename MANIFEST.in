@@ -1,12 +1,9 @@
-include requirements.txt
-include requirements-*.txt
 global-include *.pyx
 global-include *.pxd
 global-include *.yml
-global-exclude *.c*
+global-exclude *.c
+global-exclude *.cpp
 global-exclude */**/tests/*.yml
 include mars/.git-branch
 include mars/lib/mmh3_src/*
-recursive-include mars/web/static *
-recursive-include mars/web/templates *
 global-exclude .DS_Store

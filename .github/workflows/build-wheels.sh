@@ -6,7 +6,7 @@ yum install -y atlas-devel
 
 # Install requirements
 PYBIN=/opt/python/${PYABI}/bin
-REQ_FILE=/io/requirements-wheel.txt
+REQ_FILE=/io/ci/requirements-wheel.txt
 "${PYBIN}/pip" install -r $REQ_FILE
 
 # Compile wheels

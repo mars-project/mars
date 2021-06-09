@@ -29,7 +29,7 @@ else
     conda create --quiet --yes -n wheel python=$PYTHON
     conda activate wheel
 
-    pip install -r requirements-wheel.txt
+    pip install -r ci/requirements-wheel.txt
     pip wheel --no-deps .
 
     conda activate test

@@ -35,15 +35,18 @@ jobs:
         source ./ci/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
-        pip install -r requirements-dev.txt
-        pip install -r requirements-extra.txt
+        source ./ci/rewrite-cov-config.sh
+
+        pip install numpy scipy cython
+        pip install -e ".[dev,distributed]"
+
         if [[ $UNAME == "windows" ]]; then
           pip install virtualenv flaky flake8
         else
-          pip install virtualenv flaky flake8 etcd-gevent
+          pip install virtualenv flaky flake8
           if [ -z "$NO_COMMON_TESTS" ]; then
             virtualenv testenv && source testenv/bin/activate
-            pip install -r requirements.txt && pip install pytest pytest-timeout
+            pip install -e . && pip install pytest pytest-timeout
             if [ -z "$DEFAULT_VENV" ]; then
               deactivate
             else
@@ -52,14 +55,6 @@ jobs:
           fi
         fi
         conda list -n test
-
-    - name: Build cython extensions
-      env:
-        WITH_CYTHON: ${{ matrix.with-cython }}
-      shell: bash
-      run: |
-        source ./ci/reload-env.sh
-        source ./ci/build-ext.sh
 
     - name: Test with pytest
       env:
