@@ -14,7 +14,6 @@
 
 import random
 from collections import OrderedDict
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -1000,8 +999,7 @@ def test_diff_execution(setup):
                        columns=['col' + str(i + 1) for i in range(8)])
 
     raw1 = raw.copy()
-    if LooseVersion(pd.__version__) >= '1.0.0':
-        raw1['col4'] = raw1['col4'] < 400
+    raw1['col4'] = raw1['col4'] < 400
 
     r = from_pandas_df(raw1, chunk_size=(10, 5)).diff(-1)
     pd.testing.assert_frame_equal(r.execute().fetch(),
@@ -1021,9 +1019,7 @@ def test_diff_execution(setup):
 
     # test series
     s = raw.iloc[:, 0]
-    s1 = s.copy()
-    if LooseVersion(pd.__version__) >= '1.0.0':
-        s1 = s1 < 400
+    s1 = s.copy() < 400
 
     r = from_pandas_series(s, chunk_size=10).diff(-1)
     pd.testing.assert_series_equal(r.execute().fetch(),

@@ -14,10 +14,10 @@
 
 import math
 from collections import OrderedDict
-from distutils.version import LooseVersion
 
 import pandas as pd
 
+from ....lib.version import parse as parse_version
 from ....serialization.serializables import Int64Field, BoolField, Int32Field, Float64Field
 from ...utils import validate_axis
 from ..core import Window
@@ -84,7 +84,7 @@ class EWM(Window):
 
         params = self.params
         params['alpha_ignore_na'] = params.pop('ignore_na', False)
-        params['validate_columns'] = LooseVersion(pd.__version__) < '1.0.0'
+        params['validate_columns'] = False
         op = DataFrameEwmAgg(func=func, **params)
         return op(self)
 
@@ -227,7 +227,7 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
     if alpha == 1:
         return obj.expanding(min_periods=min_periods, axis=axis)
 
-    if LooseVersion(pd.__version__) >= '1.1.0':  # pragma: no cover
+    if parse_version(pd.__version__) >= parse_version('1.1.0'):  # pragma: no cover
         min_periods = min_periods or 1
 
     return EWM(input=obj, alpha=alpha, min_periods=min_periods, adjust=adjust,

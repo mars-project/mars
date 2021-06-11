@@ -345,6 +345,9 @@ class Session(AbstractAsyncSession):
                 n_cpu += size
         return n_cpu
 
+    async def get_cluster_versions(self) -> List[str]:
+        return list(await self._cluster_api.get_mars_versions())
+
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)

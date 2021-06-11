@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
@@ -74,12 +73,6 @@ def test_dataframe_expanding_agg(setup):
     r = df.expanding(2).agg(aggs)
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw.expanding(2).agg(aggs))
-
-    if LooseVersion(pd.__version__) < '1.0.0':
-        r = df.expanding(2).agg(aggs, _count_always_valid=False)
-        raw_r = raw.expanding(2).agg(aggs)
-        raw_r.iloc[0, :] = np.nan
-        pd.testing.assert_frame_equal(r.execute().fetch(), raw_r)
 
     agg_dict = OrderedDict([('a', ['min', 'max']), ('b', 'max'), ('c', 'sum')])
     r = df.expanding(2).agg(agg_dict)

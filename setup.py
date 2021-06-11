@@ -16,9 +16,10 @@ import os
 import platform
 import re
 import sys
+from sysconfig import get_config_var
+
+from pkg_resources import parse_version
 from setuptools import setup, Extension
-from distutils.sysconfig import get_config_var
-from distutils.version import LooseVersion
 
 import numpy as np
 from Cython.Build import cythonize
@@ -38,11 +39,14 @@ except ImportError:
 # MACOSX_DEPLOYMENT_TARGET before calling setup.py
 if sys.platform == 'darwin':
     if 'MACOSX_DEPLOYMENT_TARGET' not in os.environ:
-        current_system = LooseVersion(platform.mac_ver()[0])
-        python_target = LooseVersion(
+        target_macos_version = "10.9"
+        parsed_macos_version = parse_version(target_macos_version)
+
+        current_system = parse_version(platform.mac_ver()[0])
+        python_target = parse_version(
             get_config_var('MACOSX_DEPLOYMENT_TARGET'))
-        if python_target < '10.9' and current_system >= '10.9':
-            os.environ['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
+        if python_target < parsed_macos_version <= current_system:
+            os.environ['MACOSX_DEPLOYMENT_TARGET'] = target_macos_version
 
 
 repo_root = os.path.dirname(os.path.abspath(__file__))

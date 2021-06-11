@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 from typing import Dict, List
 
 from ....lib.aio import alru_cache
@@ -65,6 +66,11 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
             await cluster_api.get_all_bands(role, watch=watch)
         ))
 
+    @web_api('versions', method='get')
+    async def get_mars_versions(self):
+        cluster_api = await self._get_cluster_api()
+        self.write(json.dumps(list(await cluster_api.get_mars_versions())))
+
 
 web_handlers = {
     ClusterWebAPIHandler.get_root_pattern(): ClusterWebAPIHandler
@@ -116,3 +122,8 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
             path += f'&role={role.value}'
         res = await self._request_url(path)
         return deserialize_serializable(res.body)
+
+    async def get_mars_versions(self) -> List[str]:
+        path = f'{self._address}/api/cluster/versions'
+        res = await self._request_url(path)
+        return list(json.loads(res.body))

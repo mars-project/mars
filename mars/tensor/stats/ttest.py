@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from collections import namedtuple
-from distutils.version import LooseVersion
 
 import numpy as np
 try:
@@ -31,6 +30,7 @@ except ImportError:
     sp_distributions = None
 
 from ...core import ExecutableTuple
+from ...lib.version import parse as parse_version
 from ..arithmetic import (
     divide as mt_divide, sqrt as mt_sqrt, absolute as mt_abs,
     isnan as mt_isnan,
@@ -74,7 +74,7 @@ def _ttest_ind_from_stats(mean1, mean2, denom, df, alternative):
 
 def _ttest_finish(df, t, alternative):
     """Common code between all 3 t-test functions."""
-    if alternative != 'two-sided' and LooseVersion(sp_version) < '1.6.0':  # pragma: no cover
+    if alternative != 'two-sided' and parse_version(sp_version) < parse_version('1.6.0'):  # pragma: no cover
         raise ValueError("alternative must be 'two-sided' with scipy prior to 1.6.0")
 
     if alternative == 'less':

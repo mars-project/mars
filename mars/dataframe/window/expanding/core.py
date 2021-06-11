@@ -13,9 +13,6 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from distutils.version import LooseVersion
-
-import pandas as pd
 
 from ....serialization.serializables import Int64Field, BoolField, Int32Field
 from ...utils import validate_axis
@@ -55,7 +52,7 @@ class Expanding(Window):
     def aggregate(self, func, **kwargs):
         from .aggregation import DataFrameExpandingAgg
 
-        count_always_valid = kwargs.pop('_count_always_valid', LooseVersion(pd.__version__) < '1.0.0')
+        count_always_valid = kwargs.pop('_count_always_valid', False)
 
         op = DataFrameExpandingAgg(func=func, count_always_valid=count_always_valid, **self.params)
         return op(self)

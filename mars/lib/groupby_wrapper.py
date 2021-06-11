@@ -14,14 +14,15 @@
 
 import sys
 from collections.abc import Iterable
-from distutils.version import LooseVersion
 
 import cloudpickle
 import numpy as np
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
 
-_HAS_SQUEEZE = LooseVersion(pd.__version__) < '1.1.0'
+from .version import parse as parse_version
+
+_HAS_SQUEEZE = parse_version(pd.__version__) < parse_version('1.1.0')
 
 
 class GroupByWrapper:

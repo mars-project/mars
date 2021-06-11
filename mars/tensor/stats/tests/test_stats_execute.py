@@ -14,7 +14,6 @@
 
 
 import functools
-from distutils.version import LooseVersion
 
 import numpy as np
 import pytest
@@ -37,6 +36,7 @@ try:
 except ImportError:
     scipy = None
 
+from mars.lib.version import parse as parse_version
 from mars.tensor import tensor
 from mars.tests import setup
 
@@ -140,7 +140,7 @@ def test_chisquare_execution(setup):
 
 @pytest.mark.skipif(scipy is None, reason='scipy not installed')
 def test_t_test_execution(setup):
-    if LooseVersion(scipy.__version__) >= '1.6.0':
+    if parse_version(scipy.__version__) >= parse_version('1.6.0'):
         alternatives = ['less', 'greater', 'two-sided']
 
         mt_from_stats = lambda a, b, alternative=None, equal_var=True: ttest_ind_from_stats(
@@ -187,18 +187,18 @@ def test_t_test_execution(setup):
     fb = tensor(fb_raw, chunk_size=4)
 
     for mt_func, sp_func in funcs:
-        if LooseVersion(scipy.__version__) >= '1.6.0':
+        if parse_version(scipy.__version__) >= parse_version('1.6.0'):
             with pytest.raises(ValueError):
                 mt_func(fa, fb, alternative='illegal-alternative')
 
         for alt in alternatives:
-            if LooseVersion(scipy.__version__) >= '1.6.0':
+            if parse_version(scipy.__version__) >= parse_version('1.6.0'):
                 r = mt_func(fa, fb, alternative=alt)
             else:
                 r = mt_func(fa, fb)
             result = r.execute().fetch()
 
-            if LooseVersion(scipy.__version__) >= '1.6.0':
+            if parse_version(scipy.__version__) >= parse_version('1.6.0'):
                 expected = sp_func(fa_raw, fb_raw, alternative=alt)
             else:
                 expected = sp_func(fa_raw, fb_raw)

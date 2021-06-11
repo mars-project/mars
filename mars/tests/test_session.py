@@ -30,6 +30,7 @@ except ImportError:  # pragma: no cover
 import mars.tensor as mt
 import mars.dataframe as md
 import mars.remote as mr
+from mars._version import __version__ as mars_version
 from mars.config import option_context
 from mars.deploy.utils import load_service_config_file
 from mars.session import execute, fetch, fetch_log
@@ -45,6 +46,7 @@ def setup():
     sess = new_test_session(address='127.0.0.1',
                             init_local=True,
                             default=True)
+    assert sess.get_cluster_versions() == [mars_version]
     with option_context({'show_progress': False}):
         try:
             yield sess
