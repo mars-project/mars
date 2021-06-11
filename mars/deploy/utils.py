@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import time
 from typing import Callable, Dict, List, Union, TextIO
@@ -87,3 +88,22 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
     for new_cfg in cfg_stack[-2::-1]:
         _override_cfg(cfg, new_cfg)
     return cfg
+
+
+async def wait_all_supervisors_ready(endpoint):
+    """
+    Wait till all containers are ready
+    """
+    from ..services.cluster import ClusterAPI
+    cluster_api = None
+
+    while True:
+        try:
+            cluster_api = await ClusterAPI.create(endpoint)
+            break
+        except:  # noqa: E722  # pylint: disable=bare-except  # pragma: no cover
+            await asyncio.sleep(0.1)
+            continue
+
+    assert cluster_api is not None
+    await cluster_api.wait_all_supervisors_ready()

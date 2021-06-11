@@ -39,7 +39,8 @@ class SupervisorLocatorActor(mo.Actor):
 
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
-        self._backend = await backend_cls.create(self._lookup_address)
+        self._backend = await backend_cls.create(
+            self._lookup_address, self.address)
         self._set_supervisors(await self._backend.get_supervisors())
 
         self._watch_task = asyncio.create_task(self._watch_backend())

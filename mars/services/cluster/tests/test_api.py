@@ -97,5 +97,7 @@ async def test_web_api(actor_pool):
     assert pool_addr in nodes_info
     assert 'custom_key' in nodes_info[pool_addr]['state']
 
+    assert len(await web_api.get_all_bands()) > 0
+
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(web_api.watch_nodes(NodeRole.WORKER), timeout=0.1)

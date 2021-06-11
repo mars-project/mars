@@ -243,7 +243,7 @@ def df_reset_index(df, level=None, drop=False, inplace=False, col_level=0,
         Ensure RangeIndex incremental, when output DataFrame has multiple chunks,
         ensuring index incremental costs more computation,
         so by default, each chunk will have index which starts from 0,
-        setting incremental_index=True，reset_index will garantee that
+        setting incremental_index=True，reset_index will guarantee that
         output DataFrame's index is from 0 to n - 1.
 
     Returns
@@ -402,7 +402,7 @@ def series_reset_index(series, level=None, drop=False, name=None,
         Ensure RangeIndex incremental, when output Series has multiple chunks,
         ensuring index incremental costs more computation,
         so by default, each chunk will have index which starts from 0,
-        setting incremental_index=True，reset_index will garantee that
+        setting incremental_index=True，reset_index will guarantee that
         output Series's index is from 0 to n - 1.
 
     Returns

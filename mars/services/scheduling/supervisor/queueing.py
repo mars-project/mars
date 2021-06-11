@@ -117,7 +117,11 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
-        bands = [band] if band is not None else self._band_queues.keys()
+
+        if not limit and band not in self._band_slot_nums:
+            self._band_slot_nums = await self._cluster_api.get_all_bands()
+
+        bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
         manager_ref = await self._get_manager_ref()
 

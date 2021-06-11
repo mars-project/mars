@@ -17,15 +17,17 @@ import numpy as np
 import pytest
 
 import mars.dataframe as md
+from mars.tests import setup
 from mars.tests.core import require_hadoop
 
 
 TEST_DIR = '/tmp/test'
+setup = setup
 
 
 @require_hadoop
 @pytest.fixture(scope='module')
-def setup():
+def setup_hdfs():
     import pyarrow
     hdfs = pyarrow.hdfs.connect(host="localhost", port=8020)
     if hdfs.exists(TEST_DIR):
@@ -38,8 +40,8 @@ def setup():
 
 
 @require_hadoop
-def test_to_parquet_execution(setup):
-    hdfs = setup
+def test_to_parquet_execution(setup, setup_hdfs):
+    hdfs = setup_hdfs
 
     test_df = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
                             'b': [f's{i}' for i in range(10)],

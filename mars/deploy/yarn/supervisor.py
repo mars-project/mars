@@ -15,26 +15,31 @@
 
 import os
 
-from ...scheduler.__main__ import SchedulerApplication
-from .config import MarsSchedulerConfig
+from ..oscar.supervisor import SupervisorCommandRunner
+from .config import MarsSupervisorConfig
 from .core import YarnServiceMixin
 
 
-class YarnSchedulerApplication(YarnServiceMixin, SchedulerApplication):
-    service_name = MarsSchedulerConfig.service_name
+class YarnSupervisorCommandRunner(YarnServiceMixin, SupervisorCommandRunner):
+    service_name = MarsSupervisorConfig.service_name
+    web_service_name = MarsSupervisorConfig.web_service_name
 
     def __call__(self, *args, **kwargs):
         os.environ['MARS_CONTAINER_IP'] = self.get_container_ip()
         return super().__call__(*args, **kwargs)
 
-    def start(self):
-        self.start_daemon()
+    async def start_services(self):
+        self.register_endpoint()
 
-        super().start()
-        self.register_node()
+        await super().start_services()
+
+        from ...services.web import OscarWebAPI
+        web_api = await OscarWebAPI.create(self.args.endpoint)
+        web_endpoint = await web_api.get_web_address()
+        self.register_endpoint(self.web_service_name, web_endpoint)
 
 
-main = YarnSchedulerApplication()
+main = YarnSupervisorCommandRunner()
 
 if __name__ == '__main__':   # pragma: no branch
     main()

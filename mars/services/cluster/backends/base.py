@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Dict, List, Type
+from typing import AsyncGenerator, Dict, List, Optional, Type
 
 
 class AbstractClusterBackend(ABC):
@@ -21,12 +21,14 @@ class AbstractClusterBackend(ABC):
 
     @classmethod
     @abstractmethod
-    async def create(cls, lookup_address: str) -> "AbstractClusterBackend":
+    async def create(cls, lookup_address: Optional[str],
+                     pool_address: str) -> "AbstractClusterBackend":
         """
 
         Parameters
         ----------
         lookup_address
+        pool_address
 
         Returns
         -------

@@ -15,27 +15,35 @@
 
 import os
 
-from ...worker.__main__ import WorkerApplication
+from ..oscar.worker import WorkerCommandRunner
 from .config import MarsWorkerConfig
 from .core import YarnServiceMixin
 
 
-class YarnWorkerApplication(YarnServiceMixin, WorkerApplication):
+class YarnWorkerCommandRunner(YarnServiceMixin, WorkerCommandRunner):
     service_name = MarsWorkerConfig.service_name
 
     def __call__(self, *args, **kwargs):
         os.environ['MARS_CONTAINER_IP'] = self.get_container_ip()
         return super().__call__(*args, **kwargs)
 
-    def start(self):
-        self.start_daemon()
+    async def start_services(self):
+        from ..oscar.worker import start_worker
+        from ...services.cluster import ClusterAPI
 
-        self.wait_all_schedulers_ready()
-        super().start()
-        self.register_node()
+        self.register_endpoint()
+
+        await start_worker(
+            self.pool.external_address, self.args.supervisors,
+            self.band_to_slot, list(self.args.load_modules), self.config,
+            mark_ready=False)
+        await self.wait_all_supervisors_ready()
+
+        cluster_api = await ClusterAPI.create(self.args.endpoint)
+        await cluster_api.mark_node_ready()
 
 
-main = YarnWorkerApplication()
+main = YarnWorkerCommandRunner()
 
 if __name__ == '__main__':   # pragma: no branch
     main()
