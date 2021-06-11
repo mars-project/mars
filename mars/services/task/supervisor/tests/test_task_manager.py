@@ -252,6 +252,10 @@ async def test_shuffle(actor_pool):
     ref_counts = await lifecycle_api.get_all_chunk_ref_counts()
     assert len(ref_counts) == 0
 
+    # test if exists in storage
+    from mars.storage import StorageLevel
+    assert len(await storage_api.list(level=StorageLevel.MEMORY)) == 0
+
 
 @pytest.mark.asyncio
 async def test_numexpr(actor_pool):

@@ -138,6 +138,9 @@ class DataManager:
         # mapping value is list of InternalDataInfo
         self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
         self._data_info_list = dict()
+        # data key may be a tuple in some cases,
+        # we record main key to manage their lifecycle
+        self._tuple_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
 
@@ -149,11 +152,19 @@ class DataManager:
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
+        if isinstance(data_key, tuple):
+            self._tuple_keys[(session_id, data_key[0])].update([data_key])
 
     def get_infos(self,
                   session_id: str,
                   data_key: str) -> List[DataInfo]:
-        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
+        if (session_id, data_key) not in self._data_key_to_info:
+            if (session_id, data_key) in self._tuple_keys:
+                infos = []
+                for sub_key in self._tuple_keys[(session_id, data_key)]:
+                    infos.extend([info.data_info for info in
+                                  self._data_key_to_info.get((session_id, sub_key))])
+                return infos
             raise DataNotExist(f'Data key {session_id, data_key} not exists.')
         return [info.data_info for info in
                 self._data_key_to_info.get((session_id, data_key))]
@@ -177,14 +188,22 @@ class DataManager:
                session_id: str,
                data_key: str,
                level: StorageLevel):
-        if (session_id, data_key) in self._data_key_to_info:
-            self._data_info_list[level].pop((session_id, data_key))
-            infos = self._data_key_to_info[(session_id, data_key)]
-            rest = [info for info in infos if info.data_info.level != level]
-            if len(rest) == 0:
-                del self._data_key_to_info[(session_id, data_key)]
-            else:  # pragma: no cover
-                self._data_key_to_info[(session_id, data_key)] = rest
+        if (session_id, data_key) in self._tuple_keys:
+            to_delete_keys = self._tuple_keys[(session_id, data_key)]
+        else:
+            to_delete_keys = [data_key]
+        for key in to_delete_keys:
+            if (session_id, key) in self._data_key_to_info:
+                self._data_info_list[level].pop((session_id, key))
+                infos = self._data_key_to_info[(session_id, key)]
+                rest = [info for info in infos if info.data_info.level != level]
+                if len(rest) == 0:
+                    del self._data_key_to_info[(session_id, key)]
+                else:  # pragma: no cover
+                    self._data_key_to_info[(session_id, key)] = rest
+
+    def list(self, level: StorageLevel):
+        return list(self._data_info_list[level].keys())
 
 
 class StorageHandlerActor(mo.Actor):
@@ -321,9 +340,9 @@ class StorageHandlerActor(mo.Actor):
         return data_infos
 
     def _get_data_infos_arg(self,
-                           session_id: str,
-                           data_key: str,
-                           error: str):
+                            session_id: str,
+                            data_key: str,
+                            error: str):
         infos = self._storage_manager_ref.get_data_infos.delay(
             session_id, data_key, error)
         return infos, session_id, data_key
@@ -677,6 +696,9 @@ class StorageManagerActor(mo.Actor):
     def batch_delete_data_info(self, args_list, kwargs_list):
         for args, kwargs in zip(args_list, kwargs_list):
             self._data_manager.delete(*args, *kwargs)
+
+    def list(self, level: StorageLevel) -> List:
+        return self._data_manager.list(level)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)

@@ -233,7 +233,7 @@ class StorageAPI(AbstractStorageAPI):
 
     async def list(self, level: StorageLevel) -> List:
         """
-        List all stored objects in storage.
+        List all stored data_keys in storage.
 
         Parameters
         ----------
@@ -244,7 +244,7 @@ class StorageAPI(AbstractStorageAPI):
         -------
             list of data keys
         """
-        return await self._storage_handler_ref.list(level=level)
+        return await self._storage_manager_ref.list(level=level)
 
 
 class MockStorageAPI(StorageAPI):
