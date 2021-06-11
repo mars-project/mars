@@ -15,7 +15,7 @@
 from abc import abstractmethod
 from typing import List, Dict
 
-from ...core import NodeRole
+from ...core import NodeRole, BandType
 
 
 class AbstractClusterAPI:
@@ -65,4 +65,16 @@ class AbstractClusterAPI:
         -------
         out: Dict
             info of worker
+        """
+
+    @abstractmethod
+    async def get_all_bands(self, role: NodeRole = None,
+                            watch: bool = False) -> Dict[BandType, int]:
+        """
+        Get all bands that can be used for computation.
+
+        Returns
+        -------
+        band_to_slots : dict
+            Band to n_slot.
         """

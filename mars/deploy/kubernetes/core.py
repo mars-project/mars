@@ -17,11 +17,11 @@ import asyncio
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncGenerator, Callable, List, TypeVar
+from typing import AsyncGenerator, Callable, List, Optional, TypeVar
 
-from ...services.cluster import ClusterAPI
 from ...services.cluster.backends import register_cluster_backend, \
     AbstractClusterBackend
+from ..utils import wait_all_supervisors_ready
 from .config import MarsReplicationConfig, MarsSupervisorsConfig
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,8 @@ class K8SClusterBackend(AbstractClusterBackend):
         self._service_pod_to_ep = dict()
 
     @classmethod
-    async def create(cls, lookup_address: str) -> "AbstractClusterBackend":
+    async def create(cls, lookup_address: Optional[str],
+                     pool_address: str) -> "AbstractClusterBackend":
         from kubernetes import config, client
 
         if lookup_address is None:
@@ -189,19 +190,9 @@ class K8SServiceMixin:
 
     async def wait_all_supervisors_ready(self):
         """
-        Wait till all containers are ready, both in kubernetes and in ClusterInfoActor
+        Wait till all containers are ready
         """
-        cluster_api = None
-        while True:
-            try:
-                cluster_api = await ClusterAPI.create(self.args.endpoint)
-                break
-            except:  # noqa: E722  # pylint: disable=bare-except  # pragma: no cover
-                await asyncio.sleep(0.1)
-                continue
-
-        assert cluster_api is not None
-        await cluster_api.wait_all_supervisors_ready()
+        await wait_all_supervisors_ready(self.args.endpoint)
 
     async def start_readiness_server(self):
         readiness_port = os.environ.get('MARS_K8S_READINESS_PORT',

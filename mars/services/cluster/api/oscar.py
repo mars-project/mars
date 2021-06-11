@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 from typing import List, Dict, Union, Type, TypeVar
 
 from .... import oscar as mo
@@ -21,6 +22,7 @@ from ...core import NodeRole, BandType
 from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
+logger = logging.getLogger(__name__)
 
 
 class ClusterAPI(AbstractClusterAPI):
@@ -50,14 +52,6 @@ class ClusterAPI(AbstractClusterAPI):
         return api_obj
 
     async def get_supervisors(self, watch=False) -> List[str]:
-        """
-        Get or watch supervisor addresses
-
-        Returns
-        -------
-        out
-            list of
-        """
         if watch:
             return await self._locator_ref.watch_supervisors()
         else:
@@ -110,52 +104,16 @@ class ClusterAPI(AbstractClusterAPI):
 
     async def watch_nodes(self, role: NodeRole, env: bool = False,
                           resource: bool = False, state: bool = False) -> List[Dict[str, Dict]]:
-        """
-        Watch changes of workers
-
-        Returns
-        -------
-        out: List[Dict[str, Dict]]
-            dict of worker resources by addresses and bands
-        """
         return await self._node_info_ref.watch_nodes(
             role, env=env, resource=resource, state=state)
 
     async def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
                              env: bool = False, resource: bool = False, state: bool = False):
-        """
-        Get worker info
-
-        Parameters
-        ----------
-        nodes
-            address of nodes
-        role
-            roles of nodes
-        env
-            receive env info
-        resource
-            receive resource info
-        state
-            receive state info
-
-        Returns
-        -------
-        out: Dict
-            info of worker
-        """
         return await self._node_info_ref.get_nodes_info(
             nodes=nodes, role=role, env=env, resource=resource, state=state)
 
-    async def get_all_bands(self, role: NodeRole = None, watch: bool = False) -> Dict[BandType, int]:
-        """
-        Get all bands that can be used for computation.
-
-        Returns
-        -------
-        band_to_slots : dict
-            Band to n_slot.
-        """
+    async def get_all_bands(self, role: NodeRole = None,
+                            watch: bool = False) -> Dict[BandType, int]:
         if watch:
             return await self._node_info_ref.watch_all_bands(role)
         return await self._node_info_ref.get_all_bands(role)

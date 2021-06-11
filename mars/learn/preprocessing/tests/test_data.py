@@ -236,7 +236,7 @@ def test_min_max_scaler1d(setup):
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('feature_range', [(0, 1), (-10, 10)])
 def test_minmax_scaler_clip(setup, feature_range):
-    # test behaviour of the paramter 'clip' in MinMaxScaler
+    # test behaviour of the parameter 'clip' in MinMaxScaler
     X = iris
     scaler = MinMaxScaler(feature_range=feature_range, clip=True).fit(X)
     X_min, X_max = mt.min(X, axis=0), mt.max(X, axis=0)

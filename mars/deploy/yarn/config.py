@@ -212,19 +212,20 @@ class MarsServiceConfig(AppServiceConfig):
             python_executable = self._env_path
 
         cmd = self._cmd_tmpl.format(executable=python_executable)
-        bash_lines.append(f'{cmd} -m {_get_local_app_module(self.service_name)} {self._extra_args}')
+        bash_lines.append(f'{cmd} -m {_get_local_app_module(self.service_name)} {self._extra_args} > /tmp/{self.service_name}.stdout.log 2> /tmp/{self.service_name}.stderr.log')
         return '\n'.join(bash_lines) + '\n'
 
 
-class MarsSchedulerConfig(MarsServiceConfig):
-    service_name = 'mars.scheduler'
+class MarsSupervisorConfig(MarsServiceConfig):
+    service_name = 'mars.supervisor'
+    web_service_name = 'mars.web'
 
 
 class MarsWorkerConfig(MarsServiceConfig):
     service_name = 'mars.worker'
 
     def __init__(self, environment, worker_cache_mem=None, spill_dirs=None, **kwargs):
-        kwargs['depends'] = MarsSchedulerConfig.service_name
+        kwargs['depends'] = MarsSupervisorConfig.service_name
         super().__init__(environment, **kwargs)
 
         if worker_cache_mem:
@@ -235,30 +236,20 @@ class MarsWorkerConfig(MarsServiceConfig):
                          spill_dirs if isinstance(spill_dirs, str) else ':'.join(spill_dirs))
 
 
-class MarsWebConfig(MarsServiceConfig):
-    service_name = 'mars.web'
-
-    def __init__(self, environment, **kwargs):
-        kwargs['depends'] = MarsSchedulerConfig.service_name
-        super().__init__(environment, **kwargs)
-
-
 class MarsApplicationConfig:
     def __init__(self, name=None, queue=None, file_systems=None, master=None,
-                 scheduler_config=None, worker_config=None, web_config=None):
+                 supervisor_config=None, worker_config=None):
         self._name = name
         self._queue = queue or 'default'
         self._file_systems = file_systems or []
         self._master = master or AppMasterConfig(cpu=1, memory='512 MiB')
-        self._scheduler_config = scheduler_config
+        self._supervisor_config = supervisor_config
         self._worker_config = worker_config
-        self._web_config = web_config
 
     def build(self):
         services = _remove_nones({
-            MarsSchedulerConfig.service_name: self._scheduler_config.build() if self._scheduler_config else None,
+            MarsSupervisorConfig.service_name: self._supervisor_config.build() if self._supervisor_config else None,
             MarsWorkerConfig.service_name: self._worker_config.build() if self._worker_config else None,
-            MarsWebConfig.service_name: self._web_config.build() if self._web_config else None,
         })
         return dict(
             name=self._name,

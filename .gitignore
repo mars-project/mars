@@ -76,20 +76,11 @@ bin/etcd*
 # cython compiled files
 mars/*.c*
 mars/*.h*
-mars/actors/*.c*
-mars/actors/pool/*.c*
 mars/core/**/*.c*
-mars/lib/*.c*
-mars/optimizes/**/*.c*
-mars/oscar/**/*.c*
-mars/scheduler/*.c*
-mars/serialize/*.c*
-mars/worker/*.c*
 mars/learn/cluster/*.c*
 mars/learn/utils/*.c*
-
-# files built from protobuf files
-mars/**/*_pb2.py
+mars/lib/*.c*
+mars/oscar/**/*.c*
 
 # docs
 docs/source/savefig/

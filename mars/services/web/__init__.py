@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .api import OscarWebAPI
 from .core import MarsRequestHandler, web_api, \
     MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 try:

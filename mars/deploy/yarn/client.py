@@ -18,10 +18,10 @@ import random
 import time
 import uuid
 
-from ...session import new_session
+from ...core.session import new_session
 from ...utils import to_str
 from ..utils import wait_services_ready
-from .config import MarsApplicationConfig, MarsSchedulerConfig, MarsWorkerConfig, MarsWebConfig
+from .config import MarsApplicationConfig, MarsSupervisorConfig, MarsWorkerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -60,17 +60,17 @@ class YarnClusterClient:
 
 def _get_ready_container_count(app_client, svc):
     container_ids = set(c.yarn_container_id for c in app_client.get_containers([svc], ['RUNNING']))
-    registered_ids = set(to_str(v).rsplit('@', 1)[-1] for v in app_client.kv.get_prefix(svc).values())
+    prefixes = app_client.kv.get_prefix(svc)
+    registered_ids = set(to_str(v).rsplit('@', 1)[-1] for v in prefixes.values())
     return len(container_ids.intersection(registered_ids))
 
 
-def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler_mem=None,
+def new_cluster(environment=None, supervisor_num=1, supervisor_cpu=None, supervisor_mem=None,
                 worker_num=1, worker_cpu=None, worker_mem=None, worker_spill_paths=None,
-                worker_cache_mem=None, min_worker_num=None, web_num=1, web_cpu=None,
-                web_mem=None, timeout=None, log_config=None, skein_client=None, app_name=None,
-                **kwargs):
+                worker_cache_mem=None, min_worker_num=None, timeout=None, log_config=None,
+                skein_client=None, app_name=None, **kwargs):
     import skein
-    from .web import YarnWebApplication
+    from .supervisor import YarnSupervisorCommandRunner
 
     def _override_envs(src, updates):
         ret = src.copy()
@@ -81,30 +81,26 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
 
     log_when_fail = kwargs.pop('log_when_fail', False)
 
-    scheduler_extra_modules = kwargs.pop('scheduler_extra_modules', None)
+    supervisor_extra_modules = kwargs.pop('supervisor_extra_modules', None)
     worker_extra_modules = kwargs.pop('worker_extra_modules', None)
-    web_extra_modules = kwargs.pop('web_extra_modules', None)
 
     cmd_tmpl = kwargs.pop('cmd_tmpl', None)
 
     extra_envs = kwargs.pop('extra_env', dict())
-    scheduler_extra_env = _override_envs(extra_envs, kwargs.pop('scheduler_extra_env', dict()))
+    supervisor_extra_env = _override_envs(extra_envs, kwargs.pop('supervisor_extra_env', dict()))
     worker_extra_env = _override_envs(extra_envs, kwargs.pop('worker_extra_env', dict()))
-    web_extra_env = _override_envs(extra_envs, kwargs.pop('web_extra_env', dict()))
 
     extra_args = kwargs.pop('extra_args', '')
-    scheduler_extra_args = (extra_args + ' ' + kwargs.pop('scheduler_extra_args', '')).strip()
+    supervisor_extra_args = (extra_args + ' ' + kwargs.pop('supervisor_extra_args', '')).strip()
     worker_extra_args = (extra_args + ' ' + kwargs.pop('worker_extra_args', '')).strip()
-    web_extra_args = (extra_args + ' ' + kwargs.pop('web_extra_args', '')).strip()
 
-    scheduler_log_config = kwargs.pop('scheduler_log_config', log_config)
+    supervisor_log_config = kwargs.pop('supervisor_log_config', log_config)
     worker_log_config = kwargs.pop('worker_log_config', log_config)
-    web_log_config = kwargs.pop('web_log_config', log_config)
 
-    scheduler_config = MarsSchedulerConfig(
-        instances=scheduler_num, environment=environment, cpu=scheduler_cpu, memory=scheduler_mem,
-        modules=scheduler_extra_modules, env=scheduler_extra_env, log_config=scheduler_log_config,
-        extra_args=scheduler_extra_args, cmd_tmpl=cmd_tmpl
+    supervisor_config = MarsSupervisorConfig(
+        instances=supervisor_num, environment=environment, cpu=supervisor_cpu, memory=supervisor_mem,
+        modules=supervisor_extra_modules, env=supervisor_extra_env, log_config=supervisor_log_config,
+        extra_args=supervisor_extra_args, cmd_tmpl=cmd_tmpl
     )
     worker_config = MarsWorkerConfig(
         instances=worker_num, environment=environment, cpu=worker_cpu, memory=worker_mem,
@@ -112,12 +108,8 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
         env=worker_extra_env, log_config=worker_log_config, extra_args=worker_extra_args,
         cmd_tmpl=cmd_tmpl
     )
-    web_config = MarsWebConfig(
-        instances=web_num, environment=environment, cpu=web_cpu, memory=web_mem, modules=web_extra_modules,
-        env=web_extra_env, log_config=web_log_config, extra_args=web_extra_args, cmd_tmpl=cmd_tmpl
-    )
     app_config = MarsApplicationConfig(
-        app_name, scheduler_config=scheduler_config, worker_config=worker_config, web_config=web_config)
+        app_name, supervisor_config=supervisor_config, worker_config=worker_config)
 
     skein_client = skein_client or skein.Client()
     app_id = None
@@ -137,18 +129,17 @@ def new_cluster(environment=None, scheduler_num=1, scheduler_cpu=None, scheduler
 
         logger.debug('Application client for %s at %s retrieved', app_id, app_client.address)
 
-        # wait until schedulers and expected num of workers are ready
+        # wait until supervisors and expected num of workers are ready
         min_worker_num = int(min_worker_num or worker_num)
-        limits = [scheduler_num, min_worker_num, web_num]
-        services = [MarsSchedulerConfig.service_name, MarsWorkerConfig.service_name,
-                    MarsWebConfig.service_name]
+        limits = [supervisor_num, min_worker_num]
+        services = [MarsSupervisorConfig.service_name, MarsWorkerConfig.service_name]
 
         wait_services_ready(services, limits,
                             lambda svc: _get_ready_container_count(app_client, svc),
                             timeout=None if not timeout else timeout - (time.time() - check_start_time))
-        web_endpoint_kv = app_client.kv.get_prefix(YarnWebApplication.service_name)
+        web_endpoint_kv = app_client.kv.get_prefix(YarnSupervisorCommandRunner.web_service_name)
         web_endpoint = random.choice([to_str(v).split('@', 1)[0] for v in web_endpoint_kv.values()])
-        return YarnClusterClient(skein_client, app_client.id, 'http://' + web_endpoint,
+        return YarnClusterClient(skein_client, app_client.id, web_endpoint,
                                  is_client_managed=is_client_managed)
     except:  # noqa: E722
         skein_client = skein.Client()

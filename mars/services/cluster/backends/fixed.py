@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import AsyncGenerator, List
+from typing import AsyncGenerator, List, Optional
 
 from .base import AbstractClusterBackend, register_cluster_backend
 
@@ -25,7 +25,8 @@ class FixedClusterBackend(AbstractClusterBackend):
         self._supervisors = [n.strip() for n in lookup_address.split(',')]
 
     @classmethod
-    async def create(cls, lookup_address: str):
+    async def create(cls, lookup_address: Optional[str],
+                     pool_address: str):
         return cls(lookup_address)
 
     async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:

@@ -14,9 +14,9 @@
 
 from typing import Dict, List
 
-from ... import NodeRole
 from ....lib.aio import alru_cache
 from ....utils import serialize_serializable, deserialize_serializable
+from ...core import NodeRole, BandType
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from .core import AbstractClusterAPI
 
@@ -53,6 +53,17 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
                 nodes=nodes, role=role, env=env, resource=resource, state=state
             )
         self.write(serialize_serializable(result))
+
+    @web_api('bands', method='get')
+    async def get_all_bands(self):
+        role_arg = self.get_argument('role', None)
+        role = NodeRole(int(role_arg)) if role_arg is not None else None
+        watch = bool(int(self.get_argument('watch', '0')))
+
+        cluster_api = await self._get_cluster_api()
+        self.write(serialize_serializable(
+            await cluster_api.get_all_bands(role, watch=watch)
+        ))
 
 
 web_handlers = {
@@ -97,3 +108,11 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
                           resource: bool = False, state: bool = False) -> List[Dict[str, Dict]]:
         return await self._get_nodes_info(role=role, env=env, resource=resource,
                                           state=state, watch=True)
+
+    async def get_all_bands(self, role: NodeRole = None,
+                            watch: bool = False) -> Dict[BandType, int]:
+        path = f'{self._address}/api/cluster/bands?watch={int(watch)}'
+        if role is not None:  # pragma: no cover
+            path += f'&role={role.value}'
+        res = await self._request_url(path)
+        return deserialize_serializable(res.body)

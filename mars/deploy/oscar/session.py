@@ -26,7 +26,7 @@ from ...core.operand import Fetch
 from ...core.session import AbstractAsyncSession, register_session_cls, \
     ExecutionInfo as AbstractExecutionInfo, gen_submit_tileable_graph
 from ...lib.aio import alru_cache
-from ...services.cluster import ClusterAPI
+from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
@@ -77,7 +77,7 @@ class Session(AbstractAsyncSession):
                  meta_api: AbstractMetaAPI,
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
-                 cluster_api: ClusterAPI,
+                 cluster_api: AbstractClusterAPI,
                  client: ClientType = None):
         super().__init__(address, session_id)
         self._session_api = session_api
@@ -366,7 +366,7 @@ class WebSession(Session):
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
-        from ...services.cluster import ClusterAPI
+        from ...services.cluster import WebClusterAPI
 
         session_api = WebSessionAPI(address)
         if new:
@@ -377,7 +377,7 @@ class WebSession(Session):
         lifecycle_api = WebLifecycleAPI(session_id, address)
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
-        cluster_api = ClusterAPI(address)
+        cluster_api = WebClusterAPI(address)
 
         return cls(address, session_id,
                    session_api, meta_api,

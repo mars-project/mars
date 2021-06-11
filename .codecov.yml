@@ -38,7 +38,6 @@ ignore:
   - "**/*.pxd"
   - "**/tests"
   # vineyard related things
-  - "mars/worker/storage/vineyardhandler.py"
   # kubedl related things
   - "mars/deploy/kubedl"
   # proxima related things

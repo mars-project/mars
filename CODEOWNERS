@@ -1,24 +1,28 @@
 # Each line is a component followed by one or more owners.
 
-*                        @qinxuye @wjsi @hekaisheng
-/.github                 @wjsi @qinxuye
-/bin                     @wjsi @qinxuye
-/docs                    @qinxuye @hekaisheng @wjsi
-/mars/                   @qinxuye @hekaisheng @wjsi
-/mars/tests              @qinxuye @hekaisheng @wjsi
-/mars/actors             @qinxuye @hekaisheng @wjsi
-/mars/dataframe          @hekaisheng @qinxuye @wjsi
-/mars/deploy             @wjsi @hekaisheng @qinxuye
-/mars/learn              @qinxuye @hekaisheng @wjsi
-/mars/lib                @wjsi @qinxuye
-/mars/optimizes          @hekaisheng @qinxuye
-/mars/oscar              @wjsi @qinxuye
-/mars/ray                @hekaisheng @qinxuye
-/mars/remote             @qinxuye @wjsi @hekaisheng
-/mars/scheduler          @wjsi @qinxuye
-/mars/serialize          @qinxuye @wjsi
-/mars/serialize/protos   @qinxuye @wjsi @hekaisheng
-/mars/tensor             @hekaisheng @qinxuye @wjsi
-/mars/tests              @wjsi @qinxuye @qinxuye
-/mars/web                @wjsi @hekaisheng @qinxuye
-/mars/worker             @wjsi @qinxuye
+*                          @qinxuye @wjsi @hekaisheng
+/.github                   @wjsi @qinxuye
+/bin                       @wjsi @qinxuye
+/docs                      @qinxuye @hekaisheng @wjsi
+/mars/                     @qinxuye @hekaisheng @wjsi
+/mars/dataframe            @hekaisheng @qinxuye @wjsi
+/mars/deploy               @wjsi @hekaisheng @qinxuye
+/mars/learn                @qinxuye @hekaisheng @wjsi
+/mars/lib                  @wjsi @qinxuye
+/mars/optimization         @hekaisheng @qinxuye
+/mars/oscar                @wjsi @qinxuye
+/mars/remote               @qinxuye @wjsi @hekaisheng
+/mars/serialization        @qinxuye @wjsi
+/mars/services/            @wjsi @qinxuye
+/mars/services/cluster     @wjsi @qinxuye
+/mars/services/lifecycle   @wjsi @qinxuye
+/mars/services/meta        @wjsi @qinxuye
+/mars/services/scheduling  @wjsi @qinxuye
+/mars/services/session     @wjsi @qinxuye
+/mars/services/storage     @hekaisheng @qinxuye
+/mars/services/subtask     @wjsi @qinxuye
+/mars/services/task        @wjsi @qinxuye
+/mars/services/web         @wjsi @qinxuye
+/mars/storage              @hekaisheng @qinxuye
+/mars/tensor               @hekaisheng @qinxuye @wjsi
+/mars/tests                @wjsi @qinxuye @qinxuye
