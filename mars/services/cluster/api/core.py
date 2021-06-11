@@ -78,3 +78,14 @@ class AbstractClusterAPI:
         band_to_slots : dict
             Band to n_slot.
         """
+
+    @abstractmethod
+    async def get_mars_versions(self) -> List[str]:
+        """
+        Get versions used in current Mars cluster
+
+        Returns
+        -------
+        version_list : list
+            List of versions
+        """

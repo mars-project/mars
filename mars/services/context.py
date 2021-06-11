@@ -238,6 +238,12 @@ class ThreadedServiceSession(AbstractSyncSession):
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return fut.result()
 
+    @implements(AbstractSyncSession.get_cluster_versions)
+    def get_cluster_versions(self) -> List[str]:
+        coro = self._session.get_cluster_versions()
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return fut.result()
+
     @implements(AbstractSyncSession.to_async)
     def to_async(self):
         return self._session

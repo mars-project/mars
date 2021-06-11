@@ -247,6 +247,17 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         number_of_cpu: int
         """
 
+    @abstractmethod
+    async def get_cluster_versions(self) -> List[str]:
+        """
+        Get versions used in current Mars cluster
+
+        Returns
+        -------
+        version_list : list
+            List of versions
+        """
+
     async def stop_server(self):
         """
         Stop server.
@@ -345,6 +356,17 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         Returns
         -------
         number_of_cpu: int
+        """
+
+    @abstractmethod
+    def get_cluster_versions(self) -> List[str]:
+        """
+        Get versions used in current Mars cluster
+
+        Returns
+        -------
+        version_list : list
+            List of versions
         """
 
     def fetch_log(self,
@@ -736,6 +758,12 @@ class SyncSession(AbstractSyncSession):
     def get_total_n_cpu(self):
         return _loop.run_until_complete(
             self._session.get_total_n_cpu())
+
+    @implements(AbstractSyncSession.get_cluster_versions)
+    @_wrap_in_thread
+    def get_cluster_versions(self) -> List[str]:
+        return _loop.run_until_complete(
+            self._session.get_cluster_versions())
 
     @_wrap_in_thread
     def destroy(self):

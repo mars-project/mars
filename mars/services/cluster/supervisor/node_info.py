@@ -123,6 +123,10 @@ class NodeInfoCollectorActor(mo.Actor):
                     band_slots[(node, resource_type)] = info['gpu_total']
         return band_slots
 
+    def get_mars_versions(self) -> List[str]:
+        versions = set(info.env['mars_version'] for info in self._node_infos.values())
+        return list(sorted(versions))
+
     async def watch_nodes(self, role: NodeRole, env: bool = False,
                           resource: bool = False, state: bool = False):
         event = asyncio.Event()

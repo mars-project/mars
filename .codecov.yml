@@ -27,6 +27,7 @@ ignore:
   - "mars/lib/nvutils.py"
   - "mars/lib/tblib"
   - "mars/lib/uhashring"
+  - "mars/lib/version.py"
   - "mars/learn/contrib/xgboost/tracker.py"
   - "mars/learn/cluster/_k_means_fast.*"
   - "mars/learn/cluster/_k_means_elkan.pyx"

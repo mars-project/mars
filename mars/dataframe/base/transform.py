@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.version import LooseVersion
-
 import numpy as np
 import pandas as pd
 
@@ -21,6 +19,7 @@ from ... import opcodes
 from ...config import options
 from ...core import OutputType, recursive_tile
 from ...core.custom_log import redirect_custom_log
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import AnyField, BoolField, \
     TupleField, DictField
 from ...utils import enter_current_session, quiet_stdio
@@ -196,7 +195,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     if self.call_agg:
                         infer_df = test_df.agg(self._func, args=self.args, **self.kwds)
                     else:
-                        if LooseVersion(pd.__version__) >= '1.2.0':
+                        if parse_version(pd.__version__) >= parse_version('1.2.0'):
                             infer_df = test_df.transform(self._func, *self.args, **self.kwds)
                         else:  # pragma: no cover
                             infer_df = test_df.transform(self._func, convert_dtype=self.convert_dtype,

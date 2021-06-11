@@ -17,6 +17,7 @@ import asyncio
 import pytest
 
 import mars.oscar as mo
+from mars._version import __version__ as mars_version
 from mars.services import NodeRole
 from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
 from mars.services.cluster.api.web import web_handlers
@@ -98,6 +99,8 @@ async def test_web_api(actor_pool):
     assert 'custom_key' in nodes_info[pool_addr]['state']
 
     assert len(await web_api.get_all_bands()) > 0
+
+    assert await web_api.get_mars_versions() == [mars_version]
 
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(web_api.watch_nodes(NodeRole.WORKER), timeout=0.1)

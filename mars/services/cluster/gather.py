@@ -12,17 +12,98 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
+import platform
+import socket
 import sys
 
+import numpy as np
+import pandas as pd
+
+try:
+    import scipy
+except ImportError:  # pragma: no cover
+    scipy = None
+
 from ... import resource as mars_resource
-# todo move `node_info` module here when actors are done
-from ...node_info import gather_node_env as _ext_gather_node_env
+from ...config import options
+from ...utils import git_info, lazy_import
+
+cp = lazy_import('cupy', globals=globals(), rename='cp')
+cudf = lazy_import('cudf', globals=globals())
+
+logger = logging.getLogger(__name__)
+
+_is_initial = True
 
 
 def gather_node_env():
-    info = _ext_gather_node_env()
-    bands = info['bands'] = dict()
+    from ...lib.mkl_interface import mkl_get_version
+    from ...lib.nvutils import NVError
+    from ..._version import __version__ as mars_version
+
+    global _is_initial
+    if _is_initial:
+        _is_initial = False
+        mars_resource.cpu_percent()
+
+    mem_stats = mars_resource.virtual_memory()
+
+    node_info = {
+        'command_line': sys.argv,
+        'platform': platform.platform(),
+        'host_name': socket.gethostname(),
+        'python_version': sys.version,
+        'mars_version': mars_version,
+        'cpu_total': mars_resource.cpu_count(),
+        'memory_total': mem_stats.total,
+        'options': options.to_dict(),
+    }
+
+    if 'MARS_K8S_POD_NAME' in os.environ:
+        node_info['k8s_pod_name'] = os.environ['MARS_K8S_POD_NAME']
+    if 'CONTAINER_ID' in os.environ:
+        node_info['yarn_container_id'] = os.environ['CONTAINER_ID']
+
+    try:
+        cuda_info = mars_resource.cuda_info()
+    except NVError:  # pragma: no cover
+        logger.exception('NVError encountered, cannot gather CUDA devices.')
+        cuda_info = None
+
+    if cuda_info:
+        node_info['cuda_info'] = {
+            'driver': cuda_info.driver_version,
+            'cuda': cuda_info.cuda_version,
+            'products': list(cuda_info.products),
+        }
+
+    package_vers = {
+        'numpy': np.__version__,
+        'pandas': pd.__version__,
+    }
+    if hasattr(np, '__mkl_version__') and mkl_get_version:
+        mkl_version = mkl_get_version()
+        package_vers['mkl'] = f'{mkl_version.major}.{mkl_version.minor}.{mkl_version.update}'
+
+    if scipy is not None:
+        package_vers['scipy'] = scipy.__version__
+    if cp is not None:
+        package_vers['cupy'] = cp.__version__
+    if cudf is not None:
+        package_vers['cudf'] = cudf.__version__
+
+    node_info['package_versions'] = package_vers
+
+    git = git_info()
+    if git:
+        node_info['git_info'] = {
+            'hash': git.commit_hash,
+            'ref': git.commit_ref,
+        }
+
+    bands = node_info['bands'] = dict()
 
     cpu_band = {
         'resources': {
@@ -40,7 +121,7 @@ def gather_node_env():
                 'memory': gpu_card_stat.fb_mem_info.total,
             }
         }
-    return info
+    return node_info
 
 
 def gather_node_resource(band_to_slots=None, use_gpu=True):
