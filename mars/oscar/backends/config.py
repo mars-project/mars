@@ -38,6 +38,7 @@ class ActorPoolConfig:
                       external_address: Union[str, List[str]],
                       env: Dict = None,
                       modules: List[str] = None,
+                      suspend_sigint: bool = False,
                       kwargs: Dict = None):
         pools: Dict = self._conf['pools']
         if not isinstance(external_address, list):
@@ -48,6 +49,7 @@ class ActorPoolConfig:
             'external_address': external_address,
             'env': env,
             'modules': modules,
+            'suspend_sigint': suspend_sigint,
             'kwargs': kwargs or {},
         }
         for addr in external_address:

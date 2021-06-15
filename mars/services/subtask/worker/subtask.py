@@ -395,6 +395,7 @@ class SubtaskProcessor:
 
 @dataclass
 class _SubtaskRunningInfo:
+    subtask_id: str
     task: asyncio.Task
     processor: SubtaskProcessor = None
 
@@ -462,7 +463,7 @@ class SubtaskRunnerActor(mo.Actor):
 
         logger.info(f'Start to run subtask: {subtask.subtask_id}')
         aio_task = asyncio.create_task(self._run_subtask(subtask))
-        self._subtask_info = _SubtaskRunningInfo(task=aio_task)
+        self._subtask_info = _SubtaskRunningInfo(subtask.subtask_id, task=aio_task)
         return aio_task
 
     def is_runner_free(self):
@@ -481,7 +482,7 @@ class SubtaskRunnerActor(mo.Actor):
             return
 
         logger.info(f'Cancelling subtask: '
-                    f'{self._subtask_info.processor.subtask_id}')
+                    f'{self._subtask_info.subtask_id}')
         aio_task = self._subtask_info.task
         aio_task.cancel()
 
