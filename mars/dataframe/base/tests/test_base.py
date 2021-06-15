@@ -888,3 +888,23 @@ def test_eval_query():
         df.eval("p, q = a + c")
     with pytest.raises(ValueError):
         df.query("p = a + c")
+
+def test_empty():
+    # for DataFrame
+    assert from_pandas_df(pd.DataFrame()).empty == pd.DataFrame().empty
+    assert from_pandas_df(pd.DataFrame({})).empty == pd.DataFrame({}).empty
+    assert from_pandas_df(pd.DataFrame({'a':[]})).empty == pd.DataFrame({'a':[]}).empty
+    assert from_pandas_df(pd.DataFrame({'a':[1]})).empty == pd.DataFrame({'a':[1]}).empty
+    assert from_pandas_df(pd.DataFrame({'a':[1], 'b':[2]})).empty == pd.DataFrame({'a':[1], 'b':[2]}).empty
+    assert from_pandas_df(pd.DataFrame(np.empty(shape=(4,0)))).empty == pd.DataFrame(np.empty(shape=(4,0))).empty
+
+    # for Series
+    assert from_pandas_series(pd.Series()).empty == pd.Series().empty
+    assert from_pandas_series(pd.Series({})).empty == pd.Series({}).empty
+    assert from_pandas_series(pd.Series({'a':[]})).empty == pd.Series({'a':[]}).empty
+    assert from_pandas_series(pd.Series({'a':[1]})).empty == pd.Series({'a':[1]}).empty
+
+    # Maybe fail due to lazy evaluation
+    with pytest.raises(ValueError):
+        a = from_pandas_df(pd.DataFrame(np.random.rand(10, 2)))
+        assert a[a > 0].empty == True
