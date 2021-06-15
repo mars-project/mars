@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
+import threading
+import time
 
 import numpy as np
 import pandas as pd
@@ -21,8 +24,10 @@ import uuid
 
 import mars.dataframe as md
 import mars.tensor as mt
+import mars.remote as mr
+from mars.config import option_context
 from mars.core.session import get_default_session, \
-    new_session, execute, fetch, stop_server
+    new_session, execute, fetch, stop_server, get_loop
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import Session, WebSession
 
@@ -202,28 +207,67 @@ def test_no_default_session():
     stop_server()
 
 
-def test_decref():
+@pytest.fixture
+def setup_session():
     session = new_session(n_cpu=2, default=True)
 
     with session:
-        a = mt.ones((10, 10))
-        b = mt.ones((10, 10))
-        c = b + 1
-        d = mt.ones((5, 5))
-
-        a.execute(show_progress=False)
-        b.execute(show_progress=False)
-        c.execute(show_progress=False)
-        d.execute(show_progress=False)
-
-        del a
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 3
-        del b
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 3
-        del c
-        ref_counts = session._get_ref_counts()
-        assert len(ref_counts) == 1
+        with option_context({'show_progress': False}):
+            yield session
 
     session.stop_server()
+
+
+def test_decref(setup_session):
+    session = setup_session
+
+    a = mt.ones((10, 10))
+    b = mt.ones((10, 10))
+    c = b + 1
+    d = mt.ones((5, 5))
+
+    a.execute()
+    b.execute()
+    c.execute()
+    d.execute()
+
+    del a
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 3
+    del b
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 3
+    del c
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 1
+
+
+def test_cancel(setup_session):
+    session = setup_session
+    loop = get_loop()
+    cancelled = asyncio.Event(loop=loop)
+
+    def run():
+        time.sleep(200)
+
+    def cancel():
+        time.sleep(.5)
+        cancelled.set()
+
+    t = threading.Thread(target=cancel)
+    t.daemon = True
+    t.start()
+
+    rs = [mr.spawn(run) for _ in range(10)]
+    execute(*rs, cancelled=cancelled)
+
+    assert all(not r._executed_sessions for r in rs)
+
+    del rs
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
+
+    # submit another task
+    raw = np.random.rand(10, 10)
+    t = mt.tensor(raw, chunk_size=(10, 5))
+    np.testing.assert_array_equal(t.execute().fetch(), raw)

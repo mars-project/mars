@@ -506,7 +506,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
-            if future is None:  # pragma: no cover
+            if future is None or future.done():  # pragma: no cover
                 raise CannotCancelTask('Task not exists, maybe it is done '
                                        'or cancelled already')
             future.cancel()

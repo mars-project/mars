@@ -69,7 +69,7 @@ class MarsActorContext(BaseActorContext):
                 await self.cancel(address, message.message_id)
             except CannotCancelTask:
                 # cancel failed, already finished
-                pass
+                raise asyncio.CancelledError
         return await future
 
     async def create_actor(self, actor_cls: Type[Actor], *args, uid=None,

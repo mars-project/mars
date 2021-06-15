@@ -582,6 +582,10 @@ class TaskManagerActor(mo.Actor):
                 task_stage_info.subtask_graph_scheduler = subtask_scheduler
                 await subtask_scheduler.schedule()
 
+                if task_info.task_result is not None:
+                    # already finished, cancelled perhaps
+                    break
+
             # iterative tiling and execution finished,
             # set task processor done
             for tileable in tileable_graph.result_tileables:
@@ -716,7 +720,8 @@ class TaskManagerActor(mo.Actor):
     async def _cancel_task(self, task_info: TaskInfo):
         # cancel all stages
         coros = [task_stage_info.subtask_graph_scheduler.cancel()
-                 for task_stage_info in task_info.task_stage_infos]
+                 for task_stage_info in task_info.task_stage_infos
+                 if task_stage_info.subtask_graph_scheduler]
         await asyncio.gather(*coros)
 
     async def cancel_task(self, task_id: str):
