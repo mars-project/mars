@@ -138,6 +138,9 @@ class DataManager:
         # mapping value is list of InternalDataInfo
         self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
         self._data_info_list = dict()
+        # data key may be a tuple in some cases,
+        # we record main key to manage their lifecycle
+        self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
 
@@ -149,11 +152,19 @@ class DataManager:
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
+        if isinstance(data_key, tuple):
+            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
     def get_infos(self,
                   session_id: str,
                   data_key: str) -> List[DataInfo]:
-        if (session_id, data_key) not in self._data_key_to_info:  # pragma: no cover
+        if (session_id, data_key) not in self._data_key_to_info:
+            if (session_id, data_key) in self._main_key_to_sub_keys:
+                infos = []
+                for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
+                    infos.extend([info.data_info for info in
+                                  self._data_key_to_info.get((session_id, sub_key))])
+                return infos
             raise DataNotExist(f'Data key {session_id, data_key} not exists.')
         return [info.data_info for info in
                 self._data_key_to_info.get((session_id, data_key))]
@@ -177,14 +188,24 @@ class DataManager:
                session_id: str,
                data_key: str,
                level: StorageLevel):
-        if (session_id, data_key) in self._data_key_to_info:
-            self._data_info_list[level].pop((session_id, data_key))
-            infos = self._data_key_to_info[(session_id, data_key)]
-            rest = [info for info in infos if info.data_info.level != level]
-            if len(rest) == 0:
-                del self._data_key_to_info[(session_id, data_key)]
-            else:  # pragma: no cover
-                self._data_key_to_info[(session_id, data_key)] = rest
+        if (session_id, data_key) in self._main_key_to_sub_keys:
+            to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
+        else:
+            to_delete_keys = [data_key]
+        logger.debug(f'Begin to delete data keys in data manager: {to_delete_keys}')
+        for key in to_delete_keys:
+            if (session_id, key) in self._data_key_to_info:
+                self._data_info_list[level].pop((session_id, key))
+                infos = self._data_key_to_info[(session_id, key)]
+                rest = [info for info in infos if info.data_info.level != level]
+                if len(rest) == 0:
+                    del self._data_key_to_info[(session_id, key)]
+                else:  # pragma: no cover
+                    self._data_key_to_info[(session_id, key)] = rest
+        logger.debug(f'Finish deleting data keys in data manager: {to_delete_keys}')
+
+    def list(self, level: StorageLevel):
+        return list(self._data_info_list[level].keys())
 
 
 class StorageHandlerActor(mo.Actor):
@@ -311,19 +332,22 @@ class StorageHandlerActor(mo.Actor):
         data_infos = []
         put_infos = []
         for size, data_key, obj in zip(sizes, data_keys, objs):
+            logger.debug(f'Begin to put data key {data_key}')
             object_info = await self._clients[level].put(obj)
             data_info = _build_data_info(object_info, level, size)
             data_infos.append(data_info)
             put_infos.append(
                 self._storage_manager_ref.put_data_info.delay(
                     session_id, data_key, data_info, object_info))
+            logger.debug(f'Finish putting data key {data_key}, size is {size}, '
+                         f'object_id is {data_info.object_id}')
         await self._storage_manager_ref.put_data_info.batch(*put_infos)
         return data_infos
 
     def _get_data_infos_arg(self,
-                           session_id: str,
-                           data_key: str,
-                           error: str):
+                            session_id: str,
+                            data_key: str,
+                            error: str):
         infos = self._storage_manager_ref.get_data_infos.delay(
             session_id, data_key, error)
         return infos, session_id, data_key
@@ -379,8 +403,10 @@ class StorageHandlerActor(mo.Actor):
             return
 
         await self._storage_manager_ref.delete_data_info.batch(*delete_infos)
+        logger.debug(f'Begin to delete batch data {to_removes}')
         for level, object_id in to_removes:
             yield self._clients[level].delete(object_id)
+        logger.debug(f'Finish deleting batch data {to_removes}')
         releases = []
         for level, size in level_sizes.items():
             releases.append(self._storage_manager_ref.release_quota.delay(size, level))
@@ -421,9 +447,12 @@ class StorageHandlerActor(mo.Actor):
                     data_key: str):
         if StorageLevel.REMOTE not in self._clients:
             raise NotImplementedError
-        else:  # pragma: no cover
+        else:
+            logger.debug(f'Begin to fetch data {data_key} info from remote worker')
             data_info = await self._storage_manager_ref.fetch_data_info(
                 session_id, data_key)
+            logger.debug(f'Finish fetching data {data_key} info from remote worker,'
+                         f'object_id is {data_info.object_id}')
             await self._clients[StorageLevel.REMOTE].fetch(data_info.object_id)
 
 
@@ -575,10 +604,14 @@ class StorageManagerActor(mo.Actor):
                         main_key = data_key[0] if isinstance(data_key, tuple) else data_key
                         address = (await meta_api.get_chunk_meta(
                             main_key, fields=['bands']))['bands'][0][0]
+                    if address == self.address:
+                        return
+                    logger.debug(f'Begin to fetch data {data_key} from {address}')
                     sender_ref = await mo.actor_ref(
                         address=address, uid=SenderManagerActor.default_uid())
                     yield sender_ref.send_data(session_id, data_key,
                                                self.address, level)
+                    logger.debug(f'finish fetching data {data_key} from {address}')
                     if not isinstance(data_key, tuple):
                         # no need to update meta for shuffle data
                         await meta_api.add_chunk_bands(
@@ -675,6 +708,9 @@ class StorageManagerActor(mo.Actor):
     def batch_delete_data_info(self, args_list, kwargs_list):
         for args, kwargs in zip(args_list, kwargs_list):
             self._data_manager.delete(*args, *kwargs)
+
+    def list(self, level: StorageLevel) -> List:
+        return self._data_manager.list(level)
 
     def pin(self, object_id):
         self._pinned_keys.append(object_id)
