@@ -140,7 +140,7 @@ class DataManager:
         self._data_info_list = dict()
         # data key may be a tuple in some cases,
         # we record main key to manage their lifecycle
-        self._tuple_keys = defaultdict(set)
+        self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
 
@@ -153,15 +153,15 @@ class DataManager:
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if isinstance(data_key, tuple):
-            self._tuple_keys[(session_id, data_key[0])].update([data_key])
+            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
     def get_infos(self,
                   session_id: str,
                   data_key: str) -> List[DataInfo]:
         if (session_id, data_key) not in self._data_key_to_info:
-            if (session_id, data_key) in self._tuple_keys:
+            if (session_id, data_key) in self._main_key_to_sub_keys:
                 infos = []
-                for sub_key in self._tuple_keys[(session_id, data_key)]:
+                for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
                     infos.extend([info.data_info for info in
                                   self._data_key_to_info.get((session_id, sub_key))])
                 return infos
@@ -188,8 +188,8 @@ class DataManager:
                session_id: str,
                data_key: str,
                level: StorageLevel):
-        if (session_id, data_key) in self._tuple_keys:
-            to_delete_keys = self._tuple_keys[(session_id, data_key)]
+        if (session_id, data_key) in self._main_key_to_sub_keys:
+            to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
         else:
             to_delete_keys = [data_key]
         logger.info(f'Begin to delete data keys in data manager: {to_delete_keys}')
