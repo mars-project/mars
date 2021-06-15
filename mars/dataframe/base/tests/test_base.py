@@ -889,6 +889,7 @@ def test_eval_query():
     with pytest.raises(ValueError):
         df.query("p = a + c")
 
+
 def test_empty():
     # for DataFrame
     assert from_pandas_df(pd.DataFrame()).empty == pd.DataFrame().empty
