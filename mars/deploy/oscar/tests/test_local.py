@@ -93,7 +93,7 @@ async def test_iterative_tiling(create_cluster):
 
 
 @pytest.mark.asyncio
-async def test_execute_shuffle(create_cluster):
+async def test_execute_describe(create_cluster):
     s = np.random.RandomState(0)
     raw = pd.DataFrame(s.rand(100, 4), columns=list('abcd'))
     df = md.DataFrame(raw, chunk_size=30)

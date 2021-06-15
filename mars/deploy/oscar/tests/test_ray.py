@@ -67,8 +67,8 @@ async def test_iterative_tiling(ray_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_shuffle(ray_cluster, create_cluster):
-    await test_local.test_execute_shuffle(create_cluster)
+async def test_execute_describe(ray_cluster, create_cluster):
+    await test_local.test_execute_describe(create_cluster)
 
 
 @require_ray
