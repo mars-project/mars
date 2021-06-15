@@ -909,4 +909,6 @@ def test_empty():
     with pytest.raises(ValueError):
         a = from_pandas_df(pd.DataFrame(np.random.rand(10, 2)))
         assert a[a > 0].empty == True
- 
+    with pytest.raises(ValueError):
+        a = from_pandas_series(pd.Series(np.random.rand(10)))
+        assert a[a > 0].empty == True
