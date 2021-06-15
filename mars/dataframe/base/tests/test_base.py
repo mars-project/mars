@@ -912,4 +912,3 @@ def test_empty():
     with pytest.raises(ValueError):
         a = from_pandas_series(pd.Series(np.random.rand(10)))
         assert a[a > 0].empty == True
-
