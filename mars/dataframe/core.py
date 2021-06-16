@@ -1021,6 +1021,13 @@ class BaseSeriesData(HasShapeTileableData, _ToPandasMixin):
     def axes(self):
         return [self.index]
 
+    @property
+    def empty(self):
+        shape = getattr(self, '_shape')
+        if np.any(np.isnan(shape)):
+            raise ValueError('Tileable object must be executed first')
+        return shape == (0,)
+
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_series
         return from_series(self, dtype=dtype)
@@ -1468,6 +1475,13 @@ class BaseDataFrameData(HasShapeTileableData, _ToPandasMixin):
     @property
     def columns_value(self):
         return self._columns_value
+
+    @property
+    def empty(self):
+        shape = getattr(self, '_shape')
+        if np.any(np.isnan(shape)):
+            raise ValueError('Tileable object must be executed first')
+        return (0 in shape)
 
     def to_tensor(self, dtype=None):
         from ..tensor.datasource.from_dataframe import from_dataframe
