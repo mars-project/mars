@@ -18,7 +18,7 @@ from typing import List, Dict, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ...core import NodeRole, BandType
+from ...core import NodeRole, BandType, FilterType
 from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -112,11 +112,11 @@ class ClusterAPI(AbstractClusterAPI):
         return await self._node_info_ref.get_nodes_info(
             nodes=nodes, role=role, env=env, resource=resource, state=state)
 
-    async def get_all_bands(self, role: NodeRole = None,
+    async def get_all_bands(self, role: NodeRole = None, filter: FilterType = None,
                             watch: bool = False) -> Dict[BandType, int]:
         if watch:
-            return await self._node_info_ref.watch_all_bands(role)
-        return await self._node_info_ref.get_all_bands(role)
+            return await self._node_info_ref.watch_all_bands(role, filter)
+        return await self._node_info_ref.get_all_bands(role, filter)
 
     async def get_mars_versions(self) -> List[str]:
         return await self._node_info_ref.get_mars_versions()

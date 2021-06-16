@@ -19,7 +19,7 @@ from typing import List
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
-from ...core import NodeRole
+from ...core import NodeRole, FilterType
 from ...subtask import Subtask
 
 
@@ -50,7 +50,7 @@ class AssignerActor(mo.Actor):
         async def watch_bands():
             while True:
                 self._bands = list(await self._cluster_api.get_all_bands(
-                    NodeRole.WORKER, watch=True))
+                    NodeRole.WORKER, FilterType.BLOCKLIST, watch=True))
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -63,7 +63,9 @@ class AssignerActor(mo.Actor):
         selected_bands = dict()
         for subtask in subtasks:
             if subtask.expect_bands:
-                selected_bands[subtask.subtask_id] = subtask.expect_bands
+                selected_bands[subtask.subtask_id] = \
+                    subtask.expect_bands if subtask.expect_bands in self._bands \
+                        else [random.choice(self._bands)]
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
@@ -90,6 +92,7 @@ class AssignerActor(mo.Actor):
                         continue
                     meta = inp_metas[inp.key]
                     for band in meta['bands']:
+                        # TODO: maybe filter needed here
                         band_sizes[band] += meta['store_size']
                 bands = []
                 max_size = -1
