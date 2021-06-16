@@ -18,7 +18,7 @@ from collections import defaultdict
 from typing import Dict, List
 
 from .... import oscar as mo
-from ...core import NodeRole, BandType
+from ...core import NodeRole, BandType, FilterType
 from ..core import NodeInfo
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
@@ -33,6 +33,7 @@ class NodeInfoCollectorActor(mo.Actor):
         self._role_to_events = defaultdict(set)
 
         self._node_infos = dict()
+        self._blocked_nodes = set()
 
         self._node_timeout = timeout or DEFAULT_NODE_DEAD_TIMEOUT
         self._check_interval = check_interval or DEFAULT_NODE_CHECK_INTERVAL
@@ -108,11 +109,23 @@ class NodeInfoCollectorActor(mo.Actor):
             )
         return ret_infos
 
-    def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
+    def add_to_blocklist(self, address: str, role: NodeRole):
+        assert address in self._node_infos
+        self._blocked_nodes.add(address)
+        self._notify_roles([role])
+            
+    def remove_from_blocklist(self, address: str, role: NodeRole):
+        assert address in self._blocked_nodes
+        self._blocked_nodes.remove(address)
+        self._notify_roles([role])
+        
+    def get_all_bands(self, role: NodeRole = None, filter: FilterType = None) -> Dict[BandType, int]:
         role = role or NodeRole.WORKER
         nodes = self._role_to_nodes.get(role, [])
         band_slots = dict()
         for node in nodes:
+            if filter == FilterType.BLOCKLIST and node in self._blocked_nodes:
+                continue
             node_resource = self._node_infos[node].resource
             for resource_type, info in node_resource.items():
                 if resource_type.startswith('numa'):
@@ -142,7 +155,7 @@ class NodeInfoCollectorActor(mo.Actor):
 
         return waiter()
 
-    async def watch_all_bands(self, role: NodeRole = None):
+    async def watch_all_bands(self, role: NodeRole = None, filter: FilterType = None):
         role = role or NodeRole.WORKER
         event = asyncio.Event()
         self._role_to_events[role].add(event)
@@ -150,7 +163,7 @@ class NodeInfoCollectorActor(mo.Actor):
         async def waiter():
             try:
                 await event.wait()
-                return self.get_all_bands(role=role)
+                return self.get_all_bands(role=role, filter=filter)
             finally:
                 self._role_to_events[role].remove(event)
 

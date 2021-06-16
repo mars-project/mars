@@ -18,7 +18,7 @@ import pytest
 
 import mars.oscar as mo
 from mars._version import __version__ as mars_version
-from mars.services import NodeRole
+from mars.services import NodeRole, FilterType
 from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
 from mars.services.cluster.api.web import web_handlers
 from mars.services.web.supervisor import start as start_web
