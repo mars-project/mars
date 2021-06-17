@@ -56,9 +56,8 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
                  object_id: Any,
                  mode: str,
                  size: Optional[int] = None):
-        self._object_id = object_id
         self.shm = None
-        super().__init__(mode, size=size)
+        super().__init__(object_id, mode, size=size)
 
     def _write_init(self):
         self.shm = shm = SharedMemory(

@@ -189,7 +189,7 @@ class StorageAPI(AbstractStorageAPI):
             data key to unpin
 
         """
-        await self._storage_manager_ref.unpin(data_key)
+        await self._storage_manager_ref.unpin(self._session_id, data_key)
 
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """

@@ -42,10 +42,9 @@ class CudaFileObject(BufferWrappedFileObject):
     def __init__(self, object_id: CudaObjectId, mode: str,
                  size: Optional[int] = None,
                  cuda_buffer: Optional[object] = None):
-        self._object_id = object_id
         self._cuda_buffer = cuda_buffer
         self._cupy_memory = None
-        super().__init__(mode, size=size)
+        super().__init__(object_id, mode, size=size)
 
     def _read_init(self):
         from cudf.core import Buffer

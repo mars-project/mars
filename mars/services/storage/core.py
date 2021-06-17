@@ -14,9 +14,10 @@
 
 import asyncio
 import logging
+import random
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
@@ -57,6 +58,7 @@ class WrappedStorageFileObject(AioFileObject):
                  storage_manager: Union[ActorRef, "StorageManagerActor"],
                  storage_handler: StorageBackend
                  ):
+        self._object_id = file.object_id
         super().__init__(file)
         self._size = size
         self._level = level
@@ -73,8 +75,8 @@ class WrappedStorageFileObject(AioFileObject):
 
     async def close(self):
         self._file.close()
-        if 'w' in self._file._mode:
-            object_info = await self._storage_handler.object_info(self._file._object_id)
+        if 'w' in self._file.mode:
+            object_info = await self._storage_handler.object_info(self._object_id)
             data_info = _build_data_info(object_info, self._level, self._size)
             await self._storage_manager.put_data_info(
                 self._session_id, self._data_key, data_info, object_info)
@@ -134,15 +136,19 @@ class InternalDataInfo:
 
 class DataManager:
     def __init__(self):
+        from .spill import BaseStrategy
+
         # mapping key is (session_id, data_key)
         # mapping value is list of InternalDataInfo
         self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
         self._data_info_list = dict()
+        self._spill_strategy = dict()
         # data key may be a tuple in some cases,
         # we record main key to manage their lifecycle
         self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
+            self._spill_strategy[level] = BaseStrategy(level)
 
     def put(self,
             session_id: str,
@@ -152,6 +158,8 @@ class DataManager:
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
+        self._spill_strategy[data_info.level].put((session_id, data_key),
+                                                  object_info.size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
@@ -196,6 +204,7 @@ class DataManager:
         for key in to_delete_keys:
             if (session_id, key) in self._data_key_to_info:
                 self._data_info_list[level].pop((session_id, key))
+                self._spill_strategy[level].delete((session_id, key))
                 infos = self._data_key_to_info[(session_id, key)]
                 rest = [info for info in infos if info.data_info.level != level]
                 if len(rest) == 0:
@@ -206,6 +215,17 @@ class DataManager:
 
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
+
+    def pin(self, session_id, data_key):
+        level = self.get_info(session_id, data_key).level
+        self._spill_strategy[level].pin_data((session_id, data_key))
+
+    def unpin(self, session_id, data_key):
+        level = self.get_info(session_id, data_key).level
+        self._spill_strategy[level].unpin_data((session_id, data_key))
+
+    def get_spill_keys(self, level, size):
+        return self._spill_strategy[level].get_spill_keys(size)
 
 
 class StorageHandlerActor(mo.Actor):
@@ -352,6 +372,15 @@ class StorageHandlerActor(mo.Actor):
             session_id, data_key, error)
         return infos, session_id, data_key
 
+    async def delete_object(self,
+                            session_id: str,
+                            data_key: Any,
+                            object_id: Any,
+                            level: StorageLevel):
+        await self._storage_manager_ref.delete_data_info(
+            session_id, data_key, level)
+        await self._clients[level].delete(object_id)
+
     @extensible
     async def delete(self,
                      session_id: str,
@@ -455,6 +484,11 @@ class StorageHandlerActor(mo.Actor):
                          f'object_id is {data_info.object_id}')
             await self._clients[StorageLevel.REMOTE].fetch(data_info.object_id)
 
+    async def spill(self, level: StorageLevel, size: int):
+        from .spill import spill
+
+        yield spill(size, level, self._storage_manager_ref, self.ref())
+
 
 class StorageManagerActor(mo.Actor):
     def __init__(self,
@@ -465,8 +499,6 @@ class StorageManagerActor(mo.Actor):
         # params to init and teardown
         self._init_params = dict()
         self._teardown_params = dict()
-        # pinned_keys
-        self._pinned_keys = []
         # stores the mapping from data key to storage info
         self._data_manager = DataManager()
         self._supervisor_address = None
@@ -485,6 +517,8 @@ class StorageManagerActor(mo.Actor):
                 if client.level & level:
                     quotas[level] = StorageQuota(client.size)
 
+        self._quotas = quotas
+
         # create handler actors for every process
         strategy = IdleLabel(None, 'StorageHandler')
         while True:
@@ -498,24 +532,28 @@ class StorageManagerActor(mo.Actor):
             except NoIdleSlot:
                 break
 
-        self._quotas = quotas
-        self._storage_handler = await mo.actor_ref(address=self.address,
-                                                   uid=StorageHandlerActor.default_uid())
-
         # create actor for transfer
+        sender_strategy = IdleLabel('io', 'sender')
+        receiver_strategy = IdleLabel('io', 'receiver')
+        self._io_handlers = []
         while True:
             try:
-                sender_strategy = IdleLabel('io', 'sender')
-                await mo.create_actor(
+                sender_ref = await mo.create_actor(
                     SenderManagerActor, uid=SenderManagerActor.default_uid(),
                     address=self.address, allocate_strategy=sender_strategy)
 
-                receiver_strategy = IdleLabel('io', 'receiver')
                 await mo.create_actor(ReceiverManagerActor, address=self.address,
                                       uid=ReceiverManagerActor.default_uid(),
                                       allocate_strategy=receiver_strategy)
+                io_handler_ref = await mo.actor_ref(sender_ref.address,
+                                                    StorageHandlerActor.default_uid())
+                self._io_handlers.append(io_handler_ref)
             except NoIdleSlot:
                 break
+
+        self._quotas = quotas
+        self._storage_handler = await mo.actor_ref(address=self.address,
+                                                   uid=StorageHandlerActor.default_uid())
 
     async def __pre_destroy__(self):
         for backend, teardown_params in self._teardown_params.items():
@@ -548,8 +586,9 @@ class StorageManagerActor(mo.Actor):
                             level: StorageLevel):
         if await self._quotas[level].request(size):
             return
-        else:  # pragma: no cover
-            raise NotImplementedError('Spill is not supported now')
+        else:
+            io_handler_ref = random.choice(self._io_handlers)
+            yield io_handler_ref.spill(level, size)
 
     async def update_quota(self,
                            size: int,
@@ -590,8 +629,8 @@ class StorageManagerActor(mo.Actor):
             raise ValueError('error must be raise or ignore')
 
         try:
-            info = self._data_manager.get_info(session_id, data_key)
-            self.pin(info.object_id)
+            self._data_manager.get_info(session_id, data_key)
+            self.pin(session_id, data_key)
         except DataNotExist:
             # Not exists in local, fetch from remote worker
             try:
@@ -712,8 +751,11 @@ class StorageManagerActor(mo.Actor):
     def list(self, level: StorageLevel) -> List:
         return self._data_manager.list(level)
 
-    def pin(self, object_id):
-        self._pinned_keys.append(object_id)
+    def pin(self, session_id, data_key):
+        self._data_manager.pin(session_id, data_key)
 
-    def unpin(self, object_id):
-        self._pinned_keys.remove(object_id)
+    def unpin(self, session_id, data_key):
+        self._data_manager.unpin(session_id, data_key)
+
+    def get_spill_keys(self, level: StorageLevel, size: int):
+        return self._data_manager.get_spill_keys(level, size)

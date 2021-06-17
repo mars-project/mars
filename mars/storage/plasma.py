@@ -42,9 +42,8 @@ class PlasmaFileObject(BufferWrappedFileObject):
                  mode: str,
                  size: Optional[int] = None):
         self._plasma_client = plasma_client
-        self._object_id = object_id
         self._file = None
-        super().__init__(mode, size=size)
+        super().__init__(object_id, mode, size=size)
 
     @property
     def buffer(self):

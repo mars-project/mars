@@ -28,12 +28,17 @@ class StorageFileObject(AioFileObject):
                  object_id: Any,
                  loop: asyncio.BaseEventLoop = None,
                  executor: Executor = None):
-        self.object_id = object_id
+        self._object_id = object_id
         super().__init__(file, loop=loop, executor=executor)
+
+    @property
+    def object_id(self):
+        return self._object_id
 
 
 class BufferWrappedFileObject(ABC):
     def __init__(self,
+                 object_id: Any,
                  mode: str,
                  size: Optional[int] = None):
         # check arguments
@@ -41,6 +46,7 @@ class BufferWrappedFileObject(ABC):
         if mode == 'w' and size is None:  # pragma: no cover
             raise ValueError('size must be provided to write')
 
+        self._object_id = object_id
         self._size = size
         self._mode = mode
 
@@ -64,8 +70,16 @@ class BufferWrappedFileObject(ABC):
         """
 
     @property
+    def object_id(self):
+        return self._object_id
+
+    @property
     def buffer(self):
         return self._buffer
+
+    @property
+    def mode(self):
+        return self._mode
 
     def read(self, size=-1):
         if not self._initialized:

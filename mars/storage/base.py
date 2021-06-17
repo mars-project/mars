@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
+import operator
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -60,6 +62,30 @@ class StorageLevel(Enum):
     def __gt__(self, other: _ComparableLevel):
         other_value = getattr(other, 'value', other)
         return self.value > other_value
+
+    def spill_level(self):
+        if self == StorageLevel.GPU:
+            return StorageLevel.MEMORY
+        elif self == StorageLevel.MEMORY:
+            return StorageLevel.DISK
+        else:  # pragma: no cover
+            raise ValueError(f"Level {self} doesn't have spill level")
+
+    @staticmethod
+    def from_str(s: str):
+        level_mapping = dict(
+            GPU=StorageLevel.GPU,
+            MEMORY=StorageLevel.MEMORY,
+            DISK=StorageLevel.DISK,
+            REMOTE=StorageLevel.REMOTE
+        )
+        level_strings = [ss.strip() for ss in s.upper().split('|')]
+        levels = []
+        for ls in level_strings:
+            if ls not in level_mapping:  # pragma: no cover
+                raise ValueError(f'Unknown level {ls}')
+            levels.append(level_mapping[ls])
+        return functools.reduce(operator.or_, levels)
 
 
 @dataslots
