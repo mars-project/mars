@@ -37,14 +37,15 @@ npm-debug.log*
 .grunt
 
 # Unit test / coverage reports
+.cache
 .coverage
 .coverage.*
-htmlcov
-.tox
-nosetests.xml
-.cache
-.pytest*
 .dist-coverage
+.hypothesis
+.pytest*
+.tox
+htmlcov
+nosetests.xml
 test.conf
 
 # IDEs

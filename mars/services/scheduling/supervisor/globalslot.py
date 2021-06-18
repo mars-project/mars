@@ -72,8 +72,14 @@ class GlobalSlotManagerActor(mo.Actor):
 
     @extensible
     def update_subtask_slots(self, band: Tuple, session_id: str, subtask_id: str, slots: int):
-        slots_delta = slots - self._band_stid_slots[band][(session_id, subtask_id)]
-        self._band_stid_slots[band][(session_id, subtask_id)] = slots
+        session_subtask_id = (session_id, subtask_id)
+        subtask_slots = self._band_stid_slots[band]
+
+        if session_subtask_id not in subtask_slots:
+            return
+
+        slots_delta = slots - subtask_slots[session_subtask_id]
+        subtask_slots[session_subtask_id] = slots
         self._band_used_slots[band] += slots_delta
 
     @extensible
