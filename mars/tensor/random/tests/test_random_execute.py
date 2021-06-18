@@ -210,25 +210,26 @@ def test_random_execute(setup, test_opts):
 
 
 def test_permutation_execute(setup):
-    x = tensor.random.permutation(10)
+    rs = tensor.random.RandomState(0)
+    x = rs.permutation(10)
     res = x.execute().fetch()
     assert not np.all(res[:-1] < res[1:])
     np.testing.assert_array_equal(np.sort(res), np.arange(10))
 
     arr = from_ndarray([1, 4, 9, 12, 15], chunk_size=2)
-    x = tensor.random.permutation(arr)
+    x = rs.permutation(arr)
     res = x.execute().fetch()
     assert not np.all(res[:-1] < res[1:])
     np.testing.assert_array_equal(np.sort(res), np.asarray([1, 4, 9, 12, 15]))
 
     arr = from_ndarray(np.arange(48).reshape(12, 4), chunk_size=2)
     # axis = 0
-    x = tensor.random.permutation(arr)
+    x = rs.permutation(arr)
     res = x.execute().fetch()
     assert not np.all(res[:-1] < res[1:])
     np.testing.assert_array_equal(np.sort(res, axis=0), np.arange(48).reshape(12, 4))
     # axis != 0
-    x2 = tensor.random.permutation(arr, axis=1)
+    x2 = rs.permutation(arr, axis=1)
     res = x2.execute().fetch()
     assert not np.all(res[:, :-1] < res[:, 1:])
     np.testing.assert_array_equal(np.sort(res, axis=1), np.arange(48).reshape(12, 4))
