@@ -27,7 +27,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 vineyard = lazy_import("vineyard")
-pyarrow =  lazy_import("pyarrow")
+pyarrow = lazy_import("pyarrow")
 
 if sys.platform.startswith('win'):
     vineyard = None
@@ -35,7 +35,7 @@ if sys.platform.startswith('win'):
 logger = logging.getLogger(__name__)
 
 
-## Setup support for mars datatypes on vineyard
+# Setup support for mars datatypes on vineyard
 
 def mars_sparse_matrix_builder(client, value, builder, **kw):
     meta = vineyard.ObjectMeta()

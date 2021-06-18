@@ -66,8 +66,8 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard==0.1.10
-              sudo docker pull libvineyard/vineyardd:v0.1.10
+              pip install vineyard==0.2.4
+              sudo docker pull libvineyard/vineyardd:v0.2.4
 
               mkdir -p /tmp/etcd-download-test
               export ETCD_VER=v3.4.13
@@ -91,7 +91,7 @@ jobs:
           source ./ci/reload-env.sh
 
           # launch vineyardd
-          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run libvineyard/vineyardd:v0.1.10
+          sudo docker run --rm -d --name vineyard --shm-size=3072m -v /tmp/vineyard:/var/run libvineyard/vineyardd:v0.2.4
 
           until [ -S /tmp/vineyard/vineyard.sock ]
           do
