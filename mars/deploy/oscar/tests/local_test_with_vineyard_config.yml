@@ -1,0 +1,6 @@
+inherits: '@mars/deploy/oscar/base_config.yml'
+session:
+  custom_log_dir: auto
+
+storage:
+  backends: [vineyard]

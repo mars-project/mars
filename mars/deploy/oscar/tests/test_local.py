@@ -26,16 +26,35 @@ from mars.core.session import get_default_session, \
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import Session, WebSession
 
+try:
+    import vineyard
+except ImportError:
+    vineyard = None
+
 
 CONFIG_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_config.yml')
 
+CONFIG_VINEYARD_TEST_FILE = os.path.join(
+    os.path.dirname(__file__), 'local_test_with_vineyard_config.yml')
 
-@pytest.fixture()
-async def create_cluster():
+
+# params = ['default']
+params = []
+if vineyard is not None:
+    params.append('vineyard')
+
+
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture(params=params)
+async def create_cluster(request):
+    if request.param == 'default':
+        config = CONFIG_TEST_FILE
+    elif request.param == 'vineyard':
+        config = CONFIG_VINEYARD_TEST_FILE
     start_method = os.environ.get('POOL_START_METHOD', None)
     client = await new_cluster(subprocess_start_method=start_method,
-                               config=CONFIG_TEST_FILE,
+                               config=config,
                                n_worker=2,
                                n_cpu=2)
     async with client:
