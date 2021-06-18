@@ -24,6 +24,9 @@ from mars.services.storage.core import StorageManagerActor, StorageHandlerActor
 from mars.storage import StorageLevel, PlasmaStorage
 
 
+MEMORY_SIZE = 100 * 1024
+
+
 @pytest.fixture
 async def actor_pool():
     async def start_pool():
@@ -48,14 +51,14 @@ async def create_actors(actor_pool):
     else:
         plasma_dir = '/dev/shm'
     plasma_setup_params = dict(
-        store_memory=100 * 1024,
+        store_memory=MEMORY_SIZE,
         plasma_directory=plasma_dir,
         check_dir_size=False
     )
     tempdir = tempfile.mkdtemp()
     disk_setup_params = dict(
         root_dirs=tempdir,
-        level=StorageLevel.DISK
+        level='disk'
     )
     storage_configs = {
         "plasma": plasma_setup_params,
@@ -93,6 +96,8 @@ async def test_spill(create_actors):
         key = f'mock_key_{i}'
         await storage_handler.put(
             session_id, key, data, StorageLevel.MEMORY)
+        used = (await storage_manager.get_quota(StorageLevel.MEMORY))[1]
+        assert used < MEMORY_SIZE
         data_list.append(data)
         key_list.append(key)
 

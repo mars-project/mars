@@ -83,7 +83,7 @@ class WrappedStorageFileObject(AioFileObject):
 
 
 class StorageQuota:
-    def __init__(self, total_size: Optional[int]):
+    def __init__(self, total_size: Optional[Union[int, float]]):
         self._total_size = total_size
         self._used_size = 0
         self._lock = asyncio.Semaphore()
@@ -115,6 +115,12 @@ class StorageQuota:
     async def release(self, size: int):
         async with self._lock:
             self._used_size -= size
+
+    async def lock(self):
+        await self._lock.acquire()
+
+    def unlock(self):
+        self._lock.release()
 
 
 @dataslots
@@ -158,8 +164,9 @@ class DataManager:
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
-        self._spill_strategy[data_info.level].put((session_id, data_key),
-                                                  object_info.size)
+        if object_info is not None:
+            self._spill_strategy[data_info.level].put(
+                (session_id, data_key), object_info.size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
@@ -248,6 +255,7 @@ class StorageHandlerActor(mo.Actor):
                     clients[level] = client
 
     async def _get_data(self, data_info, conditions):
+        logger.debug(f'Begin to get data {data_info} with conditions {conditions}')
         if conditions is None:
             res = yield self._clients[data_info.level].get(
                 data_info.object_id)
@@ -263,6 +271,7 @@ class StorageHandlerActor(mo.Actor):
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
                 res = sliced_value
+        logger.debug(f'Finish getting data {data_info} with conditions {conditions}')
         raise mo.Return(res)
 
     @extensible
@@ -287,6 +296,8 @@ class StorageHandlerActor(mo.Actor):
                        error: str = 'raise'):
         info = self._storage_manager_ref.get_data_info.delay(
             session_id, data_key, error)
+        logger.debug(f'Get info of data {session_id}-{data_key}: '
+                     f'{info}')
         return info, conditions
 
     @get.batch
@@ -487,7 +498,7 @@ class StorageHandlerActor(mo.Actor):
     async def spill(self, level: StorageLevel, size: int):
         from .spill import spill
 
-        yield spill(size, level, self._storage_manager_ref, self.ref())
+        yield spill(size, level, self._storage_manager_ref, self)
 
 
 class StorageManagerActor(mo.Actor):
@@ -515,6 +526,8 @@ class StorageManagerActor(mo.Actor):
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
+                    logger.debug(f'Create quota manager for {level},'
+                                 f' total size is {client.size}')
                     quotas[level] = StorageQuota(client.size)
 
         self._quotas = quotas
@@ -584,11 +597,17 @@ class StorageManagerActor(mo.Actor):
     async def request_quota(self,
                             size: int,
                             level: StorageLevel):
+        logger.debug(f'Request {size} bytes of {level}, '
+                     f'used size is {self._quotas[level].used_size}')
         if await self._quotas[level].request(size):
+            logger.debug(f'Request {size} bytes of {level} finished, '
+                         f'used size now is {self._quotas[level].used_size}')
             return
         else:
             io_handler_ref = random.choice(self._io_handlers)
             yield io_handler_ref.spill(level, size)
+            logger.debug(f'Request {size} bytes of {level} finished, '
+                         f'used size now is {self._quotas[level].used_size}')
 
     async def update_quota(self,
                            size: int,
@@ -756,6 +775,12 @@ class StorageManagerActor(mo.Actor):
 
     def unpin(self, session_id, data_key):
         self._data_manager.unpin(session_id, data_key)
+
+    async def lock_quota(self, level: StorageLevel):
+        await self._quotas[level].lock()
+
+    def unlock_quota(self, level: StorageLevel):
+        self._quotas[level].unlock()
 
     def get_spill_keys(self, level: StorageLevel, size: int):
         return self._data_manager.get_spill_keys(level, size)

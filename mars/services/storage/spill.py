@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Union
@@ -21,6 +22,7 @@ from ...storage import StorageLevel
 from .core import StorageManagerActor, StorageHandlerActor
 from .errors import NoDataToSpill
 
+logger = logging.getLogger(__name__)
 
 DEFAULT_SPILL_BLOCK_SIZE = 128 * 1024
 
@@ -85,30 +87,39 @@ class BaseStrategy(SpillStrategy):
 
 async def spill(request_size: int,
                 level: StorageLevel,
-                storage_manager_ref: Union[mo.ActorRef, StorageManagerActor],
-                storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor],
+                storage_manager: Union[mo.ActorRef, StorageManagerActor],
+                storage_handler: Union[mo.ActorRef, StorageHandlerActor],
                 block_size=None,
                 multiplier=1.2):
+    await storage_manager.lock_quota(level)
+    logger.debug(f'{level} is full, need to spill {request_size} bytes, '
+                 f'multiplier is {multiplier}')
     request_size *= multiplier
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
-    spill_sizes, spill_keys = await storage_manager_ref.get_spill_keys(
+    spill_sizes, spill_keys = await storage_manager.get_spill_keys(
         level, request_size)
+    logger.debug(f'Decide to spill {sum(spill_sizes)} bytes, '
+                 f'data keys are {spill_keys}')
 
-    await storage_manager_ref.request_quota(sum(spill_sizes), spill_level)
-    for (session_id, key), size in zip(spill_keys, spill_sizes):
-        reader = await storage_handler_ref.open_reader(session_id, key)
-        writer = await storage_handler_ref.open_writer(session_id, key,
-                                                       size, spill_level)
-        async with reader:
-            async with writer:
-                while True:
-                    block_data = await reader.read(block_size)
-                    if not block_data:
-                        break
-                    else:
-                        await writer.write(block_data)
-        await storage_handler_ref.delete_object(
-            session_id, key, reader.object_id, level)
+    try:
+        await storage_manager.request_quota(sum(spill_sizes), spill_level)
+        for (session_id, key), size in zip(spill_keys, spill_sizes):
+            reader = await storage_handler.open_reader(session_id, key)
+            writer = await storage_handler.open_writer(
+                session_id, key, size, spill_level)
+            async with reader:
+                async with writer:
+                    while True:
+                        block_data = await reader.read(block_size)
+                        if not block_data:
+                            break
+                        else:
+                            await writer.write(block_data)
+            await storage_handler.delete_object(
+                session_id, key, reader.object_id, level)
+    finally:
+        await storage_manager.unlock_quota(level)
 
-    await storage_manager_ref.release_quota(sum(spill_sizes), level)
+    await storage_manager.release_quota(sum(spill_sizes), level)
+    logger.debug(f'Spill finishes, release {sum(spill_sizes)} bytes of {level}')
