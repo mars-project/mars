@@ -99,7 +99,7 @@ class MainActorPool(MainActorPoolBase):
             process = ctx.Process(
                 target=cls._start_sub_pool,
                 args=(actor_pool_config, process_index, started),
-                name=f'MarsActorPool{process_index}'
+                name=f'MarsActorPool{process_index}',
             )
             process.daemon = True
             process.start()
