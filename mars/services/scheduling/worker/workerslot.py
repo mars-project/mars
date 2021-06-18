@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import os
 import time
 from collections import namedtuple
 from typing import Optional, Tuple
@@ -64,8 +65,10 @@ class BandSlotManagerActor(mo.Actor):
         self._slot_kill_events = dict()
 
         self._slot_to_session_stid = dict()
-        self._slot_to_usage = dict()
         self._last_report_time = time.time()
+
+        self._slot_to_proc = dict()
+        self._usage_upload_task = None
 
     async def __post_create__(self):
         strategy = IdleLabel(self._band_name, 'worker_slot_control')
@@ -76,6 +79,12 @@ class BandSlotManagerActor(mo.Actor):
                 uid=BandSlotControlActor.gen_uid(self._band_name, slot_id),
                 address=self.address,
                 allocate_strategy=strategy)
+
+        self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
+            periodical=True, delay=1)
+
+    async def __pre_destroy__(self):
+        self._usage_upload_task.cancel()
 
     async def acquire_free_slot(self, session_stid: Tuple[str, str]):
         yield self._semaphore.acquire()
@@ -93,24 +102,35 @@ class BandSlotManagerActor(mo.Actor):
 
     async def kill_slot(self, slot_id):
         event = self._slot_kill_events[slot_id] = asyncio.Event()
-        await mo.kill_actor(self._slot_control_refs[slot_id])
-        return event.wait()
+        yield mo.kill_actor(self._slot_control_refs[slot_id])
+        yield event.wait()
 
-    async def set_slot_usage(self, slot_id: int, usage: float):
-        self._slot_to_usage[slot_id] = usage
-        if self._global_slots_ref is None:
-            return
+    def set_slot_pid(self, slot_id: int, pid: int):
+        self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
+        # collect initial stats for the process
+        proc.cpu_percent(interval=None)
 
-        if time.time() - self._last_report_time >= 1.0:
-            self._last_report_time = time.time()
-            delays = []
-            for slot_id, (session_id, subtask_id) in self._slot_to_session_stid.items():
-                if slot_id not in self._slot_to_usage:
-                    continue
-                delays.append(self._global_slots_ref.update_subtask_slots.delay(
-                    self._band_name, session_id, subtask_id,
-                    max(1.0, self._slot_to_usage[slot_id])))
-            return self._global_slots_ref.update_subtask_slots.batch(*delays)
+    async def upload_slot_usages(self, periodical: bool = False):
+        delays = []
+        for slot_id, proc in self._slot_to_proc.items():
+            if slot_id not in self._slot_to_session_stid:
+                continue
+            session_id, subtask_id = self._slot_to_session_stid[slot_id]
+
+            try:
+                usage = proc.cpu_percent(interval=None)
+            except psutil.NoSuchProcess:  # pragma: no cover
+                continue
+
+            delays.append(self._global_slots_ref.update_subtask_slots.delay(
+                self._band_name, session_id, subtask_id, max(1.0, usage)))
+
+        if delays:  # pragma: no branch
+            yield self._global_slots_ref.update_subtask_slots.batch(*delays)
+
+        if periodical:
+            self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
+                periodical=True, delay=1)
 
     def dump_data(self):
         """
@@ -131,18 +151,5 @@ class BandSlotControlActor(mo.Actor):
         self._report_task = None
 
     async def __post_create__(self):
+        await self._manager_ref.set_slot_pid.tell(self._slot_id, os.getpid())
         await self._manager_ref.release_free_slot.tell(self._slot_id)
-
-        async def report_usage():
-            proc = psutil.Process()
-            proc.cpu_percent()
-            while True:
-                await asyncio.sleep(1)
-                await self._manager_ref.set_slot_usage.tell(
-                    self._slot_id, proc.cpu_percent())
-
-        self._report_task = asyncio.create_task(report_usage())
-
-    async def __pre_destroy__(self):
-        if self._report_task:  # pragma: no branch
-            self._report_task.cancel()

@@ -187,11 +187,11 @@ class SubtaskExecutionActor(mo.Actor):
                                             task_id=subtask.task_id,
                                             status=SubtaskStatus.pending)
         slot_id = batch_quota_req = run_aiotask = None
-        quota_ref = slot_manager = None
+        quota_ref = slot_manager_ref = None
 
         try:
             quota_ref = await self._get_band_quota_ref(band_name)
-            slot_manager = await self._get_slot_manager_ref(band_name)
+            slot_manager_ref = await self._get_slot_manager_ref(band_name)
 
             yield self._prepare_input_data(subtask)
 
@@ -211,7 +211,7 @@ class SubtaskExecutionActor(mo.Actor):
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
-            slot_task = asyncio.create_task(slot_manager.acquire_free_slot(
+            slot_task = asyncio.create_task(slot_manager_ref.acquire_free_slot(
                 (subtask.session_id, subtask.subtask_id)))
             slot_id = subtask_info.slot_id = yield slot_task
             if subtask_info.cancelling:
@@ -255,9 +255,13 @@ class SubtaskExecutionActor(mo.Actor):
 
             self._subtask_info.pop(subtask.subtask_id, None)
             if self._global_slot_ref is not None:
-                # make sure slot is released before marking tasks as finished
-                yield self._global_slot_ref.release_subtask_slots(
-                    (self.address, band_name), subtask.session_id, subtask.subtask_id)
+                yield (
+                    # make sure slot is released before marking tasks as finished
+                    self._global_slot_ref.release_subtask_slots(
+                        (self.address, band_name), subtask.session_id, subtask.subtask_id),
+                    # make sure new slot usages are uploaded in time
+                    slot_manager_ref.upload_slot_usages(periodical=False)
+                )
                 logger.debug('Slot released for band %s after subtask %s',
                              band_name, subtask.subtask_id)
 
@@ -268,7 +272,7 @@ class SubtaskExecutionActor(mo.Actor):
             if batch_quota_req:
                 await quota_ref.release_quotas(list(batch_quota_req.keys()))
             if slot_id is not None:
-                await slot_manager.release_free_slot(slot_id)
+                await slot_manager_ref.release_free_slot(slot_id)
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):
