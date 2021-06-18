@@ -67,9 +67,17 @@ class MockStorageManagerActor(StorageManagerActor, CancelDetectActorMixin):
 
 
 class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self._batch_quota_reqs = []
+
     async def request_batch_quota(self, batch):
+        self._batch_quota_reqs.append(batch)
         async with self._delay_method():
             return super().request_batch_quota(batch)
+
+    def get_batch_quota_reqs(self):
+        return self._batch_quota_reqs
 
 
 class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
@@ -120,19 +128,17 @@ async def actor_pool(request):
                               uid=BandSlotManagerActor.gen_uid('numa-0'),
                               address=pool.external_address)
         # create mock task manager actor
-        task_manager_ref = await mo.create_actor(MockTaskManager,
-                                                 uid=TaskManagerActor.gen_uid(session_id),
-                                                 address=pool.external_address)
+        await mo.create_actor(MockTaskManager,
+                              uid=TaskManagerActor.gen_uid(session_id),
+                              address=pool.external_address)
 
-        yield pool, session_id, meta_api, storage_api, execution_ref, \
-            task_manager_ref
+        yield pool, session_id, meta_api, storage_api, execution_ref
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('actor_pool', [1], indirect=True)
 async def test_execute_tensor(actor_pool):
-    pool, session_id, meta_api, storage_api, \
-        execution_ref, task_manager_ref = actor_pool
+    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
 
     data1 = np.random.rand(10, 10)
     data2 = np.random.rand(10, 10)
@@ -160,9 +166,17 @@ async def test_execute_tensor(actor_pool):
     subtask = Subtask('test_task', session_id=session_id, chunk_graph=chunk_graph)
     await execution_ref.run_subtask(subtask, 'numa-0', pool.external_address)
 
+    # check if results are correct
     result = await storage_api.get(result_chunk.key)
     np.testing.assert_array_equal(data1 + data2, result)
 
+    # check if quota computations are correct
+    quota_ref = await mo.actor_ref(QuotaActor.gen_uid('numa-0'),
+                                   address=pool.external_address)
+    [quota] = await quota_ref.get_batch_quota_reqs()
+    assert quota[(subtask.subtask_id, subtask.subtask_id)] == data1.nbytes
+
+    # check if metas are correct
     result_meta = await meta_api.get_chunk_meta(result_chunk.key)
     assert result_meta['object_id'] == result_chunk.key
     assert result_meta['shape'] == result.shape
@@ -181,8 +195,7 @@ _cancel_phases = [
                          [(1, phase) for phase in _cancel_phases],
                          indirect=['actor_pool'])
 async def test_execute_with_cancel(actor_pool, cancel_phase):
-    pool, session_id, meta_api, storage_api, \
-        execution_ref, task_manager_ref = actor_pool
+    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
 
     # config for different phases
     ref_to_delay = None
