@@ -14,42 +14,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+from io import UnsupportedOperation
+import logging
+import sys
 from typing import Dict, List, Optional, Tuple
 
-import pyarrow as pa
-try:
-    import vineyard
-    from vineyard._C import ObjectMeta
-    from vineyard.core import default_builder_context, default_resolver_context
-    from vineyard.data.utils import from_json, to_json
-    from vineyard.deploy.local import start_vineyardd
-except ImportError:
-    vineyard = None
-
 from ..lib import sparse
-from ..utils import implements
+from ..resource import virtual_memory
+from ..utils import implements, lazy_import, calc_size_by_str
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
+vineyard = lazy_import("vineyard")
+pyarrow =  lazy_import("pyarrow")
+
+if sys.platform.startswith('win'):
+    vineyard = None
+
+logger = logging.getLogger(__name__)
+
+
+## Setup support for mars datatypes on vineyard
 
 def mars_sparse_matrix_builder(client, value, builder, **kw):
-    meta = ObjectMeta()
+    meta = vineyard.ObjectMeta()
     meta['typename'] = 'vineyard::SparseMatrix<%s>' % value.dtype.name
-    meta['shape_'] = to_json(value.shape)
+    meta['shape_'] = vineyard.data.utils.to_json(value.shape)
     meta.add_member('spmatrix', builder.run(client, value.spmatrix, **kw))
     return client.create_metadata(meta)
 
 
 def mars_sparse_matrix_resolver(obj, resolver) -> sparse.SparseNDArray:
     meta = obj.meta
-    shape = from_json(meta['shape_'])
+    shape = vineyard.data.utils.from_json(meta['shape_'])
     spmatrix = resolver.run(obj.member('spmatrix'))
     return sparse.matrix.SparseMatrix(spmatrix, shape=shape)
 
 
 if vineyard is not None:
-    default_builder_context.register(sparse.matrix.SparseMatrix, mars_sparse_matrix_builder)
-    default_resolver_context.register('vineyard::SparseMatrix', mars_sparse_matrix_resolver)
+    vineyard.core.default_builder_context.register(sparse.matrix.SparseMatrix, mars_sparse_matrix_builder)
+    vineyard.core.default_resolver_context.register('vineyard::SparseMatrix', mars_sparse_matrix_resolver)
 
 
 class VineyardFileObject(BufferWrappedFileObject):
@@ -58,32 +63,45 @@ class VineyardFileObject(BufferWrappedFileObject):
         self._client = vineyard_client
         self._object_id = object_id
         self._file = None
+
+        self._reader = None
+        self._writer = None
+
+        if size is None:
+            size = -1  # unknown estimated size.
+
         super().__init__(mode, size=size)
 
-    def _write_init(self):
-        self._buffer = buf = self._client.create_blob(self._size)
-        self._object_id = buf.id
-        file = self._file = pa.FixedSizeBufferWriter(buf.buffer)
-        file.set_memcopy_threads(6)
-
     def _read_init(self):
-        self._buffer = buf = self._client.get_object(self._object_id)
-        self._mv = memoryview(buf)
-        self._size = len(buf)
+        self._reader = vineyard.data.pickle.PickledReader(self._client.get(self._object_id))
+        self._size = self._reader.store_size
+
+    def _write_init(self):
+        self._writer = vineyard.data.pickle.PickledWriter(self._size)
+
+    @property
+    def buffer(self):
+        raise UnsupportedOperation("VineyardFileObject doesn't support the direct 'buffer' property")
+
+    def read(self, size=-1):
+        if not self._initialized:
+            self._read_init()
+            self._initialized = True
+        return self._reader.read(size)
 
     def write(self, content: bytes):
         if not self._initialized:
             self._write_init()
             self._initialized = True
-
-        return self._file.write(content)
-
-    def _write_close(self):
-        self._object_id = self._buffer.seal(self._client).id
-        self._file = None
+        return self._writer.write(content)
 
     def _read_close(self):
-        pass
+        self._reader = None
+
+    def _write_close(self):
+        self._writer.close()
+        self._object_id = self._client.put(self._writer.value)
+        self._writer = None
 
 
 @register_storage_backend
@@ -99,21 +117,26 @@ class VineyardStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        loop = asyncio.get_running_loop()
         etcd_endpoints = kwargs.pop('etcd_endpoints', None)
-        vineyard_size = kwargs.pop('vineyard_size', '256M')
-        vineyard_socket = kwargs.pop('vineyard_socket', '/tmp/vineyard.sock')
+        vineyard_size = kwargs.pop('vineyard_size', '1Gi')
+        vineyard_socket = kwargs.pop('vineyard_socket', None)
         vineyardd_path = kwargs.pop('vineyardd_path', None)
 
         if kwargs:
             raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
 
-        vineyard_store = start_vineyardd(
+        vineyard_size = calc_size_by_str(vineyard_size, virtual_memory().total)
+        vineyard_store = vineyard.deploy.local.start_vineyardd(
             etcd_endpoints,
             vineyardd_path,
             vineyard_size,
-            vineyard_socket)
+            vineyard_socket,
+            rpc=False)
+        vineyard_socket = (await loop.run_in_executor(
+            None, vineyard_store.__enter__))[1]
         init_params = dict(vineyard_size=vineyard_size,
-                           vineyard_socket=vineyard_store.__enter__()[1])
+                           vineyard_socket=vineyard_socket)
         teardown_params = dict(vineyard_store=vineyard_store)
         return init_params, teardown_params
 
@@ -157,12 +180,8 @@ class VineyardStorage(StorageBackend):
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
-        if size is None:  # pragma: no cover
-            raise ValueError('size must be provided for vineyard backend')
-
         vineyard_writer = VineyardFileObject(self._client, None, size=size, mode='w')
-        vineyard_writer.write(b'')  # initialize the object id
-        return StorageFileObject(vineyard_writer, object_id=vineyard_writer._object_id)
+        return StorageFileObject(vineyard_writer, object_id=None)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:

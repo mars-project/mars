@@ -80,7 +80,15 @@ class SenderManagerActor(mo.Actor):
                 session_id, data_key) as reader:
             while True:
                 part_data = await reader.read(block_size)
-                is_eof = sent_size + len(part_data) >= store_size
+                # Notes on [How to decide whether the reader reaches EOF?]
+                #
+                # In some storage backend, e.g., the reported memory usage (i.e., the
+                # `store_size`) may not same with the byte size that need to be transferred
+                # when moving to a remote worker. Thus, we think the reader reaches EOF
+                # when a `read` request returns nothing, rather than comparing the `sent_size`
+                # and the `store_size`.
+                #
+                is_eof = not part_data  # can be non-empty bytes, empty bytes and None
                 message = TransferMessage(part_data, session_id, data_key, level, is_eof)
                 send_task = asyncio.create_task(receiver_ref.receive_part_data(message))
                 yield send_task

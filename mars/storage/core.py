@@ -106,6 +106,7 @@ class BufferWrappedFileObject(ABC):
         if self._closed:
             return
 
+        self._closed = True
         if self._mode == 'w':
             self._write_close()
         else:

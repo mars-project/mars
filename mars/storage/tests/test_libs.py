@@ -175,6 +175,16 @@ async def test_base_operations(ray_start_regular, storage_context):
     np.testing.assert_array_equal(get_data3.toarray(), s1.A)
     np.testing.assert_array_equal(get_data3.todense(), s1.A)
 
+
+@pytest.mark.asyncio
+@require_lib
+@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+async def test_reader_and_writer(ray_start_regular, storage_context):
+    storage = storage_context
+
+    if isinstance(storage, VineyardStorage):
+        pytest.skip("open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION")
+
     # test writer and reader
     t = np.random.random(10)
     buffers = await AioSerializer(t).run()
@@ -186,6 +196,47 @@ async def test_base_operations(ray_start_regular, storage_context):
     async with await storage.open_reader(writer.object_id) as reader:
         t2 = await AioDeserializer(reader).run()
 
+    np.testing.assert_array_equal(t, t2)
+
+
+@pytest.mark.asyncio
+@require_lib
+@pytest.mark.parametrize('ray_start_regular', [{'enable': ray is not None}], indirect=True)
+async def test_reader_and_writer_vineyard(ray_start_regular, storage_context):
+    storage = storage_context
+
+    if not isinstance(storage, VineyardStorage):
+        pytest.skip("open_{reader,writer} in vineyard doesn't use the DEFAULT_SERIALIZATION")
+
+    # test writer and reader
+    t = np.random.random(10)
+    tinfo = await storage.put(t)
+
+    # testing the roundtrip of `open_{reader,writer}`.
+
+    buffers = []
+    async with await storage.open_reader(tinfo.object_id) as reader:
+        while True:
+            buf = await reader.read()
+            if buf:
+                buffers.append(buf)
+            else:
+                break
+
+    writer_object_id = None
+    async with await storage.open_writer() as writer:
+        for buf in buffers:
+            await writer.write(buf)
+
+        # The `object_id` of `StorageFileObject` returned by `open_writer` in vineyard
+        # storage only available after `close` and before `__exit__` of `AioFileObject`.
+        #
+        # As `StorageFileObject.object_id` is only used for testing here, I think its
+        # fine to have such a hack.
+        await writer.close()
+        writer_object_id = writer._file._object_id
+
+    t2 = await storage.get(writer_object_id)
     np.testing.assert_array_equal(t, t2)
 
 
