@@ -188,6 +188,14 @@ class SubtaskProcessor:
             ref_counts[chunk.key] += chunk_graph.count_successors(chunk)
         return ref_counts
 
+    async def _async_execute_operand(self,
+                                     loop,
+                                     executor,
+                                     ctx: Dict[str, Any],
+                                     op: OperandType):
+        return loop.run_in_executor(executor, self._execute_operand,
+                                    ctx, op)
+
     def _execute_operand(self,
                          ctx: Dict[str, Any],
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
@@ -221,8 +229,8 @@ class SubtaskProcessor:
                     # we make it run in a thread pool to not block current thread.
                     logger.info(f'Start executing operand: {chunk.op},'
                                 f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                    future = loop.run_in_executor(executor, self._execute_operand,
-                                                  self._datastore, chunk.op)
+                    future = await self._async_execute_operand(loop, executor,
+                                                               self._datastore, chunk.op)
                     try:
                         await future
                         logger.info(f'Finish executing operand: {chunk.op},'
