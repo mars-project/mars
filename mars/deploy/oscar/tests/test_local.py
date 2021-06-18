@@ -39,8 +39,7 @@ CONFIG_VINEYARD_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_with_vineyard_config.yml')
 
 
-# params = ['default']
-params = []
+params = ['default']
 if vineyard is not None:
     params.append('vineyard')
 
