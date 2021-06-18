@@ -25,7 +25,7 @@ from mars.services.scheduling.supervisor import SubtaskQueueingActor, \
     SubtaskManagerActor, GlobalSlotManagerActor
 from mars.services.scheduling.worker import SubtaskExecutionActor
 from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
-from mars.services.task.supervisor.task_manager import TaskManagerActor
+from mars.services.task.supervisor.manager import TaskManagerActor
 
 
 class MockTaskManagerActor(mo.Actor):

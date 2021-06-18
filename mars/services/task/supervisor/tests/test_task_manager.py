@@ -37,7 +37,7 @@ from mars.services.session import MockSessionAPI
 from mars.services.storage import StorageAPI, MockStorageAPI
 from mars.services.subtask import MockSubtaskAPI
 from mars.services.task.core import TaskStatus, TaskResult
-from mars.services.task.supervisor.task_manager import \
+from mars.services.task.supervisor.manager import \
     TaskConfigurationActor, TaskManagerActor
 from mars.utils import Timer, merge_chunks
 
