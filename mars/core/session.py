@@ -431,12 +431,12 @@ def _wrap_in_thread(pool_or_func):
             config = get_global_option().to_dict()
 
             def run_in_thread():
+                _ensure_loop()
                 with option_context(config):
                     # set default session in this thread
                     _sync_default_session(default_session)
                     return func(*args, **kwargs), get_default_session()
 
-            _ensure_loop()
             fut = executor.submit(run_in_thread)
             result, default_session_in_thread = fut.result()
             _sync_default_session(default_session_in_thread)
@@ -721,7 +721,6 @@ def _execute_in_thread(func: Callable):
     @functools.wraps(func)
     def _inner(*args, **kwargs):
         if 'cancelled' not in kwargs:
-            _ensure_loop()
             cancelled = asyncio.Event(loop=_loop)
             kwargs['cancelled'] = cancelled
         cancelled = kwargs['cancelled']
@@ -735,7 +734,6 @@ def _execute_in_thread(func: Callable):
                 _sync_default_session(default_session)
                 return func(*args, **kwargs), get_default_session()
 
-        _ensure_loop()
         fut = _pool.submit(run_in_thread)
         try:
             result, default_session_in_thread = fut.result()

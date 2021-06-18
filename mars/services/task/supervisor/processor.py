@@ -174,7 +174,8 @@ class TaskProcessor:
         incref_chunk_keys.extend([c.key for c in result_chunks])
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
 
-    def _get_decref_stage_chunk_keys(self,
+    @classmethod
+    def _get_decref_stage_chunk_keys(cls,
                                      stage_processor: "TaskStageProcessor") -> List[str]:
         decref_chunks = []
         error_or_cancelled = stage_processor.error_or_cancelled()
