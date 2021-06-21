@@ -13,59 +13,65 @@
 # limitations under the License.
 
 import os
+import uuid
 import pytest
 import numpy as np
 
 import mars.tensor as mt
 from mars.core.session import get_default_session
 from mars.deploy.oscar.local import new_cluster
-from mars.services.fault_injection.api import FaultInjectionAPI
+
+from ....services.session import SessionAPI
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
 
 
+class FaultInjectionManager:
+    name = str(uuid.uuid4())
+
+    def __init__(self):
+        self._fault_count = 1
+
+    def on_execute_operand(self):
+        if self._fault_count > 0:
+            self._fault_count -= 1
+            return True
+        return False
+
+
 @pytest.fixture
-async def fault_cluster(request):
-    param = getattr(request, "param", {})
+async def fault_cluster():
     start_method = os.environ.get('POOL_START_METHOD', None)
     client = await new_cluster(subprocess_start_method=start_method,
                                config=CONFIG_FILE,
                                n_worker=2,
                                n_cpu=2)
     async with client:
-        fault_injection_api = await FaultInjectionAPI.create(client.session.address)
-        await fault_injection_api.set_options(param["options"])
+        session_api = await SessionAPI.create(client.session.address)
+        await session_api.create_remote_object(
+            client.session.session_id,
+            FaultInjectionManager.name,
+            FaultInjectionManager)
         yield client
 
 
-@pytest.mark.parametrize("fault_cluster",
-                         [{"options": {"fault_count": 1}}],
-                         indirect=True)
-@pytest.mark.asyncio
-async def test_invalid_fault_options(fault_cluster):
-    fault_injection_api = await FaultInjectionAPI.create(fault_cluster.session.address)
-    with pytest.raises(ValueError, match='invalid_key'):
-        await fault_injection_api.set_options({"invalid_key": 1})
-
-
-@pytest.mark.parametrize("fault_cluster",
-                         [{"options": {"fault_count": 1}}],
-                         indirect=True)
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster):
+    extra_config = {'fault_injection_manager_name': FaultInjectionManager.name}
     session = get_default_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    # TODO(fyrestone): We can use b.execute() as
+    # TODO(fyrestone): We can use b.execute() when the issue
+    # https://github.com/mars-project/mars/issues/2165 is fixed
     with pytest.raises(RuntimeError, match='Fault Injection'):
-        info = await session.execute(b)
+        info = await session.execute(b, extra_config=extra_config)
         await info
 
-    info = await session.execute(b)
+    info = await session.execute(b, extra_config=extra_config)
     await info
     assert info.result() is None
     assert info.exception() is None

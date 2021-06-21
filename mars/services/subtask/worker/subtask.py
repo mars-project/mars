@@ -34,6 +34,7 @@ from ...context import ThreadedServiceContext
 from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
+from ...session import SessionAPI
 from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
 from ..errors import SlotOccupiedAlready
@@ -84,6 +85,7 @@ class SubtaskProcessor:
 
     def __init__(self,
                  subtask: Subtask,
+                 session_api: SessionAPI,
                  storage_api: StorageAPI,
                  meta_api: MetaAPI,
                  band: BandType,
@@ -114,6 +116,7 @@ class SubtaskProcessor:
         self._chunk_key_to_data_keys = dict()
 
         # other service APIs
+        self._session_api = session_api
         self._storage_api = storage_api
         self._meta_api = meta_api
 
@@ -429,6 +432,8 @@ class SubtaskRunnerActor(mo.Actor):
             return getattr(importlib.import_module(module), class_name)
 
     async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
+        # session API
+        session_api = await SessionAPI.create(self._supervisor_address)
         # storage API
         storage_api = await StorageAPI.create(
             subtask.session_id, self.address)
@@ -439,7 +444,7 @@ class SubtaskRunnerActor(mo.Actor):
         await self._init_context(subtask.session_id)
 
         processor_cls = self._subtask_processor_cls
-        return processor_cls(subtask, storage_api, meta_api,
+        return processor_cls(subtask, session_api, storage_api, meta_api,
                              self._band, self._supervisor_address)
 
     async def _run_subtask(self, subtask: Subtask):

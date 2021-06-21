@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from mars.services.subtask.worker.tests.subtask_processor \
-    import CheckedSubtaskProcessor
+    import CheckedSubtaskProcessor, FaultInjectionSubtaskProcessor

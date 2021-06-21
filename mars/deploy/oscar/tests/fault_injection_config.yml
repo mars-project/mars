@@ -1,5 +1,3 @@
 inherits: '@default'
-services:
-  - fault_injection
 subtask:
-  subtask_processor_cls: mars.services.fault_injection.subtask_processor.FaultInjectionSubtaskProcessor
+  subtask_processor_cls: mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor
