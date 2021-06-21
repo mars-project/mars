@@ -19,7 +19,7 @@ from typing import List
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
-from ...core import NodeRole, FilterType
+from ...core import NodeRole
 from ...subtask import Subtask
 
 
@@ -47,10 +47,14 @@ class AssignerActor(mo.Actor):
 
         self._bands = list(await self._cluster_api.get_all_bands())
 
+        from .globalslot import GlobalSlotManagerActor
+        self._slots_ref = await mo.actor_ref(
+            GlobalSlotManagerActor.default_uid(), address=self.address)
+
         async def watch_bands():
             while True:
                 self._bands = list(await self._cluster_api.get_all_bands(
-                    NodeRole.WORKER, FilterType.BLOCKLIST, watch=True))
+                    NodeRole.WORKER, watch=True))
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -61,17 +65,18 @@ class AssignerActor(mo.Actor):
     async def assign_subtasks(self, subtasks: List[Subtask]):
         inp_keys = set()
         selected_bands = dict()
+        available_bands = list(await self._slots_ref.get_available_bands())
         for subtask in subtasks:
             if subtask.expect_bands:
                 selected_bands[subtask.subtask_id] = \
-                    subtask.expect_bands if subtask.expect_bands in self._bands \
-                        else [random.choice(self._bands)]
+                    subtask.expect_bands if subtask.expect_bands in available_bands \
+                        else [random.choice(available_bands)]
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
-                    selected_bands[subtask.subtask_id] = [random.choice(self._bands)]
+                    selected_bands[subtask.subtask_id] = [random.choice(available_bands)]
                     break
 
         fields = ['store_size', 'bands']

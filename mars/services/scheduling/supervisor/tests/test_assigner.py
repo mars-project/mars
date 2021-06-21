@@ -20,7 +20,7 @@ from mars.core import ChunkGraph
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.scheduling.supervisor import AssignerActor
+from mars.services.scheduling.supervisor import AssignerActor, GlobalSlotManagerActor
 from mars.services.subtask import Subtask
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import TensorTreeAdd
@@ -35,6 +35,9 @@ async def actor_pool():
         await MockClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        await mo.create_actor(GlobalSlotManagerActor,
+                              uid=GlobalSlotManagerActor.default_uid(),
+                              address=pool.external_address)
         assigner_ref = await mo.create_actor(
             AssignerActor, session_id, uid=AssignerActor.gen_uid(session_id),
             address=pool.external_address)

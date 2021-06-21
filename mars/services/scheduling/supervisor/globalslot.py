@@ -33,6 +33,7 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_stid_slots = defaultdict(dict)
         self._band_used_slots = defaultdict(lambda: 0)
         self._band_total_slots = dict()
+        self._blocked_bands = set()
 
         self._cluster_api = None
 
@@ -90,3 +91,19 @@ class GlobalSlotManagerActor(mo.Actor):
 
     def get_used_slots(self):
         return self._band_used_slots
+
+    async def get_available_bands(self):
+        if not self._band_total_slots:
+            self._band_total_slots = await self._cluster_api.get_all_bands()
+
+        def exclude_bands(all_bands_slots, excluded_bands):
+            return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
+        return exclude_bands(self._band_total_slots, self._blocked_bands)
+
+    async def add_to_blocklist(self, band: BandType):
+        assert band in self._band_total_slots
+        self._blocked_bands.add(band)
+
+    async def remove_from_blocklist(self, band: BandType):
+        assert band in self._blocked_bands
+        self._blocked_bands.remove(band)
