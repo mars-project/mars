@@ -16,6 +16,7 @@ import asyncio
 import inspect
 import sys
 cimport cython
+from typing import AsyncGenerator
 
 from .errors import Return
 from .utils cimport is_async_generator
@@ -24,6 +25,17 @@ from .utils import create_actor_ref
 
 CALL_METHOD_DEFAULT = 0
 CALL_METHOD_BATCH = 1
+
+cdef:
+    bint _log_unhandled_errors = False
+
+
+def set_debug_options(options):
+    global _log_unhandled_errors
+    if options is None:
+        _log_unhandled_errors = False
+    else:
+        _log_unhandled_errors = options.log_unhandled_errors
 
 
 cdef class ActorRef:
@@ -232,7 +244,7 @@ cdef class _Actor:
 
         return result
 
-    async def _run_actor_async_generator(self, gen):
+    async def _run_actor_async_generator(self, gen: AsyncGenerator):
         """
         Run an async generator under Actor lock
         """
@@ -280,23 +292,30 @@ cdef class _Actor:
         message : tuple
             Message shall be (method_name,) + args + (kwargs,)
         """
-        method, call_method, args, kwargs = message
-        if call_method == CALL_METHOD_DEFAULT:
-            func = getattr(self, method)
-            async with self._lock:
-                result = func(*args, **kwargs)
-                if asyncio.iscoroutine(result):
-                    result = await result
-        elif call_method == CALL_METHOD_BATCH:
-            func = getattr(self, method)
-            async with self._lock:
-                delays = []
-                for s_args, s_kwargs in zip(*args):
-                    delays.append(func.delay(*s_args, **s_kwargs))
-                result = func.batch(*delays)
-                if asyncio.iscoroutine(result):
-                    result = await result
-        else:  # pragma: no cover
-            raise ValueError(f'call_method {call_method} not valid')
+        try:
+            method, call_method, args, kwargs = message
+            if call_method == CALL_METHOD_DEFAULT:
+                func = getattr(self, method)
+                async with self._lock:
+                    result = func(*args, **kwargs)
+                    if asyncio.iscoroutine(result):
+                        result = await result
+            elif call_method == CALL_METHOD_BATCH:
+                func = getattr(self, method)
+                async with self._lock:
+                    delays = []
+                    for s_args, s_kwargs in zip(*args):
+                        delays.append(func.delay(*s_args, **s_kwargs))
+                    result = func.batch(*delays)
+                    if asyncio.iscoroutine(result):
+                        result = await result
+            else:  # pragma: no cover
+                raise ValueError(f'call_method {call_method} not valid')
 
-        return await self._handle_actor_result(result)
+            return await self._handle_actor_result(result)
+        except Exception as ex:
+            if _log_unhandled_errors:
+                from .debug import logger as debug_logger
+                debug_logger.exception('Got unhandled error when handling message %r'
+                                       'in actor %s at %s', message, self.uid, self.address)
+            raise ex

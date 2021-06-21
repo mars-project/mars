@@ -19,6 +19,7 @@ from ...utils import to_binary
 from ..api import Actor
 from ..core import ActorRef
 from ..context import BaseActorContext
+from ..debug import debug_actor_timeout
 from ..errors import CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import AllocateStrategy, AddressSpecified
@@ -143,12 +144,15 @@ class MarsActorContext(BaseActorContext):
         message = SendMessage(
             new_message_id(), actor_ref,
             message, protocol=DEFAULT_PROTOCOL)
-        future = await self._call(actor_ref.address, message, wait=False)
-        if wait_response:
-            result = await self._wait(future, actor_ref.address, message)
-            return self._process_result_message(result)
-        else:
-            return future
+
+        with debug_actor_timeout('actor_call_timeout', 'Calling %r on %s at %s timed out',
+                                 message.content, actor_ref.uid, actor_ref.address):
+            future = await self._call(actor_ref.address, message, wait=False)
+            if wait_response:
+                result = await self._wait(future, actor_ref.address, message)
+                return self._process_result_message(result)
+            else:
+                return future
 
     async def cancel(self,
                      address: str,

@@ -21,6 +21,7 @@ from .api import actor_ref, create_actor, has_actor, destroy_actor, \
 from .backends import allocate_strategy
 from .backends.pool import MainActorPoolType
 from .core import ActorRef
+from .debug import set_debug_options, DebugOptions
 from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
 from .utils import create_actor_ref
 
