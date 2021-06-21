@@ -474,12 +474,13 @@ class TaskProcessorActor(mo.Actor):
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         stage_processor = self._cur_processor.cur_stage_processor
         subtask = stage_processor.subtask_id_to_subtask[subtask_result.subtask_id]
+
         prev_result = stage_processor.subtask_results.get(subtask)
-        if prev_result and prev_result.status.is_done:
+        if prev_result:
             # set before
             return
 
-        stage_processor.subtask_results[subtask] = subtask_result
+        stage_processor.subtask_temp_result[subtask] = subtask_result
         if subtask_result.status.is_done:
             try:
                 await self._decref_input_subtasks(subtask, stage_processor.subtask_graph)

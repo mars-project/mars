@@ -52,6 +52,7 @@ class TaskStageProcessor:
         self.subtask_id_to_subtask = {subtask.subtask_id: subtask
                                       for subtask in subtask_graph}
         self._subtask_to_bands: Dict[Subtask, BandType] = dict()
+        self.subtask_temp_result: Dict[Subtask, SubtaskResult] = dict()
         self.subtask_results: Dict[Subtask, SubtaskResult] = dict()
         self._submitted_subtask_ids = set()
 
