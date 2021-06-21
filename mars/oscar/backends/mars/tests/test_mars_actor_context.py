@@ -24,6 +24,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import RandomSubPool
+from mars.oscar.debug import set_debug_options, DebugOptions
 from mars.utils import extensible
 
 logger = logging.getLogger(__name__)
@@ -222,15 +223,23 @@ class PromiseTestActor(mo.Actor):
         return log
 
 
-@pytest.fixture
-async def actor_pool_context():
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture(params=[False, True])
+async def actor_pool_context(request):
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
         if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
                                       subprocess_start_method=start_method)
-    await pool.start()
-    yield pool
-    await pool.stop()
+
+    try:
+        if request:
+            set_debug_options(DebugOptions())
+
+        await pool.start()
+        yield pool
+        await pool.stop()
+    finally:
+        set_debug_options(None)
 
 
 @pytest.mark.asyncio

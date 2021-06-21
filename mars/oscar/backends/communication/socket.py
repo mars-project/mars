@@ -294,7 +294,10 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.stop)
     async def stop(self):
         await super().stop()
-        os.remove(self.path)
+        try:
+            os.remove(self.path)
+        except OSError:  # pragma: no cover
+            pass
 
 
 @register_client

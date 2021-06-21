@@ -19,7 +19,7 @@ from ...utils import to_binary
 from ..api import Actor
 from ..core import ActorRef
 from ..context import BaseActorContext
-from ..debug import debug_actor_timeout
+from ..debug import debug_actor_timeout, detect_cycle_send
 from ..errors import CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import AllocateStrategy, AddressSpecified
@@ -147,6 +147,7 @@ class MarsActorContext(BaseActorContext):
 
         with debug_actor_timeout('actor_call_timeout', 'Calling %r on %s at %s timed out',
                                  message.content, actor_ref.uid, actor_ref.address):
+            detect_cycle_send(message, wait_response)
             future = await self._call(actor_ref.address, message, wait=False)
             if wait_response:
                 result = await self._wait(future, actor_ref.address, message)

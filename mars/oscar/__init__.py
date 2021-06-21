@@ -16,6 +16,7 @@
 from ..lib import aio
 del aio
 
+from . import debug
 from .api import actor_ref, create_actor, has_actor, destroy_actor, \
     kill_actor, Actor, create_actor_pool, setup_cluster
 from .backends import allocate_strategy

@@ -276,9 +276,12 @@ class SubtaskExecutionActor(mo.Actor):
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):
-        task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
+        print('START run_subtask')
+        with mo.debug.no_message_trace():
+            task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address)
+        print('END run_subtask')
         return task
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from types import TracebackType
@@ -22,7 +23,7 @@ import numpy as np
 
 from ...lib.tblib import pickling_support
 from ...serialization.core import Serializer, pickle, buffered
-from ...utils import classproperty, implements
+from ...utils import classproperty, dataslots, implements
 from ..core import ActorRef
 
 
@@ -53,14 +54,25 @@ class ControlMessageType(Enum):
     get_config = 3
 
 
+@dataslots
+@dataclass
+class MessageTraceItem:
+    uid: str
+    address: str
+    method: str
+
+
 class _MessageBase(ABC):
-    __slots__ = 'protocol', 'message_id', 'scoped_message_ids'
+    __slots__ = 'protocol', 'message_id', 'message_trace'
 
     def __init__(self,
                  message_id: bytes,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         self.message_id = message_id
+        if protocol is None:
+            protocol = DEFAULT_PROTOCOL
+        self.protocol = protocol
         # A message can be in the scope of other messages,
         # this is mainly used for detecting deadlocks,
         # e.g. Actor `A` sent a message(id: 1) to actor `B`,
@@ -69,10 +81,7 @@ class _MessageBase(ABC):
         # In this case, the `scoped_message_ids` will be [1, 2],
         # `A` will find that id:1 already exists in inbox,
         # thus deadlock detected.
-        self.scoped_message_ids = scoped_message_ids
-        if protocol is None:
-            protocol = DEFAULT_PROTOCOL
-        self.protocol = protocol
+        self.message_trace = message_trace
 
     @classproperty
     @abstractmethod
@@ -100,11 +109,11 @@ class ControlMessage(_MessageBase):
                  address: str,
                  control_message_type: ControlMessageType,
                  content: Any,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.address = address
         self.control_message_type = control_message_type
         self.content = content
@@ -121,11 +130,11 @@ class ResultMessage(_MessageBase):
     def __init__(self,
                  message_id: bytes,
                  result: Any,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.result = result
 
     @classproperty
@@ -142,11 +151,11 @@ class ErrorMessage(_MessageBase):
                  error_type: Type[BaseException],
                  error: BaseException,
                  traceback: TracebackType,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.error_type = error_type
         self.error = error
         self.traceback = traceback
@@ -167,11 +176,11 @@ class CreateActorMessage(_MessageBase):
                  args: Tuple,
                  kwargs: Dict,
                  allocate_strategy,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.actor_cls = actor_cls
         self.actor_id = actor_id
         self.args = args
@@ -191,11 +200,11 @@ class DestroyActorMessage(_MessageBase):
                  message_id: bytes,
                  actor_ref: ActorRef,
                  from_main: bool = False,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.actor_ref = actor_ref
         self.from_main = from_main
 
@@ -211,11 +220,11 @@ class HasActorMessage(_MessageBase):
     def __init__(self,
                  message_id: bytes,
                  actor_ref: ActorRef,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.actor_ref = actor_ref
 
     @classproperty
@@ -230,11 +239,11 @@ class ActorRefMessage(_MessageBase):
     def __init__(self,
                  message_id: bytes,
                  actor_ref: ActorRef,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.actor_ref = actor_ref
 
     @classproperty
@@ -250,11 +259,11 @@ class SendMessage(_MessageBase):
                  message_id: bytes,
                  actor_ref: ActorRef,
                  content: Any,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.actor_ref = actor_ref
         self.content = content
 
@@ -280,11 +289,11 @@ class CancelMessage(_MessageBase):
                  message_id: bytes,
                  address: str,
                  cancel_message_id: bytes,
-                 scoped_message_ids: List[bytes] = None,
-                 protocol: int = None):
+                 protocol: int = None,
+                 message_trace: List[MessageTraceItem] = None):
         super().__init__(message_id,
-                         scoped_message_ids=scoped_message_ids,
-                         protocol=protocol)
+                         protocol=protocol,
+                         message_trace=message_trace)
         self.address = address
         self.cancel_message_id = cancel_message_id
 
