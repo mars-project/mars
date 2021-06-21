@@ -19,9 +19,6 @@ from typing import Dict, List, Tuple, Union
 
 BandType = Tuple[str, str]
 
-class FilterType(enum.Enum):
-    BLOCKLIST = 0
-
 
 class NodeRole(enum.Enum):
     SUPERVISOR = 0

@@ -59,3 +59,24 @@ async def test_global_slot(actor_pool):
         band, session_id, 'subtask0')
     assert ['subtask1'] == await global_slot_ref.apply_subtask_slots(
         band, session_id, ['subtask1'], [1])
+
+
+@pytest.mark.asyncio
+async def test_blocklist(actor_pool):
+    pool, _, global_slot_ref = actor_pool
+
+    cluster_api = await ClusterAPI.create(pool.external_address)
+    all_bands = await cluster_api.get_all_bands()
+    band = (pool.external_address, 'numa-0')
+    assert band in all_bands
+
+    former_bands = await global_slot_ref.get_available_bands()
+    assert len(former_bands) == 1
+
+    await global_slot_ref.add_to_blocklist(band)
+    bands = await global_slot_ref.get_available_bands()
+    assert len(bands) == 0
+
+    await global_slot_ref.remove_from_blocklist(band)
+    latter_bands = await global_slot_ref.get_available_bands()
+    assert former_bands == latter_bands

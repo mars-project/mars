@@ -17,7 +17,6 @@ import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from mars.services.core import FilterType
 from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
@@ -70,12 +69,13 @@ class SubtaskQueueingActor(mo.Actor):
     async def __post_create__(self):
         from ...cluster import ClusterAPI
         self._cluster_api = await ClusterAPI.create(self.address)
-        self._band_slot_nums = await self._cluster_api.get_all_bands()
 
         from .globalslot import GlobalSlotManagerActor
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
+        self._band_slot_nums = await self._slots_ref.get_available_bands()
+
         from .assigner import AssignerActor
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
@@ -120,7 +120,7 @@ class SubtaskQueueingActor(mo.Actor):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
-            self._band_slot_nums = await self._cluster_api.get_all_bands(filter=FilterType.BLOCKLIST)
+            self._band_slot_nums = await self._slots_ref.get_available_bands()
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
