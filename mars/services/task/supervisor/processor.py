@@ -135,8 +135,6 @@ class TaskProcessor:
         for result_tileable in self.tileable_graph.result_tileables:
             if result_tileable in processed:  # pragma: no cover
                 continue
-            if isinstance(result_tileable.op, Fetch):
-                continue
             try:
                 tiled_tileable = self._preprocessor.get_tiled(result_tileable)
                 tracks[0].append(result_tileable.key)
