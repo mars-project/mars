@@ -720,15 +720,17 @@ def fetch_log(*tileables: Tuple[TileableType],
 def _execute_in_thread(func: Callable):
     @functools.wraps(func)
     def _inner(*args, **kwargs):
-        if 'cancelled' not in kwargs:
-            cancelled = asyncio.Event(loop=_loop)
-            kwargs['cancelled'] = cancelled
-        cancelled = kwargs['cancelled']
+        cancelled = kwargs.get('cancelled')
 
         default_session = get_default_session()
         config = get_global_option().to_dict()
 
         def run_in_thread():
+            nonlocal cancelled
+            if cancelled is None:
+                async def _new_event():
+                    return asyncio.Event()
+                cancelled = _loop.run_until_complete(_new_event())
             with option_context(config):
                 # set default session in this thread
                 _sync_default_session(default_session)
