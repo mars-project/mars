@@ -13,31 +13,18 @@
 # limitations under the License.
 
 import os
-import uuid
 import pytest
 import numpy as np
 
+import mars
 import mars.tensor as mt
 from mars.core.session import get_default_session
 from mars.deploy.oscar.local import new_cluster
 
-from ....services.session import SessionAPI
+from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
-
-
-class FaultInjectionManager:
-    name = str(uuid.uuid4())
-
-    def __init__(self):
-        self._fault_count = 1
-
-    def on_execute_operand(self):
-        if self._fault_count > 0:
-            self._fault_count -= 1
-            return True
-        return False
 
 
 @pytest.fixture
@@ -48,17 +35,37 @@ async def fault_cluster():
                                n_worker=2,
                                n_cpu=2)
     async with client:
-        session_api = await SessionAPI.create(client.session.address)
-        await session_api.create_remote_object(
-            client.session.session_id,
-            FaultInjectionManager.name,
-            FaultInjectionManager)
         yield client
 
 
+async def create_fault_injection_manager(session_id, address, fault_count, fault_type):
+    class FaultInjectionManager(AbstractFaultInjectionManager):
+        def __init__(self):
+            self._fault_count = fault_count
+
+        def on_execute_operand(self) -> FaultType:
+            if self._fault_count > 0:
+                self._fault_count -= 1
+                return fault_type
+            return FaultType.NoFault
+
+    await FaultInjectionManager.create(session_id, address)
+    return {'fault_injection_manager_name': FaultInjectionManager.name}
+
+
+@pytest.mark.parametrize('fault_and_exception',
+                         [[FaultType.Exception,
+                           pytest.raises(RuntimeError, match='Fault Injection')],
+                          [FaultType.ProcessExit,
+                           pytest.raises(mars.oscar.ServerClosed)]])
 @pytest.mark.asyncio
-async def test_fault_inject_subtask_processor(fault_cluster):
-    extra_config = {'fault_injection_manager_name': FaultInjectionManager.name}
+async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception):
+    fault_type, first_run_raises = fault_and_exception
+    extra_config = await create_fault_injection_manager(
+        session_id=fault_cluster.session.session_id,
+        address=fault_cluster.session.address,
+        fault_count=1,
+        fault_type=fault_type)
     session = get_default_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
@@ -67,10 +74,39 @@ async def test_fault_inject_subtask_processor(fault_cluster):
 
     # TODO(fyrestone): We can use b.execute() when the issue
     # https://github.com/mars-project/mars/issues/2165 is fixed
-    with pytest.raises(RuntimeError, match='Fault Injection'):
+    with first_run_raises:
         info = await session.execute(b, extra_config=extra_config)
         await info
 
+    info = await session.execute(b, extra_config=extra_config)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+
+    r = await session.fetch(b)
+    np.testing.assert_array_equal(r[0], raw + 1)
+
+
+@pytest.mark.parametrize('fault_config',
+                         [[FaultType.Exception, 1],
+                          [FaultType.ProcessExit, 1]])
+@pytest.mark.asyncio
+async def test_rerun_subtask(fault_cluster, fault_config):
+    fault_type, fault_count = fault_config
+    extra_config = await create_fault_injection_manager(
+        session_id=fault_cluster.session.session_id,
+        address=fault_cluster.session.address,
+        fault_count=fault_count,
+        fault_type=fault_type)
+    extra_config['subtask_max_runs'] = 2
+    session = get_default_session()
+
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+
+    # TODO(fyrestone): We can use b.execute() when the issue
+    # https://github.com/mars-project/mars/issues/2165 is fixed
     info = await session.execute(b, extra_config=extra_config)
     await info
     assert info.result() is None

@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Dict
 
 from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
 from mars.tests.core import _check_args, ObjectCheckMixin
+
+from ....tests.fault_injection_manager import FaultType
 
 
 class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
@@ -88,7 +91,12 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         fault = await self._fault_injection_manager.on_execute_operand()
-        if fault:
+        if fault == FaultType.Exception:
             raise RuntimeError("Fault Injection")
+        elif fault == FaultType.ProcessExit:
+            # Use mimic process crash, no cleanup.
+            os._exit(-1)
+        assert fault == FaultType.NoFault, \
+            f"Got unexpected fault from on_execute_operand: {fault}"
 
         return await super()._async_execute_operand(loop, executor, ctx, op)
