@@ -50,15 +50,22 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
     def tileable_key(self):
         return self._tileable_key
 
-    def __call__(self, dep):
+    def __call__(self, dep=None):
         self._output_types = [OutputType.tensor]
+        if dep:
+            deps = [dep]
+        else:
+            deps = None
         return self.new_tileable(
-            [dep], shape=(len(self.workers,),), dtype=np.dtype(int))
+            deps, shape=(len(self.workers,),), dtype=np.dtype(int))
 
     @classmethod
     def tile(cls, op: "CollectPorts"):
         chunks = []
-        chunk_iter = itertools.cycle(op.inputs[0].chunks)
+        if op.inputs:
+            chunk_iter = itertools.cycle(op.inputs[0].chunks)
+        else:
+            chunk_iter = itertools.repeat(None)
         for idx, (worker, inp) in enumerate(zip(op.workers, chunk_iter)):
             new_op = op.copy().reset_key()
             new_op._workers = [worker]
@@ -67,8 +74,9 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
             new_op._tileable_key = op.outputs[0].key
             new_op._index = idx
             new_op._pure_depends = [True]
+            inps = [inp] if inp else None
             chunks.append(new_op.new_chunk(
-                [inp], index=(idx,), shape=(1,), dtype=np.dtype(int)))
+                inps, index=(idx,), shape=(1,), dtype=np.dtype(int)))
 
         concat_op = TensorConcatenate(axis=0, dtype=chunks[0].dtype)
         concat_chunk = concat_op.new_chunk(
@@ -77,7 +85,7 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
         new_op = op.copy().reset_key()
         params = op.outputs[0].params
         params.update(dict(chunks=[concat_chunk], nsplits=((len(op.workers),),)))
-        return new_op.new_tileables([op.inputs[0]], **params)
+        return new_op.new_tileables(op.inputs, **params)
 
     @classmethod
     def execute(cls, ctx, op):
@@ -86,6 +94,6 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
         ctx[op.outputs[0].key] = np.array([port_num], dtype=int)
 
 
-def collect_ports(workers, input_tileable):
+def collect_ports(workers, input_tileable=None):
     op = CollectPorts(workers=workers)
     return op(input_tileable)
