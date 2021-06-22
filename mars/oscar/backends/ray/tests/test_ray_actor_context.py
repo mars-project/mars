@@ -19,6 +19,7 @@ import pytest
 from .....utils import lazy_import
 from ...mars.tests import test_mars_actor_context
 from ...router import Router
+from ..communication import RayServer
 from ..pool import RayMainPool
 from ..utils import process_placement_to_address
 from mars.tests.core import require_ray
@@ -84,6 +85,7 @@ def actor_pool_context():
             pass
     Router.set_instance(None)
     unregister_ray_serializers()
+    RayServer.clear()
 
 
 @require_ray

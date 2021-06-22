@@ -149,4 +149,24 @@ def set_message_trace(message_trace):
     _message_trace_var.set(message_trace)
 
 
+async def get_ray_object(object_id, timeout_msg=None, *args, **kwargs):
+    if _debug_opts is None:
+        return await object_id
+    task = asyncio.create_task(_get_ray_object(object_id))
+    timeout, timeout_check_interval = 0, 10
+    while True:
+        done, pending = await asyncio.wait([task], timeout=timeout_check_interval)
+        timeout += timeout_check_interval
+        if done:
+            return await done.pop()
+        else:
+            msg_tpl = 'Get ray object %s timeout for %s seconds.'
+            msg_tpl = msg_tpl + '. ' + timeout_msg if timeout_msg else msg_tpl
+            logger.warning(msg_tpl, object_id, timeout, *args, **kwargs)
+
+
+async def _get_ray_object(object_id):
+    return await object_id
+
+
 reload_debug_opts_from_env()
