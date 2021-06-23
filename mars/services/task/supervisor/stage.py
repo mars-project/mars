@@ -127,7 +127,7 @@ class TaskStageProcessor:
             # not terminated, push success subtasks to queue if they are ready
             to_schedule_subtasks = []
             for succ_subtask in self.subtask_graph.successors(subtask):
-                if succ_subtask in self.subtask_results:
+                if succ_subtask in self.subtask_results:  # pragma: no cover
                     continue
                 pred_subtasks = self.subtask_graph.predecessors(succ_subtask)
                 if all(pred_subtask in self.subtask_results
@@ -152,7 +152,7 @@ class TaskStageProcessor:
         await self._done.wait()
 
     async def cancel(self):
-        if self._done.is_set():
+        if self._done.is_set():  # pragma: no cover
             # already finished, ignore cancel
             return
         self._cancelled.set()

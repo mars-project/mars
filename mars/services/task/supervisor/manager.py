@@ -25,7 +25,6 @@ from ....core.context import set_context
 from ....core.operand import Fetch
 from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
-from ...core import BandType
 from ...lifecycle.api import LifecycleAPI
 from ...meta import MetaAPI
 from ...scheduling import SchedulingAPI
@@ -115,9 +114,6 @@ class TaskManagerActor(mo.Actor):
         await context.init()
         set_context(context)
 
-    async def _get_available_band_slots(self) -> Dict[BandType, int]:
-        return await self._cluster_api.get_all_bands()
-
     @staticmethod
     def gen_uid(session_id):
         return f'{session_id}_task_manager'
@@ -133,9 +129,9 @@ class TaskManagerActor(mo.Actor):
             # new task without task name
             task_id = task_name = new_task_id()
             parent_task_id = new_task_id()
-        elif task_name in self._task_name_to_main_task_info:
+        elif task_name in self._task_name_to_parent_task_id:
             # task with the same name submitted before
-            parent_task_id = self._task_name_to_task_id[task_name]
+            parent_task_id = self._task_name_to_parent_task_id[task_name]
             task_id = new_task_id()
         else:
             # new task with task_name

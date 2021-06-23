@@ -120,6 +120,36 @@ async def test_run_task(actor_pool):
 
 
 @pytest.mark.asyncio
+async def test_run_tasks_with_same_name(actor_pool):
+    pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
+
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+    c = a * 2
+
+    for t, e in zip([b, c], [raw + 1, raw * 2]):
+        graph = TileableGraph([t.data])
+        next(TileableGraphBuilder(graph).build())
+
+        task_id = await manager.submit_tileable_graph(graph, task_name='my_task',
+                                                      fuse_enabled=False)
+        assert isinstance(task_id, str)
+
+        await manager.wait_task(task_id)
+        task_result: TaskResult = await manager.get_task_result(task_id)
+
+        assert task_result.status == TaskStatus.terminated
+        if task_result.error is not None:
+            raise task_result.error.with_traceback(task_result.traceback)
+        assert await manager.get_task_progress(task_id) == 1.0
+
+        result_tileable = (await manager.get_task_result_tileables(task_id))[0]
+        result = await _merge_data(result_tileable, storage_api)
+        np.testing.assert_array_equal(result, e)
+
+
+@pytest.mark.asyncio
 async def test_error_task(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
 

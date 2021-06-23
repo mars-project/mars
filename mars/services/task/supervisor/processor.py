@@ -38,22 +38,16 @@ from .stage import TaskStageProcessor
 
 
 def _record_error(func: Union[Callable, Coroutine]):
-    if asyncio.iscoroutinefunction(func):
-        @wraps(func)
-        async def inner(processor: "TaskProcessor", *args, **kwargs):
-            try:
-                return await func(processor, *args, **kwargs)
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-                processor._err_infos.append(sys.exc_info())
-                raise
-    else:
-        @wraps(func)
-        def inner(processor: "TaskProcessor", *args, **kwargs):
-            try:
-                return func(processor, *args, **kwargs)
-            except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-                processor._err_infos.append(sys.exc_info())
-                raise
+    assert asyncio.iscoroutinefunction(func)
+
+    @wraps(func)
+    async def inner(processor: "TaskProcessor", *args, **kwargs):
+        try:
+            return await func(processor, *args, **kwargs)
+        except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            processor._err_infos.append(sys.exc_info())
+            raise
+
     return inner
 
 
@@ -329,12 +323,12 @@ class TaskProcessorActor(mo.Actor):
                 return processor
 
     async def start(self):
-        if self._cur_processor is not None:
+        if self._cur_processor is not None:  # pragma: no cover
             # some processor is running
             return
 
         processor = self._get_unprocessed_task_processor()
-        if processor is None:
+        if processor is None:  # pragma: no cover
             return
         self._cur_processor = processor
         processor.result.status = TaskStatus.running
@@ -426,7 +420,7 @@ class TaskProcessorActor(mo.Actor):
                 # generating subtask
                 continue
             n_subtask = len(stage_processor.subtask_graph)
-            if n_subtask == 0:
+            if n_subtask == 0:  # pragma: no cover
                 continue
             progress = sum(result.progress for result
                            in stage_processor.subtask_results.values())
