@@ -16,11 +16,15 @@ import asyncio
 import os
 import threading
 import time
+import uuid
 
 import numpy as np
 import pandas as pd
 import pytest
-import uuid
+try:
+    import vineyard
+except ImportError:
+    vineyard = None
 
 import mars.dataframe as md
 import mars.tensor as mt
@@ -30,11 +34,7 @@ from mars.core.session import get_default_session, \
     new_session, execute, fetch, stop_server, get_loop
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import Session, WebSession
-
-try:
-    import vineyard
-except ImportError:
-    vineyard = None
+from mars.tensor.arithmetic.add import TensorAdd
 
 
 CONFIG_TEST_FILE = os.path.join(
@@ -242,21 +242,9 @@ def test_decref(setup_session):
     assert len(ref_counts) == 1
 
 
-def test_cancel(setup_session):
-    session = setup_session
-    loop = get_loop()
-    cancelled = asyncio.Event(loop=loop)
-
+def _cancel_when_execute(session, cancelled):
     def run():
         time.sleep(200)
-
-    def cancel():
-        time.sleep(.5)
-        cancelled.set()
-
-    t = threading.Thread(target=cancel)
-    t.daemon = True
-    t.start()
 
     rs = [mr.spawn(run) for _ in range(10)]
     execute(*rs, cancelled=cancelled)
@@ -266,6 +254,46 @@ def test_cancel(setup_session):
     del rs
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
+
+
+class SlowTileAdd(TensorAdd):
+    @classmethod
+    def tile(cls, op):
+        time.sleep(2)
+        return (yield from TensorAdd.tile(op))
+
+
+def _cancel_when_tile(session, cancelled):
+    a = mt.tensor([1, 2, 3])
+    for i in range(20):
+        a = SlowTileAdd(dtype=np.dtype(np.int64))(a, 1)
+    execute(a, cancelled=cancelled)
+
+    assert not a._executed_sessions
+
+    del a
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
+
+
+@pytest.mark.parametrize(
+    'test_func', [_cancel_when_execute, _cancel_when_tile])
+def test_cancel(setup_session, test_func):
+    session = setup_session
+    loop = get_loop()
+    cancelled = asyncio.Event(loop=loop)
+
+    def cancel():
+        time.sleep(.5)
+        cancelled.set()
+
+    t = threading.Thread(target=cancel)
+    t.daemon = True
+    t.start()
+
+    start = time.time()
+    test_func(session, cancelled)
+    assert time.time() - start < 20
 
     # submit another task
     raw = np.random.rand(10, 10)

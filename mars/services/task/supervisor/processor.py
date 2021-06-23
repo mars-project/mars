@@ -85,6 +85,10 @@ class TaskProcessor:
         self._lifecycle_processed_tileables = set()
 
     @property
+    def preprocessor(self):
+        return self._preprocessor
+
+    @property
     def tileable_graph(self):
         return self._preprocessor.tileable_graph
 
@@ -386,8 +390,13 @@ class TaskProcessorActor(mo.Actor):
             raise mo.Return(self.result())
 
     async def cancel(self):
-        if self._cur_processor and self._cur_processor.cur_stage_processor:
-            await self._cur_processor.cur_stage_processor.cancel()
+        if self._cur_processor:
+            if not self._cur_processor.cur_stage_processor:
+                # still in preprocess
+                self._cur_processor.preprocessor.cancel()
+            else:
+                # otherwise, already in stages, cancel current running stage
+                await self._cur_processor.cur_stage_processor.cancel()
 
     def result(self):
         terminated_result = None
