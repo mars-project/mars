@@ -343,7 +343,7 @@ def test_frexp_execution(setup):
 
     res = o.execute().fetch()
     expected = sum(np.frexp(data1))
-    np.testing.assert_array_almost_equal(res, expected, decimal=4)
+    np.testing.assert_array_almost_equal(res, expected, decimal=3)
 
     data1 = sps.random(5, 9, density=.1)
 

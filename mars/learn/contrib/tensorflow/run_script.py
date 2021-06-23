@@ -12,18 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import os
 import json
-from collections import defaultdict
 
 import numpy as np
 
 from .... import opcodes as OperandDef
+from ....core import recursive_tile
 from ....core.context import get_context
 from ....remote.run_script import RunScript
 from ....serialization.serializables import BytesField, Int32Field, DictField, StringField
 from ....utils import to_binary
+from ...utils import collect_ports
 from ..utils import pick_workers
 
 
@@ -89,12 +89,17 @@ class RunTensorFlow(RunScript):
         out_chunks = []
         worker_addresses = ctx.get_worker_addresses()
         picked_workers = pick_workers(worker_addresses, op.n_roles)
-        worker_to_port_iter = defaultdict(lambda: itertools.count(port))
 
-        for i, worker in enumerate(picked_workers):
+        ports = yield from recursive_tile(
+            collect_ports(worker_addresses))
+        yield ports.chunks
+        ports = ctx.get_chunks_result([ports.chunks[0].key])[0]
+
+        i = 0
+        for worker, port in zip(picked_workers, ports):
             worker_addr = worker.rsplit(':', 1)[0]
             chunk_op = op.copy().reset_key()
-            addr = f'{worker_addr}:{next(worker_to_port_iter[worker_addr])}'
+            addr = f'{worker_addr}:{port}'
             # tell graph actor that the chunk should be executed on the exact worker
             chunk_op.expect_worker = worker
             tp = 'worker' if i < n_workers else 'ps'
@@ -105,6 +110,7 @@ class RunTensorFlow(RunScript):
             chunk_op._tf_config = {'cluster': cluster_conf,
                                    'task': {'type': tp, 'index': idx}}
             out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
+            i += 1
 
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, chunks=out_chunks,

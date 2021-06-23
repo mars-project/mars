@@ -64,7 +64,11 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
-        pip install numpy scipy cython
+        if [[ "$(mars.test.module)" == "learn" ]]; then
+          pip install numpy\<1.20.0 scipy cython
+        else
+          pip install numpy scipy cython
+        fi
         pip install -e ".[dev,distributed]"
         pip install virtualenv flaky flake8
 
@@ -78,11 +82,8 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
-            conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
-              libxgboost py-xgboost xgboost lightgbm tensorflow
-            pip install faiss-cpu
-            pip install torch torchvision
-            pip install statsmodels tsfresh
+            pip install xgboost lightgbm tensorflow faiss-cpu torch torchvision \
+              statsmodels tsfresh
           fi
         fi
         conda list -n test
