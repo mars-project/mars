@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import atexit
 import sys
 import weakref
+from concurrent.futures import Future as SyncFuture
 from typing import Union, Dict
 
 from ... import oscar as mo
@@ -23,6 +26,9 @@ from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
 from .typing import ClusterType, ClientType
+
+_is_exiting_future = SyncFuture()
+atexit.register(lambda: _is_exiting_future.set_result(0))
 
 
 async def new_cluster(address: str = '0.0.0.0',
@@ -72,6 +78,8 @@ class LocalCluster:
         self.supervisor_address = None
         self.web_address = None
 
+        self._exiting_check_task = None
+
     @property
     def external_address(self):
         return self._supervisor_pool.external_address
@@ -88,6 +96,12 @@ class LocalCluster:
             web_actor = await mo.actor_ref(WebActor.default_uid(),
                                            address=self.supervisor_address)
             self.web_address = await web_actor.get_web_address()
+
+        self._exiting_check_task = asyncio.create_task(self._check_exiting())
+
+    async def _check_exiting(self):
+        await asyncio.wrap_future(_is_exiting_future)
+        await self.stop()
 
     async def _start_supervisor_pool(self):
         self._supervisor_pool = await create_supervisor_actor_pool(
@@ -120,6 +134,7 @@ class LocalCluster:
         for worker_pool in self._worker_pools:
             await worker_pool.stop()
         await self._supervisor_pool.stop()
+        self._exiting_check_task.cancel()
 
 
 class LocalClient:

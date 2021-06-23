@@ -65,6 +65,9 @@ async def actor_pool():
             'host': '127.0.0.1',
             'port': get_next_port(),
             'web_handlers': {TestAPIHandler.get_root_pattern(): TestAPIHandler},
+            'extra_discovery_modules': [
+                'mars.services.web.tests.extra_handler'
+            ]
         }
         await mo.create_actor(
             WebActor, web_config, address=pool.external_address)
@@ -78,7 +81,7 @@ class SimpleWebClient(MarsWebAPIClientMixin):
 
 @pytest.mark.asyncio
 async def test_web_api(actor_pool):
-    pool, web_port = actor_pool
+    _pool, web_port = actor_pool
 
     client = SimpleWebClient()
 
@@ -106,3 +109,6 @@ async def test_web_api(actor_pool):
 
     with pytest.raises(ValueError):
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_error')
+
+    res = await client.fetch(f'http://localhost:{web_port}/api/extra_test')
+    assert 'Test' in res.body.decode()

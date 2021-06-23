@@ -168,7 +168,7 @@ class PromiseTestActor(mo.Actor):
             yield asyncio.sleep(delay)
             self.call_log.append(('C', idx, time.time()))
         finally:
-            await self.res_lock_ref.release()
+            yield self.res_lock_ref.release()
             raise mo.Return(res)
 
     async def test_promise_call(self, idx, delay=0.1):
@@ -439,34 +439,36 @@ async def test_promise_chain(actor_pool_context):
     promise_test_ref = await mo.create_actor(
         PromiseTestActor, lock_ref, address=pool.external_address)
 
+    delay_val = 1.0
+
     start_time = time.time()
-    tasks = [asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=0.1))
+    tasks = [asyncio.create_task(promise_test_ref.test_promise_call(idx, delay=delay_val))
              for idx in range(4)]
     await asyncio.gather(*tasks)
 
     logs = pd.DataFrame(await promise_test_ref.get_call_log(), columns=['group', 'idx', 'time'])
     logs.time -= start_time
-    assert logs.query('group == "A"').time.max() < 0.05
+    assert logs.query('group == "A"').time.max() < delay_val / 2
     max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_apply_time > 0.05
+    assert max_apply_time > delay_val / 2
     max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_delay_time > 0.05
+    assert max_delay_time > delay_val / 2
 
     start_time = time.time()
-    ret = await promise_test_ref.test_yield_tuple()
+    ret = await promise_test_ref.test_yield_tuple(delay=delay_val)
     assert set(ret) == {1, 2, 3, 4, None, 'PlainString'}
 
     logs = pd.DataFrame(await promise_test_ref.get_call_log(), columns=['group', 'idx', 'time'])
     logs.time -= start_time
-    assert logs.query('group == "A"').time.max() < 0.05
+    assert logs.query('group == "A"').time.max() < delay_val / 2
     max_apply_time = logs.query('group == "A" | group == "B"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_apply_time > 0.05
+    assert max_apply_time > delay_val / 2
     max_delay_time = logs.query('group == "B" | group == "C"').groupby('idx') \
         .apply(lambda s: s.time.max() - s.time.min()).max()
-    assert max_delay_time > 0.05
+    assert max_delay_time > delay_val / 2
 
     with pytest.raises(ValueError):
         await promise_test_ref.test_exceptions()

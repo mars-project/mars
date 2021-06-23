@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import importlib
 import logging
 import os
 
@@ -50,6 +51,18 @@ class WebActor(mo.Actor):
         super().__init__()
         self._config = config
         self._web_server = None
+
+        extra_mod_names = self._config.get('extra_discovery_modules') or []
+        bokeh_apps = self._config.get('bokeh_apps', {})
+        web_handlers = self._config.get('web_handlers', {})
+        for mod_name in extra_mod_names:
+            try:
+                web_mod = importlib.import_module(mod_name)
+                web_handlers.update(getattr(web_mod, 'web_handlers', {}))
+                bokeh_apps.update(getattr(web_mod, 'bokeh_apps', {}))
+            except ImportError:  # pragma: no cover
+                pass
+        self._config['bokeh_apps'] = bokeh_apps
 
     async def __post_create__(self):
         static_path = os.path.join(os.path.dirname(__file__), 'static')
@@ -104,5 +117,30 @@ class WebActor(mo.Actor):
 
 
 async def start(config: dict, address: str = None):
+    """
+    Start web service on supervisor.
+
+    Parameters
+    ----------
+    config
+        service config.
+        {
+            "web": {
+                "host": "<web host>",
+                "port": "<web port>",
+                "bokeh_apps": [
+                    <bokeh applications>,
+                ],
+                "web_handlers": [
+                    <web_handlers>,
+                ],
+                "extra_discovery_modules": [
+                    "path.to.modules",
+                ]
+            }
+        }
+    address : str
+        Actor pool address.
+    """
     await mo.create_actor(WebActor, config=config.get('web', {}),
                           uid=WebActor.default_uid(), address=address)
