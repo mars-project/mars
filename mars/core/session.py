@@ -636,11 +636,13 @@ async def _execute(*tileables: Tuple[TileableType],
                     await asyncio.wait_for(asyncio.shield(execution_info),
                                            progress_update_interval)
                     # done
-                    progress.send(100)
+                    if not cancelled.is_set():
+                        progress.send(100)
                     break
                 except asyncio.TimeoutError:
                     # timeout
-                    progress.send(execution_info.progress() * 100)
+                    if not cancelled.is_set():
+                        progress.send(execution_info.progress() * 100)
             if cancelled.is_set():
                 # cancel execution
                 execution_info.cancel()
@@ -730,7 +732,8 @@ def _execute_in_thread(func: Callable):
             if cancelled is None:
                 async def _new_event():
                     return asyncio.Event()
-                cancelled = _loop.run_until_complete(_new_event())
+                kwargs['cancelled'] = cancelled = \
+                    _loop.run_until_complete(_new_event())
             with option_context(config):
                 # set default session in this thread
                 _sync_default_session(default_session)
@@ -739,7 +742,7 @@ def _execute_in_thread(func: Callable):
         fut = _pool.submit(run_in_thread)
         try:
             result, default_session_in_thread = fut.result()
-        except KeyboardInterrupt:
+        except KeyboardInterrupt:  # pragma: no cover
             logger.warning('Cancelling running task')
             cancelled.set()
             result, default_session_in_thread = fut.result()
