@@ -1,5 +1,5 @@
 inherits: '@default'
 task:
-  task_processor_cls: mars.services.task.supervisor.tests.CheckedTaskProcessor
+  task_preprocessor_cls: mars.services.task.supervisor.tests.CheckedTaskPreprocessor
 subtask:
   subtask_processor_cls: mars.services.subtask.worker.tests.CheckedSubtaskProcessor

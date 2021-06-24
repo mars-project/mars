@@ -17,6 +17,11 @@ from typing import Dict, List
 
 from ... import oscar as mo
 
+try:
+    from IPython import get_ipython
+except ImportError:
+    get_ipython = None
+
 
 async def create_supervisor_actor_pool(
         address: str,
@@ -25,9 +30,11 @@ async def create_supervisor_actor_pool(
         ports: List[int] = None,
         subprocess_start_method: str = None,
         **kwargs):
+    suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
         address, n_process=n_process, ports=ports, modules=modules,
         subprocess_start_method=subprocess_start_method,
+        suspend_sigint=suspend_sigint,
         **kwargs)
 
 
@@ -53,9 +60,11 @@ async def create_worker_actor_pool(
             envs.extend([dict() for _ in range(slot)])
             labels.extend([band] * slot)
 
+    suspend_sigint = get_ipython is not None and get_ipython() is not None
     return await mo.create_actor_pool(
         address, n_process=n_process, ports=ports,
         n_io_process=n_io_process,
         labels=labels, envs=envs, modules=modules,
         subprocess_start_method=subprocess_start_method,
+        suspend_sigint=suspend_sigint,
         **kwargs)

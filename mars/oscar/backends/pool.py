@@ -506,7 +506,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
             future = self._process_messages.get(message.cancel_message_id)
-            if future is None:  # pragma: no cover
+            if future is None or future.done():  # pragma: no cover
                 raise CannotCancelTask('Task not exists, maybe it is done '
                                        'or cancelled already')
             future.cancel()
@@ -1043,6 +1043,7 @@ async def create_actor_pool(address: str, *,
                             subprocess_start_method: str = None,
                             auto_recover: Union[str, bool] = 'actor',
                             modules: List[str] = None,
+                            suspend_sigint: bool = None,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None,
                             **kwargs) -> MainActorPoolType:
@@ -1070,6 +1071,7 @@ async def create_actor_pool(address: str, *,
         pool_cls.gen_internal_address(main_process_index, external_addresses[0]),
         external_addresses[0],
         modules=modules,
+        suspend_sigint=suspend_sigint,
         kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
@@ -1081,6 +1083,7 @@ async def create_actor_pool(address: str, *,
             external_addresses[i + 1],
             env=envs[i] if envs else None,
             modules=modules,
+            suspend_sigint=suspend_sigint,
             kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({

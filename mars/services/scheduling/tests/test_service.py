@@ -30,7 +30,7 @@ from mars.services.scheduling.supervisor import GlobalSlotManagerActor
 from mars.services.storage import StorageAPI, MockStorageAPI
 from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
 from mars.services.task import new_task_id
-from mars.services.task.supervisor.task_manager import TaskManagerActor
+from mars.services.task.supervisor.manager import TaskManagerActor
 
 
 class FakeTaskManager(TaskManagerActor):

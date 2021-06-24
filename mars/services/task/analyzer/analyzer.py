@@ -12,52 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
 from collections import deque
 from typing import Type, Dict, List
 
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, Fuse, VirtualOperand
-from ....utils import implements, build_fetch
+from ....utils import build_fetch
 from ...core import BandType
 from ...subtask import SubtaskGraph, Subtask
-from ..core import new_task_id
+from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 from .fusion import Fusion
 
 
-class AbstractGraphAnalyzer(ABC):
+class GraphAnalyzer:
     def __init__(self,
                  chunk_graph: ChunkGraph,
                  band_slots: Dict[BandType, int],
-                 fuse_enabled: bool,
-                 extra_config: dict,
-                 task_stage_info,
+                 task: Task,
                  graph_assigner_cls: Type[AbstractGraphAssigner] = None):
         self._chunk_graph = chunk_graph
         self._band_slots = band_slots
-        self._fuse_enabled = fuse_enabled
-        self._extra_config = extra_config
-        self._task_stage_info = task_stage_info
+        self._task = task
+        self._fuse_enabled = task.fuse_enabled
+        self._extra_config = task.extra_config
         if graph_assigner_cls is None:
             graph_assigner_cls = GraphAssigner
         self._graph_assigner_cls = graph_assigner_cls
-
-    @abstractmethod
-    def gen_subtask_graph(self) -> SubtaskGraph:
-        """
-        Analyze chunk graph and generate subtask graph.
-
-        Returns
-        -------
-        subtask_graph: SubtaskGraph
-            Subtask graph.
-        """
-
-
-class GraphAnalyzer(AbstractGraphAnalyzer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self._chunk_to_copied = dict()
 
     @classmethod
@@ -225,8 +206,8 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
 
         subtask = Subtask(
             subtask_id=new_task_id(),
-            session_id=self._task_stage_info.task_info.session_id,
-            task_id=self._task_stage_info.task_id,
+            session_id=self._task.session_id,
+            task_id=self._task.task_id,
             chunk_graph=subtask_chunk_graph,
             expect_bands=[band] if band is not None else None,
             virtual=virtual,
@@ -234,9 +215,16 @@ class GraphAnalyzer(AbstractGraphAnalyzer):
             extra_config=self._extra_config)
         return subtask
 
-    @implements(AbstractGraphAnalyzer.gen_subtask_graph)
     @enter_mode(build=True)
     def gen_subtask_graph(self) -> SubtaskGraph:
+        """
+        Analyze chunk graph and generate subtask graph.
+
+        Returns
+        -------
+        subtask_graph: SubtaskGraph
+            Subtask graph.
+        """
         fetch_removed_chunk_graph = self._chunk_graph.copy()
         for chunk in self._chunk_graph:
             if isinstance(chunk.op, Fetch):

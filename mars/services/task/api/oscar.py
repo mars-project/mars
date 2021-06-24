@@ -19,7 +19,7 @@ from ....core import Tileable
 from ....lib.aio import alru_cache
 from ...subtask import SubtaskResult
 from ..core import TileableGraph, TaskResult
-from ..supervisor.task_manager import TaskManagerActor
+from ..supervisor.manager import TaskManagerActor
 from .core import AbstractTaskAPI
 
 
