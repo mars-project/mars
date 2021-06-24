@@ -242,7 +242,7 @@ def test_load_third_party_modules():
         new_session(n_cpu=2, default=True,
                     web=False, config=config)
 
-    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.test_replace_op']}
+    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.replace_op']}
     session = new_session(n_cpu=2, default=True,
                           web=False, config=config)
     # web not started

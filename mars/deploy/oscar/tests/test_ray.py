@@ -173,7 +173,7 @@ async def test_load_third_party_modules(ray_cluster, create_cluster):
                          [{
                              'config': {
                                  'third_party_modules': {
-                                     'worker': ['mars.deploy.oscar.tests.test_replace_op']},
+                                     'worker': ['mars.deploy.oscar.tests.replace_op']},
                              },
                          }],
                          indirect=True)

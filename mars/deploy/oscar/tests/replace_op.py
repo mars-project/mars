@@ -8,4 +8,5 @@ def _replace_op(ctx, op):
     return executor(ctx, op)
 
 
+print("replace TensorAdd to TensorSubtract for testing.")
 TensorAdd.register_executor(_replace_op)
