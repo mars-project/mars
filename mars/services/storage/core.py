@@ -75,6 +75,8 @@ class WrappedStorageFileObject(AioFileObject):
 
     async def close(self):
         self._file.close()
+        if self._object_id is None:
+            self._object_id = self._file.object_id
         if 'w' in self._file.mode:
             object_info = await self._storage_handler.object_info(self._object_id)
             data_info = _build_data_info(object_info, self._level, self._size)
