@@ -20,7 +20,8 @@ import numpy as np
 import pytest
 
 import mars.oscar as mo
-from mars.services.storage.core import StorageManagerActor, StorageHandlerActor
+from mars.services.storage.core import StorageManagerActor, StorageHandlerActor, \
+    StorageQuotaActor
 from mars.storage import StorageLevel, PlasmaStorage
 
 
@@ -86,6 +87,9 @@ async def test_spill(create_actors):
     init_params = await storage_manager.get_client_params()
     plasma_init_params = init_params['plasma']
     plasma_handler = PlasmaStorage(**plasma_init_params)
+    memory_quota = await mo.actor_ref(
+        StorageQuotaActor, StorageLevel.MEMORY, MEMORY_SIZE,
+        address=worker_address, uid=StorageQuotaActor.gen_uid(StorageLevel.MEMORY))
 
     # fill to trigger spill
     session_id = 'mock_session'
@@ -96,15 +100,15 @@ async def test_spill(create_actors):
         key = f'mock_key_{i}'
         await storage_handler.put(
             session_id, key, data, StorageLevel.MEMORY)
-        used = (await storage_manager.get_quota(StorageLevel.MEMORY))[1]
+        used = (await memory_quota.get_quota())[1]
         assert used < MEMORY_SIZE
         data_list.append(data)
         key_list.append(key)
 
     memory_object_list = await storage_handler.list(StorageLevel.MEMORY)
     disk_object_list = await storage_handler.list(StorageLevel.DISK)
-    assert len(memory_object_list) == 4
-    assert len(disk_object_list) == 6
+    assert len(memory_object_list) == 2
+    assert len(disk_object_list) == 8
 
     for key, data in zip(key_list, data_list):
         get_data = await storage_handler.get(session_id, key)

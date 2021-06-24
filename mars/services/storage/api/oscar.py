@@ -19,8 +19,8 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
-from ..core import StorageHandlerActor, StorageManagerActor, DataInfo, \
-    WrappedStorageFileObject
+from ..core import StorageHandlerActor, StorageManagerActor, DataManagerActor, \
+    DataInfo, WrappedStorageFileObject
 from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
@@ -29,6 +29,7 @@ APIType = TypeVar('APIType', bound='StorageAPI')
 class StorageAPI(AbstractStorageAPI):
     _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
     _storage_manager_ref: Union[StorageManagerActor, mo.ActorRef]
+    _data_manager_ref: Union[DataManagerActor, mo.ActorRef]
 
     def __init__(self,
                  address: str,
@@ -41,6 +42,8 @@ class StorageAPI(AbstractStorageAPI):
             self._address, StorageHandlerActor.default_uid())
         self._storage_manager_ref = await mo.actor_ref(
             self._address, StorageManagerActor.default_uid())
+        self._data_manager_ref = await mo.actor_ref(
+            self._address, DataManagerActor.default_uid())
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -122,7 +125,7 @@ class StorageAPI(AbstractStorageAPI):
         out
             List of information for specified key
         """
-        return await self._storage_manager_ref.get_data_infos(
+        return await self._data_manager_ref.get_data_infos(
             self._session_id, data_key
         )
 

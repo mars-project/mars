@@ -131,6 +131,7 @@ class SubtaskProcessor:
             self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.info(f'Finish getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
+        return keys
 
     @staticmethod
     @alru_cache(cache_exceptions=False)
@@ -189,7 +190,7 @@ class SubtaskProcessor:
             report_progress = asyncio.create_task(
                 self.report_progress_periodically())
 
-            await self._load_input_data()
+            input_keys = await self._load_input_data()
 
             # from data_key to results
             for chunk in chunk_graph.topological_iter():
@@ -223,6 +224,12 @@ class SubtaskProcessor:
                         # ref count reaches 0, remove it
                         for key in self._chunk_key_to_data_keys[inp.key]:
                             del self._datastore[key]
+
+            # unpin input keys
+            unpins = []
+            for key in input_keys:
+                unpins.append(self._storage_api.unpin.delay(key))
+            await self._storage_api.unpin.batch(*unpins)
 
             # skip virtual operands for result chunks
             result_chunks = [c for c in chunk_graph.result_chunks
