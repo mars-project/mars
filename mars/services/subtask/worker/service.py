@@ -15,7 +15,7 @@
 from typing import Dict
 
 from .... import oscar as mo
-from .subtask import SubtaskManagerActor
+from .manager import SubtaskManagerActor
 
 
 async def start(config: Dict, address: str):

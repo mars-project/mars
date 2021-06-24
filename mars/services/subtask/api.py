@@ -27,7 +27,7 @@ class SubtaskAPI:
 
     @alru_cache
     async def _get_runner_ref(self, band_name: str, slot_id: int):
-        from .worker.subtask import SubtaskRunnerActor
+        from .worker.runner import SubtaskRunnerActor
         return await mo.actor_ref(
             SubtaskRunnerActor.gen_uid(band_name, slot_id), address=self._address)
 
@@ -59,7 +59,7 @@ class SubtaskAPI:
 class MockSubtaskAPI(SubtaskAPI):
     @classmethod
     async def create(cls, address: str) -> "SubtaskAPI":
-        from .worker.subtask import SubtaskManagerActor
+        from .worker.manager import SubtaskManagerActor
         await mo.create_actor(
             SubtaskManagerActor, None,
             uid=SubtaskManagerActor.default_uid(),

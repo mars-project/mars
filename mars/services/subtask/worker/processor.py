@@ -14,13 +14,11 @@
 
 import asyncio
 import concurrent.futures as futures
-import importlib
 import logging
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
 from itertools import chain
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
 from .... import oscar as mo
 from ....core import ChunkGraph, OperandType
@@ -28,7 +26,6 @@ from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
-from ....oscar.backends.allocate_strategy import IdleLabel
 from ....optimization.physical import optimize
 from ...context import ThreadedServiceContext
 from ...core import BandType
@@ -37,41 +34,8 @@ from ...storage import StorageAPI
 from ...session import SessionAPI
 from ...task import TaskAPI, task_options
 from ..core import Subtask, SubtaskStatus, SubtaskResult
-from ..errors import SlotOccupiedAlready
 
 logger = logging.getLogger(__name__)
-
-SubtaskRunnerRef = Union["SubtaskRunnerActor", mo.ActorRef]
-
-
-class SubtaskManagerActor(mo.Actor):
-    def __init__(self, subtask_processor_cls: Type):
-        # specify subtask process class
-        # for test purpose
-        self._subtask_processor_cls = subtask_processor_cls
-        self._cluster_api = None
-
-    async def __post_create__(self):
-        from ...cluster.api import ClusterAPI
-        self._cluster_api = await ClusterAPI.create(self.address)
-
-        band_to_slots = await self._cluster_api.get_bands()
-        supervisor_address = (await self._cluster_api.get_supervisors())[0]
-        for band, n_slot in band_to_slots.items():
-            await self._create_band_runner_actors(band[1], n_slot, supervisor_address)
-
-    async def _create_band_runner_actors(self, band_name: str, n_slots: int,
-                                         supervisor_address: str):
-        strategy = IdleLabel(band_name, 'subtask_runner')
-        band = (self.address, band_name)
-        for slot_id in range(n_slots):
-            await mo.create_actor(
-                SubtaskRunnerActor,
-                supervisor_address, band,
-                subtask_processor_cls=self._subtask_processor_cls,
-                uid=SubtaskRunnerActor.gen_uid(band_name, slot_id),
-                address=self.address,
-                allocate_strategy=strategy)
 
 
 class DataStore(dict):
@@ -106,6 +70,7 @@ class SubtaskProcessor:
             task_id=subtask.task_id,
             status=SubtaskStatus.pending,
             progress=0.0)
+        self.is_done = asyncio.Event()
 
         # status and intermediate states
         # operand progress, from op key to progress
@@ -208,6 +173,7 @@ class SubtaskProcessor:
         if self.result.status == SubtaskStatus.running:
             self.result.status = SubtaskStatus.succeeded
         self.result.progress = 1.0
+        self.is_done.set()
 
     async def run(self):
         self.result.status = SubtaskStatus.running
@@ -393,27 +359,46 @@ class SubtaskProcessor:
             last_progress = progress
 
 
-@dataclass
-class _SubtaskRunningInfo:
-    subtask_id: str
-    task: asyncio.Task
-    processor: SubtaskProcessor = None
-
-
-class SubtaskRunnerActor(mo.Actor):
-    @classmethod
-    def gen_uid(cls, band_name: str, slot_id: int):
-        return f'slot_{band_name}_{slot_id}_subtask_runner'
+class SubtaskProcessorActor(mo.Actor):
+    _session_api: Optional[SessionAPI]
+    _storage_api: Optional[StorageAPI]
+    _meta_api: Optional[MetaAPI]
+    _processor: Optional[SubtaskProcessor]
+    _last_processor: Optional[SubtaskProcessor]
+    _running_aio_task: Optional[asyncio.Task]
 
     def __init__(self,
-                 supervisor_address: str,
+                 session_id: str,
                  band: BandType,
-                 subtask_processor_cls: Type = None):
-        self._supervisor_address = supervisor_address
+                 supervisor_address: str,
+                 subtask_processor_cls: Type[SubtaskProcessor]):
+        self._session_id = session_id
         self._band = band
-        self._subtask_info: Optional[_SubtaskRunningInfo] = None
-        self._subtask_processor_cls = \
-            self._get_subtask_process_cls(subtask_processor_cls)
+        self._supervisor_address = supervisor_address
+        self._subtask_processor_cls = subtask_processor_cls
+
+        # current processor
+        self._processor = None
+        self._last_processor = None
+        self._running_aio_task = None
+
+        self._session_api = None
+        self._storage_api = None
+        self._meta_api = None
+
+    @classmethod
+    def gen_uid(cls, session_id: str):
+        return f'{session_id}_subtask_processor'
+
+    async def __post_create__(self):
+        coros = [
+            SessionAPI.create(self._supervisor_address),
+            StorageAPI.create(self._session_id, self.address),
+            MetaAPI.create(self._session_id, self._supervisor_address)]
+        coros = [asyncio.ensure_future(coro) for coro in coros]
+        await asyncio.gather(*coros)
+        self._session_api, self._storage_api, self._meta_api = \
+            [coro.result() for coro in coros]
 
     async def _init_context(self, session_id: str):
         loop = asyncio.get_running_loop()
@@ -423,67 +408,35 @@ class SubtaskRunnerActor(mo.Actor):
         await context.init()
         set_context(context)
 
-    @classmethod
-    def _get_subtask_process_cls(cls, subtask_processor_cls):
-        if subtask_processor_cls is None:
-            return SubtaskProcessor
-        else:
-            assert isinstance(subtask_processor_cls, str)
-            module, class_name = subtask_processor_cls.rsplit('.', 1)
-            return getattr(importlib.import_module(module), class_name)
-
-    async def _init_subtask_processor(self, subtask: Subtask) -> SubtaskProcessor:
-        # session API
-        session_api = await SessionAPI.create(self._supervisor_address)
-        # storage API
-        storage_api = await StorageAPI.create(
-            subtask.session_id, self.address)
-        # meta API
-        meta_api = await MetaAPI.create(
-            subtask.session_id, self._supervisor_address)
-        # init context
-        await self._init_context(subtask.session_id)
-
-        processor_cls = self._subtask_processor_cls
-        return processor_cls(subtask, session_api, storage_api, meta_api,
-                             self._band, self._supervisor_address)
-
-    async def _run_subtask(self, subtask: Subtask):
-        processor = await self._init_subtask_processor(subtask)
-        self._subtask_info.processor = processor
-        return await processor.run()
-
-    async def run_subtask(self, subtask: Subtask):
-        if not self.is_runner_free():  # pragma: no cover
-            # current subtask is still running
-            raise SlotOccupiedAlready(
-                f'There is subtask(id: '
-                f'{self._subtask_info.processor.subtask_id}) running, '
-                f'cannot run another subtask')
-
+    async def run(self, subtask: Subtask):
         logger.info(f'Start to run subtask: {subtask.subtask_id}')
-        aio_task = asyncio.create_task(self._run_subtask(subtask))
-        self._subtask_info = _SubtaskRunningInfo(subtask.subtask_id, task=aio_task)
-        return aio_task
 
-    def is_runner_free(self):
-        return self._subtask_info is None or \
-            getattr(self._subtask_info, 'processor', None) is None or \
-            self._subtask_info.processor.status.is_done
+        assert subtask.session_id == self._session_id
 
-    async def wait_subtask(self):
-        await self._subtask_info.task
+        # init context
+        await self._init_context(self._session_id)
+        processor = self._subtask_processor_cls(
+            subtask, self._session_api, self._storage_api, self._meta_api,
+            self._band, self._supervisor_address)
+        self._processor = self._last_processor = processor
+        self._running_aio_task = asyncio.create_task(processor.run())
+        try:
+            result = yield self._running_aio_task
+            raise mo.Return(result)
+        finally:
+            self._processor = self._running_aio_task = None
 
-    async def get_subtask_result(self) -> SubtaskResult:
-        return self._subtask_info.processor.result
+    async def wait(self):
+        return self._processor.is_done.wait()
 
-    async def cancel_subtask(self):
-        if self._subtask_info is None:
-            return
+    async def result(self):
+        return self._last_processor.result
 
+    async def cancel(self):
         logger.info(f'Cancelling subtask: '
-                    f'{self._subtask_info.subtask_id}')
-        aio_task = self._subtask_info.task
+                    f'{self._processor.subtask_id}')
+
+        aio_task = self._running_aio_task
         aio_task.cancel()
 
         async def waiter():
@@ -494,3 +447,6 @@ class SubtaskRunnerActor(mo.Actor):
 
         # return asyncio task to not block current actor
         return waiter()
+
+    def get_running_subtask_id(self):
+        return self._processor.subtask_id
