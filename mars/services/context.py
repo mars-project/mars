@@ -245,5 +245,5 @@ class ThreadedServiceSession(AbstractSyncSession):
         return fut.result()
 
     @implements(AbstractSyncSession.to_async)
-    def to_async(self):
+    def to_async(self) -> AbstractAsyncSession:
         return self._session

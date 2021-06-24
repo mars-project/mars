@@ -23,11 +23,10 @@ from mars.tests.core import _check_args, ObjectCheckMixin
 from mars.services.core import BandType
 from mars.services.subtask import SubtaskGraph
 from mars.services.task.analyzer import GraphAnalyzer
-from mars.services.task.supervisor.task_manager \
-    import TaskProcessor, TaskStageInfo
+from mars.services.task.supervisor.preprocessor import TaskPreprocessor
 
 
-class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
+class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._raw_chunk_shapes = dict()
@@ -88,15 +87,12 @@ class CheckedTaskProcessor(ObjectCheckMixin, TaskProcessor):
     @enter_mode(build=True)
     def analyze(self,
                 chunk_graph: ChunkGraph,
-                available_bands: Dict[BandType, int],
-                task_stage_info: TaskStageInfo) -> SubtaskGraph:
+                available_bands: Dict[BandType, int]) -> SubtaskGraph:
         # record shapes generated in tile
         for n in chunk_graph:
             self._raw_chunk_shapes[n.key] = getattr(n, 'shape', None)
         task = self._task
-        analyzer = GraphAnalyzer(chunk_graph, available_bands,
-                                 task.fuse_enabled, task.extra_config,
-                                 task_stage_info)
+        analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
         subtask_graph = analyzer.gen_subtask_graph()
         results = set(analyzer._chunk_to_copied[c]
                       for c in chunk_graph.results

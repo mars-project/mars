@@ -46,11 +46,9 @@ class Progress:
 class ExecutionInfo(AbstractExecutionInfo):
     def __init__(self,
                  task_id: str,
-                 task_api: AbstractTaskAPI,
                  aio_task: asyncio.Task,
                  progress: Progress):
         super().__init__(aio_task)
-        self._task_api = task_api
         self._task_id = task_id
         self._progress = progress
 
@@ -138,17 +136,30 @@ class Session(AbstractAsyncSession):
                                  progress: Progress):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
+            cancelled = False
             while True:
-                task_result: TaskResult = await self._task_api.wait_task(
-                    task_id, timeout=0.5)
-                if task_result is None:
-                    # not finished, set progress
-                    progress.value = await self._task_api.get_task_progress(task_id)
-                else:
-                    progress.value = 1.0
-                    break
+                try:
+                    if not cancelled:
+                        task_result: TaskResult = await self._task_api.wait_task(
+                            task_id, timeout=0.5)
+                        if task_result is None:
+                            # not finished, set progress
+                            progress.value = await self._task_api.get_task_progress(task_id)
+                        else:
+                            progress.value = 1.0
+                            break
+                    else:
+                        # wait for task to finish
+                        task_result: TaskResult = await self._task_api.wait_task(task_id)
+                        break
+                except asyncio.CancelledError:
+                    # cancelled
+                    cancelled = True
+                    await self._task_api.cancel_task(task_id)
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
+            if cancelled:
+                return
             fetch_tileables = await self._task_api.get_fetch_tileables(task_id)
             assert len(tileables) == len(fetch_tileables)
 
@@ -181,7 +192,7 @@ class Session(AbstractAsyncSession):
         # create asyncio.Task
         future = asyncio.create_task(
             self._run_in_background(tileables, task_id, progress))
-        return ExecutionInfo(task_id, self._task_api, future, progress)
+        return ExecutionInfo(task_id, future, progress)
 
     def _get_to_fetch_tileable(self, tileable: TileableType) -> \
             Tuple[TileableType, List[Union[slice, Integral]]]:

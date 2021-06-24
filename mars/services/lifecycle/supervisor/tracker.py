@@ -70,9 +70,10 @@ class LifecycleTrackerActor(mo.Actor):
     def _get_remove_chunk_keys(self, chunk_keys: List[str]):
         to_remove_chunk_keys = []
         for chunk_key in chunk_keys:
-            self._chunk_ref_counts[chunk_key] -= 1
             ref_count = self._chunk_ref_counts[chunk_key]
+            ref_count -= 1
             assert ref_count >= 0
+            self._chunk_ref_counts[chunk_key] = ref_count
             if ref_count == 0:
                 # remove
                 to_remove_chunk_keys.append(chunk_key)

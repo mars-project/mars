@@ -15,6 +15,7 @@
 import asyncio
 import concurrent.futures
 import functools
+import logging
 import os
 import threading
 import uuid
@@ -28,6 +29,9 @@ from ..core.operand import Fetch
 from ..lib.aio import create_lock
 from ..typing import TileableType
 from ..utils import classproperty, copy_tileables, build_fetch, implements
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionInfo(ABC):
@@ -105,7 +109,7 @@ class AbstractSession(ABC):
                        'default_session', None)
 
     @abstractmethod
-    def to_async(self):
+    def to_async(self) -> "AbstractAsyncSession":
         """
         Get async session.
 
@@ -115,7 +119,7 @@ class AbstractSession(ABC):
         """
 
     @abstractmethod
-    def to_sync(self):
+    def to_sync(self) -> "AbstractSyncSession":
         """
         Get sync session.
 
@@ -264,11 +268,11 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @implements(AbstractSession.to_async)
-    def to_async(self):
+    def to_async(self) -> "AbstractAsyncSession":
         return self
 
     @implements(AbstractSession.to_sync)
-    def to_sync(self):
+    def to_sync(self) -> "AbstractSyncSession":
         return SyncSession(self)
 
 
@@ -378,7 +382,7 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         return fetch(tileables, self, offsets=offsets, sizes=sizes)
 
     @implements(AbstractSession.to_sync)
-    def to_sync(self):
+    def to_sync(self) -> "AbstractSyncSession":
         return self
 
 
@@ -398,6 +402,18 @@ def _ensure_loop():
     return _loop
 
 
+def get_loop():
+    _ensure_loop()
+    return _loop
+
+
+def _sync_default_session(sess: "AbstractSession"):
+    if sess:
+        sess.as_default()
+    else:
+        AbstractSession.reset_default()
+
+
 def _wrap_in_thread(pool_or_func):
     """
     Function is those wrapping async function,
@@ -408,26 +424,22 @@ def _wrap_in_thread(pool_or_func):
 
     def _wrap(func: Callable,
               executor: concurrent.futures.ThreadPoolExecutor):
-        def sync_default_session(sess: "AbstractSession"):
-            if sess:
-                sess.as_default()
-            else:
-                AbstractSession.reset_default()
 
+        @functools.wraps(func)
         def inner(*args, **kwargs):
             default_session = get_default_session()
             config = get_global_option().to_dict()
 
             def run_in_thread():
+                _ensure_loop()
                 with option_context(config):
                     # set default session in this thread
-                    sync_default_session(default_session)
+                    _sync_default_session(default_session)
                     return func(*args, **kwargs), get_default_session()
 
-            _ensure_loop()
             fut = executor.submit(run_in_thread)
             result, default_session_in_thread = fut.result()
-            sync_default_session(default_session_in_thread)
+            _sync_default_session(default_session_in_thread)
 
             return result
         return inner
@@ -593,6 +605,7 @@ async def _execute(*tileables: Tuple[TileableType],
                    wait: bool = True,
                    show_progress: Union[bool, str] = 'auto',
                    progress_update_interval: Union[int, float] = 1,
+                   cancelled: asyncio.Event = None,
                    **kwargs):
 
     def _attach_session(fut: asyncio.Future):
@@ -603,8 +616,10 @@ async def _execute(*tileables: Tuple[TileableType],
     async_session = session.to_async()
     execution_info = await async_session.execute(*tileables, **kwargs)
     execution_info.add_done_callback(_attach_session)
+    cancelled = cancelled or asyncio.Event()
 
     if wait:
+        progress = None
         if show_progress:  # pragma: no cover
             try:
                 progress = _new_progress()
@@ -613,19 +628,33 @@ async def _execute(*tileables: Tuple[TileableType],
                 if show_progress != 'auto':
                     raise
                 else:
-                    await execution_info
-            else:
-                while True:
-                    try:
-                        await asyncio.wait_for(asyncio.shield(execution_info),
-                                               progress_update_interval)
-                        # done
+                    show_progress = False
+
+        if show_progress:
+            while not cancelled.is_set():
+                try:
+                    await asyncio.wait_for(asyncio.shield(execution_info),
+                                           progress_update_interval)
+                    # done
+                    if not cancelled.is_set():
                         progress.send(100)
-                        break
-                    except asyncio.TimeoutError:
-                        # timeout
+                    break
+                except asyncio.TimeoutError:
+                    # timeout
+                    if not cancelled.is_set():
                         progress.send(execution_info.progress() * 100)
+            if cancelled.is_set():
+                # cancel execution
+                execution_info.cancel()
+                execution_info.remove_done_callback(_attach_session)
+                await execution_info
         else:
+            _, pending = await asyncio.wait([execution_info, cancelled.wait()],
+                                            return_when=asyncio.FIRST_COMPLETED)
+            if cancelled.is_set():
+                execution_info.remove_done_callback(_attach_session)
+            for fut in pending:
+                fut.cancel()
             await execution_info
     else:
         return execution_info
@@ -690,6 +719,41 @@ def fetch_log(*tileables: Tuple[TileableType],
     return sync_session.fetch_log(tileables, **kwargs)
 
 
+def _execute_in_thread(func: Callable):
+    @functools.wraps(func)
+    def _inner(*args, **kwargs):
+        cancelled = kwargs.get('cancelled')
+
+        default_session = get_default_session()
+        config = get_global_option().to_dict()
+
+        def run_in_thread():
+            nonlocal cancelled
+            if cancelled is None:
+                async def _new_event():
+                    return asyncio.Event()
+                kwargs['cancelled'] = cancelled = \
+                    _loop.run_until_complete(_new_event())
+            with option_context(config):
+                # set default session in this thread
+                _sync_default_session(default_session)
+                return func(*args, **kwargs), get_default_session()
+
+        fut = _pool.submit(run_in_thread)
+        try:
+            result, default_session_in_thread = fut.result()
+        except KeyboardInterrupt:  # pragma: no cover
+            logger.warning('Cancelling running task')
+            cancelled.set()
+            result, default_session_in_thread = fut.result()
+            logger.warning('Cancel finished')
+        _sync_default_session(default_session_in_thread)
+
+        return result
+
+    return _inner
+
+
 class SyncSession(AbstractSyncSession):
     def __init__(self,
                  session: AbstractAsyncSession):
@@ -697,7 +761,7 @@ class SyncSession(AbstractSyncSession):
         self._session = session
 
     @implements(AbstractSyncSession.execute)
-    @_wrap_in_thread
+    @_execute_in_thread
     def execute(self,
                 tileable: TileableType,
                 *tileables: TileableType,
@@ -776,7 +840,7 @@ class SyncSession(AbstractSyncSession):
             self._session.stop_server())
 
     @implements(AbstractSession.to_async)
-    def to_async(self):
+    def to_async(self) -> AbstractAsyncSession:
         return self._session
 
     def close(self):

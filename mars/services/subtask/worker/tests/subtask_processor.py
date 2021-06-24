@@ -15,7 +15,7 @@
 from typing import Any, Dict
 
 from mars.core import OperandType
-from mars.services.subtask.worker.subtask import SubtaskProcessor
+from mars.services.subtask.worker.processor import SubtaskProcessor
 from mars.tests.core import _check_args, ObjectCheckMixin
 
 

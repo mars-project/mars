@@ -28,7 +28,7 @@ from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.subtask import SubtaskAPI, Subtask, SubtaskResult
 from mars.services.task import new_task_id
-from mars.services.task.supervisor.task_manager import TaskManagerActor
+from mars.services.task.supervisor.manager import TaskManagerActor
 from mars.utils import Timer
 
 

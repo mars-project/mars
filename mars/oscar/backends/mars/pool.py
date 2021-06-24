@@ -119,6 +119,9 @@ class MainActorPool(MainActorPoolBase):
             process_index: int,
             started: multiprocessing.Event):
         try:
+            suspend_sigint = actor_config.get_pool_config(process_index)['suspend_sigint']
+            if suspend_sigint:
+                signal.signal(signal.SIGINT, lambda *_: None)
             # register coverage hooks on SIGTERM
             from pytest_cov.embed import cleanup_on_sigterm
             if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch

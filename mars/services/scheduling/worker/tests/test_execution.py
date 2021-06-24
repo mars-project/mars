@@ -35,7 +35,7 @@ from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.storage.worker.service import StorageManagerActor
 from mars.services.subtask import MockSubtaskAPI, Subtask
-from mars.services.task.supervisor.task_manager import TaskManagerActor
+from mars.services.task.supervisor.manager import TaskManagerActor
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import TensorTreeAdd
 from mars.utils import Timer

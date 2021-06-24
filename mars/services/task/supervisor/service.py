@@ -15,7 +15,7 @@
 from typing import Dict
 
 from .... import oscar as mo
-from .task_manager import TaskConfigurationActor
+from .manager import TaskConfigurationActor
 
 
 async def start(config: Dict, address: str):
@@ -40,8 +40,8 @@ async def start(config: Dict, address: str):
     """
     task_config = config.get('task', dict())
     options = task_config.get('default_config', dict())
-    task_processor_cls = task_config.get('task_processor_cls')
+    task_preprocessor_cls = task_config.get('task_preprocessor_cls')
     await mo.create_actor(TaskConfigurationActor, options,
-                          task_processor_cls=task_processor_cls,
+                          task_preprocessor_cls=task_preprocessor_cls,
                           address=address,
                           uid=TaskConfigurationActor.default_uid())

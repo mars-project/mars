@@ -282,11 +282,14 @@ class SubtaskExecutionActor(mo.Actor):
         return task
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
-        subtask_info = self._subtask_info[subtask_id]
+        try:
+            subtask_info = self._subtask_info[subtask_id]
+        except KeyError:
+            return
+
         if not subtask_info.cancelling:
             subtask_info.kill_timeout = kill_timeout
             subtask_info.cancelling = True
-
             subtask_info.aio_task.cancel()
 
         try:

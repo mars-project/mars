@@ -101,6 +101,7 @@ class BandSlotManagerActor(mo.Actor):
         self._semaphore.release()
 
     async def kill_slot(self, slot_id):
+        assert slot_id not in self._slot_kill_events
         event = self._slot_kill_events[slot_id] = asyncio.Event()
         yield mo.kill_actor(self._slot_control_refs[slot_id])
         yield event.wait()

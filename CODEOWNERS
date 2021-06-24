@@ -3,14 +3,18 @@
 *                          @qinxuye @wjsi @hekaisheng
 /.github                   @wjsi @qinxuye
 /bin                       @wjsi @qinxuye
+/ci                        @wjsi @qinxuye
 /docs                      @qinxuye @hekaisheng @wjsi
 /mars/                     @qinxuye @hekaisheng @wjsi
+/mars/core                 @qinxuye @hekaisheng @wjsi
 /mars/dataframe            @hekaisheng @qinxuye @wjsi
 /mars/deploy               @wjsi @hekaisheng @qinxuye
+/mars/deploy/oscar/ray     @chaokunyang @fyrestone @qinxuye
 /mars/learn                @qinxuye @hekaisheng @wjsi
 /mars/lib                  @wjsi @qinxuye
 /mars/optimization         @hekaisheng @qinxuye
 /mars/oscar                @wjsi @qinxuye
+/mars/oscar/backends/ray   @chaokunyang @fyrestone @qinxuye
 /mars/remote               @qinxuye @wjsi @hekaisheng
 /mars/serialization        @qinxuye @wjsi
 /mars/services/            @wjsi @qinxuye
@@ -24,5 +28,7 @@
 /mars/services/task        @wjsi @qinxuye
 /mars/services/web         @wjsi @qinxuye
 /mars/storage              @hekaisheng @qinxuye
+/mars/storage/vineyard.py  @sighingnow @acezen @qinxuye
+/mars/storage/ray.py       @chaokunyang @fyrestone @qinxuye
 /mars/tensor               @hekaisheng @qinxuye @wjsi
-/mars/tests                @wjsi @qinxuye @qinxuye
+/mars/tests                @wjsi @hekaisheng @qinxuye

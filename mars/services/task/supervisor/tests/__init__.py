@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .task_processor import CheckedTaskProcessor
+from .task_preprocessor import CheckedTaskPreprocessor

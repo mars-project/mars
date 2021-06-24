@@ -347,7 +347,7 @@ class StorageHandlerActor(mo.Actor):
     def _get_data_infos_arg(self,
                             session_id: str,
                             data_key: str,
-                            error: str):
+                            error: str = 'raise'):
         infos = self._storage_manager_ref.get_data_infos.delay(
             session_id, data_key, error)
         return infos, session_id, data_key
@@ -356,7 +356,7 @@ class StorageHandlerActor(mo.Actor):
     async def delete(self,
                      session_id: str,
                      data_key: str,
-                     error: str):
+                     error: str = 'raise'):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
 

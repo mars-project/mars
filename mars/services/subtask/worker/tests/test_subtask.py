@@ -31,10 +31,10 @@ from mars.services.scheduling import MockSchedulingAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.subtask import Subtask, SubtaskStatus, SubtaskResult
-from mars.services.subtask.worker.subtask import SubtaskManagerActor, \
-    SubtaskRunnerActor, SubtaskRunnerRef
+from mars.services.subtask.worker.manager import SubtaskManagerActor
+from mars.services.subtask.worker.runner import SubtaskRunnerActor, SubtaskRunnerRef
 from mars.services.task import new_task_id
-from mars.services.task.supervisor.task_manager import TaskManagerActor, TaskConfigurationActor
+from mars.services.task.supervisor.manager import TaskManagerActor, TaskConfigurationActor
 from mars.utils import Timer
 
 
