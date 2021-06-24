@@ -44,7 +44,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             raise ValueError('--supervisors is needed to start Mars Worker')
 
         if args.endpoint is None:
-            args.endpoint = f'0.0.0.0:{get_next_port()}'
+            args.endpoint = f'{args.host}:{get_next_port()}'
         self.n_io_process = int(args.n_io_process)
 
         n_cpu = cpu_count() if args.n_cpu == 'auto' else args.n_cpu

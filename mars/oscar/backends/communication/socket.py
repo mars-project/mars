@@ -271,7 +271,7 @@ class UnixSocketServer(_BaseSocketServer):
 
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
 
         if 'start_serving' not in config:
             config['start_serving'] = False
