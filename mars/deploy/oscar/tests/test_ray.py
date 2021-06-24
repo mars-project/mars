@@ -44,11 +44,15 @@ def ray_cluster():
 
 
 @pytest.fixture
-async def create_cluster():
+async def create_cluster(request):
+    param = getattr(request, "param", {})
+    ray_config = _load_config()
+    ray_config.update(param.get('config', {}))
     client = await new_cluster('test_cluster',
                                worker_num=2,
                                worker_cpu=2,
-                               worker_mem=1 * 1024 ** 3)
+                               worker_mem=1 * 1024 ** 3,
+                               config=ray_config)
     async with client:
         yield client
 
@@ -141,3 +145,49 @@ async def test_web_session(ray_cluster, create_cluster):
     web_address = create_cluster.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_load_third_party_modules(ray_cluster, create_cluster):
+    config = _load_config()
+    config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
+    with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
+        await new_cluster('test_cluster',
+                          worker_num=2,
+                          worker_cpu=2,
+                          worker_mem=1 * 1024 ** 3,
+                          config=config)
+
+    config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
+    with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
+        await new_cluster('test_cluster',
+                          worker_num=2,
+                          worker_cpu=2,
+                          worker_mem=1 * 1024 ** 3,
+                          config=config)
+
+
+@require_ray
+@pytest.mark.parametrize('create_cluster',
+                         [{
+                             'config': {
+                                 'third_party_modules': {
+                                     'worker': ['mars.deploy.oscar.tests.test_replace_op']},
+                             },
+                         }],
+                         indirect=True)
+@pytest.mark.asyncio
+def test_load_third_party_modules2(ray_cluster, create_cluster):
+    assert create_cluster.session
+    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    with session:
+        raw = np.random.RandomState(0).rand(10, 10)
+        a = mt.tensor(raw, chunk_size=5)
+        b = a + 1
+        b.execute(show_progress=False)
+        result = b.fetch()
+
+        np.testing.assert_equal(raw - 1, result)
+
+    assert get_default_session() is None

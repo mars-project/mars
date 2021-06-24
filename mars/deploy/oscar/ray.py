@@ -53,11 +53,15 @@ async def new_cluster(cluster_name: str,
                       worker_cpu: int = 16,
                       worker_mem: int = 32 * 1024 ** 3,
                       config: Union[str, Dict] = None):
-    config = config or _load_config()
     cluster = RayCluster(cluster_name, supervisor_mem, worker_num,
                          worker_cpu, worker_mem, config)
-    await cluster.start()
-    return await RayClient.create(cluster)
+    try:
+        await cluster.start()
+        return await RayClient.create(cluster)
+    except Exception as ex:
+        # cleanup the cluster if failed.
+        await cluster.stop()
+        raise ex
 
 
 class RayCluster:
@@ -71,6 +75,9 @@ class RayCluster:
                  worker_cpu: int = 16,
                  worker_mem: int = 32 * 1024 ** 3,
                  config: Union[str, Dict] = None):
+        # load config file to dict.
+        if not config or isinstance(config, str):
+            config = _load_config(config)
         self._cluster_name = cluster_name
         self._supervisor_mem = supervisor_mem
         self._worker_num = worker_num
@@ -127,15 +134,20 @@ class RayCluster:
                 }
         mo.setup_cluster(address_to_resources)
 
+        # third party modules from config
+        supervisor_modules = self._config.get('third_party_modules', {}).get('supervisor', [])
+        worker_modules = self._config.get('third_party_modules', {}).get('worker', [])
+
         # create supervisor actor pool
         self._supervisor_pool = await create_supervisor_actor_pool(
-            self.supervisor_address, n_process=supervisor_sub_pool_num, main_pool_cpus=0, sub_pool_cpus=0)
+            self.supervisor_address, n_process=supervisor_sub_pool_num,
+            main_pool_cpus=0, sub_pool_cpus=0, modules=supervisor_modules)
         logger.info('Create supervisor on node %s succeeds.', self.supervisor_address)
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
         logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
         worker_pools_and_addresses = await asyncio.gather(
-            *[self._start_worker(addr) for addr in worker_addresses])
+            *[self._start_worker(addr, worker_modules) for addr in worker_addresses])
         logger.info('Create %s workers and start services on workers succeeds.', len(worker_addresses))
         for worker_address, worker_pool in worker_pools_and_addresses:
             self._worker_addresses.append(worker_address)
@@ -145,9 +157,10 @@ class RayCluster:
         web_actor = await mo.actor_ref(WebActor.default_uid(), address=self.supervisor_address)
         self.web_address = await web_actor.get_web_address()
 
-    async def _start_worker(self, worker_address):
+    async def _start_worker(self, worker_address, worker_modules):
         logger.info('Create worker on node %s succeeds.', worker_address)
-        worker_pool = await create_worker_actor_pool(worker_address, self._band_to_slot)
+        worker_pool = await create_worker_actor_pool(
+            worker_address, self._band_to_slot, modules=worker_modules)
         await start_worker(worker_address,
                            self.supervisor_address,
                            self._band_to_slot,
@@ -162,7 +175,8 @@ class RayCluster:
             await stop_supervisor(self.supervisor_address, self._config)
             for pool in self._worker_pools:
                 await pool.actor_pool.remote('stop')
-            await self._supervisor_pool.actor_pool.remote('stop')
+            if self._supervisor_pool is not None:
+                await self._supervisor_pool.actor_pool.remote('stop')
             RayActorDriver.stop_cluster()
             self._stopped = True
 

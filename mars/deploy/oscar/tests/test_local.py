@@ -25,6 +25,7 @@ from mars.core.session import get_default_session, \
     new_session, execute, fetch, stop_server
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import Session, WebSession
+from mars.deploy.oscar.service import load_config
 
 try:
     import vineyard
@@ -227,3 +228,34 @@ def test_decref():
         assert len(ref_counts) == 1
 
     session.stop_server()
+
+
+def test_load_third_party_modules():
+    config = load_config()
+    config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
+    with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
+        new_session(n_cpu=2, default=True,
+                    web=False, config=config)
+
+    config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
+    with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
+        new_session(n_cpu=2, default=True,
+                    web=False, config=config)
+
+    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.test_replace_op']}
+    session = new_session(n_cpu=2, default=True,
+                          web=False, config=config)
+    # web not started
+    assert session._session.client.web_address is None
+
+    with session:
+        raw = np.random.RandomState(0).rand(10, 10)
+        a = mt.tensor(raw, chunk_size=5)
+        b = a + 1
+        b.execute(show_progress=False)
+        result = b.fetch()
+
+        np.testing.assert_equal(raw - 1, result)
+
+    session.stop_server()
+    assert get_default_session() is None
