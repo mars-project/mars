@@ -27,6 +27,7 @@ from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements, dataslots, calc_size_by_str, lazy_import
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
+from .errors import DataNotExist
 
 plasma = lazy_import('pyarrow.plasma', globals=globals(), rename='plasma')
 if sys.platform.startswith('win'):
@@ -99,7 +100,7 @@ class PlasmaObjectInfo(ObjectInfo):
     def __setstate__(self, state):
         self.size, self.device, self.object_id, self.plasma_socket = state
         client = plasma.connect(self.plasma_socket)
-        self.buffer = client.get_buffers([self.object_id])[0]
+        [self.buffer] = client.get_buffers([self.object_id])
 
 
 def get_actual_capacity(plasma_client: "plasma.PlasmaClient") -> int:
@@ -209,6 +210,9 @@ class PlasmaStorage(StorageBackend):
         if kwargs:  # pragma: no cover
             raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
 
+        if object_id not in self._client.list():
+            raise DataNotExist(f'Data {object_id} not exists')
+
         plasma_file = PlasmaFileObject(self._client, object_id, mode='r')
 
         async with StorageFileObject(plasma_file, object_id) as f:
@@ -255,6 +259,8 @@ class PlasmaStorage(StorageBackend):
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
+        if object_id not in self._client.list():
+            raise DataNotExist(f'Data {object_id} not exists')
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
         return PlasmaStorageFileObject(plasma_reader, object_id=object_id)
 

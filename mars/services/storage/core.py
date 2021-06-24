@@ -99,7 +99,7 @@ class StorageQuota:
     async def update(self, size: int):
         async with self._lock:
             if self._total_size is not None:
-                self._total_size += size
+                self._used_size += size
 
     async def request(self, size: int) -> bool:
         async with self._lock:
@@ -166,7 +166,7 @@ class DataManager:
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if object_info is not None:
             self._spill_strategy[data_info.level].put(
-                (session_id, data_key), object_info.size)
+                (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
@@ -207,7 +207,8 @@ class DataManager:
             to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
         else:
             to_delete_keys = [data_key]
-        logger.debug(f'Begin to delete data keys in data manager: {to_delete_keys}')
+        logger.debug(f'Begin to delete data keys for level {level} '
+                     f'in data manager: {to_delete_keys}')
         for key in to_delete_keys:
             if (session_id, key) in self._data_key_to_info:
                 self._data_info_list[level].pop((session_id, key))
@@ -218,7 +219,8 @@ class DataManager:
                     del self._data_key_to_info[(session_id, key)]
                 else:  # pragma: no cover
                     self._data_key_to_info[(session_id, key)] = rest
-        logger.debug(f'Finish deleting data keys in data manager: {to_delete_keys}')
+        logger.debug(f'Finish deleting data keys for level {level} '
+                     f'in data manager: {to_delete_keys}')
 
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
@@ -598,7 +600,8 @@ class StorageManagerActor(mo.Actor):
                             size: int,
                             level: StorageLevel):
         logger.debug(f'Request {size} bytes of {level}, '
-                     f'used size is {self._quotas[level].used_size}')
+                     f'used size is {self._quotas[level].used_size},'
+                     f'total size is {self._quotas[level].total_size}')
         if await self._quotas[level].request(size):
             logger.debug(f'Request {size} bytes of {level} finished, '
                          f'used size now is {self._quotas[level].used_size}')
@@ -606,7 +609,8 @@ class StorageManagerActor(mo.Actor):
         else:
             io_handler_ref = random.choice(self._io_handlers)
             yield io_handler_ref.spill(level, size)
-            logger.debug(f'Request {size} bytes of {level} finished, '
+            await self._quotas[level].request(size)
+            logger.debug(f'Spill is triggered, request {size} bytes of {level} finished, '
                          f'used size now is {self._quotas[level].used_size}')
 
     async def update_quota(self,
@@ -619,6 +623,9 @@ class StorageManagerActor(mo.Actor):
                              level: StorageLevel
                              ):
         await self._quotas[level].release(size)
+        logger.debug(f'Release {size} bytes of {level}, '
+                     f'used size now is {self._quotas[level].used_size},'
+                     f'total size is {self._quotas[level].total_size}')
 
     @extensible
     async def release_quota(self,
