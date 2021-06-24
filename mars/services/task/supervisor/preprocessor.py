@@ -30,7 +30,7 @@ from ..analyzer import GraphAnalyzer
 from ..core import Task
 
 
-class CancelableTiler(Tiler):
+class CancellableTiler(Tiler):
     def __init__(self,
                  tileable_graph: TileableGraph,
                  tile_context: Dict[TileableType, TileableType],
@@ -132,7 +132,7 @@ class TaskPreprocessor:
         chunk_graph_builder = ChunkGraphBuilder(
             tileable_graph, fuse_enabled=self._task.fuse_enabled,
             tile_context=self.tile_context,
-            tiler_cls=partial(CancelableTiler, cancelled=self._cancelled))
+            tiler_cls=partial(CancellableTiler, cancelled=self._cancelled))
         optimize = self._config.optimize_chunk_graph
         meta_updated = set()
         for chunk_graph in chunk_graph_builder.build():
