@@ -1,4 +1,4 @@
-inherits: '@mars/deploy/oscar/base_config.yml'
+"@inherits": '@mars/deploy/oscar/base_config.yml'
 session:
   custom_log_dir: auto
 

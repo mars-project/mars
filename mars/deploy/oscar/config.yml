@@ -1,4 +1,4 @@
-inherits: base_config.yml
+"@inherits": base_config.yml
 storage:
   backends: [shared_memory]
   plasma:

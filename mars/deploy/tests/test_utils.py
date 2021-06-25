@@ -31,7 +31,9 @@ def test_load_service_config(cwd):
 
         assert 'services' in cfg
         assert cfg['test_list'] == ['item1', 'item2', 'item3']
+        assert cfg['test_list2'] == ['item3']
         assert set(cfg['test_dict'].keys()) == {'key1', 'key2', 'key3'}
         assert set(cfg['test_dict']['key2'].values()) == {'val2_modified'}
+        assert all(not k.startswith('@') for k in cfg.keys())
     finally:
         os.chdir(old_cwd)

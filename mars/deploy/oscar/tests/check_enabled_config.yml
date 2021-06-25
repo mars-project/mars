@@ -1,4 +1,4 @@
-inherits: '@default'
+"@inherits": '@default'
 task:
   task_preprocessor_cls: mars.services.task.supervisor.tests.CheckedTaskPreprocessor
 subtask:
