@@ -201,6 +201,7 @@ def test_load_third_party_modules2(ray_cluster, create_cluster):
     assert get_default_session() is None
 
 
+@require_ray
 @pytest.mark.asyncio
 async def test_load_third_party_modules_from_config(ray_cluster, cleanup_third_party_modules_output):
     client = await new_cluster('test_cluster',
