@@ -40,7 +40,7 @@ def ray_start_regular_shared():
     remote_nodes = []
     num_nodes = 3
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
+        remote_nodes.append(cluster.add_node(num_cpus=10, object_store_memory=100 * 1024 ** 2))
         if len(remote_nodes) == 1:
             ray.init()
     if hasattr(ray.util, "get_placement_group"):
@@ -48,6 +48,7 @@ def ray_start_regular_shared():
         ray.get(pg.ready())
     yield
     ray.shutdown()
+    cluster.shutdown()
 
 
 @pytest.fixture
@@ -80,6 +81,7 @@ def actor_pool_context():
     yield ProxyPool(actor_handle)
     for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(n_process)]:
         try:
+            # kill main pool first to avoid main pool monitor task recreate sub pool
             ray.kill(ray.get_actor(addr))
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
