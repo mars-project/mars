@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import numpy as np
 import pytest
 
@@ -22,8 +23,15 @@ from mars.deploy.oscar.tests import test_local
 from mars.serialization.ray import register_ray_serializers
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
+from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+    cleanup_third_party_modules_output,
+    get_output_filenames,
+)
 
 ray = lazy_import('ray')
+
+CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
+    os.path.dirname(__file__), 'ray_test_with_third_parity_modules_config.yml')
 
 
 @pytest.fixture(scope="module")
@@ -173,7 +181,7 @@ async def test_load_third_party_modules(ray_cluster, create_cluster):
                          [{
                              'config': {
                                  'third_party_modules': {
-                                     'worker': ['mars.deploy.oscar.tests.replace_op']},
+                                     'worker': ['mars.deploy.oscar.tests.modules.replace_op']},
                              },
                          }],
                          indirect=True)
@@ -191,3 +199,15 @@ def test_load_third_party_modules2(ray_cluster, create_cluster):
         np.testing.assert_equal(raw - 1, result)
 
     assert get_default_session() is None
+
+
+@pytest.mark.asyncio
+async def test_load_third_party_modules_from_config(ray_cluster, cleanup_third_party_modules_output):
+    client = await new_cluster('test_cluster',
+                               worker_num=2,
+                               worker_cpu=2,
+                               worker_mem=1 * 1024 ** 3,
+                               config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
+    async with client:
+        # 1 supervisor, 2 worker main pools, 4 worker sub pools.
+        assert len(get_output_filenames()) ==  7

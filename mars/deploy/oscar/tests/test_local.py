@@ -36,6 +36,10 @@ from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import Session, WebSession
 from mars.deploy.oscar.service import load_config
 from mars.tensor.arithmetic.add import TensorAdd
+from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+    cleanup_third_party_modules_output,
+    get_output_filenames,
+)
 
 
 CONFIG_TEST_FILE = os.path.join(
@@ -43,6 +47,10 @@ CONFIG_TEST_FILE = os.path.join(
 
 CONFIG_VINEYARD_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_with_vineyard_config.yml')
+
+
+CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
+    os.path.dirname(__file__), 'local_test_with_third_parity_modules_config.yml')
 
 
 params = ['default']
@@ -302,7 +310,7 @@ def test_cancel(setup_session, test_func):
     np.testing.assert_array_equal(t.execute().fetch(), raw)
 
 
-def test_load_third_party_modules():
+def test_load_third_party_modules(cleanup_third_party_modules_output):
     config = load_config()
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
@@ -314,7 +322,7 @@ def test_load_third_party_modules():
         new_session(n_cpu=2, default=True,
                     web=False, config=config)
 
-    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.replace_op']}
+    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.modules.replace_op']}
     session = new_session(n_cpu=2, default=True,
                           web=False, config=config)
     # web not started
@@ -328,6 +336,18 @@ def test_load_third_party_modules():
         result = b.fetch()
 
         np.testing.assert_equal(raw - 1, result)
+
+    session.stop_server()
+    assert get_default_session() is None
+
+    session = new_session(n_cpu=2, default=True,
+                          web=False, config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
+    # web not started
+    assert session._session.client.web_address is None
+
+    with session:
+        # 1 supervisor, 1 worker main pool, 2 worker sub pools.
+        assert len(get_output_filenames()) == 4
 
     session.stop_server()
     assert get_default_session() is None
