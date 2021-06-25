@@ -310,7 +310,7 @@ def test_cancel(setup_session, test_func):
     np.testing.assert_array_equal(t.execute().fetch(), raw)
 
 
-def test_load_third_party_modules(cleanup_third_party_modules_output):
+def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: F811
     config = load_config()
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):

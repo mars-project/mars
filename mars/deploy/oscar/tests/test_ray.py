@@ -203,7 +203,7 @@ def test_load_third_party_modules2(ray_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_load_third_party_modules_from_config(ray_cluster, cleanup_third_party_modules_output):
+async def test_load_third_party_modules_from_config(ray_cluster, cleanup_third_party_modules_output):  # noqa: F811
     client = await new_cluster('test_cluster',
                                worker_num=2,
                                worker_cpu=2,
