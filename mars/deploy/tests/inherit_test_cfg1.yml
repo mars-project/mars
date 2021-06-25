@@ -1,3 +1,5 @@
-inherits: '@mars/deploy/tests/base_test_cfg.yml'
+"@inherits": '@mars/deploy/tests/base_test_cfg.yml'
 test_list:
+  - item3
+test_list2:  # overriding
   - item3

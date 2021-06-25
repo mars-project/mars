@@ -1,4 +1,4 @@
-inherits: ../oscar/base_config.yml
+"@inherits": ../oscar/base_config.yml
 cluster:
   backend: k8s
 storage:

@@ -1,4 +1,4 @@
-inherits: inherit_test_cfg1.yml
+"@inherits": inherit_test_cfg1.yml
 test_dict:
   key2:
     key2_key1:
