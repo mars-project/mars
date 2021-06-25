@@ -910,11 +910,12 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
-        self._monitor_task.cancel()
-        self._monitor_task = None
+        self._stopped.set()
+        if self._monitor_task and not self._monitor_task.done():
+            await self._monitor_task
+            self._monitor_task = None
         await self.stop_sub_pools()
         await super().stop()
-        self._stopped.set()
 
     @classmethod
     @abstractmethod
@@ -938,7 +939,6 @@ class MainActorPoolBase(ActorPoolBase):
             to_stop_processes[address] = process
 
         tasks = []
-        print(f'to_stop_processes {to_stop_processes}')
         for address, process in to_stop_processes.items():
             tasks.append(self.stop_sub_pool(address, process))
         await asyncio.gather(*tasks)
@@ -949,10 +949,8 @@ class MainActorPoolBase(ActorPoolBase):
             process: SubProcessHandle,
             timeout: float = None,
             force: bool = False):
-        print(f'stop_sub_pool {address, process, timeout, force}')
         if force:
             await self.kill_sub_pool(process, force=True)
-            print(f'stop_sub_pool succeed {address, process, timeout, force}')
             return
 
         stop_message = ControlMessage(
@@ -960,9 +958,7 @@ class MainActorPoolBase(ActorPoolBase):
             None, protocol=DEFAULT_PROTOCOL)
         try:
             if timeout is None:
-                print(f'await self.call(address, stop_message) {address, stop_message}')
                 message = await self.call(address, stop_message)
-                print(f'after await self.call(address, stop_message) {address, stop_message}')
                 if isinstance(message, ErrorMessage):  # pragma: no cover
                     raise message.error.with_traceback(message.traceback)
             else:
@@ -975,7 +971,6 @@ class MainActorPoolBase(ActorPoolBase):
         except (ConnectionError, ServerClosed):  # pragma: no cover
             # process dead maybe, ignore it
             pass
-        print(f'await self.kill_sub_pool(process, force=force)')
         # kill process
         await self.kill_sub_pool(process, force=force)
 

@@ -18,6 +18,7 @@ import os
 import pytest
 
 from .....utils import lazy_import
+from ..communication import RayServer
 from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
@@ -60,7 +61,7 @@ def ray_cluster():
     remote_nodes = []
     num_nodes = 3
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
+        remote_nodes.append(cluster.add_node(num_cpus=10, object_store_memory=100 * 1024 ** 2))
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
     yield
@@ -80,6 +81,7 @@ async def mars_cluster():
     yield
 
     RayActorDriver.stop_cluster()
+    RayServer.clear()
 
 
 @require_ray

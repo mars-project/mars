@@ -155,7 +155,7 @@ async def get_ray_object(object_id, timeout_msg=None, *args, **kwargs):
     task = asyncio.create_task(_get_ray_object(object_id))
     timeout, timeout_check_interval = 0, 10
     while True:
-        done, pending = await asyncio.wait([task], timeout=timeout_check_interval)
+        done, _ = await asyncio.wait([task], timeout=timeout_check_interval)
         timeout += timeout_check_interval
         if done:
             return await done.pop()

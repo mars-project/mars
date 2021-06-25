@@ -208,11 +208,13 @@ class RayTwoWayChannel(RayChannelBase):
             raise ChannelClosed('Channel already closed, cannot write message')
         try:
             return deserialize(*(await self._in_queue.get()))
-        except (RuntimeError, ServerClosed) as e:  # pragma: no cover
-            if self._closed.is_set():
-                pass
+        except (RuntimeError, ServerClosed) as _:  # pragma: no cover
+            if not self._closed.is_set():
+                raise
 
     async def __on_ray_recv__(self, message):
+        if self._closed.is_set():  # pragma: no cover
+            raise ChannelClosed('Channel already closed')
         await self._in_queue.put(message)
 
 

@@ -16,10 +16,11 @@ ray = lazy_import('ray')
 
 @pytest.fixture
 def ray_cluster():
-    ray.init(num_cpus=10)
+    ray.init(num_cpus=10, object_store_memory=100 * 1024 ** 2)
     yield
     ray.shutdown()
     Router.set_instance(None)
+    RayServer.clear()
 
 
 class ServerActor:
