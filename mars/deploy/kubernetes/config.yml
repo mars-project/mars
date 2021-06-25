@@ -1,3 +1,7 @@
-inherits: ../oscar/config.yml
+inherits: ../oscar/base_config.yml
 cluster:
   backend: k8s
+storage:
+  backends: [plasma]
+  plasma:
+    store_memory: 20%

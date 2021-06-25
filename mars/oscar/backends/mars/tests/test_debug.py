@@ -18,6 +18,7 @@ import os
 import sys
 from contextlib import contextmanager
 from io import StringIO
+from typing import List
 
 import pytest
 
@@ -37,6 +38,28 @@ class DebugActor(mo.Actor):
     @classmethod
     async def raise_error(cls, exc):
         raise exc
+
+    @classmethod
+    async def call_chain(cls, chain: List,
+                         use_yield: bool = False,
+                         use_tell: bool = False):
+        if not chain:
+            return
+        ref_uid, ref_address = chain[0]
+        new_ref = await mo.actor_ref(ref_uid, address=ref_address)
+
+        if use_tell:
+            call_coro = new_ref.call_chain.tell(chain[1:])
+        else:
+            call_coro = new_ref.call_chain(chain[1:])
+
+        if use_yield:
+            yield call_coro
+        else:
+            await call_coro
+
+    async def call_self_ref(self):
+        await self.ref().wait(1)
 
 
 @pytest.fixture
@@ -63,6 +86,7 @@ async def debug_logger():
         mo.set_debug_options(mo.DebugOptions(
             actor_call_timeout=1,
             log_unhandled_errors=True,
+            log_cycle_send=True,
         ))
         yield log_file
     finally:
@@ -98,6 +122,50 @@ async def test_error_logs(actor_pool, debug_logger):
             cut_file_log(debug_logger) as log_file:
         await debug_ref.raise_error(ValueError)
     assert 'ValueError' in log_file.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_cycle_logs(actor_pool, debug_logger):
+    address = actor_pool.external_address
+    ref1 = await mo.create_actor(DebugActor, uid='debug_ref1',
+                                 address=address)
+    ref2 = await mo.create_actor(DebugActor, uid='debug_ref2',
+                                 address=address)
+
+    chain = [(ref2.uid, ref2.address)]
+
+    with cut_file_log(debug_logger) as log_file:
+        task = asyncio.create_task(ref1.call_chain(chain))
+        await asyncio.wait_for(task, 1)
+    assert log_file.getvalue() == ''
+
+    chain = [(ref2.uid, ref2.address), (ref1.uid, ref1.address)]
+
+    # test cycle detection with chain
+    with pytest.raises(asyncio.TimeoutError), \
+            cut_file_log(debug_logger) as log_file:
+        task = asyncio.create_task(ref1.call_chain(chain))
+        await asyncio.wait_for(task, 1)
+    assert 'cycle' in log_file.getvalue()
+
+    # test yield call (should not produce loops)
+    with cut_file_log(debug_logger) as log_file:
+        task = asyncio.create_task(ref1.call_chain(chain, use_yield=True))
+        await asyncio.wait_for(task, 1)
+    assert log_file.getvalue() == ''
+
+    # test tell (should not produce loops)
+    with cut_file_log(debug_logger) as log_file:
+        task = asyncio.create_task(ref1.call_chain(chain, use_tell=True))
+        await asyncio.wait_for(task, 1)
+    assert log_file.getvalue() == ''
+
+    # test calling actor inside itself
+    with pytest.raises(asyncio.TimeoutError), \
+            cut_file_log(debug_logger) as log_file:
+        task = asyncio.create_task(ref1.call_self_ref())
+        await asyncio.wait_for(task, 1)
+    assert 'cycle' in log_file.getvalue()
 
 
 def test_environ():

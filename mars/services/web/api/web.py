@@ -1,3 +1,4 @@
+
 # Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,20 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import aio to ensure patch enabled for Python 3.6
-from ..lib import aio
-del aio
+import json
 
-from . import debug
-from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool, setup_cluster
-from .backends import allocate_strategy
-from .backends.pool import MainActorPoolType
-from .core import ActorRef
-from .debug import set_debug_options, DebugOptions
-from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
-from .utils import create_actor_ref
+from ..core import MarsRequestHandler
 
-# make sure methods are registered
-from .backends import mars, ray, test
-del mars, ray, test
+
+class MarsApiEntryHandler(MarsRequestHandler):
+    def get(self):
+        import mars
+        version = mars.__version__
+        self.write(json.dumps({
+            'mars_version': version,
+        }))
+
+
+web_handlers = {
+    '/api': MarsApiEntryHandler
+}

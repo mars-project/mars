@@ -271,7 +271,7 @@ class UnixSocketServer(_BaseSocketServer):
 
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
 
         if 'start_serving' not in config:
             config['start_serving'] = False
@@ -294,7 +294,10 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.stop)
     async def stop(self):
         await super().stop()
-        os.remove(self.path)
+        try:
+            os.remove(self.path)
+        except OSError:  # pragma: no cover
+            pass
 
 
 @register_client

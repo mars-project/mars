@@ -53,7 +53,7 @@ class ClusterWebAPIHandler(MarsServiceWebAPIHandler):
             result = await cluster_api.get_nodes_info(
                 nodes=nodes, role=role, env=env, resource=resource, state=state
             )
-        self.write(serialize_serializable(result))
+        self.write(json.dumps(result))
 
     @web_api('bands', method='get')
     async def get_all_bands(self):
@@ -99,7 +99,7 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
             path, method='POST', body=args_str,
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
         )
-        return deserialize_serializable(res.body)
+        return json.loads(res.body)
 
     async def get_supervisors(self, watch=False) -> List[str]:
         res = await self._get_nodes_info(role=NodeRole.SUPERVISOR, watch=watch)

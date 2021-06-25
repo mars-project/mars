@@ -26,9 +26,16 @@ try:
     else:
         # backport package for Python 3.7-
         from shared_memory import SharedMemory
+
+    class SharedMemoryForRead(SharedMemory):
+        def __del__(self):
+            # close fd only
+            fd = self._fd
+            if os.name != "nt" and fd >= 0:
+                os.close(fd)
 except ImportError:  # pragma: no cover
     # allow shared_memory package to be absent
-    SharedMemory = None
+    SharedMemory = SharedMemoryForRead = None
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements, dataslots
@@ -79,14 +86,6 @@ class ShmStorageFileObject(StorageFileObject):
         if _is_windows:
             self._shm = self._file.shm
         await super().close()
-
-
-class SharedMemoryForRead(SharedMemory):
-    def __del__(self):
-        # close fd only
-        fd = self._fd
-        if os.name != "nt" and fd >= 0:
-            os.close(fd)
 
 
 @register_storage_backend

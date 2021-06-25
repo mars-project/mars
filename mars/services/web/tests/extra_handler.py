@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# import aio to ensure patch enabled for Python 3.6
-from ..lib import aio
-del aio
+from mars.services.web.core import MarsRequestHandler
 
-from . import debug
-from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool, setup_cluster
-from .backends import allocate_strategy
-from .backends.pool import MainActorPoolType
-from .core import ActorRef
-from .debug import set_debug_options, DebugOptions
-from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return
-from .utils import create_actor_ref
 
-# make sure methods are registered
-from .backends import mars, ray, test
-del mars, ray, test
+class ExtraTestHandler(MarsRequestHandler):
+    def get(self):
+        self.write('Test')
+
+
+web_handlers = {
+    '/api/extra_test': ExtraTestHandler
+}

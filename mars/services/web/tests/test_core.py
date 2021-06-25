@@ -21,6 +21,7 @@ from tornado.httpclient import HTTPError
 import mars.oscar as mo
 from mars.services.web import WebActor, web_api, MarsServiceWebAPIHandler, \
     MarsWebAPIClientMixin
+from mars.services.web.api.web import MarsApiEntryHandler
 from mars.utils import get_next_port
 
 
@@ -64,7 +65,13 @@ async def actor_pool():
         web_config = {
             'host': '127.0.0.1',
             'port': get_next_port(),
-            'web_handlers': {TestAPIHandler.get_root_pattern(): TestAPIHandler},
+            'web_handlers': {
+                '/api': MarsApiEntryHandler,
+                TestAPIHandler.get_root_pattern(): TestAPIHandler,
+            },
+            'extra_discovery_modules': [
+                'mars.services.web.tests.extra_handler'
+            ]
         }
         await mo.create_actor(
             WebActor, web_config, address=pool.external_address)
@@ -78,9 +85,12 @@ class SimpleWebClient(MarsWebAPIClientMixin):
 
 @pytest.mark.asyncio
 async def test_web_api(actor_pool):
-    pool, web_port = actor_pool
+    _pool, web_port = actor_pool
 
     client = SimpleWebClient()
+
+    res = await client.fetch(f'http://localhost:{web_port}/api')
+    assert res.body.decode()
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id')
     assert res.body.decode() == 'get_root_value_test_id'
@@ -106,3 +116,6 @@ async def test_web_api(actor_pool):
 
     with pytest.raises(ValueError):
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_error')
+
+    res = await client.fetch(f'http://localhost:{web_port}/api/extra_test')
+    assert 'Test' in res.body.decode()

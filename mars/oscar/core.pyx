@@ -28,14 +28,16 @@ CALL_METHOD_BATCH = 1
 
 cdef:
     bint _log_unhandled_errors = False
+    bint _log_cycle_send = False
 
 
 def set_debug_options(options):
-    global _log_unhandled_errors
+    global _log_unhandled_errors, _log_cycle_send
     if options is None:
-        _log_unhandled_errors = False
+        _log_unhandled_errors = _log_cycle_send = False
     else:
         _log_unhandled_errors = options.log_unhandled_errors
+        _log_cycle_send = options.log_cycle_send
 
 
 cdef class ActorRef:
@@ -251,6 +253,10 @@ cdef class _Actor:
         cdef tuple res_tuple
         cdef bint is_exception = False
         cdef object res
+        cdef object message_trace = None, pop_message_trace = None, set_message_trace = None
+
+        if _log_cycle_send:
+            from .debug import pop_message_trace, set_message_trace
 
         try:
             res = None
@@ -261,11 +267,17 @@ cdef class _Actor:
                     else:
                         res = await gen.athrow(*res)
                 try:
+                    if _log_cycle_send:
+                        message_trace = pop_message_trace()
+
                     res = await self._handle_actor_result(res)
                     is_exception = False
                 except:
                     res = sys.exc_info()
                     is_exception = True
+                finally:
+                    if _log_cycle_send:
+                        set_message_trace(message_trace)
         except Return as ex:
             return ex.value
         except StopAsyncIteration as ex:

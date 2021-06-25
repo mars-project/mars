@@ -35,7 +35,7 @@ class SupervisorCommandRunner(OscarCommandRunner):
         args = super().parse_args(parser, argv, environ=environ)
 
         if args.endpoint is None:
-            args.endpoint = f'0.0.0.0:{get_next_port()}'
+            args.endpoint = f'{args.host}:{get_next_port()}'
         self._endpoint_file_name = self._write_supervisor_endpoint_file(args)
 
         args.supervisors = f'{args.supervisors},{args.endpoint}'.strip(',')
