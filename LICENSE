@@ -1,4 +1,4 @@
-Copyright 1999-2020 Alibaba Group Holding Ltd.
+Copyright 1999-2021 Alibaba Group Holding Ltd.
 
 
                                  Apache License
@@ -220,16 +220,20 @@ Apache Software Foundation License 2.0
 - requests:2.19.1
 - cudf:0.6.0
 - kubernetes-client:11.0.0
+- async_generator:1.10
+- dataclasses:0.8
+- vineyard:0.1.2
+- ray:1.4.0
 
 
 BSD 3-Clause
 ------------
 
-- numpy:1.14.3
+- numpy:1.19.0
 - scipy:1.0.0
-- pandas:0.22.0
+- pandas:1.0.0
+- cloudpickle:0.5.3
 - scikit-learn:0.20.3
-- nvidia-ml-py:7.352.0
 - dask:0.17.1
 - python-lz4:2.1.0
 - sparse:0.5.0
@@ -251,6 +255,10 @@ MIT License
 
 - numexpr:2.6.4
 - cupy:5.0.0
+- pyyaml:5.3
+- sqlalchemy:1.4.0
+- async-lru:1.0.2
+- setuptools:55.0.0
 - bootstrap:3.3.7
 - bootstrap-table:1.15.4
 - font-awesome:4.7.0 (CSS)
