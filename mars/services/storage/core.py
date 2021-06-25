@@ -53,7 +53,7 @@ class WrappedStorageFileObject(AioFileObject):
                  size: int,
                  session_id: str,
                  data_key: str,
-                 storage_manager: Union[ActorRef, "StorageManagerActor"],
+                 data_manager: Union[ActorRef, "StorageManagerActor"],
                  storage_handler: StorageBackend
                  ):
         self._object_id = file.object_id
@@ -62,7 +62,7 @@ class WrappedStorageFileObject(AioFileObject):
         self._level = level
         self._session_id = session_id
         self._data_key = data_key
-        self._storage_manager = storage_manager
+        self._data_manager = data_manager
         self._storage_handler = storage_handler
 
     def __getattr__(self, item):
@@ -74,11 +74,13 @@ class WrappedStorageFileObject(AioFileObject):
     async def close(self):
         self._file.close()
         if self._object_id is None:
+            # for some backends like vineyard,
+            # object id is generated after write close
             self._object_id = self._file.object_id
         if 'w' in self._file.mode:
             object_info = await self._storage_handler.object_info(self._object_id)
             data_info = _build_data_info(object_info, self._level, self._size)
-            await self._storage_manager.put_data_info(
+            await self._data_manager.put_data_info(
                 self._session_id, self._data_key, data_info, object_info)
 
 
@@ -152,7 +154,7 @@ class InternalDataInfo:
 
 class DataManagerActor(mo.Actor):
     def __init__(self):
-        from .spill import BaseStrategy
+        from .spill import FIFOStrategy
 
         # mapping key is (session_id, data_key)
         # mapping value is list of InternalDataInfo
@@ -164,7 +166,7 @@ class DataManagerActor(mo.Actor):
         self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
-            self._spill_strategy[level] = BaseStrategy(level)
+            self._spill_strategy[level] = FIFOStrategy(level)
 
     def put(self,
             session_id: str,
@@ -175,7 +177,7 @@ class DataManagerActor(mo.Actor):
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if object_info is not None:
-            self._spill_strategy[data_info.level].put(
+            self._spill_strategy[data_info.level].record_put(
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
@@ -251,14 +253,10 @@ class DataManagerActor(mo.Actor):
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if object_info is not None:
-            self._spill_strategy[data_info.level].put(
+            self._spill_strategy[data_info.level].record_put(
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
-
-        if object_info is None:
-            # for shuffle operands, data may not exists
-            return
 
     @extensible
     async def put_data_info(self,
@@ -288,7 +286,7 @@ class DataManagerActor(mo.Actor):
         for key in to_delete_keys:
             if (session_id, key) in self._data_key_to_info:
                 self._data_info_list[level].pop((session_id, key))
-                self._spill_strategy[level].delete((session_id, key))
+                self._spill_strategy[level].record_delete((session_id, key))
                 infos = self._data_key_to_info[(session_id, key)]
                 rest = [info for info in infos if info.data_info.level != level]
                 if len(rest) == 0:
@@ -317,12 +315,17 @@ class DataManagerActor(mo.Actor):
         level = self.get_data_info(session_id, data_key).level
         self._spill_strategy[level].pin_data((session_id, data_key))
 
-    def unpin(self, session_id, data_key):
+    def unpin(self, session_id, data_key, error: str = 'raise'):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
         try:
             level = self.get_data_info(session_id, data_key).level
             self._spill_strategy[level].unpin_data((session_id, data_key))
         except DataNotExist:
-            pass
+            if error == 'raise':
+                raise
+            else:
+                return
 
     def get_spill_keys(self, level, size):
         return self._spill_strategy[level].get_spill_keys(size)
@@ -467,6 +470,8 @@ class StorageHandlerActor(mo.Actor):
             data_infos.append(data_info)
             if object_info.size is not None and \
                     data_info.memory_size != object_info.size:
+                # we request memory size before putting, when put finishes,
+                # update quota to the true store size
                 await self._quota_refs[level].update_quota(
                     object_info.size - data_info.memory_size)
             put_infos.append(
@@ -570,14 +575,6 @@ class StorageHandlerActor(mo.Actor):
         writer = await self._clients[level].open_writer(size)
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
                                         self._data_manager_ref, self._clients[level])
-
-    async def object_info(self,
-                          session_id: str,
-                          data_key: str,):
-        data_info = await self._data_manager_ref.get_data_info(
-            session_id, data_key)
-        return await self._clients[data_info.level].object_info(
-                    data_info.object_id)
 
     async def list(self, level: StorageLevel) -> List:
         return await self._clients[level].list()
@@ -766,5 +763,5 @@ class StorageManagerActor(mo.Actor):
     async def pin(self, session_id, data_key):
         await self._data_manager.pin(session_id, data_key)
 
-    async def unpin(self, session_id, data_key):
-        await self._data_manager.unpin(session_id, data_key)
+    async def unpin(self, session_id, data_key, error):
+        await self._data_manager.unpin(session_id, data_key, error)

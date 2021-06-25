@@ -73,12 +73,7 @@ class StorageLevel(Enum):
 
     @staticmethod
     def from_str(s: str):
-        level_mapping = dict(
-            GPU=StorageLevel.GPU,
-            MEMORY=StorageLevel.MEMORY,
-            DISK=StorageLevel.DISK,
-            REMOTE=StorageLevel.REMOTE
-        )
+        level_mapping = StorageLevel.__members__
         level_strings = [ss.strip() for ss in s.upper().split('|')]
         levels = []
         for ls in level_strings:

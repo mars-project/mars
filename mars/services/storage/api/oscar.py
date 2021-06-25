@@ -182,7 +182,8 @@ class StorageAPI(AbstractStorageAPI):
             band_name, dest_address, error)
 
     @extensible
-    async def unpin(self, data_key: str):
+    async def unpin(self, data_key: str,
+                    error: str = 'raise'):
         """
         Unpin the data, allow storage to release the data.
 
@@ -190,9 +191,11 @@ class StorageAPI(AbstractStorageAPI):
         ----------
         data_key: str
             data key to unpin
-
+        error: str
+            raise or ignore
         """
-        await self._storage_manager_ref.unpin(self._session_id, data_key)
+        await self._storage_manager_ref.unpin(self._session_id,
+                                              data_key, error)
 
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """

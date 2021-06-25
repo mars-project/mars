@@ -210,7 +210,7 @@ class PlasmaStorage(StorageBackend):
         if kwargs:  # pragma: no cover
             raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
 
-        if object_id not in self._client.list():  # pragma: no cover
+        if not self._client.contains(object_id):  # pragma: no cover
             raise DataNotExist(f'Data {object_id} not exists')
 
         plasma_file = PlasmaFileObject(self._client, object_id, mode='r')
@@ -259,7 +259,7 @@ class PlasmaStorage(StorageBackend):
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        if object_id not in self._client.list():  # pragma: no cover
+        if not self._client.contains(object_id):  # pragma: no cover
             raise DataNotExist(f'Data {object_id} not exists')
         plasma_reader = PlasmaFileObject(self._client, object_id, mode='r')
         return PlasmaStorageFileObject(plasma_reader, object_id=object_id)
