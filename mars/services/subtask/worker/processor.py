@@ -131,6 +131,7 @@ class SubtaskProcessor:
             self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.info(f'Finish getting input data keys: {keys}, '
                         f'subtask id: {self.subtask.subtask_id}')
+        return keys
 
     @staticmethod
     @alru_cache(cache_exceptions=False)
@@ -169,6 +170,159 @@ class SubtaskProcessor:
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
         return execute(ctx, op)
 
+    async def _execute_graph(self, chunk_graph: ChunkGraph):
+        loop = asyncio.get_running_loop()
+        executor = futures.ThreadPoolExecutor(1)
+        ref_counts = self._init_ref_counts()
+
+        # from data_key to results
+        for chunk in chunk_graph.topological_iter():
+            if chunk.key not in self._datastore:
+                # since `op.execute` may be a time-consuming operation,
+                # we make it run in a thread pool to not block current thread.
+                logger.info(f'Start executing operand: {chunk.op},'
+                            f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                future = await self._async_execute_operand(loop, executor,
+                                                           self._datastore, chunk.op)
+                try:
+                    await future
+                    logger.info(f'Finish executing operand: {chunk.op},'
+                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                except asyncio.CancelledError:
+                    logger.info(f'Receive cancel instruction for operand: {chunk.op},'
+                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                    # wait for this computation to finish
+                    await loop.run_in_executor(None, executor.shutdown)
+                    # if cancelled, stop next computation,
+                    logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}, '
+                                f'subtask id: {self.subtask.subtask_id}')
+                    self.result.status = SubtaskStatus.cancelled
+                    raise
+                self._op_progress[chunk.op.key] = 1.0
+            else:
+                self._op_progress[chunk.op.key] += 1.0
+            for inp in chunk.inputs:
+                ref_counts[inp.key] -= 1
+                if ref_counts[inp.key] == 0:
+                    # ref count reaches 0, remove it
+                    for key in self._chunk_key_to_data_keys[inp.key]:
+                        del self._datastore[key]
+
+    async def _unpin_data(self, data_keys):
+        # unpin input keys
+        unpins = []
+        for key in data_keys:
+            if isinstance(key, tuple):
+                # a tuple key means it's a shuffle key,
+                # some shuffle data is None and not stored in storage
+                unpins.append(self._storage_api.unpin.delay(key, error='ignore'))
+            else:
+                unpins.append(self._storage_api.unpin.delay(key))
+        await self._storage_api.unpin.batch(*unpins)
+
+    async def _store_data(self, chunk_graph: ChunkGraph):
+        # skip virtual operands for result chunks
+        result_chunks = [c for c in chunk_graph.result_chunks
+                         if not isinstance(c.op, VirtualOperand)]
+
+        # store data into storage
+        data_key_to_puts = defaultdict(list)
+        stored_keys = []
+        for result_chunk in result_chunks:
+            data_key = result_chunk.key
+            if data_key in self._datastore:
+                # non shuffle op
+                stored_keys.append(data_key)
+                result_data = self._datastore[data_key]
+                # update meta
+                if not isinstance(result_data, tuple):
+                    result_chunk.params = result_chunk.get_params_from_data(result_data)
+
+                put = self._storage_api.put.delay(data_key, result_data)
+                data_key_to_puts[data_key].append(put)
+            else:
+                assert isinstance(result_chunk.op, MapReduceOperand)
+                keys = [store_key for store_key in self._datastore
+                        if isinstance(store_key, tuple) and store_key[0] == data_key]
+                for key in keys:
+                    stored_keys.append(key)
+                    result_data = self._datastore[key]
+                    put = self._storage_api.put.delay(key, result_data)
+                    data_key_to_puts[data_key].append(put)
+        logger.info(f'Start putting data keys: {stored_keys}, '
+                    f'subtask id: {self.subtask.subtask_id}')
+        puts = list(chain(*data_key_to_puts.values()))
+        data_key_to_store_size = defaultdict(lambda: 0)
+        data_key_to_memory_size = defaultdict(lambda: 0)
+        if puts:
+            put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
+            try:
+                store_infos = await put_infos
+                store_infos_iter = iter(store_infos)
+                for data_key, puts in data_key_to_puts.items():
+                    for _ in puts:
+                        store_info = next(store_infos_iter)
+                        data_key_to_store_size[data_key] += store_info.store_size
+                        data_key_to_memory_size[data_key] += store_info.memory_size
+                logger.info(f'Finish putting data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+            except asyncio.CancelledError:
+                logger.info(f'Cancelling put data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+                put_infos.cancel()
+
+                logger.info(f'Cancelled put data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+                self.result.status = SubtaskStatus.cancelled
+                raise
+
+        # clear data
+        self._datastore = dict()
+        return stored_keys, data_key_to_store_size, data_key_to_memory_size
+
+    async def _store_meta(self,
+                          chunk_graph: ChunkGraph,
+                          stored_keys: List,
+                          data_key_to_store_size: Dict,
+                          data_key_to_memory_size: Dict):
+        # store meta
+        set_chunk_metas = []
+        memory_sizes = []
+        for result_chunk in chunk_graph.result_chunks:
+            store_size = data_key_to_store_size[result_chunk.key]
+            memory_size = data_key_to_memory_size[result_chunk.key]
+            memory_sizes.append(memory_size)
+            set_chunk_metas.append(
+                self._meta_api.set_chunk_meta.delay(
+                    result_chunk, memory_size=memory_size,
+                    store_size=store_size, bands=[self._band]))
+        logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
+                    f'subtask id: {self.subtask.subtask_id}')
+        if set_chunk_metas:
+            set_chunks_meta = asyncio.create_task(
+                self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
+            try:
+                await set_chunks_meta
+                logger.info(f'Finish store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+            except asyncio.CancelledError:
+                logger.info(f'Cancelling store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+                set_chunks_meta.cancel()
+
+                # remote stored data
+                deletes = []
+                for data_key in stored_keys:
+                    deletes.append(self._storage_api.delete.delay(data_key))
+                await self._storage_api.delete.batch(*deletes)
+
+                self.result.status = SubtaskStatus.cancelled
+                logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}, '
+                            f'subtask id: {self.subtask.subtask_id}')
+                raise
+        # set result data size
+        self.result.data_size = sum(memory_sizes)
+
     async def done(self):
         if self.result.status == SubtaskStatus.running:
             self.result.status = SubtaskStatus.succeeded
@@ -177,149 +331,25 @@ class SubtaskProcessor:
 
     async def run(self):
         self.result.status = SubtaskStatus.running
-
+        input_keys = None
         try:
-            loop = asyncio.get_running_loop()
-            executor = futures.ThreadPoolExecutor(1)
-
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
-            ref_counts = self._init_ref_counts()
-
             report_progress = asyncio.create_task(
                 self.report_progress_periodically())
 
-            await self._load_input_data()
-
-            # from data_key to results
-            for chunk in chunk_graph.topological_iter():
-                if chunk.key not in self._datastore:
-                    # since `op.execute` may be a time-consuming operation,
-                    # we make it run in a thread pool to not block current thread.
-                    logger.info(f'Start executing operand: {chunk.op},'
-                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                    future = await self._async_execute_operand(loop, executor,
-                                                               self._datastore, chunk.op)
-                    try:
-                        await future
-                        logger.info(f'Finish executing operand: {chunk.op},'
-                                    f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                    except asyncio.CancelledError:
-                        logger.info(f'Receive cancel instruction for operand: {chunk.op},'
-                                    f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
-                        # wait for this computation to finish
-                        await loop.run_in_executor(None, executor.shutdown)
-                        # if cancelled, stop next computation,
-                        logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}, '
-                                    f'subtask id: {self.subtask.subtask_id}')
-                        self.result.status = SubtaskStatus.cancelled
-                        raise
-                    self._op_progress[chunk.op.key] = 1.0
-                else:
-                    self._op_progress[chunk.op.key] += 1.0
-                for inp in chunk.inputs:
-                    ref_counts[inp.key] -= 1
-                    if ref_counts[inp.key] == 0:
-                        # ref count reaches 0, remove it
-                        for key in self._chunk_key_to_data_keys[inp.key]:
-                            del self._datastore[key]
-
-            # skip virtual operands for result chunks
-            result_chunks = [c for c in chunk_graph.result_chunks
-                             if not isinstance(c.op, VirtualOperand)]
-
-            # store data into storage
-            data_key_to_puts = defaultdict(list)
-            stored_keys = []
-            for result_chunk in result_chunks:
-                data_key = result_chunk.key
-                if data_key in self._datastore:
-                    # non shuffle op
-                    stored_keys.append(data_key)
-                    result_data = self._datastore[data_key]
-                    # update meta
-                    if not isinstance(result_data, tuple):
-                        result_chunk.params = result_chunk.get_params_from_data(result_data)
-
-                    put = self._storage_api.put.delay(data_key, result_data)
-                    data_key_to_puts[data_key].append(put)
-                else:
-                    assert isinstance(result_chunk.op, MapReduceOperand)
-                    keys = [store_key for store_key in self._datastore
-                            if isinstance(store_key, tuple) and store_key[0] == data_key]
-                    for key in keys:
-                        stored_keys.append(key)
-                        result_data = self._datastore[key]
-                        put = self._storage_api.put.delay(key, result_data)
-                        data_key_to_puts[data_key].append(put)
-            logger.info(f'Start putting data keys: {stored_keys}, '
-                        f'subtask id: {self.subtask.subtask_id}')
-            puts = list(chain(*data_key_to_puts.values()))
-            data_key_to_store_size = defaultdict(lambda: 0)
-            data_key_to_memory_size = defaultdict(lambda: 0)
-            if puts:
-                put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
-                try:
-                    store_infos = await put_infos
-                    store_infos_iter = iter(store_infos)
-                    for data_key, puts in data_key_to_puts.items():
-                        for _ in puts:
-                            store_info = next(store_infos_iter)
-                            data_key_to_store_size[data_key] += store_info.store_size
-                            data_key_to_memory_size[data_key] += store_info.memory_size
-                    logger.info(f'Finish putting data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                except asyncio.CancelledError:
-                    logger.info(f'Cancelling put data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                    put_infos.cancel()
-
-                    logger.info(f'Cancelled put data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                    self.result.status = SubtaskStatus.cancelled
-                    raise
-
-            # clear data
-            self._datastore = dict()
-
+            # load inputs data
+            input_keys = await self._load_input_data()
+            try:
+                # execute chunk graph
+                await self._execute_graph(chunk_graph)
+            finally:
+                # unpin inputs data
+                await self._unpin_data(input_keys)
+            # store results data
+            stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
             # store meta
-            set_chunk_metas = []
-            memory_sizes = []
-            for result_chunk in chunk_graph.result_chunks:
-                store_size = data_key_to_store_size[result_chunk.key]
-                memory_size = data_key_to_memory_size[result_chunk.key]
-                memory_sizes.append(memory_size)
-                set_chunk_metas.append(
-                    self._meta_api.set_chunk_meta.delay(
-                        result_chunk, memory_size=memory_size,
-                        store_size=store_size, bands=[self._band]))
-            logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
-                        f'subtask id: {self.subtask.subtask_id}')
-            if set_chunk_metas:
-                set_chunks_meta = asyncio.create_task(
-                    self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
-                try:
-                    await set_chunks_meta
-                    logger.info(f'Finish store chunk metas for data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                except asyncio.CancelledError:
-                    logger.info(f'Cancelling store chunk metas for data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                    set_chunks_meta.cancel()
-
-                    # remote stored data
-                    deletes = []
-                    for data_key in stored_keys:
-                        deletes.append(self._storage_api.delete.delay(data_key))
-                    await self._storage_api.delete.batch(*deletes)
-
-                    self.result.status = SubtaskStatus.cancelled
-                    logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}, '
-                                f'subtask id: {self.subtask.subtask_id}')
-                    raise
-
-            # set result data size
-            self.result.data_size = sum(memory_sizes)
+            await self._store_meta(chunk_graph, stored_keys, store_sizes, memory_sizes)
         except asyncio.CancelledError:
             self.result.status = SubtaskStatus.cancelled
             self.result.progress = 1.0
@@ -331,7 +361,8 @@ class SubtaskProcessor:
             await self.done()
             raise
         finally:
-            pass
+            if input_keys is not None:
+                await self._unpin_data(input_keys)
 
         await self.done()
         report_progress.cancel()

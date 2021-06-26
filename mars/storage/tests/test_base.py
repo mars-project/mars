@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...storage.errors import DataNotExist
+from mars.storage import StorageLevel
 
 
-DataNotExist = DataNotExist
+def test_storage_level():
+    s = 'memory'
+    assert StorageLevel.MEMORY == StorageLevel.from_str(s)
 
+    s = 'disk | memory'
+    assert StorageLevel.DISK | StorageLevel.MEMORY == StorageLevel.from_str(s)
 
-class NoDataToSpill(Exception):
-    pass
+    s = ' MEMORY|REMOTE '
+    assert StorageLevel.MEMORY | StorageLevel.REMOTE == StorageLevel.from_str(s)

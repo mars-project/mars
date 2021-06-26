@@ -395,6 +395,8 @@ class AbstractActorPool(ABC):
                     pass
                 return
             asyncio.create_task(self.process_message(message, channel))
+            # delete to release the reference of message
+            del message
             await asyncio.sleep(0)
 
     async def __aenter__(self):

@@ -32,7 +32,7 @@ def register_filesystem(name: str, fs):
 
 
 def get_fs(path: path_type,
-           storage_options: Dict) -> FileSystem:
+           storage_options: Dict = None) -> FileSystem:
     if storage_options is None:
         storage_options = dict()
 
