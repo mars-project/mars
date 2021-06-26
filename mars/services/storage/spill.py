@@ -15,7 +15,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Union
+from typing import List, Union, Tuple
 
 from ... import oscar as mo
 from ...storage import StorageLevel
@@ -29,21 +29,21 @@ DEFAULT_SPILL_BLOCK_SIZE = 128 * 1024
 
 class SpillStrategy(ABC):
     @abstractmethod
-    def record_put(self, key, data_size: int):
+    def record_put_info(self, key, data_size: int):
         """
-        Put element
-        """
-
-    @abstractmethod
-    def record_delete(self, key):
-        """
-        Delete element
+        Record the data key and data size when putting into storage
         """
 
     @abstractmethod
-    def get_spill_keys(self, size: int):
+    def record_delete_info(self, key):
         """
-        Return keys for spilling according to spill size
+        Record who is removed from storage
+        """
+
+    @abstractmethod
+    def get_spill_keys(self, size: int) -> Tuple[List, List]:
+        """
+        Return sizes and keys for spilling according to spill size
         """
 
 
@@ -54,10 +54,10 @@ class FIFOStrategy(SpillStrategy):
         self._pinned_keys = defaultdict(int)
         self._spilling_keys = set()
 
-    def record_put(self, key, data_size: int):
+    def record_put_info(self, key, data_size: int):
         self._data_sizes[key] = data_size
 
-    def record_delete(self, key):
+    def record_delete_info(self, key):
         self._data_sizes.pop(key)
         if key in self._spilling_keys:
             self._spilling_keys.remove(key)
@@ -72,7 +72,7 @@ class FIFOStrategy(SpillStrategy):
         if self._pinned_keys[key] <= 0:
             del self._pinned_keys[key]
 
-    def get_spill_keys(self, size: int):
+    def get_spill_keys(self, size: int) -> Tuple[List, List]:
         spill_sizes = []
         spill_keys = []
         spill_size = 0

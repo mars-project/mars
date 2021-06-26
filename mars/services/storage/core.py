@@ -53,7 +53,7 @@ class WrappedStorageFileObject(AioFileObject):
                  size: int,
                  session_id: str,
                  data_key: str,
-                 data_manager: Union[ActorRef, "StorageManagerActor"],
+                 data_manager: Union[ActorRef, "DataManagerActor"],
                  storage_handler: StorageBackend
                  ):
         self._object_id = file.object_id
@@ -177,7 +177,7 @@ class DataManagerActor(mo.Actor):
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if object_info is not None:
-            self._spill_strategy[data_info.level].record_put(
+            self._spill_strategy[data_info.level].record_put_info(
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
@@ -210,13 +210,6 @@ class DataManagerActor(mo.Actor):
                        error: str = 'raise') -> List[DataInfo]:
         return self._get_data_infos(session_id, data_key, error)
 
-    @get_data_infos.batch
-    def batch_get_data_infos(self, args_list, kwargs_list) -> List[List[DataInfo]]:
-        result = []
-        for args, kwargs in zip(args_list, kwargs_list):
-            result.append(self._get_data_infos(*args, **kwargs))
-        return result
-
     def _get_data_info(self,
                        session_id: str,
                        data_key: str,
@@ -239,38 +232,28 @@ class DataManagerActor(mo.Actor):
                       error: str = 'raise') -> Union[DataInfo, None]:
         return self._get_data_info(session_id, data_key, error)
 
-    @get_data_info.batch
-    def batch_get_data_info(self, args_list, kwargs_list) -> List[DataInfo]:
-        return [self._get_data_info(*args, **kwargs)
-                for args, kwargs in zip(args_list, kwargs_list)]
-
-    async def _put_data_info(self,
-                             session_id: str,
-                             data_key: str,
-                             data_info: DataInfo,
-                             object_info: ObjectInfo = None):
+    def _put_data_info(self,
+                       session_id: str,
+                       data_key: str,
+                       data_info: DataInfo,
+                       object_info: ObjectInfo = None):
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         if object_info is not None:
-            self._spill_strategy[data_info.level].record_put(
+            self._spill_strategy[data_info.level].record_put_info(
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
     @extensible
-    async def put_data_info(self,
+    def put_data_info(self,
                             session_id: str,
                             data_key: str,
                             data_info: DataInfo,
                             object_info: ObjectInfo = None):
-        await self._put_data_info(
+        self._put_data_info(
             session_id, data_key, data_info, object_info=object_info)
-
-    @put_data_info.batch
-    async def batch_put_data_info(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            await self._put_data_info(*args, **kwargs)
 
     def _delete_data_info(self,
                           session_id: str,
@@ -286,7 +269,7 @@ class DataManagerActor(mo.Actor):
         for key in to_delete_keys:
             if (session_id, key) in self._data_key_to_info:
                 self._data_info_list[level].pop((session_id, key))
-                self._spill_strategy[level].record_delete((session_id, key))
+                self._spill_strategy[level].record_delete_info((session_id, key))
                 infos = self._data_key_to_info[(session_id, key)]
                 rest = [info for info in infos if info.data_info.level != level]
                 if len(rest) == 0:
@@ -302,11 +285,6 @@ class DataManagerActor(mo.Actor):
                          data_key: str,
                          level: StorageLevel):
         self._delete_data_info(session_id, data_key, level)
-
-    @delete_data_info.batch
-    def batch_delete_data_info(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            self._delete_data_info(*args, *kwargs)
 
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
