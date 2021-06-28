@@ -49,18 +49,6 @@ async def test_api(actor_pool):
     await mo.create_actor(TestActor, uid=TestActor.default_uid(), address=pool_addr)
     assert (await api.get_supervisor_refs([TestActor.default_uid()]))[0].address == pool_addr
 
-    await api.set_state_value('custom_key', {'key': 'value'})
-    await asyncio.sleep(0.1)
-    nodes_info = await api.get_nodes_info(nodes=[pool_addr], state=True)
-    assert pool_addr in nodes_info
-    assert 'custom_key' in nodes_info[pool_addr]['state']
-
-    await api.set_band_resource('numa-0', {'custom_usage': 0.1})
-    await asyncio.sleep(0.1)
-    nodes_info = await api.get_nodes_info(nodes=[pool_addr], resource=True)
-    assert pool_addr in nodes_info
-    assert 'custom_usage' in nodes_info[pool_addr]['resource']['numa-0']
-
     bands = await api.get_all_bands()
     assert (pool_addr, 'numa-0') in bands
 
@@ -91,12 +79,6 @@ async def test_web_api(actor_pool):
 
     web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
     assert await web_api.get_supervisors() == []
-
-    await api.set_state_value('custom_key', {'key': 'value'})
-    await asyncio.sleep(0.1)
-    nodes_info = await web_api.get_nodes_info(nodes=[pool_addr], state=True)
-    assert pool_addr in nodes_info
-    assert 'custom_key' in nodes_info[pool_addr]['state']
 
     assert len(await web_api.get_all_bands()) > 0
 

@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+import json
+from typing import List, Union
 
 from ....lib.aio import alru_cache
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
+from ..core import SessionInfo
 from .core import AbstractSessionAPI
 
 
@@ -30,27 +32,27 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
         return await ClusterAPI.create(self._supervisor_addr)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_oscar_session_api(self, session_id: str):
+    async def _get_oscar_session_api(self):
         from .oscar import SessionAPI
         cluster_api = await self._get_cluster_api()
-        [address] = await cluster_api.get_supervisors_by_keys([session_id])
+        [address] = await cluster_api.get_supervisors_by_keys(['Session'])
         return await SessionAPI.create(address)
 
     @web_api('(?P<session_id>[^/]+)', method='put')
     async def create_session(self, session_id: str):
-        oscar_api = await self._get_oscar_session_api(session_id)
+        oscar_api = await self._get_oscar_session_api()
         addr = await oscar_api.create_session(session_id)
         self.write(addr)
 
     @web_api('(?P<session_id>[^/]+)', method='delete')
     async def delete_session(self, session_id: str):
-        oscar_api = await self._get_oscar_session_api(session_id)
+        oscar_api = await self._get_oscar_session_api()
         await oscar_api.delete_session(session_id)
 
     @web_api('(?P<session_id>[^/]+)', method='get',
              arg_filter={'action': 'check_exist'})
     async def has_session(self, session_id: str):
-        oscar_api = await self._get_oscar_session_api(session_id)
+        oscar_api = await self._get_oscar_session_api()
         res = await oscar_api.has_session(session_id)
         self.write('1' if res else '0')
 
@@ -58,9 +60,17 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
              arg_filter={'action': 'get_last_idle_time'})
     async def get_last_idle_time(self, session_id: str):
         session_id = session_id or None
-        oscar_api = await self._get_oscar_session_api(session_id)
+        oscar_api = await self._get_oscar_session_api()
         res = await oscar_api.get_last_idle_time(session_id)
         self.write(str(res) if res else '')
+
+    @web_api('', method='get')
+    async def get_sessions(self):
+        oscar_api = await self._get_oscar_session_api()
+        res = await oscar_api.get_sessions()
+        self.write(json.dumps({'sessions': [
+            {'session_id': info.session_id} for info in res
+        ]}))
 
 
 web_handlers = {
@@ -71,6 +81,12 @@ web_handlers = {
 class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
     def __init__(self, address: str):
         self._address = address.rstrip('/')
+
+    async def get_sessions(self) -> List[SessionInfo]:
+        addr = f'{self._address}/api/session'
+        res = await self._request_url('GET', addr)
+        res_obj = json.loads((await res.read()).decode())
+        return [SessionInfo(**kw) for kw in res_obj['sessions']]
 
     async def create_session(self, session_id: str) -> str:
         addr = f'{self._address}/api/session/{session_id}'

@@ -43,7 +43,7 @@ async def actor_pool():
 @pytest.mark.asyncio
 async def test_quota(actor_pool):
     quota_ref = await mo.create_actor(
-        QuotaActor, 300, uid=QuotaActor.gen_uid('cpu-0'),
+        QuotaActor, 'numa-0', 300, uid=QuotaActor.gen_uid('cpu-0'),
         address=actor_pool.external_address)  # type: QuotaActorRef
 
     # test quota options with non-existing keys
@@ -98,7 +98,7 @@ async def test_quota(actor_pool):
 @pytest.mark.asyncio
 async def test_batch_quota_allocation(actor_pool):
     quota_ref = await mo.create_actor(
-        QuotaActor, 300, uid=QuotaActor.gen_uid('cpu-0'),
+        QuotaActor, 'numa-0', 300, uid=QuotaActor.gen_uid('cpu-0'),
         address=actor_pool.external_address)  # type: QuotaActorRef
 
     end_time = []
@@ -127,7 +127,7 @@ async def test_mem_quota_allocation(actor_pool):
 
     mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
     quota_ref = await mo.create_actor(
-        MemQuotaActor, 300, hard_limit=300, refresh_time=0.1,
+        MemQuotaActor, 'numa-0', 300, hard_limit=300, refresh_time=0.1,
         uid=MemQuotaActor.gen_uid('cpu-0'),
         address=actor_pool.external_address)  # type: QuotaActorRef
     with mock.patch('mars.resource.virtual_memory', new=lambda: mock_mem_stat):

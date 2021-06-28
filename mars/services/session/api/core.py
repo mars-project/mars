@@ -13,10 +13,23 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Union
+from typing import List, Union
+
+from ..core import SessionInfo
 
 
 class AbstractSessionAPI(ABC):
+    @abstractmethod
+    async def get_sessions(self) -> List[SessionInfo]:
+        """
+        Get information of all sessions
+
+        Returns
+        -------
+        session_infos : List[SessionInfo]
+            List of session infos.
+        """
+
     @abstractmethod
     async def create_session(self, session_id: str) -> str:
         """

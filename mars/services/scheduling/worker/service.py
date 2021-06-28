@@ -43,7 +43,7 @@ async def start(config: Dict, address: None):
                           uid=WorkerSlotManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(WorkerQuotaManagerActor,
-                          default_config=dict(soft_limit=mem_quota_size),
+                          default_config=dict(quota_size=mem_quota_size),
                           uid=WorkerQuotaManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(SubtaskExecutionActor,

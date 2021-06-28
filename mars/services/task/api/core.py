@@ -21,6 +21,22 @@ from ..core import TileableGraph, TaskResult
 
 class AbstractTaskAPI(ABC):
     @abstractmethod
+    async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
+        """
+        Get results of all tasks in the session
+
+        Parameters
+        ----------
+        progress : bool
+            If True, will return task progress
+
+        Returns
+        -------
+        task_results: List[TaskResult]
+            List of task results
+        """
+
+    @abstractmethod
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,

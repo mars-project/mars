@@ -96,30 +96,14 @@ class TaskAPI(AbstractTaskAPI):
             address, TaskManagerActor.gen_uid(session_id))
         return await mo.destroy_actor(task_manager_ref)
 
+    async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
+        return await self._task_manager_ref.get_task_results(progress)
+
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
                                     fuse_enabled: bool = True,
                                     extra_config: dict = None) -> str:
-        """
-        Submit a tileable graph
-
-        Parameters
-        ----------
-        graph : TileableGraph
-            Tileable graph.
-        task_name : str
-            Task name
-        fuse_enabled : bool
-            Enable fuse optimization
-        extra_config : dict
-            Extra config.
-
-        Returns
-        -------
-        task_id : str
-            Task ID.
-        """
         try:
             return await self._task_manager_ref.submit_tileable_graph(
                 graph, task_name, fuse_enabled=fuse_enabled,
@@ -128,100 +112,24 @@ class TaskAPI(AbstractTaskAPI):
             raise RuntimeError('Session closed already')
 
     async def wait_task(self, task_id: str, timeout: float = None):
-        """
-        Wait for a task to finish.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID
-        timeout: float
-            Second to timeout
-        """
         return await self._task_manager_ref.wait_task(
             task_id, timeout=timeout)
 
     async def get_task_result(self, task_id: str) -> TaskResult:
-        """
-        Get task status.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        result : TaskResult
-            Task result.
-        """
         return await self._task_manager_ref.get_task_result(task_id)
 
     async def get_task_progress(self,
                                 task_id: str) -> float:
-        """
-        Get task progress.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        progress : float
-            Get task progress.
-        """
         return await self._task_manager_ref.get_task_progress(task_id)
 
     async def cancel_task(self, task_id: str):
-        """
-        Cancel task.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-        """
         return await self._task_manager_ref.cancel_task(task_id)
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
-        """
-        Get fetch tileable for a task.
-
-        Parameters
-        ----------
-        task_id : str
-            Task ID.
-
-        Returns
-        -------
-        fetch_tileable_list
-            Fetch tileable list.
-        """
         return await self._task_manager_ref.get_task_result_tileables(task_id)
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
-        """
-        Set result of subtask
-
-        Parameters
-        ----------
-        subtask_result:
-
-        Returns
-        -------
-
-        """
         return await self._task_manager_ref.set_subtask_result.tell(subtask_result)
 
     async def get_last_idle_time(self) -> Union[float, None]:
-        """
-        Get last idle time from task manager.
-
-        Returns
-        -------
-        last_idle_time: float
-            The last idle time if the task manager is idle else None.
-        """
         return await self._task_manager_ref.get_last_idle_time()

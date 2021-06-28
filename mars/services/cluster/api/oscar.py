@@ -132,34 +132,6 @@ class ClusterAPI(AbstractClusterAPI):
         """
         return await self._uploader_ref.get_bands()
 
-    async def set_state_value(self, key: str, value: Union[List, Dict]):
-        """
-        Set state value for current node
-
-        Parameters
-        ----------
-        key
-            state key to set
-        value
-            value of the state
-        """
-        await self._uploader_ref.set_state_value.tell(key, value)
-
-    async def set_band_resource(self, band: str, values: Dict):
-        """
-        Set resource usage for a band
-
-        Parameters
-        ----------
-        band
-        values
-
-        Returns
-        -------
-
-        """
-        await self._uploader_ref.set_band_resource.tell(band, values)
-
     async def mark_node_ready(self):
         """
         Mark current node ready for work loads
