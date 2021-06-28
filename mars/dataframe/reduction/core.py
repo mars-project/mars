@@ -595,6 +595,17 @@ class ReductionCompiler:
                 raise ValueError(f'Variable {var_name} used by {func.__name__} '
                                  'cannot be a Mars object')
 
+    @staticmethod
+    def _update_col_dict(col_dict: Dict, key: str, cols: List):
+        if key in col_dict:
+            existing_cols = col_dict[key]
+            if existing_cols is not None:
+                existing_col_set = set(existing_cols)
+                col_dict[key].extend(
+                    [c for c in cols if c not in existing_col_set])
+        else:
+            col_dict[key] = list(cols) if cols is not None else None
+
     def add_function(self, func, ndim, cols=None, func_name=None):
         cols = cols if cols is not None and self._axis == 0 else None
 
@@ -611,21 +622,14 @@ class ReductionCompiler:
 
         for step in compile_result.pre_funcs:
             self._output_key_to_pre_steps[step.output_key] = step
-            if step.output_key in self._output_key_to_pre_cols:
-                existing_cols = self._output_key_to_pre_cols[step.output_key]
-                if existing_cols is not None:
-                    existing_col_set = set(existing_cols)
-                    self._output_key_to_pre_cols[step.output_key].extend(
-                        [c for c in cols if c not in existing_col_set])
-            else:
-                self._output_key_to_pre_cols[step.output_key] = list(cols) if cols is not None else None
+            self._update_col_dict(self._output_key_to_pre_cols, step.output_key, cols)
 
         for step in compile_result.agg_funcs:
             self._output_key_to_agg_steps[step.output_key] = step
 
         for step in compile_result.post_funcs:
             self._output_key_to_post_steps[step.output_key] = step
-            self._output_key_to_post_cols[step.output_key] = cols
+            self._update_col_dict(self._output_key_to_post_cols, step.output_key, cols)
 
     @functools.lru_cache(100)
     def _compile_expr_function(self, py_src):

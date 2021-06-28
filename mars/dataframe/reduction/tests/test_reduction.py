@@ -480,7 +480,24 @@ def test_compile_function():
     # check post_funcs
     assert len(result.post_funcs) == 2
     assert set(''.join(sorted(result.post_funcs[i].columns)) for i in range(2)) == {'ab', 'bc'}
-    
+
+    # test agg for multiple columns
+    compiler = ReductionCompiler(store_source=True)
+    compiler.add_function(lambda x: x.sum(), ndim=2, cols=['a'])
+    compiler.add_function(lambda x: x.sum(), ndim=2, cols=['b'])
+    compiler.add_function(lambda x: x.min(), ndim=2, cols=['c'])
+    result = compiler.compile()
+    # check pre_funcs
+    assert len(result.pre_funcs) == 1
+    assert set(result.pre_funcs[0].columns) == set('abc')
+    # check agg_funcs
+    assert len(result.agg_funcs) == 2
+    assert result.agg_funcs[0].map_func_name == 'sum'
+    assert result.agg_funcs[0].agg_func_name == 'sum'
+    # check post_funcs
+    assert len(result.post_funcs) == 2
+    assert set(result.post_funcs[0].columns) == set('ab')
+
     
 def test_custom_aggregation():
     class MockReduction1(CustomReduction):
