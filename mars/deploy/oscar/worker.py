@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             raise ValueError('--supervisors is needed to start Mars Worker')
 
         if args.endpoint is None:
-            args.endpoint = f'0.0.0.0:{get_next_port()}'
+            args.endpoint = f'{args.host}:{get_next_port()}'
         self.n_io_process = int(args.n_io_process)
 
         n_cpu = cpu_count() if args.n_cpu == 'auto' else args.n_cpu

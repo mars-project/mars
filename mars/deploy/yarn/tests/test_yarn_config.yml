@@ -1,4 +1,4 @@
-inherits: '@mars/deploy/yarn/config.yml'
+"@inherits": '@mars/deploy/yarn/config.yml'
 storage:
   plasma:
     store_memory: 20M

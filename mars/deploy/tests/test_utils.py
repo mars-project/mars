@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,9 @@ def test_load_service_config(cwd):
 
         assert 'services' in cfg
         assert cfg['test_list'] == ['item1', 'item2', 'item3']
+        assert cfg['test_list2'] == ['item3']
         assert set(cfg['test_dict'].keys()) == {'key1', 'key2', 'key3'}
         assert set(cfg['test_dict']['key2'].values()) == {'val2_modified'}
+        assert all(not k.startswith('@') for k in cfg.keys())
     finally:
         os.chdir(old_cwd)

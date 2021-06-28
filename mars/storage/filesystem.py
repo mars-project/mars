@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import uuid
 from typing import Dict, List, Optional, Tuple
 
 from ..lib.aio import AioFilesystem
-from ..lib.filesystem import FileSystem
+from ..lib.filesystem import FileSystem, get_fs
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import mod_hash, implements
 from .base import StorageBackend, ObjectInfo, StorageLevel, register_storage_backend
@@ -43,12 +43,20 @@ class FileSystemStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        fs = kwargs.pop('fs')
         root_dirs = kwargs.pop('root_dirs')
         level = kwargs.pop('level')
         size = kwargs.pop('size', None)
+        fs = kwargs.pop('fs', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'FileSystemStorage got unexpected config: {",".join(kwargs)}')
+
+        if isinstance(root_dirs, str):
+            root_dirs = root_dirs.split(',')
+        if isinstance(level, str):
+            level = StorageLevel.from_str(level)
+
+        if fs is None:
+            fs = get_fs(root_dirs[0])
 
         for d in root_dirs:
             if not fs.exists(d):

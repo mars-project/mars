@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -271,7 +271,7 @@ class UnixSocketServer(_BaseSocketServer):
 
         dirname = os.path.dirname(path)
         if not os.path.exists(dirname):
-            os.makedirs(dirname)
+            os.makedirs(dirname, exist_ok=True)
 
         if 'start_serving' not in config:
             config['start_serving'] = False
@@ -294,7 +294,10 @@ class UnixSocketServer(_BaseSocketServer):
     @implements(Server.stop)
     async def stop(self):
         await super().stop()
-        os.remove(self.path)
+        try:
+            os.remove(self.path)
+        except OSError:  # pragma: no cover
+            pass
 
 
 @register_client

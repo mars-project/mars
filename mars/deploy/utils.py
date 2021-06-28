@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
         cfg_stack.append(cfg)
         cfg_file_set.add(path)
 
-        inherit_path = cfg.pop('inherits', None)
+        inherit_path = cfg.pop('@inherits', None)
         if not inherit_path:
             path = None
         elif os.path.isfile(inherit_path):
@@ -76,17 +76,32 @@ def load_service_config_file(path: Union[str, TextIO]) -> Dict:
 
     def _override_cfg(src: Union[Dict, List], override: Union[Dict, List]):
         if isinstance(override, dict):
+            overriding_fields = set(src.get('@overriding_fields') or set())
             for key, val in override.items():
-                if key not in src or not isinstance(val, (list, dict)):
+                if key not in src or not isinstance(val, (list, dict)) \
+                        or key in overriding_fields:
                     src[key] = val
                 else:
                     _override_cfg(src[key], override[key])
         else:
             src.extend(override)
 
+    def _clear_meta_cfg(src: Dict):
+        meta_keys = []
+        for k, v in src.items():
+            if k.startswith('@'):
+                meta_keys.append(k)
+            elif isinstance(v, dict):
+                _clear_meta_cfg(v)
+
+        for k in meta_keys:
+            src.pop(k)
+
     cfg = cfg_stack[-1]
     for new_cfg in cfg_stack[-2::-1]:
         _override_cfg(cfg, new_cfg)
+
+    _clear_meta_cfg(cfg)
     return cfg
 
 

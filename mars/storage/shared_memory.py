@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,9 +26,16 @@ try:
     else:
         # backport package for Python 3.7-
         from shared_memory import SharedMemory
+
+    class SharedMemoryForRead(SharedMemory):
+        def __del__(self):
+            # close fd only
+            fd = self._fd
+            if os.name != "nt" and fd >= 0:
+                os.close(fd)
 except ImportError:  # pragma: no cover
     # allow shared_memory package to be absent
-    SharedMemory = None
+    SharedMemory = SharedMemoryForRead = None
 
 from ..serialization import AioSerializer, AioDeserializer
 from ..utils import implements, dataslots
@@ -49,9 +56,8 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
                  object_id: Any,
                  mode: str,
                  size: Optional[int] = None):
-        self._object_id = object_id
         self.shm = None
-        super().__init__(mode, size=size)
+        super().__init__(object_id, mode, size=size)
 
     def _write_init(self):
         self.shm = shm = SharedMemory(
@@ -79,14 +85,6 @@ class ShmStorageFileObject(StorageFileObject):
         if _is_windows:
             self._shm = self._file.shm
         await super().close()
-
-
-class SharedMemoryForRead(SharedMemory):
-    def __del__(self):
-        # close fd only
-        fd = self._fd
-        if os.name != "nt" and fd >= 0:
-            os.close(fd)
 
 
 @register_storage_backend

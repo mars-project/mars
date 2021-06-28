@@ -1,3 +1,3 @@
-inherits: '@default'
+"@inherits": '@default'
 session:
   custom_log_dir: auto

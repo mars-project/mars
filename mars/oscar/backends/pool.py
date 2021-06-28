@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ from ...utils import implements, to_binary
 from ...utils import lazy_import, register_asyncio_task_timeout_detector
 from ..api import Actor
 from ..core import ActorRef
+from ..debug import record_message_trace
 from ..errors import ActorAlreadyExist, ActorNotExist, ServerClosed, CannotCancelTask
 from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
@@ -297,7 +298,11 @@ class AbstractActorPool(ABC):
                              message.protocol) as processor:
             with self._run_coro(message.message_id, handler(self, message)) as future:
                 processor.result = await future
-        await channel.send(processor.result)
+        try:
+            await channel.send(processor.result)
+        except ConnectionResetError:
+            if not self._stopped.is_set():
+                raise
 
     async def call(self,
                    dest_address: str,
@@ -390,6 +395,8 @@ class AbstractActorPool(ABC):
                     pass
                 return
             asyncio.create_task(self.process_message(message, channel))
+            # delete to release the reference of message
+            del message
             await asyncio.sleep(0)
 
     async def __aenter__(self):
@@ -473,7 +480,8 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     async def send(self,
                    message: SendMessage) -> result_message_type:
         with _ErrorProcessor(message.message_id,
-                             message.protocol) as processor:
+                             message.protocol) as processor, \
+                record_message_trace(message):
             actor_id = message.actor_ref.uid
             if actor_id not in self._actors:
                 raise ActorNotExist(f'Actor {actor_id} does not exist')
@@ -691,8 +699,8 @@ class MainActorPoolBase(ActorPoolBase):
                     message.message_id, message.actor_cls,
                     message.actor_id, message.args, message.kwargs,
                     allocate_strategy=new_allocate_strategy,
-                    scoped_message_ids=message.scoped_message_ids,
-                    protocol=message.protocol
+                    protocol=message.protocol,
+                    message_trace=message.message_trace
                 )
                 result = await self.call(address, new_create_actor_message)
                 if isinstance(result, ResultMessage):
@@ -756,8 +764,9 @@ class MainActorPoolBase(ActorPoolBase):
         actor_ref = result.result
         new_send_message = SendMessage(
             message.message_id, actor_ref, message.content,
-            scoped_message_ids=message.scoped_message_ids,
-            protocol=message.protocol)
+            protocol=message.protocol,
+            message_trace=message.message_trace
+        )
         return await self.call(actor_ref.address, new_send_message)
 
     @implements(AbstractActorPool.tell)
@@ -774,8 +783,9 @@ class MainActorPoolBase(ActorPoolBase):
         actor_ref = result.result
         new_tell_message = TellMessage(
             message.message_id, actor_ref, message.content,
-            scoped_message_ids=message.scoped_message_ids,
-            protocol=message.protocol)
+            protocol=message.protocol,
+            message_trace=message.message_trace
+        )
         return await self.call(actor_ref.address, new_tell_message)
 
     @implements(AbstractActorPool.actor_ref)
@@ -824,8 +834,9 @@ class MainActorPoolBase(ActorPoolBase):
                         control_message = ControlMessage(
                             new_message_id(), addr,
                             message.control_message_type, message.content,
-                            scoped_message_ids=message.scoped_message_ids,
-                            protocol=message.protocol)
+                            protocol=message.protocol,
+                            message_trace=message.message_trace
+                        )
                         tasks.append(asyncio.create_task(self.call(addr, control_message)))
                     # call super
                     task = asyncio.create_task(super().handle_control_command(message))

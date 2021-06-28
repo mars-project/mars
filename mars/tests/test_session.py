@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -339,7 +339,7 @@ def test_iter(setup):
 
 
 CONFIG = """
-inherits: '@default'
+"@inherits": '@default'
 session:
   custom_log_dir: '{custom_log_dir}'
 """

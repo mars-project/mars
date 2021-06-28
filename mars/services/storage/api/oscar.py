@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
-from ..core import StorageHandlerActor, StorageManagerActor, DataInfo, \
-    WrappedStorageFileObject
+from ..core import StorageHandlerActor, StorageManagerActor, DataManagerActor, \
+    DataInfo, WrappedStorageFileObject
 from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
@@ -29,6 +29,7 @@ APIType = TypeVar('APIType', bound='StorageAPI')
 class StorageAPI(AbstractStorageAPI):
     _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
     _storage_manager_ref: Union[StorageManagerActor, mo.ActorRef]
+    _data_manager_ref: Union[DataManagerActor, mo.ActorRef]
 
     def __init__(self,
                  address: str,
@@ -41,6 +42,8 @@ class StorageAPI(AbstractStorageAPI):
             self._address, StorageHandlerActor.default_uid())
         self._storage_manager_ref = await mo.actor_ref(
             self._address, StorageManagerActor.default_uid())
+        self._data_manager_ref = await mo.actor_ref(
+            self._address, DataManagerActor.default_uid())
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -122,7 +125,7 @@ class StorageAPI(AbstractStorageAPI):
         out
             List of information for specified key
         """
-        return await self._storage_manager_ref.get_data_infos(
+        return await self._data_manager_ref.get_data_infos(
             self._session_id, data_key
         )
 
@@ -179,7 +182,8 @@ class StorageAPI(AbstractStorageAPI):
             band_name, dest_address, error)
 
     @extensible
-    async def unpin(self, data_key: str):
+    async def unpin(self, data_key: str,
+                    error: str = 'raise'):
         """
         Unpin the data, allow storage to release the data.
 
@@ -187,9 +191,11 @@ class StorageAPI(AbstractStorageAPI):
         ----------
         data_key: str
             data key to unpin
-
+        error: str
+            raise or ignore
         """
-        await self._storage_manager_ref.unpin(data_key)
+        await self._storage_manager_ref.unpin(self._session_id,
+                                              data_key, error)
 
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """

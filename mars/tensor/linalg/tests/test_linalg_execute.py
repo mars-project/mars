@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,7 +31,8 @@ setup = setup
 
 
 def test_qr_execution(setup):
-    data = np.random.randn(18, 6)
+    rs = np.random.RandomState(0)
+    data = rs.randn(18, 6)
 
     a = tensor(data, chunk_size=(3, 6))
     q, r = qr(a)
@@ -55,7 +56,7 @@ def test_qr_execution(setup):
     np.testing.assert_array_almost_equal(res, data)
 
     # test for Short-and-Fat QR
-    data = np.random.randn(6, 18)
+    data = rs.randn(6, 18)
 
     a = tensor(data, chunk_size=(6, 9))
     q, r = qr(a, method='sfqr')
@@ -80,7 +81,8 @@ def test_qr_execution(setup):
 
 
 def test_svd_execution(setup):
-    data = np.random.randn(18, 6) + 1j * np.random.randn(18, 6)
+    rs = np.random.RandomState()
+    data = rs.randn(18, 6) + 1j * rs.randn(18, 6)
 
     a = tensor(data, chunk_size=(9, 6))
     U, s, V = svd(a)
@@ -103,7 +105,7 @@ def test_svd_execution(setup):
     res = t.execute().fetch()
     np.testing.assert_array_almost_equal(res, data)
 
-    data = np.random.randn(6, 18) + 1j * np.random.randn(6, 18)
+    data = rs.randn(6, 18) + 1j * rs.randn(6, 18)
 
     a = tensor(data)
     U, s, V = svd(a)
@@ -179,7 +181,8 @@ def test_randomized_svd_execution(setup):
 
 
 def test_cholesky_execution(setup):
-    data = np.random.randint(1, 10, (10, 10))
+    rs = np.random.RandomState(0)
+    data = rs.randint(1, 10, (10, 10))
     symmetric_data = data.dot(data.T)
 
     a = tensor(symmetric_data, chunk_size=5)
@@ -223,10 +226,10 @@ def test_cholesky_execution(setup):
 
 
 def test_lu_execution(setup):
-    np.random.seed(1)
+    rs = np.random.RandomState(0)
 
     # square matrix
-    data = np.random.randint(1, 10, (6, 6))
+    data = rs.randint(1, 10, (6, 6))
 
     a = tensor(data)
     P, L, U = lu(a)
@@ -257,7 +260,7 @@ def test_lu_execution(setup):
     np.testing.assert_allclose(res, data)
 
     # shape[0] > shape[1]
-    data = np.random.randint(1, 10, (10, 6))
+    data = rs.randint(1, 10, (10, 6))
 
     a = tensor(data)
     P, L, U = lu(a)
@@ -302,7 +305,7 @@ def test_lu_execution(setup):
     np.testing.assert_allclose(res, data)
 
     # shape[0] < shape[1]
-    data = np.random.randint(1, 10, (6, 10))
+    data = rs.randint(1, 10, (6, 10))
 
     a = tensor(data)
     P, L, U = lu(a)
@@ -387,10 +390,10 @@ def test_lu_execution(setup):
 
 def test_solve_triangular(setup):
     from mars.tensor import tril, triu
-    np.random.seed(1)
+    rs = np.random.RandomState(0)
 
-    data1 = np.random.randint(1, 10, (20, 20))
-    data2 = np.random.randint(1, 10, (20, ))
+    data1 = rs.randint(1, 10, (20, 20))
+    data2 = rs.randint(1, 10, (20, ))
 
     A = tensor(data1, chunk_size=20)
     b = tensor(data2, chunk_size=20)
@@ -422,8 +425,8 @@ def test_solve_triangular(setup):
     res = t.execute().fetch()
     np.testing.assert_allclose(res, data2)
 
-    data1 = np.random.randint(1, 10, (10, 10))
-    data2 = np.random.randint(1, 10, (10, 5))
+    data1 = rs.randint(1, 10, (10, 10))
+    data2 = rs.randint(1, 10, (10, 5))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -441,8 +444,8 @@ def test_solve_triangular(setup):
     np.testing.assert_allclose(res, data2)
 
     # test sparse
-    data1 = sps.csr_matrix(np.triu(np.random.randint(1, 10, (10, 10))))
-    data2 = np.random.random((10,))
+    data1 = sps.csr_matrix(np.triu(rs.randint(1, 10, (10, 10))))
+    data2 = rs.random((10,))
 
     A = tensor(data1, chunk_size=5)
     b = tensor(data2, chunk_size=5)
@@ -455,8 +458,8 @@ def test_solve_triangular(setup):
     assert isinstance(result_x, SparseNDArray)
     np.testing.assert_allclose(result_b, data2)
 
-    data1 = sps.csr_matrix(np.triu(np.random.randint(1, 10, (10, 10))))
-    data2 = np.random.random((10, 2))
+    data1 = sps.csr_matrix(np.triu(rs.randint(1, 10, (10, 10))))
+    data2 = rs.random((10, 2))
 
     A = tensor(data1, chunk_size=5)
     b = tensor(data2, chunk_size=5)
@@ -472,10 +475,10 @@ def test_solve_triangular(setup):
 
 def test_solve(setup):
     import scipy.linalg
-    np.random.seed(1)
+    rs = np.random.RandomState(0)
 
-    data1 = np.random.randint(1, 10, (20, 20))
-    data2 = np.random.randint(1, 10, (20, ))
+    data1 = rs.randint(1, 10, (20, 20))
+    data2 = rs.randint(1, 10, (20, ))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -487,7 +490,7 @@ def test_solve(setup):
     res = A.dot(x).execute().fetch()
     np.testing.assert_allclose(res, data2)
 
-    data2 = np.random.randint(1, 10, (20, 5))
+    data2 = rs.randint(1, 10, (20, 5))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -500,7 +503,7 @@ def test_solve(setup):
     np.testing.assert_allclose(res, data2)
 
     # test for not all chunks are square in matrix A
-    data2 = np.random.randint(1, 10, (20,))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -523,8 +526,8 @@ def test_solve(setup):
     np.testing.assert_allclose(res, data2)
 
     # test sparse
-    data1 = sps.csr_matrix(np.random.randint(1, 10, (20, 20)))
-    data2 = np.random.randint(1, 10, (20, ))
+    data1 = sps.csr_matrix(rs.randint(1, 10, (20, 20)))
+    data2 = rs.randint(1, 10, (20, ))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -535,7 +538,7 @@ def test_solve(setup):
     assert isinstance(res, SparseNDArray)
     np.testing.assert_allclose(data1.dot(res), data2)
 
-    data2 = np.random.randint(1, 10, (20, 5))
+    data2 = rs.randint(1, 10, (20, 5))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -547,7 +550,7 @@ def test_solve(setup):
     np.testing.assert_allclose(res, data2)
 
     # test for not all chunks are square in matrix A
-    data2 = np.random.randint(1, 10, (20,))
+    data2 = rs.randint(1, 10, (20,))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -560,12 +563,12 @@ def test_solve(setup):
 
 def test_solve_sym_pos(setup):
     import scipy.linalg
-    np.random.seed(1)
+    rs = np.random.RandomState(0)
 
-    data = np.random.randint(1, 10, (20, 20))
+    data = rs.randint(1, 10, (20, 20))
     data_l = np.tril(data)
     data1 = data_l.dot(data_l.T)
-    data2 = np.random.randint(1, 10, (20, ))
+    data2 = rs.randint(1, 10, (20, ))
 
     A = tensor(data1, chunk_size=10)
     b = tensor(data2, chunk_size=10)
@@ -580,9 +583,9 @@ def test_solve_sym_pos(setup):
 
 def test_inv(setup):
     import scipy.linalg
-    np.random.seed(1)
+    rs = np.random.RandomState(0)
 
-    data = np.random.randint(1, 10, (20, 20))
+    data = rs.randint(1, 10, (20, 20))
 
     A = tensor(data)
     inv_A = inv(A)
@@ -633,7 +636,7 @@ def test_inv(setup):
         res, np.eye(data.shape[0], dtype=float))
 
     # test sparse
-    data = np.random.randint(1, 10, (20, 20))
+    data = rs.randint(1, 10, (20, 20))
     sp_data = sps.csr_matrix(data)
 
     A = tensor(sp_data, chunk_size=10)
@@ -704,6 +707,7 @@ def test_norm_execution(setup):
 
 
 def test_tensordot_execution(setup):
+    rs = np.random.RandomState(0)
     # size_executor = ExecutorForTest(sync_provider_type=ExecutorForTest.SyncProviderType.MOCK)
     #
     # a_data = np.arange(60).reshape(3, 4, 5)
@@ -736,8 +740,8 @@ def test_tensordot_execution(setup):
     res = c.execute().fetch()
     np.testing.assert_array_equal(res, np.tile([500], [500, 100]))
 
-    raw_a = np.random.random((100, 200, 50))
-    raw_b = np.random.random((200, 10, 100))
+    raw_a = rs.random((100, 200, 50))
+    raw_b = rs.random((200, 10, 100))
     a = tensor(raw_a, chunk_size=50)
     b = tensor(raw_b, chunk_size=33)
     c = tensordot(a, b, axes=((0, 1), (2, 0)))
@@ -811,6 +815,8 @@ def test_tensordot_execution(setup):
 
 
 def test_sparse_dot_execution(setup):
+    rs = np.random.RandomState(0)
+
     a_data = sps.random(5, 9, density=.1)
     b_data = sps.random(9, 10, density=.2)
     a = tensor(a_data, chunk_size=2)
@@ -847,8 +853,8 @@ def test_sparse_dot_execution(setup):
     np.testing.assert_allclose(res, a_data.dot(b_data).toarray())
 
     # test vector inner
-    a_data = np.random.rand(5)
-    b_data = np.random.rand(5)
+    a_data = rs.rand(5)
+    b_data = rs.rand(5)
     a = tensor(a_data, chunk_size=2).tosparse()
     b = tensor(b_data, chunk_size=2).tosparse()
 
@@ -884,8 +890,10 @@ def test_vdot_execution(setup):
 
 
 def test_matmul_execution(setup):
-    data_a = np.random.randn(10, 20)
-    data_b = np.random.randn(20)
+    rs = np.random.RandomState(0)
+
+    data_a = rs.randn(10, 20)
+    data_b = rs.randn(20)
 
     a = tensor(data_a, chunk_size=5)
     b = tensor(data_b, chunk_size=6)
@@ -895,8 +903,8 @@ def test_matmul_execution(setup):
     expected = np.matmul(data_a, data_b)
     np.testing.assert_allclose(res, expected)
 
-    data_a = np.random.randn(10, 20)
-    data_b = np.random.randn(10)
+    data_a = rs.randn(10, 20)
+    data_b = rs.randn(10)
 
     a = tensor(data_a, chunk_size=5)
     b = tensor(data_b, chunk_size=6)
@@ -906,8 +914,8 @@ def test_matmul_execution(setup):
     expected = np.matmul(data_b, data_a)
     np.testing.assert_allclose(res, expected)
 
-    data_a = np.random.randn(15, 1, 20, 30)
-    data_b = np.random.randn(1, 11, 30, 20)
+    data_a = rs.randn(15, 1, 20, 30)
+    data_b = rs.randn(1, 11, 30, 20)
 
     a = tensor(data_a, chunk_size=12)
     b = tensor(data_b, chunk_size=13)
@@ -938,8 +946,8 @@ def test_matmul_execution(setup):
     np.testing.assert_allclose(res.toarray(), expected)
 
     # test order
-    data_a = np.asfortranarray(np.random.randn(10, 20))
-    data_b = np.asfortranarray(np.random.randn(20, 30))
+    data_a = np.asfortranarray(rs.randn(10, 20))
+    data_b = np.asfortranarray(rs.randn(20, 30))
 
     a = tensor(data_a, chunk_size=12)
     b = tensor(data_b, chunk_size=13)

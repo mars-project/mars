@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 from ..lib import aio
 del aio
 
+from . import debug
 from .api import actor_ref, create_actor, has_actor, destroy_actor, \
     kill_actor, Actor, create_actor_pool, setup_cluster
 from .backends import allocate_strategy

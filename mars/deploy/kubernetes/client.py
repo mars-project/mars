@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -264,7 +264,8 @@ class KubernetesCluster:
                             lambda sel: self._get_ready_pod_count(sel),
                             timeout=self._timeout)
         logger.info('All service pods ready.')
-        self._timeout -= time.time() - start_time
+        if self._timeout is not None:  # pragma: no branch
+            self._timeout -= time.time() - start_time
 
     def _wait_web_ready(self):
         loop = asyncio.get_event_loop()
@@ -279,7 +280,7 @@ class KubernetesCluster:
                     if len(supervisors) == self._supervisor_num:
                         break
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-                    if time.time() - start_time > self._timeout:
+                    if self._timeout is not None and time.time() - start_time > self._timeout:
                         raise TimeoutError('Wait for kubernetes cluster timed out') from None
 
         loop.run_until_complete(get_supervisors())

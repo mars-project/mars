@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
@@ -54,15 +53,16 @@ class WrappedStorageFileObject(AioFileObject):
                  size: int,
                  session_id: str,
                  data_key: str,
-                 storage_manager: Union[ActorRef, "StorageManagerActor"],
+                 data_manager: Union[ActorRef, "DataManagerActor"],
                  storage_handler: StorageBackend
                  ):
+        self._object_id = file.object_id
         super().__init__(file)
         self._size = size
         self._level = level
         self._session_id = session_id
         self._data_key = data_key
-        self._storage_manager = storage_manager
+        self._data_manager = data_manager
         self._storage_handler = storage_handler
 
     def __getattr__(self, item):
@@ -73,18 +73,28 @@ class WrappedStorageFileObject(AioFileObject):
 
     async def close(self):
         self._file.close()
-        if 'w' in self._file._mode:
-            object_info = await self._storage_handler.object_info(self._file._object_id)
+        if self._object_id is None:
+            # for some backends like vineyard,
+            # object id is generated after write close
+            self._object_id = self._file.object_id
+        if 'w' in self._file.mode:
+            object_info = await self._storage_handler.object_info(self._object_id)
             data_info = _build_data_info(object_info, self._level, self._size)
-            await self._storage_manager.put_data_info(
+            await self._data_manager.put_data_info(
                 self._session_id, self._data_key, data_info, object_info)
 
 
-class StorageQuota:
-    def __init__(self, total_size: Optional[int]):
-        self._total_size = total_size
+class StorageQuotaActor(mo.Actor):
+    def __init__(self,
+                 level: StorageLevel,
+                 total_size: Optional[Union[int, float]]):
+        self._total_size = total_size if total_size is None else total_size * 0.95
         self._used_size = 0
-        self._lock = asyncio.Semaphore()
+        self._level = level
+
+    @classmethod
+    def gen_uid(cls, level: StorageLevel):
+        return f'storage_quota_{level}'
 
     @property
     def total_size(self):
@@ -94,25 +104,35 @@ class StorageQuota:
     def used_size(self):
         return self._used_size
 
-    async def update(self, size: int):
-        async with self._lock:
-            if self._total_size is not None:
-                self._total_size += size
+    @property
+    def level(self):
+        return self._level
 
-    async def request(self, size: int) -> bool:
-        async with self._lock:
-            if self._total_size is None:
-                self._used_size += size
-                return True
-            elif self._used_size + size >= self._total_size:
-                return False
-            else:
-                self._used_size += size
-                return True
+    def update_quota(self, size: int):
+        if self._total_size is not None:
+            self._used_size += size
 
-    async def release(self, size: int):
-        async with self._lock:
-            self._used_size -= size
+    def request_quota(self, size: int) -> bool:
+        logger.debug(f'Request {size} bytes of {self.level}, '
+                     f'used size is {self.used_size},'
+                     f'total size is {self.total_size}')
+        if self._total_size is None:
+            self._used_size += size
+            return True
+        elif self._used_size + size >= self._total_size:
+            return False
+        else:
+            self._used_size += size
+            return True
+
+    def release_quota(self, size: int):
+        self._used_size -= size
+        logger.debug(f'Release {size} bytes of {self.level}, '
+                     f'used size now is {self.used_size},'
+                     f'total size is {self.total_size}')
+
+    def get_quota(self):
+        return self._total_size, self._used_size
 
 
 @dataslots
@@ -132,17 +152,21 @@ class InternalDataInfo:
     object_info: ObjectInfo
 
 
-class DataManager:
+class DataManagerActor(mo.Actor):
     def __init__(self):
+        from .spill import FIFOStrategy
+
         # mapping key is (session_id, data_key)
         # mapping value is list of InternalDataInfo
         self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
         self._data_info_list = dict()
+        self._spill_strategy = dict()
         # data key may be a tuple in some cases,
         # we record main key to manage their lifecycle
         self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
+            self._spill_strategy[level] = FIFOStrategy(level)
 
     def put(self,
             session_id: str,
@@ -152,27 +176,44 @@ class DataManager:
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
+        if object_info is not None:
+            self._spill_strategy[data_info.level].record_put_info(
+                (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
-    def get_infos(self,
-                  session_id: str,
-                  data_key: str) -> List[DataInfo]:
-        if (session_id, data_key) not in self._data_key_to_info:
-            if (session_id, data_key) in self._main_key_to_sub_keys:
-                infos = []
-                for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
-                    infos.extend([info.data_info for info in
-                                  self._data_key_to_info.get((session_id, sub_key))])
-                return infos
-            raise DataNotExist(f'Data key {session_id, data_key} not exists.')
-        return [info.data_info for info in
-                self._data_key_to_info.get((session_id, data_key))]
+    def _get_data_infos(self,
+                        session_id: str,
+                        data_key: str,
+                        error: str) -> Union[List[DataInfo], None]:
+        try:
+            if (session_id, data_key) not in self._data_key_to_info:
+                if (session_id, data_key) in self._main_key_to_sub_keys:
+                    infos = []
+                    for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
+                        infos.extend([info.data_info for info in
+                                      self._data_key_to_info.get((session_id, sub_key))])
+                    return infos
+                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+            return [info.data_info for info in
+                    self._data_key_to_info.get((session_id, data_key))]
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
 
-    def get_info(self,
-                 session_id: str,
-                 data_key: str,
-                 error: str = 'raise') -> Union[DataInfo, None]:
+    @extensible
+    def get_data_infos(self,
+                       session_id: str,
+                       data_key: str,
+                       error: str = 'raise') -> List[DataInfo]:
+        return self._get_data_infos(session_id, data_key, error)
+
+    def _get_data_info(self,
+                       session_id: str,
+                       data_key: str,
+                       error: str = 'raise') -> Union[DataInfo, None]:
         # if the data is stored in multiply levels,
         # return the lowest level info
         if (session_id, data_key) not in self._data_key_to_info:
@@ -184,39 +225,102 @@ class DataManager:
                        key=lambda x: x.data_info.level)
         return infos[0].data_info
 
-    def delete(self,
-               session_id: str,
-               data_key: str,
-               level: StorageLevel):
+    @extensible
+    def get_data_info(self,
+                      session_id: str,
+                      data_key: str,
+                      error: str = 'raise') -> Union[DataInfo, None]:
+        return self._get_data_info(session_id, data_key, error)
+
+    def _put_data_info(self,
+                       session_id: str,
+                       data_key: str,
+                       data_info: DataInfo,
+                       object_info: ObjectInfo = None):
+        info = InternalDataInfo(data_info, object_info)
+        self._data_key_to_info[(session_id, data_key)].append(info)
+        self._data_info_list[data_info.level][(session_id, data_key)] = object_info
+        if object_info is not None:
+            self._spill_strategy[data_info.level].record_put_info(
+                (session_id, data_key), data_info.store_size)
+        if isinstance(data_key, tuple):
+            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
+
+    @extensible
+    def put_data_info(self,
+                            session_id: str,
+                            data_key: str,
+                            data_info: DataInfo,
+                            object_info: ObjectInfo = None):
+        self._put_data_info(
+            session_id, data_key, data_info, object_info=object_info)
+
+    def _delete_data_info(self,
+                          session_id: str,
+                          data_key: str,
+                          level: StorageLevel
+                          ):
         if (session_id, data_key) in self._main_key_to_sub_keys:
             to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
         else:
             to_delete_keys = [data_key]
-        logger.debug(f'Begin to delete data keys in data manager: {to_delete_keys}')
+        logger.debug(f'Begin to delete data keys for level {level} '
+                     f'in data manager: {to_delete_keys}')
         for key in to_delete_keys:
             if (session_id, key) in self._data_key_to_info:
                 self._data_info_list[level].pop((session_id, key))
+                self._spill_strategy[level].record_delete_info((session_id, key))
                 infos = self._data_key_to_info[(session_id, key)]
                 rest = [info for info in infos if info.data_info.level != level]
                 if len(rest) == 0:
                     del self._data_key_to_info[(session_id, key)]
                 else:  # pragma: no cover
                     self._data_key_to_info[(session_id, key)] = rest
-        logger.debug(f'Finish deleting data keys in data manager: {to_delete_keys}')
+        logger.debug(f'Finish deleting data keys for level {level} '
+                     f'in data manager: {to_delete_keys}')
+
+    @extensible
+    def delete_data_info(self,
+                         session_id: str,
+                         data_key: str,
+                         level: StorageLevel):
+        self._delete_data_info(session_id, data_key, level)
 
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
 
+    def pin(self, session_id, data_key):
+        level = self.get_data_info(session_id, data_key).level
+        self._spill_strategy[level].pin_data((session_id, data_key))
+
+    def unpin(self, session_id, data_key, error: str = 'raise'):
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+        try:
+            level = self.get_data_info(session_id, data_key).level
+            self._spill_strategy[level].unpin_data((session_id, data_key))
+        except DataNotExist:
+            if error == 'raise':
+                raise
+            else:
+                return
+
+    def get_spill_keys(self, level, size):
+        return self._spill_strategy[level].get_spill_keys(size)
+
 
 class StorageHandlerActor(mo.Actor):
-
-    _storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]
+    _quota_refs: Dict[StorageLevel,  Union["StorageQuotaActor", mo.ActorRef]]
+    _data_manager_ref: Union["DataManagerActor", mo.ActorRef]
 
     def __init__(self,
                  storage_init_params: Dict,
-                 storage_manager_ref: Union["StorageManagerActor", mo.ActorRef]):
+                 data_manager_ref: Union["DataManagerActor", mo.ActorRef],
+                 quota_refs: Dict[StorageLevel,
+                                  Union["StorageQuotaActor", mo.ActorRef]]):
         self._storage_init_params = storage_init_params
-        self._storage_manager_ref = storage_manager_ref
+        self._data_manager_ref = data_manager_ref
+        self._quota_refs = quota_refs
 
     async def __post_create__(self):
         self._clients = clients = dict()
@@ -228,6 +332,7 @@ class StorageHandlerActor(mo.Actor):
                     clients[level] = client
 
     async def _get_data(self, data_info, conditions):
+        logger.debug(f'Begin to get data {data_info} with conditions {conditions}')
         if conditions is None:
             res = yield self._clients[data_info.level].get(
                 data_info.object_id)
@@ -243,6 +348,7 @@ class StorageHandlerActor(mo.Actor):
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
                 res = sliced_value
+        logger.debug(f'Finish getting data {data_info} with conditions {conditions}')
         raise mo.Return(res)
 
     @extensible
@@ -252,7 +358,7 @@ class StorageHandlerActor(mo.Actor):
                   conditions: List = None,
                   error: str = 'raise'):
         try:
-            data_info = await self._storage_manager_ref.get_data_info(
+            data_info = await self._data_manager_ref.get_data_info(
                 session_id, data_key)
             data = yield self._get_data(data_info, conditions)
             raise mo.Return(data)
@@ -265,8 +371,10 @@ class StorageHandlerActor(mo.Actor):
                        data_key: str,
                        conditions: List = None,
                        error: str = 'raise'):
-        info = self._storage_manager_ref.get_data_info.delay(
+        info = self._data_manager_ref.get_data_info.delay(
             session_id, data_key, error)
+        logger.debug(f'Get info of data {session_id}-{data_key}: '
+                     f'{info}')
         return info, conditions
 
     @get.batch
@@ -277,7 +385,7 @@ class StorageHandlerActor(mo.Actor):
             info, conditions = self._get_data_info(*args, **kwargs)
             infos.append(info)
             conditions_list.append(conditions)
-        data_infos = await self._storage_manager_ref.get_data_info.batch(*infos)
+        data_infos = await self._data_manager_ref.get_data_info.batch(*infos)
         results = []
         for data_info, conditions in zip(data_infos, conditions_list):
             if data_info is None:
@@ -294,11 +402,14 @@ class StorageHandlerActor(mo.Actor):
                   obj: object,
                   level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
-        await self._storage_manager_ref.request_quota(size, level)
+        await self._request_quota_with_spill(level, size)
         object_info = await self._clients[level].put(obj)
         data_info = _build_data_info(object_info, level, size)
-        await self._storage_manager_ref.put_data_info(
+        await self._data_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
+        if object_info.size is not None and data_info.memory_size != object_info.size:
+            await self._quota_refs[level].update_quota(
+                object_info.size - data_info.memory_size)
         return data_info
 
     @classmethod
@@ -326,8 +437,7 @@ class StorageHandlerActor(mo.Actor):
             data_keys.append(data_key)
             sizes.append(size)
 
-        await self._storage_manager_ref.request_quota(
-            sum(sizes), level)
+        await self._request_quota_with_spill(level, sum(sizes))
 
         data_infos = []
         put_infos = []
@@ -336,21 +446,36 @@ class StorageHandlerActor(mo.Actor):
             object_info = await self._clients[level].put(obj)
             data_info = _build_data_info(object_info, level, size)
             data_infos.append(data_info)
+            if object_info.size is not None and \
+                    data_info.memory_size != object_info.size:
+                # we request memory size before putting, when put finishes,
+                # update quota to the true store size
+                await self._quota_refs[level].update_quota(
+                    object_info.size - data_info.memory_size)
             put_infos.append(
-                self._storage_manager_ref.put_data_info.delay(
+                self._data_manager_ref.put_data_info.delay(
                     session_id, data_key, data_info, object_info))
             logger.debug(f'Finish putting data key {data_key}, size is {size}, '
                          f'object_id is {data_info.object_id}')
-        await self._storage_manager_ref.put_data_info.batch(*put_infos)
+        await self._data_manager_ref.put_data_info.batch(*put_infos)
         return data_infos
 
     def _get_data_infos_arg(self,
                             session_id: str,
                             data_key: str,
                             error: str = 'raise'):
-        infos = self._storage_manager_ref.get_data_infos.delay(
+        infos = self._data_manager_ref.get_data_infos.delay(
             session_id, data_key, error)
         return infos, session_id, data_key
+
+    async def delete_object(self,
+                            session_id: str,
+                            data_key: Any,
+                            object_id: Any,
+                            level: StorageLevel):
+        await self._data_manager_ref.delete_data_info(
+            session_id, data_key, level)
+        await self._clients[level].delete(object_id)
 
     @extensible
     async def delete(self,
@@ -360,17 +485,17 @@ class StorageHandlerActor(mo.Actor):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
 
-        infos = await self._storage_manager_ref.get_data_infos(
+        infos = await self._data_manager_ref.get_data_infos(
             session_id, data_key, error)
         if not infos:
             return
 
         for info in infos:
             level = info.level
-            await self._storage_manager_ref.delete_data_info(
+            await self._data_manager_ref.delete_data_info(
                 session_id, data_key, level)
             yield self._clients[level].delete(info.object_id)
-            await self._storage_manager_ref.release_quota(info.store_size, level)
+            await self._quota_refs[level].release_quota(info.store_size)
 
     @delete.batch
     async def batch_delete(self, args_list, kwargs_list):
@@ -381,7 +506,7 @@ class StorageHandlerActor(mo.Actor):
             infos, session_id, data_key = self._get_data_infos_arg(*args, **kwargs)
             get_infos.append(infos)
             data_keys.append(data_key)
-        infos_list = await self._storage_manager_ref.get_data_infos.batch(*get_infos)
+        infos_list = await self._data_manager_ref.get_data_infos.batch(*get_infos)
 
         delete_infos = []
         to_removes = []
@@ -393,7 +518,7 @@ class StorageHandlerActor(mo.Actor):
             for info in infos:
                 level = info.level
                 delete_infos.append(
-                    self._storage_manager_ref.delete_data_info.delay(
+                    self._data_manager_ref.delete_data_info.delay(
                         session_id, data_key, level))
                 to_removes.append((level, info.object_id))
                 level_sizes[level] += info.store_size
@@ -402,20 +527,18 @@ class StorageHandlerActor(mo.Actor):
             # no data to remove
             return
 
-        await self._storage_manager_ref.delete_data_info.batch(*delete_infos)
+        await self._data_manager_ref.delete_data_info.batch(*delete_infos)
         logger.debug(f'Begin to delete batch data {to_removes}')
         for level, object_id in to_removes:
             yield self._clients[level].delete(object_id)
         logger.debug(f'Finish deleting batch data {to_removes}')
-        releases = []
         for level, size in level_sizes.items():
-            releases.append(self._storage_manager_ref.release_quota.delay(size, level))
-        await self._storage_manager_ref.release_quota.batch(*releases)
+            await self._quota_refs[level].release_quota(size)
 
     async def open_reader(self,
                           session_id: str,
                           data_key: str) -> StorageFileObject:
-        data_info = await self._storage_manager_ref.get_data_info(
+        data_info = await self._data_manager_ref.get_data_info(
             session_id, data_key)
         reader = await self._clients[data_info.level].open_reader(
             data_info.object_id)
@@ -426,18 +549,10 @@ class StorageHandlerActor(mo.Actor):
                           data_key: str,
                           size: int,
                           level: StorageLevel) -> WrappedStorageFileObject:
-        await self._storage_manager_ref.request_quota(size, level=level)
+        await self._request_quota_with_spill(level, size)
         writer = await self._clients[level].open_writer(size)
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
-                                        self._storage_manager_ref, self._clients[level])
-
-    async def object_info(self,
-                          session_id: str,
-                          data_key: str,):
-        data_info = await self._storage_manager_ref.get_data_info(
-            session_id, data_key)
-        return await self._clients[data_info.level].object_info(
-                    data_info.object_id)
+                                        self._data_manager_ref, self._clients[level])
 
     async def list(self, level: StorageLevel) -> List:
         return await self._clients[level].list()
@@ -448,15 +563,32 @@ class StorageHandlerActor(mo.Actor):
         if StorageLevel.REMOTE not in self._clients:
             raise NotImplementedError
         else:
-            logger.debug(f'Begin to fetch data {data_key} info from remote worker')
-            data_info = await self._storage_manager_ref.fetch_data_info(
+            data_info = await self._data_manager_ref.get_data_info(
                 session_id, data_key)
-            logger.debug(f'Finish fetching data {data_key} info from remote worker,'
-                         f'object_id is {data_info.object_id}')
             await self._clients[StorageLevel.REMOTE].fetch(data_info.object_id)
+
+    async def _request_quota_with_spill(self,
+                                        level: StorageLevel,
+                                        size: int):
+        if await self._quota_refs[level].request_quota(size):
+            logger.debug(f'Request {size} bytes of {level} finished')
+            return
+        else:
+            await self.spill(level, size)
+            await self._quota_refs[level].request_quota(size)
+            logger.debug(f'Spill is triggered, request {size} bytes of {level} finished')
+
+    async def spill(self, level: StorageLevel, size: int):
+        from .spill import spill
+
+        await spill(size, level, self._data_manager_ref,
+                    self, self._quota_refs[level])
 
 
 class StorageManagerActor(mo.Actor):
+    _data_manager: Union[mo.ActorRef, DataManagerActor]
+    _storage_handler: Union[mo.ActorRef, StorageHandlerActor]
+
     def __init__(self,
                  storage_configs: Dict,
                  transfer_block_size: int = None
@@ -465,10 +597,7 @@ class StorageManagerActor(mo.Actor):
         # params to init and teardown
         self._init_params = dict()
         self._teardown_params = dict()
-        # pinned_keys
-        self._pinned_keys = []
-        # stores the mapping from data key to storage info
-        self._data_manager = DataManager()
+
         self._supervisor_address = None
 
         # transfer config
@@ -483,7 +612,21 @@ class StorageManagerActor(mo.Actor):
             client = await self._setup_storage(backend, setup_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
-                    quotas[level] = StorageQuota(client.size)
+                    logger.debug(f'Create quota manager for {level},'
+                                 f' total size is {client.size}')
+                    quotas[level] = await mo.create_actor(
+                        StorageQuotaActor, level, client.size,
+                        uid=StorageQuotaActor.gen_uid(level),
+                        address=self.address,
+                    )
+
+        self._quotas: Dict[StorageLevel, Union[mo.ActorRef, StorageQuotaActor]] = quotas
+
+        # stores the mapping from data key to storage info
+        self._data_manager = await mo.create_actor(
+            DataManagerActor,
+            uid=DataManagerActor.default_uid(),
+            address=self.address)
 
         # create handler actors for every process
         strategy = IdleLabel(None, 'StorageHandler')
@@ -491,31 +634,33 @@ class StorageManagerActor(mo.Actor):
             try:
                 await mo.create_actor(StorageHandlerActor,
                                       self._init_params,
-                                      self.ref(),
+                                      self._data_manager,
+                                      quotas,
                                       uid=StorageHandlerActor.default_uid(),
                                       address=self.address,
                                       allocate_strategy=strategy)
             except NoIdleSlot:
                 break
 
-        self._quotas = quotas
-        self._storage_handler = await mo.actor_ref(address=self.address,
-                                                   uid=StorageHandlerActor.default_uid())
-
         # create actor for transfer
+        sender_strategy = IdleLabel('io', 'sender')
+        receiver_strategy = IdleLabel('io', 'receiver')
         while True:
             try:
-                sender_strategy = IdleLabel('io', 'sender')
                 await mo.create_actor(
                     SenderManagerActor, uid=SenderManagerActor.default_uid(),
                     address=self.address, allocate_strategy=sender_strategy)
 
-                receiver_strategy = IdleLabel('io', 'receiver')
-                await mo.create_actor(ReceiverManagerActor, address=self.address,
+                await mo.create_actor(ReceiverManagerActor,
+                                      quotas,
+                                      address=self.address,
                                       uid=ReceiverManagerActor.default_uid(),
                                       allocate_strategy=receiver_strategy)
             except NoIdleSlot:
                 break
+
+        self._storage_handler = await mo.actor_ref(address=self.address,
+                                                   uid=StorageHandlerActor.default_uid())
 
     async def __pre_destroy__(self):
         for backend, teardown_params in self._teardown_params.items():
@@ -543,40 +688,6 @@ class StorageManagerActor(mo.Actor):
     def get_client_params(self):
         return self._init_params
 
-    async def request_quota(self,
-                            size: int,
-                            level: StorageLevel):
-        if await self._quotas[level].request(size):
-            return
-        else:  # pragma: no cover
-            raise NotImplementedError('Spill is not supported now')
-
-    async def update_quota(self,
-                           size: int,
-                           level: StorageLevel):
-        await self._quotas[level].update(size)
-
-    async def _release_quota(self,
-                             size: int,
-                             level: StorageLevel
-                             ):
-        await self._quotas[level].release(size)
-
-    @extensible
-    async def release_quota(self,
-                            size: int,
-                            level: StorageLevel
-                            ):
-        await self._release_quota(size, level)
-
-    @release_quota.batch
-    async def batch_release_quota(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            await self._release_quota(*args, **kwargs)
-
-    def get_quota(self, level: StorageLevel):
-        return self._quotas[level].total_size, self._quotas[level].used_size
-
     async def fetch(self,
                     session_id: str,
                     data_key: str,
@@ -590,130 +701,45 @@ class StorageManagerActor(mo.Actor):
             raise ValueError('error must be raise or ignore')
 
         try:
-            info = self._data_manager.get_info(session_id, data_key)
-            self.pin(info.object_id)
+            await self._data_manager.get_data_info(session_id, data_key)
+            await self.pin(session_id, data_key)
         except DataNotExist:
             # Not exists in local, fetch from remote worker
             try:
-                yield self._storage_handler.fetch(session_id, data_key)
-            except NotImplementedError:
-                try:
-                    meta_api = await self._get_meta_api(session_id)
-                    if address is None:
-                        # we get meta using main key when fetch shuffle data
-                        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-                        address = (await meta_api.get_chunk_meta(
-                            main_key, fields=['bands']))['bands'][0][0]
-                    if address == self.address:
-                        return
-                    logger.debug(f'Begin to fetch data {data_key} from {address}')
+                meta_api = await self._get_meta_api(session_id)
+                if address is None:
+                    # we get meta using main key when fetch shuffle data
+                    main_key = data_key[0] if isinstance(data_key, tuple) else data_key
+                    address = (await meta_api.get_chunk_meta(
+                        main_key, fields=['bands']))['bands'][0][0]
+                if address == self.address:
+                    return
+                logger.debug(f'Begin to fetch data {data_key} from {address}')
+                if StorageLevel.REMOTE in self._quotas:
+                    remote_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
+                                                            address=address)
+                    data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
+                    await self._data_manager.put_data_info(session_id, data_key, data_info, None)
+                    yield self._storage_handler.fetch(session_id, data_key)
+                else:
                     sender_ref = await mo.actor_ref(
                         address=address, uid=SenderManagerActor.default_uid())
                     yield sender_ref.send_data(session_id, data_key,
                                                self.address, level)
-                    logger.debug(f'finish fetching data {data_key} from {address}')
-                    if not isinstance(data_key, tuple):
-                        # no need to update meta for shuffle data
-                        await meta_api.add_chunk_bands(
-                            data_key, [(address, band_name or 'numa-0')])
-                except KeyError:
-                    if error == 'raise':
-                        raise DataNotExist(f'Data {session_id, data_key} not exists')
+                logger.debug(f'finish fetching data {data_key} from {address}')
+                if not isinstance(data_key, tuple):
+                    # no need to update meta for shuffle data
+                    await meta_api.add_chunk_bands(
+                        data_key, [(address, band_name or 'numa-0')])
+            except KeyError:
+                if error == 'raise':
+                    raise DataNotExist(f'Data {session_id, data_key} not exists')
 
-    def _get_data_infos(self,
-                        session_id: str,
-                        data_key: str,
-                        error: str) -> Union[List[DataInfo], None]:
-        try:
-            return self._data_manager.get_infos(session_id, data_key)
-        except DataNotExist:
-            if error == 'raise':
-                raise
-            else:
-                return
+    async def list(self, level: StorageLevel) -> List:
+        return await self._data_manager.list(level)
 
-    @extensible
-    def get_data_infos(self,
-                       session_id: str,
-                       data_key: str,
-                       error: str = 'raise') -> List[DataInfo]:
-        return self._get_data_infos(session_id, data_key, error)
+    async def pin(self, session_id, data_key):
+        await self._data_manager.pin(session_id, data_key)
 
-    @get_data_infos.batch
-    def batch_get_data_infos(self, args_list, kwargs_list) -> List[List[DataInfo]]:
-        result = []
-        for args, kwargs in zip(args_list, kwargs_list):
-            result.append(self._get_data_infos(*args, **kwargs))
-        return result
-
-    @extensible
-    def get_data_info(self,
-                      session_id: str,
-                      data_key: str,
-                      error: str = 'raise') -> Union[DataInfo, None]:
-        return self._data_manager.get_info(session_id, data_key, error)
-
-    @get_data_info.batch
-    def batch_get_data_info(self, args_list, kwargs_list) -> List[DataInfo]:
-        return [self._data_manager.get_info(*args, **kwargs)
-                for args, kwargs in zip(args_list, kwargs_list)]
-
-    async def _put_data_info(self,
-                             session_id: str,
-                             data_key: str,
-                             data_info: DataInfo,
-                             object_info: ObjectInfo = None):
-        self._data_manager.put(session_id, data_key, data_info, object_info)
-        if object_info is None:
-            # for shuffle operands, data may not exists
-            return
-        if object_info.size is not None and data_info.memory_size != object_info.size:
-            await self.update_quota(object_info.size - data_info.memory_size, data_info.level)
-
-    @extensible
-    async def put_data_info(self,
-                            session_id: str,
-                            data_key: str,
-                            data_info: DataInfo,
-                            object_info: ObjectInfo = None):
-        await self._put_data_info(
-            session_id, data_key, data_info, object_info=object_info)
-
-    @put_data_info.batch
-    async def batch_put_data_info(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            await self._put_data_info(*args, **kwargs)
-
-    async def fetch_data_info(self,
-                              session_id: str,
-                              data_key: str) -> DataInfo:
-        main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-        meta_api = await self._get_meta_api(session_id)
-        address = (await meta_api.get_chunk_meta(
-            main_key, fields=['bands']))['bands'][0][0]
-        remote_manager_ref = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
-                                                address=address)
-        data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
-        await self.put_data_info(session_id, data_key, data_info, None)
-        raise mo.Return(data_info)
-
-    @extensible
-    def delete_data_info(self,
-                         session_id: str,
-                         data_key: str,
-                         level: StorageLevel):
-        self._data_manager.delete(session_id, data_key, level)
-
-    @delete_data_info.batch
-    def batch_delete_data_info(self, args_list, kwargs_list):
-        for args, kwargs in zip(args_list, kwargs_list):
-            self._data_manager.delete(*args, *kwargs)
-
-    def list(self, level: StorageLevel) -> List:
-        return self._data_manager.list(level)
-
-    def pin(self, object_id):
-        self._pinned_keys.append(object_id)
-
-    def unpin(self, object_id):
-        self._pinned_keys.remove(object_id)
+    async def unpin(self, session_id, data_key, error):
+        await self._data_manager.unpin(session_id, data_key, error)

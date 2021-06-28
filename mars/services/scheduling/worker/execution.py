@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -276,7 +276,8 @@ class SubtaskExecutionActor(mo.Actor):
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):
-        task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
+        with mo.debug.no_message_trace():
+            task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address)
         return task

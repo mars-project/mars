@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ class VineyardFileObject(BufferWrappedFileObject):
     def __init__(self, vineyard_client, object_id,
                  mode: str, size: Optional[int] = None):
         self._client = vineyard_client
-        self._object_id = object_id
         self._file = None
 
         self._reader = None
@@ -70,7 +69,7 @@ class VineyardFileObject(BufferWrappedFileObject):
         if size is None:
             size = -1  # unknown estimated size.
 
-        super().__init__(mode, size=size)
+        super().__init__(object_id, mode, size=size)
 
     def _read_init(self):
         self._reader = vineyard.data.pickle.PickledReader(self._client.get(self._object_id))

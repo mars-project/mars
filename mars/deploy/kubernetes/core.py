@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ class K8SClusterBackend(AbstractClusterBackend):
         logger.debug('Using pod selector %s', self._full_label_selector)
         return self._full_label_selector
 
-    def _extract_pod_name_ep(self, pod_data):
+    async def _extract_pod_name_ep(self, pod_data):
         pod_ip = pod_data["status"].get("podIP") or pod_data["status"].get("pod_ip")
         ports_def = pod_data['spec']['containers'][0]['ports'][0]
         svc_port = ports_def.get('containerPort') or ports_def.get('container_port')
@@ -116,7 +116,7 @@ class K8SClusterBackend(AbstractClusterBackend):
 
         result = dict()
         for el in query['items']:
-            name, pod_ep = self._extract_pod_name_ep(el)
+            name, pod_ep = await self._extract_pod_name_ep(el)
             if filter_ready and pod_ep is not None and not self._extract_pod_ready(el):
                 pod_ep = None
             result[name] = pod_ep
@@ -165,7 +165,7 @@ class K8SClusterBackend(AbstractClusterBackend):
                     break
 
                 obj_dict = event['object'].to_dict()
-                pod_name, endpoint = self._extract_pod_name_ep(obj_dict)
+                pod_name, endpoint = await self._extract_pod_name_ep(obj_dict)
                 pod_to_ep[pod_name] = endpoint \
                     if endpoint and self._extract_pod_ready(obj_dict) else None
                 yield await self._get_endpoints_by_service_type(service_type, update=False)

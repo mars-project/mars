@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ def register_filesystem(name: str, fs):
 
 
 def get_fs(path: path_type,
-           storage_options: Dict) -> FileSystem:
+           storage_options: Dict = None) -> FileSystem:
     if storage_options is None:
         storage_options = dict()
 

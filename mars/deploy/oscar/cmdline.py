@@ -1,4 +1,4 @@
-# Copyright 1999-2020 Alibaba Group Holding Ltd.
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -121,6 +121,9 @@ class OscarCommandRunner:
         environ = environ or os.environ
         args = parser.parse_args(argv)
 
+        if args.endpoint is not None and args.host is not None:  # pragma: no cover
+            raise ValueError('Cannot specify host and endpoint at the same time')
+
         if 'MARS_TASK_DETAIL' in environ:
             task_detail = json.loads(environ['MARS_TASK_DETAIL'])
             task_type, task_index = task_detail['task']['type'], task_detail['task']['index']
@@ -128,16 +131,16 @@ class OscarCommandRunner:
             args.host = args.host or task_detail['cluster'][task_type][task_index]
             args.supervisors = args.supervisors or ','.join(task_detail['cluster']['supervisor'])
 
+        default_host = os.environ.get(
+            'MARS_BIND_HOST', os.environ.get('MARS_CONTAINER_IP', '0.0.0.0'))
+        args.host = args.host or default_host
+
         args.ports = args.ports or os.environ.get('MARS_BIND_PORT')
         if args.ports is not None:
             self.ports = [int(p) for p in args.ports.split(',')]
 
-        if args.endpoint is not None and args.host is not None:  # pragma: no cover
-            raise ValueError('Cannot specify host and endpoint at the same time')
-        elif args.endpoint is None and len(self.ports or []) == 1:
-            default_host = os.environ.get(
-                'MARS_BIND_HOST', os.environ.get('MARS_CONTAINER_IP', '0.0.0.0'))
-            args.endpoint = (args.host or default_host) + f':{self.ports[0]}'
+        if args.endpoint is None and len(self.ports or []) == 1:
+            args.endpoint = f'{args.host}:{self.ports[0]}'
             self.ports = None
 
         load_modules = []
