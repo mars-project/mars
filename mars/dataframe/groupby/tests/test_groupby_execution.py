@@ -253,6 +253,11 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                           raw.groupby('c2').agg(agg))
 
+            agg = OrderedDict([('c1', 'min'), ('c3', 'min')])
+            r = mdf.groupby('c2').agg(agg, method=method)
+            pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
+                                          raw.groupby('c2').agg(agg))
+
             r = mdf.groupby('c2').agg({'c1': 'min'}, method=method)
             pd.testing.assert_frame_equal(self.executor.execute_dataframe(r, concat=True)[0],
                                           raw.groupby('c2').agg({'c1': 'min'}))
@@ -284,6 +289,12 @@ class Test(TestBase):
             pd.testing.assert_frame_equal(
                 self.executor.execute_dataframe(r, concat=True)[0].sort_values('c2', ignore_index=True),
                 raw.groupby('c2', as_index=False).agg('mean').sort_values('c2', ignore_index=True))
+            self.assertFalse(r.op.groupby_params['as_index'])
+
+            r = mdf.groupby(['c1', 'c2'], as_index=False).agg('mean', method=method)
+            pd.testing.assert_frame_equal(
+                self.executor.execute_dataframe(r, concat=True)[0].sort_values(['c1', 'c2'], ignore_index=True),
+                raw.groupby(['c1', 'c2'], as_index=False).agg('mean').sort_values(['c1', 'c2'], ignore_index=True))
             self.assertFalse(r.op.groupby_params['as_index'])
 
         # test as_index=False takes no effect
