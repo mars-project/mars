@@ -250,6 +250,10 @@ def test_dataframe_groupby_agg(setup):
         pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                       raw.groupby('c2').agg(agg).sort_index())
 
+        r = mdf.groupby('c2').agg({'c1': 'min', 'c3': 'min'}, method=method)
+        pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
+                                      raw.groupby('c2').agg({'c1': 'min', 'c3': 'min'}).sort_index())
+
         r = mdf.groupby('c2').agg({'c1': 'min'}, method=method)
         pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                       raw.groupby('c2').agg({'c1': 'min'}).sort_index())
@@ -275,12 +279,18 @@ def test_dataframe_groupby_agg(setup):
         pd.testing.assert_frame_equal(r.execute().fetch(),
                                       getattr(raw.groupby('c2'), agg_fun)())
 
+    # test as_index=False
     for method in ['tree', 'shuffle']:
-        # test as_index=False
         r = mdf.groupby('c2', as_index=False).agg('mean', method=method)
         pd.testing.assert_frame_equal(
             r.execute().fetch().sort_values('c2', ignore_index=True),
             raw.groupby('c2', as_index=False).agg('mean').sort_values('c2', ignore_index=True))
+        assert r.op.groupby_params['as_index'] is False
+
+        r = mdf.groupby(['c1', 'c2'], as_index=False).agg('mean', method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch().sort_values(['c1', 'c2'], ignore_index=True),
+            raw.groupby(['c1', 'c2'], as_index=False).agg('mean').sort_values(['c1', 'c2'], ignore_index=True))
         assert r.op.groupby_params['as_index'] is False
 
     # test as_index=False takes no effect
