@@ -98,19 +98,20 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _pre_funcs = ListField('pre_funcs')
     _agg_funcs = ListField('agg_funcs')
     _post_funcs = ListField('post_funcs')
+    _index_levels = Int32Field('index_levels')
     # for chunk
     _tileable_op_key = StringField('tileable_op_key')
 
     def __init__(self, raw_func=None, raw_func_kw=None, func=None, func_rename=None,
                  method=None, groupby_params=None, use_inf_as_na=None, combine_size=None,
                  pre_funcs=None, agg_funcs=None, post_funcs=None, stage=None,
-                 output_types=None, tileable_op_key=None, **kw):
+                 output_types=None, tileable_op_key=None, index_levels=None, **kw):
         super().__init__(_raw_func=raw_func, _raw_func_kw=raw_func_kw, _func=func,
                          _func_rename=func_rename, _method=method, _groupby_params=groupby_params,
                          _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
                          _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
                          _stage=stage, _output_types=output_types,
-                         _tileable_op_key=tileable_op_key, **kw)
+                         _tileable_op_key=tileable_op_key, _index_levels=index_levels, **kw)
 
     @property
     def raw_func(self):
@@ -157,6 +158,10 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return self._post_funcs
 
     @property
+    def index_levels(self) -> int:
+        return self._index_levels
+
+    @property
     def tileable_op_key(self):
         return self._tileable_op_key
 
@@ -188,14 +193,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
 
         as_index = self.groupby_params.get('as_index')
         # make sure if as_index=False takes effect
+        if isinstance(agg_df.index, pd.MultiIndex):
+            # if MultiIndex, as_index=False definitely takes no effect
+            self.groupby_params['as_index'] = as_index = True
+        elif agg_df.index.name is not None:
+            # if not MultiIndex and agg_df.index has a name
+            # means as_index=False takes no effect
+            self.groupby_params['as_index'] = as_index = True
+
+        # determine num of indices to group in intermediate steps
         if not as_index:
-            if isinstance(agg_df.index, pd.MultiIndex):
-                # if MultiIndex, as_index=False definitely takes no effect
-                self.groupby_params['as_index'] = True
-            elif agg_df.index.name is not None:
-                # if not MultiIndex and agg_df.index has a name
-                # means as_index=False takes no effect
-                self.groupby_params['as_index'] = True
+            as_index_agg_df = groupby.op.build_mock_groupby(as_index=True) \
+                .aggregate(self.raw_func, **self.raw_func_kw)
+            pd_index = as_index_agg_df.index
+        else:
+            pd_index = agg_df.index
+        self._index_levels = 1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
 
         inputs = self._get_inputs([input_df])
         return self.new_dataframe(inputs, shape=shape, dtypes=agg_df.dtypes,
@@ -209,6 +222,11 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         index_value.value.should_be_monotonic = True
 
         inputs = self._get_inputs([in_series])
+
+        # determine num of indices to group in intermediate steps
+        pd_index = agg_result.index
+        self._index_levels = 1 if not isinstance(pd_index, pd.MultiIndex) else len(pd_index.levels)
+
         # update value type
         if isinstance(agg_result, pd.DataFrame):
             return self.new_dataframe(inputs, shape=(np.nan, len(agg_result.columns)),
@@ -325,9 +343,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             in_df = build_concatenated_rows_frame(in_df)
         out_df = op.outputs[0]
 
-        index = out_df.index_value.to_pandas()
-        level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
-
         func_infos = cls._compile_funcs(op, in_df)
 
         # First, perform groupby and aggregation on each chunk.
@@ -345,7 +360,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             agg_op._groupby_params.pop('selection', None)
             # use levels instead of by for reducer
             agg_op._groupby_params.pop('by', None)
-            agg_op._groupby_params['level'] = level
+            agg_op._groupby_params['level'] = list(range(op.index_levels))
             agg_op._stage = OperandStage.agg
             agg_op._agg_funcs = func_infos.agg_funcs
             agg_op._post_funcs = func_infos.post_funcs
@@ -375,9 +390,6 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             in_df = build_concatenated_rows_frame(in_df)
         out_df = op.outputs[0]
 
-        index = out_df.index_value.to_pandas()
-        level = 0 if not isinstance(index, pd.MultiIndex) else list(range(len(index.levels)))
-
         func_infos = cls._compile_funcs(op, in_df)
         combine_size = op.combine_size
         chunks = cls._gen_map_chunks(op, in_df, out_df, func_infos)
@@ -401,7 +413,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 chunk_op._groupby_params.pop('selection', None)
                 # use levels instead of by for agg
                 chunk_op._groupby_params.pop('by', None)
-                chunk_op._groupby_params['level'] = level
+                chunk_op._groupby_params['level'] = list(range(op.index_levels))
                 chunk_op._agg_funcs = func_infos.agg_funcs
 
                 new_shape = (np.nan, out_df.shape[1]) if len(out_df.shape) == 2 else (np.nan,)
@@ -420,7 +432,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         chunk_op._groupby_params.pop('selection', None)
         # use levels instead of by for agg
         chunk_op._groupby_params.pop('by', None)
-        chunk_op._groupby_params['level'] = level
+        chunk_op._groupby_params['level'] = list(range(op.index_levels))
         chunk_op._agg_funcs = func_infos.agg_funcs
         chunk_op._post_funcs = func_infos.post_funcs
         kw = out_df.params.copy()
