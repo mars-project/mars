@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import aiohttp
 import functools
 import inspect
 import logging
@@ -21,7 +20,8 @@ import sys
 from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-from tornado import httpclient, web
+import aiohttp
+from tornado import web
 
 from ...utils import serialize_serializable, deserialize_serializable
 

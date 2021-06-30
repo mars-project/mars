@@ -14,9 +14,9 @@
 
 import os
 import sys
-from aiohttp import ClientResponseError
 
 import pytest
+from aiohttp import ClientResponseError
 
 import mars.oscar as mo
 from mars.services.web import WebActor, web_api, MarsServiceWebAPIHandler, \

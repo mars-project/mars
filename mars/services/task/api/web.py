@@ -144,7 +144,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def get_last_idle_time(self) -> Union[float, None]:
         path = f'{self._address}/api/session/{self._session_id}/task'
         params = dict(action='last_idle_time')
-        res = await self._request_url('GET', path)
+        res = await self._request_url('GET', path, params=params)
         content = await res.read()
         return float(content) if content else None
 
