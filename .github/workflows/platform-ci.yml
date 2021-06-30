@@ -78,14 +78,10 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              pip install ray
+              pip install ray[default]
             fi
           fi
           conda list -n test
-
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
 
       - name: Test with pytest
         env:
