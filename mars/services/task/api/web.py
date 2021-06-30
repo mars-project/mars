@@ -132,7 +132,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def get_task_result(self, task_id: str) -> TaskResult:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         res = await self._request_url('GET', path)
-        return deserialize_serializable(res.body)
+        return deserialize_serializable(await res.read())
 
     async def get_task_progress(self,
                                 task_id: str) -> float:

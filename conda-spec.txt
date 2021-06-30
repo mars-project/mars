@@ -1,4 +1,5 @@
 numpy
+aiohttp
 requests
 pyarrow
 cloudpickle
@@ -14,7 +15,5 @@ pandas
 numexpr
 scikit-learn
 psutil
-lz4
-gevent
 bokeh
 jinja2
