@@ -211,9 +211,9 @@ class RayTwoWayChannel(RayChannelBase):
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return deserialize(*result)
-        except (RuntimeError, ServerClosed) as _:  # pragma: no cover
+        except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():
-                raise
+                raise e
 
     async def __on_ray_recv__(self, message):
         if self._closed.is_set():  # pragma: no cover

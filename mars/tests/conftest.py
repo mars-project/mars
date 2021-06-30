@@ -1,4 +1,6 @@
+import os
 import pytest
+import subprocess
 from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
@@ -14,11 +16,16 @@ def ray_start_regular(request):
         yield
     else:
         register_ray_serializers()
-        yield ray.init(num_cpus=20)
-        ray.shutdown()
-        unregister_ray_serializers()
-        Router.set_instance(None)
-        RayServer.clear()
+        try:
+            yield ray.init(num_cpus=20)
+        finally:
+            ray.shutdown()
+            unregister_ray_serializers()
+            Router.set_instance(None)
+            RayServer.clear()
+            if 'COV_CORE_SOURCE' in os.environ:
+                # `cleanup_on_sigterm` will make ray 1.4 fail to stop ray worker process
+                subprocess.check_call(["ray", "stop", "--force"])
 
 
 @pytest.fixture
@@ -35,12 +42,17 @@ def ray_large_cluster():
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
     register_ray_serializers()
-    yield
-    unregister_ray_serializers()
-    Router.set_instance(None)
-    RayServer.clear()
-    ray.shutdown()
-    cluster.shutdown()
+    try:
+        yield
+    finally:
+        unregister_ray_serializers()
+        Router.set_instance(None)
+        RayServer.clear()
+        ray.shutdown()
+        cluster.shutdown()
+        if 'COV_CORE_SOURCE' in os.environ:
+            # `cleanup_on_sigterm` will make ray 1.4 fail to stop ray worker process
+            subprocess.check_call(["ray", "stop", "--force"])
 
 
 __all__ = ['ray_start_regular', 'ray_large_cluster']
