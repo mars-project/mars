@@ -26,7 +26,7 @@ from mars.utils import lazy_import
 ray = lazy_import('ray')
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ray_cluster():
     try:
         from ray.cluster_utils import Cluster

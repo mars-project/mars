@@ -50,7 +50,7 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ray_cluster():
     try:
         from ray.cluster_utils import Cluster
