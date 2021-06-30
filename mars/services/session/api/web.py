@@ -74,20 +74,23 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
 
     async def create_session(self, session_id: str) -> str:
         addr = f'{self._address}/api/session/{session_id}'
-        res = await self._request_url(addr, method='PUT', body=b'')
-        return res.body.decode()
+        res = await self._request_url(path=addr, method='PUT', data=b'')
+        return (await res.read()).decode()
 
     async def delete_session(self, session_id: str):
         addr = f'{self._address}/api/session/{session_id}'
-        await self._request_url(addr, method='DELETE')
+        await self._request_url(path=addr, method='DELETE')
 
     async def has_session(self, session_id: str):
-        addr = f'{self._address}/api/session/{session_id}?action=check_exist'
-        res = await self._request_url(addr)
-        return bool(int(res.body))
+        addr = f'{self._address}/api/session/{session_id}'
+        params = dict(action='check_exist')
+        res = await self._request_url('GET', addr, params=params)
+        return bool(int(await res.read()))
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         session_id = session_id or ''
-        addr = f'{self._address}/api/session/{session_id}?action=get_last_idle_time'
-        res = await self._request_url(addr)
-        return float(res.body) if res.body else None
+        addr = f'{self._address}/api/session/{session_id}'
+        params = dict(action='get_last_idle_time')
+        res = await self._request_url('GET', addr, params=params)
+        content = await res.read()
+        return float(content) if content else None

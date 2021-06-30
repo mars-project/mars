@@ -117,42 +117,43 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
             'extra_config': extra_config_ser,
         })
         res = await self._request_url(
-            path, method='POST',
+            path=path, method='POST',
             headers={'Content-Type': 'application/octet-stream'},
-            body=body
+            data=body
         )
-        return res.body.decode()
+        return (await res.read()).decode()
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
                f'?action=fetch_tileables'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        res = await self._request_url('GET', path)
+        return deserialize_serializable(await res.read())
 
     async def get_task_result(self, task_id: str) -> TaskResult:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        res = await self._request_url('GET', path)
+        return deserialize_serializable(await res.read())
 
     async def get_task_progress(self,
                                 task_id: str) -> float:
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
-               f'?action=progress'
-        res = await self._request_url(path)
-        return float(res.body)
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
+        params = dict(action='progress')
+        res = await self._request_url('GET', path, params=params)
+        return float(await res.read())
 
     async def get_last_idle_time(self) -> Union[float, None]:
-        path = f'{self._address}/api/session/{self._session_id}/task' \
-               f'?action=last_idle_time'
-        res = await self._request_url(path)
-        return float(res.body) if res.body else None
+        path = f'{self._address}/api/session/{self._session_id}/task'
+        params = dict(action='last_idle_time')
+        res = await self._request_url('GET', path, params=params)
+        content = await res.read()
+        return float(content) if content else None
 
     async def wait_task(self, task_id: str, timeout: float = None):
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
-               f'?action=wait&timeout={timeout or ""}'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
+        params = dict(action='wait', timeout=timeout or '')
+        res = await self._request_url('GET', path, params=params)
+        return deserialize_serializable(await res.read())
 
     async def cancel_task(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
-        await self._request_url(path, method='DELETE')
+        await self._request_url(path=path, method='DELETE')
