@@ -7,20 +7,11 @@ import pytest
 from .....utils import lazy_import
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
-from ...router import Router
 from ..communication import ChannelID, Channel, RayServer, RayClient
+from mars.tests.conftest import ray_start_regular  # noqa
 from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
-
-
-@pytest.fixture
-def ray_cluster():
-    ray.init(num_cpus=10, object_store_memory=100 * 1024 ** 2)
-    yield
-    ray.shutdown()
-    Router.set_instance(None)
-    RayServer.clear()
 
 
 class ServerActor:
@@ -78,7 +69,7 @@ class ServerCallActor(ServerActor):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_driver_to_actor_channel(ray_cluster):
+async def test_driver_to_actor_channel(ray_start_regular):
     dest_address = 'ray://test_cluster/0/0'
     server_actor = ray.remote(ServerActor).options(name=dest_address).remote(dest_address)
     await server_actor.start.remote()
@@ -95,7 +86,7 @@ async def test_driver_to_actor_channel(ray_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_actor_to_actor_channel(ray_cluster):
+async def test_actor_to_actor_channel(ray_start_regular):
     server1_address, server2_address = 'ray://test_cluster/0/0', 'ray://test_cluster/0/1'
     server_actor1 = ray.remote(ServerCallActor).options(name=server1_address).remote(server1_address)
     server_actor2 = ray.remote(ServerCallActor).options(name=server2_address).remote(server2_address)
