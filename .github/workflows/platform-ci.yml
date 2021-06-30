@@ -83,6 +83,10 @@ jobs:
           fi
           conda list -n test
 
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       - name: Test with pytest
         env:
           WITH_HADOOP: ${{ matrix.with-hadoop }}
