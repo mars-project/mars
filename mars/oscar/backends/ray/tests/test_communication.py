@@ -8,7 +8,7 @@ from .....utils import lazy_import
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
 from ..communication import ChannelID, Channel, RayServer, RayClient
-from mars.tests.conftest import ray_start_regular  # noqa
+from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 
 ray = lazy_import('ray')

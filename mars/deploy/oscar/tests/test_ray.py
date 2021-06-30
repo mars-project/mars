@@ -20,7 +20,7 @@ from mars.core.session import get_default_session, new_session
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.tests import test_local
 from mars.serialization.ray import register_ray_serializers
-from mars.tests.conftest import ray_large_cluster  # noqa
+from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
 

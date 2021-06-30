@@ -41,3 +41,6 @@ def ray_large_cluster():
     RayServer.clear()
     ray.shutdown()
     cluster.shutdown()
+
+
+__all__ = ['ray_start_regular', 'ray_large_cluster']

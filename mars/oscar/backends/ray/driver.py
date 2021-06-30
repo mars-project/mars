@@ -37,7 +37,7 @@ class RayActorDriver(BaseActorDriver):
                                       bundles=bundles,
                                       strategy="SPREAD")
         create_pg_timeout = 10
-        done, pending = ray.wait([pg.ready()], timeout=create_pg_timeout)
+        done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:
             raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
         cluster_info = {

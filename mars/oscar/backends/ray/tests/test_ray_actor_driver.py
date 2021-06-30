@@ -29,7 +29,7 @@ from ..utils import (
     process_address_to_placement,
 )
 import mars.oscar as mo
-from mars.tests.conftest import ray_large_cluster  # noqa
+from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
