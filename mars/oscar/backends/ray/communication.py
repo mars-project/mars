@@ -207,7 +207,10 @@ class RayTwoWayChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot write message')
         try:
-            return deserialize(*(await self._in_queue.get()))
+            result = await self._in_queue.get()
+            if isinstance(result, RayChannelException):
+                raise result.exc_value.with_traceback(result.exc_traceback)
+            return deserialize(*result)
         except (RuntimeError, ServerClosed) as _:  # pragma: no cover
             if not self._closed.is_set():
                 raise
