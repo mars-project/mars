@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import aiohttp
 import functools
 import inspect
 import logging
@@ -178,21 +179,21 @@ class MarsWebAPIClientMixin:
         try:
             return self._client_obj
         except AttributeError:
-            self._client_obj = httpclient.AsyncHTTPClient()
+            self._client_obj = aiohttp.ClientSession()
             return self._client_obj
 
-    async def _request_url(self, path, **kwargs):
-        res = await self._client.fetch(path, raise_error=False, **kwargs)
-        if res.code < 400:
+    async def _request_url(self, method, path, **kwargs):
+        res = await self._client.request(method, path, **kwargs)
+        if res.status < 400:
             return res
         else:
             exc, tb = None, None
             try:
-                exc, tb = deserialize_serializable(res.body)
+                exc, tb = deserialize_serializable(await res.read())
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 pass
 
             if exc is None:
-                res.rethrow()
+                res.raise_for_status()
             else:
                 raise exc.with_traceback(tb)

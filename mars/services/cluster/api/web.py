@@ -96,10 +96,10 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
 
         path = f'{self._address}/api/cluster/nodes'
         res = await self._request_url(
-            path, method='POST', body=args_str,
+            path=path, method='POST', data=args_str,
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
         )
-        return json.loads(res.body)
+        return json.loads(await res.read())
 
     async def get_supervisors(self, watch=False) -> List[str]:
         res = await self._get_nodes_info(role=NodeRole.SUPERVISOR, watch=watch)
@@ -117,13 +117,14 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
 
     async def get_all_bands(self, role: NodeRole = None,
                             watch: bool = False) -> Dict[BandType, int]:
-        path = f'{self._address}/api/cluster/bands?watch={int(watch)}'
+        params = dict(watch=int(watch))
+        path = f'{self._address}/api/cluster/bands'
         if role is not None:  # pragma: no cover
-            path += f'&role={role.value}'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+            params['role'] = role.value
+        res = await self._request_url('GET', path, params=params)
+        return deserialize_serializable(await res.read())
 
     async def get_mars_versions(self) -> List[str]:
         path = f'{self._address}/api/cluster/versions'
-        res = await self._request_url(path)
-        return list(json.loads(res.body))
+        res = await self._request_url('GET', path)
+        return list(json.loads(await res.read()))

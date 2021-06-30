@@ -93,18 +93,18 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
             params['conditions'] = conditions
         body = serialize_serializable(params)
         res = await self._request_url(
-            path, method='POST',
+            path=path, method='POST',
             headers={'Content-Type': 'application/octet-stream'},
-            body=body)
-        return deserialize_serializable(res.body)
+            data=body)
+        return deserialize_serializable(await res.read())
 
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
-        path = f'{self._address}/api/session/{self._session_id}/storage/{data_key}' \
-               f'?level={level.name.lower()}'
+        params = dict(level=level.name.lower())
+        path = f'{self._address}/api/session/{self._session_id}/storage/{data_key}'
         res = await self._request_url(
-            path, method='PUT',
+            path=path, method='PUT', params=params,
             headers={'Content-Type': 'application/octet-stream'},
-            body=serialize_serializable(obj))
-        return deserialize_serializable(res.body)
+            data=serialize_serializable(obj))
+        return deserialize_serializable(await res.read())
