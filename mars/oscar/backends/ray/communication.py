@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 
 from ....utils import implements, classproperty
 from ....utils import lazy_import
-from ...debug import get_ray_object
+from ...debug import debug_async_timeout
 from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
@@ -116,7 +116,8 @@ class RayClientChannel(RayChannelBase):
         try:
             # Wait on ray object ref
             message, object_ref = await self._in_queue.get()
-            result = await get_ray_object(object_ref, 'Client sent message is %s.', message)
+            with debug_async_timeout('ray_object_retrieval_timeout', 'Client sent message is %s', message):
+                result = await object_ref
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return deserialize(*result)
@@ -200,7 +201,8 @@ class RayTwoWayChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         object_ref = self._peer_actor.__on_ray_recv__.remote(self.channel_id, serialize(message))
-        result = await get_ray_object(object_ref, 'Server sent message is %s.', message)
+        with debug_async_timeout('ray_object_retrieval_timeout', 'Server sent message is %s', message):
+            result = await object_ref
         if isinstance(result, RayChannelException):  # pragma: no cover
             # Peer create channel may fail
             raise result.exc_value.with_traceback(result.exc_traceback)

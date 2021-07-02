@@ -30,6 +30,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 @dataclass
 class DebugOptions:
     actor_call_timeout: int = 10
+    ray_object_retrieval_timeout: int = 10
     log_unhandled_errors: bool = True
     log_cycle_send: bool = True
 
@@ -59,20 +60,20 @@ def reload_debug_opts_from_env():
     set_debug_options(DebugOptions(**config_json))
 
 
-async def log_actor_timeout(timeout, msg, *args, **kwargs):
+async def _log_timeout(timeout, msg, *args, **kwargs):
     await asyncio.sleep(timeout)
     logger.warning(msg, *args, **kwargs)
 
 
 @contextmanager
-def debug_actor_timeout(option_name: str, msg, *args, **kwargs):
+def debug_async_timeout(option_name: str, msg, *args, **kwargs):
     if _debug_opts is None:
         yield
     else:
         timeout_val = getattr(_debug_opts, option_name, -1)
         timeout_task = None
         if timeout_val and timeout_val > 0:
-            timeout_task = asyncio.create_task(log_actor_timeout(
+            timeout_task = asyncio.create_task(_log_timeout(
                 timeout_val, msg, *args, **kwargs
             ))
 
@@ -147,26 +148,6 @@ def pop_message_trace():
 
 def set_message_trace(message_trace):
     _message_trace_var.set(message_trace)
-
-
-async def get_ray_object(object_id, timeout_msg=None, *args, **kwargs):
-    if _debug_opts is None:
-        return await object_id
-    task = asyncio.create_task(_get_ray_object(object_id))
-    timeout, timeout_check_interval = 0, 10
-    while True:
-        done, _ = await asyncio.wait([task], timeout=timeout_check_interval)
-        timeout += timeout_check_interval
-        if done:
-            return await done.pop()
-        else:
-            msg_tpl = 'Get ray object %s timeout for %s seconds.'
-            msg_tpl = msg_tpl + '. ' + timeout_msg if timeout_msg else msg_tpl
-            logger.warning(msg_tpl, object_id, timeout, *args, **kwargs)
-
-
-async def _get_ray_object(object_id):
-    return await object_id
 
 
 reload_debug_opts_from_env()

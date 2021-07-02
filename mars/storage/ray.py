@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
-from ..oscar.debug import get_ray_object
+from ..oscar.debug import debug_async_timeout
 from ..utils import lazy_import, implements, register_ray_serializer
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
@@ -114,7 +114,8 @@ class RayStorage(StorageBackend):
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
             raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
-        return await get_ray_object(object_id, 'Storage get object timeout.')
+        with debug_async_timeout('ray_object_retrieval_timeout', 'Storage get object timeout'):
+            return await object_id
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
