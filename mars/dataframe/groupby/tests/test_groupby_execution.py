@@ -60,28 +60,32 @@ class Test(TestBase):
         data_dict = {'a': rs.randint(0, 10, size=(data_size,)),
                      'b': rs.randint(0, 10, size=(data_size,)),
                      'c': rs.choice(list('abcd'), size=(data_size,))}
+
+        # test groupby with DataFrames and RangeIndex
         df1 = pd.DataFrame(data_dict)
         mdf = md.DataFrame(df1, chunk_size=13)
         grouped = mdf.groupby('b')
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df1.groupby('b'))
 
+        # test groupby with string index with duplications
         df2 = pd.DataFrame(data_dict, index=['i' + str(i) for i in range(data_size)])
         mdf = md.DataFrame(df2, chunk_size=13)
         grouped = mdf.groupby('b')
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df2.groupby('b'))
 
-        # test groupby series
+        # test groupby with DataFrames by series
         grouped = mdf.groupby(mdf['b'])
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df2.groupby(df2['b']))
 
-        # test groupby multiple series
+        # test groupby with DataFrames by multiple series
         grouped = mdf.groupby(by=[mdf['b'], mdf['c']])
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df2.groupby(by=[df2['b'], df2['c']]))
 
+        # test groupby with DataFrames with MultiIndex
         df3 = pd.DataFrame(data_dict,
                            index=pd.MultiIndex.from_tuples(
                                [(i % 3, 'i' + str(i)) for i in range(data_size)]))
@@ -90,7 +94,7 @@ class Test(TestBase):
         assert_groupby_equal(self.executor.execute_dataframe(grouped, concat=True)[0],
                              df3.groupby(level=0))
 
-        # test groupby with integer columns
+        # test groupby with DataFrames by integer columns
         df4 = pd.DataFrame(list(data_dict.values())).T
         mdf = md.DataFrame(df4, chunk_size=13)
         grouped = mdf.groupby(0)

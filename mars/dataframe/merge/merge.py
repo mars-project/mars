@@ -82,7 +82,7 @@ class DataFrameMergeAlign(DataFrameMapReduceOperand, DataFrameOperandMixin):
         for index_idx, index_filter in enumerate(filters):
             group_key = ','.join([str(index_idx), str(chunk.index[1])])
             if index_filter is not None and index_filter is not list():
-                ctx[(chunk.key, group_key)] = df.loc[index_filter]
+                ctx[(chunk.key, group_key)] = df.iloc[index_filter]
             else:
                 ctx[(chunk.key, group_key)] = None
 
