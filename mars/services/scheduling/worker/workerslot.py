@@ -92,24 +92,27 @@ class BandSlotManagerActor(mo.Actor):
         self._slot_to_session_stid[slot_id] = session_stid
         raise mo.Return(slot_id)
 
-    def release_free_slot(self, slot_id):
+    def release_free_slot(self, slot_id: int, pid: Optional[int] = None):
+        if pid is not None:
+            self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
+            # collect initial stats for the process
+            proc.cpu_percent(interval=None)
+
         if slot_id in self._slot_kill_events:
             event = self._slot_kill_events.pop(slot_id)
             event.set()
+
         self._slot_to_session_stid.pop(slot_id, None)
-        self._free_slots.add(slot_id)
-        self._semaphore.release()
+
+        if slot_id not in self._free_slots:
+            self._free_slots.add(slot_id)
+            self._semaphore.release()
 
     async def kill_slot(self, slot_id):
         assert slot_id not in self._slot_kill_events
         event = self._slot_kill_events[slot_id] = asyncio.Event()
         yield mo.kill_actor(self._slot_control_refs[slot_id])
         yield event.wait()
-
-    def set_slot_pid(self, slot_id: int, pid: int):
-        self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
-        # collect initial stats for the process
-        proc.cpu_percent(interval=None)
 
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
@@ -152,5 +155,4 @@ class BandSlotControlActor(mo.Actor):
         self._report_task = None
 
     async def __post_create__(self):
-        await self._manager_ref.set_slot_pid.tell(self._slot_id, os.getpid())
-        await self._manager_ref.release_free_slot.tell(self._slot_id)
+        await self._manager_ref.release_free_slot.tell(self._slot_id, os.getpid())

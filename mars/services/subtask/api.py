@@ -25,7 +25,7 @@ class SubtaskAPI:
     async def create(cls, address: str) -> "SubtaskAPI":
         return SubtaskAPI(address)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_runner_ref(self, band_name: str, slot_id: int):
         from .worker.runner import SubtaskRunnerActor
         return await mo.actor_ref(
