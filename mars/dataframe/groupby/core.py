@@ -300,7 +300,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             filters = hash_dataframe_on(df, on, op.shuffle_size, level=op.level)
 
         def _take_index(src, f):
-            result = src.loc[f]
+            result = src.iloc[f]
             if src.index.names:
                 result.index.names = src.index.names
             return result
