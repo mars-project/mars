@@ -54,7 +54,7 @@ class GlobalSlotManagerActor(mo.Actor):
 
     async def apply_subtask_slots(self, band: Tuple, session_id: str,
                                   subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:
-        if not self._band_total_slots:
+        if not self._band_total_slots or band not in self._band_total_slots:
             self._band_total_slots = await self._cluster_api.get_all_bands()
 
         idx = 0
