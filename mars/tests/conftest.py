@@ -24,7 +24,7 @@ def ray_start_regular(request):
             Router.set_instance(None)
             RayServer.clear()
             if 'COV_CORE_SOURCE' in os.environ:
-                # `cleanup_on_sigterm` will make ray 1.4 fail to stop ray worker process
+                # Remove this when https://github.com/ray-project/ray/issues/16802 got fixed
                 subprocess.check_call(["ray", "stop", "--force"])
 
 
@@ -51,7 +51,7 @@ def ray_large_cluster():
         ray.shutdown()
         cluster.shutdown()
         if 'COV_CORE_SOURCE' in os.environ:
-            # `cleanup_on_sigterm` will make ray 1.4 fail to stop ray worker process
+            # Remove this when https://github.com/ray-project/ray/issues/16802 got fixed
             subprocess.check_call(["ray", "stop", "--force"])
 
 
