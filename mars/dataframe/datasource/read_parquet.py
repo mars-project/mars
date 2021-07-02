@@ -59,7 +59,7 @@ def check_engine(engine):
             raise RuntimeError('Please install either pyarrow or fastparquet.')
     elif engine == 'pyarrow':
         if pa is None:  # pragma: no cover
-            raise RuntimeError('Please install pyarrow fisrt.')
+            raise RuntimeError('Please install pyarrow first.')
         return engine
     elif engine == 'fastparquet':
         if fastparquet is None:  # pragma: no cover

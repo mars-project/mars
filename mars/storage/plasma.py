@@ -195,8 +195,8 @@ class PlasmaStorage(StorageBackend):
 
     def _check_plasma_limit(self, size: int):
         used_size = psutil.disk_usage(self._plasma_directory).used
-        totol = psutil.disk_usage(self._plasma_directory).total
-        if used_size + size > totol * 0.95:  # pragma: no cover
+        total = psutil.disk_usage(self._plasma_directory).total
+        if used_size + size > total * 0.95:  # pragma: no cover
             raise plasma.PlasmaStoreFull
 
     def _generate_object_id(self):

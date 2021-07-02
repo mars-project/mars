@@ -595,7 +595,7 @@ def build_concatenated_rows_frame(df):
     from ..core import OutputType
     from .merge.concat import DataFrameConcat
 
-    # When the df isn't splitted along the column axis, return the df directly.
+    # When the df isn't split along the column axis, return the df directly.
     if df.chunk_shape[1] == 1:
         return df
 

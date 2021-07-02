@@ -142,7 +142,7 @@ class MinMaxScaler(TransformerMixin, BaseEstimator):
         __init__ parameters are not touched.
         """
 
-        # Checking one attribute is enough, becase they are all set together
+        # Checking one attribute is enough, because they are all set together
         # in partial_fit
         if hasattr(self, 'scale_'):
             del self.scale_

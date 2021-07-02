@@ -590,7 +590,7 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
         else:
             self._ndarray[key] = value
 
-    # Overrride parent because we have different return types.
+    # Override parent because we have different return types.
     @classmethod
     def _create_arithmetic_method(cls, op):
         # Note: this handles both arithmetic and comparison methods.

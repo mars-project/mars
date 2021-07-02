@@ -295,7 +295,7 @@ def series_rename(series, index=None, *, axis='index', copy=True, inplace=False,
     Parameters
     ----------
     axis : {0 or "index"}
-        Unused. Accepted for compatability with DataFrame method only.
+        Unused. Accepted for compatibility with DataFrame method only.
     index : scalar, hashable sequence, dict-like or function, optional
         Functions or dict-like are transformations to apply to
         the index.

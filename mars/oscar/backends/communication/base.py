@@ -150,7 +150,7 @@ class Server(ABC):
         Returns
         -------
         server: Server
-            a server that wating for connections from clients.
+            a server that waiting for connections from clients.
         """
 
     @abstractmethod

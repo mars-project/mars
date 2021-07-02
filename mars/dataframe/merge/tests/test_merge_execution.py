@@ -195,7 +195,7 @@ def test_join_on(setup):
     # The value of column `a` is the same of `a1_x`, just because `1` occurs twice in index of `df3`.
     # I haven't invistagated why pandas has such behaviour...
     #
-    # We cannot yeild the same result with pandas, because, the `df3` is chunked, then some of the
+    # We cannot yield the same result with pandas, because, the `df3` is chunked, then some of the
     # result chunk has 6 columns, others may have 7 columns, when concatenated into one DataFrame
     # some cells of column `a` will have value `NaN`, which is different from the result of pandas.
     #

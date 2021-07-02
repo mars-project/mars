@@ -31,6 +31,7 @@ from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, \
     get_server_type, gen_local_address
+from .communication.errors import ChannelClosed
 from .config import ActorPoolConfig
 from .core import result_message_type, ActorCaller
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
@@ -300,7 +301,7 @@ class AbstractActorPool(ABC):
                 processor.result = await future
         try:
             await channel.send(processor.result)
-        except ConnectionResetError:
+        except (ChannelClosed, ConnectionResetError):
             if not self._stopped.is_set():
                 raise
 
