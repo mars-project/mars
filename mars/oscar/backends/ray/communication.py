@@ -200,7 +200,10 @@ class RayTwoWayChannel(RayChannelBase):
         if self._closed.is_set():  # pragma: no cover
             raise ChannelClosed('Channel already closed, cannot send message')
         object_ref = self._peer_actor.__on_ray_recv__.remote(self.channel_id, serialize(message))
-        await get_ray_object(object_ref, 'Server sent message is %s.', message)
+        result = await get_ray_object(object_ref, 'Server sent message is %s.', message)
+        if isinstance(result, RayChannelException):  # pragma: no cover
+            # Peer create channel may fail
+            raise result.exc_value.with_traceback(result.exc_traceback)
 
     @implements(Channel.recv)
     async def recv(self):
@@ -208,7 +211,7 @@ class RayTwoWayChannel(RayChannelBase):
             raise ChannelClosed('Channel already closed, cannot write message')
         try:
             result = await self._in_queue.get()
-            if isinstance(result, RayChannelException):
+            if isinstance(result, RayChannelException):  # pragma: no cover
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return deserialize(*result)
         except (RuntimeError, ServerClosed) as e:  # pragma: no cover
@@ -227,6 +230,7 @@ class RayServer(Server):
 
     scheme = 'ray'
     _server_instance = None
+    _ray_actor_started = False
 
     def __init__(self, address, channel_handler: Callable[[Channel], Coroutine] = None):
         super().__init__(address, channel_handler)
@@ -244,9 +248,20 @@ class RayServer(Server):
     def channel_type(self) -> ChannelType:
         return ChannelType.ray
 
+    @classmethod
+    def set_ray_actor_started(cls):
+        cls._ray_actor_started = True
+
+    @classmethod
+    def is_ray_actor_started(cls):
+        return cls._ray_actor_started
+
     @staticmethod
     @implements(Server.create)
     async def create(config: Dict) -> "RayServer":
+        if not RayServer.is_ray_actor_started():
+            logger.warning('Current process is not a ray actor, the ray server '
+                           'will not receive messages from clients.')
         assert RayServer._server_instance is None
         config = config.copy()
         address = config.pop('address')
@@ -269,6 +284,7 @@ class RayServer(Server):
     @classmethod
     def clear(cls):
         cls._server_instance = None
+        cls._ray_actor_started = False
 
     @implements(Server.start)
     async def start(self):
@@ -352,16 +368,23 @@ class RayClient(Client):
         if urlparse(dest_address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Destination address should start with "ray://" '
                              f'for RayClient, got {dest_address}')
-        server = RayServer.get_instance()
-        if server is None and local_address:  # pragma: no cover
-            raise RuntimeError(f'RayServer needs to be created first before RayClient '
-                               f'local_address {local_address}, dest_address {dest_address}')
         if local_address:
-            # Current process ia a ray actor, is connecting to another ray actor.
-            client_channel = RayTwoWayChannel(local_address, dest_address)
-            # The RayServer will push message to this channel's queue after it received
-            # the message from the `dest_address` actor.
-            server.register_channel(client_channel.channel_id, client_channel)
+            if not RayServer.is_ray_actor_started():  # pragma: no cover
+                logger.info(f'Current process needs to be a ray actor for using {local_address} '
+                            f'as address to receive messages from other clients. '
+                            f'Use RayClientChannel instead to receive messages from {dest_address}.')
+                local_address = None  # make peer use RayClientChannel too.
+                client_channel = RayClientChannel(dest_address)
+            else:
+                server = RayServer.get_instance()
+                if server is None:
+                    raise RuntimeError(f'RayServer needs to be created first before RayClient '
+                                       f'local_address {local_address}, dest_address {dest_address}')
+                # Current process ia a ray actor, is connecting to another ray actor.
+                client_channel = RayTwoWayChannel(local_address, dest_address)
+                # The RayServer will push message to this channel's queue after it received
+                # the message from the `dest_address` actor.
+                server.register_channel(client_channel.channel_id, client_channel)
         else:
             # Current process ia a ray driver
             client_channel = RayClientChannel(dest_address)

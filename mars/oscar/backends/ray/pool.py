@@ -84,7 +84,7 @@ class RayMainActorPool(MainActorPoolBase):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
             # must shutdown gracefully, or coverage info lost
             process.exit_actor.remote()
-            wait_time, waited_time = 30, 0
+            wait_time, waited_time = 10, 0
             while await self.is_sub_pool_alive(process):  # pragma: no cover
                 if waited_time > wait_time:
                     logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
@@ -150,6 +150,7 @@ class RayPoolBase(ABC):
         self._actor_pool = None
         self._ray_server = None
         register_ray_serializers()
+        RayServer.set_ray_actor_started()
 
     @abstractmethod
     async def start(self, *args, **kwargs):

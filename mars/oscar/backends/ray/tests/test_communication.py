@@ -31,6 +31,7 @@ class ServerActor:
         self.server = None
 
     async def start(self):
+        RayServer.set_ray_actor_started()
         self.server = await RayServer.create(
             {'address': self.address, 'handle_channel': self.on_new_channel})
 
