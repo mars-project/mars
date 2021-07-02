@@ -66,7 +66,7 @@ async def test_api(actor_pool):
 @pytest.mark.asyncio
 async def test_web_api(actor_pool):
     pool_addr = actor_pool.external_address
-    api = await MockClusterAPI.create(pool_addr, upload_interval=0.1)
+    await MockClusterAPI.create(pool_addr, upload_interval=0.1)
 
     web_config = {
         'web': {

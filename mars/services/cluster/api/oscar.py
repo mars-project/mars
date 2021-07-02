@@ -14,7 +14,7 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Union, Type, TypeVar
+from typing import List, Dict, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -143,6 +143,12 @@ class ClusterAPI(AbstractClusterAPI):
         Wait till all expected supervisors are ready
         """
         await self._locator_ref.wait_all_supervisors_ready()
+
+    async def set_band_slot_infos(self, band, slot_infos):
+        await self._uploader_ref.set_band_slot_infos.tell(band, slot_infos)
+
+    async def set_band_quota_info(self, band, quota_info):
+        await self._uploader_ref.set_band_quota_info.tell(band, quota_info)
 
 
 class MockClusterAPI(ClusterAPI):

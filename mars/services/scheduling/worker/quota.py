@@ -42,12 +42,14 @@ class QuotaActor(mo.Actor):
     def gen_uid(cls, band):
         return f'{band}_quota'
 
-    def __init__(self, band_name, quota_size, manager_ref=None):
+    def __init__(self, band, quota_size, manager_ref=None):
         super().__init__()
         self._requests = OrderedDict()
 
-        self._manager_ref = manager_ref
-        self._band_name = band_name
+        self._cluster_api = None
+
+        self._band = band
+        self._band_name = band[1]
 
         self._quota_size = quota_size
         self._allocations = dict()
@@ -55,6 +57,13 @@ class QuotaActor(mo.Actor):
 
         self._hold_sizes = dict()
         self._total_hold = 0
+
+    async def __post_create__(self):
+        from ...cluster.api import ClusterAPI
+        try:
+            self._cluster_api = await ClusterAPI.create(self.address)
+        except mo.ActorNotExist:
+            pass
 
     def _has_space(self, delta):
         return self._total_allocated + delta <= self._quota_size
@@ -156,14 +165,14 @@ class QuotaActor(mo.Actor):
             self._process_requests()
             self._log_allocate('Quota keys %s released on %s.', keys, self.uid)
 
-            if self._manager_ref is not None:
+            if self._cluster_api is not None:
                 quota_info = QuotaInfo(
                     quota_size=self._quota_size,
                     allocated_size=self._total_allocated,
                     hold_size=self._total_hold
                 )
-                asyncio.create_task(self._manager_ref.set_band_quota_info(
-                    self._band_name, quota_info))
+                asyncio.create_task(self._cluster_api.set_band_quota_info(
+                    self._band, quota_info))
 
     def dump_data(self):
         return QuotaDumpType(self._allocations, self._requests, self._hold_sizes)
@@ -208,13 +217,13 @@ class QuotaActor(mo.Actor):
         if handle_shrink and total_diff < 0:
             self._process_requests()
 
-        if self._manager_ref is not None:
+        if self._cluster_api is not None:
             quota_info = QuotaInfo(
                 quota_size=self._quota_size,
                 allocated_size=self._total_allocated,
                 hold_size=self._total_hold
             )
-            asyncio.create_task(self._manager_ref.set_band_quota_info(self._band_name, quota_info))
+            asyncio.create_task(self._cluster_api.set_band_quota_info(self._band_name, quota_info))
 
         self._log_allocate('Quota keys %r applied on %s. Total old Size: %s, Total diff: %s,',
                            keys, self.uid, total_old_size, total_diff)
@@ -240,13 +249,14 @@ class MemQuotaActor(QuotaActor):
     """
     Actor handling worker memory quota
     """
-    def __init__(self, band_name, quota_size, manager_ref=None, hard_limit=None, refresh_time=None):
-        super().__init__(band_name, quota_size, manager_ref=manager_ref)
+    def __init__(self, band_name, quota_size, hard_limit=None, refresh_time=None):
+        super().__init__(band_name, quota_size)
         self._hard_limit = hard_limit
         self._last_memory_available = 0
         self._refresh_time = refresh_time or 1
 
     async def __post_create__(self):
+        await super().__post_create__()
         self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
 
     def update_mem_stats(self):
@@ -308,13 +318,6 @@ class WorkerQuotaManagerActor(mo.Actor):
         for band in band_to_slots.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
             await mo.create_actor(
-                MemQuotaActor, band[1], **band_config,
-                manager_ref=self.ref(),
+                MemQuotaActor, band, **band_config,
                 uid=MemQuotaActor.gen_uid(band[1]),
                 address=self.address)
-
-    def set_band_quota_info(self, band_name: str, quota_info: QuotaInfo):
-        self._band_quota_infos[band_name] = quota_info
-
-    def get_band_quota_infos(self) -> Dict[str, QuotaInfo]:
-        return self._band_quota_infos

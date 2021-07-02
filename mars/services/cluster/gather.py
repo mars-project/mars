@@ -26,7 +26,6 @@ try:
 except ImportError:  # pragma: no cover
     scipy = None
 
-from ... import oscar as mo
 from ... import resource as mars_resource
 from ...config import options
 from ...utils import git_info, lazy_import
@@ -183,22 +182,22 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
         res['disk']['partitions'] = part_dict
 
     band_slot_infos = band_slot_infos or dict()
-    res['slots'] = {
-        band_name: [{
+    res['slot'] = {
+        band[1]: [{
             'slot_id': slot_info.slot_id,
             'session_id': slot_info.session_id,
             'subtask_id': slot_info.subtask_id,
             'processor_usage': slot_info.processor_usage,
         } for slot_info in slot_infos]
-        for band_name, slot_infos in band_slot_infos.items()
+        for band, slot_infos in band_slot_infos.items()
     }
 
     band_quota_infos = band_quota_infos or dict()
-    res['quotas'] = {
-        band_name: {
+    res['quota'] = {
+        band[1]: {
             'quota_size': quota_info.quota_size,
             'allocated_size': quota_info.allocated_size,
             'hold_size': quota_info.hold_size,
-        } for band_name, quota_info in band_quota_infos.items()
+        } for band, quota_info in band_quota_infos.items()
     }
     return res

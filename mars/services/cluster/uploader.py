@@ -113,5 +113,5 @@ class NodeInfoUploaderActor(mo.Actor):
     def set_band_slot_infos(self, band, slot_infos):
         self._band_slot_infos[band] = slot_infos
 
-    def set_band_quota_infos(self, band, quota_info):
+    def set_band_quota_info(self, band, quota_info):
         self._band_quota_infos[band] = quota_info

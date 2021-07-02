@@ -16,7 +16,7 @@ import asyncio
 import os
 import time
 from collections import namedtuple
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import psutil
 
@@ -35,8 +35,6 @@ class WorkerSlotManagerActor(mo.Actor):
         self._cluster_api = None
         self._global_slots_ref = None
 
-        self._band_slot_infos = dict()
-
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
         from ..supervisor import GlobalSlotManagerActor
@@ -48,15 +46,9 @@ class WorkerSlotManagerActor(mo.Actor):
         band_to_slots = await self._cluster_api.get_bands()
         for band, n_slot in band_to_slots.items():
             await mo.create_actor(
-                BandSlotManagerActor, band, n_slot, self._global_slots_ref, self.ref(),
+                BandSlotManagerActor, band, n_slot, self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address)
-
-    def set_band_slot_infos(self, band_name: str, usage: List[WorkerSlotInfo]):
-        self._band_slot_infos[band_name] = usage
-
-    def get_band_slot_infos(self) -> Dict[str, List[WorkerSlotInfo]]:
-        return self._band_slot_infos
 
 
 class BandSlotManagerActor(mo.Actor):
@@ -65,13 +57,13 @@ class BandSlotManagerActor(mo.Actor):
         return f'{band_name}_band_slot_manager'
 
     def __init__(self, band: BandType, n_slots: int,
-                 global_slots_ref: mo.ActorRef = None,
-                 manager_ref: Union[WorkerSlotManagerActor, mo.ActorRef] = None):
+                 global_slots_ref: mo.ActorRef = None):
         super().__init__()
+        self._cluster_api = None
+
         self._band = band
         self._band_name = band[1]
         self._global_slots_ref = global_slots_ref
-        self._manager_ref = manager_ref
         self._n_slots = n_slots
 
         self._semaphore = asyncio.Semaphore(0)
@@ -86,6 +78,12 @@ class BandSlotManagerActor(mo.Actor):
         self._usage_upload_task = None
 
     async def __post_create__(self):
+        from ...cluster.api import ClusterAPI
+        try:
+            self._cluster_api = await ClusterAPI.create(self.address)
+        except mo.ActorNotExist:
+            pass
+
         strategy = IdleLabel(self._band_name, 'worker_slot_control')
         for slot_id in range(self._n_slots):
             self._slot_control_refs[slot_id] = await mo.create_actor(
@@ -153,8 +151,8 @@ class BandSlotManagerActor(mo.Actor):
 
         if delays:  # pragma: no branch
             yield self._global_slots_ref.update_subtask_slots.batch(*delays)
-        if self._manager_ref is not None:  # pragma: no branch
-            await self._manager_ref.set_band_slot_infos.tell(self._band_name, slot_infos)
+        if self._cluster_api is not None:
+            await self._cluster_api.set_band_slot_infos(self._band, slot_infos)
 
         if periodical:
             self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(

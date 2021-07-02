@@ -33,7 +33,7 @@ def test_gather_node_resource():
     assert band_res['memory_total'] >= band_res['memory_avail']
 
 
-def test_gather_simple_node_states():
+def test_gather_node_states():
     gather_node_states()
     time.sleep(0.1)
     node_states = gather_node_states()

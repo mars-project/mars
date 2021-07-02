@@ -20,7 +20,6 @@ from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...utils import extensible
 from ..subtask import Subtask
-from .core import WorkerSlotInfo, QuotaInfo
 
 APIType = TypeVar('APIType', bound='SchedulingAPI')
 
