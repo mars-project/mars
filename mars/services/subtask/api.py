@@ -31,6 +31,13 @@ class SubtaskAPI:
         return await mo.actor_ref(
             SubtaskRunnerActor.gen_uid(band_name, slot_id), address=self._address)
 
+    @alru_cache(cache_exceptions=False)
+    async def _get_subtask_processor_ref(self, session_id: str,
+                                         slot_address: str):
+        from .worker.processor import SubtaskProcessorActor
+        return await mo.actor_ref(SubtaskProcessorActor.gen_uid(session_id),
+                                  address=slot_address)
+
     async def run_subtask_in_slot(self,
                                   band_name: str,
                                   slot_id: int,
@@ -64,6 +71,11 @@ class SubtaskAPI:
         """
         ref = await self._get_runner_ref(band_name, slot_id)
         await ref.cancel_subtask()
+
+    async def set_running_operand_progress(self, session_id: str, op_key: str,
+                                           slot_address: str, progress: float):
+        ref = await self._get_subtask_processor_ref(session_id, slot_address)
+        await ref.set_running_op_progress(op_key, progress)
 
 
 class MockSubtaskAPI(SubtaskAPI):

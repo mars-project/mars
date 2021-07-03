@@ -210,6 +210,25 @@ class Context(ABC):
             Custom log dir.
         """
 
+    def set_running_operand_key(self, session_id: str, op_key: str):
+        """
+        Set key of running operand.
+
+        Parameters
+        ----------
+        session_id : str
+        op_key : str
+        """
+
+    def set_operand_progress(self, progress: float):
+        """
+        Set progress of running operand.
+
+        Parameters
+        ----------
+        progress : float
+        """
+
     def __enter__(self):
         Context.prev = Context.current
         Context.current = self

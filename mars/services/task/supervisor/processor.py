@@ -435,6 +435,9 @@ class TaskProcessorActor(mo.Actor):
                 continue
             progress = sum(result.progress for result
                            in stage_processor.subtask_results.values())
+            progress += sum(result.progress for subtask_key, result
+                            in stage_processor.subtask_temp_result.items()
+                            if subtask_key not in stage_processor.subtask_results)
             subtask_progress += progress / n_subtask
             n_stage += 1
         if n_stage > 0:
