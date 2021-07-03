@@ -217,6 +217,8 @@ class ObjectCheckMixin:
                 return
             if expected_dtype is None:
                 raise AssertionError('Expected dtype cannot be None')
+            if isinstance(real_dtype, pd.CategoricalDtype) and isinstance(expected_dtype, pd.CategoricalDtype):
+                return
             if not np.can_cast(real_dtype, expected_dtype) and not np.can_cast(expected_dtype, real_dtype):
                 raise AssertionError('cannot cast between dtype of real dtype %r and dtype %r defined in metadata'
                                      % (real_dtype, expected_dtype))
