@@ -292,7 +292,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
                                        name=df.dtypes.index[self.indexes[1]])
         elif isinstance(self.indexes[0], Integral):
             shape = shape1
-            dtype = find_common_type(df.dtypes.iloc[self.indexes[1]].values)
+            dtype = find_common_type(list(df.dtypes.iloc[self.indexes[1]].values))
             index_value = indexing_index_value(df.columns_value, self.indexes[1])
             return self.new_series(inputs, shape=shape, dtype=dtype, index_value=index_value)
         else:
