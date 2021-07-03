@@ -16,7 +16,7 @@ import asyncio
 import os
 import time
 from collections import namedtuple
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import psutil
 
