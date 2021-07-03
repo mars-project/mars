@@ -22,7 +22,7 @@ functions of Mars. The steps listed below are applicable on MacOS and Linux.
 
 Install in Conda
 ````````````````
-It is recommended to develop Mars with conda. When you want ot install Mars for
+It is recommended to develop Mars with conda. When you want to install Mars for
 development, use the following steps to create an environment and install Mars
 inside it:
 

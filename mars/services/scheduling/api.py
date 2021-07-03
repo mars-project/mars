@@ -177,17 +177,18 @@ class MockSchedulingAPI(SchedulingAPI):
                               uid=GlobalSlotManagerActor.default_uid(),
                               address=address)
 
-        await super().create_session(session_id, address)
-
         from ... import resource as mars_resource
-        from .worker import SubtaskExecutionActor, MemQuotaActor, \
-            WorkerSlotManagerActor
+        from .worker import SubtaskExecutionActor, \
+            WorkerSlotManagerActor, WorkerQuotaManagerActor
         await mo.create_actor(SubtaskExecutionActor,
                               uid=SubtaskExecutionActor.default_uid(),
                               address=address)
         await mo.create_actor(WorkerSlotManagerActor,
                               uid=WorkerSlotManagerActor.default_uid(),
                               address=address)
-        await mo.create_actor(MemQuotaActor, mars_resource.virtual_memory().total,
-                              uid=MemQuotaActor.gen_uid('numa-0'),
+        await mo.create_actor(WorkerQuotaManagerActor,
+                              {'quota_size': mars_resource.virtual_memory().total},
+                              uid=WorkerQuotaManagerActor.default_uid(),
                               address=address)
+
+        return await super().create_session(session_id, address)

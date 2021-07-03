@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .execution import SubtaskExecutionActor
-from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
-from .service import start
-from .workerslot import WorkerSlotManagerActor, BandSlotManagerActor, \
-    BandSlotControlActor
+from ...serialization.serializables import Serializable, StringField
+
+
+class SessionInfo(Serializable):
+    session_id: str = StringField('session_id')

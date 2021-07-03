@@ -51,8 +51,24 @@ async def test_cluster_service(actor_pools):
     await start_services(
         NodeRole.WORKER, config, address=worker_pool.external_address)
 
-    api = await ClusterAPI.create(sv_pool.external_address)
-    assert next(iter(await api.get_nodes_info(role=NodeRole.SUPERVISOR))) \
+    sv_api = await ClusterAPI.create(sv_pool.external_address)
+    worker_api = await ClusterAPI.create(worker_pool.external_address)
+
+    from mars.services.scheduling.core import WorkerSlotInfo, QuotaInfo
+    await worker_api.set_band_quota_info(
+        (worker_pool.external_address, 'numa-0'),
+        QuotaInfo(quota_size=1024, allocated_size=100, hold_size=100)
+    )
+    await worker_api.set_band_slot_infos(
+        (worker_pool.external_address, 'numa-0'),
+        [WorkerSlotInfo(slot_id=0, session_id='test_session',
+                        subtask_id='test_subtask', processor_usage=1.0)]
+    )
+    await asyncio.sleep(1.5)
+
+    assert next(iter(await sv_api.get_nodes_info(role=NodeRole.SUPERVISOR))) \
            == sv_pool.external_address
-    assert next(iter(await api.get_nodes_info(role=NodeRole.WORKER))) \
-           == worker_pool.external_address
+    worker_infos = await sv_api.get_nodes_info(role=NodeRole.WORKER, state=True)
+    assert worker_pool.external_address in worker_infos
+    assert len(worker_infos[worker_pool.external_address]['state']['slot']) > 0
+    assert len(worker_infos[worker_pool.external_address]['state']['quota']) > 0

@@ -253,6 +253,11 @@ class SubtaskExecutionActor(mo.Actor):
             if subtask_info.result.status == SubtaskStatus.running:
                 subtask_info.result = yield run_aiotask
 
+            if batch_quota_req:
+                await quota_ref.release_quotas(list(batch_quota_req.keys()))
+            if slot_id is not None:
+                await slot_manager_ref.release_free_slot(slot_id)
+
             self._subtask_info.pop(subtask.subtask_id, None)
             if self._global_slot_ref is not None:
                 yield (
@@ -268,11 +273,6 @@ class SubtaskExecutionActor(mo.Actor):
             task_api = await self._get_task_api(subtask_info.supervisor_address,
                                                 subtask.session_id)
             yield task_api.set_subtask_result(subtask_info.result)
-
-            if batch_quota_req:
-                await quota_ref.release_quotas(list(batch_quota_req.keys()))
-            if slot_id is not None:
-                await slot_manager_ref.release_free_slot(slot_id)
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):

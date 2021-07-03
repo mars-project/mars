@@ -47,9 +47,6 @@ async def test_uploader(actor_pool):
     )
     await uploader_ref.mark_node_ready()
 
-    await uploader_ref.set_state_value.tell('custom_state', {'key': 'val'})
-    await asyncio.sleep(0.2)
-
     # test empty result
     result = await collector_ref.get_nodes_info(role=NodeRole.WORKER)
     assert pool_addr in result
@@ -61,7 +58,6 @@ async def test_uploader(actor_pool):
     assert pool_addr in result
     assert all(result[pool_addr].get(k) is not None
                for k in ('env', 'resource', 'state'))
-    assert result[pool_addr]['state']['custom_state']
 
     watch_task = asyncio.create_task(collector_ref.watch_nodes(NodeRole.WORKER))
 

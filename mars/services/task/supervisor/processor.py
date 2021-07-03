@@ -15,6 +15,7 @@
 import asyncio
 import itertools
 import sys
+import time
 from functools import wraps
 from typing import Callable, Coroutine, Dict, Iterator, \
     List, Optional, Set, Type, Union
@@ -73,7 +74,7 @@ class TaskProcessor:
         self._meta_api = meta_api
 
         self.result = TaskResult(
-            task_id=task.task_id, session_id=task.session_id,
+            task_id=task.task_id, session_id=task.session_id, start_time=time.time(),
             status=TaskStatus.pending)
         self.done = asyncio.Event()
         self.stage_processors = []
@@ -256,6 +257,7 @@ class TaskProcessor:
 
     def gen_result(self):
         self.result.status = TaskStatus.terminated
+        self.result.end_time = time.time()
         for stage_processor in self.stage_processors:
             if stage_processor.result.error is not None:
                 err = stage_processor.result.error
@@ -407,7 +409,7 @@ class TaskProcessorActor(mo.Actor):
                 terminated_result = processor.result
         return terminated_result
 
-    async def progress(self):
+    def progress(self):
         tiled_percentage = 0.0
         i = 0
         for processor in self._task_id_to_processor.values():

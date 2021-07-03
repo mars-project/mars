@@ -16,17 +16,21 @@ import asyncio
 import os
 import time
 from collections import namedtuple
-from typing import Optional, Tuple
+from typing import Dict, List, Tuple
 
 import psutil
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ...core import BandType
+from ..core import WorkerSlotInfo
 
 DispatchDumpType = namedtuple('DispatchDumpType', 'free_slots')
 
 
 class WorkerSlotManagerActor(mo.Actor):
+    _band_slot_infos: Dict[str, List[WorkerSlotInfo]]
+
     def __init__(self):
         self._cluster_api = None
         self._global_slots_ref = None
@@ -42,7 +46,7 @@ class WorkerSlotManagerActor(mo.Actor):
         band_to_slots = await self._cluster_api.get_bands()
         for band, n_slot in band_to_slots.items():
             await mo.create_actor(
-                BandSlotManagerActor, band[1], n_slot, self._global_slots_ref,
+                BandSlotManagerActor, band, n_slot, self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address)
 
@@ -52,10 +56,13 @@ class BandSlotManagerActor(mo.Actor):
     def gen_uid(cls, band_name: str):
         return f'{band_name}_band_slot_manager'
 
-    def __init__(self, band_name: str, n_slots: int,
-                 global_slots_ref: Optional[mo.ActorRef] = None):
+    def __init__(self, band: BandType, n_slots: int,
+                 global_slots_ref: mo.ActorRef = None):
         super().__init__()
-        self._band_name = band_name
+        self._cluster_api = None
+
+        self._band = band
+        self._band_name = band[1]
         self._global_slots_ref = global_slots_ref
         self._n_slots = n_slots
 
@@ -71,6 +78,12 @@ class BandSlotManagerActor(mo.Actor):
         self._usage_upload_task = None
 
     async def __post_create__(self):
+        from ...cluster.api import ClusterAPI
+        try:
+            self._cluster_api = await ClusterAPI.create(self.address)
+        except mo.ActorNotExist:
+            pass
+
         strategy = IdleLabel(self._band_name, 'worker_slot_control')
         for slot_id in range(self._n_slots):
             self._slot_control_refs[slot_id] = await mo.create_actor(
@@ -116,21 +129,33 @@ class BandSlotManagerActor(mo.Actor):
 
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
+        slot_infos = []
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue
             session_id, subtask_id = self._slot_to_session_stid[slot_id]
 
             try:
-                usage = proc.cpu_percent(interval=None)
+                usage = proc.cpu_percent(interval=None) / 100.0
             except psutil.NoSuchProcess:  # pragma: no cover
                 continue
 
-            delays.append(self._global_slots_ref.update_subtask_slots.delay(
-                self._band_name, session_id, subtask_id, max(1.0, usage)))
+            slot_infos.append(WorkerSlotInfo(
+                slot_id=slot_id,
+                session_id=session_id,
+                subtask_id=subtask_id,
+                processor_usage=usage
+            ))
+
+            if self._global_slots_ref is not None:  # pragma: no branch
+                # FIXME fix band slot mistake
+                delays.append(self._global_slots_ref.update_subtask_slots.delay(
+                    self._band[1], session_id, subtask_id, max(1.0, usage)))
 
         if delays:  # pragma: no branch
             yield self._global_slots_ref.update_subtask_slots.batch(*delays)
+        if self._cluster_api is not None:
+            await self._cluster_api.set_band_slot_infos(self._band, slot_infos)
 
         if periodical:
             self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(

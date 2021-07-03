@@ -162,7 +162,7 @@ class StorageAPI(AbstractStorageAPI):
                     dest_address: str = None,
                     error: str = 'raise'):
         """
-        Fetch object from remote worker ot load object from disk.
+        Fetch object from remote worker or load object from disk.
 
         Parameters
         ----------

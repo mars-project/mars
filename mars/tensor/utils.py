@@ -447,7 +447,7 @@ def decide_unify_split(*splits):
     if any(np.isnan(sum(s)) for s in splits):
         raise ValueError(f'Tensor chunk sizes are unknown: {splits}')
     if len(set(sum(s) for s in splits)) > 1:
-        raise ValueError(f'Splits do not hava same size: {splits}')
+        raise ValueError(f'Splits not of same size: {splits}')
 
     q = [list(s) for s in splits]
     size = sum(q[0])
@@ -512,7 +512,7 @@ def check_out_param(out, t, casting):
 
     if not np.can_cast(t.dtype, out.dtype, casting):
         raise TypeError(f"output (typecode '{t.dtype.char}') could not be coerced "
-                        f"to provided output paramter (typecode '{out.dtype.char}') "
+                        f"to provided output parameter (typecode '{out.dtype.char}') "
                         f"according to the casting rule ''{casting}''")
 
 
@@ -718,7 +718,7 @@ def fetch_corner_data(tensor, session=None):
             for ax, i in enumerate(indices):
                 size = tensor.shape[ax]
                 if size > edgeitems * 2 + 2:
-                    # fetch two more elemens
+                    # fetch two more elements
                     if i == 0:
                         slc.append(slice(edgeitems + 1))
                     else:

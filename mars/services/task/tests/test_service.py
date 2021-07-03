@@ -93,6 +93,8 @@ async def test_task_service(actor_pools, use_web_api):
         web_address = await web_actor.get_web_address()
         task_api = WebTaskAPI(session_id, web_address)
 
+    assert await task_api.get_task_results() == []
+
     # create mock meta and storage APIs
     _ = await MetaAPI.create(session_id,
                              sv_pool.external_address)
@@ -149,5 +151,8 @@ async def test_task_service(actor_pools, use_web_api):
     assert timer.duration < 20
     await asyncio.sleep(.1)
     assert await task_api.get_last_idle_time() is not None
+
+    results = await task_api.get_task_results(progress=True)
+    assert all(result.status == TaskStatus.terminated for result in results)
 
     await MockStorageAPI.cleanup(worker_pool.external_address)

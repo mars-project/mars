@@ -41,6 +41,9 @@ class NodeInfoUploaderActor(mo.Actor):
 
         self._use_gpu = use_gpu
 
+        self._band_slot_infos = dict()
+        self._band_quota_infos = dict()
+
     async def __post_create__(self):
         await self.upload_node_info()
 
@@ -71,7 +74,8 @@ class NodeInfoUploaderActor(mo.Actor):
         try:
             if not self._info.env:
                 self._info.env = gather_node_env()
-            self._info.state.update(gather_node_states(dirs=self._dirs))
+            self._info.state.update(gather_node_states(dirs=self._dirs, band_slot_infos=self._band_slot_infos,
+                                                       band_quota_infos=self._band_quota_infos))
             for band, res in gather_node_resource(
                     self._band_to_slots, use_gpu=self._use_gpu).items():
                 try:
@@ -106,8 +110,8 @@ class NodeInfoUploaderActor(mo.Actor):
                 band_slots[(self.address, resource_type)] = info['gpu_total']
         return band_slots
 
-    def set_state_value(self, key, value):
-        self._info.state[key] = value
+    def set_band_slot_infos(self, band, slot_infos):
+        self._band_slot_infos[band] = slot_infos
 
-    def set_band_resource(self, band: str, values: Dict):
-        self._info.resource[band].update(values)
+    def set_band_quota_info(self, band, quota_info):
+        self._band_quota_infos[band] = quota_info

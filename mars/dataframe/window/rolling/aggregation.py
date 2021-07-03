@@ -409,7 +409,7 @@ class DataFrameRollingAgg(DataFrameOperand, DataFrameOperandMixin):
 
             # fix for pandas 1.2.0
             # see: https://github.com/pandas-dev/pandas/issues/38908
-            # df.rolling().agggregate('skew') modifed original data
+            # df.rolling().aggregate('skew') modified original data
             # so we copy it first for skew only
             if parse_version(pd.__version__) == parse_version('1.2.0') \
                     and op.func in ['skew', 'kurt'] and op.outputs[0].index[0] == 0:

@@ -193,7 +193,7 @@ class RabitTracker(object):
 
     def slave_envs(self):
         """
-        get enviroment variables for slaves
+        get environment variables for slaves
         can be passed in as args or envs
         """
         return {'DMLC_TRACKER_URI': self.hostIP,
@@ -269,7 +269,7 @@ class RabitTracker(object):
         return tree_map_, parent_map_, ring_map_
 
     def accept_slaves(self, nslave):
-        # set of nodes that finishs the job
+        # set of nodes that finishes the job
         shutdown = {}
         # set of nodes that is waiting for connections
         wait_conn = {}

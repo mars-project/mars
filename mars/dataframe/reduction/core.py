@@ -526,7 +526,7 @@ class ReductionSteps(NamedTuple):
     post_funcs: List[ReductionPostStep]
 
 
-# lookup table for numpy arithmetics in pandas
+# lookup table for numpy arithmetic operands in pandas
 _func_name_converts = dict(
     greater='gt',
     greater_equal='ge',

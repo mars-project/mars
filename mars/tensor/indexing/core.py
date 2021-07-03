@@ -130,7 +130,7 @@ def preprocess_index(index, convert_bool_to_fancy=None):
         for fancy_index in fancy_indexes:
             inds[fancy_index] = astensor(inds[fancy_index])
 
-    # convert bool index to fancy index when any situation bellow meets:
+    # convert bool index to fancy index when any situation below meets:
     # 1. fancy indexes and bool indexes both exists
     # 2. bool indexes more than 2
     if convert_bool_to_fancy:
