@@ -143,7 +143,7 @@ class DataFrameDropDuplicates(DuplicateOperand):
         hashed = hash_dataframe_on(dropped, subset, shuffle_size)
         for i, data in enumerate(hashed):
             reducer_idx = (i,) + out.index[1:]
-            ctx[out.key, reducer_idx] = dropped.loc[data]
+            ctx[out.key, reducer_idx] = dropped.iloc[data]
 
     @classmethod
     def _execute_shuffle_reduce(cls, ctx, op: "DataFrameDropDuplicates"):

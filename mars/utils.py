@@ -250,7 +250,7 @@ def get_next_port(typ: int = None,
 
 
 @functools.lru_cache(200)
-def mod_hash(val: int, modulus: int):
+def mod_hash(val: Any, modulus: int):
     return tokenize_int(val) % modulus
 
 

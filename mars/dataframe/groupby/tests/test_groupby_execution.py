@@ -55,28 +55,31 @@ def test_groupby(setup):
                  'b': rs.randint(0, 10, size=(data_size,)),
                  'c': rs.choice(list('abcd'), size=(data_size,))}
 
+    # test groupby with DataFrames and RangeIndex
     df1 = pd.DataFrame(data_dict)
     mdf = md.DataFrame(df1, chunk_size=13)
     grouped = mdf.groupby('b')
     assert_groupby_equal(grouped.execute().fetch(),
                          df1.groupby('b'))
 
-    df2 = pd.DataFrame(data_dict, index=['i' + str(i) for i in range(data_size)])
+    # test groupby with string index with duplications
+    df2 = pd.DataFrame(data_dict, index=['i' + str(i % 3) for i in range(data_size)])
     mdf = md.DataFrame(df2, chunk_size=13)
     grouped = mdf.groupby('b')
     assert_groupby_equal(grouped.execute().fetch(),
                          df2.groupby('b'))
 
-    # test groupby series
+    # test groupby with DataFrames by series
     grouped = mdf.groupby(mdf['b'])
     assert_groupby_equal(grouped.execute().fetch(),
                          df2.groupby(df2['b']))
 
-    # test groupby multiple series
+    # test groupby with DataFrames by multiple series
     grouped = mdf.groupby(by=[mdf['b'], mdf['c']])
     assert_groupby_equal(grouped.execute().fetch(),
                          df2.groupby(by=[df2['b'], df2['c']]))
 
+    # test groupby with DataFrames with MultiIndex
     df3 = pd.DataFrame(data_dict,
                        index=pd.MultiIndex.from_tuples(
                            [(i % 3, 'i' + str(i)) for i in range(data_size)]))
@@ -85,7 +88,7 @@ def test_groupby(setup):
     assert_groupby_equal(grouped.execute().fetch(),
                          df3.groupby(level=0))
 
-    # test groupby with integer columns
+    # test groupby with DataFrames by integer columns
     df4 = pd.DataFrame(list(data_dict.values())).T
     mdf = md.DataFrame(df4, chunk_size=13)
     grouped = mdf.groupby(0)
@@ -250,6 +253,10 @@ def test_dataframe_groupby_agg(setup):
         pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                       raw.groupby('c2').agg(agg).sort_index())
 
+        r = mdf.groupby('c2').agg({'c1': 'min', 'c3': 'min'}, method=method)
+        pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
+                                      raw.groupby('c2').agg({'c1': 'min', 'c3': 'min'}).sort_index())
+
         r = mdf.groupby('c2').agg({'c1': 'min'}, method=method)
         pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                       raw.groupby('c2').agg({'c1': 'min'}).sort_index())
@@ -275,12 +282,18 @@ def test_dataframe_groupby_agg(setup):
         pd.testing.assert_frame_equal(r.execute().fetch(),
                                       getattr(raw.groupby('c2'), agg_fun)())
 
+    # test as_index=False
     for method in ['tree', 'shuffle']:
-        # test as_index=False
         r = mdf.groupby('c2', as_index=False).agg('mean', method=method)
         pd.testing.assert_frame_equal(
             r.execute().fetch().sort_values('c2', ignore_index=True),
             raw.groupby('c2', as_index=False).agg('mean').sort_values('c2', ignore_index=True))
+        assert r.op.groupby_params['as_index'] is False
+
+        r = mdf.groupby(['c1', 'c2'], as_index=False).agg('mean', method=method)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch().sort_values(['c1', 'c2'], ignore_index=True),
+            raw.groupby(['c1', 'c2'], as_index=False).agg('mean').sort_values(['c1', 'c2'], ignore_index=True))
         assert r.op.groupby_params['as_index'] is False
 
     # test as_index=False takes no effect

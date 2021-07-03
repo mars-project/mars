@@ -152,7 +152,7 @@ class SubtaskQueueingActor(mo.Actor):
                         if stid not in submitted_ids:
                             continue
                         item = submit_items[stid]
-                        logger.debug('Submit subtask %s to worker', item.subtask.subtask_id)
+                        logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
                         self.remove_queued_subtasks([item.subtask.subtask_id])

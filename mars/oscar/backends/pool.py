@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures as futures
 import contextlib
 import itertools
+import os
 import threading
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
@@ -31,6 +32,7 @@ from ..utils import create_actor_ref
 from .allocate_strategy import allocated_type, AddressSpecified
 from .communication import Channel, Server, \
     get_server_type, gen_local_address
+from .communication.errors import ChannelClosed
 from .config import ActorPoolConfig
 from .core import result_message_type, ActorCaller
 from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType, \
@@ -300,7 +302,7 @@ class AbstractActorPool(ABC):
                 processor.result = await future
         try:
             await channel.send(processor.result)
-        except ConnectionResetError:
+        except (ChannelClosed, ConnectionResetError):
             if not self._stopped.is_set():
                 raise
 
@@ -395,6 +397,8 @@ class AbstractActorPool(ABC):
                     pass
                 return
             asyncio.create_task(self.process_message(message, channel))
+            # delete to release the reference of message
+            del message
             await asyncio.sleep(0)
 
     async def __aenter__(self):
@@ -664,7 +668,10 @@ class MainActorPoolBase(ActorPoolBase):
 
     @classmethod
     def process_index_gen(cls, address):
-        return cls._process_index_gen
+        # make sure different processes does not share process indexes
+        pid = os.getpid()
+        for idx in cls._process_index_gen:
+            yield pid << 16 + idx
 
     @property
     def _sub_processes(self):

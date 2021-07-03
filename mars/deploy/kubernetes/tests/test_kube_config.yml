@@ -1,4 +1,4 @@
-inherits: '@mars/deploy/kubernetes/config.yml'
+"@inherits": '@mars/deploy/kubernetes/config.yml'
 storage:
   plasma:
     store_memory: 20M

@@ -14,10 +14,11 @@
 
 import asyncio
 import functools
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from .... import oscar as mo
 from ...cluster import ClusterAPI
+from ..core import SessionInfo
 
 
 class SessionManagerActor(mo.Actor):
@@ -57,6 +58,9 @@ class SessionManagerActor(mo.Actor):
             yield session_actor_ref.create_services()
 
         raise mo.Return(session_actor_ref)
+
+    def get_sessions(self) -> List[SessionInfo]:
+        return [SessionInfo(session_id=session_id) for session_id in self._session_refs.keys()]
 
     def get_session_ref(self,
                         session_id: str):

@@ -15,8 +15,8 @@
 import os
 import time
 
-from ..gather import gather_node_env, gather_node_resource, \
-    gather_node_states
+from mars.services.cluster.gather import gather_node_env, \
+    gather_node_resource, gather_node_states
 
 
 def test_gather_node_env():

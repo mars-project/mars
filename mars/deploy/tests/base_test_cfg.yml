@@ -1,5 +1,8 @@
-inherits: '@default'
+"@inherits": '@default'
 test_list:
+  - item1
+  - item2
+test_list2:
   - item1
   - item2
 test_dict:
@@ -7,3 +10,4 @@ test_dict:
   key2:
     key2_key1:
       val2
+"@overriding_fields": ["test_list2"]

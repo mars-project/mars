@@ -20,7 +20,7 @@ from ...serialization.serializables import Serializable, BoolField,\
     StringField, ReferenceField, AnyField
 from ...storage import StorageLevel
 from ...utils import extensible
-from .core import StorageManagerActor, StorageHandlerActor
+from .core import StorageHandlerActor, DataManagerActor
 
 DEFAULT_TRANSFER_BLOCK_SIZE = 5 * 1024 ** 2
 
@@ -51,8 +51,8 @@ class SenderManagerActor(mo.Actor):
         self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
 
     async def __post_create__(self):
-        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
-            await mo.actor_ref(self.address, StorageManagerActor.default_uid())
+        self._data_manager_ref: Union[mo.ActorRef, DataManagerActor] = \
+            await mo.actor_ref(self.address, DataManagerActor.default_uid())
         self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
             await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
 
@@ -70,7 +70,7 @@ class SenderManagerActor(mo.Actor):
                         block_size: int = None):
         block_size = block_size or self._transfer_block_size
         receiver_ref = await self.get_receiver_ref(address)
-        info = await self._storage_manager_ref.get_data_info(session_id, data_key)
+        info = await self._data_manager_ref.get_data_info(session_id, data_key)
         store_size = info.store_size
         await receiver_ref.open_writer(session_id, data_key,
                                        store_size, level)
@@ -98,12 +98,11 @@ class SenderManagerActor(mo.Actor):
 
 
 class ReceiverManagerActor(mo.Actor):
-    def __init__(self):
+    def __init__(self, quota_refs):
         self._key_to_writer_info = dict()
+        self._quota_refs = quota_refs
 
     async def __post_create__(self):
-        self._storage_manager_ref: Union[mo.ActorRef, StorageManagerActor] = \
-            await mo.actor_ref(self.address, StorageManagerActor.default_uid())
         self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
             await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
 
@@ -143,8 +142,7 @@ class ReceiverManagerActor(mo.Actor):
         except asyncio.CancelledError:
             writer, data_size, level = self._key_to_writer_info[
                 (message.session_id, message.data_key)]
-            await self._storage_manager_ref.release_quota(
-                data_size, level)
+            await self._quota_refs[level].release_quota(data_size)
             await self._storage_handler.delete(
                 message.session_id, message.data_key, error='ignore')
             await writer.clean_up()

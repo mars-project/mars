@@ -119,12 +119,12 @@ async def actor_pool(request):
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor
-        await mo.create_actor(MockQuotaActor, 102400,
+        await mo.create_actor(MockQuotaActor, 'numa-0', 102400,
                               uid=QuotaActor.gen_uid('numa-0'),
                               address=pool.external_address)
         # create dispatcher actor
         await mo.create_actor(MockBandSlotManagerActor,
-                              'numa-0', n_slots,
+                              (pool.external_address, 'numa-0'), n_slots,
                               uid=BandSlotManagerActor.gen_uid('numa-0'),
                               address=pool.external_address)
         # create mock task manager actor

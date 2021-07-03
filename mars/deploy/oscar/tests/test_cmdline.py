@@ -18,6 +18,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import List
 
 import numpy as np
 import pytest
@@ -55,19 +56,19 @@ def _wait_supervisor_ready(supervisor_proc: subprocess.Popen, timeout=120):
             time.sleep(0.1)
 
 
-def _wait_worker_ready(supervisor_addr, worker_proc: subprocess.Popen,
-                       n_supervisors=1, n_workers=1, timeout=120):
+def _wait_worker_ready(supervisor_addr, worker_procs: List[subprocess.Popen],
+                       n_supervisors=1, timeout=120):
     async def wait_for_workers():
         start_time = time.time()
         while True:
-            if worker_proc.poll() is not None:
+            if any(proc.poll() is not None for proc in worker_procs):
                 raise _ProcessExitedException
 
             try:
                 cluster_api = await ClusterAPI.create(supervisor_addr)
                 sv_info = await cluster_api.get_nodes_info(role=NodeRole.SUPERVISOR, resource=True)
                 worker_info = await cluster_api.get_nodes_info(role=NodeRole.WORKER, resource=True)
-                if len(sv_info) >= n_supervisors and len(worker_info) >= n_workers:
+                if len(sv_info) >= n_supervisors and len(worker_info) >= len(worker_procs):
                     break
             except:  # noqa: E722  # pylint: disable=bare-except
                 if time.time() - start_time > timeout:
@@ -109,7 +110,7 @@ start_params = {
             '-w', lambda: str(_get_labelled_port("web"))
         ],
         worker_cmd_start + [
-            '-e', lambda: f'127.0.0.1:{_get_labelled_port("worker")}',
+            '-e', lambda: f'127.0.0.1:{get_next_port(occupy=True)}',
             '-s', lambda: f'127.0.0.1:{_get_labelled_port("supervisor")}',
             '--config-file', os.path.join(os.path.dirname(__file__), 'local_test_config.yml')
         ],
@@ -126,7 +127,7 @@ def _reload_args(args):
                          list(start_params.values()), ids=list(start_params.keys()))
 @flaky(rerun_filter=lambda *args: issubclass(args[0][0], _ProcessExitedException))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
-    sv_proc = w_proc = None
+    sv_proc = w_procs = None
     try:
         sv_args = _reload_args(supervisor_args)
         sv_proc = subprocess.Popen(sv_args, env=os.environ.copy())
@@ -143,9 +144,9 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         else:
             api_ep = oscar_ep
 
-        w_proc = subprocess.Popen(
-            _reload_args(worker_args), env=os.environ.copy())
-        _wait_worker_ready(oscar_ep, w_proc)
+        w_procs = [subprocess.Popen(
+            _reload_args(worker_args), env=os.environ.copy()) for _ in range(2)]
+        _wait_worker_ready(oscar_ep, w_procs)
 
         new_session(api_ep, default=True)
         data = np.random.rand(10, 10)
@@ -158,7 +159,8 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         except OSError:
             pass
 
-        for proc in [w_proc, sv_proc]:
+        w_procs = w_procs or []
+        for proc in w_procs + [sv_proc]:
             if not proc:
                 continue
             proc.terminate()

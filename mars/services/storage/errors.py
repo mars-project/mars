@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...storage.errors import DataNotExist
 
-class DataNotExist(Exception):
-    pass
+
+DataNotExist = DataNotExist
 
 
 class NoDataToSpill(Exception):

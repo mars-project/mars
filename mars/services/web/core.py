@@ -20,7 +20,8 @@ import sys
 from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
-from tornado import httpclient, web
+import aiohttp
+from tornado import web
 
 from ...utils import serialize_serializable, deserialize_serializable
 
@@ -178,21 +179,21 @@ class MarsWebAPIClientMixin:
         try:
             return self._client_obj
         except AttributeError:
-            self._client_obj = httpclient.AsyncHTTPClient()
+            self._client_obj = aiohttp.ClientSession()
             return self._client_obj
 
-    async def _request_url(self, path, **kwargs):
-        res = await self._client.fetch(path, raise_error=False, **kwargs)
-        if res.code < 400:
+    async def _request_url(self, method, path, **kwargs):
+        res = await self._client.request(method, path, **kwargs)
+        if res.status < 400:
             return res
         else:
             exc, tb = None, None
             try:
-                exc, tb = deserialize_serializable(res.body)
+                exc, tb = deserialize_serializable(await res.read())
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                 pass
 
             if exc is None:
-                res.rethrow()
+                res.raise_for_status()
             else:
                 raise exc.with_traceback(tb)

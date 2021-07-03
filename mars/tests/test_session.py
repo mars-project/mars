@@ -339,7 +339,7 @@ def test_iter(setup):
 
 
 CONFIG = """
-inherits: '@default'
+"@inherits": '@default'
 session:
   custom_log_dir: '{custom_log_dir}'
 """

@@ -24,7 +24,8 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import IdleLabel
 from mars.services.storage.errors import DataNotExist
-from mars.services.storage.core import StorageManagerActor, StorageHandlerActor
+from mars.services.storage.core import StorageManagerActor, StorageHandlerActor, \
+    StorageQuotaActor
 from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
 from mars.storage import StorageLevel
 
@@ -161,11 +162,15 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     worker_address_1, worker_address_2 = create_actors
 
     strategy = IdleLabel('io', 'mock_sender')
+    quota_refs = {StorageLevel.MEMORY: await mo.actor_ref(
+        StorageQuotaActor, StorageLevel.MEMORY, 5 * 1024 * 1024,
+        address=worker_address_2, uid=StorageQuotaActor.gen_uid(StorageLevel.MEMORY))}
+
     await mo.create_actor(
         mock_sender, uid=mock_sender.default_uid(),
         address=worker_address_1, allocate_strategy=strategy)
     await mo.create_actor(
-        mock_receiver, uid=mock_receiver.default_uid(),
+        mock_receiver, quota_refs, uid=mock_receiver.default_uid(),
         address=worker_address_2, allocate_strategy=strategy)
 
     data1 = np.random.rand(10, 10)
@@ -175,15 +180,12 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     storage_handler2 = await mo.actor_ref(
         uid=StorageHandlerActor.default_uid(),
         address=worker_address_2)
-    storage_manager2 = await mo.actor_ref(
-        uid=StorageManagerActor.default_uid(),
-        address=worker_address_2)
     await storage_handler1.put('mock', 'data_key1',
                                data1, StorageLevel.MEMORY)
 
     sender_actor = await mo.actor_ref(address=worker_address_1,
                                       uid=mock_sender.default_uid())
-    used_before = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
+    used_before = (await quota_refs[StorageLevel.MEMORY].get_quota())[1]
 
     send_task = asyncio.create_task(sender_actor.send_data(
         'mock', 'data_key1', worker_address_2, StorageLevel.MEMORY))
@@ -196,7 +198,7 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     except asyncio.CancelledError:
         pass
 
-    used = (await storage_manager2.get_quota(StorageLevel.MEMORY))[1]
+    used = (await quota_refs[StorageLevel.MEMORY].get_quota())[1]
     assert used == used_before
 
     with pytest.raises(DataNotExist):

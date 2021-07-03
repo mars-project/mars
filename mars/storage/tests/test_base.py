@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .execution import SubtaskExecutionActor
-from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
-from .service import start
-from .workerslot import WorkerSlotManagerActor, BandSlotManagerActor, \
-    BandSlotControlActor
+from mars.storage import StorageLevel
+
+
+def test_storage_level():
+    s = 'memory'
+    assert StorageLevel.MEMORY == StorageLevel.from_str(s)
+
+    s = 'disk | memory'
+    assert StorageLevel.DISK | StorageLevel.MEMORY == StorageLevel.from_str(s)
+
+    s = ' MEMORY|REMOTE '
+    assert StorageLevel.MEMORY | StorageLevel.REMOTE == StorageLevel.from_str(s)
