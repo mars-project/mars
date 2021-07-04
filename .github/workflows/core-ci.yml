@@ -49,9 +49,7 @@ jobs:
         fi
 
         # todo remove this when #2191 is fixed.
-        if [[ "$PYTHON" =~ "3.7" ]]; then
-          pip install pandas\<1.3.0
-        fi
+        pip install pandas\<1.3.0
 
         source ./ci/rewrite-cov-config.sh
 
