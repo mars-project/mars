@@ -15,14 +15,19 @@
 import os
 import platform
 import re
+import shutil
+import subprocess
 import sys
+import warnings
 from sysconfig import get_config_var
 
 from pkg_resources import parse_version
-from setuptools import setup, Extension
+from setuptools import setup, Extension, Command
 
 import numpy as np
 from Cython.Build import cythonize
+from setuptools.command.install import install
+from setuptools.command.sdist import sdist
 
 try:
     import distutils.ccompiler
@@ -108,8 +113,69 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
     [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
 
 
+class ExtraCommandMixin:
+    _extra_pre_commands = []
+
+    def run(self):
+        [self.run_command(cmd) for cmd in self._extra_pre_commands]
+        super().run()
+
+    @classmethod
+    def register_pre_command(cls, cmd):
+        cls._extra_pre_commands.append(cmd)
+
+
+class CustomInstall(ExtraCommandMixin, install):
+    pass
+
+
+class CustomSDist(ExtraCommandMixin, sdist):
+    pass
+
+
+class BuildWebUI(Command):
+    """build_web_ui command"""
+
+    user_options = []
+    _web_src_path = 'mars/services/web/ui'
+    _web_dest_path = 'mars/services/web/static/bundle.js'
+    _commands = [
+        ['npm', 'install'],
+        ['npm', 'run', 'bundle'],
+    ]
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    @classmethod
+    def run(cls):
+        if int(os.environ.get('NO_WEB_UI', '0')):
+            return
+        if shutil.which('npm') is None:
+            if not os.path.exists(os.path.join(repo_root, *cls._web_dest_path.split('/'))):
+                warnings.warn('Cannot find NPM, may affect displaying Mars Web')
+            return
+        for cmd in cls._commands:
+            proc_result = subprocess.run(cmd, cwd=cls._web_src_path)
+            if proc_result.returncode != 0:
+                raise SystemError(f'Failed when running `{" ".join(cmd)}`')
+        assert os.path.exists(cls._web_dest_path)
+
+
+CustomInstall.register_pre_command('build_web_ui')
+CustomSDist.register_pre_command('build_web_ui')
+
+
 setup_options = dict(
     version=version,
     ext_modules=extensions,
+    cmdclass={
+        'build_web_ui': BuildWebUI,
+        'install': CustomInstall,
+        'sdist': CustomSDist
+    },
 )
 setup(**setup_options)

@@ -65,7 +65,7 @@ class WebActor(mo.Actor):
         self._config['bokeh_apps'] = bokeh_apps
 
     async def __post_create__(self):
-        from .pages import handlers as web_handlers
+        from .indexhandler import handlers as web_handlers
 
         static_path = os.path.join(os.path.dirname(__file__), 'static')
         supervisor_addr = self.address

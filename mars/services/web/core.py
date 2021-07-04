@@ -33,23 +33,6 @@ logger = logging.getLogger(__name__)
 _ROOT_PLACEHOLDER = 'ROOT_PLACEHOLDER'
 
 
-def get_jinja_env():
-    import jinja2
-    from ...utils import readable_size
-
-    _jinja_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), 'templates')),
-    )
-
-    def format_ts(value):
-        return datetime.fromtimestamp(value).strftime('%Y-%m-%d %H:%M:%S') \
-            if value is not None and not np.isnan(value) else None
-
-    _jinja_env.filters['format_ts'] = format_ts
-    _jinja_env.filters['readable_size'] = readable_size
-    return _jinja_env
-
-
 class MarsRequestHandler(web.RequestHandler):  # pragma: no cover
     def initialize(self, supervisor_addr: str = None):
         self._supervisor_addr = supervisor_addr

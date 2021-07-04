@@ -12,9 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import dashboard
+import os
 
-handlers = {}
-for mod in [dashboard]:
-    handlers.update(mod.handlers)
-del mod
+from .core import MarsRequestHandler
+
+
+class IndexHandler(MarsRequestHandler):
+    def _get_index_page(self):
+        try:
+            return self._index_page
+        except AttributeError:
+            index_file = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), 'index.html'
+            )
+            with open(index_file, 'r') as fo:
+                self._index_page = fo.read()
+            return self._index_page
+
+    def get(self):
+        self.write(self._get_index_page())
+
+
+handlers = {
+    '/': IndexHandler,
+}

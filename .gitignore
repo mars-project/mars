@@ -32,7 +32,6 @@ node_modules
 jspm_packages
 
 npm-debug.log*
-package-lock.json
 .npm
 .node_repl_history
 .grunt
