@@ -69,12 +69,12 @@ class SubtaskQueueingActor(mo.Actor):
     async def __post_create__(self):
         from ...cluster import ClusterAPI
         self._cluster_api = await ClusterAPI.create(self.address)
+        self._band_slot_nums = await self._cluster_api.get_all_bands()
 
         from .globalslot import GlobalSlotManagerActor
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
-        self._band_slot_nums = await self._slots_ref.get_available_bands()
 
         from .assigner import AssignerActor
         self._assigner_ref = await mo.actor_ref(
@@ -120,7 +120,7 @@ class SubtaskQueueingActor(mo.Actor):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
-            self._band_slot_nums = await self._slots_ref.get_available_bands()
+            self._band_slot_nums = await self._cluster_api.get_all_bands()
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
@@ -130,6 +130,15 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
+
+            band_is_blocked = await self._slots_ref.band_is_blocked(band)
+            if band_is_blocked and task_queue:
+                new_band = await self._assigner_ref.reassign_band()
+                while task_queue:
+                    item = heapq.heappop(task_queue)
+                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    heapq.heappush(self._band_queues[new_band], item)
+
             while task_queue and len(submit_items) < band_limit:
                 item = heapq.heappop(task_queue)
                 # skip removed items (as they may still in the queue)

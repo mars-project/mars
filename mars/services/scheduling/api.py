@@ -171,15 +171,13 @@ class SchedulingAPI(ABC):
             whether to schedule succeeding subtasks
         """
         await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
-    
-    async def add_to_blocklist(self, 
-                               band: BandType):
+
+    async def add_to_blocklist(self, band: BandType):
         await self._global_slot_ref.add_to_blocklist(band)
 
-    async def remove_from_blocklist(self, 
-                               band: BandType):
+    async def remove_from_blocklist(self, band: BandType):
         await self._global_slot_ref.remove_from_blocklist(band)
-    
+
     async def get_available_bands(self):
         return await self._global_slot_ref.get_available_bands()
 
