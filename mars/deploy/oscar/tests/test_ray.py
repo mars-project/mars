@@ -141,7 +141,7 @@ async def test_web_session(ray_large_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_load_third_party_modules(ray_large_cluster, create_cluster):
+async def test_load_third_party_modules(ray_large_cluster):
     config = _load_config()
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
