@@ -181,6 +181,13 @@ class K8SClusterBackend(AbstractClusterBackend):
             MarsSupervisorsConfig.rc_name, filter_ready=False)
         return expected_supervisors
 
+    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
+                                  timeout: int = None, **kwargs) -> str:
+        raise NotImplementedError
+
+    async def release_worker_node(self, address: str):
+        raise NotImplementedError
+
 
 class K8SServiceMixin:
     @staticmethod

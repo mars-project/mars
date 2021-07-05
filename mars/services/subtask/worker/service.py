@@ -15,7 +15,7 @@
 from typing import Dict
 
 from .... import oscar as mo
-from .manager import SubtaskManagerActor
+from .manager import SubtaskRunnerManagerActor
 
 
 async def start(config: Dict, address: str):
@@ -36,12 +36,12 @@ async def start(config: Dict, address: str):
     """
     subtask_config = config.get('subtask', dict())
     subtask_processor_cls = subtask_config.get('subtask_processor_cls')
-    await mo.create_actor(SubtaskManagerActor,
+    await mo.create_actor(SubtaskRunnerManagerActor,
                           subtask_processor_cls=subtask_processor_cls,
                           address=address,
-                          uid=SubtaskManagerActor.default_uid())
+                          uid=SubtaskRunnerManagerActor.default_uid())
 
 
 async def stop(config: dict, address: str):
     await mo.destroy_actor(mo.create_actor_ref(
-        uid=SubtaskManagerActor.default_uid(), address=address))
+        uid=SubtaskRunnerManagerActor.default_uid(), address=address))

@@ -30,6 +30,7 @@ class SchedulingAPI(ABC):
         self._session_id = session_id
         self._address = address
 
+        self._global_slot_ref = None
         self._manager_ref = manager_ref
         self._queueing_ref = queueing_ref
 
@@ -77,6 +78,10 @@ class SchedulingAPI(ABC):
             uid=SubtaskManagerActor.gen_uid(session_id)
         )
 
+        from .supervisor.autoscale import AutoscalerActor
+        autoscaler_ref = await mo.actor_ref(AutoscalerActor.default_uid(), address=address)
+        await autoscaler_ref.register_session(session_id, address)
+
         scheduling_api = SchedulingAPI(
             session_id, address, manager_ref, queueing_ref)
         return scheduling_api
@@ -94,6 +99,9 @@ class SchedulingAPI(ABC):
             ref = await mo.actor_ref(actor_cls.gen_uid(session_id), address=address)
             destroy_tasks.append(asyncio.create_task(ref.destroy()))
         await asyncio.gather(*destroy_tasks)
+        from .supervisor.autoscale import AutoscalerActor
+        autoscaler_ref = await mo.actor_ref(AutoscalerActor.default_uid(), address=address)
+        await autoscaler_ref.unregister_session(session_id)
 
     async def add_subtasks(self,
                            subtasks: List[Subtask],

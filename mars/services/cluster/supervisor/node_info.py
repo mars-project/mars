@@ -15,11 +15,12 @@
 import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .... import oscar as mo
 from ...core import NodeRole, BandType
 from ..core import NodeInfo
+from mars.services.cluster.backends import AbstractClusterBackend, get_cluster_backend
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
 DEFAULT_NODE_CHECK_INTERVAL = 1
@@ -155,3 +156,22 @@ class NodeInfoCollectorActor(mo.Actor):
                 self._role_to_events[role].remove(event)
 
         return waiter()
+
+
+class NodeAllocatorActor(mo.Actor):
+    def __init__(self, backend_name: str, lookup_address: str):
+        self._backend_name = backend_name
+        self._lookup_address = lookup_address
+        self._backend: Optional[AbstractClusterBackend] = None
+
+    async def __post_create__(self):
+        backend_cls = get_cluster_backend(self._backend_name)
+        self._backend = await backend_cls.create(
+            self._lookup_address, self.address)
+
+    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
+                                  timeout: int = None, **kwargs) -> str:
+        return await self._backend.request_worker_node(worker_cpu, worker_mem, timeout, **kwargs)
+
+    async def release_worker_node(self, address: str):
+        return await self._backend.release_worker_node(address)

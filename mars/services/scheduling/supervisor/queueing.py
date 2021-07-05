@@ -22,6 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....utils import dataslots, extensible
+from ...core import BandType
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -42,9 +43,10 @@ class HeapItem:
 
 
 class SubtaskQueueingActor(mo.Actor):
-    _stid_to_bands: DefaultDict[str, List[Tuple]]
+    _stid_to_bands: DefaultDict[str, List[BandType]]
     _stid_to_items: Dict[str, HeapItem]
-    _band_queues: DefaultDict[Tuple, List[HeapItem]]
+    # clear related bands when we remove a worker
+    _band_queues: DefaultDict[BandType, List[HeapItem]]
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -57,6 +59,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._band_queues = defaultdict(list)
 
         self._cluster_api = None
+        self._autoscale_api = None
         self._slots_ref = None
         self._assigner_ref = None
 
@@ -115,7 +118,7 @@ class SubtaskQueueingActor(mo.Actor):
             heapq.heappush(self._band_queues[band], heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
-    async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
+    async def submit_subtasks(self, band: BandType = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
@@ -146,11 +149,9 @@ class SubtaskQueueingActor(mo.Actor):
                 submitted_ids = set(await self._slots_ref.apply_subtask_slots(
                     band, self._session_id, subtask_ids, subtask_slots
                 ))
-                non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
+                non_submitted_ids = [stid for stid in submit_items if stid not in submitted_ids]
                 if submitted_ids:
-                    for stid in subtask_ids:
-                        if stid not in submitted_ids:
-                            continue
+                    for stid in submitted_ids:
                         item = submit_items[stid]
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
                         submit_aio_tasks.append(asyncio.create_task(
@@ -178,3 +179,15 @@ class SubtaskQueueingActor(mo.Actor):
         for stid in subtask_ids:
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
+            # FIXME remove subtask from band queue?
+
+    async def all_bands_busy(self) -> bool:
+        """Return True if all bands queue has tasks waiting to be submitted."""
+        bands = set(await self._slots_ref.get_all_available_bands())
+        if set(self._band_queues.keys()).issuperset(bands):
+            return all(len(self._band_queues[band]) > 0 for band in bands)
+        return False
+
+    async def get_band_pending_task_nums(self) -> Dict[BandType, int]:
+        """Return pending task nums of all bands queue."""
+        return {band: len(band_queue) for band, band_queue in self._band_queues.items()}

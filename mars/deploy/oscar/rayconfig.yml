@@ -1,5 +1,6 @@
 "@inherits": base_config.yml
 cluster:
+  backend: ray
   ray:
     supervisor:
       standalone: no

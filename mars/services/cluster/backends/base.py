@@ -68,6 +68,23 @@ class AbstractClusterBackend(ABC):
             List of expected supervisors
         """
 
+    @abstractmethod
+    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
+                                  timeout: int = None, **kwargs) -> str:
+        """
+        Create a new worker
+
+        Returns
+        -------
+        Address of the new created worker
+        """
+
+    @abstractmethod
+    async def release_worker_node(self, address: str):
+        """
+        Return a worker
+        """
+
 
 _cluster_backend_types: Dict[str, Type[AbstractClusterBackend]] = dict()
 

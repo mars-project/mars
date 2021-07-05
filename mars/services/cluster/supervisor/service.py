@@ -16,7 +16,7 @@ from .... import oscar as mo
 from ...core import NodeRole
 from ..locator import SupervisorLocatorActor
 from ..uploader import NodeInfoUploaderActor
-from .node_info import NodeInfoCollectorActor
+from .node_info import NodeInfoCollectorActor, NodeAllocatorActor
 
 
 async def start(config: dict, address: str):
@@ -47,6 +47,12 @@ async def start(config: dict, address: str):
         backend_name=backend,
         lookup_address=lookup_address,
         uid=SupervisorLocatorActor.default_uid(),
+        address=address)
+    await mo.create_actor(
+        NodeAllocatorActor,
+        backend_name=backend,
+        lookup_address=lookup_address,
+        uid=NodeAllocatorActor.default_uid(),
         address=address)
     await mo.create_actor(
         NodeInfoCollectorActor,

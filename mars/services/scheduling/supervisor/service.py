@@ -15,11 +15,12 @@
 from typing import Dict
 
 from .... import oscar as mo
+from .autoscale import AutoscalerActor
 
 
 async def start(config: Dict, address: str):
     """
-    Start meta service on supervisor.
+    Start scheduling service on supervisor.
 
     Parameters
     ----------
@@ -27,7 +28,15 @@ async def start(config: Dict, address: str):
         service config.
         {
             "scheduling" : {
-                "submit_period": 1
+                "submit_period": 1,
+                "autoscale" : {
+                    "enabled": false,
+                    "scheduler_backlog_timeout": 10,
+                    "sustained_scheduler_backlog_timeout": 10,
+                    "worker_idle_timeout": 10,
+                    "min_workers": 1,
+                    "max_workers": 100
+                }
             }
         }
     address : str
@@ -37,6 +46,12 @@ async def start(config: Dict, address: str):
     await mo.create_actor(
         GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
         address=address)
+    service_config = config.get('scheduling', {}).get('autoscale', {})
+    extra_config = service_config.copy()
+    await mo.create_actor(AutoscalerActor,
+                          extra_config,
+                          uid=AutoscalerActor.default_uid(),
+                          address=address)
 
 
 async def stop(config: dict, address: str):

@@ -26,3 +26,7 @@ task:
     optimize_tileable_graph: yes
     optimize_chunk_graph: yes
     fuse_enabled: yes
+scheduling:
+  autoscale:
+    enabled: true
+    scheduler_backlog_timeout: 10

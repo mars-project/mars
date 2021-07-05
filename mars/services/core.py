@@ -17,7 +17,7 @@ import enum
 import importlib
 from typing import Dict, List, Tuple, Union
 
-BandType = Tuple[str, str]
+BandType = Tuple[str, str]  # (band address, resource_type)
 
 
 class NodeRole(enum.Enum):

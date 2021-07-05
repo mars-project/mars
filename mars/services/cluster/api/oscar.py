@@ -35,14 +35,14 @@ class ClusterAPI(AbstractClusterAPI):
     async def _init(self):
         from ..locator import SupervisorLocatorActor
         from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_info import NodeInfoCollectorActor
+        from ..supervisor.node_info import NodeInfoCollectorActor, NodeAllocatorActor
 
         self._locator_ref = await mo.actor_ref(SupervisorLocatorActor.default_uid(),
                                                address=self._address)
         self._uploader_ref = await mo.actor_ref(NodeInfoUploaderActor.default_uid(),
                                                 address=self._address)
-        [self._node_info_ref] = await self.get_supervisor_refs(
-            [NodeInfoCollectorActor.default_uid()])
+        [self._node_info_ref, self._node_allocator_ref] = await self.get_supervisor_refs(
+            [NodeInfoCollectorActor.default_uid(), NodeAllocatorActor.default_uid()])
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -149,6 +149,13 @@ class ClusterAPI(AbstractClusterAPI):
 
     async def set_band_quota_info(self, band_name, quota_info):
         await self._uploader_ref.set_band_quota_info.tell(band_name, quota_info)
+
+    async def request_worker_node(self, worker_cpu: int, worker_mem: int, timeout: int = None):
+        return await self._node_allocator_ref.request_worker_node(
+            worker_cpu, worker_mem, timeout)
+
+    async def release_worker_node(self, address: str):
+        return await self._node_allocator_ref.release_worker_node(address)
 
 
 class MockClusterAPI(ClusterAPI):
