@@ -23,6 +23,7 @@ import pytest
 import mars.oscar as mo
 import mars.tensor as mt
 import mars.remote as mr
+from mars.core.context import get_context
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from mars.services.cluster import MockClusterAPI
 from mars.services.lifecycle import MockLifecycleAPI
@@ -189,3 +190,33 @@ async def test_cancel_subtask(actor_pool):
     # do not need to wait 10 sec
     assert timer.duration < 10
     assert await subtask_runner.is_runner_free() is True
+
+
+@pytest.mark.asyncio
+async def test_subtask_op_progress(actor_pool):
+    pool, session_id, meta_api, storage_api, manager = actor_pool
+    subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
+        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
+
+    def progress_sleep(interval: float, count: int):
+        for idx in range(count):
+            time.sleep(interval)
+            get_context().set_progress((1 + idx) * 1.0 / count)
+
+    b = mr.spawn(progress_sleep, args=(0.75, 2))
+
+    subtask = _gen_subtask(b, session_id)
+    aio_task = asyncio.create_task(subtask_runner.run_subtask(subtask))
+    try:
+        await asyncio.sleep(0.5)
+        result = await subtask_runner.get_subtask_result()
+        assert result.progress == 0.0
+
+        await asyncio.sleep(0.75)
+        result = await subtask_runner.get_subtask_result()
+        assert result.progress == 0.5
+    finally:
+        await aio_task
+
+    result = await subtask_runner.get_subtask_result()
+    assert result.progress == 1.0
