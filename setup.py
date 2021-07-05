@@ -133,8 +133,8 @@ class CustomSDist(ExtraCommandMixin, sdist):
     pass
 
 
-class BuildWebUI(Command):
-    """build_web_ui command"""
+class BuildWeb(Command):
+    """build_web command"""
 
     user_options = []
     _web_src_path = 'mars/services/web/ui'
@@ -165,15 +165,15 @@ class BuildWebUI(Command):
         assert os.path.exists(cls._web_dest_path)
 
 
-CustomInstall.register_pre_command('build_web_ui')
-CustomSDist.register_pre_command('build_web_ui')
+CustomInstall.register_pre_command('build_web')
+CustomSDist.register_pre_command('build_web')
 
 
 setup_options = dict(
     version=version,
     ext_modules=extensions,
     cmdclass={
-        'build_web_ui': BuildWebUI,
+        'build_web': BuildWeb,
         'install': CustomInstall,
         'sdist': CustomSDist
     },

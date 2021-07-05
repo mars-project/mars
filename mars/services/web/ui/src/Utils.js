@@ -41,14 +41,26 @@ export function toReadableSize(size, trunc) {
 
 export function formatTime(refreshTime) {
     const date = new Date(refreshTime * 1000);
-    const format2Digits = (n) => ("0" + n).slice(-2)
+    const formatDigits = (n, d) => ("0" + n).slice(-d)
 
     return date.getFullYear()
-        + "-" + format2Digits(date.getMonth())
-        + "-" + format2Digits(date.getDay())
-        + " " + format2Digits(date.getHours())
-        + ":" + format2Digits(date.getMinutes())
-        + ":" + format2Digits(date.getSeconds())
+        + "-" + formatDigits(date.getMonth(), 2)
+        + "-" + formatDigits(date.getDay(), 2)
+        + " " + formatDigits(date.getHours(), 2)
+        + ":" + formatDigits(date.getMinutes(), 2)
+        + ":" + formatDigits(date.getSeconds(), 2)
+        + "." + formatDigits(date.getMilliseconds(), 3)
+}
+
+export function getSubtaskStatusText(statusCode) {
+    const mapping = {
+        [0]: 'pending',
+        [1]: 'running',
+        [2]: 'succeeded',
+        [3]: 'errored',
+        [4]: 'cancelled',
+    };
+    return mapping[statusCode];
 }
 
 export function OptionalElement(props) {

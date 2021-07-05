@@ -24,7 +24,7 @@ import TableCell from "@material-ui/core/TableCell";
 import TableBody from "@material-ui/core/TableBody";
 import Title from "../Title";
 import {useStyles} from "../Style";
-import {formatTime} from "../Utils";
+import {formatTime, getSubtaskStatusText} from "../Utils";
 
 class TaskList extends React.Component {
     constructor(props) {
@@ -73,9 +73,9 @@ class TaskList extends React.Component {
                         <TableRow key={"task_row_" + task['task_id']}>
                             <TableCell>{task['task_id']}</TableCell>
                             <TableCell>{formatTime(task['start_time'])}</TableCell>
-                            <TableCell>{task['end_time'] !== undefined ? formatTime(task['end_time']) : 'N/A'}</TableCell>
+                            <TableCell>{task['end_time'] ? formatTime(task['end_time']) : 'N/A'}</TableCell>
                             <TableCell>{Math.floor(task['progress'] * 100).toString() + "%"}</TableCell>
-                            <TableCell>{task['status']}</TableCell>
+                            <TableCell>{getSubtaskStatusText(task['status'])}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

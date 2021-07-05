@@ -161,7 +161,7 @@ class BandSlotManagerActor(mo.Actor):
         if delays:  # pragma: no branch
             yield self._global_slots_ref.update_subtask_slots.batch(*delays)
         if self._cluster_api is not None:
-            await self._cluster_api.set_band_slot_infos(self._band, slot_infos)
+            await self._cluster_api.set_band_slot_infos(self._band_name, slot_infos)
 
         if periodical:
             self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(

@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import Table, {Padding} from "@material-ui/core/Table";
+import Table from "@material-ui/core/Table";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TableCell from "@material-ui/core/TableCell";
@@ -204,6 +204,48 @@ export default class NodeResourceTab extends React.Component {
                         </TableHead>
                         <TableBody>
                             {this.generateDiskRows()}
+                        </TableBody>
+                    </Table>
+                </OptionalElement>
+                <OptionalElement condition={this.state.state['quota']}>
+                    <Title component={"h3"}>Quota</Title>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {Object.keys(this.state.state['quota']).map((band) => (
+                                <TableRow>
+                                    <TableCell>{band}</TableCell>
+                                    <TableCell>
+                                        <div>Total: {toReadableSize(this.state.state['quota'][band]['quota_size'])}</div>
+                                        <div>Allocated: {toReadableSize(this.state.state['quota'][band]['allocated_size'])}</div>
+                                        <div>Hold: {toReadableSize(this.state.state['quota'][band]['hold_size'])}</div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </OptionalElement>
+                <OptionalElement condition={this.state.state['slot']}>
+                    <Title component={"h3"}>Slot</Title>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Slots</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {Object.keys(this.state.state['slot']).map((band) => (
+                                <TableRow>
+                                    <TableCell>{band}</TableCell>
+                                    <TableCell>{this.state.state['slot'][band].length}</TableCell>
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </OptionalElement>
