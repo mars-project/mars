@@ -141,7 +141,7 @@ async def test_web_session(ray_large_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_load_third_party_modules(ray_cluster, create_cluster):
+async def test_load_third_party_modules(ray_large_cluster, create_cluster):
     config = _load_config()
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
@@ -170,7 +170,7 @@ async def test_load_third_party_modules(ray_cluster, create_cluster):
                          }],
                          indirect=True)
 @pytest.mark.asyncio
-def test_load_third_party_modules2(ray_cluster, create_cluster):
+def test_load_third_party_modules2(ray_large_cluster, create_cluster):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
@@ -187,7 +187,8 @@ def test_load_third_party_modules2(ray_cluster, create_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_load_third_party_modules_from_config(ray_cluster, cleanup_third_party_modules_output):  # noqa: F811
+async def test_load_third_party_modules_from_config(ray_large_cluster,
+                                                    cleanup_third_party_modules_output):  # noqa: F811
     client = await new_cluster('test_cluster',
                                worker_num=2,
                                worker_cpu=2,
