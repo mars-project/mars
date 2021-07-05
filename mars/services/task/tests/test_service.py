@@ -179,7 +179,7 @@ async def test_task_progress(start_test_service):
     def f1(interval: float, count: int):
         for idx in range(count):
             time.sleep(interval)
-            get_context().set_operand_progress((1 + idx) * 1.0 / count)
+            get_context().set_progress((1 + idx) * 1.0 / count)
 
     r = mr.spawn(f1, args=(0.75, 2))
 

@@ -220,7 +220,7 @@ class Context(ABC):
         op_key : str
         """
 
-    def set_operand_progress(self, progress: float):
+    def set_progress(self, progress: float):
         """
         Set progress of running operand.
 

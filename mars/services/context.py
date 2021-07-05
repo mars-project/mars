@@ -180,7 +180,7 @@ class ThreadedServiceContext(Context):
         self._running_session_id = session_id
         self._running_op_key = op_key
 
-    def set_operand_progress(self, progress: float):
+    def set_progress(self, progress: float):
         if self._running_op_key is None or self._subtask_api is None:  # pragma: no cover
             return
         return self._call(self._subtask_api.set_running_operand_progress(

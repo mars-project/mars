@@ -201,7 +201,7 @@ async def test_subtask_op_progress(actor_pool):
     def progress_sleep(interval: float, count: int):
         for idx in range(count):
             time.sleep(interval)
-            get_context().set_operand_progress((1 + idx) * 1.0 / count)
+            get_context().set_progress((1 + idx) * 1.0 / count)
 
     b = mr.spawn(progress_sleep, args=(0.75, 2))
 
