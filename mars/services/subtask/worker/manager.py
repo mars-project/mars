@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import asyncio
 from typing import Type
 
 from .... import oscar as mo
@@ -25,6 +25,8 @@ class SubtaskManagerActor(mo.Actor):
         # for test purpose
         self._subtask_processor_cls = subtask_processor_cls
         self._cluster_api = None
+
+        self._band_slot_runner_refs = dict()
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -40,10 +42,15 @@ class SubtaskManagerActor(mo.Actor):
         strategy = IdleLabel(band_name, 'subtask_runner')
         band = (self.address, band_name)
         for slot_id in range(n_slots):
-            await mo.create_actor(
+            self._band_slot_runner_refs[(band_name, slot_id)] = await mo.create_actor(
                 SubtaskRunnerActor,
                 supervisor_address, band,
                 subtask_processor_cls=self._subtask_processor_cls,
                 uid=SubtaskRunnerActor.gen_uid(band_name, slot_id),
                 address=self.address,
                 allocate_strategy=strategy)
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[
+            mo.destroy_actor(ref) for ref in self._band_slot_runner_refs.values()
+        ])

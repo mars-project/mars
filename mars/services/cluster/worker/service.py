@@ -59,3 +59,12 @@ async def start(config: dict, address: str):
         band_to_slots=svc_config.get('resource'),
         uid=NodeInfoUploaderActor.default_uid(),
         address=address)
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=NodeInfoUploaderActor.default_uid(), address=address
+    ))
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=SupervisorLocatorActor.default_uid(), address=address
+    ))

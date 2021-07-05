@@ -15,3 +15,6 @@
 
 async def start(*_, **__):
     return
+
+
+stop = start

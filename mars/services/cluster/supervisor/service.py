@@ -60,3 +60,15 @@ async def start(config: dict, address: str):
         interval=svc_config.get('node_check_interval'),
         uid=NodeInfoUploaderActor.default_uid(),
         address=address)
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=SupervisorLocatorActor.default_uid(),
+        address=address))
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=NodeInfoCollectorActor.default_uid(),
+        address=address))
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=NodeInfoUploaderActor.default_uid(),
+        address=address))

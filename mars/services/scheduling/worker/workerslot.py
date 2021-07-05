@@ -35,6 +35,8 @@ class WorkerSlotManagerActor(mo.Actor):
         self._cluster_api = None
         self._global_slots_ref = None
 
+        self._band_slot_managers = dict()  # type: Dict[str, mo.ActorRef]
+
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
         from ..supervisor import GlobalSlotManagerActor
@@ -45,10 +47,14 @@ class WorkerSlotManagerActor(mo.Actor):
 
         band_to_slots = await self._cluster_api.get_bands()
         for band, n_slot in band_to_slots.items():
-            await mo.create_actor(
+            self._band_slot_managers[band] = await mo.create_actor(
                 BandSlotManagerActor, band, n_slot, self._global_slots_ref,
                 uid=BandSlotManagerActor.gen_uid(band[1]),
                 address=self.address)
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[mo.destroy_actor(ref)
+                               for ref in self._band_slot_managers.values()])
 
 
 class BandSlotManagerActor(mo.Actor):

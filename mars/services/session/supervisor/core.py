@@ -30,6 +30,11 @@ class SessionManagerActor(mo.Actor):
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
 
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[
+            mo.destroy_actor(ref) for ref in self._session_refs.values()
+        ])
+
     async def create_session(self,
                              session_id: str,
                              create_services: bool = True):
@@ -128,6 +133,23 @@ class SessionActor(mo.Actor):
             address=self.address,
             uid=CustomLogMetaActor.gen_uid(self._session_id))
 
+    async def __pre_destroy__(self):
+        from ...meta import MetaAPI
+        from ...lifecycle import LifecycleAPI
+        from ...scheduling import SchedulingAPI
+        from ...task import TaskAPI
+
+        if self._task_api:
+            await TaskAPI.destroy_session(self._session_id, self.address)
+        if self._lifecycle_api:
+            await LifecycleAPI.destroy_session(self._session_id, self.address)
+        if self._meta_api:
+            await MetaAPI.destroy_session(self._session_id, self.address)
+        if self._scheduling_api:
+            await SchedulingAPI.destroy_session(self._session_id, self.address)
+
+        await mo.destroy_actor(self._custom_log_meta_ref)
+
     async def create_services(self):
         from ...meta import MetaAPI
         from ...lifecycle import LifecycleAPI
@@ -167,23 +189,6 @@ class SessionActor(mo.Actor):
 
     async def destroy_remote_object(self, name: str):
         return await mo.destroy_actor(mo.ActorRef(self.address, name))
-
-    async def __pre_destroy__(self):
-        from ...meta import MetaAPI
-        from ...lifecycle import LifecycleAPI
-        from ...scheduling import SchedulingAPI
-        from ...task import TaskAPI
-
-        if self._task_api:
-            await TaskAPI.destroy_session(self._session_id, self.address)
-        if self._lifecycle_api:
-            await LifecycleAPI.destroy_session(self._session_id, self.address)
-        if self._meta_api:
-            await MetaAPI.destroy_session(self._session_id, self.address)
-        if self._scheduling_api:
-            await SchedulingAPI.destroy_session(self._session_id, self.address)
-
-            await mo.destroy_actor(self._custom_log_meta_ref)
 
 
 class RemoteObjectActor(mo.Actor):

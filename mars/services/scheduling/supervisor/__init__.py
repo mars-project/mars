@@ -16,4 +16,4 @@ from .assigner import AssignerActor
 from .globalslot import GlobalSlotManagerActor
 from .manager import SubtaskManagerActor
 from .queueing import SubtaskQueueingActor
-from .service import start
+from .service import start, stop

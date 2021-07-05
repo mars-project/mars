@@ -14,3 +14,5 @@
 
 async def start(*_args, **_kwargs):
     pass
+
+stop = start

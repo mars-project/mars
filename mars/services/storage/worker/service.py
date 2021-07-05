@@ -47,11 +47,13 @@ async def start(config: dict, address: str):
                           address=address)
 
 
-async def stop(address: str):
+async def stop(config: dict, address: str):
     """
     Stop storage service on worker
     Parameters
     ----------
+    config:
+        storage service config
     address:
         main pool address of worker
     """

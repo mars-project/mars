@@ -40,3 +40,8 @@ async def start(config: Dict, address: str):
                           subtask_processor_cls=subtask_processor_cls,
                           address=address,
                           uid=SubtaskManagerActor.default_uid())
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=SubtaskManagerActor.default_uid(), address=address))

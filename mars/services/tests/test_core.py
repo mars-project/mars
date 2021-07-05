@@ -16,7 +16,7 @@ import pytest
 from tornado.httpclient import AsyncHTTPClient
 
 import mars.oscar as mo
-from mars.services import NodeRole, start_services
+from mars.services import NodeRole, start_services, stop_services
 from mars.utils import get_next_port
 
 
@@ -53,3 +53,10 @@ async def test_start_service(actor_pool_context):
     http_client = AsyncHTTPClient()
     resp = await http_client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
     assert resp.body.decode() == 'val1'
+
+    await stop_services(NodeRole.SUPERVISOR, config, 'mars.services.tests.test_svcs',
+                        address=pool.external_address)
+    assert not await mo.has_actor(mo.create_actor_ref(
+        'TestActor1', address=pool.external_address))
+    assert not await mo.has_actor(mo.create_actor_ref(
+        'TestActor2', address=pool.external_address))

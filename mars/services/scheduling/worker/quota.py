@@ -255,9 +255,14 @@ class MemQuotaActor(QuotaActor):
         self._last_memory_available = 0
         self._refresh_time = refresh_time or 1
 
+        self._stat_refresh_task = None
+
     async def __post_create__(self):
         await super().__post_create__()
-        self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+        self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+
+    async def __pre_destroy__(self):
+        self._stat_refresh_task.cancel()
 
     def update_mem_stats(self):
         """
@@ -308,7 +313,7 @@ class WorkerQuotaManagerActor(mo.Actor):
         self._default_config = default_config
         self._band_configs = band_configs or dict()
 
-        self._band_quota_infos = dict()  # type: Dict[str, QuotaInfo]
+        self._band_quota_refs = dict()  # type: Dict[str, mo.ActorRef]
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -317,7 +322,12 @@ class WorkerQuotaManagerActor(mo.Actor):
         band_to_slots = await self._cluster_api.get_bands()
         for band in band_to_slots.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
-            await mo.create_actor(
+            self._band_quota_refs[band] = await mo.create_actor(
                 MemQuotaActor, band, **band_config,
                 uid=MemQuotaActor.gen_uid(band[1]),
                 address=self.address)
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[
+            mo.destroy_actor(ref) for ref in self._band_quota_refs.values()
+        ])
