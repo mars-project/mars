@@ -83,6 +83,12 @@ def _add_pool_conf(config: ActorPoolConfig, process_index: int, label: str,
                              external_address, env=env)
 
 
+@pytest.fixture(autouse=True)
+def clear_routers():
+    yield
+    Router.set_instance(None)
+
+
 @flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')

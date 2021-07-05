@@ -18,6 +18,7 @@ import os
 import pytest
 
 from .....utils import lazy_import
+from ..communication import RayServer
 from ..driver import RayActorDriver
 from ..utils import (
     node_address_to_placement,
@@ -28,6 +29,7 @@ from ..utils import (
     process_address_to_placement,
 )
 import mars.oscar as mo
+from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
@@ -50,24 +52,6 @@ class DummyActor(mo.Actor):
         return self._index
 
 
-@pytest.fixture(scope="module")
-def ray_cluster():
-    try:
-        from ray.cluster_utils import Cluster
-    except ModuleNotFoundError:
-        from ray._private.cluster_utils import Cluster
-    cluster = Cluster()
-    remote_nodes = []
-    num_nodes = 3
-    for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
-        if len(remote_nodes) == 1:
-            ray.init(address=cluster.address)
-    yield
-    ray.shutdown()
-    cluster.shutdown()
-
-
 @pytest.fixture
 async def mars_cluster():
     mo.setup_cluster(address_to_resources=TEST_ADDRESS_TO_RESOURCES)
@@ -80,11 +64,12 @@ async def mars_cluster():
     yield
 
     RayActorDriver.stop_cluster()
+    RayServer.clear()
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_create_actor_in_placement_group(ray_cluster, mars_cluster):
+async def test_create_actor_in_placement_group(ray_large_cluster, mars_cluster):
     actor_refs = []
     for i, r in enumerate(TEST_PLACEMENT_GROUP_BUNDLES):
         for _ in range(r["CPU"]):
@@ -153,7 +138,7 @@ def test_addresses_to_placement_group_info():
 
 @require_ray
 @pytest.mark.asyncio
-async def test_get_placement_group(ray_cluster):
+async def test_get_placement_group(ray_large_cluster):
     pg_name = 'test_pg'
     pg = ray.util.placement_group(name=pg_name,
                                   bundles=[{'CPU': 1}],

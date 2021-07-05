@@ -26,7 +26,7 @@ ray = lazy_import('ray')
 @require_ray
 @pytest.mark.asyncio
 async def test_main_pool(ray_start_regular):
-    pg_name, n_process = 'ray_cluster', 2
+    pg_name, n_process = 'ray_cluster', 3
     if hasattr(ray.util, "get_placement_group"):
         pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
         ray.get(pg.ready())
@@ -38,6 +38,7 @@ async def test_main_pool(ray_start_regular):
 
     main_actor_pool = await create_actor_pool(
         address, n_process=n_process, pool_cls=RayMainActorPool)
+    main_actor_pool._monitor_task.cancel()  # avoid sub pool got restarted
     async with main_actor_pool:
         sub_processes = list(main_actor_pool.sub_processes.values())
         assert len(sub_processes) == n_process

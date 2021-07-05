@@ -77,7 +77,7 @@ async def actor_pool():
                                           address=pool.external_address)
         # create queueing actor
         queueing_ref = await mo.create_actor(SubtaskQueueingActor,
-                                             session_id, 0.1,
+                                             session_id, 1,
                                              uid=SubtaskQueueingActor.gen_uid(session_id),
                                              address=pool.external_address)
 
