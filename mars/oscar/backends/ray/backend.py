@@ -52,7 +52,8 @@ class RayActorBackend(BaseActorBackend):
             bundle_index = -1
         num_cpus = kwargs.get('main_pool_cpus', 0)
         actor_handle = ray.remote(RayMainPool).options(
-            num_cpus=num_cpus,
-            name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
+            num_cpus=num_cpus, name=address,
+            max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
+            placement_group=pg, placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(address, n_process, **kwargs)
         return actor_handle

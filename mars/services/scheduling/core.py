@@ -12,8 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .execution import SubtaskExecutionActor
-from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
-from .service import start
-from .workerslot import WorkerSlotManagerActor, BandSlotManagerActor, \
-    BandSlotControlActor
+from ...serialization.serializables import Serializable, Float64Field, \
+    Int32Field, Int64Field, StringField
+
+
+class WorkerSlotInfo(Serializable):
+    slot_id: int = Int32Field('slot_id')
+    session_id: str = StringField('session_id')
+    subtask_id: str = StringField('subtask_id')
+    processor_usage: float = Float64Field('processor_usage')
+
+
+class QuotaInfo(Serializable):
+    quota_size: int = Int64Field('quota_size')
+    allocated_size: int = Int64Field('allocated_size')
+    hold_size: int = Int64Field('hold_size')

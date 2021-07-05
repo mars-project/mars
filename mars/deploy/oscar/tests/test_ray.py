@@ -21,6 +21,7 @@ from mars.core.session import get_default_session, new_session
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.tests import test_local
 from mars.serialization.ray import register_ray_serializers
+from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
 from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
@@ -32,23 +33,6 @@ ray = lazy_import('ray')
 
 CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'ray_test_with_third_parity_modules_config.yml')
-
-
-@pytest.fixture(scope="module")
-def ray_cluster():
-    try:
-        from ray.cluster_utils import Cluster
-    except ModuleNotFoundError:
-        from ray._private.cluster_utils import Cluster
-    cluster = Cluster()
-    remote_nodes = []
-    num_nodes = 1
-    for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
-        if len(remote_nodes) == 1:
-            ray.init(address=cluster.address)
-    yield
-    ray.shutdown()
 
 
 @pytest.fixture
@@ -67,25 +51,25 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute(ray_cluster, create_cluster):
+async def test_execute(ray_large_cluster, create_cluster):
     await test_local.test_execute(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_iterative_tiling(ray_cluster, create_cluster):
+async def test_iterative_tiling(ray_large_cluster, create_cluster):
     await test_local.test_iterative_tiling(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_execute_describe(ray_cluster, create_cluster):
+async def test_execute_describe(ray_large_cluster, create_cluster):
     await test_local.test_execute_describe(create_cluster)
 
 
 @require_ray
 @pytest.mark.asyncio
-def test_sync_execute(ray_cluster, create_cluster):
+def test_sync_execute(ray_large_cluster, create_cluster):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
@@ -129,7 +113,7 @@ def _sync_web_session_test(web_address):
                           [True, 2, ['ray://test_cluster/1/0', 'ray://test_cluster/2/0']],
                           [False, 5, ['ray://test_cluster/0/6', 'ray://test_cluster/1/0']]])
 @pytest.mark.asyncio
-async def test_optional_supervisor_node(ray_cluster, test_option):
+async def test_optional_supervisor_node(ray_large_cluster, test_option):
     import logging
     logging.basicConfig(level=logging.INFO)
     supervisor_standalone, supervisor_sub_pool_num, worker_addresses = test_option
@@ -148,7 +132,7 @@ async def test_optional_supervisor_node(ray_cluster, test_option):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_web_session(ray_cluster, create_cluster):
+async def test_web_session(ray_large_cluster, create_cluster):
     await test_local.test_web_session(create_cluster)
     web_address = create_cluster.web_address
     assert await ray.remote(_run_web_session).remote(web_address)

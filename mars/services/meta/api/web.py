@@ -61,9 +61,9 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
                              object_id: str,
                              fields: List[str] = None,
                              error: str = 'raise') -> Optional[Dict]:
-        req_addr = f'{self._address}/api/session/{self._session_id}/meta/{object_id}' \
-                   f'?error={error}'
+        params = dict(error=error)
+        req_addr = f'{self._address}/api/session/{self._session_id}/meta/{object_id}'
         if fields:
-            req_addr += '&fields=' + ','.join(fields)
-        res = await self._request_url(req_addr)
-        return deserialize_serializable(res.body)
+            params['fields'] = ','.join(fields)
+        res = await self._request_url('GET', req_addr, params=params)
+        return deserialize_serializable(await res.read())

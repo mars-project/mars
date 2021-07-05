@@ -80,7 +80,7 @@ class DataFrameMergeAlign(MapReduceOperand, DataFrameOperandMixin):
         for index_idx, index_filter in enumerate(filters):
             reducer_index = (index_idx, chunk.index[1])
             if index_filter is not None and index_filter is not list():
-                ctx[chunk.key, reducer_index] = df.loc[index_filter]
+                ctx[chunk.key, reducer_index] = df.iloc[index_filter]
             else:
                 ctx[chunk.key, reducer_index] = None
 

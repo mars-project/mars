@@ -25,7 +25,7 @@ class SubtaskAPI:
     async def create(cls, address: str) -> "SubtaskAPI":
         return SubtaskAPI(address)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_runner_ref(self, band_name: str, slot_id: int):
         from .worker.runner import SubtaskRunnerActor
         return await mo.actor_ref(
@@ -52,6 +52,16 @@ class SubtaskAPI:
         return await ref.run_subtask(subtask)
 
     async def cancel_subtask_in_slot(self, band_name: str, slot_id: int):
+        """
+        Cancel subtask running in a worker slot and wait until it is cancelled
+
+        Parameters
+        ----------
+        band_name : str
+            name of a worker band, for instance, 'numa-0'
+        slot_id : int
+            index of a slot in a band
+        """
         ref = await self._get_runner_ref(band_name, slot_id)
         await ref.cancel_subtask()
 

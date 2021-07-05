@@ -57,7 +57,8 @@ async def actor_pool(request):
             MockGlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
             address=pool.external_address)
         slot_manager_ref = await mo.create_actor(
-            BandSlotManagerActor, 'numa-0', n_slots, global_slots_ref,
+            BandSlotManagerActor,
+            (pool.external_address, 'numa-0'), n_slots, global_slots_ref,
             uid=BandSlotManagerActor.gen_uid('numa-0'),
             address=pool.external_address)
         yield pool, slot_manager_ref
@@ -88,7 +89,7 @@ async def test_slot_assign(actor_pool):
 
     call_logs = dict()
     group_size = 4
-    delay = 0.5
+    delay = 1
     await asyncio.gather(*(
         mo.create_actor(TaskActor, call_logs, address=pool.external_address)
         for _ in range(group_size)

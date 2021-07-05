@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import time
 from typing import Dict, List
 
 from .... import oscar as mo
@@ -61,7 +62,7 @@ class TaskStageProcessor:
         # result
         self.result = TaskResult(
             task.task_id, task.session_id, self.stage_id,
-            status=TaskStatus.pending)
+            status=TaskStatus.pending, start_time=time.time())
         # status
         self._done = asyncio.Event()
         self._cancelled = asyncio.Event()
@@ -116,7 +117,8 @@ class TaskStageProcessor:
             if self.result.status != TaskStatus.terminated:
                 self.result = TaskResult(
                     self.task.task_id, self.task.session_id,
-                    self.stage_id, TaskStatus.terminated,
+                    self.stage_id, start_time=self.result.start_time,
+                    end_time=time.time(), status=TaskStatus.terminated,
                     error=result.error, traceback=result.traceback)
                 if not all_done and error_or_cancelled:
                     # if error or cancel, cancel all submitted subtasks

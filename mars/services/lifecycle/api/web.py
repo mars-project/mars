@@ -60,16 +60,16 @@ class WebLifecycleAPI(AbstractLifecycleAPI, MarsWebAPIClientMixin):
         self._address = address.rstrip('/')
 
     async def decref_tileables(self, tileable_keys: List[str]):
-        path = f'{self._address}/api/session/{self._session_id}/lifecycle' \
-               f'?action=decref_tileables'
+        path = f'{self._address}/api/session/{self._session_id}/lifecycle'
+        params = dict(action='decref_tileables')
         await self._request_url(
-            path, method='POST',
+            path=path, method='POST', params=params,
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            body='tileable_keys=' + ','.join(tileable_keys)
+            data='tileable_keys=' + ','.join(tileable_keys)
         )
 
     async def get_all_chunk_ref_counts(self) -> Dict[str, int]:
-        path = f'{self._address}/api/session/{self._session_id}/lifecycle' \
-               f'?action=get_all_chunk_ref_counts'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        params = dict(action='get_all_chunk_ref_counts')
+        path = f'{self._address}/api/session/{self._session_id}/lifecycle'
+        res = await self._request_url('GET', path, params=params)
+        return deserialize_serializable(await res.read())

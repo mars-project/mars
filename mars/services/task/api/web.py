@@ -12,14 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Union
+import base64
+import json
+from typing import List, Optional, Union
 
-from ..core import TaskResult
 from ....core import TileableGraph, Tileable
 from ....lib.aio import alru_cache
 from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
+from ..core import TaskResult, TaskStatus
 from .core import AbstractTaskAPI
+
+
+def _json_serial_task_result(result: Optional[TaskResult]):
+    if result is None:
+        return {}
+    return {
+        'task_id': result.task_id,
+        'session_id': result.session_id,
+        'stage_id': result.stage_id,
+        'start_time': result.start_time,
+        'end_time': result.end_time,
+        'progress': result.progress,
+        'status': result.status.value,
+        'error': base64.b64encode(serialize_serializable(result.error)).decode()
+        if result.error is not None else None,
+        'traceback': base64.b64encode(serialize_serializable(result.traceback)).decode()
+        if result.traceback is not None else None,
+    }
+
+
+def _json_deserial_task_result(d: dict) -> Optional[TaskResult]:
+    if not d:
+        return None
+    if d['error'] is not None:
+        d['error'] = deserialize_serializable(base64.b16decode(d['error']))
+    if d['traceback'] is not None:
+        d['traceback'] = deserialize_serializable(base64.b16decode(d['error']))
+    d['status'] = TaskStatus(d['status'])
+    return TaskResult(**d)
 
 
 class TaskWebAPIHandler(MarsServiceWebAPIHandler):
@@ -53,6 +84,13 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
             extra_config=extra_config)
         self.write(task_id)
 
+    @web_api('', method='get')
+    async def get_task_results(self, session_id: str):
+        progress = bool(int(self.get_argument('progress', '0')))
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_task_results(progress=progress)
+        self.write(json.dumps([_json_serial_task_result(r) for r in res]))
+
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'fetch_tileables'})
     async def get_fetch_tileables(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
@@ -63,7 +101,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
     async def get_task_result(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_task_result(task_id)
-        self.write(serialize_serializable(res))
+        self.write(json.dumps(_json_serial_task_result(res)))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
     async def get_task_progress(self, session_id: str, task_id: str):
@@ -84,7 +122,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         timeout = float(timeout) if timeout is not None else None
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.wait_task(task_id, timeout)
-        self.write(serialize_serializable(res))
+        self.write(json.dumps(_json_serial_task_result(res)))
 
     @web_api('(?P<task_id>[^/]+)', method='delete')
     async def cancel_task(self, session_id: str, task_id: str):
@@ -102,6 +140,12 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         self._session_id = session_id
         self._address = address
 
+    async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
+        path = f'{self._address}/api/session/{self._session_id}/task'
+        params = {'progress': int(progress)}
+        res = await self._request_url('GET', path, params=params)
+        return [_json_deserial_task_result(d) for d in json.loads((await res.read()).decode())]
+
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
                                     task_name: str = None,
@@ -117,42 +161,43 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
             'extra_config': extra_config_ser,
         })
         res = await self._request_url(
-            path, method='POST',
+            path=path, method='POST',
             headers={'Content-Type': 'application/octet-stream'},
-            body=body
+            data=body
         )
-        return res.body.decode()
+        return (await res.read()).decode()
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
                f'?action=fetch_tileables'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        res = await self._request_url('GET', path)
+        return deserialize_serializable(await res.read())
 
     async def get_task_result(self, task_id: str) -> TaskResult:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        res = await self._request_url('GET', path)
+        return _json_deserial_task_result(json.loads((await res.read()).decode()))
 
     async def get_task_progress(self,
                                 task_id: str) -> float:
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
-               f'?action=progress'
-        res = await self._request_url(path)
-        return float(res.body)
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
+        params = dict(action='progress')
+        res = await self._request_url('GET', path, params=params)
+        return float(await res.read())
 
     async def get_last_idle_time(self) -> Union[float, None]:
-        path = f'{self._address}/api/session/{self._session_id}/task' \
-               f'?action=last_idle_time'
-        res = await self._request_url(path)
-        return float(res.body) if res.body else None
+        path = f'{self._address}/api/session/{self._session_id}/task'
+        params = dict(action='last_idle_time')
+        res = await self._request_url('GET', path, params=params)
+        content = await res.read()
+        return float(content) if content else None
 
     async def wait_task(self, task_id: str, timeout: float = None):
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
-               f'?action=wait&timeout={timeout or ""}'
-        res = await self._request_url(path)
-        return deserialize_serializable(res.body)
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
+        params = {'action': 'wait', 'timeout': timeout or ''}
+        res = await self._request_url('GET', path, params=params)
+        return _json_deserial_task_result(json.loads((await res.read()).decode()))
 
     async def cancel_task(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
-        await self._request_url(path, method='DELETE')
+        await self._request_url(path=path, method='DELETE')

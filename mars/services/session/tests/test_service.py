@@ -57,10 +57,12 @@ async def test_session_service(test_web):
         session_address = await session_api.create_session(session_id)
         assert session_address == pool.external_address
         assert await session_api.has_session(session_id) is True
+        assert (await session_api.get_sessions())[0].session_id == session_id
         if not test_web:
             assert await session_api.get_session_address(session_id) == session_address
         await session_api.delete_session(session_id)
         assert await session_api.has_session(session_id) is False
+        assert await session_api.get_sessions() == []
 
 
 @pytest.mark.asyncio

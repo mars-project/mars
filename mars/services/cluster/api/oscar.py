@@ -14,7 +14,7 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Union, Type, TypeVar
+from typing import List, Dict, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
@@ -132,34 +132,6 @@ class ClusterAPI(AbstractClusterAPI):
         """
         return await self._uploader_ref.get_bands()
 
-    async def set_state_value(self, key: str, value: Union[List, Dict]):
-        """
-        Set state value for current node
-
-        Parameters
-        ----------
-        key
-            state key to set
-        value
-            value of the state
-        """
-        await self._uploader_ref.set_state_value.tell(key, value)
-
-    async def set_band_resource(self, band: str, values: Dict):
-        """
-        Set resource usage for a band
-
-        Parameters
-        ----------
-        band
-        values
-
-        Returns
-        -------
-
-        """
-        await self._uploader_ref.set_band_resource.tell(band, values)
-
     async def mark_node_ready(self):
         """
         Mark current node ready for work loads
@@ -171,6 +143,12 @@ class ClusterAPI(AbstractClusterAPI):
         Wait till all expected supervisors are ready
         """
         await self._locator_ref.wait_all_supervisors_ready()
+
+    async def set_band_slot_infos(self, band, slot_infos):
+        await self._uploader_ref.set_band_slot_infos.tell(band, slot_infos)
+
+    async def set_band_quota_info(self, band, quota_info):
+        await self._uploader_ref.set_band_quota_info.tell(band, quota_info)
 
 
 class MockClusterAPI(ClusterAPI):

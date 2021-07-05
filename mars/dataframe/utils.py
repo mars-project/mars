@@ -64,8 +64,8 @@ def hash_dataframe_on(df, on, size, level=None):
         else:
             data = df[on]
         hashed_label = pd.util.hash_pandas_object(data, index=False, categorize=False)
-    idx_to_grouped = df.index.groupby(hashed_label % size)
-    return [idx_to_grouped.get(i, pd.Index([])).unique() for i in range(size)]
+    idx_to_grouped = pd.RangeIndex(0, len(hashed_label)).groupby(hashed_label % size)
+    return [idx_to_grouped.get(i, pd.Index([])) for i in range(size)]
 
 
 def hash_dtypes(dtypes, size):
@@ -595,7 +595,7 @@ def build_concatenated_rows_frame(df):
     from ..core import OutputType
     from .merge.concat import DataFrameConcat
 
-    # When the df isn't splitted along the column axis, return the df directly.
+    # When the df isn't split along the column axis, return the df directly.
     if df.chunk_shape[1] == 1:
         return df
 

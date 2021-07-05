@@ -66,11 +66,11 @@ class SubtaskRunnerActor(mo.Actor):
 
     async def run_subtask(self, subtask: Subtask):
         if self._running_processor is not None:  # pragma: no cover
-            subtask_id = await self._running_processor.get_running_subtask_id()
+            running_subtask_id = await self._running_processor.get_running_subtask_id()
             # current subtask is still running
             raise SlotOccupiedAlready(
-                f'There is subtask(id: {subtask_id}) running, '
-                f'cannot run another subtask')
+                f'There is subtask(id: {running_subtask_id}) running in {self.uid} '
+                f'at {self.address}, cannot run subtask {subtask.subtask_id}')
 
         session_id = subtask.session_id
         if session_id not in self._session_id_to_processors:

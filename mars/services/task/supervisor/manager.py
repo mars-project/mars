@@ -23,6 +23,7 @@ from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch
+from ....utils import extensible
 from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
 from ...lifecycle.api import LifecycleAPI
@@ -30,7 +31,7 @@ from ...meta import MetaAPI
 from ...scheduling import SchedulingAPI
 from ...subtask import SubtaskResult
 from ..config import task_options
-from ..core import Task, new_task_id
+from ..core import Task, new_task_id, TaskStatus
 from ..errors import TaskNotExist
 from .preprocessor import TaskPreprocessor
 from .processor import TaskProcessorActor
@@ -207,6 +208,33 @@ class TaskManagerActor(mo.Actor):
 
         yield processor_ref.cancel()
 
+    async def get_task_results(self, progress: bool = False):
+        if not self._task_id_to_processor_ref:
+            raise mo.Return([])
+
+        results = yield asyncio.gather(*[
+            ref.result() for ref in self._task_id_to_processor_ref.values()
+        ])
+
+        if progress:
+            task_to_result = {res.task_id: res for res in results}
+
+            progress_task_ids = []
+            for res in results:
+                if res.status != TaskStatus.terminated:
+                    progress_task_ids.append(res.task_id)
+                else:
+                    res.progress = 1.0
+
+            progresses = yield asyncio.gather(*[
+                self._task_id_to_processor_ref[task_id].progress()
+                for task_id in progress_task_ids
+            ])
+            for task_id, progress in zip(progress_task_ids, progresses):
+                task_to_result[task_id].progress = progress
+
+        raise mo.Return(results)
+
     async def get_task_result(self, task_id: str):
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
@@ -232,6 +260,7 @@ class TaskManagerActor(mo.Actor):
 
         yield processor_ref.set_subtask_result(subtask_result)
 
+    @extensible
     async def get_task_progress(self, task_id: str) -> float:
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]

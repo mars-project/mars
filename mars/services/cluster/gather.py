@@ -146,7 +146,7 @@ def gather_node_resource(band_to_slots=None, use_gpu=True):
     return res
 
 
-def gather_node_states(dirs=None):
+def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
     disk_io_usage = mars_resource.disk_io_usage()
     net_io_usage = mars_resource.net_io_usage()
     res = {
@@ -154,6 +154,7 @@ def gather_node_states(dirs=None):
         'network': dict(zip(('receives', 'sends'), net_io_usage)) if net_io_usage else dict(),
         'iowait': mars_resource.iowait(),
     }
+
     if dirs:
         part_dict = dict()
         for d in dirs:
@@ -179,4 +180,24 @@ def gather_node_states(dirs=None):
                     'inode_total': in_usage_result.f_files,
                 })
         res['disk']['partitions'] = part_dict
+
+    band_slot_infos = band_slot_infos or dict()
+    res['slot'] = {
+        band[1]: [{
+            'slot_id': slot_info.slot_id,
+            'session_id': slot_info.session_id,
+            'subtask_id': slot_info.subtask_id,
+            'processor_usage': slot_info.processor_usage,
+        } for slot_info in slot_infos]
+        for band, slot_infos in band_slot_infos.items()
+    }
+
+    band_quota_infos = band_quota_infos or dict()
+    res['quota'] = {
+        band[1]: {
+            'quota_size': quota_info.quota_size,
+            'allocated_size': quota_info.allocated_size,
+            'hold_size': quota_info.hold_size,
+        } for band, quota_info in band_quota_infos.items()
+    }
     return res

@@ -22,7 +22,7 @@ import scipy.sparse as sps
 import pytest
 
 from mars.config import option_context
-from mars.core.session import execute
+from mars.core.session import execute, fetch
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose, arctan2, tree_add, tree_multiply
@@ -324,9 +324,9 @@ def test_arctan2_execution(setup):
 
 
 def test_frexp_execution(setup):
-    data1 = np.random.RandomState(0).random((5, 9, 4))
+    data1 = np.random.RandomState(0).randint(0, 100, (5, 9, 6))
 
-    arr1 = tensor(data1.copy(), chunk_size=3)
+    arr1 = tensor(data1.copy(), chunk_size=4)
 
     o1, o2 = frexp(arr1)
     o = o1 + o2
@@ -335,19 +335,18 @@ def test_frexp_execution(setup):
     expected = sum(np.frexp(data1))
     np.testing.assert_array_almost_equal(res, expected)
 
-    arr1 = tensor(data1.copy(), chunk_size=3)
-    o1 = zeros(data1.shape, chunk_size=3)
-    o2 = zeros(data1.shape, dtype='i8', chunk_size=3)
+    arr1 = tensor(data1.copy(), chunk_size=4)
+    o1 = zeros(data1.shape, chunk_size=4)
+    o2 = zeros(data1.shape, dtype='i8', chunk_size=4)
     frexp(arr1, o1, o2)
-    o = o1 + o2
+    res1, res2 = fetch(*execute(o1, o2))
 
-    res = o.execute().fetch()
-    expected = sum(np.frexp(data1))
-    np.testing.assert_array_almost_equal(res, expected, decimal=3)
+    res = res1 * 2 ** res2
+    np.testing.assert_array_almost_equal(res, data1, decimal=3)
 
     data1 = sps.random(5, 9, density=.1)
 
-    arr1 = tensor(data1.copy(), chunk_size=3)
+    arr1 = tensor(data1.copy(), chunk_size=4)
 
     o1, o2 = frexp(arr1)
     o = o1 + o2
@@ -358,7 +357,7 @@ def test_frexp_execution(setup):
 
 
 def test_frexp_order_execution(setup):
-    data1 = np.random.random((5, 9))
+    data1 = np.random.RandomState(0).random((5, 9))
     t = tensor(data1, chunk_size=3)
 
     o1, o2 = frexp(t, order='F')

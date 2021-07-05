@@ -362,7 +362,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         Any valid string path is acceptable. The string could be a URL. Valid
         URL schemes include http, ftp, s3, and file. For file URLs, a host is
         expected. A local file could be: file://localhost/path/to/table.csv,
-        you can alos read from external resources using a URL like:
+        you can also read from external resources using a URL like:
         hdfs://localhost:8020/test.csv.
         If you want to pass in a path object, pandas accepts any ``os.PathLike``.
         By file-like object, we refer to objects with a ``read()`` method, such as
@@ -493,7 +493,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         * dict, e.g. {'foo' : [1, 3]} -> parse columns 1, 3 as date and call
           result 'foo'
         If a column or index cannot be represented as an array of datetimes,
-        say because of an unparseable value or a mixture of timezones, the column
+        say because of an unparsable value or a mixture of timezones, the column
         or index will be returned unaltered as an object data type. For
         non-standard datetime parsing, use ``pd.to_datetime`` after
         ``pd.read_csv``. To parse an index or column with a mixture of timezones,

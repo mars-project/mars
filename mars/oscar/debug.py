@@ -30,6 +30,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 @dataclass
 class DebugOptions:
     actor_call_timeout: int = 10
+    ray_object_retrieval_timeout: int = 10
     log_unhandled_errors: bool = True
     log_cycle_send: bool = True
 
@@ -59,20 +60,20 @@ def reload_debug_opts_from_env():
     set_debug_options(DebugOptions(**config_json))
 
 
-async def log_actor_timeout(timeout, msg, *args, **kwargs):
+async def _log_timeout(timeout, msg, *args, **kwargs):
     await asyncio.sleep(timeout)
     logger.warning(msg, *args, **kwargs)
 
 
 @contextmanager
-def debug_actor_timeout(option_name: str, msg, *args, **kwargs):
+def debug_async_timeout(option_name: str, msg, *args, **kwargs):
     if _debug_opts is None:
         yield
     else:
         timeout_val = getattr(_debug_opts, option_name, -1)
         timeout_task = None
         if timeout_val and timeout_val > 0:
-            timeout_task = asyncio.create_task(log_actor_timeout(
+            timeout_task = asyncio.create_task(_log_timeout(
                 timeout_val, msg, *args, **kwargs
             ))
 

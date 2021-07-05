@@ -78,7 +78,8 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              pip install ray
+              # remove ray version after https://github.com/ray-project/ray/issues/16802 got fixed
+              pip install ray[default]==1.3.0
             fi
           fi
           conda list -n test
@@ -116,7 +117,7 @@ jobs:
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
-            pytest $PYTEST_CONFIG -m ray
+            pytest $PYTEST_CONFIG --timeout=120 -m ray
             coverage report
           fi
           coverage xml

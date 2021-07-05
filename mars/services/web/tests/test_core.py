@@ -16,7 +16,7 @@ import os
 import sys
 
 import pytest
-from tornado.httpclient import HTTPError
+from aiohttp import ClientResponseError
 
 import mars.oscar as mo
 from mars.services.web import WebActor, web_api, MarsServiceWebAPIHandler, \
@@ -79,8 +79,8 @@ async def actor_pool():
 
 
 class SimpleWebClient(MarsWebAPIClientMixin):
-    async def fetch(self, path, **kwargs):
-        return await self._request_url(path, **kwargs)
+    async def fetch(self, path, method='GET', **kwargs):
+        return await self._request_url(method, path, **kwargs)
 
 
 @pytest.mark.asyncio
@@ -90,32 +90,32 @@ async def test_web_api(actor_pool):
     client = SimpleWebClient()
 
     res = await client.fetch(f'http://localhost:{web_port}/api')
-    assert res.body.decode()
+    assert (await res.read()).decode()
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id')
-    assert res.body.decode() == 'get_root_value_test_id'
+    assert (await res.read()).decode() == 'get_root_value_test_id'
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id',
-                             method='POST', body=b'')
-    assert res.body.decode() == 'post_root_value_test_id'
+                             method='POST', data=b'')
+    assert (await res.read()).decode() == 'post_root_value_test_id'
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest/sub_tid')
-    assert res.body.decode() == 'get_sub_value_test_id_sub_tid'
+    assert (await res.read()).decode() == 'get_sub_value_test_id_sub_tid'
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id/'
                              f'subtest/sub_tid?action=a1')
-    assert res.body.decode() == 'get_sub_value_test_id_sub_tid_action1'
+    assert (await res.read()).decode() == 'get_sub_value_test_id_sub_tid_action1'
 
     res = await client.fetch(f'http://localhost:{web_port}/api/test/test_id/'
                              f'subtest/sub_tid?action=a2')
-    assert res.body.decode() == 'get_sub_value_test_id_sub_tid_action2'
+    assert (await res.read()).decode() == 'get_sub_value_test_id_sub_tid_action2'
 
-    with pytest.raises(HTTPError) as excinfo:
+    with pytest.raises(ClientResponseError) as excinfo:
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/non_exist')
-    assert excinfo.value.code == 404
+    assert excinfo.value.status == 404
 
     with pytest.raises(ValueError):
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_error')
 
     res = await client.fetch(f'http://localhost:{web_port}/api/extra_test')
-    assert 'Test' in res.body.decode()
+    assert 'Test' in (await res.read()).decode()
