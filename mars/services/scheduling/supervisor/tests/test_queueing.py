@@ -39,6 +39,9 @@ class MockSlotsActor(mo.Actor):
     def get_available_bands(self):
         return {(self.address, 'numa-0'): 2}
 
+    def band_is_blocked(self, band: Tuple):
+        return False
+
 
 class MockAssignerActor(mo.Actor):
     def assign_subtasks(self, subtasks: List[Subtask]):
