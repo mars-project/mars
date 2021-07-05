@@ -26,6 +26,7 @@ from setuptools import setup, Extension, Command
 
 import numpy as np
 from Cython.Build import cythonize
+from setuptools.command.develop import develop
 from setuptools.command.install import install
 from setuptools.command.sdist import sdist
 
@@ -129,6 +130,10 @@ class CustomInstall(ExtraCommandMixin, install):
     pass
 
 
+class CustomDevelop(ExtraCommandMixin, develop):
+    pass
+
+
 class CustomSDist(ExtraCommandMixin, sdist):
     pass
 
@@ -154,18 +159,29 @@ class BuildWeb(Command):
     def run(cls):
         if int(os.environ.get('NO_WEB_UI', '0')):
             return
-        if shutil.which('npm') is None:
-            if not os.path.exists(os.path.join(repo_root, *cls._web_dest_path.split('/'))):
+
+        npm_path = shutil.which('npm')
+        web_src_path = os.path.join(repo_root, *cls._web_src_path.split('/'))
+        web_dest_path = os.path.join(repo_root, *cls._web_dest_path.split('/'))
+
+        if not os.path.exists(web_dest_path):
+            if npm_path is None:
                 warnings.warn('Cannot find NPM, may affect displaying Mars Web')
             return
+        elif not os.path.exists(web_src_path):
+            return
+
+        replacements = {'npm': npm_path}
         for cmd in cls._commands:
-            proc_result = subprocess.run(cmd, cwd=cls._web_src_path)
+            cmd = [replacements.get(c, c) for c in cmd]
+            proc_result = subprocess.run(cmd, cwd=web_src_path)
             if proc_result.returncode != 0:
                 raise SystemError(f'Failed when running `{" ".join(cmd)}`')
         assert os.path.exists(cls._web_dest_path)
 
 
 CustomInstall.register_pre_command('build_web')
+CustomDevelop.register_pre_command('build_web')
 CustomSDist.register_pre_command('build_web')
 
 
@@ -175,6 +191,7 @@ setup_options = dict(
     cmdclass={
         'build_web': BuildWeb,
         'install': CustomInstall,
+        'develop': CustomDevelop,
         'sdist': CustomSDist
     },
 )
