@@ -45,3 +45,8 @@ async def start(config: Dict, address: str):
                           task_preprocessor_cls=task_preprocessor_cls,
                           address=address,
                           uid=TaskConfigurationActor.default_uid())
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=TaskConfigurationActor.default_uid(), address=address))

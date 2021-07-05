@@ -37,3 +37,9 @@ async def start(config: Dict, address: str):
     await mo.create_actor(SessionManagerActor, config,
                           uid=SessionManagerActor.default_uid(),
                           address=address)
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=SessionManagerActor.default_uid(), address=address
+    ))

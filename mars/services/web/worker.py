@@ -15,3 +15,5 @@
 
 async def start(*_, **__):  # pragma: no cover
     return
+
+stop = start

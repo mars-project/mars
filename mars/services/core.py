@@ -64,10 +64,7 @@ def _find_service_entries(node_role: NodeRole,
     return svc_entries_list, web_handlers, bokeh_apps
 
 
-async def start_services(node_role: NodeRole, config: Dict,
-                         modules: Union[List, str, None] = None,
-                         address: str = None,
-                         mark_ready: bool = True):
+def _normalize_modules(modules: Union[List, str, None]):
     if modules is None:
         modules = []
     elif isinstance(modules, str):
@@ -75,6 +72,14 @@ async def start_services(node_role: NodeRole, config: Dict,
     else:
         modules = list(modules)
     modules.append('mars.services')
+    return modules
+
+
+async def start_services(node_role: NodeRole, config: Dict,
+                         modules: Union[List, str, None] = None,
+                         address: str = None,
+                         mark_ready: bool = True):
+    modules = _normalize_modules(modules)
 
     # discover services
     service_names = config['services']
@@ -101,11 +106,14 @@ async def start_services(node_role: NodeRole, config: Dict,
 
 
 async def stop_services(node_role: NodeRole,
-                        address: str,
-                        config: Dict = None):
-    service_names = config['services']
-    modules = ['mars.services']
+                        config: Dict,
+                        modules: Union[List, str, None] = None,
+                        address: str = None):
+    modules = _normalize_modules(modules)
+
+    service_names = config['services'][::-1]
+
     svc_entries_list, _, _ = _find_service_entries(
         node_role, service_names, modules, 'stop')
     for entries in svc_entries_list:
-        await asyncio.gather(*[entry(address=address) for entry in entries])
+        await asyncio.gather(*[entry(config, address=address) for entry in entries])

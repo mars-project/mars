@@ -21,7 +21,7 @@ from .quota import WorkerQuotaManagerActor
 from .execution import SubtaskExecutionActor
 
 
-async def start(config: Dict, address: None):
+async def start(config: Dict, address: str):
     """
     Start scheduling service on worker.
 
@@ -49,3 +49,12 @@ async def start(config: Dict, address: None):
     await mo.create_actor(SubtaskExecutionActor,
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=SubtaskExecutionActor.default_uid(), address=address))
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=WorkerQuotaManagerActor.default_uid(), address=address))
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=WorkerSlotManagerActor.default_uid(), address=address))

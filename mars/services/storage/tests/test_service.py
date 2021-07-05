@@ -105,4 +105,5 @@ async def test_storage_service(actor_pools):
 
     pd.testing.assert_frame_equal(value2, read_value)
 
-    await stop_services(NodeRole.WORKER, worker_pool.external_address, config)
+    await stop_services(NodeRole.WORKER, address=worker_pool.external_address,
+                        config=config)

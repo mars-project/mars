@@ -14,6 +14,7 @@
 
 import asyncio
 import inspect
+import logging
 import sys
 cimport cython
 from typing import AsyncGenerator
@@ -25,6 +26,8 @@ from .utils import create_actor_ref
 
 CALL_METHOD_DEFAULT = 0
 CALL_METHOD_BATCH = 1
+
+logger = logging.getLogger(__name__)
 
 cdef:
     bint _log_unhandled_errors = False
@@ -154,8 +157,13 @@ cdef class ActorRefMethod:
 
     def tell_delay(self, *args, delay=None, **kwargs):
         async def delay_fun():
-            await asyncio.sleep(delay)
-            await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
+            try:
+                await asyncio.sleep(delay)
+                await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
+            except Exception as ex:
+                logger.error(f'Error {type(ex)} occurred when calling {self.method_name} '
+                             f'on {self.ref.uid} at {self.ref.address} with tell_delay')
+                raise
 
         return asyncio.create_task(delay_fun())
 

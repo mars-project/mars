@@ -24,8 +24,14 @@ class SvcActor1(mo.Actor):
         return self._arg
 
 
-async def start(config: dict, address: None):
+async def start(config: dict, address: str):
     svc_config = config['test_svc1']
     await mo.create_actor(
         SvcActor1, uid=svc_config['uid'], arg=svc_config['arg1'],
         address=address)
+
+
+async def stop(config: dict, address: str):
+    svc_config = config['test_svc1']
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=svc_config['uid'], address=address))

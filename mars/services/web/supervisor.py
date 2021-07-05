@@ -144,3 +144,8 @@ async def start(config: dict, address: str = None):
     """
     await mo.create_actor(WebActor, config=config.get('web', {}),
                           uid=WebActor.default_uid(), address=address)
+
+
+async def stop(config: dict, address: str = None):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=WebActor.default_uid(), address=address))
