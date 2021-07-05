@@ -13,8 +13,9 @@
 # limitations under the License.
 
 import os
+import tempfile
 
-output_dir = os.path.join(os.path.dirname(__file__), 'output')
+output_dir = os.path.join(tempfile.gettempdir(), 'test_inject_module_output')
 
 os.makedirs(output_dir, exist_ok=True)
 

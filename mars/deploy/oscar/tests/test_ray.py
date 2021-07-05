@@ -196,4 +196,4 @@ async def test_load_third_party_modules_from_config(ray_large_cluster,
                                config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
     async with client:
         # 1 supervisor, 2 worker main pools, 4 worker sub pools.
-        assert len(get_output_filenames()) ==  7
+        assert len(get_output_filenames()) == 7
