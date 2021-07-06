@@ -22,6 +22,8 @@ from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
+_need_consolidate = pd.__version__ in ('1.1.0', '1.3.0')
+
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.SHIFT
@@ -312,7 +314,7 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
         obj = ctx[op.input.key]
         out = op.outputs[0]
 
-        if pd.__version__ == '1.1.0' and \
+        if _need_consolidate and \
                 isinstance(obj, (pd.Series, pd.DataFrame)) and len(obj._data.blocks) > 1:
             # if #internal blocks > 1, shift will create wrong result in pandas 1.1.0
             # see https://github.com/pandas-dev/pandas/issues/35488
