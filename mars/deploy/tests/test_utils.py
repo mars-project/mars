@@ -16,7 +16,8 @@ import os
 
 import pytest
 
-from mars.deploy.utils import load_service_config_file
+from mars.deploy.utils import load_service_config_file, get_third_party_modules_from_config
+from mars.services import NodeRole
 
 _cwd = os.path.abspath(os.getcwd())
 
@@ -37,3 +38,39 @@ def test_load_service_config(cwd):
         assert all(not k.startswith('@') for k in cfg.keys())
     finally:
         os.chdir(old_cwd)
+
+
+def test_get_third_party_modules_from_config():
+    config = {'third_party_modules': {'supervisor': ['a.module']}}
+    r = get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+    assert r == ['a.module']
+    r = get_third_party_modules_from_config(config, NodeRole.WORKER)
+    assert r == []
+
+    config = {'third_party_modules': {'worker': ['b.module']}}
+    r = get_third_party_modules_from_config(config, NodeRole.WORKER)
+    assert r == ['b.module']
+    r = get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+    assert r == []
+
+    config = {'third_party_modules': ['ab.module']}
+    r = get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+    assert r == ['ab.module']
+    r = get_third_party_modules_from_config(config, NodeRole.WORKER)
+    assert r == ['ab.module']
+
+    os.environ['MARS_LOAD_MODULES'] = 'c.module,d.module'
+    try:
+        r = get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+        assert r == ['ab.module', 'c.module', 'd.module']
+        r = get_third_party_modules_from_config(config, NodeRole.WORKER)
+        assert r == ['ab.module', 'c.module', 'd.module']
+    finally:
+        os.environ.pop('MARS_LOAD_MODULES', None)
+
+    config = {'third_party_modules': 'ab.module'}
+    with pytest.raises(TypeError, match='str'):
+        get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+    config = {'third_party_modules': {'supervisor': 'a.module'}}
+    with pytest.raises(TypeError, match='str'):
+        get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
