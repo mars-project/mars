@@ -249,14 +249,10 @@ def test_arrow_string_array_functions():
 
             # test take
             assert list(arrow_array.take([1, 2, -1])) == list(string_array.take([1, 2, -1]))
-            assert list(arrow_array.take([1, 2, -1],
-                                                       allow_fill=True).fillna('aa')) == list(string_array.take([1, 2, -1],
-                                                        allow_fill=True).fillna('aa'))
-            assert list(arrow_array.take([1, 2, -1],
-                                                       allow_fill=True,
-                                                       fill_value='aa')) == list(string_array.take([1, 2, -1],
-                                                        allow_fill=True,
-                                                        fill_value='aa'))
+            assert list(arrow_array.take([1, 2, -1], allow_fill=True).fillna('aa')) \
+                   == list(string_array.take([1, 2, -1], allow_fill=True).fillna('aa'))
+            assert list(arrow_array.take([1, 2, -1], allow_fill=True, fill_value='aa')) \
+                   == list(string_array.take([1, 2, -1], allow_fill=True, fill_value='aa'))
 
             # test shift
             assert list(arrow_array.shift(2, fill_value='aa')) == list(string_array.shift(2, fill_value='aa'))
@@ -363,8 +359,8 @@ def test_arrow_list_functions():
             assert list(arrow_array.shift(2, fill_value=['aa'])) == [['aa']] * 2 + lst[:-2].tolist()
 
             # test all any
-            assert arrow_array.all() == lst.all()
-            assert arrow_array.any() == lst.any()
+            assert arrow_array.all() == pd.array(lst).all()
+            assert arrow_array.any() == pd.array(lst).any()
 
             # test repr
             assert 'ArrowListArray' in repr(arrow_array)

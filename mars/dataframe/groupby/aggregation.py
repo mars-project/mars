@@ -65,19 +65,17 @@ def _patch_groupby_kurt():
     try:
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
         if not hasattr(DataFrameGroupBy, 'kurt'):  # pragma: no branch
-            def _kurt_fun(a, *args, **kwargs):
+            def _kurt_by_frame(a, *args, **kwargs):
                 return a.to_frame().kurt(*args, **kwargs).iloc[0]
 
-            def _series_group_kurt(x, *args, **kwargs):
+            def _group_kurt(x, *args, **kwargs):
                 if kwargs.get('numeric_only') is not None:
-                    return x.agg(functools.partial(_kurt_fun, *args, **kwargs))
+                    return x.agg(functools.partial(_kurt_by_frame, *args, **kwargs))
                 else:
                     return x.agg(functools.partial(pd.Series.kurt, *args, **kwargs))
 
-            DataFrameGroupBy.kurt = _series_group_kurt
-            SeriesGroupBy.kurt = _series_group_kurt
-            DataFrameGroupBy.kurtosis = _series_group_kurt
-            SeriesGroupBy.kurtosis = _series_group_kurt
+            DataFrameGroupBy.kurt = DataFrameGroupBy.kurtosis = _group_kurt
+            SeriesGroupBy.kurt = SeriesGroupBy.kurtosis = _group_kurt
     except (AttributeError, ImportError):  # pragma: no cover
         pass
 

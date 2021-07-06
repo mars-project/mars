@@ -32,6 +32,10 @@ from pandas.core import ops
 from pandas.core.algorithms import take
 from pandas.compat import set_function_name
 try:
+    from pandas._libs.arrays import NDArrayBacked
+except ImportError:
+    NDArrayBacked = None
+try:
     import pyarrow as pa
     pa_null = pa.NULL
 except ImportError:  # pragma: no cover
@@ -246,12 +250,21 @@ class ArrowArray(ExtensionArray):
 
         self._use_arrow = True
         self._arrow_array = arrow_array
-        self._dtype = dtype
+
+        if NDArrayBacked is not None and isinstance(self, NDArrayBacked):
+            NDArrayBacked.__init__(self, np.array([]), dtype)
+        else:
+            self._dtype = dtype
 
     def _init_by_numpy(self, values, dtype: ArrowDtype = None, copy=False):
         self._use_arrow = False
-        self._ndarray = np.array(values, copy=copy)
-        self._dtype = dtype
+
+        ndarray = np.array(values, copy=copy)
+        if NDArrayBacked is not None and isinstance(self, NDArrayBacked):
+            NDArrayBacked.__init__(self, ndarray, dtype)
+        else:
+            self._dtype = dtype
+            self._ndarray = np.array(values, copy=copy)
 
     @classmethod
     def _pandas_only(cls):
@@ -524,10 +537,10 @@ class ArrowArray(ExtensionArray):
                           dtype=self._dtype)
 
     def any(self, axis=0, out=None):
-        return self.to_numpy().any(axis=axis, out=out)
+        return self.to_numpy().astype(bool).any(axis=axis, out=out)
 
     def all(self, axis=0, out=None):
-        return self.to_numpy().all(axis=axis, out=out)
+        return self.to_numpy().astype(bool).all(axis=axis, out=out)
 
     def __mars_tokenize__(self):
         if self._use_arrow:
@@ -660,6 +673,12 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
                                               np.concatenate(mask_chunks))
 
         return set_function_name(method, f"__{op.__name__}__", cls)
+
+    def any(self, axis=0, out=None):
+        return ArrowArray.any(self, axis=axis, out=out)
+
+    def all(self, axis=0, out=None):
+        return ArrowArray.all(self, axis=axis, out=out)
 
     def shift(self, periods: int = 1, fill_value: object = None) -> "ArrowStringArray":
         return ExtensionArray.shift(self, periods=periods, fill_value=fill_value)
