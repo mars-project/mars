@@ -83,5 +83,8 @@ mars/learn/utils/*.c*
 mars/lib/*.c*
 mars/oscar/**/*.c*
 
+# web bundle file
+mars/services/web/static
+
 # docs
 docs/source/savefig/

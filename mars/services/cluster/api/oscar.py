@@ -144,11 +144,11 @@ class ClusterAPI(AbstractClusterAPI):
         """
         await self._locator_ref.wait_all_supervisors_ready()
 
-    async def set_band_slot_infos(self, band, slot_infos):
-        await self._uploader_ref.set_band_slot_infos.tell(band, slot_infos)
+    async def set_band_slot_infos(self, band_name, slot_infos):
+        await self._uploader_ref.set_band_slot_infos.tell(band_name, slot_infos)
 
-    async def set_band_quota_info(self, band, quota_info):
-        await self._uploader_ref.set_band_quota_info.tell(band, quota_info)
+    async def set_band_quota_info(self, band_name, quota_info):
+        await self._uploader_ref.set_band_quota_info.tell(band_name, quota_info)
 
 
 class MockClusterAPI(ClusterAPI):

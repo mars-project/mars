@@ -56,11 +56,11 @@ async def test_cluster_service(actor_pools):
 
     from mars.services.scheduling.core import WorkerSlotInfo, QuotaInfo
     await worker_api.set_band_quota_info(
-        (worker_pool.external_address, 'numa-0'),
+        'numa-0',
         QuotaInfo(quota_size=1024, allocated_size=100, hold_size=100)
     )
     await worker_api.set_band_slot_infos(
-        (worker_pool.external_address, 'numa-0'),
+        'numa-0',
         [WorkerSlotInfo(slot_id=0, session_id='test_session',
                         subtask_id='test_subtask', processor_usage=1.0)]
     )

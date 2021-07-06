@@ -15,14 +15,20 @@
 import os
 import platform
 import re
+import shutil
+import subprocess
 import sys
+import warnings
 from sysconfig import get_config_var
 
 from pkg_resources import parse_version
-from setuptools import setup, Extension
+from setuptools import setup, Extension, Command
 
 import numpy as np
 from Cython.Build import cythonize
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+from setuptools.command.sdist import sdist
 
 try:
     import distutils.ccompiler
@@ -108,8 +114,85 @@ extensions = cythonize(cy_extensions, **cythonize_kw) + \
     [Extension('mars.lib.mmh3', ['mars/lib/mmh3_src/mmh3module.cpp', 'mars/lib/mmh3_src/MurmurHash3.cpp'])]
 
 
+class ExtraCommandMixin:
+    _extra_pre_commands = []
+
+    def run(self):
+        [self.run_command(cmd) for cmd in self._extra_pre_commands]
+        super().run()
+
+    @classmethod
+    def register_pre_command(cls, cmd):
+        cls._extra_pre_commands.append(cmd)
+
+
+class CustomInstall(ExtraCommandMixin, install):
+    pass
+
+
+class CustomDevelop(ExtraCommandMixin, develop):
+    pass
+
+
+class CustomSDist(ExtraCommandMixin, sdist):
+    pass
+
+
+class BuildWeb(Command):
+    """build_web command"""
+
+    user_options = []
+    _web_src_path = 'mars/services/web/ui'
+    _web_dest_path = 'mars/services/web/static/bundle.js'
+    _commands = [
+        ['npm', 'install'],
+        ['npm', 'run', 'bundle'],
+    ]
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    @classmethod
+    def run(cls):
+        if int(os.environ.get('NO_WEB_UI', '0')):
+            return
+
+        npm_path = shutil.which('npm')
+        web_src_path = os.path.join(repo_root, *cls._web_src_path.split('/'))
+        web_dest_path = os.path.join(repo_root, *cls._web_dest_path.split('/'))
+
+        if not os.path.exists(web_dest_path):
+            if npm_path is None:
+                warnings.warn('Cannot find NPM, may affect displaying Mars Web')
+            return
+        elif not os.path.exists(web_src_path):
+            return
+
+        replacements = {'npm': npm_path}
+        for cmd in cls._commands:
+            cmd = [replacements.get(c, c) for c in cmd]
+            proc_result = subprocess.run(cmd, cwd=web_src_path)
+            if proc_result.returncode != 0:
+                raise SystemError(f'Failed when running `{" ".join(cmd)}`')
+        assert os.path.exists(cls._web_dest_path)
+
+
+CustomInstall.register_pre_command('build_web')
+CustomDevelop.register_pre_command('build_web')
+CustomSDist.register_pre_command('build_web')
+
+
 setup_options = dict(
     version=version,
     ext_modules=extensions,
+    cmdclass={
+        'build_web': BuildWeb,
+        'install': CustomInstall,
+        'develop': CustomDevelop,
+        'sdist': CustomSDist
+    },
 )
 setup(**setup_options)

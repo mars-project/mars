@@ -239,7 +239,6 @@ BSD 3-Clause
 - python-lz4:2.1.0
 - sparse:0.5.0
 - bokeh:1.0.1
-- jinja2:2.10
 - psutil:5.4.7
 - uhashring:1.1
 - skein:0.8.0
@@ -260,18 +259,11 @@ MIT License
 - sqlalchemy:1.4.0
 - async-lru:1.0.2
 - setuptools:55.0.0
-- bootstrap:3.3.7
-- bootstrap-table:1.15.4
-- font-awesome:4.7.0 (CSS)
-- startbootstrap-sb-admin-2:3.3.7
-- moment.js:2.3.1
-
-
-SIL OFL 1.1 license
--------------------
-
-- font-awesome:4.7.0 (Font) (http://fortawesome.github.io/Font-Awesome/) - Created by Dave Gandy
-    -> fonts in "mars/web/static/fonts"
+- react:17.0.0
+- react-dom:17.0.0
+- react-router-dom:5.2.0
+- material-ui:4.0.0
+- lodash:4.17.0
 
 
 CC0 1.0 Universal (CC0 1.0)
