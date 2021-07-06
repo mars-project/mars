@@ -193,6 +193,7 @@ def test_parse_args():
         'MARS_TASK_DETAIL': task_detail,
         'MARS_CACHE_MEM_SIZE': '20M',
         'MARS_PLASMA_DIRS': '/dev/shm',
+        'MARS_SPILL_DIRS': '/tmp'
     }
     args = app.parse_args(parser, ['-p', '10324'], env)
     assert args.host == 'worker1'
@@ -202,4 +203,8 @@ def test_parse_args():
     assert app.config['storage']['plasma'] == {
         'store_memory': '20M',
         'plasma_directory': '/dev/shm',
+    }
+    assert app.config['storage']['filesystem'] == {
+            'root_dirs': '/tmp',
+            'level': 'DISK',
     }

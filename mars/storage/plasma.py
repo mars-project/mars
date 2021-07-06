@@ -162,7 +162,7 @@ class PlasmaStorage(StorageBackend):
         if kwargs:
             raise TypeError(f'PlasmaStorage got unexpected config: {",".join(kwargs)}')
 
-        store_memory = calc_size_by_str(store_memory, virtual_memory().total)
+        store_memory = int(calc_size_by_str(store_memory, virtual_memory().total) * 0.95)
         plasma_store = plasma.start_plasma_store(
             store_memory, plasma_directory=plasma_directory)
         plasma_socket = (await loop.run_in_executor(

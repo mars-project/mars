@@ -305,7 +305,9 @@ class DataManagerActor(mo.Actor):
             else:
                 return
 
-    def get_spill_keys(self, level, size):
+    def get_spill_keys(self, level: StorageLevel, size):
+        if level.spill_level() not in self._spill_strategy:
+            raise RuntimeError(f'Spill level of {level} is not configured')
         return self._spill_strategy[level].get_spill_keys(size)
 
 
@@ -321,10 +323,12 @@ class StorageHandlerActor(mo.Actor):
         self._storage_init_params = storage_init_params
         self._data_manager_ref = data_manager_ref
         self._quota_refs = quota_refs
+        self._supervisor_address = None
 
     async def __post_create__(self):
         self._clients = clients = dict()
         for backend, init_params in self._storage_init_params.items():
+            logger.debug(f'Start storage {backend} with params {init_params}')
             storage_cls = get_storage_backend(backend)
             client = storage_cls(**init_params)
             for level in StorageLevel.__members__.values():
@@ -554,18 +558,58 @@ class StorageHandlerActor(mo.Actor):
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
                                         self._data_manager_ref, self._clients[level])
 
-    async def list(self, level: StorageLevel) -> List:
-        return await self._clients[level].list()
+    async def _get_meta_api(self, session_id: str):
+        if self._supervisor_address is None:
+            cluster_api = await ClusterAPI.create(self.address)
+            self._supervisor_address = (await cluster_api.get_supervisors())[0]
+        return await MetaAPI.create(session_id=session_id,
+                                    address=self._supervisor_address)
 
     async def fetch(self,
                     session_id: str,
-                    data_key: str):
-        if StorageLevel.REMOTE not in self._clients:
-            raise NotImplementedError
-        else:
-            data_info = await self._data_manager_ref.get_data_info(
-                session_id, data_key)
-            await self._clients[StorageLevel.REMOTE].fetch(data_info.object_id)
+                    data_key: str,
+                    level: StorageLevel,
+                    address: str,
+                    band_name: str,
+                    error: str):
+        from .transfer import SenderManagerActor
+
+        if error not in ('raise', 'ignore'):  # pragma: no cover
+            raise ValueError('error must be raise or ignore')
+
+        try:
+            await self._data_manager_ref.get_data_info(session_id, data_key)
+            await self._data_manager_ref.pin(session_id, data_key)
+        except DataNotExist:
+            # Not exists in local, fetch from remote worker
+            try:
+                meta_api = await self._get_meta_api(session_id)
+                if address is None:
+                    # we get meta using main key when fetch shuffle data
+                    main_key = data_key[0] if isinstance(data_key, tuple) else data_key
+                    address = (await meta_api.get_chunk_meta(
+                        main_key, fields=['bands']))['bands'][0][0]
+                logger.debug(f'Begin to fetch data {data_key} from {address}')
+                if StorageLevel.REMOTE in self._quota_refs:
+                    remote_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
+                                                            address=address)
+                    data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
+                    await self._data_manager_ref.put_data_info(
+                        session_id, data_key, data_info, None)
+                    await self._clients[level].fetch(data_info.object_id)
+                else:
+                    sender_ref = await mo.actor_ref(
+                        address=address, uid=SenderManagerActor.default_uid())
+                    await sender_ref.send_data(
+                        session_id, data_key, self._data_manager_ref.address, level)
+                logger.debug(f'finish fetching data {data_key} from {address}')
+                if not isinstance(data_key, tuple):
+                    # no need to update meta for shuffle data
+                    await meta_api.add_chunk_bands(
+                        data_key, [(address, band_name or 'numa-0')])
+            except KeyError:
+                if error == 'raise':
+                    raise DataNotExist(f'Data {session_id, data_key} not exists')
 
     async def _request_quota_with_spill(self,
                                         level: StorageLevel,
@@ -583,6 +627,15 @@ class StorageHandlerActor(mo.Actor):
 
         await spill(size, level, self._data_manager_ref,
                     self, self._quota_refs[level])
+
+    async def list(self, level: StorageLevel) -> List:
+        return await self._data_manager_ref.list(level)
+
+    async def pin(self, session_id, data_key):
+        await self._data_manager_ref.pin(session_id, data_key)
+
+    async def unpin(self, session_id, data_key, error):
+        await self._data_manager_ref.unpin(session_id, data_key, error)
 
 
 class StorageManagerActor(mo.Actor):
@@ -678,68 +731,5 @@ class StorageManagerActor(mo.Actor):
         self._teardown_params[storage_backend] = teardown_params
         return client
 
-    async def _get_meta_api(self, session_id: str):
-        if self._supervisor_address is None:
-            cluster_api = await ClusterAPI.create(self.address)
-            self._supervisor_address = (await cluster_api.get_supervisors())[0]
-        return await MetaAPI.create(session_id=session_id,
-                                    address=self._supervisor_address)
-
     def get_client_params(self):
         return self._init_params
-
-    async def fetch(self,
-                    session_id: str,
-                    data_key: str,
-                    level: StorageLevel,
-                    address: str,
-                    band_name: str,
-                    error: str):
-        from .transfer import SenderManagerActor
-
-        if error not in ('raise', 'ignore'):  # pragma: no cover
-            raise ValueError('error must be raise or ignore')
-
-        try:
-            await self._data_manager.get_data_info(session_id, data_key)
-            await self.pin(session_id, data_key)
-        except DataNotExist:
-            # Not exists in local, fetch from remote worker
-            try:
-                meta_api = await self._get_meta_api(session_id)
-                if address is None:
-                    # we get meta using main key when fetch shuffle data
-                    main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-                    address = (await meta_api.get_chunk_meta(
-                        main_key, fields=['bands']))['bands'][0][0]
-                if address == self.address:
-                    return
-                logger.debug(f'Begin to fetch data {data_key} from {address}')
-                if StorageLevel.REMOTE in self._quotas:
-                    remote_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
-                                                            address=address)
-                    data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
-                    await self._data_manager.put_data_info(session_id, data_key, data_info, None)
-                    yield self._storage_handler.fetch(session_id, data_key)
-                else:
-                    sender_ref = await mo.actor_ref(
-                        address=address, uid=SenderManagerActor.default_uid())
-                    yield sender_ref.send_data(session_id, data_key,
-                                               self.address, level)
-                logger.debug(f'finish fetching data {data_key} from {address}')
-                if not isinstance(data_key, tuple):
-                    # no need to update meta for shuffle data
-                    await meta_api.add_chunk_bands(
-                        data_key, [(address, band_name or 'numa-0')])
-            except KeyError:
-                if error == 'raise':
-                    raise DataNotExist(f'Data {session_id, data_key} not exists')
-
-    async def list(self, level: StorageLevel) -> List:
-        return await self._data_manager.list(level)
-
-    async def pin(self, session_id, data_key):
-        await self._data_manager.pin(session_id, data_key)
-
-    async def unpin(self, session_id, data_key, error):
-        await self._data_manager.unpin(session_id, data_key, error)
