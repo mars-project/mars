@@ -143,6 +143,15 @@ async def test_web_session(ray_large_cluster, create_cluster):
 @pytest.mark.asyncio
 async def test_load_third_party_modules(ray_large_cluster):
     config = _load_config()
+
+    config['third_party_modules'] = set()
+    with pytest.raises(TypeError, match='set'):
+        await new_cluster('test_cluster',
+                          worker_num=2,
+                          worker_cpu=2,
+                          worker_mem=1 * 1024 ** 3,
+                          config=config)
+
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
         await new_cluster('test_cluster',

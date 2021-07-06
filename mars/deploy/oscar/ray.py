@@ -24,8 +24,9 @@ from ...oscar.backends.ray.utils import (
     process_placement_to_address,
     node_placement_to_address,
 )
+from ...services import NodeRole
 from ...utils import lazy_import
-from ..utils import load_service_config_file
+from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
 from .session import Session
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
@@ -135,8 +136,8 @@ class RayCluster:
         mo.setup_cluster(address_to_resources)
 
         # third party modules from config
-        supervisor_modules = self._config.get('third_party_modules', {}).get('supervisor', [])
-        worker_modules = self._config.get('third_party_modules', {}).get('worker', [])
+        supervisor_modules = get_third_party_modules_from_config(self._config, NodeRole.SUPERVISOR)
+        worker_modules = get_third_party_modules_from_config(self._config, NodeRole.WORKER)
 
         # create supervisor actor pool
         self._supervisor_pool = await create_supervisor_actor_pool(

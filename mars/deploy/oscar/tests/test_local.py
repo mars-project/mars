@@ -312,6 +312,12 @@ def test_cancel(setup_session, test_func):
 
 def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: F811
     config = load_config()
+
+    config['third_party_modules'] = set()
+    with pytest.raises(TypeError, match='set'):
+        new_session(n_cpu=2, default=True,
+                    web=False, config=config)
+
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
         new_session(n_cpu=2, default=True,
@@ -322,7 +328,7 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
         new_session(n_cpu=2, default=True,
                     web=False, config=config)
 
-    config['third_party_modules'] = {'worker': ['mars.deploy.oscar.tests.modules.replace_op']}
+    config['third_party_modules'] = ['mars.deploy.oscar.tests.modules.replace_op']
     session = new_session(n_cpu=2, default=True,
                           web=False, config=config)
     # web not started
