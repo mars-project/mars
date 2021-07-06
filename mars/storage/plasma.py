@@ -17,6 +17,7 @@
 import asyncio
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
@@ -94,12 +95,17 @@ class PlasmaObjectInfo(ObjectInfo):
     buffer: memoryview = None
     plasma_socket: str = None
 
+    @classmethod
+    @lru_cache(5)
+    def _get_plasma_client(cls, socket):
+        return plasma.connect(socket)
+
     def __getstate__(self):
         return self.size, self.device, self.object_id, self.plasma_socket
 
     def __setstate__(self, state):
         self.size, self.device, self.object_id, self.plasma_socket = state
-        client = plasma.connect(self.plasma_socket)
+        client = self._get_plasma_client(self.plasma_socket)
         [self.buffer] = client.get_buffers([self.object_id])
 
 
