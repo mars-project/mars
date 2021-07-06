@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import itertools
 from typing import List, Dict
 
@@ -64,14 +65,19 @@ def _patch_groupby_kurt():
     try:
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
         if not hasattr(DataFrameGroupBy, 'kurt'):  # pragma: no branch
-            DataFrameGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
-            SeriesGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
+            def _kurt_fun(a, *args, **kwargs):
+                return a.to_frame().kurt(*args, **kwargs).iloc[0]
 
-            def kurtosis(x, *args, **kwargs):
-                return pd.Series.kurt(x, *args, **kwargs)
+            def _series_group_kurt(x, *args, **kwargs):
+                if kwargs.get('numeric_only') is not None:
+                    return x.agg(functools.partial(_kurt_fun, *args, **kwargs))
+                else:
+                    return x.agg(functools.partial(pd.Series.kurt, *args, **kwargs))
 
-            DataFrameGroupBy.kurtosis = lambda x: x.agg(kurtosis)
-            SeriesGroupBy.kurtosis = lambda x: x.agg(kurtosis)
+            DataFrameGroupBy.kurt = _series_group_kurt
+            SeriesGroupBy.kurt = _series_group_kurt
+            DataFrameGroupBy.kurtosis = _series_group_kurt
+            SeriesGroupBy.kurtosis = _series_group_kurt
     except (AttributeError, ImportError):  # pragma: no cover
         pass
 
