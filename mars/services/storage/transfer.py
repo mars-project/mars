@@ -117,8 +117,6 @@ class ReceiverManagerActor(mo.Actor):
                             data_key: str,
                             data_size: int,
                             level: StorageLevel):
-        if (session_id, data_key) in self._key_to_writer_info:
-            return
         writer = await self._storage_handler.open_writer(session_id, data_key,
                                                          data_size, level)
         self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)

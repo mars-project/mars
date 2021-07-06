@@ -306,7 +306,7 @@ class DataManagerActor(mo.Actor):
                 return
 
     def get_spill_keys(self, level: StorageLevel, size):
-        if level.spill_level() not in self._spill_strategy:
+        if level.spill_level() not in self._spill_strategy:  # pragma: no cover
             raise RuntimeError(f'Spill level of {level} is not configured')
         return self._spill_strategy[level].get_spill_keys(size)
 
@@ -610,7 +610,7 @@ class StorageHandlerActor(mo.Actor):
             except (KeyError, mo.ActorNotExist):
                 # for local cluster, will raise ActorNotExist
                 # for multiply workers, will raise KeyError
-                if error == 'raise':
+                if error == 'raise':  # pragma: no cover
                     raise DataNotExist(f'Data {session_id, data_key} not exists')
 
     async def _request_quota_with_spill(self,
@@ -632,9 +632,6 @@ class StorageHandlerActor(mo.Actor):
 
     async def list(self, level: StorageLevel) -> List:
         return await self._data_manager_ref.list(level)
-
-    async def pin(self, session_id, data_key):
-        await self._data_manager_ref.pin(session_id, data_key)
 
     async def unpin(self, session_id, data_key, error):
         await self._data_manager_ref.unpin(session_id, data_key, error)
