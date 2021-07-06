@@ -95,9 +95,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
     async def get_fetch_tileables(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_fetch_tileables(task_id)
-        r = serialize_serializable(res)
-        print(f'serialize length: {len(r)}')
-        self.write(r)
+        self.write(serialize_serializable(res))
 
     @web_api('(?P<task_id>[^/]+)', method='get')
     async def get_task_result(self, session_id: str, task_id: str):
