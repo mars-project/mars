@@ -14,7 +14,8 @@
 
 from collections import OrderedDict
 
-from ....serialization.serializables import Int64Field, BoolField, Int32Field
+from ....serialization.serializables import BoolField, Int32Field, \
+    Int64Field, StringField
 from ...utils import validate_axis
 from ..core import Window
 
@@ -23,9 +24,11 @@ class Expanding(Window):
     _min_periods = Int64Field('min_periods')
     _axis = Int32Field('axis')
     _center = BoolField('center')
+    _method = StringField('method')
 
-    def __init__(self, min_periods=None, axis=None, center=None, **kw):
-        super().__init__(_min_periods=min_periods, _axis=axis, _center=center, **kw)
+    def __init__(self, min_periods=None, axis=None, center=None, method=None, **kw):
+        super().__init__(_min_periods=min_periods, _axis=axis, _center=center,
+                         _method=method, **kw)
 
     @property
     def min_periods(self):
@@ -39,13 +42,17 @@ class Expanding(Window):
     def center(self):
         return self._center
 
+    @property
+    def method(self):
+        return self._method or 'single'
+
     def __call__(self, df):
         return df.expanding(**self.params)
 
     @property
     def params(self):
         p = OrderedDict()
-        for k in ['min_periods', 'center', 'axis']:
+        for k in ['min_periods', 'center', 'axis', 'method']:
             p[k] = getattr(self, k)
         return p
 
