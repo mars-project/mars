@@ -87,8 +87,10 @@ class FIFOStrategy(SpillStrategy):
             if spill_size > size:
                 break
         if spill_size < size:  # pragma: no cover
+            pinned_sizes = dict((k, self._data_sizes[k]) for k in self._pinned_keys)
+            spilling_keys = dict((k, self._data_sizes[k]) for k in self._spilling_keys)
             raise NoDataToSpill(f'No data can be spilled for level: {self._level},'
-                                f'pinned keys: {self._pinned_keys}')
+                                f'pinned keys: {pinned_sizes}, spilling keys: {spilling_keys}')
         self._spilling_keys.update(set(spill_keys))
         return spill_sizes, spill_keys
 

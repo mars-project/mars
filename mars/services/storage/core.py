@@ -336,7 +336,6 @@ class StorageHandlerActor(mo.Actor):
                     clients[level] = client
 
     async def _get_data(self, data_info, conditions):
-        logger.debug(f'Begin to get data {data_info} with conditions {conditions}')
         if conditions is None:
             res = yield self._clients[data_info.level].get(
                 data_info.object_id)
@@ -352,7 +351,6 @@ class StorageHandlerActor(mo.Actor):
                 except AttributeError:
                     sliced_value = data[tuple(conditions)]
                 res = sliced_value
-        logger.debug(f'Finish getting data {data_info} with conditions {conditions}')
         raise mo.Return(res)
 
     @extensible
@@ -377,8 +375,6 @@ class StorageHandlerActor(mo.Actor):
                        error: str = 'raise'):
         info = self._data_manager_ref.get_data_info.delay(
             session_id, data_key, error)
-        logger.debug(f'Get info of data {session_id}-{data_key}: '
-                     f'{info}')
         return info, conditions
 
     @get.batch
@@ -446,7 +442,6 @@ class StorageHandlerActor(mo.Actor):
         data_infos = []
         put_infos = []
         for size, data_key, obj in zip(sizes, data_keys, objs):
-            logger.debug(f'Begin to put data key {data_key}')
             object_info = await self._clients[level].put(obj)
             data_info = _build_data_info(object_info, level, size)
             data_infos.append(data_info)
@@ -617,7 +612,6 @@ class StorageHandlerActor(mo.Actor):
                                         level: StorageLevel,
                                         size: int):
         if await self._quota_refs[level].request_quota(size):
-            logger.debug(f'Request {size} bytes of {level} finished')
             return
         else:
             await self.spill(level, size)
