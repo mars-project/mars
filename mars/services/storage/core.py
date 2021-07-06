@@ -607,7 +607,9 @@ class StorageHandlerActor(mo.Actor):
                     # no need to update meta for shuffle data
                     await meta_api.add_chunk_bands(
                         data_key, [(address, band_name or 'numa-0')])
-            except KeyError:
+            except (KeyError, mo.ActorNotExist):
+                # for local cluster, will raise ActorNotExist
+                # for multiply workers, will raise KeyError
                 if error == 'raise':
                     raise DataNotExist(f'Data {session_id, data_key} not exists')
 
@@ -644,8 +646,9 @@ class StorageManagerActor(mo.Actor):
 
     def __init__(self,
                  storage_configs: Dict,
-                 transfer_block_size: int = None
-                 ):
+                 transfer_block_size: int = None,
+                 **kwargs):
+        self._handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         self._storage_configs = storage_configs
         # params to init and teardown
         self._init_params = dict()
@@ -685,7 +688,7 @@ class StorageManagerActor(mo.Actor):
         strategy = IdleLabel(None, 'StorageHandler')
         while True:
             try:
-                await mo.create_actor(StorageHandlerActor,
+                await mo.create_actor(self._handler_cls,
                                       self._init_params,
                                       self._data_manager,
                                       quotas,
