@@ -127,7 +127,7 @@ async def wait_all_supervisors_ready(endpoint):
 
 
 def get_third_party_modules_from_config(config: Dict, role: NodeRole):
-    third_party_modules = config.get('third_party_modules')
+    third_party_modules = config.get('third_party_modules', [])
     if isinstance(third_party_modules, list):
         modules = third_party_modules
     elif isinstance(third_party_modules, dict):

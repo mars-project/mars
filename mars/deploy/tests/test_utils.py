@@ -41,6 +41,12 @@ def test_load_service_config(cwd):
 
 
 def test_get_third_party_modules_from_config():
+    r = get_third_party_modules_from_config({}, NodeRole.SUPERVISOR)
+    assert r == []
+
+    r = get_third_party_modules_from_config({}, NodeRole.WORKER)
+    assert r == []
+
     config = {'third_party_modules': {'supervisor': ['a.module']}}
     r = get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
     assert r == ['a.module']
@@ -65,6 +71,10 @@ def test_get_third_party_modules_from_config():
         assert r == ['ab.module', 'c.module', 'd.module']
         r = get_third_party_modules_from_config(config, NodeRole.WORKER)
         assert r == ['ab.module', 'c.module', 'd.module']
+        r = get_third_party_modules_from_config({}, NodeRole.SUPERVISOR)
+        assert r == ['c.module', 'd.module']
+        r = get_third_party_modules_from_config({}, NodeRole.WORKER)
+        assert r == ['c.module', 'd.module']
     finally:
         os.environ.pop('MARS_LOAD_MODULES', None)
 
