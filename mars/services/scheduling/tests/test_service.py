@@ -269,9 +269,11 @@ async def test_blocklist(actor_pools):
     assert len(former_bands) == 1
 
     await scheduling_api.add_to_blocklist(band)
-    bands = await scheduling_api.get_available_bands()
-    assert len(bands) == 0
+    assert band in await scheduling_api.get_blocked_bands()
+    assert {} == await scheduling_api.get_available_bands()
 
     await scheduling_api.remove_from_blocklist(band)
+    assert band not in await scheduling_api.get_blocked_bands()
+    
     latter_bands = await scheduling_api.get_available_bands()
     assert former_bands == latter_bands

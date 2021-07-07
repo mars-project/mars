@@ -70,8 +70,7 @@ async def test_blocklist(actor_pool):
     band = (pool.external_address, 'numa-0')
     assert band in all_bands
 
-    former_bands = await global_slot_ref.get_available_bands()
-    assert len(former_bands) == 1
+    assert band in await global_slot_ref.get_available_bands()
 
     await global_slot_ref.add_to_blocklist(band)
     assert band in await global_slot_ref.get_blocked_bands()
@@ -80,5 +79,4 @@ async def test_blocklist(actor_pool):
     await global_slot_ref.remove_from_blocklist(band)
     assert band not in await global_slot_ref.get_blocked_bands()
 
-    latter_bands = await global_slot_ref.get_available_bands()
-    assert former_bands == latter_bands
+    assert band in await global_slot_ref.get_available_bands()

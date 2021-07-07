@@ -178,7 +178,12 @@ class SchedulingAPI(ABC):
     async def remove_from_blocklist(self, band: BandType):
         await self._global_slot_ref.remove_from_blocklist(band)
 
-    async def get_available_bands(self):
+    def get_blocked_bands(self):
+        return self._global_slot_ref.get_blocked_bands()
+
+    async def get_available_bands(self, watch: bool = False):
+        if watch:
+            return await self._global_slot_ref.watch_available_bands()
         return await self._global_slot_ref.get_available_bands()
 
 
