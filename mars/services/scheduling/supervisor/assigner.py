@@ -47,6 +47,10 @@ class AssignerActor(mo.Actor):
 
         self._bands = list(await self._cluster_api.get_all_bands())
 
+        from .globalslot import GlobalSlotManagerActor
+        self._slots_ref = await mo.actor_ref(
+            GlobalSlotManagerActor.default_uid(), address=self.address)
+
         async def watch_bands():
             while True:
                 self._bands = list(await self._cluster_api.get_all_bands(
@@ -61,15 +65,28 @@ class AssignerActor(mo.Actor):
     async def assign_subtasks(self, subtasks: List[Subtask]):
         inp_keys = set()
         selected_bands = dict()
+        available_bands = list(await self._slots_ref.get_available_bands())
         for subtask in subtasks:
             if subtask.expect_bands:
-                selected_bands[subtask.subtask_id] = subtask.expect_bands
+                if all(expect_band in available_bands \
+                       for expect_band in subtask.expect_bands):
+                    # pass if all expected bands are available
+                    selected_bands[subtask.subtask_id] = subtask.expect_bands
+                else:
+                    # exclude expected but blocked bands
+                    expect_available_bands = [expect_band \
+                        for expect_band in subtask.expect_bands\
+                            if expect_band in available_bands]
+                    # fill in if all expected bands are blocked
+                    if not expect_available_bands:
+                        expect_available_bands = [random.choice(available_bands)]
+                    selected_bands[subtask.subtask_id] = expect_available_bands
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
-                    selected_bands[subtask.subtask_id] = [random.choice(self._bands)]
+                    selected_bands[subtask.subtask_id] = [random.choice(available_bands)]
                     break
 
         fields = ['store_size', 'bands']
@@ -90,6 +107,8 @@ class AssignerActor(mo.Actor):
                         continue
                     meta = inp_metas[inp.key]
                     for band in meta['bands']:
+                        if band not in available_bands:
+                            band = await self.reassign_band()
                         band_sizes[band] += meta['store_size']
                 bands = []
                 max_size = -1
@@ -101,3 +120,6 @@ class AssignerActor(mo.Actor):
                         bands.append(band)
             assigns.append(random.choice(bands))
         return assigns
+
+    async def reassign_band(self):
+        return random.choice(list(await self._slots_ref.get_available_bands()))

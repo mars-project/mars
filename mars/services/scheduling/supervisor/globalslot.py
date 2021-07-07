@@ -37,6 +37,9 @@ class GlobalSlotManagerActor(mo.Actor):
         self._initial_idle_start_time = time.time()
         self._band_idle_start_time = defaultdict(lambda: self._initial_idle_start_time)
         self._band_total_slots = dict()
+        # TODO: maybe one node with mutliple bands
+        self._blocked_bands = set()
+        self._blocklist_lock = asyncio.Lock()
 
         self._cluster_api = None
 
@@ -63,12 +66,14 @@ class GlobalSlotManagerActor(mo.Actor):
 
         idx = 0
         total_slots = self._band_total_slots[band]
-        for stid, slots in zip(subtask_ids, subtask_slots):
-            if self._band_used_slots[band] + slots > total_slots:
-                break
-            self._band_stid_slots[band][(session_id, stid)] = slots
-            self._update_slot_usage(band, slots)
-            idx += 1
+        async with self._blocklist_lock:
+            if band not in self._blocked_bands:
+                for stid, slots in zip(subtask_ids, subtask_slots):
+                    if self._band_used_slots[band] + slots > total_slots:
+                        break
+                    self._band_stid_slots[band][(session_id, stid)] = slots
+                    self._update_slot_usage(band, slots)
+                    idx += 1
         if idx == 0:
             logger.debug('No slots available, status: %r, request: %r',
                          self._band_used_slots, subtask_slots)
@@ -101,17 +106,32 @@ class GlobalSlotManagerActor(mo.Actor):
     def get_used_slots(self) -> Dict[BandType, int]:
         return self._band_used_slots
 
-    def get_all_available_bands(self):
-        # TODO merge https://github.com/mars-project/mars/pull/2159
-        return self._band_total_slots.keys()
+    async def get_available_bands(self):
+        if not self._band_total_slots:
+            self._band_total_slots = await self._cluster_api.get_all_bands()
+
+        def exclude_bands(all_bands_slots, excluded_bands):
+            return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
+        return exclude_bands(self._band_total_slots, self._blocked_bands)
+
+    async def add_to_blocklist(self, band: BandType):
+        assert band in self._band_total_slots
+        async with self._blocklist_lock:
+            self._blocked_bands.add(band)
+
+    async def remove_from_blocklist(self, band: BandType):
+        async with self._blocklist_lock:
+            assert band in self._blocked_bands
+            self._blocked_bands.remove(band)
+
+    def get_blocked_bands(self):
+        return self._blocked_bands
+
+    def band_is_blocked(self, band: BandType):
+        assert band in self._band_total_slots
+        return band in self._blocked_bands
 
     async def get_idle_bands(self, idle_duration: int):
-        """Return a band list which all bands has been idle for at least `idle_duration` seconds."""
-        now = time.time()
-        return [band for band, idle_start_time in self._band_used_slots.items()
-                if now >= idle_start_time + idle_duration]
-
-    async def get_idle_workers(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""
         now = time.time()
         return [band for band, idle_start_time in self._band_used_slots.items()

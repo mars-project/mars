@@ -20,10 +20,17 @@ from mars.core import ChunkGraph
 from mars.services.cluster import MockClusterAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.scheduling.supervisor import AssignerActor
+from mars.services.scheduling.supervisor import AssignerActor, GlobalSlotManagerActor
 from mars.services.subtask import Subtask
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import TensorTreeAdd
+
+
+class MockSlotsActor(mo.Actor):
+    def get_available_bands(self):
+        return {('address0', 'numa-0'): 2,
+                ('address1', 'numa-0'): 2,
+                ('address2', 'numa-0'): 2}
 
 
 @pytest.fixture
@@ -35,6 +42,9 @@ async def actor_pool():
         await MockClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
+        await mo.create_actor(MockSlotsActor,
+                              uid=GlobalSlotManagerActor.default_uid(),
+                              address=pool.external_address)
         assigner_ref = await mo.create_actor(
             AssignerActor, session_id, uid=AssignerActor.gen_uid(session_id),
             address=pool.external_address)
@@ -73,3 +83,7 @@ async def test_assigner(actor_pool):
     subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (('address1', 'numa-0'), ('address2', 'numa-0'))
+
+    new_band = await assigner_ref.reassign_band()
+    assert new_band in (('address0', 'numa-0'), ('address1', 'numa-0'), 
+                        ('address2', 'numa-0'))

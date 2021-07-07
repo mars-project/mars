@@ -254,3 +254,24 @@ async def test_schedule_cancel(actor_pools):
             await wait_task
 
     assert (await global_slot_ref.get_used_slots())['numa-0'] == 0
+
+
+@pytest.mark.asyncio
+async def test_blocklist(actor_pools):
+    sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
+    await mo.actor_ref(GlobalSlotManagerActor.default_uid(),
+                                         address=sv_pool.external_address)
+    scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
+
+    band = (worker_pool.external_address, 'numa-0')
+    former_bands = await scheduling_api.get_available_bands()
+    assert band in former_bands
+    assert len(former_bands) == 1
+
+    await scheduling_api.add_to_blocklist(band)
+    bands = await scheduling_api.get_available_bands()
+    assert len(bands) == 0
+
+    await scheduling_api.remove_from_blocklist(band)
+    latter_bands = await scheduling_api.get_available_bands()
+    assert former_bands == latter_bands

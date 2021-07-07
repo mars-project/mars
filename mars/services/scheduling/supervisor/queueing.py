@@ -78,6 +78,7 @@ class SubtaskQueueingActor(mo.Actor):
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
+
         from .assigner import AssignerActor
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
@@ -132,6 +133,15 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
+
+            band_is_blocked = await self._slots_ref.band_is_blocked(band)
+            if band_is_blocked and task_queue:
+                new_band = await self._assigner_ref.reassign_band()
+                while task_queue:
+                    item = heapq.heappop(task_queue)
+                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    heapq.heappush(self._band_queues[new_band], item)
+
             while task_queue and len(submit_items) < band_limit:
                 item = heapq.heappop(task_queue)
                 # skip removed items (as they may still in the queue)
