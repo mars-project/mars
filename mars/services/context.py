@@ -26,6 +26,7 @@ from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
 from .storage import StorageAPI
+from .subtask import SubtaskAPI
 from .meta import MetaAPI
 
 
@@ -33,6 +34,7 @@ class ThreadedServiceContext(Context):
     _cluster_api: ClusterAPI
     _session_api: SessionAPI
     _meta_api: MetaAPI
+    _subtask_api: SubtaskAPI
 
     def __init__(self,
                  session_id: str,
@@ -44,10 +46,14 @@ class ThreadedServiceContext(Context):
                          current_address=current_address)
         self._loop = loop
 
+        self._running_session_id = None
+        self._running_op_key = None
+
         # APIs
         self._cluster_api = None
         self._session_api = None
         self._meta_api = None
+        self._subtask_api = None
 
     async def init(self):
         self._cluster_api = await ClusterAPI.create(
@@ -56,6 +62,11 @@ class ThreadedServiceContext(Context):
             self.supervisor_address)
         self._meta_api = await MetaAPI.create(
             self.session_id, self.supervisor_address)
+        try:
+            self._subtask_api = await SubtaskAPI.create(
+                self.current_address)
+        except mo.ActorNotExist:
+            pass
 
     def _call(self, coro):
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
@@ -164,6 +175,17 @@ class ThreadedServiceContext(Context):
     def new_custom_log_dir(self) -> str:
         return self._call(self._session_api.new_custom_log_dir(
             self.current_address, self.session_id))
+
+    def set_running_operand_key(self, session_id: str, op_key: str):
+        self._running_session_id = session_id
+        self._running_op_key = op_key
+
+    def set_progress(self, progress: float):
+        if self._running_op_key is None or self._subtask_api is None:  # pragma: no cover
+            return
+        return self._call(self._subtask_api.set_running_operand_progress(
+            session_id=self._running_session_id, op_key=self._running_op_key,
+            slot_address=self.current_address, progress=progress))
 
 
 class _RemoteObjectWrapper:

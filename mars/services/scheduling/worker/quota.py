@@ -18,10 +18,11 @@ import logging
 import time
 from collections import namedtuple, OrderedDict
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 from .... import oscar as mo
 from .... import resource as mars_resource
+from ...core import BandType
 from ..core import QuotaInfo
 
 logger = logging.getLogger(__name__)
@@ -39,10 +40,10 @@ class QuotaRequest:
 
 class QuotaActor(mo.Actor):
     @classmethod
-    def gen_uid(cls, band):
-        return f'{band}_quota'
+    def gen_uid(cls, band_name: str):
+        return f'{band_name}_quota'
 
-    def __init__(self, band, quota_size, manager_ref=None):
+    def __init__(self, band: BandType, quota_size: int):
         super().__init__()
         self._requests = OrderedDict()
 
@@ -62,17 +63,28 @@ class QuotaActor(mo.Actor):
         from ...cluster.api import ClusterAPI
         try:
             self._cluster_api = await ClusterAPI.create(self.address)
+            self._report_quota_info()
         except mo.ActorNotExist:
             pass
 
-    def _has_space(self, delta):
+    def _has_space(self, delta: int):
         return self._total_allocated + delta <= self._quota_size
 
-    def _log_allocate(self, msg, *args, **kwargs):
+    def _log_allocate(self, msg: str, *args, **kwargs):
         args += (self._total_allocated, self._quota_size)
         logger.debug(msg + ' Allocated: %s, Total size: %s', *args, **kwargs)
 
-    async def request_batch_quota(self, batch):
+    def _report_quota_info(self):
+        if self._cluster_api is not None:
+            quota_info = QuotaInfo(
+                quota_size=self._quota_size,
+                allocated_size=self._total_allocated,
+                hold_size=self._total_hold
+            )
+            asyncio.create_task(self._cluster_api.set_band_quota_info(
+                self._band_name, quota_info))
+
+    async def request_batch_quota(self, batch: Dict):
         """
         Request for resources in a batch
         :param batch: the request dict in form {request_key: request_size, ...}
@@ -128,14 +140,18 @@ class QuotaActor(mo.Actor):
                 raise ex
         return waiter()
 
-    def remove_requests(self, keys):
+    def remove_requests(self, keys: Tuple):
         self._requests.pop(keys, None)
         self._process_requests()
 
-    def hold_quotas(self, keys):
+    def hold_quotas(self, keys: Tuple):
         """
         Mark request quota as already been hold
-        :param keys: request keys
+
+        Parameters
+        ----------
+        keys : Tuple
+            request keys
         """
         for key in keys:
             try:
@@ -145,10 +161,14 @@ class QuotaActor(mo.Actor):
             self._total_hold += alloc_size - self._hold_sizes.get(key, 0)
             self._hold_sizes[key] = alloc_size
 
-    def release_quotas(self, keys):
+    def release_quotas(self, keys: Tuple):
         """
         Release allocated quota in batch
-        :param keys: request keys
+
+        Parameters
+        ----------
+        keys : Tuple
+            request keys
         """
         total_alloc_size = 0
 
@@ -163,16 +183,9 @@ class QuotaActor(mo.Actor):
         self._total_allocated -= total_alloc_size
         if total_alloc_size:
             self._process_requests()
-            self._log_allocate('Quota keys %s released on %s.', keys, self.uid)
 
-            if self._cluster_api is not None:
-                quota_info = QuotaInfo(
-                    quota_size=self._quota_size,
-                    allocated_size=self._total_allocated,
-                    hold_size=self._total_hold
-                )
-                asyncio.create_task(self._cluster_api.set_band_quota_info(
-                    self._band, quota_info))
+            self._report_quota_info()
+            self._log_allocate('Quota keys %s released on %s.', keys, self.uid)
 
     def dump_data(self):
         return QuotaDumpType(self._allocations, self._requests, self._hold_sizes)
@@ -181,15 +194,21 @@ class QuotaActor(mo.Actor):
         # get total allocated size, for debug purpose
         return self._total_allocated
 
-    def alter_allocations(self, keys, quota_sizes, handle_shrink=True,
-                          allocate=False):
+    def alter_allocations(self, keys: Tuple, quota_sizes: Tuple, handle_shrink: bool = True,
+                          allocate: bool = False):
         """
         Alter multiple requests
-        :param keys: keys to update
-        :param quota_sizes: new quota sizes, if None, no changes will be made
-        :param handle_shrink: if True and the quota size less than the original, process requests in the queue
-        :param allocate: if True, will allocate resources for new items
-        :return:
+
+        Parameters
+        ----------
+        keys : Tuple
+            keys to update
+        quota_sizes : Tuple
+            new quota sizes, if None, no changes will be made
+        handle_shrink : bool
+            if True and the quota size less than the original, process requests in the queue
+        allocate : bool
+            if True, will allocate resources for new items
         """
         quota_sizes = quota_sizes or itertools.repeat(None)
         total_old_size, total_diff = 0, 0
@@ -217,14 +236,7 @@ class QuotaActor(mo.Actor):
         if handle_shrink and total_diff < 0:
             self._process_requests()
 
-        if self._cluster_api is not None:
-            quota_info = QuotaInfo(
-                quota_size=self._quota_size,
-                allocated_size=self._total_allocated,
-                hold_size=self._total_hold
-            )
-            asyncio.create_task(self._cluster_api.set_band_quota_info(self._band_name, quota_info))
-
+        self._report_quota_info()
         self._log_allocate('Quota keys %r applied on %s. Total old Size: %s, Total diff: %s,',
                            keys, self.uid, total_old_size, total_diff)
 
@@ -249,15 +261,21 @@ class MemQuotaActor(QuotaActor):
     """
     Actor handling worker memory quota
     """
-    def __init__(self, band_name, quota_size, hard_limit=None, refresh_time=None):
-        super().__init__(band_name, quota_size)
+    def __init__(self, band: BandType, quota_size: int, hard_limit: int = None,
+                 refresh_time: Union[int, float] = None):
+        super().__init__(band, quota_size)
         self._hard_limit = hard_limit
         self._last_memory_available = 0
         self._refresh_time = refresh_time or 1
 
+        self._stat_refresh_task = None
+
     async def __post_create__(self):
         await super().__post_create__()
-        self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+        self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
+
+    async def __pre_destroy__(self):
+        self._stat_refresh_task.cancel()
 
     def update_mem_stats(self):
         """
@@ -268,9 +286,10 @@ class MemQuotaActor(QuotaActor):
             # memory usage reduced: try reallocate existing requests
             self._process_requests()
         self._last_memory_available = cur_mem_available
+        self._report_quota_info()
         self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
 
-    def _has_space(self, delta):
+    def _has_space(self, delta: int):
         if self._hard_limit is None:
             return super()._has_space(delta)
 
@@ -284,7 +303,7 @@ class MemQuotaActor(QuotaActor):
             return False
         return super()._has_space(delta)
 
-    def _log_allocate(self, msg, *args, **kwargs):
+    def _log_allocate(self, msg: str, *args, **kwargs):
         if self._hard_limit is None:
             return super()._log_allocate(msg, *args, **kwargs)
 
@@ -308,7 +327,7 @@ class WorkerQuotaManagerActor(mo.Actor):
         self._default_config = default_config
         self._band_configs = band_configs or dict()
 
-        self._band_quota_infos = dict()  # type: Dict[str, QuotaInfo]
+        self._band_quota_refs = dict()  # type: Dict[str, mo.ActorRef]
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -317,7 +336,12 @@ class WorkerQuotaManagerActor(mo.Actor):
         band_to_slots = await self._cluster_api.get_bands()
         for band in band_to_slots.keys():
             band_config = self._band_configs.get(band[1], self._default_config)
-            await mo.create_actor(
+            self._band_quota_refs[band] = await mo.create_actor(
                 MemQuotaActor, band, **band_config,
                 uid=MemQuotaActor.gen_uid(band[1]),
                 address=self.address)
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[
+            mo.destroy_actor(ref) for ref in self._band_quota_refs.values()
+        ])

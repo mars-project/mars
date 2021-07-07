@@ -44,3 +44,8 @@ async def start(config: Dict, address: str):
                           extra_config,
                           uid=MetaStoreManagerActor.default_uid(),
                           address=address)
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=MetaStoreManagerActor.default_uid(), address=address))

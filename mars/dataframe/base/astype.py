@@ -18,11 +18,14 @@ from pandas.api.types import CategoricalDtype
 
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import AnyField, StringField, ListField
 from ...tensor.base import sort
 from ..core import DATAFRAME_TYPE, SERIES_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_empty_df, build_empty_series, parse_index
+
+_need_astype_contiguous = parse_version(pd.__version__) == parse_version('1.3.0')
 
 
 class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
@@ -165,6 +168,9 @@ class DataFrameAstype(DataFrameOperand, DataFrameOperandMixin):
             elif isinstance(in_data, pd.Index):
                 ctx[op.outputs[0].key] = in_data.astype(op.dtype_values)
             else:
+                if _need_astype_contiguous and not in_data.values.flags.contiguous:
+                    # astype changes the data order in pandas==1.3.0, see pandas#42396
+                    in_data = in_data.copy()
                 ctx[op.outputs[0].key] = in_data.astype(op.dtype_values, errors=op.errors)
         else:
             selected_dtype = dict((k, v) for k, v in op.dtype_values.items()

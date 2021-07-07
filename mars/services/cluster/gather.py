@@ -183,7 +183,7 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
 
     band_slot_infos = band_slot_infos or dict()
     res['slot'] = {
-        band[1]: [{
+        band: [{
             'slot_id': slot_info.slot_id,
             'session_id': slot_info.session_id,
             'subtask_id': slot_info.subtask_id,
@@ -194,7 +194,7 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
 
     band_quota_infos = band_quota_infos or dict()
     res['quota'] = {
-        band[1]: {
+        band: {
             'quota_size': quota_info.quota_size,
             'allocated_size': quota_info.allocated_size,
             'hold_size': quota_info.hold_size,

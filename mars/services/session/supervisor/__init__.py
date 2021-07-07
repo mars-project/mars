@@ -14,4 +14,4 @@
 
 from .core import SessionManagerActor, SessionActor
 from .custom_log import CustomLogMetaActor
-from .service import start
+from .service import start, stop

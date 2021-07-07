@@ -34,3 +34,9 @@ async def start(config: dict, address: str = None):
     await mo.create_actor(
         SvcActor2, uid=svc_config['uid'], arg=svc_config['arg2'],
         ref_uid=svc_config['ref'], address=address)
+
+
+async def stop(config: dict, address: str):
+    svc_config = config['test_svc2']
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=svc_config['uid'], address=address))

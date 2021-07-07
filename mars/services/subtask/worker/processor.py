@@ -162,8 +162,14 @@ class SubtaskProcessor:
                                      executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
+        self._op_progress[op.key] = 0.0
+        get_context().set_running_operand_key(self._session_id, op.key)
         return loop.run_in_executor(executor, self._execute_operand,
                                     ctx, op)
+
+    def set_op_progress(self, op_key: str, progress: float):
+        if op_key in self._op_progress:  # pragma: no branch
+            self._op_progress[op_key] = progress
 
     def _execute_operand(self,
                          ctx: Dict[str, Any],
@@ -198,9 +204,9 @@ class SubtaskProcessor:
                                 f'subtask id: {self.subtask.subtask_id}')
                     self.result.status = SubtaskStatus.cancelled
                     raise
-                self._op_progress[chunk.op.key] = 1.0
-            else:
-                self._op_progress[chunk.op.key] += 1.0
+
+            self._op_progress[chunk.op.key] = 1.0
+
             for inp in chunk.inputs:
                 ref_counts[inp.key] -= 1
                 if ref_counts[inp.key] == 0:
@@ -481,3 +487,6 @@ class SubtaskProcessorActor(mo.Actor):
 
     def get_running_subtask_id(self):
         return self._processor.subtask_id
+
+    def set_running_op_progress(self, op_key: str, progress: float):
+        self._processor.set_op_progress(op_key, progress)

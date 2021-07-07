@@ -21,6 +21,7 @@ import pytest
 import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
+from mars.core.context import get_context
 from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
@@ -53,9 +54,9 @@ async def actor_pools():
     await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize('use_web_api', [False, True])
-async def test_task_service(actor_pools, use_web_api):
+@pytest.mark.parametrize(indirect=True)
+@pytest.fixture(params=[False, True])
+async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
     config = {
@@ -72,7 +73,7 @@ async def test_task_service(actor_pools, use_web_api):
         "scheduling": {},
         "task": {},
     }
-    if use_web_api:
+    if request:
         config['services'].append('web')
 
     await start_services(
@@ -84,7 +85,7 @@ async def test_task_service(actor_pools, use_web_api):
     session_api = await SessionAPI.create(sv_pool.external_address)
     await session_api.create_session(session_id)
 
-    if not use_web_api:
+    if not request:
         task_api = await TaskAPI.create(session_id,
                                         sv_pool.external_address)
     else:
@@ -100,6 +101,16 @@ async def test_task_service(actor_pools, use_web_api):
                              sv_pool.external_address)
     storage_api = await MockStorageAPI.create(session_id,
                                               worker_pool.external_address)
+
+    try:
+        yield task_api, storage_api
+    finally:
+        await MockStorageAPI.cleanup(worker_pool.external_address)
+
+
+@pytest.mark.asyncio
+async def test_task_execution(start_test_service):
+    task_api, storage_api = start_test_service
 
     def f1():
         return np.arange(5)
@@ -133,11 +144,16 @@ async def test_task_service(actor_pools, use_web_api):
     data_key = result_tileable.chunks[0].key
     assert await storage_api.get(data_key) == 45
 
+
+@pytest.mark.asyncio
+async def test_task_cancel(start_test_service):
+    task_api, storage_api = start_test_service
+
     # test job cancel
-    def f4():
+    def f1():
         time.sleep(100)
 
-    rs = [mr.spawn(f4) for _ in range(10)]
+    rs = [mr.spawn(f1) for _ in range(10)]
 
     graph = TileableGraph([r.data for r in rs])
     next(TileableGraphBuilder(graph).build())
@@ -155,4 +171,31 @@ async def test_task_service(actor_pools, use_web_api):
     results = await task_api.get_task_results(progress=True)
     assert all(result.status == TaskStatus.terminated for result in results)
 
-    await MockStorageAPI.cleanup(worker_pool.external_address)
+
+@pytest.mark.asyncio
+async def test_task_progress(start_test_service):
+    task_api, storage_api = start_test_service
+
+    def f1(interval: float, count: int):
+        for idx in range(count):
+            time.sleep(interval)
+            get_context().set_progress((1 + idx) * 1.0 / count)
+
+    r = mr.spawn(f1, args=(0.75, 2))
+
+    graph = TileableGraph([r.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    await asyncio.sleep(0.5)
+    results = await task_api.get_task_results(progress=True)
+    assert results[0].progress == 0.0
+
+    await asyncio.sleep(0.75)
+    results = await task_api.get_task_results(progress=True)
+    assert results[0].progress == 0.5
+
+    await task_api.wait_task(task_id, timeout=10)
+    results = await task_api.get_task_results(progress=True)
+    assert results[0].progress == 1.0

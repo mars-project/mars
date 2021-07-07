@@ -38,3 +38,8 @@ async def start(config: Dict, address: str):
     custom_log_dir = session_config.get('custom_log_dir')
     await mo.create_actor(CustomLogActor, custom_log_dir,
                           address=address, uid=CustomLogActor.default_uid())
+
+
+async def stop(config: dict, address: str):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=CustomLogActor.default_uid(), address=address))

@@ -14,3 +14,6 @@
 
 async def start(*_, **__):
     pass
+
+
+stop = start

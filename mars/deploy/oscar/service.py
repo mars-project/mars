@@ -61,7 +61,7 @@ async def stop_supervisor(address: str,
                           config: Dict = None):
     if not config or isinstance(config, str):
         config = load_config(config)
-    await stop_services(NodeRole.SUPERVISOR, address, config)
+    await stop_services(NodeRole.SUPERVISOR, address=address, config=config)
 
 
 async def start_worker(address: str,
@@ -85,4 +85,4 @@ async def stop_worker(address: str,
                       config: Dict = None):
     if not config or isinstance(config, str):
         config = load_config(config)
-    await stop_services(NodeRole.WORKER, address, config)
+    await stop_services(NodeRole.WORKER, address=address, config=config)

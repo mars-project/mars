@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import asyncio
 import importlib
 import logging
 from typing import Dict, Optional, Type, Union
@@ -49,6 +49,11 @@ class SubtaskRunnerActor(mo.Actor):
         self._session_id_to_processors = dict()
         self._running_processor = None
         self._last_processor = None
+
+    async def __pre_destroy__(self):
+        await asyncio.gather(*[
+            mo.destroy_actor(ref) for ref in self._session_id_to_processors.values()
+        ])
 
     @classmethod
     def _get_subtask_processor_cls(cls, subtask_processor_cls):

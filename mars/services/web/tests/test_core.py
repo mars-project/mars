@@ -89,6 +89,9 @@ async def test_web_api(actor_pool):
 
     client = SimpleWebClient()
 
+    res = await client.fetch(f'http://localhost:{web_port}/')
+    assert (await res.read()).decode()
+
     res = await client.fetch(f'http://localhost:{web_port}/api')
     assert (await res.read()).decode()
 

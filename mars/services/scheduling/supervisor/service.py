@@ -17,7 +17,7 @@ from typing import Dict
 from .... import oscar as mo
 
 
-async def start(config: Dict, address: None):
+async def start(config: Dict, address: str):
     """
     Start meta service on supervisor.
 
@@ -37,3 +37,9 @@ async def start(config: Dict, address: None):
     await mo.create_actor(
         GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
         address=address)
+
+
+async def stop(config: dict, address: str):
+    from .globalslot import GlobalSlotManagerActor
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=GlobalSlotManagerActor.default_uid(), address=address))

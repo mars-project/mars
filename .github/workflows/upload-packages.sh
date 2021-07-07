@@ -9,6 +9,8 @@ else
   git clean -f -x
   source activate test
 
+  python setup.py build_web
+
   if [ "$UNAME" = "linux" ]; then
     conda create --quiet --yes -n wheel python=$PYTHON
     conda activate wheel
@@ -16,7 +18,7 @@ else
     docker pull $DOCKER_IMAGE
     pyabis=$(echo $PYABI | tr ":" "\n")
     for abi in $pyabis; do
-      git clean -f -x
+      find . -name *.so -delete
       docker run --rm -e "PYABI=$abi" -e "GIT_TAG=$GIT_TAG" -v `pwd`:/io \
         $DOCKER_IMAGE $PRE_CMD /io/.github/workflows/build-wheels.sh
       sudo chown -R $(id -u):$(id -g) ./*

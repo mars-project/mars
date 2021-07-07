@@ -89,7 +89,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         progress = bool(int(self.get_argument('progress', '0')))
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_task_results(progress=progress)
-        self.write(json.dumps([_json_serial_task_result(r) for r in res]))
+        self.write(json.dumps({'tasks': [_json_serial_task_result(r) for r in res]}))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'fetch_tileables'})
     async def get_fetch_tileables(self, session_id: str, task_id: str):
@@ -144,7 +144,8 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/task'
         params = {'progress': int(progress)}
         res = await self._request_url('GET', path, params=params)
-        return [_json_deserial_task_result(d) for d in json.loads((await res.read()).decode())]
+        return [_json_deserial_task_result(d)
+                for d in json.loads((await res.read()).decode())['tasks']]
 
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
@@ -194,7 +195,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
 
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
-        params = {'action': 'wait', 'timeout': timeout or ''}
+        params = {'action': 'wait', 'timeout': str(timeout or '')}
         res = await self._request_url('GET', path, params=params)
         return _json_deserial_task_result(json.loads((await res.read()).decode()))
 

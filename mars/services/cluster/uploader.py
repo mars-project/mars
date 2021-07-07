@@ -110,8 +110,8 @@ class NodeInfoUploaderActor(mo.Actor):
                 band_slots[(self.address, resource_type)] = info['gpu_total']
         return band_slots
 
-    def set_band_slot_infos(self, band, slot_infos):
-        self._band_slot_infos[band] = slot_infos
+    def set_band_slot_infos(self, band_name, slot_infos):
+        self._band_slot_infos[band_name] = slot_infos
 
-    def set_band_quota_info(self, band, quota_info):
-        self._band_quota_infos[band] = quota_info
+    def set_band_quota_info(self, band_name, quota_info):
+        self._band_quota_infos[band_name] = quota_info

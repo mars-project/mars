@@ -65,6 +65,8 @@ class WebActor(mo.Actor):
         self._config['bokeh_apps'] = bokeh_apps
 
     async def __post_create__(self):
+        from .indexhandler import handlers as web_handlers
+
         static_path = os.path.join(os.path.dirname(__file__), 'static')
         supervisor_addr = self.address
 
@@ -72,7 +74,7 @@ class WebActor(mo.Actor):
         port = self._config.get('port') or get_next_port()
         self._web_address = f'http://{host}:{port}'
         bokeh_apps = self._config.get('bokeh_apps', {})
-        web_handlers = self._config.get('web_handlers', {})
+        web_handlers.update(self._config.get('web_handlers', {}))
 
         handlers = dict()
         for p, h in bokeh_apps.items():
@@ -144,3 +146,8 @@ async def start(config: dict, address: str = None):
     """
     await mo.create_actor(WebActor, config=config.get('web', {}),
                           uid=WebActor.default_uid(), address=address)
+
+
+async def stop(config: dict, address: str = None):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=WebActor.default_uid(), address=address))
