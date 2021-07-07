@@ -260,7 +260,7 @@ async def test_schedule_cancel(actor_pools):
 async def test_blocklist(actor_pools):
     sv_pool, worker_pool, session_id, task_manager_ref = actor_pools
     await mo.actor_ref(GlobalSlotManagerActor.default_uid(),
-                                         address=sv_pool.external_address)
+                       address=sv_pool.external_address)
     scheduling_api = await SchedulingAPI.create(session_id, sv_pool.external_address)
 
     band = (worker_pool.external_address, 'numa-0')
@@ -274,6 +274,9 @@ async def test_blocklist(actor_pools):
 
     await scheduling_api.remove_from_blocklist(band)
     assert band not in await scheduling_api.get_blocked_bands()
-    
+
     latter_bands = await scheduling_api.get_available_bands()
     assert former_bands == latter_bands
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(scheduling_api.get_available_bands(watch=True), timeout=0.1)

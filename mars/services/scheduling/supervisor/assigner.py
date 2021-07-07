@@ -80,15 +80,15 @@ class AssignerActor(mo.Actor):
         selected_bands = dict()
         for subtask in subtasks:
             if subtask.expect_bands:
-                if all(expect_band in self._available_bands \
+                if all(expect_band in self._available_bands
                        for expect_band in subtask.expect_bands):
                     # pass if all expected bands are available
                     selected_bands[subtask.subtask_id] = subtask.expect_bands
                 else:
                     # exclude expected but blocked bands
-                    expect_available_bands = [expect_band \
-                        for expect_band in subtask.expect_bands\
-                            if expect_band in self._available_bands]
+                    expect_available_bands = [expect_band
+                                              for expect_band in subtask.expect_bands
+                                              if expect_band in self._available_bands]
                     # fill in if all expected bands are blocked
                     if not expect_available_bands:
                         expect_available_bands = [random.choice(self._available_bands)]
