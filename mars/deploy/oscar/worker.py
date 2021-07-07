@@ -56,11 +56,17 @@ class WorkerCommandRunner(OscarCommandRunner):
             band_to_slot[f'gpu-{i}'] = 1
 
         storage_config = self.config['storage'] = self.config.get('storage', {})
+        backends = storage_config['backends'] = storage_config.get('backends', [])
         plasma_config = storage_config['plasma'] = storage_config.get('plasma', {})
+        filesystem_config = storage_config['filesystem'] = storage_config.get('filesystem', {})
         if 'MARS_CACHE_MEM_SIZE' in environ:
             plasma_config['store_memory'] = environ['MARS_CACHE_MEM_SIZE']
         if 'MARS_PLASMA_DIRS' in environ:
             plasma_config['plasma_directory'] = environ['MARS_PLASMA_DIRS']
+        if 'MARS_SPILL_DIRS' in environ:
+            backends.append('filesystem')
+            filesystem_config['root_dirs'] = environ['MARS_SPILL_DIRS']
+            filesystem_config['level'] = 'DISK'
 
         return args
 
