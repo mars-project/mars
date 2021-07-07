@@ -173,10 +173,10 @@ class RayCluster:
         if not self._stopped:
             for worker_address in self._worker_addresses:
                 await stop_worker(worker_address, self._config)
-            await stop_supervisor(self.supervisor_address, self._config)
             for pool in self._worker_pools:
                 await pool.actor_pool.remote('stop')
             if self._supervisor_pool is not None:
+                await stop_supervisor(self.supervisor_address, self._config)
                 await self._supervisor_pool.actor_pool.remote('stop')
             RayActorDriver.stop_cluster()
             self._stopped = True
