@@ -566,7 +566,7 @@ class StorageHandlerActor(mo.Actor):
                             remote_address: str):
         remote_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
                                                 address=remote_address)
-        data_info = yield remote_manager_ref.get_data_info(session_id, data_key)
+        data_info = await remote_manager_ref.get_data_info(session_id, data_key)
         await self._data_manager_ref.put_data_info(
             session_id, data_key, data_info, None)
         try:
@@ -613,7 +613,7 @@ class StorageHandlerActor(mo.Actor):
                         main_key, fields=['bands']))['bands'][0][0]
                 logger.debug('Begin to fetch data %s from %s', data_key, address)
                 if StorageLevel.REMOTE in self._quota_refs:
-                    await self._fetch_remote(session_id, data_key, level, address)
+                    yield self._fetch_remote(session_id, data_key, level, address)
                 else:
                     await self._fetch_via_transfer(session_id, data_key, level, address)
                 logger.debug('finish fetching data %s from %s', data_key, address)
