@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from distutils.version import LooseVersion
 
 import pandas as pd
 import numpy as np
@@ -30,6 +31,7 @@ from mars.tests.core import TestBase, parameterized, ExecutorForTest, \
 from mars.utils import lazy_import
 
 cp = lazy_import('cupy', rename='cp', globals=globals())
+_agg_size_as_series = LooseVersion(pd.__version__) >= '1.3.0'
 
 
 reduction_functions = dict(
@@ -810,7 +812,11 @@ class TestAggregate(TestBase):
                                       data.agg(all_aggs))
 
         result = df.agg('size')
-        self.assertEqual(self.executor.execute_dataframe(result)[0], data.agg('size'))
+        if _agg_size_as_series:
+            pd.testing.assert_series_equal(
+                self.executor.execute_dataframe(result)[0], data.agg('size'))
+        else:
+            self.assertEqual(self.executor.execute_dataframe(result)[0], data.agg('size'))
 
         for func in (a for a in all_aggs if a != 'size'):
             result = df.agg(func)
@@ -829,7 +835,11 @@ class TestAggregate(TestBase):
                                       data.agg(['cumsum', 'cummax']))
 
         result = df.agg('size')
-        self.assertEqual(self.executor.execute_dataframe(result)[0], data.agg('size'))
+        if _agg_size_as_series:
+            pd.testing.assert_series_equal(
+                self.executor.execute_dataframe(result)[0], data.agg('size'))
+        else:
+            self.assertEqual(self.executor.execute_dataframe(result)[0], data.agg('size'))
 
         for func in (a for a in all_aggs if a != 'size'):
             result = df.agg(func)

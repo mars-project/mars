@@ -311,7 +311,7 @@ class DataFrameLocGetItem(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(inp, DATAFRAME_TYPE):
                 if sizes[0] is None:
                     # label on axis 0
-                    dtype = find_common_type(dtypes)
+                    dtype = find_common_type(list(dtypes))
                     return self.new_series(inputs, shape=shape, dtype=dtype,
                                            index_value=columns_value, name=self._indexes[0])
                 else:

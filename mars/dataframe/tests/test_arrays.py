@@ -22,6 +22,7 @@ except ImportError:
     pa = None
 
 from mars.config import option_context
+from mars.dataframe.arrays import _use_bool_any_all
 from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 from mars.dataframe.utils import arrow_table_to_pandas_dataframe
 from mars.serialize import dataserializer
@@ -378,7 +379,11 @@ class Test(unittest.TestCase):
                 self.assertListEqual(list(arrow_array.shift(2, fill_value=['aa'])),
                                      [['aa']] * 2 + lst[:-2].tolist())
 
-                # test all any
+            # test all any
+            if _use_bool_any_all:
+                self.assertEqual(arrow_array.all(), pd.array(lst).all())
+                self.assertEqual(arrow_array.any(), pd.array(lst).any())
+            else:
                 self.assertEqual(arrow_array.all(), lst.all())
                 self.assertEqual(arrow_array.any(), lst.any())
 

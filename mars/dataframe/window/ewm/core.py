@@ -65,7 +65,8 @@ class EWM(Window):
         return df.ewm(**self.params)
 
     def _repr(self, params):
-        params['com'] = 1.0 / params.pop('alpha') - 1
+        com = 1.0 / params.pop('alpha') - 1
+        params['com'] = int(com) if com == math.floor(com) else com
         try:
             params.move_to_end('com', last=False)
         except AttributeError:  # pragma: no cover
