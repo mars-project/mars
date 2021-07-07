@@ -318,6 +318,8 @@ class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):
                 isinstance(obj, (pd.Series, pd.DataFrame)) and len(obj._data.blocks) > 1:
             # if #internal blocks > 1, shift will create wrong result in pandas 1.1.0
             # see https://github.com/pandas-dev/pandas/issues/35488
+            # if shifting merged dataframe slices, shift will raise TypeError in pandas 1.3.0
+            # see https://github.com/pandas-dev/pandas/issues/42401
             # thus we force to do consolidate
             obj._data._consolidate_inplace()
 
