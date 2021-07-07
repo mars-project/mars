@@ -102,15 +102,15 @@ async def spill(request_size: int,
                 quota: Union[mo.ActorRef, StorageQuotaActor],
                 block_size=None,
                 multiplier=1.2):
-    logger.debug(f'{level} is full, need to spill {request_size} bytes, '
-                 f'multiplier is {multiplier}')
+    logger.debug('%s is full, need to spill %s bytes, '
+                 'multiplier is %s', level, request_size, multiplier)
     request_size *= multiplier
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
         level, request_size)
-    logger.debug(f'Decide to spill {sum(spill_sizes)} bytes, '
-                 f'data keys are {spill_keys}')
+    logger.debug('Decide to spill %s bytes, '
+                 'data keys are %s', sum(spill_sizes), spill_keys)
 
     await quota.request_quota(sum(spill_sizes))
     for (session_id, key), size in zip(spill_keys, spill_sizes):
@@ -129,4 +129,4 @@ async def spill(request_size: int,
             session_id, key, reader.object_id, level)
 
     await quota.release_quota(sum(spill_sizes))
-    logger.debug(f'Spill finishes, release {sum(spill_sizes)} bytes of {level}')
+    logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)

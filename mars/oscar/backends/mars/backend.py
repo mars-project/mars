@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict
+
 from ...backend import BaseActorBackend, register_backend
 from ..context import MarsActorContext
 from .driver import MarsActorDriver
@@ -19,6 +21,21 @@ from .pool import MainActorPool
 
 
 __all__ = ['MarsActorBackend']
+
+
+def build_pool_kwargs(n_process: int, kwargs: Dict):
+    n_io_process = kwargs.pop('n_io_process', 0)
+    if n_io_process:
+        n_process += n_io_process
+
+        labels = kwargs['labels']
+        envs = kwargs['envs']
+        # sub-pools for IO(transfer and spill)
+        for _ in range(n_io_process):
+            if envs:  # pragma: no cover
+                envs.append(dict())
+            labels.append('io')
+    return n_process, kwargs
 
 
 @register_backend
@@ -43,16 +60,6 @@ class MarsActorBackend(BaseActorBackend):
             **kwargs):
         from ..pool import create_actor_pool
 
-        n_io_process = kwargs.pop('n_io_process', 0)
-        if n_io_process:
-            n_process += n_io_process
-
-            labels = kwargs['labels']
-            envs = kwargs['envs']
-            # sub-pools for IO(transfer and spill)
-            for _ in range(n_io_process):
-                if envs:    # pragma: no cover
-                    envs.append(dict())
-                labels.append('io')
+        n_process, kwargs = build_pool_kwargs(n_process, kwargs)
         return await create_actor_pool(
             address, pool_cls=MainActorPool, n_process=n_process, **kwargs)

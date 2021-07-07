@@ -72,7 +72,7 @@ class SenderManagerActor(mo.Actor):
                         address: str,
                         level: StorageLevel,
                         block_size: int = None):
-        logger.debug(f'Begin to send data {session_id, data_key} to {address}')
+        logger.debug('Begin to send data (%s, %s) to %s', session_id, data_key, address)
         block_size = block_size or self._transfer_block_size
         receiver_ref = await self.get_receiver_ref(address)
         info = await self._data_manager_ref.get_data_info(session_id, data_key)
@@ -100,7 +100,7 @@ class SenderManagerActor(mo.Actor):
                 sent_size += len(part_data)
                 if is_eof:
                     break
-        logger.debug(f'Finish sending data {session_id, data_key} to {address}')
+        logger.debug('Finish sending data (%s, %s) to %s', session_id, data_key, address)
 
 
 class ReceiverManagerActor(mo.Actor):
