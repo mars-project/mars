@@ -44,6 +44,9 @@ except ImportError:  # pragma: no cover
 
 from ..config import options
 from ..core import is_kernel_mode
+from ..lib.version import parse as parse_version
+
+_use_bool_any_all = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 class ArrowDtype(ExtensionDtype):
@@ -536,11 +539,19 @@ class ArrowArray(ExtensionArray):
         return type(self)(series.value_counts(dropna=dropna),
                           dtype=self._dtype)
 
-    def any(self, axis=0, out=None):
-        return self.to_numpy().astype(bool).any(axis=axis, out=out)
+    if _use_bool_any_all:
+        def any(self, axis=0, out=None):
+            return self.to_numpy().astype(bool).any(axis=axis, out=out)
 
-    def all(self, axis=0, out=None):
-        return self.to_numpy().astype(bool).all(axis=axis, out=out)
+        def all(self, axis=0, out=None):
+            return self.to_numpy().astype(bool).all(axis=axis, out=out)
+
+    else:
+        def any(self, axis=0, out=None):
+            return self.to_numpy().any(axis=axis, out=out)
+
+        def all(self, axis=0, out=None):
+            return self.to_numpy().all(axis=axis, out=out)
 
     def __mars_tokenize__(self):
         if self._use_arrow:
@@ -673,12 +684,6 @@ class ArrowStringArray(ArrowArray, StringArrayBase):
                                               np.concatenate(mask_chunks))
 
         return set_function_name(method, f"__{op.__name__}__", cls)
-
-    def any(self, axis=0, out=None):
-        return ArrowArray.any(self, axis=axis, out=out)
-
-    def all(self, axis=0, out=None):
-        return ArrowArray.all(self, axis=axis, out=out)
 
     def shift(self, periods: int = 1, fill_value: object = None) -> "ArrowStringArray":
         return ExtensionArray.shift(self, periods=periods, fill_value=fill_value)

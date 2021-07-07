@@ -22,6 +22,7 @@ except ImportError:
 
 from mars.config import option_context
 from mars.core import enter_mode
+from mars.dataframe.arrays import _use_bool_any_all
 from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
 from mars.dataframe.utils import arrow_table_to_pandas_dataframe
 
@@ -359,8 +360,12 @@ def test_arrow_list_functions():
             assert list(arrow_array.shift(2, fill_value=['aa'])) == [['aa']] * 2 + lst[:-2].tolist()
 
             # test all any
-            assert arrow_array.all() == pd.array(lst).all()
-            assert arrow_array.any() == pd.array(lst).any()
+            if _use_bool_any_all:
+                assert arrow_array.all() == pd.array(lst).all()
+                assert arrow_array.any() == pd.array(lst).any()
+            else:
+                assert arrow_array.all() == lst.all()
+                assert arrow_array.any() == lst.any()
 
             # test repr
             assert 'ArrowListArray' in repr(arrow_array)
