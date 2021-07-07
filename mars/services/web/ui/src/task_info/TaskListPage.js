@@ -24,7 +24,7 @@ import TableCell from "@material-ui/core/TableCell";
 import TableBody from "@material-ui/core/TableBody";
 import Title from "../Title";
 import {useStyles} from "../Style";
-import {formatTime, getSubtaskStatusText} from "../Utils";
+import {formatTime, getTaskStatusText} from "../Utils";
 
 class TaskList extends React.Component {
     constructor(props) {
@@ -51,6 +51,14 @@ class TaskList extends React.Component {
         clearInterval(this.interval);
     }
 
+    formatTaskStatus(task) {
+        let status = getTaskStatusText(task['status']);
+        if (status === 'terminated') {
+            status = task['error'] ? 'failed' : 'succeeded';
+        }
+        return status;
+    }
+
     render() {
         if (this.state === undefined || this.state["tasks"] === undefined) {
             return (
@@ -75,7 +83,7 @@ class TaskList extends React.Component {
                             <TableCell>{formatTime(task['start_time'])}</TableCell>
                             <TableCell>{task['end_time'] ? formatTime(task['end_time']) : 'N/A'}</TableCell>
                             <TableCell>{Math.floor(task['progress'] * 100).toString() + "%"}</TableCell>
-                            <TableCell>{getSubtaskStatusText(task['status'])}</TableCell>
+                            <TableCell>{this.formatTaskStatus(task)}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

@@ -46,9 +46,9 @@ def _json_deserial_task_result(d: dict) -> Optional[TaskResult]:
     if not d:
         return None
     if d['error'] is not None:
-        d['error'] = deserialize_serializable(base64.b16decode(d['error']))
+        d['error'] = deserialize_serializable(base64.b64decode(d['error']))
     if d['traceback'] is not None:
-        d['traceback'] = deserialize_serializable(base64.b16decode(d['error']))
+        d['traceback'] = deserialize_serializable(base64.b64decode(d['traceback']))
     d['status'] = TaskStatus(d['status'])
     return TaskResult(**d)
 
@@ -138,7 +138,7 @@ web_handlers = {
 class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     def __init__(self, session_id: str, address: str):
         self._session_id = session_id
-        self._address = address
+        self._address = address.rstrip('/')
 
     async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
         path = f'{self._address}/api/session/{self._session_id}/task'
