@@ -320,9 +320,13 @@ class SubtaskExecutionActor(mo.Actor):
                           supervisor_address: str):
         with mo.debug.no_message_trace():
             task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
+        # the extra_config may be None.
+        default_max_runs = 1
+        subtask_max_runs = subtask.extra_config.get('subtask_max_runs', default_max_runs) \
+            if subtask.extra_config else default_max_runs
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address,
-                                 max_runs=subtask.extra_config.get('subtask_max_runs', 1))
+                                 max_runs=subtask_max_runs)
         return task
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
