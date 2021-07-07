@@ -52,13 +52,11 @@ export function formatTime(refreshTime) {
         + "." + formatDigits(date.getMilliseconds(), 3)
 }
 
-export function getSubtaskStatusText(statusCode) {
+export function getTaskStatusText(statusCode) {
     const mapping = {
         [0]: 'pending',
         [1]: 'running',
-        [2]: 'succeeded',
-        [3]: 'errored',
-        [4]: 'cancelled',
+        [2]: 'terminated',
     };
     return mapping[statusCode];
 }
