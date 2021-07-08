@@ -116,6 +116,9 @@ class StorageQuotaActor(mo.Actor):
     def request_quota(self, size: int) -> bool:
         logger.debug('Request %s bytes of %s, used size is %s,'
                      'total size is %s', size, self.level, self.used_size, self.total_size)
+        if self._total_size is not None and size > self._total_size:  # pragma: no cover
+            raise RuntimeError(f'Request size {size} is larger '
+                               f'than total size {self._total_size}')
         if self._total_size is None:
             self._used_size += size
             return True
@@ -152,34 +155,28 @@ class InternalDataInfo:
 
 
 class DataManagerActor(mo.Actor):
+    _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
+    _spill_semaphore: Dict[StorageLevel, asyncio.Semaphore]
+    _spill_events: Dict[StorageLevel, Union[None, asyncio.Event]]
+
     def __init__(self):
         from .spill import FIFOStrategy
 
         # mapping key is (session_id, data_key)
         # mapping value is list of InternalDataInfo
-        self._data_key_to_info: Dict[tuple, List[InternalDataInfo]] = defaultdict(list)
+        self._data_key_to_info = defaultdict(list)
         self._data_info_list = dict()
         self._spill_strategy = dict()
+        self._spill_semaphore = dict()
+        self._spill_events = dict()
         # data key may be a tuple in some cases,
         # we record main key to manage their lifecycle
         self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
             self._spill_strategy[level] = FIFOStrategy(level)
-
-    def put(self,
-            session_id: str,
-            data_key: str,
-            data_info: DataInfo,
-            object_info: ObjectInfo):
-        info = InternalDataInfo(data_info, object_info)
-        self._data_key_to_info[(session_id, data_key)].append(info)
-        self._data_info_list[data_info.level][(session_id, data_key)] = object_info
-        if object_info is not None:
-            self._spill_strategy[data_info.level].record_put_info(
-                (session_id, data_key), data_info.store_size)
-        if isinstance(data_key, tuple):
-            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
+            self._spill_semaphore[level] = asyncio.Semaphore()
+            self._spill_events[level] = None
 
     def _get_data_infos(self,
                         session_id: str,
@@ -244,13 +241,14 @@ class DataManagerActor(mo.Actor):
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
+        self._set_spill_event(data_info.level)
 
     @extensible
     def put_data_info(self,
-                            session_id: str,
-                            data_key: str,
-                            data_info: DataInfo,
-                            object_info: ObjectInfo = None):
+                      session_id: str,
+                      data_key: str,
+                      data_info: DataInfo,
+                      object_info: ObjectInfo = None):
         self._put_data_info(
             session_id, data_key, data_info, object_info=object_info)
 
@@ -298,16 +296,40 @@ class DataManagerActor(mo.Actor):
         try:
             level = self.get_data_info(session_id, data_key).level
             self._spill_strategy[level].unpin_data((session_id, data_key))
+            self._set_spill_event(level)
         except DataNotExist:
             if error == 'raise':
                 raise
             else:
                 return
 
-    def get_spill_keys(self, level: StorageLevel, size):
+    def _set_spill_event(self, level):
+        if self._spill_events[level] is not None:
+            event = self._spill_events[level]
+            if self._spill_strategy[level].spillable_size > event.request_size:
+                event.set()
+
+    async def get_spill_keys(self, level: StorageLevel, size):
+        from .spill import NoDataToSpill
+
+        yield self._spill_semaphore[level].acquire()
         if level.spill_level() not in self._spill_strategy:  # pragma: no cover
             raise RuntimeError(f'Spill level of {level} is not configured')
-        return self._spill_strategy[level].get_spill_keys(size)
+        try:
+            raise mo.Return(self._spill_strategy[level].get_spill_keys(size))
+        except NoDataToSpill:
+            # when NoDataToSpill happens, there are two situations,
+            # one is that space is allocated while objects are not put into storage,
+            # another is some objects are pinned that can not be spilled,
+            # so we create an asyncio event, when put or unpin finishes, we will
+            # check spillable size, if size is enough for spilling, call event.set()
+            # to wake up spilling task.
+            self._spill_events[level] = event = asyncio.Event()
+            event.request_size = size
+            yield event.wait()
+            spill_keys = self._spill_strategy[level].get_spill_keys(size)
+            self._spill_events[level] = None
+            raise mo.Return(spill_keys)
 
 
 class StorageHandlerActor(mo.Actor):
@@ -631,7 +653,8 @@ class StorageHandlerActor(mo.Actor):
         if await self._quota_refs[level].request_quota(size):
             return
         else:
-            await self.spill(level, size)
+            total, used = await self._quota_refs[level].get_quota()
+            await self.spill(level, (size + used - total))
             await self._quota_refs[level].request_quota(size)
             logger.debug('Spill is triggered, request %s bytes of %s finished', size, level)
 

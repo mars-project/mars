@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import asyncio
 import os
 import sys
 import tempfile
@@ -71,13 +71,14 @@ async def create_actors(actor_pool):
         uid=StorageManagerActor.default_uid(),
         address=actor_pool.external_address)
 
-    yield actor_pool.external_address
+    sub_processes = list(actor_pool.sub_processes)
+    yield actor_pool.external_address, *sub_processes
     await mo.destroy_actor(manager_ref)
 
 
 @pytest.mark.asyncio
 async def test_spill(create_actors):
-    worker_address = create_actors
+    worker_address, *_ = create_actors
     storage_handler = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
                                          address=worker_address)
 
@@ -116,3 +117,33 @@ async def test_spill(create_actors):
 
     plasma_list = await plasma_handler.list()
     assert len(plasma_list) == len(memory_object_list)
+
+
+@pytest.mark.asyncio
+async def test_spill_event(create_actors):
+    worker_address, sub_pool_address1, sub_pool_address2 = create_actors
+    storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
+                                          address=sub_pool_address1)
+    storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
+                                          address=sub_pool_address2)
+    # total store size is 65536, single data size is around 40000
+    # we put two data simultaneously
+    data = np.random.randint(0, 10000, (5000,))
+    session_id = 'mock_session'
+    key1 = 'mock_key1'
+    key2 = 'mock_key2'
+    put1 = asyncio.create_task(storage_handler1.put(
+        session_id, key1, data, StorageLevel.MEMORY))
+    put2 = asyncio.create_task(storage_handler2.put(
+            session_id, key2, data, StorageLevel.MEMORY))
+    await asyncio.gather(put1, put2)
+
+    get_data = await storage_handler2.get(session_id, key1)
+    np.testing.assert_array_equal(data, get_data)
+    get_data = await storage_handler1.get(session_id, key2)
+    np.testing.assert_array_equal(data, get_data)
+
+    memory_object_list = await storage_handler1.list(StorageLevel.MEMORY)
+    disk_object_list = await storage_handler1.list(StorageLevel.DISK)
+    assert len(memory_object_list) == 1
+    assert len(disk_object_list) == 1

@@ -72,6 +72,15 @@ class FIFOStrategy(SpillStrategy):
         if self._pinned_keys[key] <= 0:
             del self._pinned_keys[key]
 
+    @property
+    def spillable_size(self):
+        total_size = 0
+        for data_key, data_size in self._data_sizes.items():
+            if data_key not in self._pinned_keys and \
+                    data_key not in self._spilling_keys:
+                total_size += data_size
+        return total_size
+
     def get_spill_keys(self, size: int) -> Tuple[List, List]:
         spill_sizes = []
         spill_keys = []
