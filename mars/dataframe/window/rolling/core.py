@@ -13,11 +13,16 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from distutils.version import LooseVersion
+
+import pandas as pd
 
 from ....serialize import AnyField, Int64Field, BoolField, StringField, Int32Field
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, validate_axis
 from ..core import Window
+
+_window_has_method = LooseVersion(pd.__version__) >= '1.3.0'
 
 
 class Rolling(Window):
@@ -71,8 +76,15 @@ class Rolling(Window):
     @property
     def params(self):
         p = OrderedDict()
-        for attr in ['window', 'min_periods', 'center', 'win_type',
-                     'axis', 'on', 'closed', 'method']:
+
+        if not _window_has_method:  # pragma: no cover
+            args = ['window', 'min_periods', 'center', 'win_type',
+                    'axis', 'on', 'closed']
+        else:
+            args = ['window', 'min_periods', 'center', 'win_type',
+                    'axis', 'on', 'closed', 'method']
+
+        for attr in args:
             p[attr] = getattr(self, attr)
         return p
 

@@ -22,6 +22,8 @@ from ....serialize import BoolField, Int32Field, \
 from ...utils import validate_axis
 from ..core import Window
 
+_window_has_method = LooseVersion(pd.__version__) >= '1.3.0'
+
 
 class Expanding(Window):
     _min_periods = Int64Field('min_periods')
@@ -55,7 +57,13 @@ class Expanding(Window):
     @property
     def params(self):
         p = OrderedDict()
-        for k in ['min_periods', 'center', 'axis', 'method']:
+
+        if not _window_has_method:  # pragma: no cover
+            args = ['min_periods', 'center', 'axis']
+        else:
+            args = ['min_periods', 'center', 'axis', 'method']
+
+        for k in args:
             p[k] = getattr(self, k)
         return p
 
