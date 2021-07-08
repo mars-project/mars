@@ -22,8 +22,10 @@ from typing import Union, Dict
 from ... import oscar as mo
 from ...core.session import _new_session
 from ...resource import cpu_count, cuda_count
+from ...services import NodeRole
+from ..utils import get_third_party_modules_from_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
-from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
+from .service import start_supervisor, start_worker, stop_supervisor, stop_worker, load_config
 from .session import Session
 from .typing import ClusterType, ClientType
 
@@ -57,6 +59,9 @@ class LocalCluster:
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
                  web: Union[bool, str] = 'auto'):
+        # load config file to dict.
+        if not config or isinstance(config, str):
+            config = load_config(config)
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
@@ -104,15 +109,19 @@ class LocalCluster:
         await self.stop()
 
     async def _start_supervisor_pool(self):
+        supervisor_modules = get_third_party_modules_from_config(
+            self._config, NodeRole.SUPERVISOR)
         self._supervisor_pool = await create_supervisor_actor_pool(
-            self._address, n_process=0,
+            self._address, n_process=0, modules=supervisor_modules,
             subprocess_start_method=self._subprocess_start_method)
         self.supervisor_address = self._supervisor_pool.external_address
 
     async def _start_worker_pools(self):
+        worker_modules = get_third_party_modules_from_config(
+                self._config, NodeRole.WORKER)
         for _ in range(self._n_worker):
             worker_pool = await create_worker_actor_pool(
-                self._address, self._band_to_slot,
+                self._address, self._band_to_slot, modules=worker_modules,
                 subprocess_start_method=self._subprocess_start_method)
             self._worker_pools.append(worker_pool)
 
