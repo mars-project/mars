@@ -313,23 +313,28 @@ class DataManagerActor(mo.Actor):
         from .spill import NoDataToSpill
 
         yield self._spill_semaphore[level].acquire()
-        if level.spill_level() not in self._spill_strategy:  # pragma: no cover
-            raise RuntimeError(f'Spill level of {level} is not configured')
         try:
-            raise mo.Return(self._spill_strategy[level].get_spill_keys(size))
-        except NoDataToSpill:
-            # when NoDataToSpill happens, there are two situations,
-            # one is that space is allocated while objects are not put into storage,
-            # another is some objects are pinned that can not be spilled,
-            # so we create an asyncio event, when put or unpin finishes, we will
-            # check spillable size, if size is enough for spilling, call event.set()
-            # to wake up spilling task.
-            self._spill_events[level] = event = asyncio.Event()
-            event.request_size = size
-            yield event.wait()
-            spill_keys = self._spill_strategy[level].get_spill_keys(size)
-            self._spill_events[level] = None
-            raise mo.Return(spill_keys)
+            if level.spill_level() not in self._spill_strategy:  # pragma: no cover
+                raise RuntimeError(f'Spill level of {level} is not configured')
+            try:
+                raise mo.Return(self._spill_strategy[level].get_spill_keys(size))
+            except NoDataToSpill:
+                # when NoDataToSpill happens, there are two situations,
+                # one is that space is allocated while objects are not put into storage,
+                # another is some objects are pinned that can not be spilled,
+                # so we create an asyncio event, when put or unpin finishes, we will
+                # check spillable size, if size is enough for spilling, call event.set()
+                # to wake up spilling task.
+                logger.warning('No data to spill %s bytes, waiting event', size)
+                self._spill_events[level] = event = asyncio.Event()
+                event.request_size = size
+                yield event.wait()
+                logger.warning('Event is set, continue to spill %s bytes', size)
+                spill_keys = self._spill_strategy[level].get_spill_keys(size)
+                self._spill_events[level] = None
+                raise mo.Return(spill_keys)
+        finally:
+            self._spill_semaphore[level].release()
 
 
 class StorageHandlerActor(mo.Actor):
