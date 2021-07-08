@@ -66,14 +66,13 @@ class GlobalSlotManagerActor(mo.Actor):
 
         idx = 0
         total_slots = self._band_total_slots[band]
-        async with self._blocklist_lock:
-            if band not in self._blocked_bands:
-                for stid, slots in zip(subtask_ids, subtask_slots):
-                    if self._band_used_slots[band] + slots > total_slots:
-                        break
-                    self._band_stid_slots[band][(session_id, stid)] = slots
-                    self._update_slot_usage(band, slots)
-                    idx += 1
+        if band not in self._blocked_bands:
+            for stid, slots in zip(subtask_ids, subtask_slots):
+                if self._band_used_slots[band] + slots > total_slots:
+                    break
+                self._band_stid_slots[band][(session_id, stid)] = slots
+                self._band_used_slots[band] += slots
+                idx += 1
         if idx == 0:
             logger.debug('No slots available, status: %r, request: %r',
                          self._band_used_slots, subtask_slots)
@@ -114,15 +113,25 @@ class GlobalSlotManagerActor(mo.Actor):
             return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
         return exclude_bands(self._band_total_slots, self._blocked_bands)
 
+    async def watch_available_bands(self):
+        event = asyncio.Event()
+
+        async def waiter():
+            try:
+                await event.wait()
+                return self.get_available_bands()
+            finally:
+                pass
+
+        return waiter()
+
     async def add_to_blocklist(self, band: BandType):
         assert band in self._band_total_slots
-        async with self._blocklist_lock:
-            self._blocked_bands.add(band)
+        self._blocked_bands.add(band)
 
     async def remove_from_blocklist(self, band: BandType):
-        async with self._blocklist_lock:
-            assert band in self._blocked_bands
-            self._blocked_bands.remove(band)
+        assert band in self._blocked_bands
+        self._blocked_bands.remove(band)
 
     def get_blocked_bands(self):
         return self._blocked_bands

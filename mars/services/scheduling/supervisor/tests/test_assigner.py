@@ -27,9 +27,12 @@ from mars.tensor.arithmetic import TensorTreeAdd
 
 
 class MockSlotsActor(mo.Actor):
+    def watch_available_bands(self):
+        return {('address0', 'numa-0'): 2,
+                ('address2', 'numa-0'): 2}
+
     def get_available_bands(self):
         return {('address0', 'numa-0'): 2,
-                ('address1', 'numa-0'): 2,
                 ('address2', 'numa-0'): 2}
 
 
@@ -82,8 +85,8 @@ async def test_assigner(actor_pool):
 
     subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
     [result] = await assigner_ref.assign_subtasks([subtask])
-    assert result in (('address1', 'numa-0'), ('address2', 'numa-0'))
+    assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
 
-    new_band = await assigner_ref.reassign_band()
-    assert new_band in (('address0', 'numa-0'), ('address1', 'numa-0'), 
-                        ('address2', 'numa-0'))
+    subtask.expect_bands = [('address1', 'numa-0')]
+    [result] = await assigner_ref.assign_subtasks([subtask])
+    assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
