@@ -137,6 +137,7 @@ class SubtaskQueueingActor(mo.Actor):
                 while task_queue:
                     item = heapq.heappop(task_queue)
                     self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    self._stid_to_bands[item.subtask.subtask_id].append(new_band)
                     heapq.heappush(self._band_queues[new_band], item)
 
             while task_queue and len(submit_items) < band_limit:

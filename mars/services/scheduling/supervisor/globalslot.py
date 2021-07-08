@@ -35,7 +35,7 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_total_slots = dict()
         # TODO: maybe one node with mutliple bands
         self._blocked_bands = set()
-        self._blocklist_lock = asyncio.Lock()
+        self._blocklist_event = asyncio.Event()
 
         self._cluster_api = None
 
@@ -49,6 +49,7 @@ class GlobalSlotManagerActor(mo.Actor):
             while True:
                 self._band_total_slots = await self._cluster_api.get_all_bands(
                     NodeRole.WORKER, watch=True)
+                self._blocklist_event.set()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -104,12 +105,10 @@ class GlobalSlotManagerActor(mo.Actor):
         return exclude_bands(self._band_total_slots, self._blocked_bands)
 
     async def watch_available_bands(self):
-        event = asyncio.Event()
-
         async def waiter():
             try:
-                await event.wait()
-                return self.get_available_bands()
+                await self._blocklist_event.wait()
+                return await self.get_available_bands()
             finally:
                 pass
 
@@ -118,10 +117,12 @@ class GlobalSlotManagerActor(mo.Actor):
     async def add_to_blocklist(self, band: BandType):
         assert band in self._band_total_slots
         self._blocked_bands.add(band)
+        self._blocklist_event.set()
 
     async def remove_from_blocklist(self, band: BandType):
         assert band in self._blocked_bands
         self._blocked_bands.remove(band)
+        self._blocklist_event.set()
 
     def get_blocked_bands(self):
         return self._blocked_bands

@@ -40,12 +40,15 @@ class MockSlotsActor(mo.Actor):
         return {(self.address, 'numa-0'): 2}
 
     def band_is_blocked(self, band: Tuple):
-        return False
+        return band == ('address0', 'numa-0')
 
 
 class MockAssignerActor(mo.Actor):
     def assign_subtasks(self, subtasks: List[Subtask]):
-        return [(self.address, 'numa-0')] * len(subtasks)
+        return [('address0', 'numa-0')] * len(subtasks)
+
+    def reassign_band(self):
+        return (self.address, 'numa-0')
 
 
 class MockSubtaskManagerActor(mo.Actor):
@@ -102,6 +105,12 @@ async def test_subtask_queueing(actor_pool):
 
     await queueing_ref.add_subtasks(subtasks, priorities)
     # queue: [4 3 2 1 0]
+
+    blocked_band = ('address0', 'numa-0')  # virtual blocked band
+    await queueing_ref.submit_subtasks(band=blocked_band, limit=2)
+    # queue: [2 1 0]
+    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
+    assert commited_subtask_ids == []
 
     await queueing_ref.submit_subtasks()
     # queue: [2 1 0]
