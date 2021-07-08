@@ -246,6 +246,7 @@ class SubtaskExecutionActor(mo.Actor):
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str, subtask_api: SubtaskAPI):
         slot_manager_ref = await self._get_slot_manager_ref(band_name)
         subtask_info = self._subtask_info[subtask.subtask_id]
+        assert subtask_info.num_runs >= 0
         assert subtask_info.max_runs > 0
 
         class SlotContext:
@@ -267,7 +268,6 @@ class SubtaskExecutionActor(mo.Actor):
                 return False
 
             async def __aenter__(self):
-                # TODO(fyrestone): Replace await with yield to release the actor lock.
                 self._slot_id = await slot_manager_ref.acquire_free_slot(
                         (subtask.session_id, subtask.subtask_id))
                 return self
@@ -305,16 +305,14 @@ class SubtaskExecutionActor(mo.Actor):
                         raise asyncio.CancelledError
 
                     subtask_info.result.status = SubtaskStatus.running
-                    # TODO(fyrestone): Replace await with yield to release the actor lock.
                     return await asyncio.shield(subtask_api.run_subtask_in_slot(
                             band_name, ctx.slot_id, subtask))
             except Exception as ex:
                 logger.error('rerun subtask %s due to %s', subtask.subtask_id, ex)
                 last_ex = ex
         else:
-            if last_ex is not None:
-                raise last_ex
-            raise RuntimeError(f'The {subtask} should be run at least once.')
+            assert last_ex is not None, f'The {subtask} should be run at least once.'
+            raise last_ex
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):

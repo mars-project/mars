@@ -94,7 +94,7 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
         if fault == FaultType.Exception:
             raise RuntimeError("Fault Injection")
         elif fault == FaultType.ProcessExit:
-            # Use mimic process crash, no cleanup.
+            # used to simulate process crash, no cleanup.
             os._exit(-1)
         assert fault == FaultType.NoFault, \
             f"Got unexpected fault from on_execute_operand: {fault}"
