@@ -939,7 +939,7 @@ def test_unique_execution(setup):
 
         y, indices = unique(x, return_index=True)
 
-        res = fetch(*execute(y, indices))
+        res = fetch(execute(y, indices))
         expected = np.unique(raw, return_index=True)
         assert len(res) == 2
         assert len(expected) == 2

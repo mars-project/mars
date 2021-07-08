@@ -1060,6 +1060,7 @@ async def create_actor_pool(address: str, *,
                             auto_recover: Union[str, bool] = 'actor',
                             modules: List[str] = None,
                             suspend_sigint: bool = None,
+                            use_uvloop: Union[str, bool] = 'auto',
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None,
                             **kwargs) -> MainActorPoolType:
@@ -1076,6 +1077,12 @@ async def create_actor_pool(address: str, *,
     if auto_recover not in ('actor', 'process', False):
         raise ValueError(f'`auto_recover` should be one of "actor", "process", '
                          f'True or False, got {auto_recover}')
+    if use_uvloop == 'auto':
+        try:
+            import uvloop  # noqa: F401 # pylint: disable=unused-variable
+            use_uvloop = True
+        except ImportError:
+            use_uvloop = False
     external_addresses = pool_cls.get_external_addresses(address, n_process=n_process, ports=ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
@@ -1088,6 +1095,7 @@ async def create_actor_pool(address: str, *,
         external_addresses[0],
         modules=modules,
         suspend_sigint=suspend_sigint,
+        use_uvloop=use_uvloop,
         kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
@@ -1100,6 +1108,7 @@ async def create_actor_pool(address: str, *,
             env=envs[i] if envs else None,
             modules=modules,
             suspend_sigint=suspend_sigint,
+            use_uvloop=use_uvloop,
             kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({

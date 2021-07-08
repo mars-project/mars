@@ -202,8 +202,7 @@ class RemoteObjectActor(mo.Actor):
 
         @functools.wraps(func)
         async def wrap(*args, **kwargs):
-            part_func = functools.partial(func, *args, **kwargs)
-            loop = asyncio.get_running_loop()
-            return loop.run_in_executor(None, part_func)
+            # return coroutine to not block current actor
+            return asyncio.to_thread(func, *args, **kwargs)
 
         return wrap

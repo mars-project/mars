@@ -13,19 +13,27 @@
 # limitations under the License.
 
 import asyncio
+import concurrent.futures
 import itertools
+import logging
+import threading
+import uuid
+import warnings
+from abc import ABC, ABCMeta, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import wraps
 from numbers import Integral
 from urllib.parse import urlparse
 from weakref import WeakKeyDictionary
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Callable, Coroutine, Dict, List, \
+    Optional, Tuple, Type, Union
 
-from ...core import TileableType, ChunkType, enter_mode
+from ...config import options
+from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.operand import Fetch
-from ...core.session import AbstractAsyncSession, register_session_cls, \
-    ExecutionInfo as AbstractExecutionInfo, gen_submit_tileable_graph
-from ...lib.aio import alru_cache
+from ...lib.aio import alru_cache, Isolation, get_isolation, \
+    new_isolation, stop_isolation
 from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
@@ -34,8 +42,12 @@ from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...tensor.utils import slice_split
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
-    register_asyncio_task_timeout_detector
+    register_asyncio_task_timeout_detector, classproperty, \
+    copy_tileables, build_fetch
 from .typing import ClientType
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,17 +55,451 @@ class Progress:
     value: float = 0.0
 
 
-class ExecutionInfo(AbstractExecutionInfo):
+class ExecutionInfo:
     def __init__(self,
-                 task_id: str,
                  aio_task: asyncio.Task,
-                 progress: Progress):
-        super().__init__(aio_task)
-        self._task_id = task_id
+                 progress: Progress,
+                 loop: asyncio.AbstractEventLoop):
+        self._aio_task = aio_task
         self._progress = progress
+        self._loop = loop
+
+        self._future_local = threading.local()
+
+    def _ensure_future(self):
+        try:
+            self._future_local.future
+        except AttributeError:
+            async def wait():
+                return await self._aio_task
+
+            self._future_local.future = fut = \
+                asyncio.run_coroutine_threadsafe(wait(), self._loop)
+            self._future_local.aio_future = asyncio.wrap_future(fut)
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @property
+    def aio_task(self):
+        return self._aio_task
 
     def progress(self) -> float:
         return self._progress.value
+
+    def result(self, timeout=None):
+        self._ensure_future()
+        return self._future_local.future.result(timeout=timeout)
+
+    def cancel(self):
+        self._aio_task.cancel()
+
+    def __getattr__(self, attr):
+        self._ensure_future()
+        return getattr(self._future_local.aio_future, attr)
+
+    def __await__(self):
+        self._ensure_future()
+        return self._future_local.aio_future.__await__()
+
+
+warning_msg = """No session found, local session \
+will be created in the background, \
+it may take a while before execution. \
+If you want to new a local session by yourself, \
+run code below:
+
+```
+import mars
+
+mars.new_session(default=True)
+```
+"""
+
+
+class AbstractSession(ABC):
+    name = None
+    _default_session_local = threading.local()
+
+    def __init__(self,
+                 address: str,
+                 session_id: str):
+        self._address = address
+        self._session_id = session_id
+
+    @property
+    def address(self):
+        return self._address
+
+    @property
+    def session_id(self):
+        return self._session_id
+
+    def __eq__(self, other):
+        return isinstance(other, AbstractSession) and \
+               self._address == other.address and \
+               self._session_id == other.session_id
+
+    def __hash__(self):
+        return hash((AbstractSession, self._address, self._session_id))
+
+    def as_default(self) -> "AbstractSession":
+        """
+        Mark current session as default session.
+        """
+
+    @classmethod
+    def reset_default(cls):
+        AbstractSession._default_session_local.default_session = None
+
+    @classproperty
+    def default(self):
+        return getattr(AbstractSession._default_session_local,
+                       'default_session', None)
+
+    @classmethod
+    async def get_or_create_default(cls, **kwargs):
+        lock = getattr(AbstractSession._default_session_local,
+                       'lock', None)
+        if lock is None:
+            lock = AbstractAsyncSession._default_session_local.lock = asyncio.Lock()
+
+        session = cls.default
+        async with lock:
+            if session is None:
+                # no session attached, try to create one
+                warnings.warn(warning_msg)
+                session = await _new_session(
+                    '127.0.0.1', default=True, init_local=True, **kwargs)
+        if isinstance(session, _IsolatedSession):
+            session = AsyncSession.from_isolated_session(session)
+        return session
+
+
+class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
+    @classmethod
+    @abstractmethod
+    async def init(cls,
+                   address: str,
+                   session_id: str,
+                   new: bool = True,
+                   **kwargs) -> "AbstractSession":
+        """
+        Init a new session.
+
+        Parameters
+        ----------
+        address : str
+            Address.
+        session_id : str
+            Session ID.
+        new : bool
+            New a session.
+        kwargs
+
+        Returns
+        -------
+        session
+        """
+
+    async def destroy(self):
+        """
+        Destroy a session.
+        """
+        self.reset_default()
+
+    @abstractmethod
+    async def execute(self,
+                      *tileables,
+                      **kwargs) -> ExecutionInfo:
+        """
+        Execute tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        kwargs
+        """
+
+    @abstractmethod
+    async def fetch(self, *tileables, **kwargs) -> list:
+        """
+        Fetch tileables' data.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+
+        Returns
+        -------
+        data
+        """
+
+    @abstractmethod
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        """
+        Get all ref counts
+
+        Returns
+        -------
+        ref_counts
+        """
+
+    @abstractmethod
+    async def fetch_tileable_op_logs(self,
+                                     tileable_op_key: str,
+                                     offsets: Union[Dict[str, List[int]], str, int],
+                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        """
+        Fetch logs given tileable op key.
+
+        Parameters
+        ----------
+        tileable_op_key : str
+            Tileable op key.
+        offsets
+            Chunk op key to offsets.
+        sizes
+            Chunk op key to sizes.
+
+        Returns
+        -------
+        chunk_key_to_logs
+        """
+
+    @abstractmethod
+    async def get_total_n_cpu(self):
+        """
+        Get number of cluster cpus.
+
+        Returns
+        -------
+        number_of_cpu: int
+        """
+
+    @abstractmethod
+    async def get_cluster_versions(self) -> List[str]:
+        """
+        Get versions used in current Mars cluster
+
+        Returns
+        -------
+        version_list : list
+            List of versions
+        """
+
+    @abstractmethod
+    async def create_remote_object(self,
+                                   session_id: str,
+                                   name: str,
+                                   object_cls,
+                                   *args, **kwargs):
+        """
+        Create remote object
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        name : str
+        object_cls
+        args
+        kwargs
+
+        Returns
+        -------
+        actor_ref
+        """
+
+    @abstractmethod
+    async def get_remote_object(self,
+                                session_id: str,
+                                name: str):
+        """
+        Get remote object.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        name : str
+
+        Returns
+        -------
+        actor_ref
+        """
+
+    @abstractmethod
+    async def destroy_remote_object(self,
+                                    session_id: str,
+                                    name: str):
+        """
+        Destroy remote object.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        name : str
+        """
+
+    async def stop_server(self):
+        """
+        Stop server.
+        """
+
+
+class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
+    @classmethod
+    @abstractmethod
+    def init(cls,
+             address: str,
+             session_id: str,
+             backend: str = 'oscar',
+             new: bool = True,
+             **kwargs) -> "AbstractSession":
+        """
+        Init a new session.
+
+        Parameters
+        ----------
+        address : str
+            Address.
+        session_id : str
+            Session ID.
+        backend : str
+            Backend.
+        new : bool
+            New a session.
+        kwargs
+
+        Returns
+        -------
+        session
+        """
+
+    @abstractmethod
+    def execute(self,
+                tileable,
+                *tileables,
+                show_progress: Union[bool, str] = None,
+                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        """
+        Execute tileables.
+
+        Parameters
+        ----------
+        tileable
+            Tileable.
+        tileables
+            Tileables.
+        show_progress
+            If show progress.
+        kwargs
+
+        Returns
+        -------
+        result
+        """
+
+    @abstractmethod
+    def fetch(self, *tileables, **kwargs) -> list:
+        """
+        Fetch tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        kwargs
+
+        Returns
+        -------
+        fetched_data : list
+        """
+
+    @abstractmethod
+    def decref(self, *tileables_keys):
+        """
+        Decref tileables.
+
+        Parameters
+        ----------
+        tileables_keys : list
+            Tileables' keys
+        """
+
+    @abstractmethod
+    def _get_ref_counts(self) -> Dict[str, int]:
+        """
+        Get all ref counts
+
+        Returns
+        -------
+        ref_counts
+        """
+
+    @abstractmethod
+    def fetch_tileable_op_logs(self,
+                               tileable_op_key: str,
+                               offsets: Union[Dict[str, List[int]], str, int],
+                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        """
+        Fetch logs given tileable op key.
+
+        Parameters
+        ----------
+        tileable_op_key : str
+            Tileable op key.
+        offsets
+            Chunk op key to offsets.
+        sizes
+            Chunk op key to sizes.
+
+        Returns
+        -------
+        chunk_key_to_logs
+        """
+
+    @abstractmethod
+    def get_total_n_cpu(self):
+        """
+        Get number of cluster cpus.
+
+        Returns
+        -------
+        number_of_cpu: int
+        """
+
+    @abstractmethod
+    def get_cluster_versions(self) -> List[str]:
+        """
+        Get versions used in current Mars cluster
+
+        Returns
+        -------
+        version_list : list
+            List of versions
+        """
+
+    def fetch_log(self,
+                  tileables: List[TileableType],
+                  offsets: List[int] = None,
+                  sizes: List[int] = None):
+        from ...core.custom_log import fetch
+
+        return fetch(tileables, self, offsets=offsets, sizes=sizes)
+
+
+_type_name_to_session_cls: Dict[str, Type[AbstractAsyncSession]] = dict()
+
+
+def register_session_cls(session_cls: Type[AbstractAsyncSession]):
+    _type_name_to_session_cls[session_cls.name] = session_cls
+    return session_cls
 
 
 @dataclass
@@ -64,8 +510,67 @@ class ChunkFetchInfo:
     data: Any = None
 
 
+@enter_mode(build=True, kernel=True)
+def gen_submit_tileable_graph(
+        session: "AbstractSession",
+        result_tileables: List[TileableType]):
+    tileable_to_copied = dict()
+    result = [None] * len(result_tileables)
+    graph = TileableGraph(result)
+
+    q = list(result_tileables)
+    while q:
+        tileable = q.pop()
+        if tileable in tileable_to_copied:
+            if tileable in result_tileables:
+                result[result_tileables.index(tileable)] = \
+                    tileable_to_copied[tileable]
+            continue
+        outputs = tileable.op.outputs
+        inputs = tileable.inputs \
+            if session not in tileable._executed_sessions else []
+        new_inputs = []
+        all_inputs_processed = True
+        for inp in inputs:
+            if inp in tileable_to_copied:
+                new_inputs.append(tileable_to_copied[inp])
+            elif session in inp._executed_sessions:
+                # executed, gen fetch
+                fetch_input = build_fetch(inp).data
+                tileable_to_copied[inp] = fetch_input
+                graph.add_node(fetch_input)
+                new_inputs.append(fetch_input)
+            else:
+                # some input not processed before
+                all_inputs_processed = False
+                # put back tileable
+                q.append(tileable)
+                q.append(inp)
+                break
+        if all_inputs_processed:
+            if isinstance(tileable.op, Fetch):
+                new_outputs = [tileable]
+            elif session in tileable._executed_sessions:
+                new_outputs = []
+                for out in outputs:
+                    fetch_out = tileable_to_copied.get(out, build_fetch(out).data)
+                    new_outputs.append(fetch_out)
+            else:
+                new_outputs = [t.data for t
+                               in copy_tileables(outputs, inputs=new_inputs)]
+            for out, new_out in zip(outputs, new_outputs):
+                tileable_to_copied[out] = new_out
+                if out in result_tileables:
+                    result[result_tileables.index(out)] = new_out
+                graph.add_node(new_out)
+                for new_inp in new_inputs:
+                    graph.add_edge(new_inp, new_out)
+
+    return graph
+
+
 @register_session_cls
-class Session(AbstractAsyncSession):
+class _IsolatedSession(AbstractAsyncSession):
     name = 'oscar'
 
     def __init__(self,
@@ -86,7 +591,8 @@ class Session(AbstractAsyncSession):
         self.client = client
 
         self._tileable_to_fetch = WeakKeyDictionary()
-        self._asyncio_task_timeout_detector_task = register_asyncio_task_timeout_detector()
+        self._asyncio_task_timeout_detector_task = \
+            register_asyncio_task_timeout_detector()
 
     @classmethod
     async def _init(cls,
@@ -114,11 +620,11 @@ class Session(AbstractAsyncSession):
                    address: str,
                    session_id: str,
                    new: bool = True,
-                   **kwargs) -> "Session":
+                   **kwargs) -> "AbstractAsyncSession":
         init_local = kwargs.pop('init_local', False)
         if init_local:
-            from .local import new_cluster
-            return (await new_cluster(address, **kwargs)).session
+            from .local import new_cluster_in_isolation
+            return (await new_cluster_in_isolation(address, **kwargs)).session
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -126,7 +632,7 @@ class Session(AbstractAsyncSession):
                             f'arguments: {unexpected_keys}')
 
         if urlparse(address).scheme == 'http':
-            return await WebSession._init(address, session_id, new=new)
+            return await _IsolatedWebSession._init(address, session_id, new=new)
         else:
             return await cls._init(address, session_id, new=new)
 
@@ -190,9 +696,10 @@ class Session(AbstractAsyncSession):
 
         progress = Progress()
         # create asyncio.Task
-        future = asyncio.create_task(
+        aio_task = asyncio.create_task(
             self._run_in_background(tileables, task_id, progress))
-        return ExecutionInfo(task_id, future, progress)
+        return ExecutionInfo(aio_task, progress,
+                             asyncio.get_running_loop())
 
     def _get_to_fetch_tileable(self, tileable: TileableType) -> \
             Tuple[TileableType, List[Union[slice, Integral]]]:
@@ -260,7 +767,7 @@ class Session(AbstractAsyncSession):
             storage_api = await StorageAPI.create(self._session_id, address)
         return storage_api
 
-    async def fetch(self, *tileables, **kwargs):
+    async def fetch(self, *tileables, **kwargs) -> list:
         from ...tensor.core import TensorOrder
         from ...tensor.array_utils import get_array_module
 
@@ -365,12 +872,30 @@ class Session(AbstractAsyncSession):
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
 
+    async def create_remote_object(self,
+                                   session_id: str,
+                                   name: str,
+                                   object_cls,
+                                   *args, **kwargs):
+        return await self._session_api.create_remote_object(
+            session_id, name, object_cls, *args, **kwargs)
+
+    async def get_remote_object(self,
+                                session_id: str,
+                                name: str):
+        return await self._session_api.get_remote_object(session_id, name)
+
+    async def destroy_remote_object(self,
+                                    session_id: str,
+                                    name: str):
+        return await self._session_api.destroy_remote_object(session_id, name)
+
     async def stop_server(self):
         if self.client:
             await self.client.stop()
 
 
-class WebSession(Session):
+class _IsolatedWebSession(_IsolatedSession):
     @classmethod
     async def _init(cls,
                     address: str,
@@ -397,3 +922,536 @@ class WebSession(Session):
                    session_api, meta_api,
                    lifecycle_api, task_api,
                    cluster_api)
+
+
+def _delegate_to_isolated_session(func: Union[Callable, Coroutine]):
+    if asyncio.iscoroutinefunction(func):
+        @wraps(func)
+        async def inner(session: "AsyncSession", *args, **kwargs):
+            coro = getattr(session._isolated_session, func.__name__)(*args, **kwargs)
+            fut = asyncio.run_coroutine_threadsafe(coro, session._loop)
+            return await asyncio.wrap_future(fut)
+    else:
+        @wraps(func)
+        def inner(session: "SyncSession", *args, **kwargs):
+            coro = getattr(session._isolated_session, func.__name__)(*args, **kwargs)
+            fut = asyncio.run_coroutine_threadsafe(coro, session._loop)
+            return fut.result()
+    return inner
+
+
+class AsyncSession(AbstractAsyncSession):
+    def __init__(self,
+                 address: str,
+                 session_id: str,
+                 isolated_session: _IsolatedSession,
+                 isolation: Isolation):
+        super().__init__(address, session_id)
+
+        self._isolated_session = _get_isolated_session(isolated_session)
+        self._isolation = isolation
+        self._loop = isolation.loop
+
+    @classmethod
+    def from_isolated_session(cls,
+                              isolated_session: _IsolatedSession) -> "AsyncSession":
+        return cls(isolated_session.address,
+                   isolated_session.session_id,
+                   isolated_session,
+                   get_isolation())
+
+    @property
+    def client(self):
+        return self._isolated_session.client
+
+    @client.setter
+    def client(self, client: ClientType):
+        self._isolated_session.client = client
+
+    @classmethod
+    @implements(AbstractAsyncSession.init)
+    async def init(cls,
+                   address: str,
+                   session_id: str,
+                   backend: str = 'oscar',
+                   new: bool = True,
+                   **kwargs) -> "AbstractSession":
+        session_cls = _type_name_to_session_cls[backend]
+        isolation = ensure_isolation_created(kwargs)
+        coro = session_cls.init(address, session_id,
+                                new=new, **kwargs)
+        fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
+        isolated_session = await asyncio.wrap_future(fut)
+        return AsyncSession(address, session_id, isolated_session, isolation)
+
+    def as_default(self) -> AbstractSession:
+        AbstractSession._default_session_local.default_session = self._isolated_session
+        return self
+
+    @implements(AbstractAsyncSession.destroy)
+    async def destroy(self):
+        coro = self._isolated_session.destroy()
+        await asyncio.wrap_future(
+            asyncio.run_coroutine_threadsafe(coro, self._loop))
+        self.reset_default()
+
+    @implements(AbstractAsyncSession.execute)
+    @_delegate_to_isolated_session
+    async def execute(self,
+                      *tileables,
+                      **kwargs) -> ExecutionInfo:
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.fetch)
+    async def fetch(self, *tileables, **kwargs) -> list:
+        coro = _fetch(*tileables, session=self._isolated_session, **kwargs)
+        return await asyncio.wrap_future(
+            asyncio.run_coroutine_threadsafe(coro, self._loop))
+
+    @implements(AbstractAsyncSession._get_ref_counts)
+    @_delegate_to_isolated_session
+    async def _get_ref_counts(self) -> Dict[str, int]:
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.fetch_tileable_op_logs)
+    @_delegate_to_isolated_session
+    async def fetch_tileable_op_logs(self,
+                                     tileable_op_key: str,
+                                     offsets: Union[Dict[str, List[int]], str, int],
+                                     sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.get_total_n_cpu)
+    @_delegate_to_isolated_session
+    async def get_total_n_cpu(self):
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.get_cluster_versions)
+    @_delegate_to_isolated_session
+    async def get_cluster_versions(self) -> List[str]:
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.create_remote_object)
+    @_delegate_to_isolated_session
+    async def create_remote_object(self,
+                                   session_id: str,
+                                   name: str,
+                                   object_cls,
+                                   *args, **kwargs):
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.get_remote_object)
+    @_delegate_to_isolated_session
+    async def get_remote_object(self,
+                                session_id: str,
+                                name: str):
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.destroy_remote_object)
+    @_delegate_to_isolated_session
+    async def destroy_remote_object(self,
+                                    session_id: str,
+                                    name: str):
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.stop_server)
+    async def stop_server(self):
+        coro = self._isolated_session.stop_server()
+        await asyncio.wrap_future(
+            asyncio.run_coroutine_threadsafe(coro, self._loop))
+        stop_isolation()
+
+
+class ProgressBar:
+    def __init__(self, show_progress):
+        if not show_progress:
+            self.progress_bar = None
+        else:
+            try:
+                from tqdm.auto import tqdm
+            except ImportError:
+                if show_progress != 'auto':  # pragma: no cover
+                    raise ImportError('tqdm is required to show progress')
+                else:
+                    self.progress_bar = None
+            else:
+                self.progress_bar = tqdm(total=100)
+
+        self.last_progress: float = 0.0
+
+    @property
+    def show_progress(self) -> bool:
+        return self.progress_bar is not None
+
+    def __enter__(self):
+        self.progress_bar.__enter__()
+
+    def __exit__(self, *_):
+        self.progress_bar.__exit__(*_)
+
+    def update(self, progress: float):
+        last_progress = self.last_progress
+        if self.progress_bar:
+            self.progress_bar.update(progress - last_progress)
+        self.last_progress = max(last_progress, progress)
+
+
+class SyncSession(AbstractSyncSession):
+    _execution_pool = concurrent.futures.ThreadPoolExecutor(1)
+
+    def __init__(self,
+                 address: str,
+                 session_id: str,
+                 isolated_session: _IsolatedSession,
+                 isolation: Isolation):
+        super().__init__(address, session_id)
+
+        self._isolated_session = _get_isolated_session(isolated_session)
+        self._isolation = isolation
+        self._loop = isolation.loop
+
+    @classmethod
+    def from_isolated_session(cls,
+                              isolated_session: _IsolatedSession) -> "SyncSession":
+        return cls(isolated_session.address,
+                   isolated_session.session_id,
+                   isolated_session,
+                   get_isolation())
+
+    @classmethod
+    def init(cls,
+             address: str,
+             session_id: str,
+             backend: str = 'oscar',
+             new: bool = True,
+             **kwargs) -> "AbstractSession":
+        session_cls = _type_name_to_session_cls[backend]
+        isolation = ensure_isolation_created(kwargs)
+        coro = session_cls.init(address, session_id,
+                                new=new, **kwargs)
+        fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
+        isolated_session = fut.result()
+        return SyncSession(address, session_id, isolated_session, isolation)
+
+    def as_default(self) -> AbstractSession:
+        AbstractSession._default_session_local.default_session = self._isolated_session
+        return self
+
+    @property
+    def _session(self):
+        return self._isolated_session
+
+    def _new_cancel_event(self):
+        async def new_event():
+            return asyncio.Event()
+
+        return asyncio.run_coroutine_threadsafe(
+            new_event(), self._loop).result()
+
+    @implements(AbstractSyncSession.execute)
+    def execute(self,
+                tileable,
+                *tileables,
+                show_progress: Union[bool, str] = None,
+                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
+        wait = kwargs.get('wait', True)
+        if show_progress is None:
+            show_progress = options.show_progress
+        to_execute_tileables = []
+        for t in (tileable,) + tileables:
+            to_execute_tileables.extend(t.op.outputs)
+
+        cancelled = kwargs.get('cancelled')
+        if cancelled is None:
+            cancelled = kwargs['cancelled'] = self._new_cancel_event()
+
+        coro = _execute(*set(to_execute_tileables), session=self._isolated_session,
+                        show_progress=show_progress, **kwargs)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        try:
+            execution_info: ExecutionInfo = fut.result()
+        except KeyboardInterrupt:  # pragma: no cover
+            logger.warning('Cancelling running task')
+            cancelled.set()
+            fut.result()
+            logger.warning('Cancel finished')
+
+        if wait:
+            return tileable if len(tileables) == 0 else \
+                [tileable] + list(tileables)
+        else:
+            aio_task = execution_info.aio_task
+
+            async def run():
+                await aio_task
+                return tileable if len(tileables) == 0 else \
+                    [tileable] + list(tileables)
+
+            async def driver():
+                return asyncio.create_task(run())
+
+            new_aio_task = asyncio.run_coroutine_threadsafe(
+                driver(), execution_info.loop).result()
+            new_execution_info = ExecutionInfo(
+                new_aio_task, execution_info._progress, execution_info.loop)
+            return new_execution_info
+
+    @implements(AbstractSyncSession.fetch)
+    def fetch(self, *tileables, **kwargs) -> list:
+        coro = _fetch(*tileables, session=self._isolated_session, **kwargs)
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+
+    @implements(AbstractSyncSession.decref)
+    @_delegate_to_isolated_session
+    def decref(self, *tileables_keys):
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession._get_ref_counts)
+    @_delegate_to_isolated_session
+    def _get_ref_counts(self) -> Dict[str, int]:
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.fetch_tileable_op_logs)
+    @_delegate_to_isolated_session
+    def fetch_tileable_op_logs(self,
+                               tileable_op_key: str,
+                               offsets: Union[Dict[str, List[int]], str, int],
+                               sizes: Union[Dict[str, List[int]], str, int]) -> Dict:
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.get_total_n_cpu)
+    @_delegate_to_isolated_session
+    def get_total_n_cpu(self):
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.get_cluster_versions)
+    @_delegate_to_isolated_session
+    def get_cluster_versions(self) -> List[str]:
+        pass  # pragma: no cover
+
+    def destroy(self):
+        coro = self._isolated_session.destroy()
+        asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+        self.reset_default()
+
+    def stop_server(self):
+        coro = self._isolated_session.stop_server()
+        asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+        self.reset_default()
+        stop_isolation()
+
+    def close(self):
+        self.destroy()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+
+async def _execute(*tileables: Tuple[TileableType],
+                   session: _IsolatedSession = None,
+                   wait: bool = True,
+                   show_progress: Union[bool, str] = 'auto',
+                   progress_update_interval: Union[int, float] = 1,
+                   cancelled: asyncio.Event = None,
+                   **kwargs):
+
+    def _attach_session(future: asyncio.Future):
+        if future.exception() is None:
+            for t in tileables:
+                t._attach_session(session)
+
+    execution_info = await session.execute(*tileables, **kwargs)
+    execution_info.add_done_callback(_attach_session)
+    cancelled = cancelled or asyncio.Event()
+
+    if wait:
+        progress_bar = ProgressBar(show_progress)
+        if progress_bar.show_progress:
+            with progress_bar:
+                while not cancelled.is_set():
+                    try:
+                        await asyncio.wait_for(asyncio.shield(execution_info),
+                                               progress_update_interval)
+                        # done
+                        if not cancelled.is_set():
+                            progress_bar.update(100)
+                        break
+                    except asyncio.TimeoutError:
+                        # timeout
+                        if not cancelled.is_set():
+                            progress_bar.update(execution_info.progress() * 100)
+                if cancelled.is_set():
+                    # cancel execution
+                    execution_info.cancel()
+                    execution_info.remove_done_callback(_attach_session)
+                    await execution_info
+        else:
+            await asyncio.wait([execution_info, cancelled.wait()],
+                               return_when=asyncio.FIRST_COMPLETED)
+            if cancelled.is_set():
+                execution_info.remove_done_callback(_attach_session)
+                execution_info.cancel()
+            await execution_info
+    else:
+        return execution_info
+
+
+def execute(tileable: TileableType,
+            *tileables: Tuple[TileableType],
+            session: SyncSession = None,
+            wait: bool = True,
+            new_session_kwargs: dict = None,
+            show_progress: Union[bool, str] = None,
+            progress_update_interval=1, **kwargs):
+    if session is None:
+        session = get_default_or_create(
+            **(new_session_kwargs or dict()))
+    session = _ensure_sync(session)
+    return session.execute(tileable, *tileables, wait=wait,
+                           show_progress=show_progress,
+                           progress_update_interval=progress_update_interval,
+                           **kwargs)
+
+
+async def _fetch(tileable: TileableType,
+                 *tileables: Tuple[TileableType],
+                 session: _IsolatedSession = None,
+                 **kwargs):
+    if isinstance(tileable, tuple) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
+    session = _get_isolated_session(session)
+    data = await session.fetch(tileable, *tileables, **kwargs)
+    return data[0] if len(tileables) == 0 else data
+
+
+def fetch(tileable: TileableType,
+          *tileables: Tuple[TileableType],
+          session: SyncSession = None,
+          **kwargs):
+    if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
+    if session is None:
+        session = get_default_session()
+        if session is None:  # pragma: no cover
+            raise ValueError('No session found')
+
+    session = _ensure_sync(session)
+    return session.fetch(tileable, *tileables, **kwargs)
+
+
+def fetch_log(*tileables: TileableType,
+              session: SyncSession = None,
+              **kwargs):
+    if session is None:
+        session = get_default_session()
+        if session is None:  # pragma: no cover
+            raise ValueError('No session found')
+    session = _ensure_sync(session)
+    return session.fetch_log(list(tileables), **kwargs)
+
+
+def ensure_isolation_created(kwargs):
+    loop = kwargs.pop('loop', None)
+    use_uvloop = kwargs.pop('use_uvloop', 'auto')
+
+    try:
+        return get_isolation()
+    except KeyError:
+        if loop is None:
+            if not use_uvloop:
+                loop = asyncio.new_event_loop()
+            else:
+                try:
+                    import uvloop
+                    loop = uvloop.new_event_loop()
+                except ImportError:
+                    if use_uvloop == 'auto':
+                        loop = asyncio.new_event_loop()
+                    else:  # pragma: no cover
+                        raise
+        return new_isolation(loop=loop)
+
+
+async def _new_session(address: str,
+                       session_id: str = None,
+                       backend: str = 'oscar',
+                       default: bool = False,
+                       **kwargs) -> AbstractSession:
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+
+    session = await AsyncSession.init(
+        address, session_id=session_id,
+        backend=backend, new=True, **kwargs)
+    if default:
+        session.as_default()
+    return session
+
+
+def new_session(address: str = None,
+                session_id: str = None,
+                backend: str = 'oscar',
+                default: bool = False,
+                **kwargs) -> AbstractSession:
+    ensure_isolation_created(kwargs)
+
+    if address is None:
+        address = '127.0.0.1'
+        if 'init_local' not in kwargs:
+            kwargs['init_local'] = True
+
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+
+    session = SyncSession.init(
+        address, session_id=session_id,
+        backend=backend, new=True, **kwargs)
+    if default:
+        session.as_default()
+    return session
+
+
+def get_default_session() -> Optional[SyncSession]:
+    if AbstractSession.default is None:
+        return
+    return SyncSession.from_isolated_session(AbstractSession.default)
+
+
+def get_default_async_session() -> Optional[AsyncSession]:
+    if AbstractSession.default is None:
+        return
+    return AsyncSession.from_isolated_session(AbstractSession.default)
+
+
+async def _get_default_or_create(**kwargs):
+    return await AbstractSession.get_or_create_default(**kwargs)
+
+
+def get_default_or_create(**kwargs):
+    isolation = ensure_isolation_created(kwargs)
+
+    session = asyncio.run_coroutine_threadsafe(
+        _get_default_or_create(**kwargs), isolation.loop).result()
+    session.as_default()
+    return _ensure_sync(session)
+
+
+def stop_server():
+    if AbstractSession.default:
+        SyncSession.from_isolated_session(AbstractSession.default).stop_server()
+
+
+def _get_isolated_session(session: AbstractSession) -> _IsolatedSession:
+    if hasattr(session, '_isolated_session'):
+        return session._isolated_session
+    return session
+
+
+def _ensure_sync(session: AbstractSession) -> SyncSession:
+    if isinstance(session, SyncSession):
+        return session
+    isolated_session = _get_isolated_session(session)
+    return SyncSession.from_isolated_session(isolated_session)

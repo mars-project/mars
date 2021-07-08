@@ -21,8 +21,8 @@ import time
 import uuid
 from urllib.parse import urlparse
 
-from ...core.session import new_session
 from ...services.cluster.api import WebClusterAPI
+from ...session import new_session
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSupervisorsConfig, MarsWorkersConfig

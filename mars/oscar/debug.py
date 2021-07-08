@@ -52,7 +52,8 @@ def set_debug_options(options: Optional[DebugOptions]):
 
 
 def reload_debug_opts_from_env():
-    if 'DEBUG_OSCAR' not in os.environ:
+    config_str = os.environ.get('DEBUG_OSCAR', '0')
+    if config_str == '0':
         set_debug_options(None)
         return
     config_str = os.environ['DEBUG_OSCAR']

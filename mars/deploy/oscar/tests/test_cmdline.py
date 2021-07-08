@@ -24,11 +24,12 @@ import numpy as np
 import pytest
 
 import mars.tensor as mt
-from mars.core.session import new_session
 from mars.deploy.oscar.cmdline import OscarCommandRunner
 from mars.deploy.oscar.worker import WorkerCommandRunner
+from mars.lib.aio import new_isolation, get_isolation, stop_isolation
 from mars.services import NodeRole
 from mars.services.cluster import ClusterAPI
+from mars.session import new_session
 from mars.tests import flaky
 from mars.utils import get_next_port, kill_process_tree
 
@@ -77,8 +78,8 @@ def _wait_worker_ready(supervisor_addr, worker_procs: List[subprocess.Popen],
             finally:
                 await asyncio.sleep(0.1)
 
-    loop = asyncio.new_event_loop()
-    loop.run_until_complete(wait_for_workers())
+    isolation = get_isolation()
+    asyncio.run_coroutine_threadsafe(wait_for_workers(), isolation.loop).result()
 
 
 _test_port_cache = dict()
@@ -127,6 +128,7 @@ def _reload_args(args):
                          list(start_params.values()), ids=list(start_params.keys()))
 @flaky(rerun_filter=lambda *args: issubclass(args[0][0], _ProcessExitedException))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
+    new_isolation()
     sv_proc = w_procs = None
     try:
         sv_args = _reload_args(supervisor_args)
@@ -168,6 +170,8 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
                 proc.wait(3)
             except subprocess.TimeoutExpired:
                 kill_process_tree(proc.pid)
+
+        stop_isolation()
 
 
 def test_parse_args():
