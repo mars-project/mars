@@ -157,7 +157,8 @@ class GroupByTransform(DataFrameOperand, DataFrameOperandMixin):
             if op.output_types[0] == OutputType.dataframe:
                 ctx[op.outputs[0].key] = build_empty_df(out_chunk.dtypes)
             else:
-                ctx[op.outputs[0].key] = build_empty_series(out_chunk.dtype)
+                ctx[op.outputs[0].key] = build_empty_series(
+                    out_chunk.dtype, name=out_chunk.name)
             return
 
         if op.call_agg:

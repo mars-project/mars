@@ -482,7 +482,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         elif isinstance(params.get('by'), list):
             new_by = []
             for v in params['by']:
-                if isinstance(v, Base):
+                if isinstance(v, (Base, Entity)):
                     new_by.append(ctx[v.key])
                 else:
                     new_by.append(v)

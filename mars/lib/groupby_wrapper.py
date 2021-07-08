@@ -17,6 +17,7 @@ from collections.abc import Iterable
 from distutils.version import LooseVersion
 
 import cloudpickle
+import numpy as np
 import pandas as pd
 from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
 
@@ -86,6 +87,12 @@ class GroupByWrapper:
     def __sizeof__(self):
         return sys.getsizeof(self.obj) \
             + sys.getsizeof(getattr(self.groupby_obj.grouper, '_cache', None))
+
+    def __reduce__(self):
+        return type(self).from_tuple, (self.to_tuple(pickle_function=True, truncate=True),)
+
+    def __bool__(self):
+        return bool(np.prod(self.shape))
 
     @property
     def empty(self):

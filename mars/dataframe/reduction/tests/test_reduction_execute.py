@@ -837,7 +837,7 @@ class TestAggregate(TestBase):
         result = df.agg('size')
         if _agg_size_as_series:
             pd.testing.assert_series_equal(
-                self.executor.execute_dataframe(result)[0], data.agg('size'))
+                self.executor.execute_dataframe(result, concat=True)[0], data.agg('size'))
         else:
             self.assertEqual(self.executor.execute_dataframe(result)[0], data.agg('size'))
 

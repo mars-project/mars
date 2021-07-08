@@ -143,6 +143,8 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
 
                     if op.call_agg:
                         new_shape[op.axis] = np.nan
+                        params['index_value'] = parse_index(
+                            None, c.key, c.index_value.key)
                     new_columns_value = parse_index(new_dtypes.index)
                 else:
                     new_dtypes = out_df.dtypes
