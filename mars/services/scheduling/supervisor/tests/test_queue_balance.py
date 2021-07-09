@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import pytest
 from typing import Tuple, List
 
@@ -25,24 +26,37 @@ from mars.utils import extensible
 
 class MockSlotsActor(mo.Actor):
     def __init__(self):
-        self._capacity = -1
+        self._blocklist_event = asyncio.Event()
 
-    def set_capacity(self, capacity: int):
-        self._capacity = capacity
+    async def add_to_blocklist(self, band: Tuple):
+        self._blocklist_event.set()
 
     def apply_subtask_slots(self, band: Tuple, session_id: str,
                             subtask_ids: List[str], subtask_slots: List[int]):
-        idx = min(self._capacity, len(subtask_ids)) \
-                if self._capacity >= 0 else len(subtask_ids)
-        return subtask_ids[:idx]
+        return subtask_ids
 
     def get_available_bands(self):
-        return {(self.address, 'numa-0'): 2}
+        return {('address0', 'numa-0'): 10,
+                ('address2', 'numa-0'): 10}
+
+    async def watch_available_bands(self):
+        async def waiter():
+            try:
+                await self._blocklist_event.wait()
+                return self.get_available_bands()
+            finally:
+                pass
+
+        return waiter()
 
 
 class MockAssignerActor(mo.Actor):
     def assign_subtasks(self, subtasks: List[Subtask]):
-        return [(self.address, 'numa-0')] * len(subtasks)
+        return [subtask.expect_bands[0] for subtask in subtasks]
+
+    def reassign_subtasks(self, band_num_queued_subtasks):
+        return {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 0,
+                ('address2', 'numa-0'): 8}
 
 
 class MockSubtaskManagerActor(mo.Actor):
@@ -89,30 +103,38 @@ async def actor_pool():
         await mo.destroy_actor(queueing_ref)
 
 
+async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):
+    if not num_subtasks:
+        return
+    subtasks = [Subtask(expect_bands[0] + '-' + str(i)) for i in range(num_subtasks)]
+    for subtask in subtasks:
+        subtask.expect_bands = [expect_bands]
+    priorities = [(i,) for i in range(num_subtasks)]
+
+    await queueing_ref.add_subtasks(subtasks, priorities)
+
+
 @pytest.mark.asyncio
 async def test_subtask_queueing(actor_pool):
     _pool, session_id, queueing_ref, slots_ref, manager_ref = actor_pool
-    await slots_ref.set_capacity(2)
+    nums_subtasks = [9, 8, 1]
+    expects_bands = [('address0', 'numa-0'), ('address1', 'numa-0'),
+                     ('address2', 'numa-0')]
+    for num_subtasks, expect_bands in zip(nums_subtasks, expects_bands):
+        await _queue_subtasks(num_subtasks, expect_bands, queueing_ref)
+    await slots_ref.add_to_blocklist(('address0', 'numa-0'))
 
-    subtasks = [Subtask(str(i)) for i in range(5)]
-    priorities = [(i,) for i in range(5)]
-
-    await queueing_ref.add_subtasks(subtasks, priorities)
-    # queue: [4 3 2 1 0]
-
-    await queueing_ref.submit_subtasks()
-    # queue: [2 1 0]
+    # 9 subtasks on ('address0', 'numa-0')
+    await queueing_ref.submit_subtasks(band=('address0', 'numa-0'), limit=10)
     commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
-    assert commited_subtask_ids == ['4', '3']
+    assert len(commited_subtask_ids) == 9
 
-    await queueing_ref.remove_queued_subtasks(['1'])
-    # queue: [2 0]
-    await queueing_ref.update_subtask_priority.batch(
-        queueing_ref.update_subtask_priority.delay('0', (3,)),
-        queueing_ref.update_subtask_priority.delay('4', (5,)),
-    )
-    # queue: [0(3) 2]
-    await queueing_ref.submit_subtasks()
-    # queue: []
-    commited_subtasks, _commited_bands = await manager_ref.dump_data()
-    assert commited_subtasks == ['4', '3', '0', '2']
+    # 0 subtasks on ('address1', 'numa-0')
+    await queueing_ref.submit_subtasks(band=('address1', 'numa-0'), limit=10)
+    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
+    assert len(commited_subtask_ids) == 9
+
+    # 9 subtasks on ('address2', 'numa-0')
+    await queueing_ref.submit_subtasks(band=('address2', 'numa-0'), limit=10)
+    commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
+    assert len(commited_subtask_ids) == 18

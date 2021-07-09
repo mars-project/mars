@@ -15,7 +15,7 @@
 import asyncio
 import random
 from collections import defaultdict
-from typing import List
+from typing import List, Dict, Tuple
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
@@ -136,3 +136,20 @@ class AssignerActor(mo.Actor):
     async def reassign_band(self):
         assert self._available_bands
         return random.choice(self._available_bands)
+
+    async def reassign_subtasks(self, band_num_queued_subtasks: Dict[Tuple, int]) -> Dict[Tuple, int]:
+        used_bands = band_num_queued_subtasks.keys()
+        # select available bands which may contain new available unused ones
+        bands_to_assign = [used_band for used_band in used_bands if used_band in self._available_bands]
+        # approximate total of subtasks in each band
+        mean = int(sum(band_num_queued_subtasks.values()) / len(bands_to_assign))
+        # calculate the differential steps of moving subtasks
+        # move < 0 means subtasks should move out and vice versa
+        # blocked bands no longer hold subtasks
+        move_queued_subtasks = {band: mean - num if band in self._available_bands else -num
+                                for band, num in band_num_queued_subtasks.items()}
+        # ensure the balance of moving in and out
+        total_move = sum(move_queued_subtasks.values())
+        if total_move != 0:
+            move_queued_subtasks[random.choice(self._available_bands)] -= total_move
+        return dict(sorted(move_queued_subtasks.items(), key=lambda item: item[1]))

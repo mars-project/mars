@@ -61,6 +61,9 @@ class SubtaskQueueingActor(mo.Actor):
         self._assigner_ref = None
 
         self._band_slot_nums = dict()
+        self._band_watch_task = None
+        self._available_bands = []
+        self._available_band_watch_task = None
         self._max_enqueue_id = 0
 
         self._periodical_submit_task = None
@@ -84,6 +87,20 @@ class SubtaskQueueingActor(mo.Actor):
         if self._submit_period > 0:
             self._periodical_submit_task = \
                 self.ref().periodical_submit.tell_delay(delay=self._submit_period)
+
+        async def watch_bands():
+            while True:
+                self._band_slot_nums = await self._cluster_api.get_all_bands(watch=True)
+
+        self._band_watch_task = asyncio.create_task(watch_bands())
+
+        async def watch_available_bands():
+            while True:
+                self._available_bands = list(await self._slots_ref.watch_available_bands())
+                # when more bands available or some bands blocked
+                await self.balance_queued_subtasks()
+
+        self._available_band_watch_task = asyncio.create_task(watch_available_bands())
 
     async def __pre_destroy__(self):
         if self._periodical_submit_task is not None:  # pragma: no branch
@@ -130,16 +147,6 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
-
-            band_is_blocked = await self._slots_ref.band_is_blocked(band)
-            if band_is_blocked and task_queue:
-                new_band = await self._assigner_ref.reassign_band()
-                while task_queue:
-                    item = heapq.heappop(task_queue)
-                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
-                    self._stid_to_bands[item.subtask.subtask_id].append(new_band)
-                    heapq.heappush(self._band_queues[new_band], item)
-
             while task_queue and len(submit_items) < band_limit:
                 item = heapq.heappop(task_queue)
                 # skip removed items (as they may still in the queue)
@@ -189,3 +196,21 @@ class SubtaskQueueingActor(mo.Actor):
         for stid in subtask_ids:
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
+
+    async def balance_queued_subtasks(self):
+        # record bands with length of band queues
+        band_num_queued_subtasks = {band: len(self._band_queues[band]) for band in self._band_slot_nums.keys()}
+        move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+        items = []
+        # rewrite band queues according to feedbacks from assigner
+        for band, move in move_queued_subtasks.items():
+            task_queue = self._band_queues[band]
+            for _ in range(abs(move)):
+                if move < 0:
+                    item = heapq.heappop(task_queue)
+                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    items.append(item)
+                elif move > 0:
+                    item = items.pop()
+                    self._stid_to_bands[item.subtask.subtask_id].append(band)
+                    heapq.heappush(task_queue, item)

@@ -84,7 +84,7 @@ class TaskProcessor:
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
 
-        self._band_slots = {}
+        self._band_slots = dict()
         self._band_slots_watch_task = None
 
     async def __post_create__(self):
