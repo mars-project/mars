@@ -19,3 +19,6 @@ TileableType = TypeVar('TileableType')
 ChunkType = TypeVar('ChunkType')
 EntityType = TypeVar('EntityType')
 SessionType = TypeVar('SessionType')
+
+ClusterType = TypeVar('ClusterType')
+ClientType = TypeVar('ClientType')

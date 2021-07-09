@@ -41,10 +41,10 @@ from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...tensor.utils import slice_split
+from ...typing import ClientType
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
     register_asyncio_task_timeout_detector, classproperty, \
     copy_tileables, build_fetch
-from .typing import ClientType
 
 
 logger = logging.getLogger(__name__)

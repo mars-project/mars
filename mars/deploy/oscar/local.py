@@ -22,11 +22,11 @@ from ... import oscar as mo
 from ...lib.aio import get_isolation, stop_isolation
 from ...resource import cpu_count, cuda_count
 from ...services import NodeRole
+from ...typing import ClusterType, ClientType
 from ..utils import get_third_party_modules_from_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker, load_config
 from .session import AbstractSession, _new_session, ensure_isolation_created
-from .typing import ClusterType, ClientType
 
 _is_exiting_future = SyncFuture()
 atexit.register(lambda: _is_exiting_future.set_result(0)
