@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
 from typing import Dict, List, Tuple, Type, Any, Optional
 
 from .communication import get_client_type, Client
@@ -22,7 +23,7 @@ class Router:
     Router provides mapping from external address to internal address.
     """
     __slots__ = '_curr_external_addresses', '_local_mapping', \
-                '_mapping', '_cache'
+                '_mapping', '_cache_local'
 
     _instance: "Router" = None
 
@@ -50,7 +51,15 @@ class Router:
         if mapping is None:
             mapping = dict()
         self._mapping = mapping
-        self._cache: Dict[Tuple[str, Any], Client] = dict()
+        self._cache_local = threading.local()
+
+    @property
+    def _cache(self) -> Dict[Tuple[str, Any], Client]:
+        try:
+            return self._cache_local.cache
+        except AttributeError:
+            cache = self._cache_local.cache = dict()
+            return cache
 
     def set_mapping(self, mapping: Dict[str, str]):
         self._mapping = mapping

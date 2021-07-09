@@ -24,9 +24,9 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 from mars.config import option_context
-from mars.core.session import get_default_session, SyncSession
 from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
+from mars.deploy.oscar.session import get_default_session
 from mars.lib.version import parse as parse_version
 from mars.tests import setup
 from mars.tests.core import require_cudf, require_cupy
@@ -43,7 +43,7 @@ setup = setup
 def check_ref_counts():
     yield
     sess = get_default_session()
-    assert len(SyncSession(sess)._get_ref_counts()) == 0
+    assert len(sess._get_ref_counts()) == 0
 
 
 class FunctionOptions(NamedTuple):

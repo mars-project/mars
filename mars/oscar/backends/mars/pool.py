@@ -119,9 +119,6 @@ class MainActorPool(MainActorPoolBase):
             process_index: int,
             started: multiprocessing.Event):
         try:
-            suspend_sigint = actor_config.get_pool_config(process_index)['suspend_sigint']
-            if suspend_sigint:
-                signal.signal(signal.SIGINT, lambda *_: None)
             # register coverage hooks on SIGTERM
             from pytest_cov.embed import cleanup_on_sigterm
             if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
@@ -129,7 +126,17 @@ class MainActorPool(MainActorPoolBase):
         except ImportError:  # pragma: no cover
             pass
 
-        asyncio.set_event_loop(asyncio.new_event_loop())
+        conf = actor_config.get_pool_config(process_index)
+        suspend_sigint = conf['suspend_sigint']
+        if suspend_sigint:
+            signal.signal(signal.SIGINT, lambda *_: None)
+        use_uvloop = conf['use_uvloop']
+        if use_uvloop:
+            import uvloop
+            asyncio.set_event_loop(uvloop.new_event_loop())
+        else:
+            asyncio.set_event_loop(asyncio.new_event_loop())
+
         coro = cls._create_sub_pool(actor_config, process_index, started)
         asyncio.run(coro)
 
