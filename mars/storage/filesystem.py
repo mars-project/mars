@@ -51,7 +51,7 @@ class FileSystemStorage(StorageBackend):
             raise TypeError(f'FileSystemStorage got unexpected config: {",".join(kwargs)}')
 
         if isinstance(root_dirs, str):
-            root_dirs = root_dirs.split(',')
+            root_dirs = root_dirs.split(':')
         if isinstance(level, str):
             level = StorageLevel.from_str(level)
 

@@ -21,11 +21,20 @@ from typing import Union
 import pytest
 
 import mars.oscar as mo
-from mars.services.scheduling.worker import QuotaActor, MemQuotaActor
+from mars.services.scheduling.worker import \
+    QuotaActor, MemQuotaActor, BandSlotManagerActor
 from mars.tests.core import mock
 from mars.utils import get_next_port
 
 QuotaActorRef = Union[QuotaActor, mo.ActorRef]
+
+
+class MockBandSlotManagerActor(mo.Actor):
+    def get_restart_record(self):
+        return getattr(self, '_restart_record', False)
+
+    def restart_free_slots(self):
+        self._restart_record = True
 
 
 @pytest.fixture
@@ -128,11 +137,15 @@ async def test_mem_quota_allocation(actor_pool):
     from mars.utils import AttributeDict
 
     mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
+    mock_band_slot_manager_ref = await mo.create_actor(
+        MockBandSlotManagerActor, uid=BandSlotManagerActor.gen_uid('numa-0'),
+        address=actor_pool.external_address)
     quota_ref = await mo.create_actor(
         MemQuotaActor, (actor_pool.external_address, 'numa-0'), 300,
         hard_limit=300, refresh_time=0.1,
         uid=MemQuotaActor.gen_uid('cpu-0'),
-        address=actor_pool.external_address)  # type: QuotaActorRef
+        address=actor_pool.external_address)  # type: Union[QuotaActorRef, mo.ActorRef]
+
     with mock.patch('mars.resource.virtual_memory', new=lambda: mock_mem_stat):
         time_recs = [time.time()]
 
@@ -149,3 +162,4 @@ async def test_mem_quota_allocation(actor_pool):
         mock_mem_stat['free'] = 150
         await asyncio.wait_for(task, timeout=1)
         assert 0.15 < abs(time_recs[0] - time_recs[1]) < 1
+        assert await mock_band_slot_manager_ref.get_restart_record()

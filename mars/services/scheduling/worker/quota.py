@@ -43,7 +43,7 @@ class QuotaActor(mo.Actor):
     def gen_uid(cls, band_name: str):
         return f'{band_name}_quota'
 
-    def __init__(self, band: BandType, quota_size: int):
+    def __init__(self, band: BandType, quota_size: int, **kw):
         super().__init__()
         self._requests = OrderedDict()
 
@@ -59,6 +59,9 @@ class QuotaActor(mo.Actor):
         self._hold_sizes = dict()
         self._total_hold = 0
 
+        if kw:  # pragma: no cover
+            logger.warning('Keywords for QuotaActor %r not used', list(kw.keys()))
+
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
         try:
@@ -67,7 +70,7 @@ class QuotaActor(mo.Actor):
         except mo.ActorNotExist:
             pass
 
-    def _has_space(self, delta: int):
+    async def _has_space(self, delta: int):
         return self._total_allocated + delta <= self._quota_size
 
     def _log_allocate(self, msg: str, *args, **kwargs):
@@ -104,7 +107,7 @@ class QuotaActor(mo.Actor):
         delta = sum(v - self._allocations.get(k, 0) for k, v in batch.items())
 
         # if all requested and allocation can still be applied, apply directly
-        if all_allocated and self._has_space(delta):
+        if all_allocated and await self._has_space(delta):
             self._log_allocate('Quota request %r already allocated.', batch)
             return
 
@@ -115,11 +118,11 @@ class QuotaActor(mo.Actor):
         if keys in self._requests:
             event = self._requests[keys].event
         else:
-            has_space = self._has_space(delta)
+            has_space = await self._has_space(delta)
             if has_space and not self._requests:
                 # if no previous requests, we can apply directly
                 self._log_allocate('Quota request met for key %r on %s.', keys, self.uid)
-                self.alter_allocations(keys, quota_sizes, allocate=True)
+                await self.alter_allocations(keys, quota_sizes, allocate=True)
                 return
             else:
                 # current free space cannot satisfy the request, the request is queued
@@ -140,9 +143,9 @@ class QuotaActor(mo.Actor):
                 raise ex
         return waiter()
 
-    def remove_requests(self, keys: Tuple):
+    async def remove_requests(self, keys: Tuple):
         self._requests.pop(keys, None)
-        self._process_requests()
+        await self._process_requests()
 
     def hold_quotas(self, keys: Tuple):
         """
@@ -161,7 +164,7 @@ class QuotaActor(mo.Actor):
             self._total_hold += alloc_size - self._hold_sizes.get(key, 0)
             self._hold_sizes[key] = alloc_size
 
-    def release_quotas(self, keys: Tuple):
+    async def release_quotas(self, keys: Tuple):
         """
         Release allocated quota in batch
 
@@ -182,7 +185,7 @@ class QuotaActor(mo.Actor):
 
         self._total_allocated -= total_alloc_size
         if total_alloc_size:
-            self._process_requests()
+            await self._process_requests()
 
             self._report_quota_info()
             self._log_allocate('Quota keys %s released on %s.', keys, self.uid)
@@ -194,8 +197,8 @@ class QuotaActor(mo.Actor):
         # get total allocated size, for debug purpose
         return self._total_allocated
 
-    def alter_allocations(self, keys: Tuple, quota_sizes: Tuple, handle_shrink: bool = True,
-                          allocate: bool = False):
+    async def alter_allocations(self, keys: Tuple, quota_sizes: Tuple,
+                                handle_shrink: bool = True, allocate: bool = False):
         """
         Alter multiple requests
 
@@ -234,20 +237,20 @@ class QuotaActor(mo.Actor):
             total_old_size += old_size
             total_diff += size_diff
         if handle_shrink and total_diff < 0:
-            self._process_requests()
+            await self._process_requests()
 
         self._report_quota_info()
         self._log_allocate('Quota keys %r applied on %s. Total old Size: %s, Total diff: %s,',
                            keys, self.uid, total_old_size, total_diff)
 
-    def _process_requests(self):
+    async def _process_requests(self):
         """
         Process quota requests in the queue
         """
         removed = []
         for k, req in self._requests.items():
-            if self._has_space(req.delta):
-                self.alter_allocations(k, req.req_size, handle_shrink=False, allocate=True)
+            if await self._has_space(req.delta):
+                await self.alter_allocations(k, req.req_size, handle_shrink=False, allocate=True)
                 req.event.set()
                 removed.append(k)
             else:
@@ -269,29 +272,37 @@ class MemQuotaActor(QuotaActor):
         self._refresh_time = refresh_time or 1
 
         self._stat_refresh_task = None
+        self._slot_manager_ref = None
 
     async def __post_create__(self):
         await super().__post_create__()
         self._stat_refresh_task = self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
 
+        from .workerslot import BandSlotManagerActor
+        try:
+            self._slot_manager_ref = await mo.actor_ref(
+                uid=BandSlotManagerActor.gen_uid(self._band[1]), address=self.address)
+        except mo.ActorNotExist:  # pragma: no cover
+            pass
+
     async def __pre_destroy__(self):
         self._stat_refresh_task.cancel()
 
-    def update_mem_stats(self):
+    async def update_mem_stats(self):
         """
         Refresh memory usage
         """
         cur_mem_available = mars_resource.virtual_memory().available
         if cur_mem_available > self._last_memory_available:
             # memory usage reduced: try reallocate existing requests
-            self._process_requests()
+            await self._process_requests()
         self._last_memory_available = cur_mem_available
         self._report_quota_info()
         self.ref().update_mem_stats.tell_delay(delay=self._refresh_time)
 
-    def _has_space(self, delta: int):
+    async def _has_space(self, delta: int):
         if self._hard_limit is None:
-            return super()._has_space(delta)
+            return await super()._has_space(delta)
 
         mem_stats = mars_resource.virtual_memory()
         # calc available physical memory
@@ -300,8 +311,12 @@ class MemQuotaActor(QuotaActor):
         if max(delta, 0) >= available_size:
             logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
                            self.uid, delta, available_size, self._hard_limit)
+
+            if self._slot_manager_ref is not None:  # pragma: no branch
+                logger.info('Restarting free slots to obtain more memory')
+                await self._slot_manager_ref.restart_free_slots()
             return False
-        return super()._has_space(delta)
+        return await super()._has_space(delta)
 
     def _log_allocate(self, msg: str, *args, **kwargs):
         if self._hard_limit is None:

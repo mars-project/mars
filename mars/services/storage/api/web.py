@@ -80,7 +80,7 @@ web_handlers = {
 class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
     def __init__(self, session_id: str, address: str):
         self._session_id = session_id
-        self._address = address
+        self._address = address.rstrip('/')
 
     @extensible
     async def get(self,

@@ -146,6 +146,26 @@ async def test_task_execution(start_test_service):
 
 
 @pytest.mark.asyncio
+async def test_task_error(start_test_service):
+    task_api, storage_api = start_test_service
+
+    # test job cancel
+    def f1():
+        raise SystemError
+
+    rs = [mr.spawn(f1) for _ in range(10)]
+
+    graph = TileableGraph([r.data for r in rs])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    await task_api.wait_task(task_id, timeout=10)
+    results = await task_api.get_task_results(progress=True)
+    assert type(results[0].error) is SystemError
+
+
+@pytest.mark.asyncio
 async def test_task_cancel(start_test_service):
     task_api, storage_api = start_test_service
 

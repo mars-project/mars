@@ -33,7 +33,7 @@ from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
-from mars.services.storage.worker.service import StorageManagerActor
+from mars.services.storage.core import StorageHandlerActor
 from mars.services.subtask import MockSubtaskAPI, Subtask
 from mars.services.task.supervisor.manager import TaskManagerActor
 from mars.tensor.fetch import TensorFetch
@@ -60,7 +60,7 @@ class CancelDetectActorMixin:
         return getattr(self, '_is_cancelled', False)
 
 
-class MockStorageManagerActor(StorageManagerActor, CancelDetectActorMixin):
+class MockStorageHandlerActor(StorageHandlerActor, CancelDetectActorMixin):
     async def fetch(self, *args, **kwargs):
         async with self._delay_method():
             return super().fetch(*args, **kwargs)
@@ -112,7 +112,7 @@ async def actor_pool(request):
         await MockLifecycleAPI.create(session_id, pool.external_address)
         await MockSubtaskAPI.create(pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address,
-                                                  storage_manger_cls=MockStorageManagerActor)
+                                                  storage_handler_cls=MockStorageHandlerActor)
 
         # create assigner actor
         execution_ref = await mo.create_actor(SubtaskExecutionActor, {'subtask_max_runs': 1},
@@ -201,7 +201,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     ref_to_delay = None
     if cancel_phase == 'prepare':
         ref_to_delay = await mo.actor_ref(
-            StorageManagerActor.default_uid(), address=pool.external_address)
+            StorageHandlerActor.default_uid(), address=pool.external_address)
     elif cancel_phase == 'quota':
         ref_to_delay = await mo.actor_ref(
             QuotaActor.gen_uid('numa-0'), address=pool.external_address)

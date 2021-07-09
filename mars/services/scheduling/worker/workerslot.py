@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import os
 import time
-from collections import namedtuple
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 import psutil
 
@@ -25,7 +25,12 @@ from ....oscar.backends.allocate_strategy import IdleLabel
 from ...core import BandType
 from ..core import WorkerSlotInfo
 
-DispatchDumpType = namedtuple('DispatchDumpType', 'free_slots')
+logger = logging.getLogger(__name__)
+
+
+class DispatchDumpType(NamedTuple):
+    free_slots: Set
+    fresh_slots: Set
 
 
 class WorkerSlotManagerActor(mo.Actor):
@@ -58,6 +63,9 @@ class WorkerSlotManagerActor(mo.Actor):
 
 
 class BandSlotManagerActor(mo.Actor):
+    _free_slots: Set[int]
+    _fresh_slots: Set[int]
+
     @classmethod
     def gen_uid(cls, band_name: str):
         return f'{band_name}_band_slot_manager'
@@ -75,7 +83,11 @@ class BandSlotManagerActor(mo.Actor):
         self._semaphore = asyncio.Semaphore(0)
         self._slot_control_refs = dict()
         self._free_slots = set()
+        self._fresh_slots = set()
         self._slot_kill_events = dict()
+
+        self._restarting = False
+        self._restart_done_event = asyncio.Event()
 
         self._slot_to_session_stid = dict()
         self._last_report_time = time.time()
@@ -98,6 +110,7 @@ class BandSlotManagerActor(mo.Actor):
                 uid=BandSlotControlActor.gen_uid(self._band_name, slot_id),
                 address=self.address,
                 allocate_strategy=strategy)
+            self._fresh_slots.add(slot_id)
 
         self._usage_upload_task = self.ref().upload_slot_usages.tell_delay(
             periodical=True, delay=1)
@@ -107,7 +120,11 @@ class BandSlotManagerActor(mo.Actor):
 
     async def acquire_free_slot(self, session_stid: Tuple[str, str]):
         yield self._semaphore.acquire()
+        if self._restarting:
+            yield self._restart_done_event.wait()
+
         slot_id = self._free_slots.pop()
+        self._fresh_slots.difference_update([slot_id])
         self._slot_to_session_stid[slot_id] = session_stid
         raise mo.Return(slot_id)
 
@@ -120,6 +137,7 @@ class BandSlotManagerActor(mo.Actor):
         if slot_id in self._slot_kill_events:
             event = self._slot_kill_events.pop(slot_id)
             event.set()
+            self._fresh_slots.add(slot_id)
 
         self._slot_to_session_stid.pop(slot_id, None)
 
@@ -127,11 +145,34 @@ class BandSlotManagerActor(mo.Actor):
             self._free_slots.add(slot_id)
             self._semaphore.release()
 
-    async def kill_slot(self, slot_id):
-        assert slot_id not in self._slot_kill_events
+    async def _kill_slot(self, slot_id: int):
+        if slot_id in self._slot_kill_events:
+            await self._slot_kill_events[slot_id].wait()
+            return
+
         event = self._slot_kill_events[slot_id] = asyncio.Event()
-        yield mo.kill_actor(self._slot_control_refs[slot_id])
-        yield event.wait()
+        await mo.kill_actor(self._slot_control_refs[slot_id])
+        await event.wait()
+
+    async def kill_slot(self, slot_id: int):
+        self._free_slots.difference_update([slot_id])
+        yield self._kill_slot(slot_id)
+
+    async def restart_free_slots(self):
+        if self._restarting:
+            yield self._restart_done_event.wait()
+            return
+
+        self._restart_done_event.clear()
+        self._restarting = True
+        slot_ids = [slot_id for slot_id in self._free_slots
+                    if slot_id not in self._fresh_slots]
+        if slot_ids:
+            yield asyncio.gather(*[self._kill_slot(slot_id) for slot_id in slot_ids])
+            logger.info('%d idle slots restarted', len(slot_ids))
+
+        self._restarting = False
+        self._restart_done_event.set()
 
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
@@ -171,7 +212,7 @@ class BandSlotManagerActor(mo.Actor):
         """
         Get all refs of slots of a queue
         """
-        return DispatchDumpType(self._free_slots)
+        return DispatchDumpType(self._free_slots, self._fresh_slots)
 
 
 class BandSlotControlActor(mo.Actor):

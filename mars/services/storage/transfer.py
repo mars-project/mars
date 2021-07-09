@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 from typing import Union, Any
 
 from ... import oscar as mo
@@ -23,6 +24,9 @@ from ...utils import extensible
 from .core import StorageHandlerActor, DataManagerActor
 
 DEFAULT_TRANSFER_BLOCK_SIZE = 5 * 1024 ** 2
+
+
+logger = logging.getLogger(__name__)
 
 
 class TransferMessage(Serializable):
@@ -68,6 +72,7 @@ class SenderManagerActor(mo.Actor):
                         address: str,
                         level: StorageLevel,
                         block_size: int = None):
+        logger.debug('Begin to send data (%s, %s) to %s', session_id, data_key, address)
         block_size = block_size or self._transfer_block_size
         receiver_ref = await self.get_receiver_ref(address)
         info = await self._data_manager_ref.get_data_info(session_id, data_key)
@@ -95,6 +100,7 @@ class SenderManagerActor(mo.Actor):
                 sent_size += len(part_data)
                 if is_eof:
                     break
+        logger.debug('Finish sending data (%s, %s) to %s', session_id, data_key, address)
 
 
 class ReceiverManagerActor(mo.Actor):
