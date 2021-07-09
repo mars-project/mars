@@ -73,13 +73,13 @@ async def create_actors(actor_pool):
         address=actor_pool.external_address)
 
     sub_processes = list(actor_pool.sub_processes)
-    yield actor_pool.external_address, *sub_processes
+    yield actor_pool.external_address, sub_processes[0], sub_processes[1]
     await mo.destroy_actor(manager_ref)
 
 
 @pytest.mark.asyncio
 async def test_spill(create_actors):
-    worker_address, *_ = create_actors
+    worker_address, _, _ = create_actors
     storage_handler = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
                                          address=worker_address)
 
@@ -109,8 +109,8 @@ async def test_spill(create_actors):
 
     memory_object_list = await storage_handler.list(StorageLevel.MEMORY)
     disk_object_list = await storage_handler.list(StorageLevel.DISK)
-    assert len(memory_object_list) == 2
-    assert len(disk_object_list) == 8
+    assert len(memory_object_list) == 3
+    assert len(disk_object_list) == 7
 
     for key, data in zip(key_list, data_list):
         get_data = await storage_handler.get(session_id, key)

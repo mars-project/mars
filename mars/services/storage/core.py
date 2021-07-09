@@ -112,17 +112,21 @@ class StorageQuotaActor(mo.Actor):
     def update_quota(self, size: int):
         if self._total_size is not None:
             self._used_size += size
+        logger.debug('Update %s bytes of %s, used size now is %s',
+                     size, self._level, self._used_size)
 
     def request_quota(self, size: int) -> bool:
-        logger.debug('Request %s bytes of %s, used size is %s,'
-                     'total size is %s', size, self.level, self.used_size, self.total_size)
         if self._total_size is not None and size > self._total_size:  # pragma: no cover
             raise RuntimeError(f'Request size {size} is larger '
                                f'than total size {self._total_size}')
         if self._total_size is None:
             self._used_size += size
+            logger.debug('Request %s bytes of %s, used size now is %s,'
+                         'total size is %s', size, self.level, self.used_size, self.total_size)
             return True
         elif self._used_size + size >= self._total_size:
+            logger.debug('Request %s bytes of %s, used size now is %s,'
+                         'space is not enough for the request', size, self.level, self.used_size)
             return False
         else:
             self._used_size += size
@@ -659,7 +663,7 @@ class StorageHandlerActor(mo.Actor):
             return
         else:
             total, used = await self._quota_refs[level].get_quota()
-            await self.spill(level, (size + used - total))
+            await self.spill(level, int(size + used - total))
             await self._quota_refs[level].request_quota(size)
             logger.debug('Spill is triggered, request %s bytes of %s finished', size, level)
 
