@@ -25,8 +25,9 @@ from mars.dataframe.initializer import DataFrame, Index
 from mars.dataframe.core import IndexValue
 from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
     split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes, merge_index_value
 from mars.session import new_session
+from mars.utils import Timer
 
 
 class Test(unittest.TestCase):
@@ -256,6 +257,25 @@ class Test(unittest.TestCase):
         filtered = filter_index_value(index_value, min_max)
         self.assertEqual(len(filtered.to_pandas().tolist()), 0)
         self.assertIsInstance(filtered.value, IndexValue.Int64Index)
+
+    def testMergeIndexValue(self):
+        with Timer() as timer:
+            index_values = {i: parse_index(pd.RangeIndex(1e7)) for i in range(20)}
+            index_value = merge_index_value(index_values)
+            pd.testing.assert_index_equal(index_value.to_pandas(),
+                                          pd.Index([], dtype=np.int64))
+            assert index_value.min_val == 0
+            assert index_value.max_val == 1e7 - 1
+
+            # range indexes that are continuous
+            index_values = {i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7))
+                            for i in range(20)}
+            index_value = merge_index_value(index_values)
+            pd.testing.assert_index_equal(index_value.to_pandas(),
+                                          pd.RangeIndex(1e7 * 20))
+            assert index_value.min_val == 0
+            assert index_value.max_val == 1e7 * 20 - 1
+        assert timer.duration < 1
 
     def testInferDtypes(self):
         data1 = pd.DataFrame([[1, 'a', False]], columns=[2.0, 3.0, 4.0])
