@@ -14,6 +14,7 @@
 
 import asyncio
 import itertools
+import logging
 import sys
 import time
 from functools import wraps
@@ -36,6 +37,8 @@ from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..core import Task, TaskResult, TaskStatus, new_task_id
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
+
+logger = logging.getLogger(__name__)
 
 
 def _record_error(func: Union[Callable, Coroutine]):
@@ -243,6 +246,10 @@ class TaskProcessor:
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
+        while not available_bands:
+            logger.warning(f'There is no bands available, waiting until bands available. '
+                           f'Please ensure autoscale is enabled')
+            available_bands = await self._cluster_api.get_all_bands(watch=True)
         subtask_graph = self._preprocessor.analyze(
             chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(

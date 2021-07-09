@@ -22,7 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....utils import dataslots, extensible
-from ...core import BandType
+from ...core import BandType, NodeRole
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -66,6 +66,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._band_slot_nums = dict()
         self._max_enqueue_id = 0
 
+        self._band_watch_task = None
         self._periodical_submit_task = None
         self._submit_period = submit_period or _DEFAULT_SUBMIT_PERIOD
 
@@ -73,6 +74,14 @@ class SubtaskQueueingActor(mo.Actor):
         from ...cluster import ClusterAPI
         self._cluster_api = await ClusterAPI.create(self.address)
         self._band_slot_nums = await self._cluster_api.get_all_bands()
+
+        async def watch_bands():
+            while True:
+                self._band_slot_nums = await self._cluster_api.get_all_bands(
+                    NodeRole.WORKER, watch=True)
+                await self.ref().submit_subtasks.tell()
+
+        self._band_watch_task = asyncio.create_task(watch_bands())
 
         from .globalslot import GlobalSlotManagerActor
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
@@ -91,6 +100,8 @@ class SubtaskQueueingActor(mo.Actor):
     async def __pre_destroy__(self):
         if self._periodical_submit_task is not None:  # pragma: no branch
             self._periodical_submit_task.cancel()
+        if self._band_watch_task:  # pragma: no branch
+            self._band_watch_task.cancel()
 
     async def periodical_submit(self):
         await self.ref().submit_subtasks.tell()
@@ -119,6 +130,14 @@ class SubtaskQueueingActor(mo.Actor):
             heapq.heappush(self._band_queues[band], heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
+    async def enqueue_subtask_heap_item(self, heap_item: HeapItem):
+        subtask = heap_item.subtask
+        [band] = await self._assigner_ref.assign_subtasks([heap_item.subtask])
+        assert band is not None
+        self._stid_to_items[subtask.subtask_id] = heap_item
+        self._stid_to_bands[subtask.subtask_id].append(band)
+        heapq.heappush(self._band_queues[band], heap_item)
+
     async def submit_subtasks(self, band: BandType = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
 
@@ -133,14 +152,6 @@ class SubtaskQueueingActor(mo.Actor):
             band_limit = limit or self._band_slot_nums[band]
             task_queue = self._band_queues[band]
             submit_items = dict()
-
-            band_is_blocked = await self._slots_ref.band_is_blocked(band)
-            if band_is_blocked and task_queue:
-                new_band = await self._assigner_ref.reassign_band()
-                while task_queue:
-                    item = heapq.heappop(task_queue)
-                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
-                    heapq.heappush(self._band_queues[new_band], item)
 
             while task_queue and len(submit_items) < band_limit:
                 item = heapq.heappop(task_queue)
@@ -170,8 +181,11 @@ class SubtaskQueueingActor(mo.Actor):
                 else:
                     logger.debug('No slots available')
 
-            for stid in non_submitted_ids:
-                heapq.heappush(task_queue, submit_items[stid])
+            if non_submitted_ids:
+                self.remove_queued_subtasks(non_submitted_ids)
+                for stid in non_submitted_ids:
+                    subtask = submit_items[stid]
+                    await self.enqueue_subtask_heap_item(subtask)
 
         if submit_aio_tasks:
             await asyncio.gather(*submit_aio_tasks)
@@ -193,7 +207,7 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def all_bands_busy(self) -> bool:
         """Return True if all bands queue has tasks waiting to be submitted."""
-        bands = set(await self._slots_ref.get_all_available_bands())
+        bands = set(self._band_slot_nums.keys())
         if set(self._band_queues.keys()).issuperset(bands):
             return all(len(self._band_queues[band]) > 0 for band in bands)
         return False

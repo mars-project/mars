@@ -28,5 +28,5 @@ task:
     fuse_enabled: yes
 scheduling:
   autoscale:
-    enabled: true
-    scheduler_backlog_timeout: 10
+    enabled: false
+    migrate_data: true

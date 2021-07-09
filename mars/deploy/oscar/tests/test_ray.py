@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
+import time
 
 import numpy as np
+import pandas as pd
 import pytest
 
+import mars.oscar as mo
 import mars.tensor as mt
+import mars.dataframe as md
 from mars.core.session import get_default_session, new_session
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.tests import test_local
@@ -52,7 +57,12 @@ async def test_iterative_tiling(ray_large_cluster, create_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_execute_describe(ray_large_cluster, create_cluster):
-    await test_local.test_execute_describe(create_cluster)
+    # await test_local.test_execute_describe(create_cluster)
+    r = md.Series(list(range(8)), chunk_size=1).apply(lambda x: x*x).sum()
+    print(create_cluster.session)
+    info = await create_cluster.session.execute(r)
+    print(f'info {info} {info.ex}')
+    print(await create_cluster.session.fetch(r))
 
 
 @require_ray
@@ -125,3 +135,64 @@ async def test_web_session(ray_large_cluster, create_cluster):
     web_address = create_cluster.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)
+
+
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 10}], indirect=True)
+@pytest.mark.parametrize('init_workers', [0, 1])
+@require_ray
+@pytest.mark.asyncio
+async def test_auto_scale_out(ray_large_cluster, init_workers: int):
+    config = _load_config()
+    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
+    config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
+    config['scheduling']['autoscale']['sustained_scheduler_backlog_timeout'] = 1
+    config['scheduling']['autoscale']['worker_idle_timeout'] = 10000000
+    config['scheduling']['autoscale']['max_workers'] = 9
+    client = await new_cluster('test_cluster',
+                               worker_num=init_workers,
+                               worker_cpu=2,
+                               worker_mem=100 * 1024 ** 2,
+                               config=config)
+    async with client:
+        def time_consuming(x):
+            time.sleep(2)
+            return x * x
+
+        series_size = 100
+        assert md.Series(list(range(series_size)), chunk_size=1).apply(time_consuming).sum().execute().fetch() ==\
+               pd.Series(list(range(series_size))).apply(lambda x: x*x).sum()
+        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
+        autoscaler_ref = mo.create_actor_ref(
+            uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
+        assert await autoscaler_ref.get_dynamic_worker_nums() > 0
+
+
+@pytest.mark.timeout(timeout=60)
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
+@require_ray
+@pytest.mark.asyncio
+async def test_auto_scale_in(ray_large_cluster):
+    config = _load_config()
+    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
+    config['scheduling']['autoscale']['worker_idle_timeout'] = 1
+    config['scheduling']['autoscale']['max_workers'] = 4
+    config['scheduling']['autoscale']['min_workers'] = 0
+    client = await new_cluster('test_cluster',
+                               worker_num=1,
+                               worker_cpu=2,
+                               worker_mem=100 * 1024 ** 2,
+                               config=config)
+    async with client:
+        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
+        autoscaler_ref = mo.create_actor_ref(
+            uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
+        new_worker_nums = 3
+        await asyncio.gather(*[autoscaler_ref.request_worker_node() for _ in range(new_worker_nums)])
+        series_size = 100
+        assert md.Series(list(range(series_size)), chunk_size=20).sum().execute().fetch() == \
+               pd.Series(list(range(series_size))).sum()
+        while await autoscaler_ref.get_dynamic_worker_nums() > 0:
+            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            await asyncio.sleep(3)

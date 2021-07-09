@@ -206,6 +206,10 @@ class RayTwoWayChannel(RayChannelBase):
         if isinstance(result, RayChannelException):  # pragma: no cover
             # Peer create channel may fail
             raise result.exc_value.with_traceback(result.exc_traceback)
+        elif isinstance(result, Exception):
+            raise result
+        else:
+            assert result is None
 
     @implements(Channel.recv)
     async def recv(self):

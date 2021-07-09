@@ -45,14 +45,15 @@ def ray_start_regular(request):
 
 
 @pytest.fixture
-def ray_large_cluster():
+def ray_large_cluster(request):
+    param = getattr(request, "param", {})
+    num_nodes = param.get('num_nodes', 3)
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
         from ray._private.cluster_utils import Cluster
     cluster = Cluster()
     remote_nodes = []
-    num_nodes = 3
     for i in range(num_nodes):
         remote_nodes.append(cluster.add_node(num_cpus=10))
         if len(remote_nodes) == 1:

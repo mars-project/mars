@@ -150,7 +150,8 @@ class ClusterAPI(AbstractClusterAPI):
     async def set_band_quota_info(self, band_name, quota_info):
         await self._uploader_ref.set_band_quota_info.tell(band_name, quota_info)
 
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int, timeout: int = None):
+    async def request_worker_node(
+            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         return await self._node_allocator_ref.request_worker_node(
             worker_cpu, worker_mem, timeout)
 

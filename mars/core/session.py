@@ -733,7 +733,7 @@ def _execute_in_thread(func: Callable):
                 async def _new_event():
                     return asyncio.Event()
                 kwargs['cancelled'] = cancelled = \
-                    _loop.run_until_complete(_new_event())
+                    get_loop().run_until_complete(_new_event())
             with option_context(config):
                 # set default session in this thread
                 _sync_default_session(default_session)

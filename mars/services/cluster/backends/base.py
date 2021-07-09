@@ -69,8 +69,8 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
-                                  timeout: int = None, **kwargs) -> str:
+    async def request_worker_node(
+            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         """
         Create a new worker
 

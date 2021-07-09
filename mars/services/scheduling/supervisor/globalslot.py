@@ -44,6 +44,7 @@ class GlobalSlotManagerActor(mo.Actor):
         self._cluster_api = None
 
         self._band_watch_task = None
+        self.event = None
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -53,6 +54,8 @@ class GlobalSlotManagerActor(mo.Actor):
             while True:
                 self._band_total_slots = await self._cluster_api.get_all_bands(
                     NodeRole.WORKER, watch=True)
+                if self.event:
+                    self.event.set()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -101,25 +104,27 @@ class GlobalSlotManagerActor(mo.Actor):
         if self._band_used_slots[band] == 0:
             self._band_used_slots.pop(band)
             self._band_idle_start_time[band] = time.time()
+        else:
+            self._band_idle_start_time[band] = -1
 
     def get_used_slots(self) -> Dict[BandType, int]:
         return self._band_used_slots
 
     async def get_available_bands(self):
-        if not self._band_total_slots:
-            self._band_total_slots = await self._cluster_api.get_all_bands()
+        # if not self._band_total_slots:
+        self._band_total_slots = await self._cluster_api.get_all_bands()
 
         def exclude_bands(all_bands_slots, excluded_bands):
             return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
         return exclude_bands(self._band_total_slots, self._blocked_bands)
 
     async def watch_available_bands(self):
-        event = asyncio.Event()
+        self.event = asyncio.Event()
 
         async def waiter():
             try:
-                await event.wait()
-                return self.get_available_bands()
+                await self.event.wait()
+                return await self.get_available_bands()
             finally:
                 pass
 
@@ -143,5 +148,12 @@ class GlobalSlotManagerActor(mo.Actor):
     async def get_idle_bands(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""
         now = time.time()
-        return [band for band, idle_start_time in self._band_used_slots.items()
-                if now >= idle_start_time + idle_duration]
+        idle_bands = [band for band, idle_start_time in self._band_idle_start_time.items()
+                      if idle_start_time > 0 and now >= idle_start_time + idle_duration]
+        idle_bands += [band for band in self._band_total_slots.keys()
+                       if band not in self._band_idle_start_time
+                       and now >= self._initial_idle_start_time + idle_duration]
+        return idle_bands
+
+    async def is_band_idle(self, band: BandType):
+        return self._band_idle_start_time.get(band, self._initial_idle_start_time) > 0

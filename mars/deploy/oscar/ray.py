@@ -55,24 +55,57 @@ def _load_config(filename=None):
 class RayClusterBackend(FixedClusterBackend):
     name = 'ray'
 
-    def __init__(self, lookup_address: str):
+    def __init__(self, lookup_address: str, cluster_state_ref):
         super().__init__(lookup_address)
-        self.supervisor_address = lookup_address
-        pg_name, _, _ = process_address_to_placement(lookup_address)
-        self.pg_name = pg_name
-        self.pg_counter = itertools.count()
-        self.worker_count = 0
-        self.dynamic_created_workers = {}
-        self._config = _load_config()
+        self._cluster_state_ref = cluster_state_ref
 
     @classmethod
     async def create(cls, lookup_address: str, pool_address: str):
-        return cls(lookup_address or pool_address)
+        try:
+            ref = await mo.create_actor(
+                ClusterStateActor, uid=ClusterStateActor.default_uid(),
+                address=lookup_address)
+        except mo.ActorAlreadyExist:  # pragma: no cover
+            ref = await mo.actor_ref(ClusterStateActor.default_uid(),
+                                     address=lookup_address)
+        return cls(lookup_address, ref)
 
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
-                                  timeout: int = None, **kwargs) -> str:
+    async def start_worker(self, worker_address):
+        return await self._cluster_state_ref.start_worker(worker_address)
+
+    async def request_worker_node(
+            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        return await self._cluster_state_ref.request_worker_node(worker_cpu, worker_mem, timeout)
+
+    async def release_worker_node(self, address: str):
+        return await self._cluster_state_ref.release_worker_node(address)
+
+    def get_cluster_state_ref(self):
+        return self._cluster_state_ref
+
+
+class ClusterStateActor(mo.Actor):
+    def __init__(self):
+        self._worker_cpu, self._worker_mem, self._config, self._pg_name = None, None, None, None
+        self._pg_counter = itertools.count()
+        self.worker_count = 0
+        self.dynamic_created_workers = {}
+        self._band_to_slot = None
+
+    async def __post_create__(self):
+        self._pg_name, _, _ = process_address_to_placement(self.address)
+
+    def set_config(self, worker_cpu, worker_mem, config):
+        self._worker_cpu, self._worker_mem, self._config = worker_cpu, worker_mem, config
+        # TODO(chaokunyang) Support gpu
+        self._band_to_slot = {'numa-0': self._worker_cpu}
+
+    async def request_worker_node(self, worker_cpu: int, worker_mem: int, timeout: int = None) -> str:
+        worker_cpu = worker_cpu or self._worker_cpu
+        worker_mem = worker_mem or self._worker_mem
+        logger.info("Start to request worker %s.", {'worker_cpu': worker_cpu, 'worker_mem': worker_mem})
         # TODO rescale ray placement group instead of creating new placement group
-        pg_name = f'{self.pg_name}_{next(self.pg_counter)}'
+        pg_name = f'{self._pg_name}_{next(self._pg_counter)}'
         pg = ray.util.placement_group(name=pg_name,
                                       bundles=[{"CPU": worker_cpu}],
                                       strategy="SPREAD")
@@ -80,20 +113,17 @@ class RayClusterBackend(FixedClusterBackend):
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:
             raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
-        band_to_slot = {'numa-0': worker_cpu}
-        worker_index = self.worker_count + 1  # supervisor occupies one node
-        worker_address = process_placement_to_address(pg_name, worker_index, 0)
-        worker_pool = await self.start_worker(worker_address, self.supervisor_address,
-                                              band_to_slot, self._config)
+        worker_address = process_placement_to_address(pg_name, 0, 0)
+        worker_pool = await self.start_worker(worker_address)
         self.dynamic_created_workers[worker_address] = worker_pool
         self.worker_count += 1
         return worker_address
 
-    async def start_worker(self, worker_address, supervisor_address, band_to_slot, config):
+    async def start_worker(self, worker_address):
         self.worker_count += 1
         logger.info('Create worker on node %s succeeds.', worker_address)
-        worker_pool = await create_worker_actor_pool(worker_address, band_to_slot)
-        await start_worker(worker_address, supervisor_address, band_to_slot, config=config)
+        worker_pool = await create_worker_actor_pool(worker_address, self._band_to_slot)
+        await start_worker(worker_address, self.address, self._band_to_slot, config=self._config)
         logger.info('Start services on worker %s succeeds.', worker_address)
         return worker_pool
 
@@ -136,9 +166,6 @@ class RayCluster:
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
         self._config = config
-        self._band_to_slot = band_to_slot = dict()
-        # TODO(chaokunyang) Support gpu
-        band_to_slot['numa-0'] = self._worker_cpu
         self.supervisor_address = None
         # Hold actor handles to avoid being freed
         self._supervisor_pool = None
@@ -146,7 +173,7 @@ class RayCluster:
         self._worker_pools = []
         self._stopped = False
         self.web_address = None
-        self.cluster_backend = None
+        self._cluster_backend = None
 
     async def start(self):
         address_to_resources = dict()
@@ -191,15 +218,15 @@ class RayCluster:
         self._supervisor_pool = await create_supervisor_actor_pool(
             self.supervisor_address, n_process=supervisor_sub_pool_num, main_pool_cpus=0, sub_pool_cpus=0)
         logger.info('Create supervisor on node %s succeeds.', self.supervisor_address)
+        self._cluster_backend = await RayClusterBackend.create(self.supervisor_address, self.supervisor_address)
+        await self._cluster_backend.get_cluster_state_ref().set_config(
+            self._worker_cpu, self._worker_mem, self._config)
         # start service
         await start_supervisor(self.supervisor_address, config=self._config)
         logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
-        self.cluster_backend = await RayClusterBackend.create(self.supervisor_address, self.supervisor_address)
 
         worker_pools = await asyncio.gather(
-            *[self.cluster_backend.start_worker(
-                addr, self.supervisor_address, self._band_to_slot, self._config)
-                for addr in worker_addresses])
+            *[self._cluster_backend.start_worker(addr) for addr in worker_addresses])
         logger.info('Create %s workers and start services on workers succeeds.', len(worker_addresses))
         for worker_address, worker_pool in zip(worker_addresses, worker_pools):
             self._worker_addresses.append(worker_address)

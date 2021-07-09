@@ -84,6 +84,8 @@ class AssignerActor(mo.Actor):
                        for expect_band in subtask.expect_bands):
                     # pass if all expected bands are available
                     selected_bands[subtask.subtask_id] = subtask.expect_bands
+                    # TODO reassign subtask when the cluster scale out
+                    selected_bands[subtask.subtask_id] = [random.choice(self._available_bands)]
                 else:
                     # exclude expected but blocked bands
                     expect_available_bands = [expect_band

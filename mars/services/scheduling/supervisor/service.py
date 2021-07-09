@@ -55,6 +55,9 @@ async def start(config: Dict, address: str):
 
 
 async def stop(config: dict, address: str):
+    from .autoscale import AutoscalerActor
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=AutoscalerActor.default_uid(), address=address))
     from .globalslot import GlobalSlotManagerActor
     await mo.destroy_actor(mo.create_actor_ref(
         uid=GlobalSlotManagerActor.default_uid(), address=address))

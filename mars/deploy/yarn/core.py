@@ -153,8 +153,8 @@ class YarnClusterBackend(AbstractClusterBackend):
         mapping = await self._watch_ref.get_container_mappings(NodeRole.SUPERVISOR)
         return [v if v is not None else k for k, v in mapping.items()]
 
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
-                                  timeout: int = None, **kwargs) -> str:
+    async def request_worker_node(
+            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         raise NotImplementedError
 
     async def release_worker_node(self, address: str):
