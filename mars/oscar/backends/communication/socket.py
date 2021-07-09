@@ -81,7 +81,10 @@ class SocketChannel(Channel):
     @implements(Channel.close)
     async def close(self):
         self.writer.close()
-        await self.writer.wait_closed()
+        try:
+            await self.writer.wait_closed()
+        except ConnectionResetError:  # pragma: no cover
+            pass
 
     @property
     @implements(Channel.closed)

@@ -72,11 +72,11 @@ jobs:
         mkdir -p build
         if [[ $UNAME == "darwin" ]]; then
           python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
-            mars/oscar mars/storage mars/lib mars/tests
+            mars/oscar mars/services mars/storage mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         elif [[ $UNAME == "windows" ]]; then
-          python -m pytest $PYTEST_CONFIG --timeout=1500 \
-            mars/oscar
+          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=5 --timeout=1500 \
+            mars/oscar mars/services mars/storage mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         fi
         coverage combine build/ && coverage report

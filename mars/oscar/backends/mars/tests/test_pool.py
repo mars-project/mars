@@ -36,7 +36,7 @@ from mars.oscar.backends.message import new_message_id, \
 from mars.oscar.backends.pool import create_actor_pool
 from mars.oscar.backends.router import Router
 from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
-from mars.tests.core import mock, flaky
+from mars.tests.core import mock
 from mars.utils import get_next_port
 
 
@@ -84,13 +84,17 @@ def _add_pool_conf(config: ActorPoolConfig, process_index: int, label: str,
                              external_address, env=env)
 
 
+def _raise_if_error(message):
+    if message.message_type == MessageType.error:
+        raise message.error.with_traceback(message.traceback)
+
+
 @pytest.fixture(autouse=True)
 def clear_routers():
     yield
     Router.set_instance(None)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
 async def test_sub_actor_pool(notify_main_pool):
@@ -174,6 +178,7 @@ async def test_sub_actor_pool(notify_main_pool):
             new_message_id(), actor_ref, ('add', 0, (5,), dict()))
         await client.send(send_message)
         result = await client.recv()
+        _raise_if_error(result)
         assert result.result == 9
 
         send_message = SendMessage(
@@ -221,7 +226,6 @@ async def test_sub_actor_pool(notify_main_pool):
     assert pool.stopped
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_main_actor_pool():
     config = ActorPoolConfig()
@@ -329,6 +333,7 @@ async def test_main_actor_pool():
                 new_message_id(), actor_ref2)
             await client.send(destroy_actor_message)
             result = await client.recv()
+            _raise_if_error(result)
             assert result.result == actor_ref2.uid
 
         # test sync config
@@ -349,7 +354,6 @@ async def test_main_actor_pool():
     assert pool.stopped
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_create_actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -419,7 +423,6 @@ async def test_create_actor_pool():
     assert len(global_router._mapping) == 0
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_errors():
     with pytest.raises(ValueError):
@@ -438,7 +441,6 @@ async def test_errors():
                                     auto_recover='illegal')
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_server_closed():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -478,7 +480,6 @@ async def test_server_closed():
         await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sys.platform.startswith('win'), reason='skip under Windows')
 @pytest.mark.parametrize(
@@ -534,7 +535,6 @@ async def test_auto_recover(auto_recover):
                 await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_two_pools():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -589,7 +589,6 @@ async def test_two_pools():
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_parallel_allocate_idle_label():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -613,7 +612,6 @@ async def test_parallel_allocate_idle_label():
     assert len({await ref.get_pid() for ref in refs}) == 2
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @pytest.mark.parametrize('logging_conf', [
     {'file': os.path.join(os.path.dirname(os.path.abspath(__file__)),
