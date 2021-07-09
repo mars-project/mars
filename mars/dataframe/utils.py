@@ -742,10 +742,12 @@ def merge_index_value(to_merge_index_values: dict, store_data: bool = False):
                 chunk_index_value.max_val_close
         else:
             cur_pd_index = chunk_index_value.to_pandas()
-            if isinstance(pd_index, pd.RangeIndex) and \
-                    isinstance(cur_pd_index, pd.RangeIndex) and \
-                    cur_pd_index.step == pd_index.step and \
-                    cur_pd_index.start == pd_index.stop:
+            if store_data or (
+                    isinstance(pd_index, pd.RangeIndex) and
+                    isinstance(cur_pd_index, pd.RangeIndex) and
+                    cur_pd_index.step == pd_index.step and
+                    cur_pd_index.start == pd_index.stop
+            ):
                 # range index that is continuous
                 pd_index = pd_index.append(cur_pd_index)
             else:

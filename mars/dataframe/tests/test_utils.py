@@ -30,6 +30,7 @@ from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
     infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
     make_dtypes, build_concatenated_rows_frame, merge_index_value
 from mars.tests import setup
+from mars.utils import Timer
 
 
 setup = setup
@@ -256,21 +257,23 @@ def test_filter_index_value():
 
 
 def test_merge_index_value():
-    index_values = {i: parse_index(pd.RangeIndex(1e7)) for i in range(20)}
-    index_value = merge_index_value(index_values)
-    pd.testing.assert_index_equal(index_value.to_pandas(),
-                                  pd.Index([], dtype=np.int64))
-    assert index_value.min_val == 0
-    assert index_value.max_val == 1e7 - 1
+    with Timer() as timer:
+        index_values = {i: parse_index(pd.RangeIndex(1e7)) for i in range(20)}
+        index_value = merge_index_value(index_values)
+        pd.testing.assert_index_equal(index_value.to_pandas(),
+                                      pd.Index([], dtype=np.int64))
+        assert index_value.min_val == 0
+        assert index_value.max_val == 1e7 - 1
 
-    # range indexes that are continuous
-    index_values = {i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7))
-                    for i in range(20)}
-    index_value = merge_index_value(index_values)
-    pd.testing.assert_index_equal(index_value.to_pandas(),
-                                  pd.RangeIndex(1e7 * 20))
-    assert index_value.min_val == 0
-    assert index_value.max_val == 1e7 * 20 - 1
+        # range indexes that are continuous
+        index_values = {i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7))
+                        for i in range(20)}
+        index_value = merge_index_value(index_values)
+        pd.testing.assert_index_equal(index_value.to_pandas(),
+                                      pd.RangeIndex(1e7 * 20))
+        assert index_value.min_val == 0
+        assert index_value.max_val == 1e7 * 20 - 1
+    assert timer.duration < 1
 
 
 def test_infer_dtypes():
