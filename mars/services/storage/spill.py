@@ -19,7 +19,7 @@ from typing import List, Union, Tuple
 
 from ... import oscar as mo
 from ...storage import StorageLevel
-from .core import DataManagerActor, StorageQuotaActor, StorageHandlerActor
+from .core import DataManagerActor, StorageHandlerActor
 from .errors import NoDataToSpill
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,6 @@ async def spill(request_size: int,
                 level: StorageLevel,
                 data_manager: Union[mo.ActorRef, DataManagerActor],
                 storage_handler: Union[mo.ActorRef, StorageHandlerActor],
-                quota: Union[mo.ActorRef, StorageQuotaActor],
                 block_size=None,
                 multiplier=1.2):
     logger.debug('%s is full, need to spill %s bytes, '
@@ -121,7 +120,6 @@ async def spill(request_size: int,
     logger.debug('Decide to spill %s bytes, '
                  'data keys are %s', sum(spill_sizes), spill_keys)
 
-    await quota.request_quota(sum(spill_sizes))
     for (session_id, key), size in zip(spill_keys, spill_sizes):
         reader = await storage_handler.open_reader(session_id, key)
         writer = await storage_handler.open_writer(
@@ -135,7 +133,5 @@ async def spill(request_size: int,
                     else:
                         await writer.write(block_data)
         await storage_handler.delete_object(
-            session_id, key, reader.object_id, level)
-
-    await quota.release_quota(sum(spill_sizes))
+            session_id, key, size, reader.object_id, level)
     logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)

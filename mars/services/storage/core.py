@@ -121,8 +121,6 @@ class StorageQuotaActor(mo.Actor):
                                f'than total size {self._total_size}')
         if self._total_size is None:
             self._used_size += size
-            logger.debug('Request %s bytes of %s, used size now is %s,'
-                         'total size is %s', size, self.level, self.used_size, self.total_size)
             return True
         elif self._used_size + size >= self._total_size:
             logger.debug('Request %s bytes of %s, used size now is %s,'
@@ -130,6 +128,8 @@ class StorageQuotaActor(mo.Actor):
             return False
         else:
             self._used_size += size
+            logger.debug('Request %s bytes of %s, used size now is %s,'
+                         'total size is %s', size, self.level, self.used_size, self.total_size)
             return True
 
     def release_quota(self, size: int):
@@ -500,11 +500,13 @@ class StorageHandlerActor(mo.Actor):
     async def delete_object(self,
                             session_id: str,
                             data_key: Any,
+                            data_size: Union[int, float],
                             object_id: Any,
                             level: StorageLevel):
         await self._data_manager_ref.delete_data_info(
             session_id, data_key, level)
         await self._clients[level].delete(object_id)
+        await self._quota_refs[level].release_quota(data_size)
 
     @extensible
     async def delete(self,
@@ -670,8 +672,7 @@ class StorageHandlerActor(mo.Actor):
     async def spill(self, level: StorageLevel, size: int):
         from .spill import spill
 
-        await spill(size, level, self._data_manager_ref,
-                    self, self._quota_refs[level])
+        await spill(size, level, self._data_manager_ref, self)
 
     async def list(self, level: StorageLevel) -> List:
         return await self._data_manager_ref.list(level)
