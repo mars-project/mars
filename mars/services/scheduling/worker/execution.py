@@ -308,7 +308,8 @@ class SubtaskExecutionActor(mo.Actor):
                     return await asyncio.shield(subtask_api.run_subtask_in_slot(
                             band_name, ctx.slot_id, subtask))
             except Exception as ex:
-                logger.error('rerun subtask %s due to %s', subtask.subtask_id, ex)
+                if subtask_info.num_runs < subtask_info.max_runs:
+                    logger.error('rerun subtask %s due to %s', subtask.subtask_id, ex)
                 last_ex = ex
         else:
             assert last_ex is not None, f'The {subtask} should be run at least once.'
