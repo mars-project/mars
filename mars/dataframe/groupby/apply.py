@@ -61,24 +61,32 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
     @enter_current_session
     def execute(cls, ctx, op):
         in_data = ctx[op.inputs[0].key]
+        out = op.outputs[0]
         if not in_data:
             if op.output_types[0] == OutputType.dataframe:
                 ctx[op.outputs[0].key] = build_empty_df(op.outputs[0].dtypes)
             else:
-                ctx[op.outputs[0].key] = build_empty_series(op.outputs[0].dtype)
+                ctx[op.outputs[0].key] = build_empty_series(
+                    op.outputs[0].dtype, name=out.name)
             return
 
         applied = in_data.apply(op.func, *op.args, **op.kwds)
 
-        # when there is only one group, pandas tend to return a DataFrame, while
-        # we need to convert it into a compatible series
-        if op.output_types[0] == OutputType.series and isinstance(applied, pd.DataFrame):
-            assert len(applied.index) == 1
-            applied_idx = pd.MultiIndex.from_arrays(
-                [[applied.index[0]] * len(applied.columns), applied.columns.tolist()])
-            applied_idx.names = [applied.index.name, None]
-            applied = pd.Series(np.array(applied.iloc[0]), applied_idx, name=applied.columns.name)
-        ctx[op.outputs[0].key] = applied
+        if isinstance(applied, pd.DataFrame):
+            # when there is only one group, pandas tend to return a DataFrame, while
+            # we need to convert it into a compatible series
+            if op.output_types[0] == OutputType.series:
+                assert len(applied.index) == 1
+                applied_idx = pd.MultiIndex.from_arrays(
+                    [[applied.index[0]] * len(applied.columns), applied.columns.tolist()])
+                applied_idx.names = [applied.index.name, None]
+                applied = pd.Series(np.array(applied.iloc[0]), applied_idx,
+                                    name=applied.columns.name)
+            else:
+                applied.columns.name = None
+        else:
+            applied.name = out.name
+        ctx[out.key] = applied
 
     @classmethod
     def tile(cls, op):
@@ -117,7 +125,7 @@ class GroupByApply(DataFrameOperand, DataFrameOperandMixin):
             infer_df = in_groupby.op.build_mock_groupby().apply(self.func, *self.args, **self.kwds)
 
             # todo return proper index when sort=True is implemented
-            index_value = parse_index(None, in_df.key, self.func)
+            index_value = parse_index(infer_df.index[:0], in_df.key, self.func)
 
             # for backward compatibility
             dtype = dtype if dtype is not None else dtypes

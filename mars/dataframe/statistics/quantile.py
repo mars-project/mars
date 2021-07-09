@@ -114,7 +114,7 @@ class DataFrameQuantile(DataFrameOperand, DataFrameOperandMixin):
             index_value = a.index_value
             shape = (len(a),)
             # calc dtype
-            dt = tensor_quantile(empty(a.shape[1], dtype=find_common_type(dtypes)),
+            dt = tensor_quantile(empty(a.shape[1], dtype=find_common_type(list(dtypes))),
                                  self._q, interpolation=self._interpolation,
                                  handle_non_numeric=not self._numeric_only).dtype
             return self.new_series(inputs, shape=shape, dtype=dt,

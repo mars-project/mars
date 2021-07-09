@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from distutils.version import LooseVersion
+
 import numpy as np
 import pandas as pd
 
@@ -24,6 +26,8 @@ from ...utils import recursive_tile, check_chunks_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
+
+_keep_original_order = LooseVersion(pd.__version__) >= '1.3.0'
 
 
 class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
@@ -133,7 +137,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         if op.dropna:
             inp = inp.dropna()
 
-        inp = inp.groupby(inp).count(method=op.method)
+        inp = inp.groupby(inp, sort=not _keep_original_order).count(method=op.method)
 
         if op.normalize:
             if op.convert_index_to_interval:
@@ -143,7 +147,8 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                 inp = inp.truediv(inp.sum(), axis=0)
 
         if op.sort:
-            inp = inp.sort_values(ascending=op.ascending)
+            inp = inp.sort_values(ascending=op.ascending,
+                                  kind='mergesort' if _keep_original_order else 'quicksort')
 
             if op.nrows:
                 # set to sort_values

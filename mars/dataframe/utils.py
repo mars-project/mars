@@ -23,6 +23,7 @@ import pandas as pd
 from pandas.api.types import is_string_dtype
 from pandas.api.extensions import ExtensionDtype
 from pandas.core.dtypes.cast import find_common_type
+
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -580,10 +581,10 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
 
 
 def concat_index_value(index_values, store_data=False):
-    result = pd.Index([])
     if not isinstance(index_values, (list, tuple)):
         index_values = [index_values]
-    for index_value in index_values:
+    result = index_values[0].value.to_pandas()
+    for index_value in index_values[1:]:
         if isinstance(index_value, pd.Index):
             result = result.append(index_value)
         else:

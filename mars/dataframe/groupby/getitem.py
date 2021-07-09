@@ -85,6 +85,7 @@ class GroupByIndex(DataFrameOperandMixin, DataFrameOperand):
                 params['dtypes'] = out_groupby.dtypes
                 params['selection'] = op.selection
                 params['shape'] = (c.shape[0], len(op.selection))
+                params['columns_value'] = out_groupby.columns_value
 
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))

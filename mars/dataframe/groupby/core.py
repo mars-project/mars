@@ -216,6 +216,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             map_op = op.copy().reset_key()
             map_op._stage = OperandStage.map
             map_op._shuffle_size = chunk_shape[0]
+            map_op._output_types = [output_type]
             chunk_inputs = [chunk]
             if len(op.inputs) > 1:
                 chunk_by = []
@@ -237,6 +238,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
             shuffle_key = ','.join(str(idx) for idx in out_idx)
             reduce_op = op.copy().reset_key()
             reduce_op._by = None
+            reduce_op._output_types = [output_type]
             reduce_op._stage = OperandStage.reduce
             reduce_op._shuffle_key = shuffle_key
             reduce_chunks.append(
@@ -282,7 +284,7 @@ class DataFrameGroupByOperand(DataFrameMapReduceOperand, DataFrameOperandMixin):
         if isinstance(by, list):
             new_by = []
             for v in by:
-                if isinstance(v, Base):
+                if isinstance(v, (Base, Entity)):
                     deliver_by = True
                     new_by.append(ctx[v.key])
                 else:

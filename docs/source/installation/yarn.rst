@@ -71,16 +71,16 @@ executable or pre-packed environment archive:
     os.environ['PATH'] = '/usr/local/hadoop:' + os.environ['PATH']
 
     # use a conda environment at /path/to/remote/conda/env
-    cluster = new_cluster(enviromnent='conda:///path/to/remote/conda/env')
+    cluster = new_cluster(environment='conda:///path/to/remote/conda/env')
 
     # use a virtual environment at /path/to/remote/virtual/env
-    cluster = new_cluster(enviromnent='venv:///path/to/remote/virtual/env')
+    cluster = new_cluster(environment='venv:///path/to/remote/virtual/env')
 
     # use a remote python executable
-    cluster = new_cluster(enviromnent='python:///path/to/remote/python')
+    cluster = new_cluster(environment='python:///path/to/remote/python')
 
     # use a local packed environment archive
-    cluster = new_cluster(enviromnent='path/to/local/env/pack.tar.gz')
+    cluster = new_cluster(environment='path/to/local/env/pack.tar.gz')
 
     # get web endpoint, may be used elsewhere
     from mars.session import Session

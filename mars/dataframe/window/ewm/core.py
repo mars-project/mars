@@ -22,6 +22,9 @@ from ....serialize import Int64Field, BoolField, Int32Field, Float64Field
 from ...utils import validate_axis
 from ..core import Window
 
+_default_min_period_1 = LooseVersion(pd.__version__) >= '1.1.0'
+_pd_1_3_repr = LooseVersion(pd.__version__) >= '1.3.0'
+
 
 class EWM(Window):
     _alpha = Float64Field('alpha')
@@ -65,7 +68,8 @@ class EWM(Window):
         return df.ewm(**self.params)
 
     def _repr(self, params):
-        params['com'] = 1.0 / params.pop('alpha') - 1
+        com = 1.0 / params.pop('alpha') - 1
+        params['com'] = int(com) if _pd_1_3_repr and com == math.floor(com) else com
         try:
             params.move_to_end('com', last=False)
         except AttributeError:  # pragma: no cover
@@ -227,7 +231,7 @@ def ewm(obj, com=None, span=None, halflife=None, alpha=None, min_periods=0, adju
     if alpha == 1:
         return obj.expanding(min_periods=min_periods, axis=axis)
 
-    if LooseVersion(pd.__version__) >= '1.1.0':  # pragma: no cover
+    if _default_min_period_1:
         min_periods = min_periods or 1
 
     return EWM(input=obj, alpha=alpha, min_periods=min_periods, adjust=adjust,

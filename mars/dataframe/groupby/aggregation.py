@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import itertools
 from typing import List, Dict
 
@@ -64,14 +65,17 @@ def _patch_groupby_kurt():
     try:
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
         if not hasattr(DataFrameGroupBy, 'kurt'):  # pragma: no branch
-            DataFrameGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
-            SeriesGroupBy.kurt = lambda x: x.agg(pd.Series.kurt)
+            def _kurt_by_frame(a, *args, **kwargs):
+                return a.to_frame().kurt(*args, **kwargs).iloc[0]
 
-            def kurtosis(x, *args, **kwargs):
-                return pd.Series.kurt(x, *args, **kwargs)
+            def _group_kurt(x, *args, **kwargs):
+                if kwargs.get('numeric_only') is not None:
+                    return x.agg(functools.partial(_kurt_by_frame, *args, **kwargs))
+                else:
+                    return x.agg(functools.partial(pd.Series.kurt, *args, **kwargs))
 
-            DataFrameGroupBy.kurtosis = lambda x: x.agg(kurtosis)
-            SeriesGroupBy.kurtosis = lambda x: x.agg(kurtosis)
+            DataFrameGroupBy.kurt = DataFrameGroupBy.kurtosis = _group_kurt
+            SeriesGroupBy.kurt = SeriesGroupBy.kurtosis = _group_kurt
     except (AttributeError, ImportError):  # pragma: no cover
         pass
 
@@ -478,7 +482,7 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         elif isinstance(params.get('by'), list):
             new_by = []
             for v in params['by']:
-                if isinstance(v, Base):
+                if isinstance(v, (Base, Entity)):
                     new_by.append(ctx[v.key])
                 else:
                     new_by.append(v)
