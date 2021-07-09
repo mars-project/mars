@@ -45,8 +45,6 @@ class AssignerActor(mo.Actor):
         self._meta_api = await MetaAPI.create(
             session_id=self._session_id, address=self.address)
 
-        self._bands = list(await self._cluster_api.get_all_bands())
-
         async def watch_bands():
             while True:
                 self._bands = list(await self._cluster_api.get_all_bands(
@@ -69,6 +67,9 @@ class AssignerActor(mo.Actor):
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
+                    if not self._bands:
+                        self._bands = list(await self._cluster_api.get_all_bands(
+                            NodeRole.WORKER))
                     selected_bands[subtask.subtask_id] = [random.choice(self._bands)]
                     break
 

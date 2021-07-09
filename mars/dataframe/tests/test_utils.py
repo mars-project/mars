@@ -21,11 +21,14 @@ import pandas as pd
 import pytest
 
 from mars.config import option_context
+from mars.core import tile
 from mars.dataframe.initializer import DataFrame, Index
 from mars.dataframe.core import IndexValue
-from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
-    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes
+from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
+    decide_series_chunk_size, split_monotonic_index_min_max, \
+    build_split_idx_to_origin_idx, parse_index, filter_index_value, \
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
+    make_dtypes, build_concatenated_rows_frame
 from mars.tests import setup
 
 
@@ -431,3 +434,26 @@ def test_make_dtypes():
     pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
 
     assert make_dtypes(None) is None
+
+
+@pytest.mark.parametrize('columns', [
+    pd.RangeIndex(8),
+    pd.MultiIndex.from_product([list('AB'), list('CDEF')]),
+])
+def test_build_concatenated_rows_frame(setup, columns):
+    df = pd.DataFrame(np.random.rand(16, 8), columns=columns)
+
+    # single chunk
+    mdf = tile(DataFrame(df, chunk_size=8))
+    concatenated = build_concatenated_rows_frame(mdf)
+    assert len(concatenated.chunks) == 2
+    pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)
+
+    # multiple chunks
+    mdf = tile(DataFrame(df, chunk_size=5))
+    concatenated = build_concatenated_rows_frame(mdf)
+    assert len(concatenated.chunks) == 4
+    for i in range(4):
+        pd.testing.assert_index_equal(
+            concatenated.chunks[i].columns_value.to_pandas(), df.columns)
+    pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)
