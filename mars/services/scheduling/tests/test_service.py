@@ -268,6 +268,8 @@ async def test_blocklist(actor_pools):
     assert band in former_bands
     assert len(former_bands) == 1
 
+    await asyncio.wait_for(scheduling_api.get_available_bands(watch=True), timeout=0.1)
+
     await scheduling_api.add_to_blocklist(band)
     assert band in await scheduling_api.get_blocked_bands()
     assert {} == await scheduling_api.get_available_bands()
@@ -277,6 +279,3 @@ async def test_blocklist(actor_pools):
 
     latter_bands = await scheduling_api.get_available_bands()
     assert former_bands == latter_bands
-
-    with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(scheduling_api.get_available_bands(watch=True), timeout=0.1)

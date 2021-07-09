@@ -39,12 +39,11 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_total_slots = dict()
         # TODO: maybe one node with mutliple bands
         self._blocked_bands = set()
-        self._blocklist_lock = asyncio.Lock()
+        self._blocklist_event = []
 
         self._cluster_api = None
 
         self._band_watch_task = None
-        self.event = None
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -54,8 +53,8 @@ class GlobalSlotManagerActor(mo.Actor):
             while True:
                 self._band_total_slots = await self._cluster_api.get_all_bands(
                     NodeRole.WORKER, watch=True)
-                if self.event:
-                    self.event.set()
+                for lck in self._blocklist_event:
+                    lck.set()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -111,19 +110,19 @@ class GlobalSlotManagerActor(mo.Actor):
         return self._band_used_slots
 
     async def get_available_bands(self):
-        # if not self._band_total_slots:
-        self._band_total_slots = await self._cluster_api.get_all_bands()
+        if not self._band_total_slots:
+            self._band_total_slots = await self._cluster_api.get_all_bands()
 
         def exclude_bands(all_bands_slots, excluded_bands):
             return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
         return exclude_bands(self._band_total_slots, self._blocked_bands)
 
     async def watch_available_bands(self):
-        self.event = asyncio.Event()
-
+        lck = asyncio.Event()
+        self._blocklist_event.append(lck)
         async def waiter():
             try:
-                await self.event.wait()
+                await lck.wait()
                 return await self.get_available_bands()
             finally:
                 pass
@@ -133,10 +132,14 @@ class GlobalSlotManagerActor(mo.Actor):
     async def add_to_blocklist(self, band: BandType):
         assert band in self._band_total_slots
         self._blocked_bands.add(band)
+        for lck in self._blocklist_event:
+            lck.set()
 
     async def remove_from_blocklist(self, band: BandType):
         assert band in self._blocked_bands
         self._blocked_bands.remove(band)
+        for lck in self._blocklist_event:
+            lck.set()
 
     def get_blocked_bands(self):
         return self._blocked_bands

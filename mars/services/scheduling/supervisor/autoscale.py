@@ -24,6 +24,11 @@ from ...cluster.api import ClusterAPI
 from ...core import BandType
 from .... import oscar as mo
 
+import ray
+logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT,
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -180,7 +185,8 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
                 worker_num = self._max_workers - self._autoscaler.get_dynamic_worker_nums()
             worker_addresses = await asyncio.gather(
                 *[self._autoscaler.request_worker_node() for _ in range(worker_num)])
-            logger.info("Requested new workers %s", worker_addresses)
+            logger.info("Requested new workers %s, current dynamic workers %s",
+                        worker_addresses, self._autoscaler.get_dynamic_worker_nums())
             rnd += 1
             await asyncio.sleep(self._sustained_scheduler_backlog_timeout)
         logger.info("Scale out finished in %s round, took %s seconds, current dynamic workers %s",
@@ -198,14 +204,14 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             logger.info("Bands %s of workers % has been idle for as least %s seconds.",
                         idle_bands, worker_addresses, self._worker_idle_timeout)
         while worker_addresses and \
-                self._autoscaler.get_dynamic_worker_nums() - len(worker_addresses) <= self._min_workers:
-            logger.info("Idle workers %s is less than min workers.",
-                        self._autoscaler.get_dynamic_worker_nums(), self._min_workers)
+                self._autoscaler.get_dynamic_worker_nums() - len(worker_addresses) < self._min_workers:
+            logger.info("Idle workers %s is less than min workers %s. Current total dynamic workers is %s.",
+                        len(worker_addresses), self._min_workers, self._autoscaler.get_dynamic_worker_nums())
             worker_address = worker_addresses.pop()
             for band in self._autoscaler.get_worker_bands(worker_address):
                 idle_bands.remove(band)
-        if idle_bands:
-            logger.info("Try to offline bands %s of workers %.", idle_bands, worker_addresses)
+        if worker_addresses:
+            logger.info("Try to offline bands %s of workers %s.", idle_bands, worker_addresses)
             await asyncio.gather(*[self._autoscaler.global_slot_ref.add_to_blocklist(band) for band in idle_bands])
             for band in idle_bands:
                 while not await self._autoscaler.global_slot_ref.is_band_idle(band):

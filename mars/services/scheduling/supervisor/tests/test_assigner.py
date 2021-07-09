@@ -90,3 +90,9 @@ async def test_assigner(actor_pool):
     subtask.expect_bands = [('address1', 'numa-0')]
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
+
+    band_num_queued_subtasks = {('address0', 'numa-0'): 10, ('address1', 'numa-0'): 8,
+                                ('address2', 'numa-0'): 0}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == {('address1', 'numa-0'): -8, ('address0', 'numa-0'): -1,
+                                    ('address2', 'numa-0'): 9}
