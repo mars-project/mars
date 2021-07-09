@@ -21,17 +21,21 @@ import mars.tensor as mt
 from mars.core.session import get_default_session
 from mars.deploy.oscar.local import new_cluster
 
+from ....services.session import SessionAPI
 from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
+RERUN_SUBTASK_CONFIG_FILE = os.path.join(
+        os.path.dirname(__file__), 'fault_injection_config_with_rerun.yml')
 
 
 @pytest.fixture
-async def fault_cluster():
+async def fault_cluster(request):
+    param = getattr(request, "param", {})
     start_method = os.environ.get('POOL_START_METHOD', None)
     client = await new_cluster(subprocess_start_method=start_method,
-                               config=CONFIG_FILE,
+                               config=param.get('config', CONFIG_FILE),
                                n_worker=2,
                                n_cpu=2)
     async with client:
@@ -42,6 +46,9 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
     class FaultInjectionManager(AbstractFaultInjectionManager):
         def __init__(self):
             self._fault_count = fault_count
+
+        def set_fault_count(self, count):
+            self._fault_count = count
 
         def on_execute_operand(self) -> FaultType:
             if self._fault_count > 0:
@@ -87,18 +94,20 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
     np.testing.assert_array_equal(r[0], raw + 1)
 
 
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': RERUN_SUBTASK_CONFIG_FILE}],
+                         indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1],
-                          [FaultType.ProcessExit, 1]])
+                         [[FaultType.Exception, 1, pytest.raises(RuntimeError, match='Fault Injection')],
+                          [FaultType.ProcessExit, 1, pytest.raises(mars.oscar.ServerClosed)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
-    fault_type, fault_count = fault_config
+    fault_type, fault_count, expect_raises = fault_config
     extra_config = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
         fault_count=fault_count,
         fault_type=fault_type)
-    extra_config['subtask_max_runs'] = 2
     session = get_default_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
@@ -114,3 +123,14 @@ async def test_rerun_subtask(fault_cluster, fault_config):
 
     r = await session.fetch(b)
     np.testing.assert_array_equal(r[0], raw + 1)
+
+    session_api = await SessionAPI.create(fault_cluster.session.address)
+    fault_injection_manager = await session_api.get_remote_object(
+            fault_cluster.session.session_id, extra_config['fault_injection_manager_name'])
+    await fault_injection_manager.set_fault_count(1)
+
+    # the extra config overwrites the default config.
+    extra_config['subtask_max_runs'] = 1
+    info = await session.execute(b, extra_config=extra_config)
+    with expect_raises:
+        await info

@@ -181,6 +181,7 @@ class MockSchedulingAPI(SchedulingAPI):
         from .worker import SubtaskExecutionActor, \
             WorkerSlotManagerActor, WorkerQuotaManagerActor
         await mo.create_actor(SubtaskExecutionActor,
+                              {'subtask_max_runs': 1},
                               uid=SubtaskExecutionActor.default_uid(),
                               address=address)
         await mo.create_actor(WorkerSlotManagerActor,

@@ -18,7 +18,7 @@ from .... import oscar as mo
 from ....utils import calc_size_by_str
 from .workerslot import WorkerSlotManagerActor
 from .quota import WorkerQuotaManagerActor
-from .execution import SubtaskExecutionActor
+from .execution import SubtaskExecutionActor, DEFAULT_SUBTASK_MAX_RUNS
 
 
 async def start(config: Dict, address: str):
@@ -38,6 +38,7 @@ async def start(config: Dict, address: str):
     total_mem = mars_resource.virtual_memory().total
     mem_quota_size = calc_size_by_str(
         scheduling_config.get('mem_quota_size', '80%'), total_mem)
+    subtask_max_runs = scheduling_config.get('subtask_max_runs', DEFAULT_SUBTASK_MAX_RUNS)
 
     await mo.create_actor(WorkerSlotManagerActor,
                           uid=WorkerSlotManagerActor.default_uid(),
@@ -47,6 +48,7 @@ async def start(config: Dict, address: str):
                           uid=WorkerQuotaManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(SubtaskExecutionActor,
+                          default_config=dict(subtask_max_runs=subtask_max_runs),
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
 

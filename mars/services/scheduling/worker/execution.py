@@ -38,6 +38,9 @@ from .quota import QuotaActor
 
 logger = logging.getLogger(__name__)
 
+# the default times to run subtask.
+DEFAULT_SUBTASK_MAX_RUNS = 1
+
 
 @dataslots
 @dataclass
@@ -56,9 +59,10 @@ class SubtaskExecutionInfo:
 class SubtaskExecutionActor(mo.Actor):
     _subtask_info: Dict[str, SubtaskExecutionInfo]
 
-    def __init__(self):
+    def __init__(self, default_config: Dict):
         self._cluster_api = None
         self._global_slot_ref = None
+        self._default_config = default_config
 
         self._subtask_info = dict()
         self._size_pool = ThreadPoolExecutor(1)
@@ -319,10 +323,14 @@ class SubtaskExecutionActor(mo.Actor):
                           supervisor_address: str):
         with mo.debug.no_message_trace():
             task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
-        # the extra_config may be None.
-        default_max_runs = 1
-        subtask_max_runs = subtask.extra_config.get('subtask_max_runs', default_max_runs) \
-            if subtask.extra_config else default_max_runs
+
+        # the extra_config may be None. the extra config overwrites the default config.
+        subtask_max_runs = (subtask.extra_config.get('subtask_max_runs')
+                            if subtask.extra_config else None)
+        if subtask_max_runs is None:
+            subtask_max_runs = self._default_config.get('subtask_max_runs',
+                                                        DEFAULT_SUBTASK_MAX_RUNS)
+
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address,
                                  max_runs=subtask_max_runs)
