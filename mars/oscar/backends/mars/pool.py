@@ -14,6 +14,7 @@
 
 import asyncio
 import concurrent.futures as futures
+import logging.config
 import multiprocessing
 import os
 import signal
@@ -44,6 +45,8 @@ elif sys.version_info[:2] == (3, 6):
 
     from multiprocessing.process import BaseProcess
     BaseProcess.kill = _mp_kill
+
+logger = logging.getLogger(__name__)
 
 
 @_register_message_handler
@@ -130,6 +133,11 @@ class MainActorPool(MainActorPoolBase):
         suspend_sigint = conf['suspend_sigint']
         if suspend_sigint:
             signal.signal(signal.SIGINT, lambda *_: None)
+
+        logging_conf_file = conf['logging_conf_file']
+        if logging_conf_file:
+            logging.config.fileConfig(logging_conf_file)
+
         use_uvloop = conf['use_uvloop']
         if use_uvloop:
             import uvloop

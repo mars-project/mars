@@ -51,6 +51,7 @@ class SupervisorCommandRunner(OscarCommandRunner):
         return await create_supervisor_actor_pool(
             self.args.endpoint, n_process=0, ports=self.ports,
             modules=self.args.load_modules,
+            logging_conf_file=self.logging_conf_file,
             subprocess_start_method='forkserver' if os.name == 'nt' else 'spawn'
         )
 

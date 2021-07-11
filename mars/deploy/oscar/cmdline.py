@@ -48,6 +48,8 @@ class OscarCommandRunner:
         self.config = {}
         self.pool = None
 
+        self.logging_conf_file = None
+
         self._running = False
 
     def config_args(self, parser):
@@ -78,6 +80,7 @@ class OscarCommandRunner:
         for path in conf_file_paths:
             conf_path = os.path.join(path, log_conf) if path else log_conf
             if os.path.exists(conf_path):
+                self.logging_conf_file = conf_path
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
                 break
         else:
