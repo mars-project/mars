@@ -14,8 +14,8 @@
 
 import pytest
 
+from mars.deploy.oscar.session import new_session, get_default_session
 from mars.learn.contrib.tsfresh import MarsDistributor
-from mars.core.session import new_session, get_default_session
 from mars.tests import setup
 
 try:

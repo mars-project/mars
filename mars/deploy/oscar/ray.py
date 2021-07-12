@@ -18,7 +18,6 @@ import os
 from typing import Union, Dict, List
 
 from ... import oscar as mo
-from ...core.session import _new_session, AbstractSession
 from ...oscar.backends.ray.driver import RayActorDriver
 from ...oscar.backends.ray.utils import (
     process_placement_to_address,
@@ -28,7 +27,7 @@ from ...services import NodeRole
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
-from .session import Session
+from .session import _new_session, AbstractSession, ensure_isolation_created
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 
 ray = lazy_import("ray")
@@ -53,7 +52,12 @@ async def new_cluster(cluster_name: str,
                       worker_num: int = 1,
                       worker_cpu: int = 16,
                       worker_mem: int = 32 * 1024 ** 3,
-                      config: Union[str, Dict] = None):
+                      config: Union[str, Dict] = None,
+                      **kwargs):
+    ensure_isolation_created(kwargs)
+    if kwargs:  # pragma: no cover
+        raise TypeError(f'new_cluster got unexpected '
+                        f'arguments: {list(kwargs)}')
     cluster = RayCluster(cluster_name, supervisor_mem, worker_num,
                          worker_cpu, worker_mem, config)
     try:
@@ -192,7 +196,7 @@ class RayClient:
 
     @classmethod
     async def create(cls, cluster: RayCluster) -> "RayClient":
-        session = await _new_session(cluster.supervisor_address, backend=Session.name, default=True)
+        session = await _new_session(cluster.supervisor_address, default=True)
         return RayClient(cluster, session)
 
     @property

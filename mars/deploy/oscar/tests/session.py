@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import uuid
 
 from ....core import OBJECT_TYPE
-from ....core.session import register_session_cls, _wrap_in_thread
-from ....core.session import AbstractSession, SyncSession, _ensure_loop
 from ....tests.core import _check_args, ObjectCheckMixin
-from ..session import Session
+from ..session import _IsolatedSession, AsyncSession, ensure_isolation_created, \
+    register_session_cls, _ensure_sync
 
 
 CONFIG_FILE = os.path.join(
@@ -27,7 +27,7 @@ CONFIG_FILE = os.path.join(
 
 
 @register_session_cls
-class CheckedSession(ObjectCheckMixin, Session):
+class CheckedSession(ObjectCheckMixin, _IsolatedSession):
     name = 'test'
 
     def __init__(self, *args, **kwargs):
@@ -43,7 +43,7 @@ class CheckedSession(ObjectCheckMixin, Session):
     async def init(cls,
                    address: str,
                    session_id: str,
-                   **kwargs) -> "Session":
+                   **kwargs) -> "_IsolatedSession":
         init_local = kwargs.get('init_local', False)
         if init_local:
             if 'n_cpu' not in kwargs:
@@ -83,33 +83,32 @@ class CheckedSession(ObjectCheckMixin, Session):
 
 async def _new_test_session(address: str,
                             session_id: str = None,
-                            default: bool = False,
-                            **kwargs) -> AbstractSession:
+                            **kwargs) -> AsyncSession:
     if session_id is None:
         session_id = str(uuid.uuid4())
 
-    session = await CheckedSession.init(
-        address, session_id=session_id, **kwargs)
-    if default:
-        session.as_default()
+    session = AsyncSession.from_isolated_session(
+        await CheckedSession.init(
+            address, session_id=session_id, **kwargs))
     return session
 
 
-@_wrap_in_thread
 def new_test_session(address: str = None,
                      session_id: str = None,
-                     backend: str = 'test',
                      default: bool = False,
+                     backend: str = 'test',
                      **kwargs):
-    loop = _ensure_loop()
-
+    isolation = ensure_isolation_created(kwargs)
     if address is None:
         address = '127.0.0.1'
         if 'init_local' not in kwargs:
             kwargs['init_local'] = True
     if 'web' not in kwargs:
         kwargs['web'] = False
-    session = loop.run_until_complete(
-        _new_test_session(address, session_id=session_id,
-                          backend=backend, default=default, **kwargs))
-    return SyncSession(session)
+    coro = _new_test_session(address, session_id=session_id,
+                             backend=backend, **kwargs)
+    session = _ensure_sync(asyncio.run_coroutine_threadsafe(
+        coro, isolation.loop).result())
+    if default:
+        session.as_default()
+    return session

@@ -59,7 +59,7 @@ def test_checked_session(setup):
     sess.stop_server()
 
 
-def test_check_task_processor(setup):
+def test_check_task_preprocessor(setup):
     config = load_config(CONFIG_FILE)
     config['task']['task_preprocessor_cls'] = \
         'mars.deploy.oscar.tests.' \

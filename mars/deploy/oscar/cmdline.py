@@ -65,6 +65,7 @@ class OscarCommandRunner:
         parser.add_argument('--log-format', help='log format')
         parser.add_argument('--log-conf', help='log config file, logging.conf by default')
         parser.add_argument('--load-modules', nargs='*', help='modules to import')
+        parser.add_argument('--use-uvloop', help='use uvloop, auto by default')
 
     def config_logging(self):
         import logging.config
@@ -148,6 +149,8 @@ class OscarCommandRunner:
             load_modules.extend(mods.split(',') if mods else [])
         args.load_modules = tuple(load_modules)
 
+        args.use_uvloop = args.use_uvloop or 'auto'
+
         if args.config is not None:
             self.config = json.loads(args.config)
         else:
@@ -161,10 +164,6 @@ class OscarCommandRunner:
         return args
 
     async def _main(self, argv):
-        parser = argparse.ArgumentParser(description=self.command_description)
-        self.config_args(parser)
-        self.args = self.parse_args(parser, argv)
-
         self.config_logging()
 
         try:
@@ -189,7 +188,23 @@ class OscarCommandRunner:
         raise NotImplementedError
 
     def __call__(self, argv: List[str] = None):
-        loop = asyncio.get_event_loop()
+        parser = argparse.ArgumentParser(description=self.command_description)
+        self.config_args(parser)
+        self.args = self.parse_args(parser, argv)
+
+        use_uvloop = self.args.use_uvloop
+        if not use_uvloop:
+            loop = asyncio.get_event_loop()
+        else:
+            try:
+                import uvloop
+                loop = uvloop.new_event_loop()
+                asyncio.set_event_loop(loop)
+            except ImportError:
+                if use_uvloop == 'auto':
+                    loop = asyncio.get_event_loop()
+                else:  # pragma: no cover
+                    raise
         task = loop.create_task(self._main(argv))
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             loop.add_signal_handler(sig, task.cancel)

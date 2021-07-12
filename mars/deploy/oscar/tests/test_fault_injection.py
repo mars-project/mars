@@ -18,10 +18,8 @@ import numpy as np
 
 import mars
 import mars.tensor as mt
-from mars.core.session import get_default_session
 from mars.deploy.oscar.local import new_cluster
-
-from ....services.session import SessionAPI
+from mars.deploy.oscar.session import get_default_async_session
 from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager
 
 CONFIG_FILE = os.path.join(
@@ -73,7 +71,7 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
         address=fault_cluster.session.address,
         fault_count=1,
         fault_type=fault_type)
-    session = get_default_session()
+    session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -91,7 +89,7 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
     assert info.exception() is None
 
     r = await session.fetch(b)
-    np.testing.assert_array_equal(r[0], raw + 1)
+    np.testing.assert_array_equal(r, raw + 1)
 
 
 @pytest.mark.parametrize('fault_cluster',
@@ -108,7 +106,7 @@ async def test_rerun_subtask(fault_cluster, fault_config):
         address=fault_cluster.session.address,
         fault_count=fault_count,
         fault_type=fault_type)
-    session = get_default_session()
+    session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -122,10 +120,9 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     assert info.exception() is None
 
     r = await session.fetch(b)
-    np.testing.assert_array_equal(r[0], raw + 1)
+    np.testing.assert_array_equal(r, raw + 1)
 
-    session_api = await SessionAPI.create(fault_cluster.session.address)
-    fault_injection_manager = await session_api.get_remote_object(
+    fault_injection_manager = await session.get_remote_object(
             fault_cluster.session.session_id, extra_config['fault_injection_manager_name'])
     await fault_injection_manager.set_fault_count(1)
 
