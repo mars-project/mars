@@ -30,3 +30,4 @@ scheduling:
   autoscale:
     enabled: false
     migrate_data: true
+    min_workers: 1  # Must >=1, mars need at least 1 worker to fetch data

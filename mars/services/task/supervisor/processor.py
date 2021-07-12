@@ -258,10 +258,11 @@ class TaskProcessor:
 
         if not self._band_slots:
             self._band_slots = await self._cluster_api.get_all_bands()
+            logger.warning(f'There is no bands available, waiting until bands available. '
+                           f'Please ensure autoscale is enabled')
             while not self._band_slots:
-                await asyncio.sleep(0.5)
-                logger.warning(f'There is no bands available, waiting until bands available. '
-                               f'Please ensure autoscale is enabled')
+                # Use watch all bands may miss notification if watch bands after bands changed.
+                await asyncio.sleep(0.1)
                 self._band_slots = await self._cluster_api.get_all_bands()
         # gen subtask graph
         subtask_graph = self._preprocessor.analyze(

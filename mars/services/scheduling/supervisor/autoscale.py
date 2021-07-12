@@ -91,6 +91,7 @@ class AutoscalerActor(mo.Actor):
         return worker_address
 
     async def release_worker_node(self, address: str):
+        await self.migrate_data_of_bands(self.get_worker_bands(address))
         await self._cluster_api.release_worker_node(address)
         self._dynamic_workers.remove(address)
     
@@ -107,7 +108,9 @@ class AutoscalerActor(mo.Actor):
         """Move data from `bands` to other available bands"""
         if self._migrate_data:
             raise NotImplementedError
-        # TODO [data migration]
+        else:
+            # TODO update chunk meta
+            pass
 
 
 class AbstractScaleStrategy(ABC):
@@ -139,6 +142,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             'sustained_scheduler_backlog_timeout', self._scheduler_backlog_timeout))
         self._worker_idle_timeout = float(autoscale_conf.get('worker_idle_timeout', 10))
         self._min_workers = int(autoscale_conf.get('min_workers', 1))
+        assert self._min_workers >= 1, 'Mars need at least 1 worker.'
         self._max_workers = int(autoscale_conf.get('max_workers', 100))
         self._task = None
 
@@ -216,7 +220,6 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             for band in idle_bands:
                 while not await self._autoscaler.global_slot_ref.is_band_idle(band):
                     await asyncio.sleep(0.1)
-            await self._autoscaler.migrate_data_of_bands(idle_bands)
             # release workers
             await asyncio.gather(*[self._autoscaler.release_worker_node(worker_address)
                                    for worker_address in worker_addresses])

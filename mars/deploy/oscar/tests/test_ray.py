@@ -178,7 +178,7 @@ async def test_auto_scale_in(ray_large_cluster):
     config['scheduling']['autoscale']['scheduler_check_interval'] = 1
     config['scheduling']['autoscale']['worker_idle_timeout'] = 1
     config['scheduling']['autoscale']['max_workers'] = 4
-    config['scheduling']['autoscale']['min_workers'] = 0
+    config['scheduling']['autoscale']['min_workers'] = 1
     client = await new_cluster('test_cluster',
                                worker_num=0,
                                worker_cpu=2,
@@ -193,11 +193,12 @@ async def test_auto_scale_in(ray_large_cluster):
         series_size = 100
         assert md.Series(list(range(series_size)), chunk_size=20).sum().execute().fetch() == \
                pd.Series(list(range(series_size))).sum()
-        while await autoscaler_ref.get_dynamic_worker_nums() > 0:
+        while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
             await asyncio.sleep(1)
 
 
+@pytest.mark.skip('Skip until storage support chunk data migration')
 @pytest.mark.timeout(timeout=60)
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
 @require_ray
@@ -209,7 +210,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
     config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
     config['scheduling']['autoscale']['worker_idle_timeout'] = 5
     config['scheduling']['autoscale']['max_workers'] = 4
-    config['scheduling']['autoscale']['min_workers'] = 0
+    config['scheduling']['autoscale']['min_workers'] = 1
     client = await new_cluster('test_cluster',
                                worker_num=0,
                                worker_cpu=2,
@@ -219,12 +220,17 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
-        df = md.DataFrame(mt.random.rand(100, 4, chunk_size=10), columns=list('abcd'))
-        print(df.sum().execute())
-        assert await autoscaler_ref.get_dynamic_worker_nums() > 0
-        while await autoscaler_ref.get_dynamic_worker_nums() > 0:
+        df = md.DataFrame(mt.random.rand(50, 4, chunk_size=10), columns=list('abcd'))
+        print(df.execute())
+        assert await autoscaler_ref.get_dynamic_worker_nums() > 1
+        while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
-        r = df.groupby('a').sum().execute()
-        print(r, type(r))
+        groupby_sum_df = df.groupby('a').sum()
+        print(groupby_sum_df.execute())
+        while await autoscaler_ref.get_dynamic_worker_nums() > 1:
+            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            await asyncio.sleep(1)
+        print(df.fetch())
+        print(groupby_sum_df.fetch())
