@@ -1,11 +1,16 @@
+import inspect
+import logging
+
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
+from ..services.cluster import ClusterAPI
 from ..utils import lazy_import, implements, register_ray_serializer
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
 
 ray = lazy_import("ray")
+logger = logging.getLogger(__name__)
 
 
 # TODO(fyrestone): make the SparseMatrix pickleable.
@@ -89,7 +94,15 @@ class RayStorage(StorageBackend):
     name = 'ray'
 
     def __init__(self, *args, **kwargs):
-        pass
+        self._address = kwargs['address']
+        self._ray_supervisor_actor = None
+        self._support_specify_owner = False
+        sig = inspect.signature(ray.put)
+        if '_owner' in sig.parameters:
+            self._support_specify_owner = True
+        else:
+            logger.warning('Current installed ray version does not support specify owner, '
+                           'autoscale may not work.')
 
     @classmethod
     @implements(StorageBackend.setup)
@@ -118,9 +131,20 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        object_id = ray.put(obj)
+        if self._support_specify_owner:
+            ray_supervisor_actor = await self._get_ray_supervisor_actor()
+            object_id = ray.put(obj, _owner=ray_supervisor_actor)
+        else:
+            object_id = ray.put(obj)
         # We can't get the serialized bytes length from ray.put
         return ObjectInfo(object_id=object_id)
+
+    async def _get_ray_supervisor_actor(self):
+        if not self._ray_supervisor_actor:
+            cluster_api = await ClusterAPI.create(self._address)
+            supervisor_ref = (await cluster_api.get_supervisors())[0]
+            self._ray_supervisor_actor = ray.get_actor(supervisor_ref.address)
+        return self._ray_supervisor_actor
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):

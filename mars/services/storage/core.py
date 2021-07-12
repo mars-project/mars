@@ -326,7 +326,7 @@ class StorageHandlerActor(mo.Actor):
         self._clients = clients = dict()
         for backend, init_params in self._storage_init_params.items():
             storage_cls = get_storage_backend(backend)
-            client = storage_cls(**init_params)
+            client = storage_cls(address=self.address, **init_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
                     clients[level] = client
@@ -673,7 +673,7 @@ class StorageManagerActor(mo.Actor):
         backend = get_storage_backend(storage_backend)
         storage_config = storage_config or dict()
         init_params, teardown_params = await backend.setup(**storage_config)
-        client = backend(**init_params)
+        client = backend(address=self.address, **init_params)
         self._init_params[storage_backend] = init_params
         self._teardown_params[storage_backend] = teardown_params
         return client

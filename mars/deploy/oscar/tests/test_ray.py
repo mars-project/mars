@@ -180,7 +180,7 @@ async def test_auto_scale_in(ray_large_cluster):
     config['scheduling']['autoscale']['max_workers'] = 4
     config['scheduling']['autoscale']['min_workers'] = 0
     client = await new_cluster('test_cluster',
-                               worker_num=1,
+                               worker_num=0,
                                worker_cpu=2,
                                worker_mem=100 * 1024 ** 2,
                                config=config)
@@ -195,4 +195,36 @@ async def test_auto_scale_in(ray_large_cluster):
                pd.Series(list(range(series_size))).sum()
         while await autoscaler_ref.get_dynamic_worker_nums() > 0:
             print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
+
+
+@pytest.mark.timeout(timeout=60)
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
+@require_ray
+@pytest.mark.asyncio
+async def test_ownership_when_scale_in(ray_large_cluster):
+    config = _load_config()
+    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
+    config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
+    config['scheduling']['autoscale']['worker_idle_timeout'] = 5
+    config['scheduling']['autoscale']['max_workers'] = 4
+    config['scheduling']['autoscale']['min_workers'] = 0
+    client = await new_cluster('test_cluster',
+                               worker_num=0,
+                               worker_cpu=2,
+                               worker_mem=100 * 1024 ** 2,
+                               config=config)
+    async with client:
+        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
+        autoscaler_ref = mo.create_actor_ref(
+            uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
+        df = md.DataFrame(mt.random.rand(100, 4, chunk_size=10), columns=list('abcd'))
+        print(df.sum().execute())
+        assert await autoscaler_ref.get_dynamic_worker_nums() > 0
+        while await autoscaler_ref.get_dynamic_worker_nums() > 0:
+            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            await asyncio.sleep(1)
+        # Test data on node of released worker can still be fetched
+        r = df.groupby('a').sum().execute()
+        print(r, type(r))
