@@ -19,7 +19,7 @@ from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
 from mars.tests.core import _check_args, ObjectCheckMixin
 
-from ....tests.fault_injection_manager import FaultType
+from ....tests.fault_injection_manager import FaultType, ExtraConfigKey
 
 
 class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
@@ -56,7 +56,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             op.unregister_executor()
 
 
-_fault_args = ['fault_injection_manager_name']
+_fault_args = [ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME]
 
 
 class FaultInjectionSubtaskProcessor(SubtaskProcessor):
@@ -82,7 +82,8 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
 
     async def run(self):
         self._fault_injection_manager = await self._session_api.get_remote_object(
-                self._session_id, self._fault_options['fault_injection_manager_name'])
+                self._session_id,
+                self._fault_options[ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME])
         return await super().run()
 
     async def _async_execute_operand(self,

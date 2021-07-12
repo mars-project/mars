@@ -20,7 +20,7 @@ import mars
 import mars.tensor as mt
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
-from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager
+from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager, ExtraConfigKey
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
@@ -55,7 +55,7 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
             return FaultType.NoFault
 
     await FaultInjectionManager.create(session_id, address)
-    return {'fault_injection_manager_name': FaultInjectionManager.name}
+    return FaultInjectionManager.name
 
 
 @pytest.mark.parametrize('fault_and_exception',
@@ -66,11 +66,12 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception):
     fault_type, first_run_raises = fault_and_exception
-    extra_config = await create_fault_injection_manager(
+    name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
         fault_count=1,
         fault_type=fault_type)
+    extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
     session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
@@ -96,16 +97,19 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [{'config': RERUN_SUBTASK_CONFIG_FILE}],
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1, pytest.raises(RuntimeError, match='Fault Injection')],
-                          [FaultType.ProcessExit, 1, pytest.raises(mars.oscar.ServerClosed)]])
+                         [[FaultType.Exception, 1,
+                           pytest.raises(RuntimeError, match='Fault Injection')],
+                          [FaultType.ProcessExit, 1,
+                           pytest.raises(mars.oscar.ServerClosed)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config
-    extra_config = await create_fault_injection_manager(
+    name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
         fault_count=fault_count,
         fault_type=fault_type)
+    extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
     session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
@@ -123,7 +127,7 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     np.testing.assert_array_equal(r, raw + 1)
 
     fault_injection_manager = await session.get_remote_object(
-            fault_cluster.session.session_id, extra_config['fault_injection_manager_name'])
+            fault_cluster.session.session_id, name)
     await fault_injection_manager.set_fault_count(1)
 
     # the extra config overwrites the default config.

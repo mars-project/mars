@@ -5,6 +5,10 @@ from abc import ABC, abstractmethod
 from ...services.session import SessionAPI
 
 
+class ExtraConfigKey:
+    FAULT_INJECTION_MANAGER_NAME = 'fault_injection_manager_name'
+
+
 class FaultType(enum.Enum):
     NoFault = 0
     Exception = 1
@@ -12,6 +16,9 @@ class FaultType(enum.Enum):
 
 
 class AbstractFaultInjectionManager(ABC):
+    """
+    The abstract base of fault injection manager for test.
+    """
     name = str(uuid.uuid4())
 
     @abstractmethod
