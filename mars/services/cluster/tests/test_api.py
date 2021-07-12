@@ -34,7 +34,12 @@ async def actor_pool():
 
 
 class TestActor(mo.Actor):
-    pass
+    __test__ = False
+
+
+async def wait_async_gen(async_gen):
+    async for _ in async_gen:
+        pass
 
 
 @pytest.mark.asyncio
@@ -44,7 +49,7 @@ async def test_api(actor_pool):
 
     assert await api.get_supervisors() == [pool_addr]
 
-    assert pool_addr in await api.get_supervisors_by_keys(['test_mock'], False)
+    assert pool_addr in await api.get_supervisors_by_keys(['test_mock'])
 
     await mo.create_actor(TestActor, uid=TestActor.default_uid(), address=pool_addr)
     assert (await api.get_supervisor_refs([TestActor.default_uid()]))[0].address == pool_addr
@@ -53,14 +58,17 @@ async def test_api(actor_pool):
     assert (pool_addr, 'numa-0') in bands
 
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(api.get_supervisors(watch=True), timeout=0.1)
+        await asyncio.wait_for(wait_async_gen(
+            api.watch_supervisors()), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(api.get_supervisor_refs(
-            [TestActor.default_uid()], watch=True), timeout=0.1)
+        await asyncio.wait_for(wait_async_gen(
+            api.watch_supervisor_refs([TestActor.default_uid()])), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(api.watch_nodes(NodeRole.WORKER), timeout=0.1)
+        await asyncio.wait_for(wait_async_gen(
+            api.watch_nodes(NodeRole.WORKER)), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(api.get_all_bands(watch=True), timeout=0.1)
+        await asyncio.wait_for(wait_async_gen(
+            api.watch_all_bands()), timeout=0.1)
 
 
 @pytest.mark.asyncio
@@ -85,4 +93,11 @@ async def test_web_api(actor_pool):
     assert await web_api.get_mars_versions() == [mars_version]
 
     with pytest.raises(asyncio.TimeoutError):
-        await asyncio.wait_for(web_api.watch_nodes(NodeRole.WORKER), timeout=0.1)
+        await asyncio.wait_for(wait_async_gen(
+            web_api.watch_supervisors()), timeout=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(wait_async_gen(
+            web_api.watch_nodes(NodeRole.WORKER)), timeout=0.1)
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(wait_async_gen(
+            web_api.watch_all_bands()), timeout=0.1)

@@ -42,7 +42,7 @@ class NodeInfo extends React.Component {
           .then(res => res.json())
           .then((res) => {
               let state = this.state;
-              state[this.nodeRole] = res;
+              state[this.nodeRole] = res['nodes'];
               this.setState(state);
           })
     }

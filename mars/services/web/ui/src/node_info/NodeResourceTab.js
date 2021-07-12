@@ -32,14 +32,14 @@ export default class NodeResourceTab extends React.Component {
     }
 
     refreshInfo() {
-        fetch('api/cluster/nodes?nodes=' + this.props.endpoint + '&resource=1&state=1')
+        fetch('api/cluster/nodes?nodes=' + this.props.endpoint + '&resource=1&detail=1')
             .then(res => res.json())
             .then((res) => {
-                let result = res[this.props.endpoint];
+                let result = res['nodes'][this.props.endpoint];
                 let state = this.state;
                 state['loaded'] = true;
                 state['resource'] = result.resource;
-                state['state'] = result.state;
+                state['detail'] = result.detail;
                 this.setState(state);
             })
     }
@@ -76,7 +76,7 @@ export default class NodeResourceTab extends React.Component {
             }
             if (band_rows.length > 0) {
                 rows.push((
-                    <TableRow>
+                    <TableRow key={band + "-band"}>
                         <TableCell key={band + "-band"} colSpan={2}>{band}</TableCell>
                     </TableRow>
                 ))
@@ -90,11 +90,11 @@ export default class NodeResourceTab extends React.Component {
 
     generateDiskRows() {
         let rows = [];
-        if (this.state.state['disk']['partitions'] === undefined)
+        if (this.state.detail['disk']['partitions'] === undefined)
             return null;
 
-        Object.keys(this.state.state['disk']['partitions']).map((path) => {
-            const part_desc = this.state.state['disk']['partitions'][path];
+        Object.keys(this.state.detail['disk']['partitions']).map((path) => {
+            const part_desc = this.state.detail['disk']['partitions'][path];
             rows = rows.concat([
                 (
                     <TableRow key={path}>
@@ -171,29 +171,29 @@ export default class NodeResourceTab extends React.Component {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        <OptionalElement condition={this.state.state['iowait']}>
+                        <OptionalElement condition={this.state.detail['iowait']}>
                             <TableRow>
                                 <TableCell>IO Wait</TableCell>
-                                <TableCell>{this.state.state['iowait']}</TableCell>
+                                <TableCell>{this.state.detail['iowait']}</TableCell>
                             </TableRow>
                         </OptionalElement>
                         <TableRow>
                             <TableCell>Disk</TableCell>
                             <TableCell>
-                                <div>Reads: {this.state.state['disk']['reads']}</div>
-                                <div>Writes: {this.state.state['disk']['writes']}</div>
+                                <div>Reads: {this.state.detail['disk']['reads']}</div>
+                                <div>Writes: {this.state.detail['disk']['writes']}</div>
                             </TableCell>
                         </TableRow>
                         <TableRow>
                             <TableCell>Network</TableCell>
                             <TableCell>
-                                <div>Receives: {this.state.state['network']['receives']}</div>
-                                <div>Sends: {this.state.state['network']['sends']}</div>
+                                <div>Receives: {this.state.detail['network']['receives']}</div>
+                                <div>Sends: {this.state.detail['network']['sends']}</div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
-                <OptionalElement condition={this.state.state['disk']['partitions']}>
+                <OptionalElement condition={this.state.detail['disk']['partitions']}>
                     <Title component={"h3"}>Disks</Title>
                     <Table>
                         <TableHead>
@@ -207,7 +207,7 @@ export default class NodeResourceTab extends React.Component {
                         </TableBody>
                     </Table>
                 </OptionalElement>
-                <OptionalElement condition={this.state.state['quota']}>
+                <OptionalElement condition={Object.keys(this.state.detail['quota']).length}>
                     <Title component={"h3"}>Quota</Title>
                     <Table>
                         <TableHead>
@@ -217,20 +217,20 @@ export default class NodeResourceTab extends React.Component {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {Object.keys(this.state.state['quota']).map((band) => (
+                            {Object.keys(this.state.detail['quota']).map((band) => (
                                 <TableRow>
                                     <TableCell>{band}</TableCell>
                                     <TableCell>
-                                        <div>Total: {toReadableSize(this.state.state['quota'][band]['quota_size'])}</div>
-                                        <div>Allocated: {toReadableSize(this.state.state['quota'][band]['allocated_size'])}</div>
-                                        <div>Hold: {toReadableSize(this.state.state['quota'][band]['hold_size'])}</div>
+                                        <div>Total: {toReadableSize(this.state.detail['quota'][band]['quota_size'])}</div>
+                                        <div>Allocated: {toReadableSize(this.state.detail['quota'][band]['allocated_size'])}</div>
+                                        <div>Hold: {toReadableSize(this.state.detail['quota'][band]['hold_size'])}</div>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </OptionalElement>
-                <OptionalElement condition={this.state.state['slot']}>
+                <OptionalElement condition={Object.keys(this.state.detail['slot']).length}>
                     <Title component={"h3"}>Slot</Title>
                     <Table>
                         <TableHead>
@@ -240,10 +240,10 @@ export default class NodeResourceTab extends React.Component {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {Object.keys(this.state.state['slot']).map((band) => (
+                            {Object.keys(this.state.detail['slot']).map((band) => (
                                 <TableRow>
                                     <TableCell>{band}</TableCell>
-                                    <TableCell>{this.state.state['slot'][band].length}</TableCell>
+                                    <TableCell>{this.state.detail['slot'][band].length}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

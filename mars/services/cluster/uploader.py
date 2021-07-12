@@ -20,7 +20,7 @@ from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ..core import BandType
 from .core import NodeInfo
-from .gather import gather_node_env, gather_node_resource, gather_node_states
+from .gather import gather_node_env, gather_node_resource, gather_node_details
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +80,8 @@ class NodeInfoUploaderActor(mo.Actor):
         try:
             if not self._info.env:
                 self._info.env = gather_node_env()
-            self._info.state.update(gather_node_states(dirs=self._dirs, band_slot_infos=self._band_slot_infos,
-                                                       band_quota_infos=self._band_quota_infos))
+            self._info.detail.update(gather_node_details(dirs=self._dirs, band_slot_infos=self._band_slot_infos,
+                                                         band_quota_infos=self._band_quota_infos))
             for band, res in gather_node_resource(
                     self._band_to_slots, use_gpu=self._use_gpu).items():
                 try:
@@ -95,7 +95,7 @@ class NodeInfoUploaderActor(mo.Actor):
                 await node_info_ref.update_node_info(
                     address=self.address, role=self._info.role,
                     env=self._info.env if not self._env_uploaded else None,
-                    resource=self._info.resource, state=self._info.state,
+                    resource=self._info.resource, detail=self._info.detail,
                 )
                 self._env_uploaded = True
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover

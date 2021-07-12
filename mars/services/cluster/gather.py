@@ -146,7 +146,7 @@ def gather_node_resource(band_to_slots=None, use_gpu=True):
     return res
 
 
-def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
+def gather_node_details(dirs=None, band_slot_infos=None, band_quota_infos=None):
     disk_io_usage = mars_resource.disk_io_usage()
     net_io_usage = mars_resource.net_io_usage()
     res = {

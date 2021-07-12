@@ -68,7 +68,7 @@ async def test_cluster_service(actor_pools):
 
     assert next(iter(await sv_api.get_nodes_info(role=NodeRole.SUPERVISOR))) \
            == sv_pool.external_address
-    worker_infos = await sv_api.get_nodes_info(role=NodeRole.WORKER, state=True)
+    worker_infos = await sv_api.get_nodes_info(role=NodeRole.WORKER, detail=True)
     assert worker_pool.external_address in worker_infos
-    assert len(worker_infos[worker_pool.external_address]['state']['slot']) > 0
-    assert len(worker_infos[worker_pool.external_address]['state']['quota']) > 0
+    assert len(worker_infos[worker_pool.external_address]['detail']['slot']) > 0
+    assert len(worker_infos[worker_pool.external_address]['detail']['quota']) > 0

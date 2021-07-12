@@ -16,7 +16,7 @@ import os
 import time
 
 from mars.services.cluster.gather import gather_node_env, \
-    gather_node_resource, gather_node_states
+    gather_node_resource, gather_node_details
 
 
 def test_gather_node_env():
@@ -33,14 +33,14 @@ def test_gather_node_resource():
     assert band_res['memory_total'] >= band_res['memory_avail']
 
 
-def test_gather_node_states():
-    gather_node_states()
+def test_gather_node_details():
+    gather_node_details()
     time.sleep(0.1)
-    node_states = gather_node_states()
-    assert not node_states['disk'].get('partitions')
+    node_details = gather_node_details()
+    assert not node_details['disk'].get('partitions')
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    gather_node_states([curdir])
+    gather_node_details([curdir])
     time.sleep(0.1)
-    node_states = gather_node_states([curdir])
-    assert node_states['disk'].get('partitions')
+    node_details = gather_node_details([curdir])
+    assert node_details['disk'].get('partitions')

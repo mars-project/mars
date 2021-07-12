@@ -35,7 +35,7 @@ export default class NodeEnvTab extends React.Component {
         fetch('api/cluster/nodes?nodes=' + this.props.endpoint + '&env=1')
             .then(res => res.json())
             .then((res) => {
-                let state = res[this.props.endpoint].env;
+                let state = res['nodes'][this.props.endpoint].env;
                 state['loaded'] = true;
                 this.setState(state);
             })
