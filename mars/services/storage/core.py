@@ -87,8 +87,10 @@ class WrappedStorageFileObject(AioFileObject):
 
 class StorageQuotaActor(mo.Actor):
     def __init__(self,
+                 data_manager: Union[mo.ActorRef, "DataManagerActor"],
                  level: StorageLevel,
                  total_size: Optional[Union[int, float]]):
+        self._data_manager = data_manager
         self._total_size = total_size if total_size is None else total_size * 0.95
         self._used_size = 0
         self._level = level
@@ -96,18 +98,6 @@ class StorageQuotaActor(mo.Actor):
     @classmethod
     def gen_uid(cls, level: StorageLevel):
         return f'storage_quota_{level}'
-
-    @property
-    def total_size(self):
-        return self._total_size
-
-    @property
-    def used_size(self):
-        return self._used_size
-
-    @property
-    def level(self):
-        return self._level
 
     def update_quota(self, size: int):
         if self._total_size is not None:
@@ -124,18 +114,18 @@ class StorageQuotaActor(mo.Actor):
             return True
         elif self._used_size + size >= self._total_size:
             logger.debug('Request %s bytes of %s, used size now is %s,'
-                         'space is not enough for the request', size, self.level, self.used_size)
+                         'space is not enough for the request', size, self._level, self._used_size)
             return False
         else:
             self._used_size += size
             logger.debug('Request %s bytes of %s, used size now is %s,'
-                         'total size is %s', size, self.level, self.used_size, self.total_size)
+                         'total size is %s', size, self._level, self._used_size, self._total_size)
             return True
 
     def release_quota(self, size: int):
         self._used_size -= size
         logger.debug('Release %s bytes of %s, used size now is %s,'
-                     'total size is %s', size, self.level, self.used_size, self.total_size)
+                     'total size is %s', size, self._level, self._used_size, self._total_size)
 
     def get_quota(self):
         return self._total_size, self._used_size
@@ -245,7 +235,17 @@ class DataManagerActor(mo.Actor):
                 (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
-        self._set_spill_event(data_info.level)
+        level = data_info.level
+        # when put finishes, check if spillable size is enough for spilling task
+        if self._spill_events[level] is not None:
+            event = self._spill_events[level]
+            delta_size = 0
+            if object_info.size is not None and data_info.memory_size != object_info.size:
+                delta_size = object_info.size - data_info.memory_size
+            request_size = event.request_size + delta_size
+            if request_size < self._spill_strategy[level].spillable_size:
+                event.request_size = request_size
+                event.set()
 
     @extensible
     def put_data_info(self,
@@ -300,20 +300,13 @@ class DataManagerActor(mo.Actor):
         try:
             level = self.get_data_info(session_id, data_key).level
             self._spill_strategy[level].unpin_data((session_id, data_key))
-            self._set_spill_event(level)
         except DataNotExist:
             if error == 'raise':
                 raise
             else:
                 return
 
-    def _set_spill_event(self, level):
-        if self._spill_events[level] is not None:
-            event = self._spill_events[level]
-            if self._spill_strategy[level].spillable_size > event.request_size:
-                event.set()
-
-    async def get_spill_keys(self, level: StorageLevel, size):
+    async def get_spill_keys(self, level: StorageLevel, size: int, object_size: int):
         from .spill import NoDataToSpill
 
         yield self._spill_semaphore[level].acquire()
@@ -326,15 +319,16 @@ class DataManagerActor(mo.Actor):
                 # when NoDataToSpill happens, there are two situations,
                 # one is that space is allocated while objects are not put into storage,
                 # another is some objects are pinned that can not be spilled,
-                # so we create an asyncio event, when put or unpin finishes, we will
+                # so we create an asyncio event, when quota changes, we will
                 # check spillable size, if size is enough for spilling, call event.set()
                 # to wake up spilling task.
                 logger.warning('No data to spill %s bytes, waiting event', size)
                 self._spill_events[level] = event = asyncio.Event()
                 event.request_size = size
+                event.object_size = object_size
                 yield event.wait()
-                logger.warning('Event is set, continue to spill %s bytes', size)
-                spill_keys = self._spill_strategy[level].get_spill_keys(size)
+                logger.warning('Event is set, continue to spill %s bytes', event.request_size)
+                spill_keys = self._spill_strategy[level].get_spill_keys(event.request_size)
                 self._spill_events[level] = None
                 raise mo.Return(spill_keys)
         finally:
@@ -665,14 +659,14 @@ class StorageHandlerActor(mo.Actor):
             return
         else:
             total, used = await self._quota_refs[level].get_quota()
-            await self.spill(level, int(size + used - total))
+            await self.spill(level, int(size + used - total), size)
             await self._quota_refs[level].request_quota(size)
             logger.debug('Spill is triggered, request %s bytes of %s finished', size, level)
 
-    async def spill(self, level: StorageLevel, size: int):
+    async def spill(self, level: StorageLevel, size: int, object_size: int):
         from .spill import spill
 
-        await spill(size, level, self._data_manager_ref, self)
+        await spill(size, object_size, level, self._data_manager_ref, self)
 
     async def list(self, level: StorageLevel) -> List:
         return await self._data_manager_ref.list(level)
@@ -703,6 +697,12 @@ class StorageManagerActor(mo.Actor):
     async def __post_create__(self):
         from .transfer import SenderManagerActor, ReceiverManagerActor
 
+        # stores the mapping from data key to storage info
+        self._data_manager = await mo.create_actor(
+            DataManagerActor,
+            uid=DataManagerActor.default_uid(),
+            address=self.address)
+
         # setup storage backend
         quotas = dict()
         for backend, setup_params in self._storage_configs.items():
@@ -712,18 +712,12 @@ class StorageManagerActor(mo.Actor):
                     logger.debug('Create quota manager for %s,'
                                  ' total size is %s', level, client.size)
                     quotas[level] = await mo.create_actor(
-                        StorageQuotaActor, level, client.size,
+                        StorageQuotaActor, self._data_manager,
+                        level, client.size,
                         uid=StorageQuotaActor.gen_uid(level),
                         address=self.address,
                     )
-
         self._quotas: Dict[StorageLevel, Union[mo.ActorRef, StorageQuotaActor]] = quotas
-
-        # stores the mapping from data key to storage info
-        self._data_manager = await mo.create_actor(
-            DataManagerActor,
-            uid=DataManagerActor.default_uid(),
-            address=self.address)
 
         # create handler actors for every process
         strategy = IdleLabel(None, 'StorageHandler')

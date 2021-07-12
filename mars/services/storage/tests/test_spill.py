@@ -22,7 +22,7 @@ import pytest
 
 import mars.oscar as mo
 from mars.services.storage.core import StorageManagerActor, StorageHandlerActor, \
-    StorageQuotaActor
+    StorageQuotaActor, calc_data_size, _build_data_info
 from mars.storage import StorageLevel, PlasmaStorage
 
 
@@ -46,8 +46,7 @@ async def actor_pool():
     await worker_pool.stop()
 
 
-@pytest.fixture
-async def create_actors(actor_pool):
+def _build_storage_config():
     if sys.platform == 'darwin':
         plasma_dir = '/tmp'
     else:
@@ -66,7 +65,12 @@ async def create_actors(actor_pool):
         "plasma": plasma_setup_params,
         "filesystem": disk_setup_params
     }
+    return storage_configs
 
+
+@pytest.fixture
+async def create_actors(actor_pool):
+    storage_configs = _build_storage_config()
     manager_ref = await mo.create_actor(
         StorageManagerActor, storage_configs,
         uid=StorageManagerActor.default_uid(),
@@ -120,9 +124,43 @@ async def test_spill(create_actors):
     assert len(plasma_list) == len(memory_object_list)
 
 
+class DelayPutStorageHandler(StorageHandlerActor):
+    async def put(self,
+                  session_id: str,
+                  data_key: str,
+                  obj: object,
+                  level: StorageLevel):
+        size = calc_data_size(obj)
+        await self._request_quota_with_spill(level, size)
+        # sleep to trigger `NoDataToSpill`
+        await asyncio.sleep(0.5)
+        object_info = await self._clients[level].put(obj)
+        data_info = _build_data_info(object_info, level, size)
+        await self._data_manager_ref.put_data_info(
+            session_id, data_key, data_info, object_info)
+        if object_info.size is not None and data_info.memory_size != object_info.size:
+            await self._quota_refs[level].update_quota(
+                object_info.size - data_info.memory_size)
+        return data_info
+
+
+@pytest.fixture
+async def create_actors_with_delay(actor_pool):
+    storage_configs = _build_storage_config()
+    manager_ref = await mo.create_actor(
+        StorageManagerActor, storage_configs,
+        storage_handler_cls=DelayPutStorageHandler,
+        uid=StorageManagerActor.default_uid(),
+        address=actor_pool.external_address)
+
+    sub_processes = list(actor_pool.sub_processes)
+    yield actor_pool.external_address, sub_processes[0], sub_processes[1]
+    await mo.destroy_actor(manager_ref)
+
+
 @pytest.mark.asyncio
-async def test_spill_event(create_actors):
-    worker_address, sub_pool_address1, sub_pool_address2 = create_actors
+async def test_spill_event(create_actors_with_delay):
+    worker_address, sub_pool_address1, sub_pool_address2 = create_actors_with_delay
     storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
                                           address=sub_pool_address1)
     storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),

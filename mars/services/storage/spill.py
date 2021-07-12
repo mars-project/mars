@@ -86,6 +86,8 @@ class FIFOStrategy(SpillStrategy):
         spill_keys = []
         spill_size = 0
         for data_key, data_size in self._data_sizes.items():
+            if spill_size >= size:
+                break
             if data_key in self._pinned_keys:
                 continue
             if data_key in self._spilling_keys:
@@ -93,8 +95,7 @@ class FIFOStrategy(SpillStrategy):
             spill_sizes.append(data_size)
             spill_keys.append(data_key)
             spill_size += data_size
-            if spill_size > size:
-                break
+
         if spill_size < size:  # pragma: no cover
             pinned_sizes = dict((k, self._data_sizes[k]) for k in self._pinned_keys)
             spilling_keys = dict((k, self._data_sizes[k]) for k in self._spilling_keys)
@@ -105,6 +106,7 @@ class FIFOStrategy(SpillStrategy):
 
 
 async def spill(request_size: int,
+                object_size: int,
                 level: StorageLevel,
                 data_manager: Union[mo.ActorRef, DataManagerActor],
                 storage_handler: Union[mo.ActorRef, StorageHandlerActor],
@@ -116,7 +118,7 @@ async def spill(request_size: int,
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
-        level, request_size)
+        level, request_size, object_size)
     logger.debug('Decide to spill %s bytes, '
                  'data keys are %s', sum(spill_sizes), spill_keys)
 
