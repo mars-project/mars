@@ -91,14 +91,14 @@ class AssignerActor(mo.Actor):
                                               if expect_band in self._available_bands]
                     # fill in if all expected bands are blocked
                     if not expect_available_bands:
-                        expect_available_bands = [await self.reassign_band()]
+                        expect_available_bands = [self.reassign_band()]
                     selected_bands[subtask.subtask_id] = expect_available_bands
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
-                    selected_bands[subtask.subtask_id] = [await self.reassign_band()]
+                    selected_bands[subtask.subtask_id] = [self.reassign_band()]
                     break
 
         fields = ['store_size', 'bands']
@@ -120,7 +120,7 @@ class AssignerActor(mo.Actor):
                     meta = inp_metas[inp.key]
                     for band in meta['bands']:
                         if band not in self._available_bands:
-                            band = await self.reassign_band()
+                            band = self.reassign_band()
                         band_sizes[band] += meta['store_size']
                 bands = []
                 max_size = -1
@@ -133,7 +133,7 @@ class AssignerActor(mo.Actor):
             assigns.append(random.choice(bands))
         return assigns
 
-    async def reassign_band(self):
+    def reassign_band(self):
         assert self._available_bands
         return random.choice(self._available_bands)
 

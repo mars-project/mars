@@ -26,10 +26,11 @@ from mars.utils import extensible
 
 class MockSlotsActor(mo.Actor):
     def __init__(self):
-        self._blocklist_event = asyncio.Event()
+        self._available_band_events = set()
 
     async def add_to_blocklist(self, band: Tuple):
-        self._blocklist_event.set()
+        for event in self._available_band_events:
+            event.set()
 
     def apply_subtask_slots(self, band: Tuple, session_id: str,
                             subtask_ids: List[str], subtask_slots: List[int]):
@@ -40,12 +41,15 @@ class MockSlotsActor(mo.Actor):
                 ('address2', 'numa-0'): 10}
 
     async def watch_available_bands(self):
+        event = asyncio.Event()
+        self._available_band_events.add(event)
+
         async def waiter():
             try:
-                await self._blocklist_event.wait()
+                await event.wait()
                 return self.get_available_bands()
             finally:
-                pass
+                self._available_band_events.remove(event)
 
         return waiter()
 

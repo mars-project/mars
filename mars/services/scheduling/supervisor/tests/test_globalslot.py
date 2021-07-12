@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import pytest
 
 import mars.oscar as mo
@@ -73,6 +74,7 @@ async def test_blocklist(actor_pool):
     assert band in await global_slot_ref.get_available_bands()
 
     await global_slot_ref.add_to_blocklist(band)
+    assert await global_slot_ref.band_is_blocked(band)
     assert band in await global_slot_ref.get_blocked_bands()
     assert {} == await global_slot_ref.get_available_bands()
 
@@ -80,3 +82,6 @@ async def test_blocklist(actor_pool):
     assert band not in await global_slot_ref.get_blocked_bands()
 
     assert band in await global_slot_ref.get_available_bands()
+
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(global_slot_ref.watch_available_bands(), timeout=0.1)
