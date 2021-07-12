@@ -15,30 +15,34 @@
 import asyncio
 import atexit
 import sys
-import weakref
 from concurrent.futures import Future as SyncFuture
-from typing import Union, Dict
+from typing import Dict, Union
 
 from ... import oscar as mo
-from ...core.session import _new_session
+from ...lib.aio import get_isolation, stop_isolation
 from ...resource import cpu_count, cuda_count
+from ...services import NodeRole
+from ...typing import ClusterType, ClientType
+from ..utils import get_third_party_modules_from_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
-from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
-from .session import Session
-from .typing import ClusterType, ClientType
+from .service import start_supervisor, start_worker, stop_supervisor, stop_worker, load_config
+from .session import AbstractSession, _new_session, ensure_isolation_created
 
 _is_exiting_future = SyncFuture()
-atexit.register(lambda: _is_exiting_future.set_result(0))
+atexit.register(lambda: _is_exiting_future.set_result(0)
+                if not _is_exiting_future.done() else None)
+atexit.register(stop_isolation)
 
 
-async def new_cluster(address: str = '0.0.0.0',
-                      n_worker: int = 1,
-                      n_cpu: Union[int, str] = 'auto',
-                      n_gpu: Union[int, str] = 'auto',
-                      subprocess_start_method: str = None,
-                      backend: str = None,
-                      config: Union[str, Dict] = None,
-                      web: bool = True) -> ClientType:
+async def new_cluster_in_isolation(
+        address: str = '0.0.0.0',
+        n_worker: int = 1,
+        n_cpu: Union[int, str] = 'auto',
+        n_gpu: Union[int, str] = 'auto',
+        subprocess_start_method: str = None,
+        backend: str = None,
+        config: Union[str, Dict] = None,
+        web: bool = True) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = \
             'spawn' if sys.platform == 'win32' else 'forkserver'
@@ -46,6 +50,34 @@ async def new_cluster(address: str = '0.0.0.0',
                            subprocess_start_method, config, web)
     await cluster.start()
     return await LocalClient.create(cluster, backend)
+
+
+async def new_cluster(address: str = '0.0.0.0',
+                      n_worker: int = 1,
+                      n_cpu: Union[int, str] = 'auto',
+                      n_gpu: Union[int, str] = 'auto',
+                      subprocess_start_method: str = None,
+                      config: Union[str, Dict] = None,
+                      web: bool = True,
+                      loop: asyncio.AbstractEventLoop = None,
+                      use_uvloop: Union[bool, str] = 'auto') -> ClientType:
+    coro = new_cluster_in_isolation(
+        address, n_worker=n_worker, n_cpu=n_cpu, n_gpu=n_gpu,
+        subprocess_start_method=subprocess_start_method,
+        config=config, web=web)
+    isolation = ensure_isolation_created(
+        dict(loop=loop, use_uvloop=use_uvloop))
+    fut = asyncio.run_coroutine_threadsafe(coro, isolation.loop)
+    client = await asyncio.wrap_future(fut)
+    client.session.as_default()
+    return client
+
+
+async def stop_cluster(cluster: ClusterType):
+    isolation = get_isolation()
+    coro = cluster.stop()
+    await asyncio.wrap_future(
+        asyncio.run_coroutine_threadsafe(coro, isolation.loop))
 
 
 class LocalCluster:
@@ -57,6 +89,9 @@ class LocalCluster:
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
                  web: Union[bool, str] = 'auto'):
+        # load config file to dict.
+        if not config or isinstance(config, str):
+            config = load_config(config)
         self._address = address
         self._subprocess_start_method = subprocess_start_method
         self._config = config
@@ -104,15 +139,19 @@ class LocalCluster:
         await self.stop()
 
     async def _start_supervisor_pool(self):
+        supervisor_modules = get_third_party_modules_from_config(
+            self._config, NodeRole.SUPERVISOR)
         self._supervisor_pool = await create_supervisor_actor_pool(
-            self._address, n_process=0,
+            self._address, n_process=0, modules=supervisor_modules,
             subprocess_start_method=self._subprocess_start_method)
         self.supervisor_address = self._supervisor_pool.external_address
 
     async def _start_worker_pools(self):
+        worker_modules = get_third_party_modules_from_config(
+                self._config, NodeRole.WORKER)
         for _ in range(self._n_worker):
             worker_pool = await create_worker_actor_pool(
-                self._address, self._band_to_slot,
+                self._address, self._band_to_slot, modules=worker_modules,
                 subprocess_start_method=self._subprocess_start_method)
             self._worker_pools.append(worker_pool)
 
@@ -134,28 +173,24 @@ class LocalCluster:
         for worker_pool in self._worker_pools:
             await worker_pool.stop()
         await self._supervisor_pool.stop()
+        AbstractSession.reset_default()
         self._exiting_check_task.cancel()
 
 
 class LocalClient:
     def __init__(self: ClientType,
                  cluster: ClusterType,
-                 session: Session):
+                 session: AbstractSession):
         self._cluster = cluster
-        self._session = weakref.ref(session)
-
-    @property
-    def session(self):
-        return self._session()
+        self.session = session
 
     @classmethod
     async def create(cls,
                      cluster: LocalCluster,
                      backend: str = None) -> ClientType:
-        backend = Session.name if backend is None else backend
+        backend = backend or 'oscar'
         session = await _new_session(
-            cluster.external_address,
-            backend=backend, default=True)
+            cluster.external_address, backend=backend, default=True)
         client = LocalClient(cluster, session)
         session.client = client
         return client
@@ -171,4 +206,4 @@ class LocalClient:
         await self.stop()
 
     async def stop(self):
-        await self._cluster.stop()
+        await stop_cluster(self._cluster)

@@ -18,10 +18,8 @@ import pytest
 import numpy as np
 
 import mars.tensor as mt
-from mars.core.session import get_default_session
 from mars.deploy.oscar.local import new_cluster
-
-from ....services.session import SessionAPI
+from mars.deploy.oscar.session import get_default_async_session
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
@@ -48,18 +46,23 @@ async def fault_cluster():
                                n_worker=2,
                                n_cpu=2)
     async with client:
-        session_api = await SessionAPI.create(client.session.address)
-        await session_api.create_remote_object(
+        await client.session.create_remote_object(
             client.session.session_id,
             FaultInjectionManager.name,
             FaultInjectionManager)
+        assert client.session.get_remote_object(
+            client.session.session_id,
+            FaultInjectionManager.name) is not None
         yield client
+        client.session.destroy_remote_object(
+            client.session.session_id,
+            FaultInjectionManager.name)
 
 
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster):
     extra_config = {'fault_injection_manager_name': FaultInjectionManager.name}
-    session = get_default_session()
+    session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
@@ -77,4 +80,4 @@ async def test_fault_inject_subtask_processor(fault_cluster):
     assert info.exception() is None
 
     r = await session.fetch(b)
-    np.testing.assert_array_equal(r[0], raw + 1)
+    np.testing.assert_array_equal(r, raw + 1)

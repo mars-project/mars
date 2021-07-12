@@ -18,12 +18,15 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...core.operand import OperandStage
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import KeyField, BoolField, \
     Int64Field, StringField
 from ...utils import has_unknown_shape
 from ..core import Series
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_series, parse_index
+
+_keep_original_order = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
@@ -132,7 +135,7 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
         if op.dropna:
             inp = inp.dropna()
 
-        inp = inp.groupby(inp).count(method=op.method)
+        inp = inp.groupby(inp, sort=not _keep_original_order).count(method=op.method)
 
         if op.normalize:
             if op.convert_index_to_interval:
@@ -143,7 +146,8 @@ class DataFrameValueCounts(DataFrameOperand, DataFrameOperandMixin):
                 inp = inp.truediv(inp.sum(), axis=0)
 
         if op.sort:
-            inp = inp.sort_values(ascending=op.ascending)
+            inp = inp.sort_values(ascending=op.ascending,
+                                  kind='mergesort' if _keep_original_order else 'quicksort')
 
             if op.nrows:
                 # set to sort_values

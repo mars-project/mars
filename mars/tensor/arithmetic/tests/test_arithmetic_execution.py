@@ -22,7 +22,7 @@ import scipy.sparse as sps
 import pytest
 
 from mars.config import option_context
-from mars.core.session import execute, fetch
+from mars.session import execute, fetch
 from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose, arctan2, tree_add, tree_multiply

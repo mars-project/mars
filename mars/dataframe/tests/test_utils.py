@@ -21,12 +21,16 @@ import pandas as pd
 import pytest
 
 from mars.config import option_context
+from mars.core import tile
 from mars.dataframe.initializer import DataFrame, Index
 from mars.dataframe.core import IndexValue
-from mars.dataframe.utils import decide_dataframe_chunk_sizes, decide_series_chunk_size, \
-    split_monotonic_index_min_max, build_split_idx_to_origin_idx, parse_index, filter_index_value, \
-    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, make_dtypes
+from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
+    decide_series_chunk_size, split_monotonic_index_min_max, \
+    build_split_idx_to_origin_idx, parse_index, filter_index_value, \
+    infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
+    make_dtypes, build_concatenated_rows_frame, merge_index_value
 from mars.tests import setup
+from mars.utils import Timer
 
 
 setup = setup
@@ -252,6 +256,26 @@ def test_filter_index_value():
     assert isinstance(filtered.value, IndexValue.Int64Index)
 
 
+def test_merge_index_value():
+    with Timer() as timer:
+        index_values = {i: parse_index(pd.RangeIndex(1e7)) for i in range(20)}
+        index_value = merge_index_value(index_values)
+        pd.testing.assert_index_equal(index_value.to_pandas(),
+                                      pd.Index([], dtype=np.int64))
+        assert index_value.min_val == 0
+        assert index_value.max_val == 1e7 - 1
+
+        # range indexes that are continuous
+        index_values = {i: parse_index(pd.RangeIndex(i * 1e7, (i + 1) * 1e7))
+                        for i in range(20)}
+        index_value = merge_index_value(index_values)
+        pd.testing.assert_index_equal(index_value.to_pandas(),
+                                      pd.RangeIndex(1e7 * 20))
+        assert index_value.min_val == 0
+        assert index_value.max_val == 1e7 * 20 - 1
+    assert timer.duration < 1
+
+
 def test_infer_dtypes():
     data1 = pd.DataFrame([[1, 'a', False]], columns=[2.0, 3.0, 4.0])
     data2 = pd.DataFrame([[1, 3.0, 'b']], columns=[1, 2, 3])
@@ -431,3 +455,26 @@ def test_make_dtypes():
     pd.testing.assert_series_equal(s, pd.Series([np.dtype(int), np.dtype(float), np.dtype(int)]))
 
     assert make_dtypes(None) is None
+
+
+@pytest.mark.parametrize('columns', [
+    pd.RangeIndex(8),
+    pd.MultiIndex.from_product([list('AB'), list('CDEF')]),
+])
+def test_build_concatenated_rows_frame(setup, columns):
+    df = pd.DataFrame(np.random.rand(16, 8), columns=columns)
+
+    # single chunk
+    mdf = tile(DataFrame(df, chunk_size=8))
+    concatenated = build_concatenated_rows_frame(mdf)
+    assert len(concatenated.chunks) == 2
+    pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)
+
+    # multiple chunks
+    mdf = tile(DataFrame(df, chunk_size=5))
+    concatenated = build_concatenated_rows_frame(mdf)
+    assert len(concatenated.chunks) == 4
+    for i in range(4):
+        pd.testing.assert_index_equal(
+            concatenated.chunks[i].columns_value.to_pandas(), df.columns)
+    pd.testing.assert_frame_equal(concatenated.execute().fetch(), df)

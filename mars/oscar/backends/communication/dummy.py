@@ -83,7 +83,8 @@ class DummyChannel(Channel):
 
 @register_server
 class DummyServer(Server):
-    __slots__ = ('_closed', '_channels') + ('__weakref__',) if abc_type_require_weakref_slot else tuple()
+    __slots__ = ('_closed', '_channels', '_tasks') + ('__weakref__',) \
+        if abc_type_require_weakref_slot else tuple()
 
     _address_to_instances: Dict[str, "DummyServer"] = weakref.WeakValueDictionary()
     scheme = 'dummy'
@@ -94,6 +95,7 @@ class DummyServer(Server):
         super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
         self._channels = []
+        self._tasks = []
 
     @classmethod
     def get_instance(cls, address: str):
@@ -160,6 +162,7 @@ class DummyServer(Server):
     @implements(Server.stop)
     async def stop(self):
         self._closed.set()
+        _ = [t.cancel() for t in self._tasks]
         await asyncio.gather(
             *(channel.close() for channel in self._channels))
 
@@ -182,7 +185,6 @@ class DummyClient(Client):
         super().__init__(local_address,
                          dest_address,
                          channel)
-        self._task = None
 
     @staticmethod
     @implements(Client.connect)
@@ -210,6 +212,7 @@ class DummyClient(Client):
         task = asyncio.create_task(conn_coro)
         client = DummyClient(local_address, dest_address, client_channel)
         client._task = task
+        server._tasks.append(task)
         return client
 
     @implements(Client.close)

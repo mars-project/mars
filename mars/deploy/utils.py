@@ -19,6 +19,8 @@ from typing import Callable, Dict, List, Union, TextIO
 
 import yaml
 
+from mars.services import NodeRole
+
 DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
 
@@ -122,3 +124,26 @@ async def wait_all_supervisors_ready(endpoint):
 
     assert cluster_api is not None
     await cluster_api.wait_all_supervisors_ready()
+
+
+def get_third_party_modules_from_config(config: Dict, role: NodeRole):
+    third_party_modules = config.get('third_party_modules', [])
+    if isinstance(third_party_modules, list):
+        modules = third_party_modules
+    elif isinstance(third_party_modules, dict):
+        key = {
+            NodeRole.SUPERVISOR: 'supervisor',
+            NodeRole.WORKER: 'worker',
+        }
+        modules = third_party_modules.get(key[role], [])
+        if not isinstance(modules, list):
+            raise TypeError(f'The value type of third_party_modules.{key[role]} '
+                            f'should be a list, but got a {type(modules)} instead.')
+    else:
+        raise TypeError(f'The value type of third_party_modules should be a list '
+                        f'or dict, but got a {type(third_party_modules)} instead.')
+
+    all_modules = []
+    for mods in tuple(modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
+        all_modules.extend(mods.split(',') if mods else [])
+    return all_modules

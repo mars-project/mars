@@ -28,7 +28,6 @@ APIType = TypeVar('APIType', bound='StorageAPI')
 
 class StorageAPI(AbstractStorageAPI):
     _storage_handler_ref: Union[StorageHandlerActor, mo.ActorRef]
-    _storage_manager_ref: Union[StorageManagerActor, mo.ActorRef]
     _data_manager_ref: Union[DataManagerActor, mo.ActorRef]
 
     def __init__(self,
@@ -40,8 +39,6 @@ class StorageAPI(AbstractStorageAPI):
     async def _init(self):
         self._storage_handler_ref = await mo.actor_ref(
             self._address, StorageHandlerActor.default_uid())
-        self._storage_manager_ref = await mo.actor_ref(
-            self._address, StorageManagerActor.default_uid())
         self._data_manager_ref = await mo.actor_ref(
             self._address, DataManagerActor.default_uid())
 
@@ -177,7 +174,7 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_manager_ref.fetch(
+        await self._storage_handler_ref.fetch(
             self._session_id, data_key, level,
             band_name, dest_address, error)
 
@@ -194,7 +191,7 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_manager_ref.unpin(self._session_id,
+        await self._storage_handler_ref.unpin(self._session_id,
                                               data_key, error)
 
     async def open_reader(self, data_key: str) -> StorageFileObject:
@@ -250,7 +247,7 @@ class StorageAPI(AbstractStorageAPI):
         -------
             list of data keys
         """
-        return await self._storage_manager_ref.list(level=level)
+        return await self._storage_handler_ref.list(level=level)
 
 
 class MockStorageAPI(StorageAPI):
@@ -275,9 +272,10 @@ class MockStorageAPI(StorageAPI):
                 "plasma": plasma_setup_params,
             }
 
-        storage_manger_cls = kwargs.pop('storage_manger_cls', StorageManagerActor)
-        await mo.create_actor(storage_manger_cls,
+        storage_handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
+        await mo.create_actor(StorageManagerActor,
                               storage_configs,
+                              storage_handler_cls=storage_handler_cls,
                               uid=StorageManagerActor.default_uid(),
                               address=address)
         return await super().create(address=address, session_id=session_id)

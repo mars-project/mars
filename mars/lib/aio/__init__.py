@@ -17,8 +17,15 @@ import contextlib
 import sys
 
 from .file import AioFileObject, AioFilesystem
+from .isolation import Isolation, new_isolation, get_isolation, stop_isolation
 from .lru import alru_cache
 from .parallelism import AioEvent
+
+
+if sys.version_info[:2] < (3, 9):
+    from ._threads import to_thread
+
+    asyncio.to_thread = to_thread
 
 
 if sys.version_info[:2] < (3, 7):
@@ -32,11 +39,3 @@ if sys.version_info[:2] < (3, 7):
     # patch async generator
     from async_generator import asynccontextmanager
     contextlib.asynccontextmanager = asynccontextmanager
-
-
-def create_lock(loop=None):
-    async def _create_lock():
-        return asyncio.Lock()
-
-    loop = loop or asyncio.get_event_loop()
-    return loop.run_until_complete(_create_lock())

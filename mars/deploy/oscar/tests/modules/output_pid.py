@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar
+import os
+import tempfile
 
-OperandType = TypeVar('OperandType')
-TileableType = TypeVar('TileableType')
-ChunkType = TypeVar('ChunkType')
-EntityType = TypeVar('EntityType')
-SessionType = TypeVar('SessionType')
+output_dir = os.path.join(tempfile.gettempdir(), 'test_inject_module_output')
 
-ClusterType = TypeVar('ClusterType')
-ClientType = TypeVar('ClientType')
+os.makedirs(output_dir, exist_ok=True)
+
+with open(os.path.join(output_dir, f'{os.getpid()}'), 'w') as f:
+    f.write('')

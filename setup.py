@@ -164,11 +164,11 @@ class BuildWeb(Command):
         web_src_path = os.path.join(repo_root, *cls._web_src_path.split('/'))
         web_dest_path = os.path.join(repo_root, *cls._web_dest_path.split('/'))
 
-        if not os.path.exists(web_dest_path):
-            if npm_path is None:
-                warnings.warn('Cannot find NPM, may affect displaying Mars Web')
+        if not os.path.exists(web_src_path):
             return
-        elif not os.path.exists(web_src_path):
+        elif npm_path is None:
+            if not os.path.exists(web_dest_path):
+                warnings.warn('Cannot find NPM, may affect displaying Mars Web')
             return
 
         replacements = {'npm': npm_path}

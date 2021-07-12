@@ -21,7 +21,7 @@ import pytest
 from mars import dataframe as md
 from mars import tensor as mt
 from mars.core import tile
-from mars.core.session import get_default_session
+from mars.deploy.oscar.session import get_default_session
 from mars.learn.utils import shuffle
 from mars.lib.mmh3 import hash as mmh3_hash
 from mars.remote import spawn, ExecutableTuple

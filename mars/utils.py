@@ -953,7 +953,7 @@ def arrow_array_to_objects(obj: Union[pd.DataFrame, pd.Series]) \
 def enter_current_session(func: Callable):
     @functools.wraps(func)
     def wrapped(cls, ctx, op):
-        from .core.session import AbstractSession, get_default_session
+        from .deploy.oscar.session import AbstractSession, get_default_session
 
         # skip in some test cases
         if not hasattr(ctx, 'get_current_session'):

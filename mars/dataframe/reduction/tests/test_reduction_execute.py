@@ -24,14 +24,16 @@ except ImportError:  # pragma: no cover
 
 import mars.dataframe as md
 from mars.config import option_context
-from mars.core.session import get_default_session, SyncSession
 from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
+from mars.deploy.oscar.session import get_default_session
+from mars.lib.version import parse as parse_version
 from mars.tests import setup
 from mars.tests.core import require_cudf, require_cupy
 from mars.utils import lazy_import
 
 cp = lazy_import('cupy', rename='cp', globals=globals())
+_agg_size_as_series = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 setup = setup
@@ -41,7 +43,7 @@ setup = setup
 def check_ref_counts():
     yield
     sess = get_default_session()
-    assert len(SyncSession(sess)._get_ref_counts()) == 0
+    assert len(sess._get_ref_counts()) == 0
 
 
 class FunctionOptions(NamedTuple):
@@ -765,7 +767,10 @@ def test_dataframe_aggregate(setup, check_ref_counts):
                                   data.agg(all_aggs))
 
     result = df.agg('size')
-    assert result.execute().fetch() == data.agg('size')
+    if _agg_size_as_series:
+        pd.testing.assert_series_equal(result.execute().fetch(), data.agg('size'))
+    else:
+        assert result.execute().fetch() == data.agg('size')
 
     for func in (a for a in all_aggs if a != 'size'):
         result = df.agg(func)
@@ -784,7 +789,10 @@ def test_dataframe_aggregate(setup, check_ref_counts):
                                   data.agg(['cumsum', 'cummax']))
 
     result = df.agg('size')
-    assert result.execute().fetch() == data.agg('size')
+    if _agg_size_as_series:
+        pd.testing.assert_series_equal(result.execute().fetch(), data.agg('size'))
+    else:
+        assert result.execute().fetch() == data.agg('size')
 
     for func in (a for a in all_aggs if a != 'size'):
         result = df.agg(func)

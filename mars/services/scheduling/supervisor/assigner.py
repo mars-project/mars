@@ -98,6 +98,9 @@ class AssignerActor(mo.Actor):
                 if isinstance(indep_chunk.op, Fetch):
                     inp_keys.add(indep_chunk.key)
                 elif isinstance(indep_chunk.op, FetchShuffle):
+                    if not self._bands:
+                        self._bands = list(await self._cluster_api.get_all_bands(
+                            NodeRole.WORKER))
                     selected_bands[subtask.subtask_id] = [self.reassign_band()]
                     break
 

@@ -15,7 +15,7 @@
 import pandas as pd
 
 from .... import remote as mr
-from ....core.session import get_default_session
+from ....deploy.oscar.session import get_default_session
 from ....utils import ceildiv
 
 try:

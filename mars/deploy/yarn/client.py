@@ -18,7 +18,7 @@ import random
 import time
 import uuid
 
-from ...core.session import new_session
+from ...session import new_session
 from ...utils import to_str
 from ..utils import wait_services_ready
 from .config import MarsApplicationConfig, MarsSupervisorConfig, MarsWorkerConfig
