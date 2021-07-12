@@ -63,6 +63,16 @@ class NodeInfoCollectorActor(mo.Actor):
 
         self._check_task = self.ref().check_dead_nodes.tell_delay(delay=self._check_interval)
 
+    def mark_dead_nodes(self, addresses: List[str]):
+        affect_roles = set()
+        for address in addresses:
+            self._node_infos.pop(address, None)
+            node_role = self._node_infos[address].role
+            self._role_to_nodes[node_role].difference_update([address])
+            affect_roles.add(node_role)
+
+        self._notify_roles(affect_roles)
+
     def _notify_roles(self, roles):
         for role in roles:
             for event in self._role_to_events[role]:

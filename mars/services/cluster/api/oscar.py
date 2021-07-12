@@ -161,7 +161,8 @@ class ClusterAPI(AbstractClusterAPI):
         return address
 
     async def release_worker_node(self, address: str):
-        return await self._node_allocator_ref.release_worker_node(address)
+        await self._node_info_ref.mark_dead_nodes([address])
+        await self._node_allocator_ref.release_worker_node(address)
 
 
 class MockClusterAPI(ClusterAPI):
