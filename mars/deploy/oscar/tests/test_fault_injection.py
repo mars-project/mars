@@ -20,6 +20,7 @@ import mars
 import mars.tensor as mt
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
+from mars.oscar.errors import FaultInjectionError
 from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager, ExtraConfigKey
 
 CONFIG_FILE = os.path.join(
@@ -60,7 +61,7 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
 
 @pytest.mark.parametrize('fault_and_exception',
                          [[FaultType.Exception,
-                           pytest.raises(RuntimeError, match='Fault Injection')],
+                           pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit,
                            pytest.raises(mars.oscar.ServerClosed)]])
 @pytest.mark.asyncio
@@ -98,7 +99,7 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
                          [[FaultType.Exception, 1,
-                           pytest.raises(RuntimeError, match='Fault Injection')],
+                           pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, 1,
                            pytest.raises(mars.oscar.ServerClosed)]])
 @pytest.mark.asyncio
@@ -131,7 +132,7 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     await fault_injection_manager.set_fault_count(1)
 
     # the extra config overwrites the default config.
-    extra_config['subtask_max_runs'] = 1
+    extra_config['subtask_max_retries'] = 0
     info = await session.execute(b, extra_config=extra_config)
     with expect_raises:
         await info

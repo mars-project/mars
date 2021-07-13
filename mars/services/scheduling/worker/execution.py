@@ -22,6 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
+import mars.oscar.errors
 from .... import oscar as mo
 from ....core.graph import DAG
 from ....core.operand import Fetch
@@ -39,7 +40,7 @@ from .quota import QuotaActor
 logger = logging.getLogger(__name__)
 
 # the default times to run subtask.
-DEFAULT_SUBTASK_MAX_RUNS = 1
+DEFAULT_SUBTASK_MAX_RETRIES = 0
 
 
 @dataslots
@@ -50,10 +51,66 @@ class SubtaskExecutionInfo:
     supervisor_address: str
     result: SubtaskResult = field(default_factory=SubtaskResult)
     cancelling: bool = False
-    max_runs: int = 1
-    num_runs: int = 0
+    max_retries: int = 0
+    num_retries: int = 0
     slot_id: Optional[int] = None
     kill_timeout: Optional[int] = None
+
+
+class SlotContext:
+    def __init__(self, subtask: Subtask,
+                 slot_manager_ref: Union[mo.ActorRef, BandSlotManagerActor]):
+        self._subtask = subtask
+        self._slot_manager_ref = slot_manager_ref
+        self._slot_id = None
+        self._should_kill_slot = False
+
+    @property
+    def slot_id(self):
+        return self._slot_id
+
+    def kill_slot_when_exit(self):
+        self._should_kill_slot = True
+
+    async def __aenter__(self):
+        self._slot_id = await self._slot_manager_ref.acquire_free_slot(
+                (self._subtask.session_id, self._subtask.subtask_id))
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if self._should_kill_slot:
+                try:
+                    # this may cause the failed slot to restart multiple times.
+                    await self._slot_manager_ref.kill_slot(self._slot_id)
+                except ConnectionError:
+                    pass
+                finally:
+                    # TODO(fyrestone): Make the slot management more reliable.
+                    # currently, the slot will not be freed if we kill slot failed.
+                    self._slot_id = None
+        finally:
+            if self._slot_id is not None:
+                await self._slot_manager_ref.release_free_slot(self._slot_id)
+
+
+async def _retry_run(subtask: Subtask,
+                     subtask_info: SubtaskExecutionInfo,
+                     target_async_func,
+                     *args):
+    assert subtask_info.num_retries >= 0
+    assert subtask_info.max_retries >= 0
+
+    while True:
+        try:
+            return await target_async_func(*args)
+        except (OSError, mars.oscar.errors.MarsError) as ex:
+            if subtask_info.num_retries < subtask_info.max_retries:
+                logger.error('rerun the %s of subtask %s due to %s',
+                             target_async_func, subtask.subtask_id, ex)
+                subtask_info.num_retries += 1
+                continue
+            raise ex
 
 
 class SubtaskExecutionActor(mo.Actor):
@@ -197,7 +254,7 @@ class SubtaskExecutionActor(mo.Actor):
             quota_ref = await self._get_band_quota_ref(band_name)
             slot_manager_ref = await self._get_slot_manager_ref(band_name)
 
-            yield self._prepare_input_data(subtask)
+            yield _retry_run(subtask, subtask_info, self._prepare_input_data, subtask)
 
             input_sizes = await self._collect_input_sizes(subtask, subtask_info.supervisor_address)
             loop = asyncio.get_running_loop()
@@ -250,74 +307,33 @@ class SubtaskExecutionActor(mo.Actor):
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str, subtask_api: SubtaskAPI):
         slot_manager_ref = await self._get_slot_manager_ref(band_name)
         subtask_info = self._subtask_info[subtask.subtask_id]
-        assert subtask_info.num_runs >= 0
-        assert subtask_info.max_runs > 0
+        assert subtask_info.num_retries >= 0
+        assert subtask_info.max_retries >= 0
 
-        class SlotContext:
-            def __init__(self):
-                self._slot_id = None
-
-            @property
-            def slot_id(self):
-                return self._slot_id
-
-            async def _cancel_subtask(self):
+        async def _run_subtask_once():
+            async with SlotContext(subtask, slot_manager_ref) as ctx:
                 try:
-                    await asyncio.wait_for(
-                            asyncio.shield(subtask_api.cancel_subtask_in_slot(
-                                    band_name, self._slot_id)),
-                            subtask_info.kill_timeout)
-                except asyncio.TimeoutError:
-                    return True
-                return False
-
-            async def __aenter__(self):
-                self._slot_id = await slot_manager_ref.acquire_free_slot(
-                        (subtask.session_id, subtask.subtask_id))
-                return self
-
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
-                try:
-                    if exc_type is None:
-                        should_kill_slot = False
-                    elif issubclass(exc_type, asyncio.CancelledError):
-                        should_kill_slot = await self._cancel_subtask()
-                    else:
-                        # TODO(fyrestone): Handle slot exception correctly.
-                        should_kill_slot = True
-
-                    if should_kill_slot:
-                        try:
-                            # this may cause the failed slot to restart multiple times.
-                            await slot_manager_ref.kill_slot(self._slot_id)
-                        except ConnectionError:
-                            pass
-                        finally:
-                            # TODO(fyrestone): Make the slot management more reliable.
-                            # currently, the slot will not be freed if we kill slot failed.
-                            self._slot_id = None
-                finally:
-                    if self._slot_id is not None:
-                        await slot_manager_ref.release_free_slot(self._slot_id)
-
-        last_ex = None
-        for _ in range(subtask_info.num_runs, subtask_info.max_runs):
-            subtask_info.num_runs += 1
-            try:
-                async with SlotContext() as ctx:
                     if subtask_info.cancelling:
                         raise asyncio.CancelledError
 
                     subtask_info.result.status = SubtaskStatus.running
                     return await asyncio.shield(subtask_api.run_subtask_in_slot(
                             band_name, ctx.slot_id, subtask))
-            except Exception as ex:
-                if subtask_info.num_runs < subtask_info.max_runs:
-                    logger.error('rerun subtask %s due to %s', subtask.subtask_id, ex)
-                last_ex = ex
-        else:
-            assert last_ex is not None, f'The {subtask} should be run at least once.'
-            raise last_ex
+                except asyncio.CancelledError as ex:
+                    try:
+                        await asyncio.wait_for(
+                                asyncio.shield(subtask_api.cancel_subtask_in_slot(
+                                        band_name, ctx.slot_id)),
+                                subtask_info.kill_timeout)
+                    except asyncio.TimeoutError:
+                        ctx.kill_slot_when_exit()
+                    raise ex
+                except Exception as ex:
+                    # TODO(fyrestone): Handle slot exception correctly.
+                    ctx.kill_slot_when_exit()
+                    raise ex
+
+        return await _retry_run(subtask, subtask_info, _run_subtask_once)
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):
@@ -325,15 +341,15 @@ class SubtaskExecutionActor(mo.Actor):
             task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
 
         # the extra_config may be None. the extra config overwrites the default config.
-        subtask_max_runs = (subtask.extra_config.get('subtask_max_runs')
-                            if subtask.extra_config else None)
-        if subtask_max_runs is None:
-            subtask_max_runs = self._default_config.get('subtask_max_runs',
-                                                        DEFAULT_SUBTASK_MAX_RUNS)
+        subtask_max_retries = (subtask.extra_config.get('subtask_max_retries')
+                               if subtask.extra_config else None)
+        if subtask_max_retries is None:
+            subtask_max_retries = self._default_config.get('subtask_max_retries',
+                                                           DEFAULT_SUBTASK_MAX_RETRIES)
 
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address,
-                                 max_runs=subtask_max_runs)
+                                 max_retries=subtask_max_retries)
         return task
 
     async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):

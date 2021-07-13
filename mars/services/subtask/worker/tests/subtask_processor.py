@@ -18,6 +18,7 @@ from typing import Any, Dict
 from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
 from mars.tests.core import _check_args, ObjectCheckMixin
+from mars.oscar.errors import FaultInjectionError
 
 from ....tests.fault_injection_manager import FaultType, ExtraConfigKey
 
@@ -93,7 +94,7 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
                                      op: OperandType):
         fault = await self._fault_injection_manager.on_execute_operand()
         if fault == FaultType.Exception:
-            raise RuntimeError("Fault Injection")
+            raise FaultInjectionError("Fault Injection")
         elif fault == FaultType.ProcessExit:
             # used to simulate process crash, no cleanup.
             os._exit(-1)

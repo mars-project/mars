@@ -2,4 +2,4 @@
 subtask:
   subtask_processor_cls: mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor
 scheduling:
-  subtask_max_runs: 2
+  subtask_max_retries: 2

@@ -18,7 +18,7 @@ from .... import oscar as mo
 from ....utils import calc_size_by_str
 from .workerslot import WorkerSlotManagerActor
 from .quota import WorkerQuotaManagerActor
-from .execution import SubtaskExecutionActor, DEFAULT_SUBTASK_MAX_RUNS
+from .execution import SubtaskExecutionActor, DEFAULT_SUBTASK_MAX_RETRIES
 
 
 async def start(config: Dict, address: str):
@@ -40,7 +40,7 @@ async def start(config: Dict, address: str):
         scheduling_config.get('mem_quota_size', '80%'), total_mem)
     mem_hard_limit = calc_size_by_str(
         scheduling_config.get('mem_hard_limit', '95%'), total_mem)
-    subtask_max_runs = scheduling_config.get('subtask_max_runs', DEFAULT_SUBTASK_MAX_RUNS)
+    subtask_max_retries = scheduling_config.get('subtask_max_retries', DEFAULT_SUBTASK_MAX_RETRIES)
 
     await mo.create_actor(WorkerSlotManagerActor,
                           uid=WorkerSlotManagerActor.default_uid(),
@@ -51,7 +51,7 @@ async def start(config: Dict, address: str):
                           uid=WorkerQuotaManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(SubtaskExecutionActor,
-                          default_config=dict(subtask_max_runs=subtask_max_runs),
+                          default_config=dict(subtask_max_retries=subtask_max_retries),
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
 

@@ -15,30 +15,38 @@
 # limitations under the License.
 
 
-class ActorPoolNotStarted(Exception):
+class MarsError(Exception):
     pass
 
 
-class ActorNotExist(Exception):
+class ActorPoolNotStarted(MarsError):
     pass
 
 
-class ActorAlreadyExist(Exception):
+class ActorNotExist(MarsError):
     pass
 
 
-class NoIdleSlot(Exception):
+class ActorAlreadyExist(MarsError):
     pass
 
 
-class ServerClosed(Exception):
+class NoIdleSlot(MarsError):
     pass
 
 
-class CannotCancelTask(Exception):
+class ServerClosed(MarsError):
     pass
 
 
-class Return(Exception):
+class CannotCancelTask(MarsError):
+    pass
+
+
+class Return(MarsError):
     def __init__(self, value):
         self.value = value
+
+
+class FaultInjectionError(MarsError):
+    pass
