@@ -21,9 +21,11 @@ import numpy as np
 import pytest
 
 import mars.oscar as mo
-from mars.services.storage.core import StorageManagerActor, StorageHandlerActor, \
-    StorageQuotaActor, calc_data_size, _build_data_info
+from mars.services.storage.core import StorageManagerActor, \
+    StorageQuotaActor, build_data_info
+from mars.services.storage.handler import StorageHandlerActor
 from mars.storage import StorageLevel, PlasmaStorage
+from mars.utils import calc_data_size
 
 
 MEMORY_SIZE = 100 * 1024
@@ -113,8 +115,8 @@ async def test_spill(create_actors):
 
     memory_object_list = await storage_handler.list(StorageLevel.MEMORY)
     disk_object_list = await storage_handler.list(StorageLevel.DISK)
-    assert len(memory_object_list) == 3
-    assert len(disk_object_list) == 7
+    assert len(memory_object_list) == 2
+    assert len(disk_object_list) == 8
 
     for key, data in zip(key_list, data_list):
         get_data = await storage_handler.get(session_id, key)
@@ -135,12 +137,13 @@ class DelayPutStorageHandler(StorageHandlerActor):
         # sleep to trigger `NoDataToSpill`
         await asyncio.sleep(0.5)
         object_info = await self._clients[level].put(obj)
-        data_info = _build_data_info(object_info, level, size)
+        data_info = build_data_info(object_info, level, size)
         await self._data_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
         if object_info.size is not None and data_info.memory_size != object_info.size:
             await self._quota_refs[level].update_quota(
                 object_info.size - data_info.memory_size)
+        await self.notify_spill_event(level)
         return data_info
 
 

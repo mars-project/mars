@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -19,8 +20,9 @@ from typing import List, Union, Tuple
 
 from ... import oscar as mo
 from ...storage import StorageLevel
-from .core import DataManagerActor, StorageHandlerActor
+from .core import DataManagerActor
 from .errors import NoDataToSpill
+from .handler import StorageHandlerActor
 
 logger = logging.getLogger(__name__)
 
@@ -105,20 +107,56 @@ class FIFOStrategy(SpillStrategy):
         return spill_sizes, spill_keys
 
 
+class SpillManagerActor(mo.Actor):
+    """
+    The actor to handle the race condition when NoDataToSpill happens.
+    There are two situations when spill raises `NoDataToSpill`,
+    one is that space is allocated while objects are not put into storage,
+    another is some objects are pinned that can not be spilled,
+    so we create an asyncio event if not have enough objects to spill,
+    when put or unpin happens, we will notify and check spillable size,
+    if size is enough for spilling, call event.set() to wake up spilling task.
+    """
+    def __init__(self, level: StorageLevel):
+        self._level = level
+        self._event = None
+
+    @classmethod
+    def gen_uid(cls, level: StorageLevel):
+        return f'spill_manager_{level}'
+
+    def create_spill_event(self, size):
+        self._event = event = asyncio.Event()
+        event.size = size
+
+    def notify_spill_event(self, spillable_size, quota_left):
+        event = self._event
+        if event is None:
+            return
+        if spillable_size + quota_left > event.size:
+            event.size = event.size - quota_left
+            event.set()
+
+    async def wait_spill_event(self):
+        yield self._event.wait()
+        size = self._event.size
+        self._event = None
+        raise mo.Return(size)
+
+
 async def spill(request_size: int,
-                object_size: int,
                 level: StorageLevel,
                 data_manager: Union[mo.ActorRef, DataManagerActor],
                 storage_handler: Union[mo.ActorRef, StorageHandlerActor],
                 block_size=None,
-                multiplier=1.2):
+                multiplier=1.1):
     logger.debug('%s is full, need to spill %s bytes, '
                  'multiplier is %s', level, request_size, multiplier)
     request_size *= multiplier
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
-        level, request_size, object_size)
+        level, request_size)
     logger.debug('Decide to spill %s bytes, '
                  'data keys are %s', sum(spill_sizes), spill_keys)
 
