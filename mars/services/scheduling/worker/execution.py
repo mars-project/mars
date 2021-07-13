@@ -266,13 +266,8 @@ class SubtaskExecutionActor(mo.Actor):
             batch_quota_req = self._build_quota_request(
                 subtask.subtask_id, calc_size, input_sizes)
 
-            quota_aiotask = asyncio.create_task(
-                quota_ref.request_batch_quota(batch_quota_req))
-            yield quota_aiotask
-            if subtask_info.cancelling:
-                raise asyncio.CancelledError
-
-            subtask_info.result = yield self._retry_run_subtask(subtask, band_name, subtask_api)
+            subtask_info.result = yield self._retry_run_subtask(
+                subtask, band_name, subtask_api, batch_quota_req)
         except asyncio.CancelledError as ex:
             subtask_info.result.status = SubtaskStatus.cancelled
             subtask_info.result.progress = 1.0
@@ -304,13 +299,18 @@ class SubtaskExecutionActor(mo.Actor):
                                                 subtask.session_id)
             yield task_api.set_subtask_result(subtask_info.result)
 
-    async def _retry_run_subtask(self, subtask: Subtask, band_name: str, subtask_api: SubtaskAPI):
+    async def _retry_run_subtask(self, subtask: Subtask, band_name: str,
+                                 subtask_api: SubtaskAPI, batch_quota_req):
+        quota_ref = await self._get_band_quota_ref(band_name)
         slot_manager_ref = await self._get_slot_manager_ref(band_name)
         subtask_info = self._subtask_info[subtask.subtask_id]
         assert subtask_info.num_retries >= 0
         assert subtask_info.max_retries >= 0
 
         async def _run_subtask_once():
+            # check quota each retry.
+            await quota_ref.request_batch_quota(batch_quota_req)
+
             async with SlotContext(subtask, slot_manager_ref) as ctx:
                 try:
                     if subtask_info.cancelling:
