@@ -27,6 +27,7 @@ from ...config import options
 from ...core import OutputType, ENTITY_TYPE, enter_mode, recursive_tile
 from ...core.custom_log import redirect_custom_log
 from ...core.operand import OperandStage
+from ...lib.version import parse as parse_version
 from ...serialization.serializables import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_current_session
 from ..core import INDEX_CHUNK_TYPE
@@ -38,6 +39,8 @@ from .core import CustomReduction, ReductionCompiler, ReductionSteps, ReductionP
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
+
+_agg_size_as_series = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 def where_function(cond, var1, var2):
@@ -511,7 +514,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
 
         if len(in_df.chunks) == 1:
             return cls._tile_single_chunk(op)
-        elif in_df.ndim == 2 and op.raw_func == 'size':
+        elif not _agg_size_as_series and in_df.ndim == 2 and op.raw_func == 'size':
             return (yield from cls._tile_size(op))
         else:
             return cls._tile_tree(op)
@@ -723,7 +726,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
                 cls._execute_combine(ctx, op)
             elif op.stage == OperandStage.agg:
                 cls._execute_agg(ctx, op)
-            elif op.raw_func == 'size':
+            elif not _agg_size_as_series and op.raw_func == 'size':
                 xp = cp if op.gpu else np
                 ctx[op.outputs[0].key] = xp.array(ctx[op.inputs[0].key].agg(op.raw_func, axis=op.axis)) \
                     .reshape(op.outputs[0].shape)

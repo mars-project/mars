@@ -15,13 +15,12 @@
 import asyncio
 from collections import defaultdict
 from functools import lru_cache
-from typing import List, Dict, Union
+from typing import List, Dict
 
 from .. import oscar as mo
-from ..core import TileableType
+from ..lib.aio import new_isolation
 from ..core.context import Context
-from ..core.session import AbstractAsyncSession, AbstractSyncSession, \
-    ExecutionInfo, _get_session, _execute, _fetch
+from ..typing import SessionType
 from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
@@ -45,6 +44,10 @@ class ThreadedServiceContext(Context):
                          supervisor_address=supervisor_address,
                          current_address=current_address)
         self._loop = loop
+        # new isolation with current loop,
+        # so that session created in tile and execute
+        # can get the right isolation
+        new_isolation(loop=self._loop, threaded=False)
 
         self._running_session_id = None
         self._running_op_key = None
@@ -73,10 +76,10 @@ class ThreadedServiceContext(Context):
         return fut.result()
 
     @implements(Context.get_current_session)
-    def get_current_session(self) -> AbstractSyncSession:
-        sess = self._call(_get_session(self.supervisor_address,
-                                       self.session_id))
-        return ThreadedServiceSession(sess, self._loop)
+    def get_current_session(self) -> SessionType:
+        from ..deploy.oscar.session import new_session
+
+        return new_session(self.supervisor_address, self.session_id)
 
     @implements(Context.get_supervisor_addresses)
     def get_supervisor_addresses(self) -> List[str]:
@@ -204,68 +207,3 @@ class _RemoteObjectWrapper:
             return fut.result()
 
         return wrap
-
-
-class ThreadedServiceSession(AbstractSyncSession):
-    def __init__(self,
-                 session: AbstractAsyncSession,
-                 loop: asyncio.AbstractEventLoop):
-        super().__init__(session.address, session.session_id)
-        self._session = session
-        self._loop = loop
-
-    @implements(AbstractSyncSession.execute)
-    def execute(self,
-                tileable,
-                *tileables,
-                **kwargs) -> Union[List[TileableType], TileableType, ExecutionInfo]:
-        wait = kwargs.get('wait', True)
-        if kwargs.get('show_progress', 'auto') == 'auto':
-            # disable progress show in context session
-            kwargs['show_progress'] = False
-        coro = _execute(tileable, *tileables, session=self, **kwargs)
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        execution_info = fut.result()
-        if wait:
-            return tileable if len(tileables) == 0 else \
-                [tileable] + list(tileables)
-        else:
-            return execution_info
-
-    @implements(AbstractSyncSession.fetch)
-    def fetch(self, *tileables, **kwargs) -> list:
-        coro = _fetch(*tileables, session=self._session, **kwargs)
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    @implements(AbstractSyncSession.decref)
-    def decref(self, *tileables_keys):
-        coro = self._session.decref(*tileables_keys)
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    @implements(AbstractSyncSession.fetch_tileable_op_logs)
-    def fetch_tileable_op_logs(self,
-                               tileable_op_key: str,
-                               offsets: Dict[str, List[int]],
-                               sizes: Dict[str, List[int]]) -> Dict:
-        coro = self._session.fetch_tileable_op_logs(
-            tileable_op_key, offsets, sizes)
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    @implements(AbstractSyncSession.get_total_n_cpu)
-    def get_total_n_cpu(self):
-        coro = self._session.get_total_n_cpu()
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    @implements(AbstractSyncSession.get_cluster_versions)
-    def get_cluster_versions(self) -> List[str]:
-        coro = self._session.get_cluster_versions()
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return fut.result()
-
-    @implements(AbstractSyncSession.to_async)
-    def to_async(self) -> AbstractAsyncSession:
-        return self._session

@@ -21,10 +21,10 @@ except ImportError:  # pragma: no cover
 
 from mars import tensor as mt
 from mars.core import tile
-from mars.core.session import execute, fetch
 from mars.learn.neighbors._faiss import build_faiss_index, _load_index, \
     faiss_query, _gen_index_string_and_sample_count
 from mars.learn.neighbors import NearestNeighbors
+from mars.session import execute, fetch
 from mars.tests import setup
 
 

@@ -124,13 +124,13 @@ class SubtaskProcessor:
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
                     fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
-            logger.info(f'Start getting input data keys: {keys}, '
-                        f'subtask id: {self.subtask.subtask_id}')
+            logger.debug('Start getting input data keys: %s, '
+                         'subtask id: %s', keys, self.subtask.subtask_id)
             await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
-            logger.info(f'Finish getting input data keys: {keys}, '
-                        f'subtask id: {self.subtask.subtask_id}')
+            logger.debug('Finish getting input data keys: %s, '
+                         'subtask id: %s', keys, self.subtask.subtask_id)
         return keys
 
     @staticmethod
@@ -186,22 +186,26 @@ class SubtaskProcessor:
             if chunk.key not in self._datastore:
                 # since `op.execute` may be a time-consuming operation,
                 # we make it run in a thread pool to not block current thread.
-                logger.info(f'Start executing operand: {chunk.op},'
-                            f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                logger.debug('Start executing operand: %s,'
+                             'chunk: %s, subtask id: %s', chunk.op, chunk,
+                             self.subtask.subtask_id)
                 future = await self._async_execute_operand(loop, executor,
                                                            self._datastore, chunk.op)
                 try:
                     await future
-                    logger.info(f'Finish executing operand: {chunk.op},'
-                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                    logger.debug('Finish executing operand: %s,'
+                                 'chunk: %s, subtask id: %s', chunk.op, chunk,
+                                 self.subtask.subtask_id)
                 except asyncio.CancelledError:
-                    logger.info(f'Receive cancel instruction for operand: {chunk.op},'
-                                f'chunk: {chunk}, subtask id: {self.subtask.subtask_id}')
+                    logger.debug('Receive cancel instruction for operand: %s,'
+                                 'chunk: %s, subtask id: %s', chunk.op, chunk,
+                                 self.subtask.subtask_id)
                     # wait for this computation to finish
                     await loop.run_in_executor(None, executor.shutdown)
-                    # if cancelled, stop next computation,
-                    logger.info(f'Cancelled operand: {chunk.op}, chunk: {chunk}, '
-                                f'subtask id: {self.subtask.subtask_id}')
+                    # if cancelled, stop next computation
+                    logger.debug('Cancelled operand: %s, chunk: %s, '
+                                 'subtask id: %s', chunk.op, chunk,
+                                 self.subtask.subtask_id)
                     self.result.status = SubtaskStatus.cancelled
                     raise
 
@@ -255,8 +259,8 @@ class SubtaskProcessor:
                     result_data = self._datastore[key]
                     put = self._storage_api.put.delay(key, result_data)
                     data_key_to_puts[data_key].append(put)
-        logger.info(f'Start putting data keys: {stored_keys}, '
-                    f'subtask id: {self.subtask.subtask_id}')
+        logger.debug('Start putting data keys: %s, '
+                     'subtask id: %s', stored_keys, self.subtask.subtask_id)
         puts = list(chain(*data_key_to_puts.values()))
         data_key_to_store_size = defaultdict(lambda: 0)
         data_key_to_memory_size = defaultdict(lambda: 0)
@@ -270,15 +274,15 @@ class SubtaskProcessor:
                         store_info = next(store_infos_iter)
                         data_key_to_store_size[data_key] += store_info.store_size
                         data_key_to_memory_size[data_key] += store_info.memory_size
-                logger.info(f'Finish putting data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Finish putting data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
-                logger.info(f'Cancelling put data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Cancelling put data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 put_infos.cancel()
 
-                logger.info(f'Cancelled put data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Cancelled put data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 self.result.status = SubtaskStatus.cancelled
                 raise
 
@@ -302,18 +306,18 @@ class SubtaskProcessor:
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,
                     store_size=store_size, bands=[self._band]))
-        logger.info(f'Start storing chunk metas for data keys: {stored_keys}, '
-                    f'subtask id: {self.subtask.subtask_id}')
+        logger.debug('Start storing chunk metas for data keys: %s, '
+                     'subtask id: %s', stored_keys, self.subtask.subtask_id)
         if set_chunk_metas:
             set_chunks_meta = asyncio.create_task(
                 self._meta_api.set_chunk_meta.batch(*set_chunk_metas))
             try:
                 await set_chunks_meta
-                logger.info(f'Finish store chunk metas for data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Finish store chunk metas for data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
-                logger.info(f'Cancelling store chunk metas for data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Cancelling store chunk metas for data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 set_chunks_meta.cancel()
 
                 # remote stored data
@@ -323,8 +327,8 @@ class SubtaskProcessor:
                 await self._storage_api.delete.batch(*deletes)
 
                 self.result.status = SubtaskStatus.cancelled
-                logger.info(f'Cancelled store chunk metas for data keys: {stored_keys}, '
-                            f'subtask id: {self.subtask.subtask_id}')
+                logger.debug('Cancelled store chunk metas for data keys: %s, '
+                             'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 raise
         # set result data size
         self.result.data_size = sum(memory_sizes)
@@ -446,7 +450,7 @@ class SubtaskProcessorActor(mo.Actor):
         set_context(context)
 
     async def run(self, subtask: Subtask):
-        logger.info(f'Start to run subtask: {subtask.subtask_id}')
+        logger.debug('Start to run subtask: %s', subtask.subtask_id)
 
         assert subtask.session_id == self._session_id
 
@@ -470,8 +474,7 @@ class SubtaskProcessorActor(mo.Actor):
         return self._last_processor.result
 
     async def cancel(self):
-        logger.info(f'Cancelling subtask: '
-                    f'{self._processor.subtask_id}')
+        logger.debug('Cancelling subtask: %s', self._processor.subtask_id)
 
         aio_task = self._running_aio_task
         aio_task.cancel()

@@ -105,7 +105,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
                 # non tensor
                 value_chunk = value
             chunk_op = TensorIndexSetValue(dtype=op.dtype, sparse=op.sparse,
-                                           indexes=index_chunk.op.indexes, value=value_chunk)
+                                           indexes=tuple(index_chunk.op.indexes),
+                                           value=value_chunk)
             chunk_inputs = filter_inputs([chunk] + index_chunk.op.indexes + [value_chunk])
             out_chunk = chunk_op.new_chunk(chunk_inputs, shape=chunk.shape,
                                            index=chunk.index, order=tensor.order)

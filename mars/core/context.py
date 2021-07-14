@@ -16,7 +16,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Dict
 
-from .session import SyncSession
+from ..typing import SessionType
 
 
 class Context(ABC):
@@ -49,7 +49,7 @@ class Context(ABC):
         self.current_address = current_address
 
     @abstractmethod
-    def get_current_session(self) -> SyncSession:
+    def get_current_session(self) -> SessionType:
         """
         Get current session
 

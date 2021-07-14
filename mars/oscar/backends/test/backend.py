@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from ...backend import register_backend
-from ..mars.backend import MarsActorBackend
+from ..mars.backend import MarsActorBackend, build_pool_kwargs
 from .pool import TestMainActorPool
 
 
@@ -30,6 +30,7 @@ class TestActorBackend(MarsActorBackend):
             **kwargs):
         from ..pool import create_actor_pool
 
+        n_process, kwargs = build_pool_kwargs(n_process, kwargs)
         return await create_actor_pool(
             address, pool_cls=TestMainActorPool,
             n_process=n_process, **kwargs)

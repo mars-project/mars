@@ -39,6 +39,7 @@ class ActorPoolConfig:
                       env: Dict = None,
                       modules: List[str] = None,
                       suspend_sigint: bool = False,
+                      use_uvloop: bool = False,
                       kwargs: Dict = None):
         pools: Dict = self._conf['pools']
         if not isinstance(external_address, list):
@@ -50,6 +51,7 @@ class ActorPoolConfig:
             'env': env,
             'modules': modules,
             'suspend_sigint': suspend_sigint,
+            'use_uvloop': use_uvloop,
             'kwargs': kwargs or {},
         }
         for addr in external_address:

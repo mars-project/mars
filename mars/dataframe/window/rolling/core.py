@@ -14,10 +14,15 @@
 
 from collections import OrderedDict
 
+import pandas as pd
+
+from ....lib.version import parse as parse_version
 from ....serialization.serializables import AnyField, Int64Field, BoolField, StringField, Int32Field
 from ...core import DATAFRAME_TYPE
 from ...utils import build_empty_df, build_empty_series, validate_axis
 from ..core import Window
+
+_window_has_method = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 class Rolling(Window):
@@ -28,11 +33,13 @@ class Rolling(Window):
     _on = StringField('on')
     _axis = Int32Field('axis')
     _closed = StringField('closed')
+    _method = StringField('method')
 
     def __init__(self, window=None, min_periods=None, center=None, win_type=None, on=None,
-                 axis=None, closed=None, **kw):
+                 axis=None, closed=None, method=None, **kw):
         super().__init__(_window=window, _min_periods=min_periods, _center=center,
-                         _win_type=win_type, _on=on, _axis=axis, _closed=closed, **kw)
+                         _win_type=win_type, _on=on, _axis=axis, _closed=closed,
+                         _method=method, **kw)
 
     @property
     def window(self):
@@ -63,10 +70,21 @@ class Rolling(Window):
         return self._closed
 
     @property
+    def method(self):
+        return self._method or 'single'
+
+    @property
     def params(self):
         p = OrderedDict()
-        for attr in ['window', 'min_periods', 'center',
-                     'win_type', 'axis', 'on', 'closed']:
+
+        if not _window_has_method:  # pragma: no cover
+            args = ['window', 'min_periods', 'center', 'win_type',
+                    'axis', 'on', 'closed']
+        else:
+            args = ['window', 'min_periods', 'center', 'win_type',
+                    'axis', 'on', 'closed', 'method']
+
+        for attr in args:
             p[attr] = getattr(self, attr)
         return p
 

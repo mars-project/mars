@@ -225,6 +225,7 @@ Apache Software Foundation License 2.0
 - vineyard:0.1.2
 - ray:1.4.0
 - aiohttp:3.7.0
+- uvloop:0.15.2
 
 
 BSD 3-Clause

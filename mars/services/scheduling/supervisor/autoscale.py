@@ -88,6 +88,8 @@ class AutoscalerActor(mo.Actor):
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         worker_address = await self._cluster_api.request_worker_node(worker_cpu, worker_mem, timeout)
         self._dynamic_workers.add(worker_address)
+        logger.info("Requested new workers %s, current dynamic worker nums is %s",
+                    worker_address, self.get_dynamic_worker_nums())
         return worker_address
 
     async def release_worker_node(self, address: str):
@@ -179,18 +181,15 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
     async def _scale_out(self, queueing_refs):
         logger.info("Try to scale out, current dynamic workers %s", self._autoscaler.get_dynamic_worker_nums())
         start_time = time.time()
-        worker_address = await self._autoscaler.request_worker_node()
-        logger.info("Requested new worker %s", worker_address)
+        await self._autoscaler.request_worker_node()
         await asyncio.sleep(self._scheduler_backlog_timeout)
         rnd = 1
         while any([await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]):
             worker_num = 2 ** rnd
             if self._autoscaler.get_dynamic_worker_nums() + worker_num > self._max_workers:
                 worker_num = self._max_workers - self._autoscaler.get_dynamic_worker_nums()
-            worker_addresses = await asyncio.gather(
+            await asyncio.gather(
                 *[self._autoscaler.request_worker_node() for _ in range(worker_num)])
-            logger.info("Requested new workers %s, current dynamic workers %s",
-                        worker_addresses, self._autoscaler.get_dynamic_worker_nums())
             rnd += 1
             await asyncio.sleep(self._sustained_scheduler_backlog_timeout)
         logger.info("Scale out finished in %s round, took %s seconds, current dynamic workers %s",

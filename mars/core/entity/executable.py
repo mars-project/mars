@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import concurrent.futures
+import threading
 from typing import List
 from weakref import WeakKeyDictionary, ref
 
+from ...lib.aio import get_isolation
 from ...typing import SessionType, TileableType
 from ..mode import enter_mode
+
+
+_decref_pool = concurrent.futures.ThreadPoolExecutor()
 
 
 class _TileableSession:
@@ -26,13 +33,30 @@ class _TileableSession:
         key = tileable.key
 
         def cb(_, sess=ref(session)):
-            s = sess()
-            if s:
-                s = s.to_sync()
-                try:
-                    s.decref(key)
-                except (RuntimeError, ConnectionError):
-                    pass
+            try:
+                cur_thread_ident = threading.current_thread().ident
+                decref_in_isolation = get_isolation().thread_ident == cur_thread_ident
+            except KeyError:
+                # isolation destroyed, no need to decref
+                return
+
+            def decref():
+                from ...deploy.oscar.session import SyncSession
+                s = sess()
+                if s:
+                    try:
+                        s = SyncSession.from_isolated_session(s)
+                        s.decref(key)
+                    except (RuntimeError, ConnectionError, KeyError):
+                        pass
+
+            fut = _decref_pool.submit(decref)
+            if not decref_in_isolation:
+                # if decref in isolation, means that this tileable
+                # is not required for main thread, thus we do not need
+                # to wait for decref, otherwise, wait it
+                fut.result()
+
         self.tileable = ref(tileable, cb)
 
 
@@ -59,7 +83,7 @@ _cleaner = _TileableDataCleaner()
 def _get_session(
         executable: "_ExecutableMixin",
         session: SessionType = None):
-    from ..session import get_default_session
+    from ...deploy.oscar.session import get_default_session
 
     if session is None and len(executable._executed_sessions) > 0:
         session = executable._executed_sessions[-1]
@@ -74,7 +98,7 @@ class _ExecutableMixin:
     _executed_sessions: List[SessionType]
 
     def execute(self, session: SessionType = None, **kw):
-        from ..session import execute
+        from ...deploy.oscar.session import execute
 
         session = _get_session(self, session)
         return execute(self, session=session, **kw)
@@ -91,7 +115,7 @@ class _ExecutableMixin:
                 f'Tileable object {key} must be executed first before {action}')
 
     def _fetch(self, session: SessionType = None, **kw):
-        from ..session import fetch
+        from ...deploy.oscar.session import fetch
 
         session = _get_session(self, session)
         self._check_session(session, 'fetch')
@@ -104,7 +128,7 @@ class _ExecutableMixin:
                   session: SessionType = None,
                   offsets: List[int] = None,
                   sizes: List[int] =None):
-        from ..session import fetch_log
+        from ...deploy.oscar.session import fetch_log
 
         session = _get_session(self, session)
         self._check_session(session, 'fetch_log')
@@ -112,8 +136,9 @@ class _ExecutableMixin:
                          offsets=offsets, sizes=sizes)[0]
 
     def _attach_session(self, session: SessionType):
-        _cleaner.register(self, session)
-        self._executed_sessions.append(session)
+        if session not in self._executed_sessions:
+            _cleaner.register(self, session)
+            self._executed_sessions.append(session)
 
 
 class _ExecuteAndFetchMixin:
@@ -121,22 +146,24 @@ class _ExecuteAndFetchMixin:
 
     def _execute_and_fetch(self,
                            session: SessionType = None, **kw):
-        from ..session import ExecutionInfo, _pool, _loop, _fetch
+        from ...deploy.oscar.session import ExecutionInfo, SyncSession, fetch
 
         session = _get_session(self, session)
         fetch_kwargs = kw.pop('fetch_kwargs', dict())
         ret = self.execute(session=session, **kw)
         if isinstance(ret, ExecutionInfo):
             # wait=False
-            fut = ret.aio_future
+            aio_task = ret.aio_task
+
+            async def _wait():
+                await aio_task
 
             def run():
-                _loop.run_until_complete(fut)
-                return _loop.run_until_complete(
-                    _fetch(self, session=session, **fetch_kwargs)
-                )
+                asyncio.run_coroutine_threadsafe(
+                    _wait(), loop=ret.loop).result()
+                return fetch(self, session=session, **fetch_kwargs)
 
-            return _pool.submit(run)
+            return SyncSession._execution_pool.submit(run)
         else:
             # wait=True
             return self.fetch(session=session, **fetch_kwargs)
@@ -183,7 +210,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         return '%s(%s)' % (self._raw_type.__name__, ', '.join(items))
 
     def execute(self, session: SessionType = None, **kw):
-        from ..session import execute
+        from ...deploy.oscar.session import execute
 
         if len(self) == 0:
             return self
@@ -196,7 +223,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
             return ret
 
     def _fetch(self, session: SessionType = None, **kw):
-        from ..session import fetch
+        from ...deploy.oscar.session import fetch
 
         session = _get_session(self, session)
         self._check_session(session, 'fetch')
@@ -216,7 +243,7 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
                   session: SessionType = None,
                   offsets: List[int] = None,
                   sizes: List[int] = None):
-        from ..session import fetch_log
+        from ...deploy.oscar.session import fetch_log
 
         if len(self) == 0:
             return []

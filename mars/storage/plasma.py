@@ -17,6 +17,7 @@
 import asyncio
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple
 
 import psutil
@@ -94,12 +95,17 @@ class PlasmaObjectInfo(ObjectInfo):
     buffer: memoryview = None
     plasma_socket: str = None
 
+    @classmethod
+    @lru_cache(5)
+    def _get_plasma_client(cls, socket):
+        return plasma.connect(socket)
+
     def __getstate__(self):
         return self.size, self.device, self.object_id, self.plasma_socket
 
     def __setstate__(self, state):
         self.size, self.device, self.object_id, self.plasma_socket = state
-        client = plasma.connect(self.plasma_socket)
+        client = self._get_plasma_client(self.plasma_socket)
         [self.buffer] = client.get_buffers([self.object_id])
 
 
@@ -162,7 +168,7 @@ class PlasmaStorage(StorageBackend):
         if kwargs:
             raise TypeError(f'PlasmaStorage got unexpected config: {",".join(kwargs)}')
 
-        store_memory = calc_size_by_str(store_memory, virtual_memory().total)
+        store_memory = int(calc_size_by_str(store_memory, virtual_memory().total) * 0.95)
         plasma_store = plasma.start_plasma_store(
             store_memory, plasma_directory=plasma_directory)
         plasma_socket = (await loop.run_in_executor(

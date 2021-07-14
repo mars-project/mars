@@ -25,8 +25,8 @@ except ImportError:
     sklearn = None
 
 from mars import tensor as mt
-from mars.core.session import execute, fetch
 from mars.learn.metrics import pairwise_distances, pairwise_distances_topk
+from mars.session import execute, fetch
 from mars.tests import setup
 
 

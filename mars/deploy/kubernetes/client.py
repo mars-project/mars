@@ -21,8 +21,9 @@ import time
 import uuid
 from urllib.parse import urlparse
 
-from ...core.session import new_session
+from ...lib.aio import new_isolation, stop_isolation
 from ...services.cluster.api import WebClusterAPI
+from ...session import new_session
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSupervisorsConfig, MarsWorkersConfig
@@ -268,7 +269,7 @@ class KubernetesCluster:
             self._timeout -= time.time() - start_time
 
     def _wait_web_ready(self):
-        loop = asyncio.get_event_loop()
+        loop = new_isolation().loop
 
         async def get_supervisors():
             start_time = time.time()
@@ -283,7 +284,7 @@ class KubernetesCluster:
                     if self._timeout is not None and time.time() - start_time > self._timeout:
                         raise TimeoutError('Wait for kubernetes cluster timed out') from None
 
-        loop.run_until_complete(get_supervisors())
+        asyncio.run_coroutine_threadsafe(get_supervisors(), loop).result()
 
     def _load_cluster_logs(self):
         log_dict = dict()
@@ -314,6 +315,9 @@ class KubernetesCluster:
             raise
 
     def stop(self, wait=False, timeout=0):
+        # stop isolation
+        stop_isolation()
+
         from kubernetes.client import CoreV1Api
         api = CoreV1Api(self._api_client)
         api.delete_namespace(self._namespace)

@@ -1,0 +1,6 @@
+"@inherits": '@mars/deploy/oscar/rayconfig.yml'
+third_party_modules:
+  supervisor:
+    - mars.deploy.oscar.tests.modules.output_pid
+  worker:
+    - mars.deploy.oscar.tests.modules.output_pid

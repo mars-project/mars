@@ -16,7 +16,7 @@ import asyncio
 import os
 import sys
 import time
-from typing import Tuple
+from typing import Tuple, Union
 
 import pytest
 import pandas as pd
@@ -61,43 +61,58 @@ async def actor_pool(request):
             (pool.external_address, 'numa-0'), n_slots, global_slots_ref,
             uid=BandSlotManagerActor.gen_uid('numa-0'),
             address=pool.external_address)
-        yield pool, slot_manager_ref
+        try:
+            yield pool, slot_manager_ref
+        finally:
+            await slot_manager_ref.destroy()
+
+ActorPoolType = Tuple[mo.MainActorPoolType, Union[BandSlotManagerActor, mo.ActorRef]]
 
 
 class TaskActor(mo.Actor):
-    def __init__(self, call_logs):
+    def __init__(self, call_logs, slot_id=0):
         self._call_logs = call_logs
         self._dispatch_ref = None
+        self._slot_id = slot_id
+
+    @classmethod
+    def gen_uid(cls, slot_id):
+        return f'{slot_id}_task_actor'
 
     async def __post_create__(self):
         self._dispatch_ref = await mo.actor_ref(
             BandSlotManagerActor.gen_uid('numa-0'), address=self.address)
-        await self._dispatch_ref.release_free_slot.tell(self.ref())
+        await self._dispatch_ref.release_free_slot.tell(self._slot_id)
 
     async def queued_call(self, key, delay):
         try:
             self._call_logs[key] = time.time()
             await asyncio.sleep(delay)
         finally:
-            await self._dispatch_ref.release_free_slot(self.ref())
+            await self._dispatch_ref.release_free_slot(self._slot_id)
+
+    def get_call_logs(self):
+        return self._call_logs
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('actor_pool', [0], indirect=True)
-async def test_slot_assign(actor_pool):
+async def test_slot_assign(actor_pool: ActorPoolType):
     pool, slot_manager_ref = actor_pool
 
     call_logs = dict()
     group_size = 4
     delay = 1
     await asyncio.gather(*(
-        mo.create_actor(TaskActor, call_logs, address=pool.external_address)
-        for _ in range(group_size)
+        mo.create_actor(TaskActor, call_logs, slot_id=slot_id,
+                        uid=TaskActor.gen_uid(slot_id), address=pool.external_address)
+        for slot_id in range(group_size)
     ))
     assert len((await slot_manager_ref.dump_data()).free_slots) == group_size
 
     async def task_fun(idx):
-        ref = await slot_manager_ref.acquire_free_slot('subtask_id')
+        slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
+        ref = await mo.actor_ref(uid=TaskActor.gen_uid(slot_id), address=pool.external_address)
         await ref.queued_call(idx, delay)
 
     tasks = []
@@ -132,7 +147,7 @@ async def test_slot_assign(actor_pool):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('actor_pool', [1], indirect=True)
-async def test_slot_kill(actor_pool):
+async def test_slot_kill(actor_pool: ActorPoolType):
     pool, slot_manager_ref = actor_pool
 
     strategy = IdleLabel('numa-0', 'task_actor')
@@ -147,19 +162,65 @@ async def test_slot_kill(actor_pool):
 
     # check if process hosting the actor is closed
     kill_task = asyncio.create_task(slot_manager_ref.kill_slot(0))
+    await asyncio.sleep(0)
+    kill_task2 = asyncio.create_task(slot_manager_ref.kill_slot(0))
+
     with pytest.raises(ServerClosed):
         await delayed_task
 
     # check if slot actor is restored
     await kill_task
+    # check if secondary task makes no change
+    await kill_task2
+
     assert await mo.actor_ref(BandSlotControlActor.gen_uid('numa-0', 0),
                               address=pool.external_address)
     assert await mo.actor_ref(task_ref)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('actor_pool', [3], indirect=True)
+async def test_slot_restart(actor_pool: ActorPoolType):
+    pool, slot_manager_ref = actor_pool
+
+    strategy = IdleLabel('numa-0', 'task_actor')
+    task_refs = []
+    for idx in range(3):
+        ref = await mo.create_actor(
+            TaskActor, {}, slot_id=idx, allocate_strategy=strategy,
+            address=pool.external_address)
+        await ref.queued_call('idx', idx)
+        task_refs.append(ref)
+
+    await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id1'))
+    slot_id2 = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'))
+    await slot_manager_ref.release_free_slot(slot_id2)
+
+    async def record_finish_time(coro):
+        await coro
+        return time.time()
+
+    restart_task1 = asyncio.create_task(record_finish_time(
+        slot_manager_ref.restart_free_slots()))
+    await asyncio.sleep(0)
+    restart_task2 = asyncio.create_task(record_finish_time(
+        slot_manager_ref.restart_free_slots()))
+    acquire_task = asyncio.create_task(record_finish_time(
+        slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'))))
+
+    await asyncio.gather(restart_task1, restart_task2, acquire_task)
+
+    # check only slots with running records are restarted
+    assert len(await task_refs[0].get_call_logs()) > 0
+    assert len(await task_refs[1].get_call_logs()) == 0
+    assert len(await task_refs[2].get_call_logs()) > 0
+
+    assert abs(restart_task1.result() - acquire_task.result()) < 0.1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('actor_pool', [1], indirect=True)
-async def test_report_usage(actor_pool):
+async def test_report_usage(actor_pool: ActorPoolType):
     pool, slot_manager_ref = actor_pool
 
     await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))

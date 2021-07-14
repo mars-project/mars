@@ -9,7 +9,7 @@
 /mars/core                 @qinxuye @hekaisheng @wjsi
 /mars/dataframe            @hekaisheng @qinxuye @wjsi
 /mars/deploy               @wjsi @hekaisheng @qinxuye
-/mars/deploy/oscar/ray     @chaokunyang @fyrestone @qinxuye
+/mars/deploy/oscar/ray*    @chaokunyang @fyrestone @qinxuye
 /mars/learn                @qinxuye @hekaisheng @wjsi
 /mars/lib                  @wjsi @qinxuye
 /mars/optimization         @hekaisheng @qinxuye
