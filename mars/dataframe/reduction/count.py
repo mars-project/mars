@@ -40,13 +40,15 @@ class DataFrameCount(DataFrameReductionOperand, DataFrameReductionMixin):
 
 def count_series(series, level=None, combine_size=None, **kw):
     use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
+    method = kw.pop('method', None)
     op = DataFrameCount(level=level, combine_size=combine_size, output_types=[OutputType.scalar],
-                        use_inf_as_na=use_inf_as_na)
+                        use_inf_as_na=use_inf_as_na, method=method)
     return op(series)
 
 
 def count_dataframe(df, axis=0, level=None, numeric_only=False, combine_size=None, **kw):
     use_inf_as_na = kw.pop('_use_inf_as_na', options.dataframe.mode.use_inf_as_na)
+    method = kw.pop('method', None)
     op = DataFrameCount(axis=axis, level=level, numeric_only=numeric_only, combine_size=combine_size,
-                        output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
+                        output_types=[OutputType.series], use_inf_as_na=use_inf_as_na, method=method)
     return op(df)

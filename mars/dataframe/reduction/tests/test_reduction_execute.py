@@ -117,7 +117,7 @@ def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
     ], names=['a', 'b'])
     data = pd.Series(rs.randint(0, 8, size=(100,)), index=idx)
 
-    r = compute(md.Series(data, chunk_size=13), level=1)
+    r = compute(md.Series(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
@@ -128,17 +128,17 @@ def test_series_level_reduction(setup, func_name, func_opts: FunctionOptions):
     data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
     data[int(idx_df[idx_df.b == 'B'].iloc[0, 0])] = 0.1
 
-    r = compute(md.Series(data, chunk_size=13), level=1)
+    r = compute(md.Series(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
-    r = compute(md.Series(data, chunk_size=13), level=1, skipna=False)
+    r = compute(md.Series(data, chunk_size=13), level=1, skipna=False, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1, skipna=False).sort_index(),
         r.execute().fetch().sort_index())
 
     if func_opts.has_min_count:
-        r = compute(md.Series(data, chunk_size=13), min_count=1, level=1)
+        r = compute(md.Series(data, chunk_size=13), min_count=1, level=1, method='tree')
         pd.testing.assert_series_equal(
             compute(data, min_count=1, level=1).sort_index(),
             r.execute().fetch().sort_index())
@@ -236,11 +236,11 @@ def test_dataframe_level_reduction(setup, check_ref_counts, func_name, func_opts
     ], names=['a', 'b'])
     data = pd.DataFrame(rs.rand(100, 10), index=idx)
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, numeric_only=True, level=1).sort_index(),
         r.execute().fetch().sort_index())
@@ -249,17 +249,17 @@ def test_dataframe_level_reduction(setup, check_ref_counts, func_name, func_opts
     data = pd.DataFrame(rs.rand(100, 10), index=idx)
     data[data > 0.6] = np.nan
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1, skipna=False).sort_index(),
         r.execute().fetch().sort_index())
 
     if func_opts.has_min_count:
-        r = compute(md.DataFrame(data, chunk_size=13), level=1, min_count=10)
+        r = compute(md.DataFrame(data, chunk_size=13), level=1, min_count=10, method='tree')
         pd.testing.assert_frame_equal(
             compute(data, level=1, min_count=10).sort_index(),
             r.execute().fetch().sort_index())
@@ -276,7 +276,7 @@ def test_dataframe_level_reduction(setup, check_ref_counts, func_name, func_opts
         data_dict['bool'] = rs.choice([True, False], (100,))
         data = pd.DataFrame(data_dict, index=idx)
 
-        r = compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True)
+        r = compute(md.DataFrame(data, chunk_size=13), level=1, numeric_only=True, method='tree')
         pd.testing.assert_frame_equal(
             compute(data, level=1, numeric_only=True).sort_index(),
             r.execute().fetch().sort_index())
@@ -368,7 +368,7 @@ def test_series_bool_level_reduction(setup, check_ref_counts, func_name):
     ], names=['a', 'b'])
     data = pd.Series(rs.randint(0, 8, size=(100,)), index=idx)
 
-    r = compute(md.Series(data, chunk_size=13), level=1)
+    r = compute(md.Series(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
@@ -379,11 +379,11 @@ def test_series_bool_level_reduction(setup, check_ref_counts, func_name):
     data[int(idx_df[idx_df.b == 'A'].iloc[0, 0])] = 0.1
     data[int(idx_df[idx_df.b == 'B'].iloc[0, 0])] = 0.1
 
-    r = compute(md.Series(data, chunk_size=13), level=1)
+    r = compute(md.Series(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
-    r = compute(md.Series(data, chunk_size=13), level=1, skipna=False)
+    r = compute(md.Series(data, chunk_size=13), level=1, skipna=False, method='tree')
     pd.testing.assert_series_equal(
         compute(data, level=1, skipna=False).sort_index(),
         r.execute().fetch().sort_index())
@@ -403,10 +403,10 @@ def test_dataframe_bool_reduction(setup, check_ref_counts, func_name):
     r = compute(md.DataFrame(data, chunk_size=3))
     pd.testing.assert_series_equal(compute(data), r.execute().fetch())
 
-    r = compute(md.DataFrame(data, chunk_size=6), axis='index', bool_only=True)
+    r = compute(md.DataFrame(data, chunk_size=6), axis='index', bool_only=True, method='tree')
     pd.testing.assert_series_equal(
         compute(data, axis='index', bool_only=True),
-        r.execute(extra_config={'check_index_value': False}).fetch())
+        r.execute(extra_config={'check_all': False}).fetch())
 
     r = compute(md.DataFrame(data, chunk_size=3), axis=1)
     pd.testing.assert_series_equal(
@@ -464,7 +464,7 @@ def test_dataframe_bool_level_reduction(setup, check_ref_counts, func_name):
     data = pd.DataFrame(rs.rand(100, 10), index=idx)
     data.iloc[:, :5] = data.iloc[:, :5] > 0.5
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
@@ -472,11 +472,11 @@ def test_dataframe_bool_level_reduction(setup, check_ref_counts, func_name):
     data = pd.DataFrame(rs.rand(100, 10), index=idx)
     data[data > 0.6] = np.nan
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1).sort_index(), r.execute().fetch().sort_index())
 
-    r = compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False)
+    r = compute(md.DataFrame(data, chunk_size=13), level=1, skipna=False, method='tree')
     pd.testing.assert_frame_equal(
         compute(data, level=1, skipna=False).sort_index(),
         r.execute().fetch().sort_index())

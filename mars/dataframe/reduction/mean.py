@@ -31,16 +31,18 @@ class DataFrameMean(DataFrameReductionOperand, DataFrameReductionMixin):
         return mean
 
 
-def mean_series(df, axis=None, skipna=None, level=None, combine_size=None):
+def mean_series(df, axis=None, skipna=None, level=None, combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMean(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                       output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na)
+                       output_types=[OutputType.scalar], use_inf_as_na=use_inf_as_na,
+                       method=method)
     return op(df)
 
 
-def mean_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None):
+def mean_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None,
+                   combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameMean(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
                        combine_size=combine_size, output_types=[OutputType.series],
-                       use_inf_as_na=use_inf_as_na)
+                       use_inf_as_na=use_inf_as_na, method=method)
     return op(df)
