@@ -333,7 +333,11 @@ class SubtaskExecutionActor(mo.Actor):
                     ctx.kill_slot_when_exit()
                     raise ex
 
-        return await _retry_run(subtask, subtask_info, _run_subtask_once)
+        retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
+        if retryable:
+            return await _retry_run(subtask, subtask_info, _run_subtask_once)
+        else:
+            return await _run_subtask_once()
 
     async def run_subtask(self, subtask: Subtask, band_name: str,
                           supervisor_address: str):

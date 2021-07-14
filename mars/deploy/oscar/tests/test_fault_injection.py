@@ -18,6 +18,7 @@ import numpy as np
 
 import mars
 import mars.tensor as mt
+from mars.remote import spawn
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
 from mars.oscar.errors import FaultInjectionError
@@ -136,3 +137,29 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     info = await session.execute(b, extra_config=extra_config)
     with expect_raises:
         await info
+
+
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': RERUN_SUBTASK_CONFIG_FILE}],
+                         indirect=True)
+@pytest.mark.parametrize('fault_config',
+                         [[FaultType.Exception, 1,
+                           pytest.raises(FaultInjectionError, match='Fault Injection')],
+                          [FaultType.ProcessExit, 1,
+                           pytest.raises(mars.oscar.ServerClosed)]])
+@pytest.mark.asyncio
+async def test_retryable(fault_cluster, fault_config):
+    fault_type, fault_count, expect_raises = fault_config
+    name = await create_fault_injection_manager(
+        session_id=fault_cluster.session.session_id,
+        address=fault_cluster.session.address,
+        fault_count=fault_count,
+        fault_type=fault_type)
+    extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
+
+    def f(x):
+        return x + 1
+
+    r = spawn(f, args=(1,), retry_when_fail=False)
+    with expect_raises:
+        r.execute(extra_config=extra_config)
