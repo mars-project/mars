@@ -16,12 +16,11 @@ import os
 import pytest
 import numpy as np
 
-import mars
 import mars.tensor as mt
 from mars.remote import spawn
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
-from mars.oscar.errors import FaultInjectionError
+from mars.oscar.errors import FaultInjectionError, MarsError
 from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager, ExtraConfigKey
 
 CONFIG_FILE = os.path.join(
@@ -64,7 +63,8 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
                          [[FaultType.Exception,
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit,
-                           pytest.raises(mars.oscar.ServerClosed)]])
+                           # may raises ServerClosed, ActorNotExist
+                           pytest.raises(MarsError)]])
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception):
     fault_type, first_run_raises = fault_and_exception
@@ -102,7 +102,8 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [[FaultType.Exception, 1,
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, 1,
-                           pytest.raises(mars.oscar.ServerClosed)]])
+                           # may raises ServerClosed, ActorNotExist
+                           pytest.raises(MarsError)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config
@@ -146,7 +147,8 @@ async def test_rerun_subtask(fault_cluster, fault_config):
                          [[FaultType.Exception, 1,
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, 1,
-                           pytest.raises(mars.oscar.ServerClosed)]])
+                           # may raises ServerClosed, ActorNotExist
+                           pytest.raises(MarsError)]])
 @pytest.mark.asyncio
 async def test_retryable(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config
