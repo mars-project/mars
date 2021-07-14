@@ -115,8 +115,8 @@ async def test_spill(create_actors):
 
     memory_object_list = await storage_handler.list(StorageLevel.MEMORY)
     disk_object_list = await storage_handler.list(StorageLevel.DISK)
-    assert len(memory_object_list) == 2
-    assert len(disk_object_list) == 8
+    assert len(memory_object_list) == 3
+    assert len(disk_object_list) == 7
 
     for key, data in zip(key_list, data_list):
         get_data = await storage_handler.get(session_id, key)

@@ -101,8 +101,9 @@ class FIFOStrategy(SpillStrategy):
         if spill_size < size:  # pragma: no cover
             pinned_sizes = dict((k, self._data_sizes[k]) for k in self._pinned_keys)
             spilling_keys = dict((k, self._data_sizes[k]) for k in self._spilling_keys)
-            raise NoDataToSpill(f'No data can be spilled for level: {self._level},'
-                                f'pinned keys: {pinned_sizes}, spilling keys: {spilling_keys}')
+            logger.debug('No data can be spilled for level: %s, pinned keys: %s,'
+                         ' spilling keys: %s', self._level, pinned_sizes, spilling_keys)
+            raise NoDataToSpill(f'No data can be spilled for level: {self._level}')
         self._spilling_keys.update(set(spill_keys))
         return spill_sizes, spill_keys
 
@@ -120,12 +121,15 @@ class SpillManagerActor(mo.Actor):
     def __init__(self, level: StorageLevel):
         self._level = level
         self._event = None
+        self._lock = asyncio.Lock()
 
     @classmethod
     def gen_uid(cls, level: StorageLevel):
         return f'spill_manager_{level}'
 
-    def create_spill_event(self, size):
+    async def create_spill_event(self, size):
+        # make sure only one spilling task is waiting the event
+        yield self._lock.acquire()
         self._event = event = asyncio.Event()
         event.size = size
 
@@ -133,7 +137,10 @@ class SpillManagerActor(mo.Actor):
         event = self._event
         if event is None:
             return
+        logger.debug('Notify to check if has space for spilling')
         if spillable_size + quota_left > event.size:
+            logger.debug('Check pass, wake up spill task, spill bytes is %s',
+                         event.size - quota_left)
             event.size = event.size - quota_left
             event.set()
 
@@ -141,6 +148,8 @@ class SpillManagerActor(mo.Actor):
         yield self._event.wait()
         size = self._event.size
         self._event = None
+        # current spilling task is waken up, another can acquire the lock
+        self._lock.release()
         raise mo.Return(size)
 
 
