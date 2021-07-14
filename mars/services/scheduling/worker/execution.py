@@ -83,8 +83,6 @@ class SlotContext:
                 try:
                     # this may cause the failed slot to restart multiple times.
                     await self._slot_manager_ref.kill_slot(self._slot_id)
-                except ConnectionError:
-                    pass
                 finally:
                     # TODO(fyrestone): Make the slot management more reliable.
                     # currently, the slot will not be freed if we kill slot failed.

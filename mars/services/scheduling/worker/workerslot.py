@@ -151,7 +151,10 @@ class BandSlotManagerActor(mo.Actor):
             return
 
         event = self._slot_kill_events[slot_id] = asyncio.Event()
-        await mo.kill_actor(self._slot_control_refs[slot_id])
+        try:
+            await mo.kill_actor(self._slot_control_refs[slot_id])
+        except ConnectionError:
+            pass
         await event.wait()
 
     async def kill_slot(self, slot_id: int):
