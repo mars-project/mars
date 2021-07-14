@@ -19,7 +19,7 @@ from typing import Dict
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ..core import BandType
-from .core import NodeInfo
+from .core import NodeInfo, NodeStatus
 from .gather import gather_node_env, gather_node_resource, gather_node_details
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class NodeInfoUploaderActor(mo.Actor):
     async def mark_node_ready(self):
         self._upload_enabled = True
         # upload info in time to reduce latency
-        await self.upload_node_info(False)
+        await self.upload_node_info(call_next=False, status=NodeStatus.READY)
         self._node_ready_event.set()
 
     def is_node_ready(self):
@@ -76,7 +76,7 @@ class NodeInfoUploaderActor(mo.Actor):
     async def wait_node_ready(self):
         return self._node_ready_event.wait()
 
-    async def upload_node_info(self, call_next: bool = True):
+    async def upload_node_info(self, call_next: bool = True, status: NodeStatus = None):
         try:
             if not self._info.env:
                 self._info.env = gather_node_env()
@@ -96,6 +96,7 @@ class NodeInfoUploaderActor(mo.Actor):
                     address=self.address, role=self._info.role,
                     env=self._info.env if not self._env_uploaded else None,
                     resource=self._info.resource, detail=self._info.detail,
+                    status=NodeStatus.READY
                 )
                 self._env_uploaded = True
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover

@@ -14,11 +14,11 @@
 
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from .... import oscar as mo
 from ...core import NodeRole, BandType
-from ..core import NodeInfo, WatchNotifier
+from ..core import NodeInfo, WatchNotifier, NodeStatus
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
 DEFAULT_NODE_CHECK_INTERVAL = 1
@@ -44,19 +44,14 @@ class NodeInfoCollectorActor(mo.Actor):
         self._check_task.cancel()
 
     async def check_dead_nodes(self):
-        dead_nodes = []
         affect_roles = set()
         for address, info in self._node_infos.items():
             if time.time() - info.update_time > self._node_timeout:
+                info.status = NodeStatus.STOPPED
                 node_role = info.role
-                self._role_to_nodes[node_role].difference_update([address])
-                dead_nodes.append(address)
                 affect_roles.add(node_role)
 
-        if dead_nodes:
-            for address in dead_nodes:
-                self._node_infos.pop(address, None)
-
+        if affect_roles:
             await self._notify_roles(affect_roles)
 
         self._check_task = self.ref().check_dead_nodes.tell_delay(delay=self._check_interval)
@@ -66,11 +61,12 @@ class NodeInfoCollectorActor(mo.Actor):
             await self._role_to_notifiers[role].notify()
 
     async def update_node_info(self, address: str, role: NodeRole, env: Dict = None,
-                               resource: Dict = None, detail: Dict = None):
-        is_new = False
+                               resource: Dict = None, detail: Dict = None,
+                               status: NodeStatus = None):
+        need_notify = False
         if address not in self._node_infos:
-            is_new = True
-            info = self._node_infos[address] = NodeInfo(role=role)
+            need_notify = True
+            info = self._node_infos[address] = NodeInfo(role=role, status=status)
         else:
             info = self._node_infos[address]
 
@@ -81,14 +77,18 @@ class NodeInfoCollectorActor(mo.Actor):
             info.resource.update(resource)
         if detail is not None:
             info.detail.update(detail)
+        if status is not None:
+            need_notify = need_notify or (info.status != status)
+            info.status = status
 
-        if is_new:
+        if need_notify:
             self._role_to_nodes[role].add(address)
             await self._notify_roles([role])
 
     def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
                        env: bool = False, resource: bool = False,
-                       detail: bool = False):
+                       detail: bool = False, statuses: Set[NodeStatus] = None):
+        statuses = statuses or {NodeStatus.READY}
         if nodes is None:
             nodes = self._role_to_nodes.get(role) if role is not None \
                 else self._node_infos.keys()
@@ -98,8 +98,11 @@ class NodeInfoCollectorActor(mo.Actor):
             if node not in self._node_infos:
                 continue
             info = self._node_infos[node]
+            if info.status not in statuses:
+                continue
+
             ret_infos[node] = dict(
-                status=info.status.value,
+                status=info.status,
                 update_time=info.update_time,
                 env=info.env if env else None,
                 resource=info.resource if resource else None,
@@ -107,11 +110,15 @@ class NodeInfoCollectorActor(mo.Actor):
             )
         return ret_infos
 
-    def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
+    def get_all_bands(self, role: NodeRole = None,
+                      statuses: Set[NodeStatus] = None) -> Dict[BandType, int]:
+        statuses = statuses or {NodeStatus.READY}
         role = role or NodeRole.WORKER
         nodes = self._role_to_nodes.get(role, [])
         band_slots = dict()
         for node in nodes:
+            if self._node_infos[node].status not in statuses:
+                continue
             node_resource = self._node_infos[node].resource
             for resource_type, info in node_resource.items():
                 if resource_type.startswith('numa'):
@@ -128,13 +135,16 @@ class NodeInfoCollectorActor(mo.Actor):
 
     async def watch_nodes(self, role: NodeRole, env: bool = False,
                           resource: bool = False, detail: bool = False,
+                          statuses: Set[NodeStatus] = None,
                           version: Optional[int] = None):
         version = yield self._role_to_notifiers[role].watch(version=version)
         raise mo.Return((version, self.get_nodes_info(
-            role=role, env=env, resource=resource, detail=detail)))
+            role=role, env=env, resource=resource, detail=detail,
+            statuses=statuses)))
 
     async def watch_all_bands(self, role: NodeRole = None,
+                              statuses: Set[NodeStatus] = None,
                               version: Optional[int] = None):
         role = role or NodeRole.WORKER
         version = yield self._role_to_notifiers[role].watch(version=version)
-        raise mo.Return((version, self.get_all_bands(role=role)))
+        raise mo.Return((version, self.get_all_bands(role=role, statuses=statuses)))

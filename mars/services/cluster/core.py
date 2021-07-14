@@ -26,8 +26,9 @@ from ..core import NodeRole
 class NodeStatus(enum.Enum):
     STARTING = 0
     READY = 1
-    STOPPING = 2
-    STOPPED = 3
+    DEGENERATED = 2
+    STOPPING = 3
+    STOPPED = -1
 
 
 @dataclass

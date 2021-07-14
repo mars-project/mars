@@ -14,12 +14,12 @@
 
 import asyncio
 import logging
-from typing import List, Dict, Optional, Type, TypeVar
+from typing import List, Dict, Optional, Set, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ...core import NodeRole, BandType
-from ..core import watch_method
+from ..core import watch_method, NodeStatus
 from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -116,22 +116,52 @@ class ClusterAPI(AbstractClusterAPI):
     @watch_method
     async def watch_nodes(self, role: NodeRole, env: bool = False,
                           resource: bool = False, detail: bool = False,
-                          version: Optional[int] = None) -> List[Dict[str, Dict]]:
+                          version: Optional[int] = None,
+                          statuses: Set[NodeStatus] = None,
+                          exclude_statuses: Set[NodeStatus] = None) -> List[Dict[str, Dict]]:
+        statuses = self._calc_statuses(statuses, exclude_statuses)
         return await self._node_info_ref.watch_nodes(
-            role, env=env, resource=resource, detail=detail, version=version)
+            role, env=env, resource=resource, detail=detail,
+            statuses=statuses, version=version)
 
     async def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
-                             env: bool = False, resource: bool = False, detail: bool = False):
+                             env: bool = False, resource: bool = False, detail: bool = False,
+                             statuses: Set[NodeStatus] = None,
+                             exclude_statuses: Set[NodeStatus] = None):
+        statuses = self._calc_statuses(statuses, exclude_statuses)
         return await self._node_info_ref.get_nodes_info(
-            nodes=nodes, role=role, env=env, resource=resource, detail=detail)
+            nodes=nodes, role=role, env=env, resource=resource,
+            detail=detail, statuses=statuses)
 
-    async def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
-        return await self._node_info_ref.get_all_bands(role)
+    async def set_node_status(self, node: str, role: NodeRole, status: NodeStatus):
+        """
+        Set status of node
+
+        Parameters
+        ----------
+        node : str
+            address of node
+        role: NodeRole
+            role of node
+        status : NodeStatus
+            status of node
+        """
+        await self._node_info_ref.update_node_info(node, role, status=status)
+
+    async def get_all_bands(self, role: NodeRole = None,
+                            statuses: Set[NodeStatus] = None,
+                            exclude_statuses: Set[NodeStatus] = None) -> Dict[BandType, int]:
+        statuses = self._calc_statuses(statuses, exclude_statuses)
+        return await self._node_info_ref.get_all_bands(role, statuses=statuses)
 
     @watch_method
     async def watch_all_bands(self, role: NodeRole = None,
-                              version: Optional[int] = None):
-        return await self._node_info_ref.watch_all_bands(role, version=version)
+                              version: Optional[int] = None,
+                              statuses: Set[NodeStatus] = None,
+                              exclude_statuses: Set[NodeStatus] = None):
+        statuses = self._calc_statuses(statuses, exclude_statuses)
+        return await self._node_info_ref.watch_all_bands(
+            role, statuses=statuses, version=version)
 
     async def get_mars_versions(self) -> List[str]:
         return await self._node_info_ref.get_mars_versions()

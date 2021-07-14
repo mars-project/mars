@@ -32,7 +32,8 @@ export default class NodeResourceTab extends React.Component {
     }
 
     refreshInfo() {
-        fetch('api/cluster/nodes?nodes=' + this.props.endpoint + '&resource=1&detail=1')
+        fetch('api/cluster/nodes?nodes=' + this.props.endpoint
+              + '&resource=1&detail=1&exclude_statuses=-1')
             .then(res => res.json())
             .then((res) => {
                 let result = res['nodes'][this.props.endpoint];

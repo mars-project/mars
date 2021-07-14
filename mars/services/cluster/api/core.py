@@ -13,12 +13,23 @@
 # limitations under the License.
 
 from abc import abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from ...core import NodeRole, BandType
+from ..core import NodeStatus
 
 
 class AbstractClusterAPI:
+    @staticmethod
+    def _calc_statuses(statuses: Set[NodeStatus] = None,
+                       exclude_statuses: Set[NodeStatus] = None) -> Set[NodeStatus]:
+        if statuses:
+            return statuses
+        elif exclude_statuses:
+            return set(NodeStatus.__members__.values()).difference(exclude_statuses)
+        else:
+            return {NodeStatus.READY}
+
     @abstractmethod
     async def get_supervisors(self) -> List[str]:
         """
@@ -43,7 +54,9 @@ class AbstractClusterAPI:
 
     @abstractmethod
     async def watch_nodes(self, role: NodeRole, env: bool = False,
-                          resource: bool = False, detail: bool = False) -> List[Dict[str, Dict]]:
+                          resource: bool = False, detail: bool = False,
+                          statuses: Set[NodeStatus] = None,
+                          exclude_statuses: Set[NodeStatus] = None) -> List[Dict[str, Dict]]:
         """
         Watch changes of workers
 
@@ -54,8 +67,13 @@ class AbstractClusterAPI:
         """
 
     @abstractmethod
-    async def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
-                             env: bool = False, resource: bool = False, detail: bool = False):
+    async def get_nodes_info(self, nodes: List[str] = None,
+                             role: NodeRole = None,
+                             env: bool = False,
+                             resource: bool = False,
+                             detail: bool = False,
+                             statuses: Set[NodeStatus] = None,
+                             exclude_statuses: Set[NodeStatus] = None):
         """
         Get worker info
 
@@ -79,7 +97,9 @@ class AbstractClusterAPI:
         """
 
     @abstractmethod
-    async def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
+    async def get_all_bands(self, role: NodeRole = None,
+                            statuses: Set[NodeStatus] = None,
+                            exclude_statuses: Set[NodeStatus] = None) -> Dict[BandType, int]:
         """
         Get all bands that can be used for computation.
 
@@ -90,7 +110,9 @@ class AbstractClusterAPI:
         """
 
     @abstractmethod
-    async def watch_all_bands(self, role: NodeRole = None):
+    async def watch_all_bands(self, role: NodeRole = None,
+                              statuses: Set[NodeStatus] = None,
+                              exclude_statuses: Set[NodeStatus] = None):
         """
         Watch all bands that can be used for computation.
 

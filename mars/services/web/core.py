@@ -187,6 +187,8 @@ class MarsWebAPIClientMixin:
         if hasattr(self, '_client_obj'):
             loop = getattr(self, '_running_loop', None) or \
                 asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.get_event_loop()
             loop.create_task(self._client_obj.close())
 
     async def _request_url(self, method, path, **kwargs):

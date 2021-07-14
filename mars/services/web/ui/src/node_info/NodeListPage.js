@@ -22,12 +22,11 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import TableCell from "@material-ui/core/TableCell";
 import TableBody from "@material-ui/core/TableBody";
-import {toReadableSize} from "../Utils";
 import Grid from "@material-ui/core/Grid";
 import Paper from "@material-ui/core/Paper";
-import { useStyles } from "../Style";
 import Title from "../Title";
-import {formatTime} from "../Utils";
+import { useStyles } from "../Style";
+import { formatTime, toReadableSize, getNodeStatusText } from "../Utils";
 
 class NodeList extends React.Component {
     constructor(props) {
@@ -37,7 +36,7 @@ class NodeList extends React.Component {
 
     refreshInfo() {
         let roleId = (this.nodeRole === 'supervisor' ? 0 : 1);
-        fetch('api/cluster/nodes?role=' + roleId + '&resource=1')
+        fetch('api/cluster/nodes?role=' + roleId + '&resource=1&exclude_statuses=-1')
             .then(res => res.json())
             .then((res) => {
                 let state = this.state;
@@ -93,6 +92,7 @@ class NodeList extends React.Component {
                 <TableHead>
                     <TableRow>
                         <TableCell style={{fontWeight: 'bolder'}}>Endpoint</TableCell>
+                        <TableCell style={{fontWeight: 'bolder'}}>Status</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>CPU</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>Memory</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>Update Time</TableCell>
@@ -103,6 +103,7 @@ class NodeList extends React.Component {
                         Object.keys(roleData).map((endpoint) => (
                             <TableRow key={'nodeList_' + this.nodeRole + '_' + endpoint}>
                                 <TableCell><Link to={"/" + this.nodeRole + "/" + endpoint}>{endpoint}</Link></TableCell>
+                                <TableCell>{getNodeStatusText(roleData[endpoint]['status'])}</TableCell>
                                 <TableCell>{calcNodeStatGroup(roleData[endpoint], 'cpu', (v) => v.toFixed(2))}</TableCell>
                                 <TableCell>{calcNodeStatGroup(roleData[endpoint], 'memory', toReadableSize)}</TableCell>
                                 <TableCell>{formatTime(roleData[endpoint]['update_time'])}</TableCell>

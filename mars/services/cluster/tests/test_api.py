@@ -21,6 +21,7 @@ from mars._version import __version__ as mars_version
 from mars.services import NodeRole
 from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
 from mars.services.cluster.api.web import web_handlers
+from mars.services.cluster.core import NodeStatus
 from mars.services.web.supervisor import start as start_web
 from mars.utils import get_next_port
 
@@ -65,10 +66,18 @@ async def test_api(actor_pool):
             api.watch_supervisor_refs([TestActor.default_uid()])), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
-            api.watch_nodes(NodeRole.WORKER)), timeout=0.1)
+            api.watch_nodes(NodeRole.WORKER, statuses={NodeStatus.READY})), timeout=0.1)
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
-            api.watch_all_bands()), timeout=0.1)
+            api.watch_all_bands(statuses={NodeStatus.READY})), timeout=0.1)
+
+    await api.set_node_status(pool_addr, NodeRole.WORKER, NodeStatus.STOPPING)
+    assert {} == await api.get_all_bands()
+    assert {} == await api.get_nodes_info(role=NodeRole.WORKER)
+    bands = await api.get_all_bands(exclude_statuses={NodeStatus.STOPPED})
+    assert (pool_addr, 'numa-0') in bands
+    assert pool_addr in await api.get_nodes_info(
+        role=NodeRole.WORKER, exclude_statuses={NodeStatus.STOPPED})
 
 
 @pytest.mark.asyncio
@@ -88,7 +97,9 @@ async def test_web_api(actor_pool):
     web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
     assert await web_api.get_supervisors() == []
 
-    assert len(await web_api.get_all_bands()) > 0
+    assert len(await web_api.get_all_bands(statuses={NodeStatus.READY})) > 0
+    assert len(await web_api.get_nodes_info(
+        role=NodeRole.WORKER, statuses={NodeStatus.READY})) > 0
 
     assert await web_api.get_mars_versions() == [mars_version]
 
