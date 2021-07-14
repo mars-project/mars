@@ -153,11 +153,8 @@ class ClusterAPI(AbstractClusterAPI):
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        start_time = time.time()
         address = await self._node_allocator_ref.request_worker_node(
             worker_cpu, worker_mem, timeout)
-        logger.info('Request a worker %s took %s seconds.',
-                    {'CPU': worker_cpu, 'memory': worker_mem}, time.time() - start_time)
         return address
 
     async def release_worker_node(self, address: str):

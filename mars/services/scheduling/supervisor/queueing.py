@@ -173,6 +173,7 @@ class SubtaskQueueingActor(mo.Actor):
                             continue
                         item = submit_items[stid]
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
+                        print(f"===_available_bands {self._available_bands}")
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
                         self.remove_queued_subtasks([item.subtask.subtask_id])

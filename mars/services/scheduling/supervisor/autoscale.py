@@ -25,10 +25,7 @@ from ...core import BandType
 from .... import oscar as mo
 
 import ray
-logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT,
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -43,7 +40,7 @@ class AutoscalerActor(mo.Actor):
         self.queueing_refs = dict()
         self.global_slot_ref = None
         self.band_total_slots = None
-        self.worker_bands = defaultdict(list)
+        self._worker_bands = defaultdict(list)
         self._dynamic_workers: Set[str] = set()
 
     async def __post_create__(self):
@@ -63,18 +60,21 @@ class AutoscalerActor(mo.Actor):
 
         async def watch_slots():
             while True:
-                self.band_total_slots = await self._cluster_api.get_available_bands(watch=True)
-                worker_bands = {}
-                for band in self.band_total_slots.keys():
-                    worker_address, resource_type = band
-                    worker_bands[worker_address].append(band)
-                self.worker_bands = worker_bands
+                await self.refresh_worker_bands(watch=True)
 
         self._band_watch_task = asyncio.create_task(watch_slots())
 
     async def __pre_destroy__(self):
         await self._strategy.stop()
         self._band_watch_task.cancel()
+
+    async def refresh_worker_bands(self, watch=False):
+        self.band_total_slots = await self._cluster_api.get_all_bands(watch=watch)
+        worker_bands = defaultdict(list)
+        for band in self.band_total_slots.keys():
+            worker_address, resource_type = band
+            worker_bands[worker_address].append(band)
+        self._worker_bands = worker_bands
 
     async def register_session(self, session_id: str, address: str):
         from .queueing import SubtaskQueueingActor
@@ -86,25 +86,34 @@ class AutoscalerActor(mo.Actor):
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        start_time = time.time()
         worker_address = await self._cluster_api.request_worker_node(worker_cpu, worker_mem, timeout)
         self._dynamic_workers.add(worker_address)
-        logger.info("Requested new workers %s, current dynamic worker nums is %s",
-                    worker_address, self.get_dynamic_worker_nums())
+        logger.info("Requested new workers %s in %.4f seconds, current dynamic worker nums is %s",
+                    worker_address, time.time() - start_time, self.get_dynamic_worker_nums())
         return worker_address
 
     async def release_worker_node(self, address: str):
-        await self.migrate_data_of_bands(self.get_worker_bands(address))
+        bands = await self.get_worker_bands(address)
+        logger.info("Start to release worker %s which has bands %s.", address, bands)
+        start_time = time.time()
+        await asyncio.gather(*[self.global_slot_ref.add_to_blocklist(band) for band in bands])
+        for band in bands:
+            while not await self.global_slot_ref.is_band_idle(band):
+                await asyncio.sleep(0.1)
+        await self.migrate_data_of_bands(bands)
         await self._cluster_api.release_worker_node(address)
         self._dynamic_workers.remove(address)
-    
+        logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
+
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
 
     def get_dynamic_worker_nums(self) -> int:
         return len(self._dynamic_workers)
 
-    def get_worker_bands(self, worker_address) -> List[BandType]:
-        return self.worker_bands[worker_address]
+    async def get_worker_bands(self, worker_address) -> List[BandType]:
+        return self._worker_bands[worker_address]
 
     async def migrate_data_of_bands(self, bands: List[BandType]):
         """Move data from `bands` to other available bands"""
@@ -136,16 +145,14 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
 
     def __init__(self, autoscale_conf: Dict[str, Any], autoscaler):
         self._autoscaler = autoscaler
-        self._scheduler_check_interval = float(autoscale_conf.get(
-            'scheduler_check_interval', 1))
-        self._scheduler_backlog_timeout = float(autoscale_conf.get(
-            'scheduler_backlog_timeout', 10))
-        self._sustained_scheduler_backlog_timeout = float(autoscale_conf.get(
-            'sustained_scheduler_backlog_timeout', self._scheduler_backlog_timeout))
-        self._worker_idle_timeout = float(autoscale_conf.get('worker_idle_timeout', 10))
-        self._min_workers = int(autoscale_conf.get('min_workers', 1))
+        self._scheduler_check_interval = autoscale_conf.get('scheduler_check_interval', 1)
+        self._scheduler_backlog_timeout = autoscale_conf.get('scheduler_backlog_timeout', 10)
+        self._sustained_scheduler_backlog_timeout = autoscale_conf.get(
+            'sustained_scheduler_backlog_timeout', self._scheduler_backlog_timeout)
+        self._worker_idle_timeout = autoscale_conf.get('worker_idle_timeout', 10)
+        self._min_workers = autoscale_conf.get('min_workers', 1)
         assert self._min_workers >= 1, 'Mars need at least 1 worker.'
-        self._max_workers = int(autoscale_conf.get('max_workers', 100))
+        self._max_workers = autoscale_conf.get('max_workers', 100)
         self._task = None
 
     @classmethod
@@ -157,11 +164,12 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
 
     async def _run(self):
         if self._autoscaler.get_dynamic_worker_nums() < self._min_workers:
-            logger.info(f'Start to request initial workers to %s', self._min_workers)
+            logger.info(f'Start to request %s initial workers.', self._min_workers)
             initial_worker_addresses = await asyncio.gather(*[
                 self._autoscaler.request_worker_node() for _ in range(
                     self._min_workers - self._autoscaler.get_dynamic_worker_nums())])
-            logger.info(f'Finished requesting initial workers %s', initial_worker_addresses)
+            logger.info(f'Finished requesting %s initial workers %s',
+                        len(initial_worker_addresses), initial_worker_addresses)
         while True:
             await asyncio.sleep(self._scheduler_check_interval)
             try:
@@ -199,30 +207,27 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         idle_bands = set(await self._autoscaler.global_slot_ref.get_idle_bands(self._worker_idle_timeout))
         # ensure all bands of the worker are idle
         idle_bands = [band for band in idle_bands if idle_bands.issuperset(
-            set(self._autoscaler.get_worker_bands(band[0])))]
+            set(await self._autoscaler.get_worker_bands(band[0])))]
         # exclude non-dynamic created workers
-        idle_bands = [band for band in idle_bands if band[0] in self._autoscaler.get_dynamic_workers()]
+        idle_bands = set(band for band in idle_bands if band[0] in self._autoscaler.get_dynamic_workers())
         worker_addresses = set(band[0] for band in idle_bands)
-        if idle_bands:
-            logger.info("Bands %s of workers % has been idle for as least %s seconds.",
-                        idle_bands, worker_addresses, self._worker_idle_timeout)
-        while worker_addresses and \
-                self._autoscaler.get_dynamic_worker_nums() - len(worker_addresses) < self._min_workers:
-            logger.info("Idle workers %s is less than min workers %s. Current total dynamic workers is %s.",
-                        len(worker_addresses), self._min_workers, self._autoscaler.get_dynamic_worker_nums())
-            worker_address = worker_addresses.pop()
-            for band in self._autoscaler.get_worker_bands(worker_address):
-                idle_bands.remove(band)
         if worker_addresses:
-            logger.info("Try to offline bands %s of workers %s.", idle_bands, worker_addresses)
-            await asyncio.gather(*[self._autoscaler.global_slot_ref.add_to_blocklist(band) for band in idle_bands])
-            for band in idle_bands:
-                while not await self._autoscaler.global_slot_ref.is_band_idle(band):
-                    await asyncio.sleep(0.1)
+            logger.debug("Bands %s of workers % has been idle for as least %s seconds.",
+                         idle_bands, worker_addresses, self._worker_idle_timeout)
+            while worker_addresses and \
+                    self._autoscaler.get_dynamic_worker_nums() - len(worker_addresses) < self._min_workers:
+                worker_address = worker_addresses.pop()
+                logger.debug("Skip offline idle worker %s to keep at least %s dynamic workers. "
+                             "Current total dynamic workers is %s.",
+                             worker_address, self._min_workers, self._autoscaler.get_dynamic_worker_nums())
+                idle_bands.difference_update(set(await self._autoscaler.get_worker_bands(worker_address)))
+        if worker_addresses:
+            start_time = time.time()
+            logger.info("Try to offline idle workers %s with bands %s.", worker_addresses, idle_bands)
             # release workers
             await asyncio.gather(*[self._autoscaler.release_worker_node(worker_address)
                                    for worker_address in worker_addresses])
-            logger.info('Finished offline workers %s', worker_addresses)
+            logger.info('Finished offline workers %s in %.4f seconds', worker_addresses, time.time() - start_time)
 
     async def stop(self):
         self._task.cancel()

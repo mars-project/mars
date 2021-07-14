@@ -71,8 +71,8 @@ class RayClusterBackend(FixedClusterBackend):
                                      address=lookup_address)
         return cls(lookup_address, ref)
 
-    async def start_worker(self, worker_address):
-        return await self._cluster_state_ref.start_worker(worker_address)
+    async def new_worker(self, worker_address):
+        return await self._cluster_state_ref.new_worker(worker_address)
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
@@ -104,42 +104,48 @@ class ClusterStateActor(mo.Actor):
 
     async def request_worker_node(self, worker_cpu: int, worker_mem: int, timeout: int = None) -> str:
         worker_cpu = worker_cpu or self._worker_cpu
-        worker_mem = worker_mem or self._worker_mem
+        bundle = {
+            'CPU': worker_cpu,
+            # 'memory': worker_mem or self._worker_mem
+        }
+        band_to_slot = {'numa-0': worker_cpu}
         start_time = time.time()
-        logger.info("Start to request worker %s.", {'worker_cpu': worker_cpu, 'worker_mem': worker_mem})
+        logger.info("Start to request worker with resource %s.", bundle)
         # TODO rescale ray placement group instead of creating new placement group
         pg_name = f'{self._pg_name}_{next(self._pg_counter)}'
-        pg = ray.util.placement_group(name=pg_name,
-                                      bundles=[{"CPU": worker_cpu}],
-                                      strategy="SPREAD")
+        pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
         create_pg_timeout = timeout or 10
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:
             raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
-        logger.info('Creating placement group succeeds in %s seconds', time.time() - start_time)
+        logger.info('Creating placement group succeeds in %.4f seconds', time.time() - start_time)
         worker_address = process_placement_to_address(pg_name, 0, 0)
-        worker_pool = await self.start_worker(worker_address)
-        logger.info('Request worker %s succeeds in %s seconds', worker_address, time.time() - start_time)
+        worker_pool = await self.new_worker(worker_address, band_to_slot=band_to_slot)
+        logger.info('Request worker %s succeeds in %.4f seconds',
+                    worker_address, time.time() - start_time)
         self._dynamic_created_workers[worker_address] = worker_pool
         self._worker_count += 1
         return worker_address
 
-    async def start_worker(self, worker_address):
+    async def new_worker(self, worker_address, band_to_slot=None):
         self._worker_count += 1
+        start_time = time.time()
+        band_to_slot = band_to_slot or self._band_to_slot
         worker_pool = await create_worker_actor_pool(
             worker_address, self._band_to_slot, modules=self._worker_modules)
-        logger.info('Create worker on node %s succeeds.', worker_address)
-        await start_worker(worker_address, self.address, self._band_to_slot, config=self._config)
-        logger.info('Start services on worker %s succeeds.', worker_address)
+        logger.info('Create worker %s succeeds in %.4f seconds.',
+                    worker_address, time.time() - start_time)
+        start_time = time.time()
+        await start_worker(worker_address, self.address, band_to_slot, config=self._config)
+        logger.info('Start services on worker %s succeeds in %.4f seconds.',
+                    worker_address, time.time() - start_time)
         return worker_pool
 
     async def release_worker_node(self, address: str):
-        logger.info("Start to release worker %s.", address)
         await stop_worker(address, self._config)
         pool = self._dynamic_created_workers.pop(address)
         await pool.actor_pool.remote('stop')
         ray.kill(pool)
-        logger.info("Releasing worker %s succeeds.", address)
 
 
 async def new_cluster(cluster_name: str,
@@ -248,7 +254,7 @@ class RayCluster:
         logger.info('Start services on supervisor %s succeeds.', self.supervisor_address)
 
         worker_pools = await asyncio.gather(
-            *[self._cluster_backend.start_worker(addr) for addr in worker_addresses])
+            *[self._cluster_backend.new_worker(addr) for addr in worker_addresses])
         logger.info('Create %s workers and start services on workers succeeds.', len(worker_addresses))
         for worker_address, worker_pool in zip(worker_addresses, worker_pools):
             self._worker_addresses.append(worker_address)

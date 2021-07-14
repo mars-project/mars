@@ -66,10 +66,9 @@ class NodeInfoCollectorActor(mo.Actor):
     def mark_dead_nodes(self, addresses: List[str]):
         affect_roles = set()
         for address in addresses:
-            self._node_infos.pop(address, None)
-            node_role = self._node_infos[address].role
-            self._role_to_nodes[node_role].difference_update([address])
-            affect_roles.add(node_role)
+            info = self._node_infos.pop(address, None)
+            self._role_to_nodes[info.role].difference_update([address])
+            affect_roles.add(info.role)
 
         self._notify_roles(affect_roles)
 
