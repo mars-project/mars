@@ -13,12 +13,15 @@
 # limitations under the License.
 
 import asyncio
+import os
 
 import pytest
 
 import mars.oscar as mo
 from mars.services import start_services, NodeRole
-from mars.services.cluster import ClusterAPI
+from mars.services.cluster import ClusterAPI, WorkerSlotInfo, \
+    QuotaInfo, StorageInfo, DiskInfo
+from mars.storage import StorageLevel
 
 
 @pytest.fixture
@@ -54,7 +57,6 @@ async def test_cluster_service(actor_pools):
     sv_api = await ClusterAPI.create(sv_pool.external_address)
     worker_api = await ClusterAPI.create(worker_pool.external_address)
 
-    from mars.services.scheduling.core import WorkerSlotInfo, QuotaInfo
     await worker_api.set_band_quota_info(
         'numa-0',
         QuotaInfo(quota_size=1024, allocated_size=100, hold_size=100)
@@ -64,11 +66,23 @@ async def test_cluster_service(actor_pools):
         [WorkerSlotInfo(slot_id=0, session_id='test_session',
                         subtask_id='test_subtask', processor_usage=1.0)]
     )
+    await worker_api.set_band_storage_info(
+        'numa-0',
+        StorageInfo(storage_level=StorageLevel.MEMORY, total_size=1024, used_size=512)
+    )
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    await worker_api.set_node_disk_info(
+        [DiskInfo(path=curdir)]
+    )
     await asyncio.sleep(1.5)
 
     assert next(iter(await sv_api.get_nodes_info(role=NodeRole.SUPERVISOR))) \
            == sv_pool.external_address
     worker_infos = await sv_api.get_nodes_info(role=NodeRole.WORKER, detail=True)
     assert worker_pool.external_address in worker_infos
-    assert len(worker_infos[worker_pool.external_address]['detail']['slot']) > 0
-    assert len(worker_infos[worker_pool.external_address]['detail']['quota']) > 0
+
+    info_details = worker_infos[worker_pool.external_address]['detail']
+    assert len(info_details['disk']['partitions']) > 0
+    assert len(info_details['slot']) > 0
+    assert len(info_details['quota']) > 0
+    assert len(info_details['storage']) > 0

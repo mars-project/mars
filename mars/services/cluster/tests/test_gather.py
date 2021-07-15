@@ -15,6 +15,7 @@
 import os
 import time
 
+from mars.services.cluster import DiskInfo
 from mars.services.cluster.gather import gather_node_env, \
     gather_node_resource, gather_node_details
 
@@ -40,7 +41,7 @@ def test_gather_node_details():
     assert not node_details['disk'].get('partitions')
 
     curdir = os.path.dirname(os.path.abspath(__file__))
-    gather_node_details([curdir])
+    gather_node_details(disk_infos=[DiskInfo(path=curdir)])
     time.sleep(0.1)
-    node_details = gather_node_details([curdir])
+    node_details = gather_node_details(disk_infos=[DiskInfo(path=curdir)])
     assert node_details['disk'].get('partitions')

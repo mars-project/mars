@@ -19,7 +19,8 @@ from typing import List, Dict, Optional, Set, Type, TypeVar
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ...core import NodeRole, BandType
-from ..core import watch_method, NodeStatus
+from ..core import watch_method, NodeStatus, WorkerSlotInfo, QuotaInfo, \
+    DiskInfo, StorageInfo
 from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -195,11 +196,19 @@ class ClusterAPI(AbstractClusterAPI):
         """
         await self._locator_ref.wait_all_supervisors_ready()
 
-    async def set_band_slot_infos(self, band_name, slot_infos):
+    async def set_band_slot_infos(self, band_name: str,
+                                  slot_infos: List[WorkerSlotInfo]):
         await self._uploader_ref.set_band_slot_infos.tell(band_name, slot_infos)
 
-    async def set_band_quota_info(self, band_name, quota_info):
+    async def set_band_quota_info(self, band_name: str,
+                                  quota_info: QuotaInfo):
         await self._uploader_ref.set_band_quota_info.tell(band_name, quota_info)
+
+    async def set_node_disk_info(self, disk_info: List[DiskInfo]):
+        await self._uploader_ref.set_node_disk_info(disk_info)
+
+    async def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
+        await self._uploader_ref.set_band_storage_info(band_name, storage_info)
 
 
 class MockClusterAPI(ClusterAPI):
