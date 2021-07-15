@@ -288,7 +288,7 @@ class DataManagerActor(mo.Actor):
                 return
 
     def get_spillable_size(self, level: StorageLevel):
-        return self._spill_strategy[level].spillable_size
+        return self._spill_strategy[level].get_spillable_size()
 
     async def get_spill_keys(self, level: StorageLevel, size: int):
         if level.spill_level() not in self._spill_strategy:  # pragma: no cover

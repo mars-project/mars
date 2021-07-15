@@ -74,8 +74,7 @@ class FIFOStrategy(SpillStrategy):
         if self._pinned_keys[key] <= 0:
             del self._pinned_keys[key]
 
-    @property
-    def spillable_size(self):
+    def get_spillable_size(self):
         total_size = 0
         for data_key, data_size in self._data_sizes.items():
             if data_key not in self._pinned_keys and \
@@ -127,13 +126,7 @@ class SpillManagerActor(mo.Actor):
     def gen_uid(cls, level: StorageLevel):
         return f'spill_manager_{level}'
 
-    async def create_spill_event(self, size):
-        # make sure only one spilling task is waiting the event
-        yield self._lock.acquire()
-        self._event = event = asyncio.Event()
-        event.size = size
-
-    def notify_spill_event(self, spillable_size, quota_left):
+    def notify_spillable_space(self, spillable_size: int, quota_left: int):
         event = self._event
         if event is None:
             return
@@ -144,13 +137,15 @@ class SpillManagerActor(mo.Actor):
             event.size = event.size - quota_left
             event.set()
 
-    async def wait_spill_event(self):
-        yield self._event.wait()
-        size = self._event.size
-        self._event = None
-        # current spilling task is waken up, another can acquire the lock
-        self._lock.release()
-        raise mo.Return(size)
+    async def wait_for_space(self, size: int):
+        # make sure only one spilling task is waiting the event
+        async with self._lock:
+            self._event = event = asyncio.Event()
+            event.size = size
+            yield self._event.wait()
+            size = self._event.size
+            self._event = None
+            raise mo.Return(size)
 
 
 async def spill(request_size: int,

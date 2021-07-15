@@ -135,7 +135,7 @@ class StorageHandlerActor(mo.Actor):
         if object_info.size is not None and data_info.memory_size != object_info.size:
             await self._quota_refs[level].update_quota(
                 object_info.size - data_info.memory_size)
-        await self.notify_spill_event(level)
+        await self.notify_spillable_space(level)
         return data_info
 
     @classmethod
@@ -184,7 +184,7 @@ class StorageHandlerActor(mo.Actor):
                          'object_id is %s', data_key, size, data_info.object_id)
         await self._quota_refs[level].update_quota(quota_delta)
         await self._data_manager_ref.put_data_info.batch(*put_infos)
-        await self.notify_spill_event(level)
+        await self.notify_spillable_space(level)
         return data_infos
 
     def _get_data_infos_arg(self,
@@ -367,11 +367,11 @@ class StorageHandlerActor(mo.Actor):
             await self._quota_refs[level].request_quota(size)
             logger.debug('Spill is triggered, request %s bytes of %s finished', size, level)
 
-    async def notify_spill_event(self, level):
+    async def notify_spillable_space(self, level):
         total, used = await self._quota_refs[level].get_quota()
         if total is not None:
             spillable_size = await self._data_manager_ref.get_spillable_size(level)
-            await self._spill_manager_refs[level].notify_spill_event(
+            await self._spill_manager_refs[level].notify_spillable_space(
                 spillable_size, total - used)
 
     async def spill(self,
@@ -384,8 +384,7 @@ class StorageHandlerActor(mo.Actor):
             await spill(request_size, level, self._data_manager_ref, self)
         except NoDataToSpill:
             logger.warning('No data to spill %s bytes, waiting more space', request_size)
-            await self._spill_manager_refs[level].create_spill_event(object_size)
-            size = await self._spill_manager_refs[level].wait_spill_event()
+            size = await self._spill_manager_refs[level].wait_for_space(object_size)
             await spill(size, level, self._data_manager_ref, self)
 
     async def list(self, level: StorageLevel) -> List:
@@ -394,4 +393,4 @@ class StorageHandlerActor(mo.Actor):
     async def unpin(self, session_id, data_key, error):
         level = await self._data_manager_ref.unpin(session_id, data_key, error)
         if level is not None:
-            await self.notify_spill_event(level)
+            await self.notify_spillable_space(level)

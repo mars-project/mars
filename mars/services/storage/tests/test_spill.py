@@ -143,7 +143,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
         if object_info.size is not None and data_info.memory_size != object_info.size:
             await self._quota_refs[level].update_quota(
                 object_info.size - data_info.memory_size)
-        await self.notify_spill_event(level)
+        await self.notify_spillable_space(level)
         return data_info
 
 
