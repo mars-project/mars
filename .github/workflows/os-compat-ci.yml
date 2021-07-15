@@ -37,6 +37,7 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
+        pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
         pip install -e ".[dev,distributed]"
 
