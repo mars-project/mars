@@ -139,14 +139,14 @@ class CreateDestroyActor(mo.Actor):
         return message
 
 
-class ResourceLockActor(mo.Actor):
+class ResourceLockActor(mo.StatelessActor):
     def __init__(self, count=1):
         self._sem = asyncio.Semaphore(count)
         self._requests = deque()
 
     async def apply(self, val=None):
-        yield self._sem.acquire()
-        raise mo.Return(val + 1 if val is not None else None)
+        await self._sem.acquire()
+        return val + 1 if val is not None else None
 
     def release(self):
         self._sem.release()

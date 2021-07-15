@@ -130,6 +130,19 @@ cdef class BaseActorContext:
         """
         raise NotImplementedError
 
+    async def wait_actor_pool_recovered(self, str address, str main_address = None):
+        """
+        Wait until an actor pool is recovered
+
+        Parameters
+        ----------
+        address
+            address of the actor pool
+        main_address
+            address of the main pool
+        """
+        raise NotImplementedError
+
 
 cdef class ClientActorContext(BaseActorContext):
     """
@@ -181,6 +194,11 @@ cdef class ClientActorContext(BaseActorContext):
     def send(self, ActorRef actor_ref, object message, bint wait_response=True):
         context = self._get_backend_context(actor_ref.address)
         return context.send(actor_ref, message, wait_response=wait_response)
+
+    def wait_actor_pool_recovered(self, str address, str main_address = None):
+        main_address = main_address or address
+        context = self._get_backend_context(address)
+        return context.wait_actor_pool_recovered(address, main_address)
 
 
 def register_backend_context(scheme, cls):

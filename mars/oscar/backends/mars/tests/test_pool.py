@@ -500,6 +500,10 @@ async def test_auto_recover(auto_recover):
     async with pool:
         ctx = get_context()
 
+        # wait for recover of main pool always returned immediately
+        await ctx.wait_actor_pool_recovered(
+            pool.external_address, pool.external_address)
+
         # create actor on main
         actor_ref = await ctx.create_actor(
             TestActor, address=pool.external_address,
@@ -518,7 +522,9 @@ async def test_auto_recover(auto_recover):
 
         if auto_recover:
             # process must have been killed
-            await recovered.wait()
+            await ctx.wait_actor_pool_recovered(
+                actor_ref.address, pool.external_address)
+            assert recovered.is_set()
 
             expect_has_actor = True if auto_recover in ['actor', True] else False
             assert await ctx.has_actor(actor_ref) is expect_has_actor

@@ -138,6 +138,12 @@ class ClusterAPI(AbstractClusterAPI):
         """
         await self._uploader_ref.mark_node_ready()
 
+    async def wait_node_ready(self):
+        """
+        Wait current node to be ready
+        """
+        await self._uploader_ref.wait_node_ready()
+
     async def wait_all_supervisors_ready(self):
         """
         Wait till all expected supervisors are ready

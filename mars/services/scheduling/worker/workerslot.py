@@ -227,4 +227,15 @@ class BandSlotControlActor(mo.Actor):
         self._report_task = None
 
     async def __post_create__(self):
+        self._report_task = asyncio.create_task(self._report_slot_ready())
+
+    async def _report_slot_ready(self):
+        from ...cluster.api import ClusterAPI
+        try:
+            self._cluster_api = await ClusterAPI.create(self.address)
+            await self._cluster_api.wait_node_ready()
+        except mo.ActorNotExist:
+            pass
+
+        await mo.wait_actor_pool_recovered(self.address)
         await self._manager_ref.release_free_slot.tell(self._slot_id, os.getpid())
