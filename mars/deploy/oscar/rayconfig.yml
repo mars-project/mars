@@ -12,5 +12,4 @@ storage:
 scheduling:
   autoscale:
     enabled: true
-    migrate_data: false
     scheduler_backlog_timeout: 10

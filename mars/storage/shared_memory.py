@@ -92,6 +92,7 @@ class SharedMemoryStorage(StorageBackend):
     name = 'shared_memory'
 
     def __init__(self, **kw):
+        kw.pop('address', None)
         if kw:  # pragma: no cover
             raise TypeError(f'SharedMemoryStorage got unexpected arguments: {",".join(kw)}')
         # for test purpose, in real usage,

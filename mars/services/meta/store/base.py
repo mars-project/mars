@@ -110,6 +110,25 @@ class AbstractMetaStore(ABC):
             Band of chunk to add, shall be tuple of (worker, band).
         """
 
+    @abstractmethod
+    async def set_chunk_bands(self,
+                              object_id: str,
+                              bands: List[BandType]):
+        """
+        Set bands of chunk.
+
+        Parameters
+        ----------
+        object_id : str
+            Object ID.
+        bands : List[BandType]
+            Band of chunk to add, shall be tuple of (worker, band).
+        """
+
+    @abstractmethod
+    async def get_band_chunks(self, band: BandType) -> List[str]:
+        """Get chunks key of band"""
+
 
 _meta_store_types: Dict[str, Type[AbstractMetaStore]] = dict()
 

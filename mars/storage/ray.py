@@ -142,8 +142,8 @@ class RayStorage(StorageBackend):
     async def _get_ray_supervisor_actor(self):
         if not self._ray_supervisor_actor:
             cluster_api = await ClusterAPI.create(self._address)
-            supervisor_ref = (await cluster_api.get_supervisors())[0]
-            self._ray_supervisor_actor = ray.get_actor(supervisor_ref.address)
+            supervisor_address = (await cluster_api.get_supervisors())[0]
+            self._ray_supervisor_actor = ray.get_actor(supervisor_address)
         return self._ray_supervisor_actor
 
     @implements(StorageBackend.delete)

@@ -15,11 +15,13 @@
 import asyncio
 import importlib
 import logging
+import random
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
+from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...core import BandType
 from .... import oscar as mo
@@ -34,7 +36,6 @@ class AutoscalerActor(mo.Actor):
 
     def __init__(self, autoscale_conf: Dict[str, Any]):
         self._enabled = autoscale_conf.get('enabled', False)
-        self._migrate_data = autoscale_conf.get('migrate_data', True)
         self._autoscale_conf = autoscale_conf
         self._cluster_api = None
         self.queueing_refs = dict()
@@ -101,7 +102,8 @@ class AutoscalerActor(mo.Actor):
         for band in bands:
             while not await self.global_slot_ref.is_band_idle(band):
                 await asyncio.sleep(0.1)
-        await self.migrate_data_of_bands(bands)
+        # Use actor lock to avoid dest worker migrating data at the same time.
+        await self.ref().migrate_data_of_bands(bands)
         await self._cluster_api.release_worker_node(address)
         self._dynamic_workers.remove(address)
         logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
@@ -117,11 +119,32 @@ class AutoscalerActor(mo.Actor):
 
     async def migrate_data_of_bands(self, bands: List[BandType]):
         """Move data from `bands` to other available bands"""
-        if self._migrate_data:
-            raise NotImplementedError
-        else:
-            # TODO update chunk meta
-            pass
+        session_ids = list(self.queueing_refs.keys())
+        for session_id in session_ids:
+            from mars.services.meta import MetaAPI
+            meta_api = await MetaAPI.create(session_id, self.address)
+            for src_band in bands:
+                band_data_keys = await meta_api.get_band_chunks(src_band)
+                for data_key in band_data_keys:
+                    dest_band = self._select_target_band(src_band, data_key)
+                    # For ray backend, there will only be meta update rather than data transfer
+                    await self._get_storage_api(dest_band[0]).fetch(
+                        data_key, band_name=src_band[1], dest_address=src_band[0])
+                    await self._get_storage_api(src_band[0]).delete(data_key)
+                    chunk_bands = (await meta_api.get_chunk_meta(data_key, fields=['bands'])).get('bands')
+                    chunk_bands.remove(src_band)
+                    chunk_bands.append(dest_band)
+                    await meta_api.set_chunk_bands(data_key, chunk_bands)
+
+    def _select_target_band(self, band: BandType, data_key: str):
+        bands = list(b for b in self.band_total_slots.keys() if b[1] == band[1] and b != band)
+        # TODO select band based on remaining store space size of other bands
+        return random.choice(bands)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_storage_api(self, address: str):
+        from mars.services.storage import StorageAPI
+        return await StorageAPI.create(self._session_id, address)
 
 
 class AbstractScaleStrategy(ABC):

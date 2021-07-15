@@ -217,6 +217,16 @@ class MetaAPI(AbstractMetaAPI):
                               bands: List[BandType]):
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
+    @extensible
+    async def set_chunk_bands(self,
+                              object_id: str,
+                              bands: List[BandType]):
+        return await self._meta_store.set_chunk_bands(object_id, bands)
+
+    @extensible
+    async def get_band_chunks(self, band: BandType) -> List[str]:
+        return await self._meta_store.get_band_chunks(band)
+
 
 class MockMetaAPI(MetaAPI):
     @classmethod

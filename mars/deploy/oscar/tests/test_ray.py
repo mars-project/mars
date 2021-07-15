@@ -274,7 +274,7 @@ async def test_auto_scale_in(ray_large_cluster):
             await asyncio.sleep(1)
 
 
-@pytest.mark.skip('Skip until storage support chunk data migration')
+@pytest.mark.skip('Skip until ray.put support specify owner')
 @pytest.mark.timeout(timeout=60)
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
 @require_ray
