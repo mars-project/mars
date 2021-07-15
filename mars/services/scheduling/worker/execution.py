@@ -114,10 +114,10 @@ async def _retry_run(subtask: Subtask,
 class SubtaskExecutionActor(mo.Actor):
     _subtask_info: Dict[str, SubtaskExecutionInfo]
 
-    def __init__(self, default_config: Dict):
+    def __init__(self, subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES):
         self._cluster_api = None
         self._global_slot_ref = None
-        self._default_config = default_config
+        self._subtask_max_retries = subtask_max_retries
 
         self._subtask_info = dict()
         self._size_pool = ThreadPoolExecutor(1)
@@ -342,12 +342,11 @@ class SubtaskExecutionActor(mo.Actor):
         with mo.debug.no_message_trace():
             task = asyncio.create_task(self.ref().internal_run_subtask(subtask, band_name))
 
-        # the extra_config may be None. the extra config overwrites the default config.
+        # the extra_config may be None. the extra config overwrites the default value.
         subtask_max_retries = (subtask.extra_config.get('subtask_max_retries')
                                if subtask.extra_config else None)
         if subtask_max_retries is None:
-            subtask_max_retries = self._default_config.get('subtask_max_retries',
-                                                           DEFAULT_SUBTASK_MAX_RETRIES)
+            subtask_max_retries = self._subtask_max_retries
 
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address,

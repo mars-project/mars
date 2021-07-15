@@ -151,6 +151,8 @@ class BandSlotManagerActor(mo.Actor):
             return
 
         event = self._slot_kill_events[slot_id] = asyncio.Event()
+        # TODO(fyrestone): Make it more reliable. e.g. kill_actor
+        # success but the actor does not restart.
         try:
             await mo.kill_actor(self._slot_control_refs[slot_id])
         except ConnectionError:

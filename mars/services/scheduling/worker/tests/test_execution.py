@@ -115,7 +115,8 @@ async def actor_pool(request):
                                                   storage_handler_cls=MockStorageHandlerActor)
 
         # create assigner actor
-        execution_ref = await mo.create_actor(SubtaskExecutionActor, {'subtask_max_retries': 1},
+        execution_ref = await mo.create_actor(SubtaskExecutionActor,
+                                              subtask_max_retries=1,
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor

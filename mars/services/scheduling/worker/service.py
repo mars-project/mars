@@ -51,7 +51,7 @@ async def start(config: Dict, address: str):
                           uid=WorkerQuotaManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(SubtaskExecutionActor,
-                          default_config=dict(subtask_max_retries=subtask_max_retries),
+                          subtask_max_retries=subtask_max_retries,
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
 
