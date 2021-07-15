@@ -46,9 +46,9 @@ def setup():
     sess = new_test_session(address='127.0.0.1',
                             init_local=True,
                             default=True)
-    assert sess.get_cluster_versions() == [mars_version]
     with option_context({'show_progress': False}):
         try:
+            assert sess.get_cluster_versions() == [mars_version]
             yield sess
         finally:
             sess.stop_server()
@@ -161,19 +161,21 @@ def test_closed_session():
     session = new_test_session(default=True)
     with option_context({'show_progress': False}):
         arr = mt.ones((10, 10))
+        try:
+            result = session.execute(arr)
 
-        result = session.execute(arr)
+            np.testing.assert_array_equal(result, np.ones((10, 10)))
 
-        np.testing.assert_array_equal(result, np.ones((10, 10)))
+            # close session
+            session.close()
 
-        # close session
-        session.close()
+            with pytest.raises(RuntimeError):
+                session.execute(arr)
 
-        with pytest.raises(RuntimeError):
-            session.execute(arr)
-
-        with pytest.raises(RuntimeError):
-            session.execute(arr + 1)
+            with pytest.raises(RuntimeError):
+                session.execute(arr + 1)
+        finally:
+            session.stop_server()
 
 
 def test_array_protocol(setup):
