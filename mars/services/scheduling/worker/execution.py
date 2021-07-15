@@ -104,7 +104,7 @@ async def _retry_run(subtask: Subtask,
             return await target_async_func(*args)
         except (OSError, mars.oscar.errors.MarsError) as ex:
             if subtask_info.num_retries < subtask_info.max_retries:
-                logger.error('rerun the %s of subtask %s due to %s',
+                logger.error('Rerun the %s of subtask %s due to %s',
                              target_async_func, subtask.subtask_id, ex)
                 subtask_info.num_retries += 1
                 continue
