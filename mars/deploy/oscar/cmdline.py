@@ -48,7 +48,7 @@ class OscarCommandRunner:
         self.config = {}
         self.pool = None
 
-        self.logging_conf_file = None
+        self.logging_conf = {}
 
         self._running = False
 
@@ -80,7 +80,7 @@ class OscarCommandRunner:
         for path in conf_file_paths:
             conf_path = os.path.join(path, log_conf) if path else log_conf
             if os.path.exists(conf_path):
-                self.logging_conf_file = conf_path
+                self.logging_conf['file'] = conf_path
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
                 break
         else:
@@ -88,6 +88,7 @@ class OscarCommandRunner:
             level = getattr(logging, log_level.upper()) if log_level else logging.INFO
             logging.getLogger('mars').setLevel(level)
             logging.basicConfig(format=self.args.log_format)
+            self.logging_conf.update({'level': log_level, 'format': self.args.log_format})
 
     @classmethod
     def _build_endpoint_file_path(cls, pid: int = None, asterisk: bool = False):

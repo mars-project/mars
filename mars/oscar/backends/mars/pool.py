@@ -134,9 +134,13 @@ class MainActorPool(MainActorPoolBase):
         if suspend_sigint:
             signal.signal(signal.SIGINT, lambda *_: None)
 
-        logging_conf_file = conf['logging_conf_file']
-        if logging_conf_file:
-            logging.config.fileConfig(logging_conf_file)
+        logging_conf = conf['logging_conf'] or {}
+        if logging_conf.get('file'):
+            logging.config.fileConfig(logging_conf['file'])
+        elif logging_conf.get('level'):
+            logging.basicConfig(
+                level=logging_conf['level'], format=logging_conf.get('format')
+            )
 
         use_uvloop = conf['use_uvloop']
         if use_uvloop:

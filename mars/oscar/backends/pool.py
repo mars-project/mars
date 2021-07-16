@@ -1077,7 +1077,7 @@ async def create_actor_pool(address: str, *,
                             modules: List[str] = None,
                             suspend_sigint: bool = None,
                             use_uvloop: Union[str, bool] = 'auto',
-                            logging_conf_file: str = None,
+                            logging_conf: Union[Dict, None] = None,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None,
                             **kwargs) -> MainActorPoolType:
@@ -1114,7 +1114,7 @@ async def create_actor_pool(address: str, *,
         modules=modules,
         suspend_sigint=suspend_sigint,
         use_uvloop=use_uvloop,
-        logging_conf_file=logging_conf_file,
+        logging_conf=logging_conf,
         kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
@@ -1128,7 +1128,7 @@ async def create_actor_pool(address: str, *,
             modules=modules,
             suspend_sigint=suspend_sigint,
             use_uvloop=use_uvloop,
-            logging_conf_file=logging_conf_file,
+            logging_conf=logging_conf,
             kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({
