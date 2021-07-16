@@ -187,11 +187,7 @@ class OscarCommandRunner:
     async def stop_services(self):
         raise NotImplementedError
 
-    def __call__(self, argv: List[str] = None):
-        parser = argparse.ArgumentParser(description=self.command_description)
-        self.config_args(parser)
-        self.args = self.parse_args(parser, argv)
-
+    def create_loop(self):
         use_uvloop = self.args.use_uvloop
         if not use_uvloop:
             loop = asyncio.get_event_loop()
@@ -205,6 +201,14 @@ class OscarCommandRunner:
                     loop = asyncio.get_event_loop()
                 else:  # pragma: no cover
                     raise
+        return loop
+
+    def __call__(self, argv: List[str] = None):
+        parser = argparse.ArgumentParser(description=self.command_description)
+        self.config_args(parser)
+        self.args = self.parse_args(parser, argv)
+
+        loop = self.create_loop()
         task = loop.create_task(self._main(argv))
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             loop.add_signal_handler(sig, task.cancel)

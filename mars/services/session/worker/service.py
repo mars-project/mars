@@ -21,7 +21,7 @@ from .custom_log import CustomLogActor
 
 async def start(config: Dict, address: str):
     """
-    Start meta service on worker.
+    Start session service on worker.
 
     Parameters
     ----------

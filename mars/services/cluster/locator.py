@@ -16,10 +16,11 @@ import asyncio
 import logging
 from typing import List, Optional
 
-from mars import oscar as mo
-from mars.lib.uhashring import HashRing
-from mars.services.cluster.backends import AbstractClusterBackend, get_cluster_backend
-from mars.utils import extensible
+from ... import oscar as mo
+from ...lib.uhashring import HashRing
+from ...utils import extensible
+from .backends import AbstractClusterBackend, get_cluster_backend
+from .core import WatchNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +35,14 @@ class SupervisorLocatorActor(mo.Actor):
         self._supervisors = None
         self._hash_ring = None
 
-        self._watch_events = set()
+        self._watch_notifier = WatchNotifier()
         self._watch_task = None
 
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
         self._backend = await backend_cls.create(
             self._lookup_address, self.address)
-        self._set_supervisors(await self._backend.get_supervisors())
+        await self._set_supervisors(await self._backend.get_supervisors())
 
         self._watch_task = asyncio.create_task(self._watch_backend())
 
@@ -51,12 +52,10 @@ class SupervisorLocatorActor(mo.Actor):
     def get_supervisors(self):
         return self._supervisors
 
-    def _set_supervisors(self, supervisors: List[str]):
+    async def _set_supervisors(self, supervisors: List[str]):
         self._supervisors = supervisors
         self._hash_ring = HashRing(nodes=supervisors, hash_fn='ketama')
-
-        for ev in self._watch_events:
-            ev.set()
+        await self._watch_notifier.notify()
 
     @extensible
     def get_supervisor(self, key: str, size=1):
@@ -72,52 +71,26 @@ class SupervisorLocatorActor(mo.Actor):
         last_supervisors = set()
         async for sv_list in self._backend.watch_supervisors():
             if set(sv_list) != last_supervisors:
-                self._set_supervisors(sv_list)
+                await self._set_supervisors(sv_list)
                 last_supervisors = set(sv_list)
 
-    async def watch_supervisors(self):
-        event = asyncio.Event()
-        self._watch_events.add(event)
+    async def watch_supervisors(self, version: Optional[int] = None):
+        version = yield self._watch_notifier.watch(version)
+        raise mo.Return((version, self._supervisors))
 
-        async def waiter():
-            try:
-                await event.wait()
-                return self._supervisors
-            finally:
-                self._watch_events.remove(event)
-
-        return waiter()
-
-    async def watch_supervisors_by_keys(self, keys):
-        event = asyncio.Event()
-        self._watch_events.add(event)
-
-        async def waiter():
-            try:
-                await event.wait()
-                return [self.get_supervisor(k) for k in keys]
-            finally:
-                self._watch_events.remove(event)
-
-        return waiter()
+    async def watch_supervisors_by_keys(self, keys: List[str],
+                                        version: Optional[int] = None):
+        version = yield self._watch_notifier.watch(version)
+        raise mo.Return((version, [self.get_supervisor(k) for k in keys]))
 
     async def wait_all_supervisors_ready(self):
         expected_supervisors = await self._backend.get_expected_supervisors()
         if set(self._supervisors or []) == set(expected_supervisors):
             return
 
-        event = asyncio.Event()
-        self._watch_events.add(event)
-
-        async def waiter():
-            while True:
-                await event.wait()
-
-                expected_supervisors = await self._backend.get_expected_supervisors()
-                if set(self._supervisors) == set(expected_supervisors):
-                    self._watch_events.remove(event)
-                    return
-                else:
-                    event.clear()
-
-        return waiter()
+        version = None
+        while True:
+            version = yield self._watch_notifier.watch(version)
+            expected_supervisors = await self._backend.get_expected_supervisors()
+            if set(self._supervisors) == set(expected_supervisors):
+                break

@@ -1,3 +1,5 @@
 "@inherits": '@default'
 session:
   custom_log_dir: auto
+  plasma:
+    store_memory: 32M

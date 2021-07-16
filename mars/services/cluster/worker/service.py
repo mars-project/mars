@@ -54,7 +54,6 @@ async def start(config: dict, address: str):
     await mo.create_actor(
         NodeInfoUploaderActor,
         role=NodeRole.WORKER,
-        dirs=config.get('disk_dirs') or [],
         interval=svc_config.get('node_check_interval'),
         band_to_slots=svc_config.get('resource'),
         uid=NodeInfoUploaderActor.default_uid(),
