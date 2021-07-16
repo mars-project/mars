@@ -18,7 +18,8 @@ del aio
 
 from . import debug
 from .api import actor_ref, create_actor, has_actor, destroy_actor, \
-    kill_actor, Actor, create_actor_pool, setup_cluster
+    kill_actor, Actor, StatelessActor, create_actor_pool, setup_cluster, \
+    wait_actor_pool_recovered
 from .backends import allocate_strategy
 from .backends.pool import MainActorPoolType
 from .core import ActorRef

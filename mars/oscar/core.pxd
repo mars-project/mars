@@ -22,7 +22,7 @@ cdef class ActorRef:
     cdef __tell__(self, object message, object delay=*)
 
 
-cdef class _Actor:
+cdef class _BaseActor:
     cdef object __weakref__
     cdef str _address
     cdef object _lock

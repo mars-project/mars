@@ -52,6 +52,7 @@ class ControlMessageType(Enum):
     restart = 1
     sync_config = 2
     get_config = 3
+    wait_pool_recovered = 4
 
 
 @dataslots

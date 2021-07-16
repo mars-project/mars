@@ -19,7 +19,7 @@ from collections import defaultdict
 
 from .backend import get_backend
 from .context import get_context
-from .core import _Actor, ActorRef
+from .core import _Actor, _StatelessActor, ActorRef
 
 
 async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs) -> ActorRef:
@@ -61,6 +61,13 @@ async def create_actor_pool(address: str,
         address, n_process=n_process, **kwargs)
 
 
+async def wait_actor_pool_recovered(address: str,
+                                    main_pool_address: str = None):
+    ctx = get_context()
+    return await ctx.wait_actor_pool_recovered(
+        address, main_pool_address)
+
+
 def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
     scheme_to_address_resources = defaultdict(dict)
     for address, resources in address_to_resources.items():
@@ -76,7 +83,7 @@ def setup_cluster(address_to_resources: Dict[str, Dict[str, Number]]):
         get_backend(scheme).get_driver_cls().setup_cluster(address_resources)
 
 
-class Actor(_Actor):
+class AsyncActorMixin:
     @classmethod
     def default_uid(cls):
         return cls.__name__
@@ -109,6 +116,14 @@ class Actor(_Actor):
             Message shall be (method_name,) + args + (kwargs,)
         """
         return await super().__on_receive__(message)
+
+
+class Actor(AsyncActorMixin, _Actor):
+    pass
+
+
+class StatelessActor(AsyncActorMixin, _StatelessActor):
+    pass
 
 
 _actor_implementation: Dict[Type[Actor], Type[Actor]] = dict()

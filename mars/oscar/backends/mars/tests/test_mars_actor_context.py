@@ -25,6 +25,7 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import RandomSubPool
 from mars.oscar.debug import set_debug_options, DebugOptions
+from mars.tests.core import flaky
 from mars.utils import extensible
 
 logger = logging.getLogger(__name__)
@@ -139,14 +140,14 @@ class CreateDestroyActor(mo.Actor):
         return message
 
 
-class ResourceLockActor(mo.Actor):
+class ResourceLockActor(mo.StatelessActor):
     def __init__(self, count=1):
         self._sem = asyncio.Semaphore(count)
         self._requests = deque()
 
     async def apply(self, val=None):
-        yield self._sem.acquire()
-        raise mo.Return(val + 1 if val is not None else None)
+        await self._sem.acquire()
+        return val + 1 if val is not None else None
 
     def release(self):
         self._sem.release()
@@ -242,6 +243,7 @@ async def actor_pool_context(request):
         set_debug_options(None)
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_simple_local_actor_pool(actor_pool_context):
     pool = actor_pool_context
@@ -260,6 +262,7 @@ async def test_simple_local_actor_pool(actor_pool_context):
     assert await ref.add(2) == 104
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_post_create_pre_destroy(actor_pool_context):
     pool = actor_pool_context
@@ -274,6 +277,7 @@ async def test_mars_post_create_pre_destroy(actor_pool_context):
     assert records[1].startswith('destroy')
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_create_actor(actor_pool_context):
     pool = actor_pool_context
@@ -288,6 +292,7 @@ async def test_mars_create_actor(actor_pool_context):
     assert r == 6
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_create_actor_error(actor_pool_context):
     pool = actor_pool_context
@@ -303,6 +308,7 @@ async def test_mars_create_actor_error(actor_pool_context):
         await ref1.create(DummyActor, -2, address=pool.external_address)
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_send(actor_pool_context):
     pool = actor_pool_context
@@ -316,6 +322,7 @@ async def test_mars_send(actor_pool_context):
     assert await ref4.send(ref3, 'add', 3) == 4
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_send_error(actor_pool_context):
     pool = actor_pool_context
@@ -329,6 +336,7 @@ async def test_mars_send_error(actor_pool_context):
         await (await mo.actor_ref('fake_uid', address=pool.external_address)).add(1)
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_tell(actor_pool_context):
     pool = actor_pool_context
@@ -349,6 +357,7 @@ async def test_mars_tell(actor_pool_context):
         await ref1.tell(await mo.actor_ref(set()), 'add', 3)
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_batch_method(actor_pool_context):
     pool = actor_pool_context
@@ -369,6 +378,7 @@ async def test_mars_batch_method(actor_pool_context):
         await ref1.add_ret.batch(ref1.add_ret.delay(1), ref1.add.delay(2))
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_destroy_has_actor(actor_pool_context):
     pool = actor_pool_context
@@ -409,6 +419,7 @@ async def test_mars_destroy_has_actor(actor_pool_context):
     assert not await mo.has_actor(ref1)
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_mars_resource_lock(actor_pool_context):
     pool = actor_pool_context
@@ -431,6 +442,7 @@ async def test_mars_resource_lock(actor_pool_context):
         assert event_pair[0][1] == event_pair[1][1]
 
 
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_promise_chain(actor_pool_context):
     pool = actor_pool_context

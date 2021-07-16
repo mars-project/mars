@@ -632,7 +632,8 @@ class SubActorPoolBase(ActorPoolBase):
 
 class MainActorPoolBase(ActorPoolBase):
     __slots__ = '_allocated_actors', 'sub_actor_pool_manager', '_auto_recover', \
-                '_monitor_task', '_on_process_down', '_on_process_recover'
+                '_monitor_task', '_on_process_down', '_on_process_recover', \
+                '_recover_events'
 
     def __init__(self,
                  process_index: int,
@@ -656,6 +657,7 @@ class MainActorPoolBase(ActorPoolBase):
         self._monitor_task: Optional[asyncio.Task] = None
         self._on_process_down = on_process_down
         self._on_process_recover = on_process_recover
+        self._recover_events: Dict[str, asyncio.Event] = dict()
 
         # states
         self._allocated_actors: allocated_type = \
@@ -858,6 +860,14 @@ class MainActorPoolBase(ActorPoolBase):
                     self.sub_processes[message.address],
                     timeout=timeout,
                     force=force)
+                if self._auto_recover:
+                    self._recover_events[message.address] = asyncio.Event()
+                processor.result = ResultMessage(message.message_id, True,
+                                                 protocol=message.protocol)
+            elif message.control_message_type == ControlMessageType.wait_pool_recovered:
+                event = self._recover_events.get(message.address, None)
+                if event is not None:
+                    await event.wait()
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             else:
@@ -1027,9 +1037,13 @@ class MainActorPoolBase(ActorPoolBase):
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)
                         if self._auto_recover:
+                            if address not in self._recover_events:
+                                self._recover_events[address] = asyncio.Event()
                             await self.recover_sub_pool(address)
                             if self._on_process_recover is not None:
                                 self._on_process_recover(self, address)
+                            event = self._recover_events.pop(address)
+                            event.set()
 
                 # check every half second
                 await asyncio.sleep(.5)

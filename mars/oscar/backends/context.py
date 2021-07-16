@@ -163,3 +163,27 @@ class MarsActorContext(BaseActorContext):
             protocol=DEFAULT_PROTOCOL)
         result = await self._call(address, message)
         return self._process_result_message(result)
+
+    async def wait_actor_pool_recovered(self, address: str,
+                                        main_address: str = None):
+        # get main_pool_address
+        control_message = ControlMessage(
+            new_message_id(), main_address,
+            ControlMessageType.get_config,
+            'main_pool_address',
+            protocol=DEFAULT_PROTOCOL)
+        main_address = self._process_result_message(
+            await self._call(main_address, control_message))
+
+        # if address is main pool, it is never recovered
+        if address == main_address:
+            return
+
+        control_message = ControlMessage(
+            new_message_id(), address,
+            ControlMessageType.wait_pool_recovered,
+            None,
+            protocol=DEFAULT_PROTOCOL
+        )
+        self._process_result_message(
+            await self._call(main_address, control_message))
