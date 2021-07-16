@@ -84,20 +84,8 @@ class TaskProcessor:
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
 
+        # TODO: TaskProcessor not being a Actor, band_watch_task need extra thought
         self._band_slots = dict()
-        self._band_slots_watch_task = None
-
-    async def __post_create__(self):
-        self._band_slots = await self._cluster_api.get_all_bands()
-
-        async def watch_bands():
-            while True:
-                self._band_slots = await self._cluster_api.get_all_bands(watch=True)
-        self._band_slots_watch_task = asyncio.create_task(watch_bands())
-
-    async def __pre_destroy__(self):
-        if self._band_slots_watch_task is not None:  # pragma: no branch
-            self._band_slots_watch_task.cancel()
 
     @property
     def preprocessor(self):
