@@ -1,4 +1,4 @@
-ARG BASE_CONTAINER=continuumio/miniconda3:4.6.14
+ARG BASE_CONTAINER=continuumio/miniconda3:4.9.2
 FROM ${BASE_CONTAINER}
 
 COPY retry.sh /srv/retry.sh
@@ -7,9 +7,6 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     bokeh \
     cloudpickle \
     cython \
-    gevent \
-    jinja2 \
-    lz4 \
     mkl \
     numba \
     numexpr \
@@ -19,6 +16,7 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     scikit-learn \
     scipy \
     tornado \
+    aiohttp \
   && /srv/retry.sh 3 /opt/conda/bin/conda install -c conda-forge \
     libiconv \
     pyarrow\>=1.0 \

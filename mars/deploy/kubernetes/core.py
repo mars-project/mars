@@ -16,8 +16,7 @@
 import asyncio
 import logging
 import os
-from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncGenerator, Callable, List, Optional, TypeVar
+from typing import AsyncGenerator, List, Optional, TypeVar
 
 from ...services.cluster.backends import register_cluster_backend, \
     AbstractClusterBackend
@@ -46,7 +45,6 @@ class K8SClusterBackend(AbstractClusterBackend):
         self._k8s_namespace = k8s_namespace or os.environ.get('MARS_K8S_POD_NAMESPACE') or 'default'
         self._full_label_selector = None
         self._client = client.CoreV1Api(client.ApiClient(self._k8s_config))
-        self._executor = ThreadPoolExecutor(2)
 
         self._service_pod_to_ep = dict()
 
@@ -72,13 +70,6 @@ class K8SClusterBackend(AbstractClusterBackend):
     def __reduce__(self):
         return type(self), (self._k8s_config, self._k8s_namespace)
 
-    async def _spawn_in_pool(self, func: Callable[..., RetType], *args, **kwargs) -> RetType:
-        def func_in_thread():
-            return func(*args, **kwargs)
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._executor, func_in_thread)
-
     async def _get_label_selector(self, service_type):
         if self._full_label_selector is not None:
             return self._full_label_selector
@@ -86,9 +77,9 @@ class K8SClusterBackend(AbstractClusterBackend):
         selectors = [f'mars/service-type={service_type}']
         if 'MARS_K8S_GROUP_LABELS' in os.environ:
             group_labels = os.environ['MARS_K8S_GROUP_LABELS'].split(',')
-            cur_pod_info = (await self._spawn_in_pool(self._client.read_namespaced_pod,
-                                                      os.environ['MARS_K8S_POD_NAME'],
-                                                      namespace=self._k8s_namespace)).to_dict()
+            cur_pod_info = (await asyncio.to_thread(self._client.read_namespaced_pod,
+                                                    os.environ['MARS_K8S_POD_NAME'],
+                                                    namespace=self._k8s_namespace)).to_dict()
             for label in group_labels:
                 label_val = cur_pod_info['metadata']['labels'][label]
                 selectors.append(f'{label}={label_val}')
@@ -107,7 +98,7 @@ class K8SClusterBackend(AbstractClusterBackend):
         return obj_data['status']['phase'] == 'Running'
 
     async def _get_pod_to_ep(self, service_type: str, filter_ready: bool = False):
-        query = (await self._spawn_in_pool(
+        query = (await asyncio.to_thread(
             self._client.list_namespaced_pod,
             namespace=self._k8s_namespace,
             label_selector=await self._get_label_selector(service_type),
@@ -149,7 +140,7 @@ class K8SClusterBackend(AbstractClusterBackend):
             )
             while True:
                 try:
-                    event = await self._spawn_in_pool(next, streamer, StopIteration)
+                    event = await asyncio.to_thread(next, streamer, StopIteration)
                     if event is StopIteration:
                         # todo change this into a continuous watch
                         #  when watching in a master node is implemented

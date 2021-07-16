@@ -83,8 +83,6 @@ class KubernetesCluster:
 
         self._api_client = kube_api_client
         self._core_api = kube_client.CoreV1Api(kube_api_client)
-        self._apps_api = kube_client.AppsV1Api(kube_api_client)
-        self._rbac_api = kube_client.RbacAuthorizationV1Api(kube_api_client)
 
         self._namespace = namespace
         self._image = image
@@ -214,10 +212,10 @@ class KubernetesCluster:
         role_config = RoleConfig('mars-pod-operator', self._namespace, api_groups='',
                                  resources='pods,replicationcontrollers/scale',
                                  verbs='get,watch,list,patch')
-        self._rbac_api.create_namespaced_role(self._namespace, role_config.build())
+        role_config.create_namespaced(self._api_client, self._namespace)
         role_binding_config = RoleBindingConfig(
             'mars-pod-operator-binding', self._namespace, 'mars-pod-operator', 'default')
-        self._rbac_api.create_namespaced_role_binding(self._namespace, role_binding_config.build())
+        role_binding_config.create_namespaced(self._api_client, self._namespace)
 
     def _create_supervisors(self):
         supervisors_config = self._supervisor_config_cls(
@@ -229,8 +227,7 @@ class KubernetesCluster:
         )
         supervisors_config.add_simple_envs(self._supervisor_extra_env)
         supervisors_config.add_labels(self._supervisor_extra_labels)
-        self._core_api.create_namespaced_replication_controller(
-            self._namespace, supervisors_config.build())
+        supervisors_config.create_namespaced(self._api_client, self._namespace)
 
     def _create_workers(self):
         workers_config = self._worker_config_cls(
@@ -245,8 +242,7 @@ class KubernetesCluster:
         )
         workers_config.add_simple_envs(self._worker_extra_env)
         workers_config.add_labels(self._worker_extra_labels)
-        self._core_api.create_namespaced_replication_controller(
-            self._namespace, workers_config.build())
+        workers_config.create_namespaced(self._api_client, self._namespace)
 
     def _create_services(self):
         self._create_supervisors()
