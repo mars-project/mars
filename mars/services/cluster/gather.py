@@ -17,6 +17,7 @@ import os
 import platform
 import socket
 import sys
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,8 @@ except ImportError:  # pragma: no cover
 from ... import resource as mars_resource
 from ...config import options
 from ...utils import git_info, lazy_import
+from ...storage import StorageLevel
+from .core import WorkerSlotInfo, QuotaInfo, DiskInfo, StorageInfo
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
@@ -146,7 +149,12 @@ def gather_node_resource(band_to_slots=None, use_gpu=True):
     return res
 
 
-def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
+def gather_node_details(
+    band_slot_infos: Dict[str, List[WorkerSlotInfo]] = None,
+    band_quota_infos: Dict[str, QuotaInfo] = None,
+    disk_infos: List[DiskInfo] = None,
+    band_storage_infos: Dict[str, Dict[StorageLevel, StorageInfo]] = None
+):
     disk_io_usage = mars_resource.disk_io_usage()
     net_io_usage = mars_resource.net_io_usage()
     res = {
@@ -155,16 +163,17 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
         'iowait': mars_resource.iowait(),
     }
 
-    if dirs:
+    if disk_infos:
         part_dict = dict()
-        for d in dirs:
-            part_dev = mars_resource.get_path_device(d)
+        for info in disk_infos:
+            part_dev = mars_resource.get_path_device(info.path)
             if part_dev in part_dict:
                 continue
 
-            disk_usage_result = mars_resource.disk_usage(d)
-            io_usage_result = mars_resource.disk_io_usage(d)
+            disk_usage_result = mars_resource.disk_usage(info.path)
+            io_usage_result = mars_resource.disk_io_usage(info.path)
             part_dict[part_dev] = disk_info = {
+                'size_limit': info.limit_size,
                 'size_used': disk_usage_result.used,
                 'size_total': disk_usage_result.total,
             }
@@ -174,7 +183,7 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
                     'writes': io_usage_result.writes if io_usage_result else None,
                 })
             if not sys.platform.startswith('win'):
-                in_usage_result = os.statvfs(d)
+                in_usage_result = os.statvfs(info.path)
                 disk_info.update({
                     'inode_used': in_usage_result.f_files - in_usage_result.f_favail,
                     'inode_total': in_usage_result.f_files,
@@ -199,5 +208,18 @@ def gather_node_states(dirs=None, band_slot_infos=None, band_quota_infos=None):
             'allocated_size': quota_info.allocated_size,
             'hold_size': quota_info.hold_size,
         } for band, quota_info in band_quota_infos.items()
+    }
+
+    band_storage_infos = band_storage_infos or dict()
+    res['storage'] = {
+        band: {
+            level.name.lower(): {
+                'size_used': storage_info.used_size,
+                'size_total': storage_info.total_size,
+                'size_pinned': storage_info.pinned_size,
+            }
+            for level, storage_info in storage_infos.items()
+        }
+        for band, storage_infos in band_storage_infos.items()
     }
     return res

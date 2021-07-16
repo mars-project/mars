@@ -76,10 +76,12 @@ async def test_changing_locator(actor_pool):
         SupervisorLocatorActor, 'fixed', ','.join(addresses),
         address=actor_pool.external_address)
 
-    assert (await locator_ref.watch_supervisors_by_keys(['mock_name']))[0] in addresses
-    assert (await locator_ref.watch_supervisors_by_keys(['mock_name']))[0] in addresses
+    version, result = await locator_ref.watch_supervisors_by_keys(['mock_name'])
+    assert result[0] in addresses
+    version, result = await locator_ref.watch_supervisors_by_keys(['mock_name'], version=version)
+    assert result[0] in addresses
 
-    assert all(addr in addresses for addr in await locator_ref.watch_supervisors())
+    assert all(addr in addresses for addr in (await locator_ref.watch_supervisors(version=version))[-1])
 
     with Timer() as timer:
         await locator_ref.wait_all_supervisors_ready()

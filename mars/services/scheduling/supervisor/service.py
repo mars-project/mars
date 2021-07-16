@@ -19,7 +19,7 @@ from .... import oscar as mo
 
 async def start(config: Dict, address: str):
     """
-    Start meta service on supervisor.
+    Start scheduling service on supervisor.
 
     Parameters
     ----------

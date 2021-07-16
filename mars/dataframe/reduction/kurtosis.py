@@ -63,18 +63,20 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
         return kurt
 
 
-def kurt_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False, fisher=True):
+def kurt_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False,
+                fisher=True, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameKurtosis(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
                            bias=bias, fisher=fisher, output_types=[OutputType.scalar],
-                           use_inf_as_na=use_inf_as_na)
+                           use_inf_as_na=use_inf_as_na, method=method)
     return op(df)
 
 
 def kurt_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None,
-                   bias=False, fisher=True):
+                   bias=False, fisher=True, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameKurtosis(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
                            bias=bias, fisher=fisher, combine_size=combine_size,
-                           output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
+                           output_types=[OutputType.series], use_inf_as_na=use_inf_as_na,
+                           method=method)
     return op(df)

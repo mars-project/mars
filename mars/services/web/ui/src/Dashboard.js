@@ -38,11 +38,11 @@ class NodeInfo extends React.Component {
 
     refreshInfo() {
       let roleId = (this.nodeRole === 'supervisor' ? 0 : 1);
-      fetch('api/cluster/nodes?role=' + roleId + '&env=1&resource=1')
+      fetch('api/cluster/nodes?role=' + roleId + '&env=1&resource=1&exclude_statuses=-1')
           .then(res => res.json())
           .then((res) => {
               let state = this.state;
-              state[this.nodeRole] = res;
+              state[this.nodeRole] = res['nodes'];
               this.setState(state);
           })
     }

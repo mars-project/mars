@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
-from typing import Dict
+from collections import defaultdict
+from typing import Dict, List
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
+from ...storage import StorageLevel
 from ..core import BandType
-from .core import NodeInfo
-from .gather import gather_node_env, gather_node_resource, gather_node_states
+from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, \
+    DiskInfo, StorageInfo
+from .gather import gather_node_env, gather_node_resource, \
+    gather_node_details
 
 logger = logging.getLogger(__name__)
 
@@ -27,22 +32,29 @@ DEFAULT_INFO_UPLOAD_INTERVAL = 1
 
 
 class NodeInfoUploaderActor(mo.Actor):
-    def __init__(self, role=None, dirs=None, interval=None,
+    _band_slot_infos: Dict[str, List[WorkerSlotInfo]]
+    _band_quota_infos: Dict[str, QuotaInfo]
+    _disk_infos: List[DiskInfo]
+    _band_storage_infos: Dict[str, Dict[StorageLevel, StorageInfo]]
+
+    def __init__(self, role=None, interval=None,
                  band_to_slots=None, use_gpu=True):
         self._info = NodeInfo(role=role)
 
         self._env_uploaded = False
-        self._dirs = dirs
         self._band_to_slots = band_to_slots
 
         self._interval = interval or DEFAULT_INFO_UPLOAD_INTERVAL
         self._upload_task = None
         self._upload_enabled = False
+        self._node_ready_event = asyncio.Event()
 
         self._use_gpu = use_gpu
 
         self._band_slot_infos = dict()
         self._band_quota_infos = dict()
+        self._band_storage_infos = defaultdict(dict)
+        self._disk_infos = []
 
     async def __post_create__(self):
         await self.upload_node_info()
@@ -65,17 +77,25 @@ class NodeInfoUploaderActor(mo.Actor):
     async def mark_node_ready(self):
         self._upload_enabled = True
         # upload info in time to reduce latency
-        await self.upload_node_info(False)
+        await self.upload_node_info(call_next=False, status=NodeStatus.READY)
+        self._node_ready_event.set()
 
     def is_node_ready(self):
-        return self._upload_enabled
+        return self._node_ready_event.is_set()
 
-    async def upload_node_info(self, call_next: bool = True):
+    async def wait_node_ready(self):
+        return self._node_ready_event.wait()
+
+    async def upload_node_info(self, call_next: bool = True, status: NodeStatus = None):
         try:
             if not self._info.env:
                 self._info.env = gather_node_env()
-            self._info.state.update(gather_node_states(dirs=self._dirs, band_slot_infos=self._band_slot_infos,
-                                                       band_quota_infos=self._band_quota_infos))
+            self._info.detail.update(gather_node_details(
+                disk_infos=self._disk_infos,
+                band_storage_infos=self._band_storage_infos,
+                band_slot_infos=self._band_slot_infos,
+                band_quota_infos=self._band_quota_infos
+            ))
             for band, res in gather_node_resource(
                     self._band_to_slots, use_gpu=self._use_gpu).items():
                 try:
@@ -89,7 +109,8 @@ class NodeInfoUploaderActor(mo.Actor):
                 await node_info_ref.update_node_info(
                     address=self.address, role=self._info.role,
                     env=self._info.env if not self._env_uploaded else None,
-                    resource=self._info.resource, state=self._info.state,
+                    resource=self._info.resource, detail=self._info.detail,
+                    status=status
                 )
                 self._env_uploaded = True
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
@@ -110,8 +131,14 @@ class NodeInfoUploaderActor(mo.Actor):
                 band_slots[(self.address, resource_type)] = info['gpu_total']
         return band_slots
 
-    def set_band_slot_infos(self, band_name, slot_infos):
+    def set_node_disk_info(self, node_disk_info: List[DiskInfo]):
+        self._disk_infos = node_disk_info
+
+    def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
+        self._band_storage_infos[band_name][storage_info.storage_level] = storage_info
+
+    def set_band_slot_infos(self, band_name, slot_infos: List[WorkerSlotInfo]):
         self._band_slot_infos[band_name] = slot_infos
 
-    def set_band_quota_info(self, band_name, quota_info):
+    def set_band_quota_info(self, band_name, quota_info: QuotaInfo):
         self._band_quota_infos[band_name] = quota_info

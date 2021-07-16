@@ -14,6 +14,7 @@
 
 import functools
 import itertools
+import uuid
 from typing import List, Dict
 
 import numpy as np
@@ -23,9 +24,11 @@ from ... import opcodes as OperandDef
 from ...config import options
 from ...core.custom_log import redirect_custom_log
 from ...core import ENTITY_TYPE, OutputType
+from ...core.context import get_context
 from ...core.operand import OperandStage
 from ...serialization.serializables import Int32Field, AnyField, BoolField, \
     StringField, ListField, DictField
+from ...typing import ChunkType, TileableType
 from ...utils import enter_current_session, lazy_import
 from ..core import GROUPBY_TYPE
 from ..merge import DataFrameConcat
@@ -38,6 +41,21 @@ from .core import DataFrameGroupByOperand
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 cudf = lazy_import('cudf', globals=globals())
+
+
+class SizeRecorder:
+    def __init__(self):
+        self._raw_records = 0
+        self._agg_records = 0
+
+    def record(self,
+               raw_records: int,
+               agg_records: int):
+        self._raw_records += raw_records
+        self._agg_records += agg_records
+
+    def get(self):
+        return self._raw_records, self._agg_records
 
 
 _agg_functions = {
@@ -103,16 +121,18 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
     _agg_funcs = ListField('agg_funcs')
     _post_funcs = ListField('post_funcs')
     _index_levels = Int32Field('index_levels')
+    _size_recorder_name = StringField('size_recorder_name')
 
     def __init__(self, raw_func=None, raw_func_kw=None, func=None, func_rename=None,
                  method=None, groupby_params=None, use_inf_as_na=None, combine_size=None,
                  pre_funcs=None, agg_funcs=None, post_funcs=None, index_levels=None,
-                 output_types=None, **kw):
+                 size_recorder_name=None, output_types=None, **kw):
         super().__init__(_raw_func=raw_func, _raw_func_kw=raw_func_kw, _func=func,
                          _func_rename=func_rename, _method=method, _groupby_params=groupby_params,
                          _combine_size=combine_size, _use_inf_as_na=use_inf_as_na,
                          _pre_funcs=pre_funcs, _agg_funcs=agg_funcs, _post_funcs=post_funcs,
-                         _index_levels=index_levels, _output_types=output_types, **kw)
+                         _index_levels=index_levels, _size_recorder_name=size_recorder_name,
+                         _output_types=output_types, **kw)
 
     @property
     def raw_func(self):
@@ -277,9 +297,13 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return reduce_chunks
 
     @classmethod
-    def _gen_map_chunks(cls, op: "DataFrameGroupByAgg", in_df, out_df, func_infos: ReductionSteps):
+    def _gen_map_chunks(cls,
+                        op: "DataFrameGroupByAgg",
+                        in_chunks: List[ChunkType],
+                        out_df: TileableType,
+                        func_infos: ReductionSteps):
         map_chunks = []
-        for chunk in in_df.chunks:
+        for chunk in in_chunks:
             chunk_inputs = [chunk]
             map_op = op.copy().reset_key()
             # force as_index=True for map phase
@@ -333,17 +357,22 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return compiler.compile()
 
     @classmethod
-    def _tile_with_shuffle(cls, op: "DataFrameGroupByAgg"):
-        in_df = op.inputs[0]
-        if len(in_df.shape) > 1:
-            in_df = build_concatenated_rows_frame(in_df)
-        out_df = op.outputs[0]
-
-        func_infos = cls._compile_funcs(op, in_df)
-
+    def _tile_with_shuffle(cls,
+                           op: "DataFrameGroupByAgg",
+                           in_df: TileableType,
+                           out_df: TileableType,
+                           func_infos: ReductionSteps):
         # First, perform groupby and aggregation on each chunk.
-        agg_chunks = cls._gen_map_chunks(op, in_df, out_df, func_infos)
+        agg_chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
+        return cls._perform_shuffle(op, agg_chunks, in_df, out_df, func_infos)
 
+    @classmethod
+    def _perform_shuffle(cls,
+                         op: "DataFrameGroupByAgg",
+                         agg_chunks: List[ChunkType],
+                         in_df: TileableType,
+                         out_df: TileableType,
+                         func_infos: ReductionSteps):
         # Shuffle the aggregation chunk.
         reduce_chunks = cls._gen_shuffle_chunks(op, in_df, agg_chunks)
 
@@ -380,15 +409,21 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables([in_df], **kw)
 
     @classmethod
-    def _tile_with_tree(cls, op: "DataFrameGroupByAgg"):
-        in_df = op.inputs[0]
-        if len(in_df.shape) > 1:
-            in_df = build_concatenated_rows_frame(in_df)
-        out_df = op.outputs[0]
+    def _tile_with_tree(cls,
+                        op: "DataFrameGroupByAgg",
+                        in_df: TileableType,
+                        out_df: TileableType,
+                        func_infos: ReductionSteps):
+        chunks = cls._gen_map_chunks(op, in_df.chunks, out_df, func_infos)
+        return cls._combine_tree(op, chunks, out_df, func_infos)
 
-        func_infos = cls._compile_funcs(op, in_df)
+    @classmethod
+    def _combine_tree(cls,
+                      op: "DataFrameGroupByAgg",
+                      chunks: List[ChunkType],
+                      out_df: TileableType,
+                      func_infos: ReductionSteps):
         combine_size = op.combine_size
-        chunks = cls._gen_map_chunks(op, in_df, out_df, func_infos)
         while len(chunks) > combine_size:
             new_chunks = []
             for idx, i in enumerate(range(0, len(chunks), combine_size)):
@@ -445,13 +480,58 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, **kw)
 
     @classmethod
+    def _tile_auto(cls,
+                  op: "DataFrameGroupByAgg",
+                  in_df: TileableType,
+                  out_df: TileableType,
+                  func_infos: ReductionSteps):
+        ctx = get_context()
+        combine_size = op.combine_size
+        size_recorder_name = str(uuid.uuid4())
+        size_recorder = ctx.create_remote_object(size_recorder_name, SizeRecorder)
+
+        # collect the first combine_size chunks, run it
+        # to get the size before and after agg
+        chunks = in_df.chunks[:combine_size]
+        chunks = cls._gen_map_chunks(op, chunks, out_df, func_infos)
+        for chunk in chunks:
+            chunk.op._size_recorder_name = size_recorder_name
+        # yield to trigger execution
+        yield chunks
+
+        raw_size, agg_size = size_recorder.get()
+        # destroy size recorder
+        ctx.destroy_remote_object(size_recorder_name)
+
+        left_chunks = in_df.chunks[combine_size:]
+        left_chunks = cls._gen_map_chunks(op, left_chunks, out_df, func_infos)
+        if raw_size >= agg_size * len(chunks):
+            # aggregated size is less than 1 chunk
+            # use tree aggregation
+            return cls._combine_tree(op, chunks + left_chunks, out_df, func_infos)
+        else:
+            # otherwise, use shuffle
+            return cls._perform_shuffle(op, chunks + left_chunks,
+                                        in_df, out_df, func_infos)
+
+    @classmethod
     def tile(cls, op: "DataFrameGroupByAgg"):
+        in_df = op.inputs[0]
+        if len(in_df.shape) > 1:
+            in_df = build_concatenated_rows_frame(in_df)
+        out_df = op.outputs[0]
+
+        func_infos = cls._compile_funcs(op, in_df)
+
         if op.method == 'auto':
-            return cls._tile_with_tree(op)
+            if len(in_df.chunks) < op.combine_size:
+                return cls._tile_with_tree(op, in_df, out_df, func_infos)
+            else:
+                return (yield from cls._tile_auto(op, in_df, out_df, func_infos))
         if op.method == 'shuffle':
-            return cls._tile_with_shuffle(op)
+            return cls._tile_with_shuffle(op, in_df, out_df, func_infos)
         elif op.method == 'tree':
-            return cls._tile_with_tree(op)
+            return cls._tile_with_tree(op, in_df, out_df, func_infos)
         else:  # pragma: no cover
             raise NotImplementedError
 
@@ -617,6 +697,14 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 agg_dfs.extend(cls._do_custom_agg(op, custom_reduction, input_obj))
             else:
                 agg_dfs.append(cls._do_predefined_agg(input_obj, map_func_name, **kwds))
+
+        if op._size_recorder_name is not None:
+            # record_size
+            raw_size = len(in_data)
+            agg_size = len(agg_dfs[0])
+            size_recorder = ctx.get_remote_object(op._size_recorder_name)
+            size_recorder.record(raw_size, agg_size)
+
         ctx[op.outputs[0].key] = tuple(agg_dfs)
 
     @classmethod
@@ -757,6 +845,8 @@ def agg(groupby, func=None, method='auto', *args, **kwargs):
     if not isinstance(groupby, GROUPBY_TYPE):
         raise TypeError(f'Input should be type of groupby, not {type(groupby)}')
 
+    if method is None:
+        method = 'auto'
     if method not in ['shuffle', 'tree', 'auto']:
         raise ValueError(f"Method {method} is not available, "
                          "please specify 'tree' or 'shuffle")

@@ -46,9 +46,8 @@ class AssignerActor(mo.Actor):
             session_id=self._session_id, address=self.address)
 
         async def watch_bands():
-            while True:
-                self._bands = list(await self._cluster_api.get_all_bands(
-                    NodeRole.WORKER, watch=True))
+            async for bands in self._cluster_api.watch_all_bands(NodeRole.WORKER):
+                self._bands = list(bands)
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 

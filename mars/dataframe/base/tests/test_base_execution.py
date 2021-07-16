@@ -1053,16 +1053,16 @@ def test_value_counts_execution(setup):
     # test multi chunks
     series = from_pandas_series(s, chunk_size=30)
 
-    r = series.value_counts()
+    r = series.value_counts(method='tree')
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    s.value_counts())
 
-    r = series.value_counts(normalize=True)
+    r = series.value_counts(method='tree', normalize=True)
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    s.value_counts(normalize=True))
 
     # test bins and normalize
-    r = series.value_counts(bins=5, normalize=True)
+    r = series.value_counts(method='tree', bins=5, normalize=True)
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    s.value_counts(bins=5, normalize=True))
 
