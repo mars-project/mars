@@ -342,6 +342,7 @@ class SubtaskProcessor:
     async def run(self):
         self.result.status = SubtaskStatus.running
         input_keys = None
+        unpinned = False
         try:
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
@@ -355,6 +356,7 @@ class SubtaskProcessor:
                 await self._execute_graph(chunk_graph)
             finally:
                 # unpin inputs data
+                unpinned = True
                 await self._unpin_data(input_keys)
             # store results data
             stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
@@ -371,7 +373,7 @@ class SubtaskProcessor:
             await self.done()
             raise
         finally:
-            if input_keys is not None:
+            if input_keys is not None and not unpinned:
                 await self._unpin_data(input_keys)
 
         await self.done()

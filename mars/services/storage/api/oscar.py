@@ -19,8 +19,9 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
-from ..core import StorageHandlerActor, StorageManagerActor, DataManagerActor, \
+from ..core import StorageManagerActor, DataManagerActor, \
     DataInfo, WrappedStorageFileObject
+from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
