@@ -68,7 +68,6 @@ jobs:
       run: |
         source ./ci/reload-env.sh
 
-        export NO_SERIALIZE_IN_TEST_EXECUTOR=1
         mkdir -p build
         if [[ $UNAME == "darwin" ]]; then
           python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \
