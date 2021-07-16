@@ -168,15 +168,15 @@ cdef class ActorRefMethod:
         return asyncio.create_task(delay_fun())
 
 
-# The @cython.binding(True) is for ray getting members.
-# The value is True by default after cython >= 3.0.0
-@cython.binding(True)
-cdef class _Actor:
+cdef class _BaseActor:
     """
     Base Mars actor class, user methods implemented as methods
     """
     def __cinit__(self, *args, **kwargs):
-        self._lock = asyncio.locks.Lock()
+        self._lock = self._create_lock()
+
+    def _create_lock(self):
+        raise NotImplementedError
 
     @property
     def uid(self):
@@ -339,3 +339,27 @@ cdef class _Actor:
                 debug_logger.exception('Got unhandled error when handling message %r'
                                        'in actor %s at %s', message, self.uid, self.address)
             raise ex
+
+
+# The @cython.binding(True) is for ray getting members.
+# The value is True by default after cython >= 3.0.0
+@cython.binding(True)
+cdef class _Actor(_BaseActor):
+    def _create_lock(self):
+        return asyncio.locks.Lock()
+
+
+cdef class _FakeLock:
+    async def __aenter__(self):
+        pass
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+# The @cython.binding(True) is for ray getting members.
+# The value is True by default after cython >= 3.0.0
+@cython.binding(True)
+cdef class _StatelessActor(_BaseActor):
+    def _create_lock(self):
+        return _FakeLock()

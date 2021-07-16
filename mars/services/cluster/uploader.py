@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from typing import Dict
 
@@ -38,6 +39,7 @@ class NodeInfoUploaderActor(mo.Actor):
         self._interval = interval or DEFAULT_INFO_UPLOAD_INTERVAL
         self._upload_task = None
         self._upload_enabled = False
+        self._node_ready_event = asyncio.Event()
 
         self._use_gpu = use_gpu
 
@@ -66,9 +68,13 @@ class NodeInfoUploaderActor(mo.Actor):
         self._upload_enabled = True
         # upload info in time to reduce latency
         await self.upload_node_info(False)
+        self._node_ready_event.set()
 
     def is_node_ready(self):
-        return self._upload_enabled
+        return self._node_ready_event.is_set()
+
+    async def wait_node_ready(self):
+        return self._node_ready_event.wait()
 
     async def upload_node_info(self, call_next: bool = True):
         try:
