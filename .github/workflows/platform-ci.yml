@@ -48,6 +48,7 @@ jobs:
 
           source ./ci/rewrite-cov-config.sh
 
+          pip install git+https://github.com/mars-project/pytest-asyncio.git
           pip install numpy scipy cython
 
           # remove if vineyard supports pandas 1.3.

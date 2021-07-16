@@ -22,8 +22,8 @@ import psutil
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ...cluster import WorkerSlotInfo
 from ...core import BandType
-from ..core import WorkerSlotInfo
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +131,13 @@ class BandSlotManagerActor(mo.Actor):
     def release_free_slot(self, slot_id: int, pid: Optional[int] = None):
         if pid is not None:
             self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
+            self._fresh_slots.add(slot_id)
             # collect initial stats for the process
             proc.cpu_percent(interval=None)
 
         if slot_id in self._slot_kill_events:
             event = self._slot_kill_events.pop(slot_id)
             event.set()
-            self._fresh_slots.add(slot_id)
 
         self._slot_to_session_stid.pop(slot_id, None)
 

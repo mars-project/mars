@@ -19,7 +19,7 @@ from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
 from ....utils import extensible
-from ...core import BandType, NodeRole
+from ...core import BandType
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,8 @@ class GlobalSlotManagerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
 
         async def watch_bands():
-            while True:
-                self._band_total_slots = await self._cluster_api.get_all_bands(
-                    NodeRole.WORKER, watch=True)
+            async for bands in self._cluster_api.watch_all_bands():
+                self._band_total_slots = bands
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 

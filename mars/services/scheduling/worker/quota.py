@@ -22,8 +22,8 @@ from typing import Dict, Optional, Tuple, Union
 
 from .... import oscar as mo
 from .... import resource as mars_resource
+from ...cluster import QuotaInfo
 from ...core import BandType
-from ..core import QuotaInfo
 
 logger = logging.getLogger(__name__)
 
