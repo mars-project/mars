@@ -45,7 +45,9 @@ async def test_uploader(actor_pool):
         NodeInfoUploaderActor, role=NodeRole.WORKER, interval=0.1,
         uid=NodeInfoUploaderActor.default_uid(), address=pool_addr
     )
+    wait_ready_task = asyncio.create_task(uploader_ref.wait_node_ready())
     await uploader_ref.mark_node_ready()
+    await asyncio.wait_for(wait_ready_task, timeout=0.1)
 
     # test empty result
     result = await collector_ref.get_nodes_info(role=NodeRole.WORKER)
