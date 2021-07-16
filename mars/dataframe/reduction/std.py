@@ -16,13 +16,16 @@ from ...tensor.arithmetic import sqrt
 from .var import var_dataframe, var_series
 
 
-def std_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None, combine_size=None):
+def std_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None,
+                  combine_size=None, method=None):
     ret = sqrt(var_dataframe(df, axis=axis, skipna=skipna, level=level, ddof=ddof,
-                             numeric_only=numeric_only, combine_size=combine_size))
+                             numeric_only=numeric_only, combine_size=combine_size,
+                             method=method))
     return ret
 
 
-def std_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
+def std_series(series, axis=None, skipna=None, level=None, ddof=1,
+               combine_size=None, method=None):
     ret = sqrt(var_series(series, axis=axis, skipna=skipna, level=level,
-                          ddof=ddof, combine_size=combine_size))
+                          ddof=ddof, combine_size=combine_size, method=method))
     return ret

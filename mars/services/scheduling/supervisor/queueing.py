@@ -72,7 +72,13 @@ class SubtaskQueueingActor(mo.Actor):
     async def __post_create__(self):
         from ...cluster import ClusterAPI
         self._cluster_api = await ClusterAPI.create(self.address)
-        self._band_slot_nums = await self._cluster_api.get_all_bands()
+        self._band_slot_nums = {}
+
+        async def watch_bands():
+            async for bands in self._cluster_api.watch_all_bands():
+                self._band_slot_nums = bands
+
+        self._band_watch_task = asyncio.create_task(watch_bands())
 
         from .globalslot import GlobalSlotManagerActor
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
@@ -103,6 +109,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._available_band_watch_task = asyncio.create_task(watch_available_bands())
 
     async def __pre_destroy__(self):
+        self._band_watch_task.cancel()
         if self._periodical_submit_task is not None:  # pragma: no branch
             self._periodical_submit_task.cancel()
 

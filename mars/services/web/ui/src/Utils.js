@@ -61,6 +61,17 @@ export function getTaskStatusText(statusCode) {
     return mapping[statusCode];
 }
 
+export function getNodeStatusText(statusCode) {
+    const mapping = {
+        [-1]: 'stopped',
+        [0]: 'starting',
+        [1]: 'ready',
+        [2]: 'degenerated',
+        [3]: 'stopping',
+    };
+    return mapping[statusCode];
+}
+
 export function OptionalElement(props) {
     if (props.condition) {
         return props.children;

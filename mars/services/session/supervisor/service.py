@@ -21,7 +21,7 @@ from .core import SessionManagerActor
 
 async def start(config: Dict, address: str):
     """
-    Start meta service on supervisor.
+    Start session service on supervisor.
 
     Parameters
     ----------

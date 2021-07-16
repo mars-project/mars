@@ -37,6 +37,7 @@ jobs:
 
         source ./ci/rewrite-cov-config.sh
 
+        pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
         pip install -e ".[dev,distributed]"
 
@@ -68,7 +69,6 @@ jobs:
       run: |
         source ./ci/reload-env.sh
 
-        export NO_SERIALIZE_IN_TEST_EXECUTOR=1
         mkdir -p build
         if [[ $UNAME == "darwin" ]]; then
           python -m pytest $PYTEST_CONFIG --forked --timeout=1500 \

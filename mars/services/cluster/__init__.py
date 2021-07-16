@@ -12,5 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import AbstractClusterAPI, ClusterAPI, MockClusterAPI, WebClusterAPI
+from .api import AbstractClusterAPI, ClusterAPI, MockClusterAPI, \
+    WebClusterAPI
 from .core import NodeInfo, NodeRole  # noqa: F401
+from .core import QuotaInfo, WorkerSlotInfo, DiskInfo, StorageInfo

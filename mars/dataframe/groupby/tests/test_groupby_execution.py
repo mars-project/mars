@@ -24,6 +24,8 @@ except ImportError:  # pragma: no cover
     pa = None
 
 import mars.dataframe as md
+from mars.core.operand import OperandStage
+from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
 from mars.tests import setup
 from mars.tests.core import assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
@@ -213,7 +215,7 @@ def test_groupby_getitem(setup):
     raw = pd.DataFrame(rs.rand(data_size, 10))
     raw[0] = 0
     mdf = md.DataFrame(raw, chunk_size=13)
-    r = mdf.groupby(0, as_index=False)[0].agg({'cnt': 'count'})
+    r = mdf.groupby(0, as_index=False)[0].agg({'cnt': 'count'}, method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                   raw.groupby(0, as_index=False)[0].agg({'cnt': 'count'}))
 
@@ -306,12 +308,12 @@ def test_dataframe_groupby_agg(setup):
     pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                   raw.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
 
-    r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2())
+    r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2(), method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw[['c1', 'c3']].groupby(raw['c2']).agg(MockReduction2()))
 
     r = mdf.groupby('c2').agg(sum_c1=md.NamedAgg('c1', 'sum'), min_c1=md.NamedAgg('c1', 'min'),
-                              mean_c3=md.NamedAgg('c3', 'mean'))
+                              mean_c3=md.NamedAgg('c3', 'mean'), method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw.groupby('c2').agg(sum_c1=md.NamedAgg('c1', 'sum'),
                                                         min_c1=md.NamedAgg('c1', 'min'),
@@ -345,7 +347,7 @@ def test_series_groupby_agg(setup):
                                        series1.groupby(series1).sum().sort_index())
 
     # test inserted kurt method
-    r = ms1.groupby(ms1).kurtosis()
+    r = ms1.groupby(ms1).kurtosis(method='tree')
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    series1.groupby(series1).kurtosis())
 
@@ -358,13 +360,43 @@ def test_series_groupby_agg(setup):
     pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                   series1.groupby(lambda x: x % 2).agg(['cumsum', 'cumcount']).sort_index())
 
-    r = ms1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r'))
+    r = ms1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r'), method='tree')
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    series1.groupby(lambda x: x % 2).agg(MockReduction2(name='custom_r')))
 
-    r = ms1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew')
+    r = ms1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew', method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   series1.groupby(lambda x: x % 2).agg(col_var='var', col_skew='skew'))
+
+
+def test_groupby_agg_auto_method(setup):
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame({'c1': rs.randint(20, size=100),
+                        'c2': rs.choice(['a', 'b', 'c'], (100,)),
+                        'c3': rs.rand(100)})
+    mdf = md.DataFrame(raw, chunk_size=20)
+
+    def _disallow_reduce(ctx, op):
+        assert op.stage != OperandStage.reduce
+        op.execute(ctx, op)
+
+    r = mdf.groupby('c2').agg('sum')
+    operand_executors = {DataFrameGroupByAgg: _disallow_reduce}
+    result = r.execute(extra_config={'operand_executors': operand_executors,
+                                     'check_all': False}).fetch()
+    pd.testing.assert_frame_equal(result.sort_index(),
+                                  raw.groupby('c2').agg('sum'))
+
+    def _disallow_combine_and_agg(ctx, op):
+        assert op.stage not in (OperandStage.combine, OperandStage.agg)
+        op.execute(ctx, op)
+
+    r = mdf.groupby('c1').agg('sum')
+    operand_executors = {DataFrameGroupByAgg: _disallow_combine_and_agg}
+    result = r.execute(extra_config={'operand_executors': operand_executors,
+                                     'check_all': False}).fetch()
+    pd.testing.assert_frame_equal(result.sort_index(),
+                                  raw.groupby('c1').agg('sum'))
 
 
 def test_groupby_agg_str_cat(setup):
@@ -376,7 +408,7 @@ def test_groupby_agg_str_cat(setup):
 
     mdf = md.DataFrame(raw_df, chunk_size=13)
 
-    r = mdf.groupby('a').agg(agg_fun)
+    r = mdf.groupby('a').agg(agg_fun, method='tree')
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw_df.groupby('a').agg(agg_fun))
 
@@ -384,7 +416,7 @@ def test_groupby_agg_str_cat(setup):
 
     ms = md.Series(raw_series, chunk_size=13)
 
-    r = ms.groupby(lambda x: x % 2).agg(agg_fun)
+    r = ms.groupby(lambda x: x % 2).agg(agg_fun, method='tree')
     pd.testing.assert_series_equal(r.execute().fetch(),
                                    raw_series.groupby(lambda x: x % 2).agg(agg_fun))
 

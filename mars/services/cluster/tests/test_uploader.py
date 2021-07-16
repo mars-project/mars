@@ -37,7 +37,7 @@ async def test_uploader(actor_pool):
     await mo.create_actor(
         SupervisorLocatorActor, 'fixed', pool_addr,
         uid=SupervisorLocatorActor.default_uid(), address=pool_addr)
-    collector_ref = await mo.create_actor(
+    node_info_ref = await mo.create_actor(
         NodeInfoCollectorActor, timeout=0.5, check_interval=0.1,
         uid=NodeInfoCollectorActor.default_uid(), address=pool_addr
     )
@@ -45,23 +45,33 @@ async def test_uploader(actor_pool):
         NodeInfoUploaderActor, role=NodeRole.WORKER, interval=0.1,
         uid=NodeInfoUploaderActor.default_uid(), address=pool_addr
     )
+    wait_ready_task = asyncio.create_task(uploader_ref.wait_node_ready())
     await uploader_ref.mark_node_ready()
+    await asyncio.wait_for(wait_ready_task, timeout=0.1)
 
     # test empty result
-    result = await collector_ref.get_nodes_info(role=NodeRole.WORKER)
+    result = await node_info_ref.get_nodes_info(role=NodeRole.WORKER)
     assert pool_addr in result
     assert all(result[pool_addr].get(k) is None
-               for k in ('env', 'resource', 'state'))
+               for k in ('env', 'resource', 'detail'))
 
-    result = await collector_ref.get_nodes_info(
-        role=NodeRole.WORKER, env=True, resource=True, state=True)
+    result = await node_info_ref.get_nodes_info(
+        role=NodeRole.WORKER, env=True, resource=True, detail=True)
     assert pool_addr in result
     assert all(result[pool_addr].get(k) is not None
-               for k in ('env', 'resource', 'state'))
+               for k in ('env', 'resource', 'detail'))
 
-    watch_task = asyncio.create_task(collector_ref.watch_nodes(NodeRole.WORKER))
+    async def watcher():
+        version = None
+        while True:
+            version, infos = await node_info_ref.watch_nodes(
+                NodeRole.WORKER, version=version)
+            if not infos:
+                break
+
+    watch_task = asyncio.create_task(watcher())
 
     await uploader_ref.destroy()
-    assert not await watch_task
+    assert not await asyncio.wait_for(watch_task, timeout=5)
 
-    await collector_ref.destroy()
+    await node_info_ref.destroy()
