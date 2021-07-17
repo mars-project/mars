@@ -174,7 +174,7 @@ def test_value_counts_head(prepare_data, setup, chunk_size):
     _, pdf = prepare_data
     df = md.DataFrame(pdf, chunk_size=chunk_size)
 
-    df1 = df['a'].value_counts()
+    df1 = df['a'].value_counts(method='tree')
     df2 = df1.head(3)
     graph = TileableGraph([df2.data])
     next(TileableGraphBuilder(graph).build())

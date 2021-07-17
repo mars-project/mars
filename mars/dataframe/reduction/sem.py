@@ -44,17 +44,20 @@ class DataFrameSem(DataFrameReductionOperand, DataFrameReductionMixin):
         return sem
 
 
-def sem_series(series, axis=None, skipna=None, level=None, ddof=1, combine_size=None):
+def sem_series(series, axis=None, skipna=None, level=None, ddof=1,
+               combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameSem(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       combine_size=combine_size, output_types=[OutputType.scalar],
-                      use_inf_as_na=use_inf_as_na)
+                      use_inf_as_na=use_inf_as_na, method=method)
     return op(series)
 
 
-def sem_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None, combine_size=None):
+def sem_dataframe(df, axis=None, skipna=None, level=None, ddof=1, numeric_only=None,
+                  combine_size=None, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     op = DataFrameSem(axis=axis, skipna=skipna, level=level, ddof=ddof,
                       numeric_only=numeric_only, combine_size=combine_size,
-                      output_types=[OutputType.series], use_inf_as_na=use_inf_as_na)
+                      output_types=[OutputType.series], use_inf_as_na=use_inf_as_na,
+                      method=method)
     return op(df)
