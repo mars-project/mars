@@ -23,8 +23,8 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import IdleLabel
 from mars.services.storage.errors import DataNotExist
-from mars.services.storage.core import StorageManagerActor, StorageHandlerActor, \
-    StorageQuotaActor
+from mars.services.storage.core import StorageManagerActor, StorageQuotaActor
+from mars.services.storage.handler import StorageHandlerActor
 from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
 from mars.storage import StorageLevel
 
