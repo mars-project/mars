@@ -538,7 +538,12 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
                 else:
                     r.index = xdf.MultiIndex.from_tuples([group_key], names=input_objs[0].grouper.names)
             results.append(result)
-        concat_result = tuple(xdf.concat(parts) for parts in zip(*results))
+        if not results and op.stage == OperandStage.agg:
+            empty_df = pd.DataFrame([], columns=out.dtypes.index,
+                                    index=out.index_value.to_pandas()[:0])
+            concat_result = (empty_df.astype(out.dtypes),)
+        else:
+            concat_result = tuple(xdf.concat(parts) for parts in zip(*results))
         return concat_result
 
     @staticmethod

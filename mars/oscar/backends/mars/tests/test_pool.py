@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import os
 import re
 import sys
@@ -610,3 +611,31 @@ async def test_parallel_allocate_idle_label():
     refs = await asyncio.gather(*tasks)
     # outputs identical process ids, while the result should be different
     assert len({await ref.get_pid() for ref in refs}) == 2
+
+
+@flaky(platform='win', max_runs=3)
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging_conf', [
+    {'file': os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          'test-logging.conf')},
+    {'level': logging.DEBUG}
+])
+async def test_logging_config(logging_conf):
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=1,
+                                   subprocess_start_method=start_method,
+                                   labels=[None, 'my_label'],
+                                   logging_conf=logging_conf)
+
+    class _Actor(Actor):
+        def get_logger_level(self):
+            logger = logging.getLogger(__name__)
+            return logger.getEffectiveLevel()
+
+    async with pool:
+        ctx = get_context()
+        strategy = IdleLabel('my_label', 'tests')
+        ref = await ctx.create_actor(_Actor, allocate_strategy=strategy,
+                                     address=pool.external_address)
+        assert await ref.get_logger_level() == logging.DEBUG
