@@ -16,15 +16,16 @@ import weakref
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import List, Tuple, Dict, Type, Union
+from typing import Any, List, Tuple, Dict, Type, Union
 
 from ...serialization.serializables import SerializableMeta, FieldTypes, \
     BoolField, Int32Field, Float32Field, StringField, \
     ListField, DictField, ReferenceField
 from ...serialization.core import Placeholder
+from ...serialization.serializables import Serializable
 from ...serialization.serializables.core import SerializableSerializer
 from ...typing import OperandType
-from ...utils import AttributeDict
+from ...utils import AttributeDict, classproperty
 from ..base import Base
 from ..entity.core import Entity, EntityData
 from ..entity.chunks import Chunk
@@ -53,6 +54,43 @@ class OperandStage(Enum):
     agg = 3
 
 
+class SchedulingHint(Serializable):
+    # worker to execute, only work for chunk op,
+    # if specified, the op should be executed on the specified worker
+    # only work for those operand that has no input
+    expect_worker = StringField('expect_worker', default=None)
+    # will this operand be assigned a worker or not
+    reassign_worker = BoolField('reassign_worker', default=False)
+    # True means control dependency, False means data dependency
+    _pure_depends = ListField('pure_depends', FieldTypes.bool)
+    # priority as the chunk index
+    priority_as_index = BoolField('priority_as_index', default=False)
+
+    @classproperty
+    def all_hint_names(cls):
+        return list(cls._FIELDS)
+
+
+def _install_scheduling_hint_properties(cls: Type["Operand"]):
+    def get_hint(name):
+        def _get_val(operand: "Operand"):
+            if operand.scheduling_hint:
+                return getattr(operand.scheduling_hint, name)
+
+        def _set_val(operand: "Operand", val: Any):
+            if not operand.scheduling_hint:
+                operand.scheduling_hint = SchedulingHint(**{hint_name: val})
+            else:
+                setattr(operand.scheduling_hint, hint_name, val)
+
+        return property(_get_val, _set_val)
+
+    for hint_name in SchedulingHint.all_hint_names:
+        setattr(cls, hint_name, get_hint(hint_name))
+    return cls
+
+
+@_install_scheduling_hint_properties
 class Operand(Base, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
@@ -70,28 +108,36 @@ class Operand(Base, metaclass=OperandMetaclass):
     sparse = BoolField('sparse', default=False)
     gpu = BoolField('gpu', default=None)
     device = Int32Field('device', default=None)
-    # worker to execute, only work for chunk op,
-    # if specified, the op should be executed on the specified worker
-    # only work for those operand that has no input
-    expect_worker = StringField('expect_worker', default=None)
     # will this operand create a view of input data or not
     create_view = BoolField('create_view', default=False)
-    # will this operand be assigned a worker or not
-    reassign_worker = BoolField('reassign_worker', default=False)
     stage = ReferenceField('stage', OperandStage, default=None)
     memory_scale = Float32Field('memory_scale', default=None)
     tileable_op_key = StringField('tileable_op_key', default=None)
     extra_params = DictField('extra_params', key_type=FieldTypes.string)
+    # scheduling hint
+    scheduling_hint = ReferenceField('scheduling_hint', default=None)
 
     _inputs = ListField('inputs', FieldTypes.reference(EntityData))
-    _pure_depends = ListField('pure_depends', FieldTypes.bool)
     _outputs = ListField('outputs')
     _output_types = ListField('output_type', FieldTypes.reference(OutputType))
 
     def __init__(self: OperandType, *args, **kwargs):
         extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
         kwargs['extra_params'] = kwargs.pop('extra_params', extras)
+        self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def _extract_scheduling_hint(cls, kwargs: Dict[str, Any]):
+        if 'scheduling_hint' in kwargs:
+            return
+
+        scheduling_hint_kwargs = dict()
+        for hint_name in SchedulingHint.all_hint_names:
+            if hint_name in kwargs:
+                scheduling_hint_kwargs[hint_name] = kwargs.pop(hint_name)
+        if scheduling_hint_kwargs:
+            kwargs['scheduling_hint'] = SchedulingHint(**scheduling_hint_kwargs)
 
     def __repr__(self):
         if self.stage is None:
