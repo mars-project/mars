@@ -74,7 +74,7 @@ jobs:
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
-            pip install h5py zarr matplotlib fastparquet
+            pip install h5py zarr matplotlib fastparquet\<0.7.0
             conda install -n test --quiet --yes -c conda-forge python=$PYTHON \
               "tiledb-py>=0.4.3,<0.6.0" "tiledb<2.0.0" || true
           fi
