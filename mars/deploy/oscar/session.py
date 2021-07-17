@@ -120,7 +120,8 @@ mars.new_session(default=True)
 
 class AbstractSession(ABC):
     name = None
-    _default_session_local = threading.local()
+    _default = None
+    _lock = threading.Lock()
 
     def __init__(self,
                  address: str,
@@ -148,33 +149,16 @@ class AbstractSession(ABC):
         """
         Mark current session as default session.
         """
+        AbstractSession._default = self
+        return self
 
     @classmethod
     def reset_default(cls):
-        AbstractSession._default_session_local.default_session = None
+        AbstractSession._default = None
 
     @classproperty
     def default(self):
-        return getattr(AbstractSession._default_session_local,
-                       'default_session', None)
-
-    @classmethod
-    async def get_or_create_default(cls, **kwargs):
-        lock = getattr(AbstractSession._default_session_local,
-                       'lock', None)
-        if lock is None:
-            lock = AbstractAsyncSession._default_session_local.lock = asyncio.Lock()
-
-        session = cls.default
-        async with lock:
-            if session is None:
-                # no session attached, try to create one
-                warnings.warn(warning_msg)
-                session = await _new_session(
-                    '127.0.0.1', default=True, init_local=True, **kwargs)
-        if isinstance(session, _IsolatedSession):
-            session = AsyncSession.from_isolated_session(session)
-        return session
+        return AbstractSession._default
 
 
 class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
@@ -985,7 +969,7 @@ class AsyncSession(AbstractAsyncSession):
         return AsyncSession(address, session_id, isolated_session, isolation)
 
     def as_default(self) -> AbstractSession:
-        AbstractSession._default_session_local.default_session = self._isolated_session
+        AbstractSession._default = self._isolated_session
         return self
 
     @implements(AbstractAsyncSession.destroy)
@@ -1134,7 +1118,7 @@ class SyncSession(AbstractSyncSession):
         return SyncSession(address, session_id, isolated_session, isolation)
 
     def as_default(self) -> AbstractSession:
-        AbstractSession._default_session_local.default_session = self._isolated_session
+        AbstractSession._default = self._isolated_session
         return self
 
     @property
@@ -1426,16 +1410,17 @@ def get_default_async_session() -> Optional[AsyncSession]:
     return AsyncSession.from_isolated_session(AbstractSession.default)
 
 
-async def _get_default_or_create(**kwargs):
-    return await AbstractSession.get_or_create_default(**kwargs)
-
-
 def get_default_or_create(**kwargs):
-    isolation = ensure_isolation_created(kwargs)
-
-    session = asyncio.run_coroutine_threadsafe(
-        _get_default_or_create(**kwargs), isolation.loop).result()
-    session.as_default()
+    with AbstractSession._lock:
+        session = AbstractSession.default
+        if session is None:
+            # no session attached, try to create one
+            warnings.warn(warning_msg)
+            session = new_session(
+                '127.0.0.1', default=True, init_local=True, **kwargs)
+            session.as_default()
+    if isinstance(session, _IsolatedSession):
+        session = SyncSession.from_isolated_session(session)
     return _ensure_sync(session)
 
 
