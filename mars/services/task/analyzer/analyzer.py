@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from collections import deque
-from typing import Type, Dict, List
+from typing import Dict, List, Tuple, Type
 
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, Fuse, VirtualOperand
@@ -181,7 +181,7 @@ class GraphAnalyzer:
 
     def _gen_subtask(self,
                      chunk: ChunkType,
-                     chunk_to_priorities: Dict[ChunkType, int],
+                     chunk_to_priorities: Dict[ChunkType, Tuple[int, ...]],
                      chunk_to_bands: Dict[ChunkType, BandType],
                      chunk_to_fetch_chunk: Dict[ChunkType, ChunkType]) -> Subtask:
         virtual = isinstance(chunk.op, VirtualOperand)
@@ -189,10 +189,16 @@ class GraphAnalyzer:
                       if not isinstance(inp_chunk.op, Fetch)]
         # calculate priority
         if inp_chunks:
-            priority = max(chunk_to_priorities[inp_chunk]
-                           for inp_chunk in inp_chunks) + 1
+            depth = max(chunk_to_priorities[inp_chunk][0]
+                        for inp_chunk in inp_chunks) + 1
         else:
-            priority = 0
+            depth = 0
+        if chunk.op.index_as_priority:
+            # chunk index smaller means higher priority
+            order = -chunk.index[0]
+        else:
+            order = 0
+        priority = (depth, order)
         for out in chunk.op.outputs:
             chunk_to_priorities[out] = priority
 

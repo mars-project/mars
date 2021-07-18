@@ -210,15 +210,65 @@ class TileableOperandMixin:
         return self.new_tileables(inputs, kws=kws, **kw)[0]
 
     @classmethod
+    def pre_tile(cls, op: OperandType):
+        """
+        Operation before tile.
+
+        Parameters
+        ----------
+        op : OperandType
+          Operand to tile
+        """
+
+    @classmethod
     def tile(cls, op):
         raise NotImplementedError
 
     @classmethod
-    def execute(cls, ctx, op):
+    def post_tile(cls, op: OperandType, result: TileableType):
+        """
+        Operation after tile.
+
+        Parameters
+        ----------
+        op : OperandType
+          Operand to tile.
+        result: TileableType
+          Tiled result
+        """
+
+    @classmethod
+    def pre_execute(cls, ctx: Dict, op: OperandType):
+        """
+        Operation before execute.
+
+        Parameters
+        ----------
+        ctx : dict
+            Data store.
+        op : OperandType
+            Operand to execute.
+        """
+
+    @classmethod
+    def execute(cls, ctx: dict, op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def estimate_size(cls, ctx, op):
+    def post_execute(cls, ctx: dict, op: OperandType):
+        """
+        Operand before execute.
+
+        Parameters
+        ----------
+        ctx : dict
+            Data store
+        op : OperandType
+            Operand to execute.
+        """
+
+    @classmethod
+    def estimate_size(cls, ctx: dict, op: OperandType):
         from .fetch import FetchShuffle
 
         exec_size = 0
@@ -335,6 +385,8 @@ def execute(results: Dict[str, Any], op: OperandType):
     except KeyError:
         executor = type(op).execute
 
+    # pre execute
+    op.pre_execute(results, op)
     try:
         if UFuncTypeError is None:  # pragma: no cover
             return executor(results, op)
@@ -352,6 +404,8 @@ def execute(results: Dict[str, Any], op: OperandType):
                 _op_type_to_executor[type(op)] = executor
                 return executor(results, op)
         raise KeyError(f'No handler found for op: {op}')
+    finally:
+        op.post_execute(results, op)
 
 
 def estimate_size(results: Dict[str, Any], op: OperandType):

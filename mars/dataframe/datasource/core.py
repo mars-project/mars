@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import uuid
+from typing import List, Optional
+
+import pandas as pd
+
 from ...core import recursive_tile
 from ...core.context import get_context
-from ...serialization.serializables import Int64Field
+from ...serialization.serializables import Int64Field, StringField
+from ...typing import TileableType, ChunkType, OperandType
+from ..core import IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
@@ -79,3 +87,79 @@ class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
 
     def set_pruned_columns(self, columns, *, keep_order=None):  # pragma: no cover
         raise NotImplementedError
+
+
+class _IncrementalIndexRecorder:
+    _semaphores: List[Optional[asyncio.Semaphore]]
+    _chunk_sizes: List[Optional[int]]
+
+    def __init__(self, n_chunk: int):
+        self._n_chunk = n_chunk
+        self._semaphores = [None] * n_chunk
+        self._chunk_sizes = [None] * n_chunk
+
+    async def init(self):
+        for i in range(self._n_chunk):
+            if i > 0:
+                sem = asyncio.Semaphore(i)
+                for _ in range(i):
+                    await sem.acquire()
+                self._semaphores[i] = sem
+
+    async def wait(self, i: int):
+        if i == 0:
+            return 0
+        await self._semaphores[i].acquire()
+        return sum(self._chunk_sizes[:i])
+
+    async def done(self, i: int, size: int):
+        self._chunk_sizes[i] = size
+        for j in range(i + 1, self._n_chunk):
+            self._semaphores[j].release()
+        return i == self._n_chunk - 1
+
+
+class IncrementalIndexDatasource(HeadOptimizedDataSource):
+    __slots__ = ()
+
+    incremental_index_recorder_name = StringField('incremental_index_recorder_name')
+
+
+class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    def _new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
+        self.index_as_priority = True
+        return super()._new_tileables(inputs, kws=kws, **kw)
+
+    def _new_chunks(self, inputs, kws=None, **kw) -> List[ChunkType]:
+        self.index_as_priority = True
+        return super()._new_chunks(inputs, kws=kws, **kw)
+
+    @classmethod
+    def post_tile(cls, op: OperandType, result: TileableType):
+        if result is not None and \
+                isinstance(result.index_value.value, IndexValue.RangeIndex):
+            n_chunk = len(result.chunks)
+            ctx = get_context()
+            name = str(uuid.uuid4())
+            recorder = ctx.create_remote_object(
+                name, _IncrementalIndexRecorder, n_chunk)
+            recorder.init()
+            for chunk in result.chunks:
+                chunk.op.incremental_index_recorder_name = name
+
+    @classmethod
+    def post_execute(cls, ctx: dict, op: OperandType):
+        out = op.outputs[0]
+        result = ctx[out.key]
+        if isinstance(result.index, pd.RangeIndex):
+            recorder_name = op.incremental_index_recorder_name
+            recorder = ctx.get_remote_object(recorder_name)
+            index = out.index[0]
+            # wait for previous chunks to finish
+            size = recorder.wait(index)
+            result.index += size
+            done = recorder.done(index, len(result))
+            if done:
+                ctx.destroy_remote_object(recorder_name)
