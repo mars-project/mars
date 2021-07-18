@@ -40,9 +40,9 @@ class DataFrameCustomReduction(DataFrameReductionOperand, DataFrameReductionMixi
         return dict()
 
 
-def build_custom_reduction_result(df, custom_reduction_obj):
+def build_custom_reduction_result(df, custom_reduction_obj, method=None):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
     output_type = OutputType.series if df.ndim == 2 else OutputType.scalar
     op = DataFrameCustomReduction(custom_reduction=custom_reduction_obj, output_types=[output_type],
-                                  use_inf_as_na=use_inf_as_na)
+                                  use_inf_as_na=use_inf_as_na, method=method)
     return op(df)
