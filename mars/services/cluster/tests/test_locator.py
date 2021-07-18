@@ -18,7 +18,8 @@ import time
 import pytest
 
 import mars.oscar as mo
-from mars.services.cluster.locator import SupervisorLocatorActor
+from mars.services.cluster.supervisor.locator import \
+    SupervisorPeerLocatorActor
 from mars.tests.core import mock
 from mars.utils import Timer
 
@@ -50,7 +51,7 @@ async def test_fixed_locator(actor_pool):
     addresses = ['1.2.3.4:1234', '1.2.3.4:1235',
                  '1.2.3.4:1236', '1.2.3.4:1237']
     locator_ref = await mo.create_actor(
-        SupervisorLocatorActor, 'fixed', ','.join(addresses),
+        SupervisorPeerLocatorActor, 'fixed', ','.join(addresses),
         address=actor_pool.external_address)
 
     assert await locator_ref.get_supervisor('mock_name') in addresses
@@ -73,7 +74,7 @@ async def test_changing_locator(actor_pool):
     addresses = ['1.2.3.4:1234', '1.2.3.4:1235',
                  '1.2.3.4:1236', '1.2.3.4:1237']
     locator_ref = await mo.create_actor(
-        SupervisorLocatorActor, 'fixed', ','.join(addresses),
+        SupervisorPeerLocatorActor, 'fixed', ','.join(addresses),
         address=actor_pool.external_address)
 
     version, result = await locator_ref.watch_supervisors_by_keys(['mock_name'])

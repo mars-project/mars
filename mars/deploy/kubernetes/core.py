@@ -20,6 +20,7 @@ from typing import AsyncGenerator, List, Optional, TypeVar
 
 from ...services.cluster.backends import register_cluster_backend, \
     AbstractClusterBackend
+from ...services.cluster.core import NodeRole
 from ..utils import wait_all_supervisors_ready
 from .config import MarsReplicationConfig, MarsSupervisorsConfig
 
@@ -49,7 +50,7 @@ class K8SClusterBackend(AbstractClusterBackend):
         self._service_pod_to_ep = dict()
 
     @classmethod
-    async def create(cls, lookup_address: Optional[str],
+    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
                      pool_address: str) -> "AbstractClusterBackend":
         from kubernetes import config, client
 
@@ -164,13 +165,10 @@ class K8SClusterBackend(AbstractClusterBackend):
     def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         return self._watch_service(MarsSupervisorsConfig.rc_name)
 
-    async def get_supervisors(self) -> List[str]:
-        return await self._get_endpoints_by_service_type(MarsSupervisorsConfig.rc_name, update=False)
-
-    async def get_expected_supervisors(self) -> List[str]:
-        expected_supervisors = await self._get_endpoints_by_service_type(
-            MarsSupervisorsConfig.rc_name, filter_ready=False)
-        return expected_supervisors
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
+        return await self._get_endpoints_by_service_type(
+            MarsSupervisorsConfig.rc_name, update=not filter_ready,
+            filter_ready=filter_ready)
 
 
 class K8SServiceMixin:

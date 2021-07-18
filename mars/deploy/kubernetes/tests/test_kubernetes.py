@@ -160,8 +160,6 @@ def test_run_in_kubernetes():
             new=lambda *_, **__: None)
 @mock.patch('kubernetes.client.AppsV1Api.create_namespaced_deployment',
             new=lambda *_, **__: None)
-@mock.patch('kubernetes.client.AppsV1Api.create_namespaced_replica_set',
-            new=lambda *_, **__: None)
 def test_create_timeout():
     api_client = k8s_config.new_client_from_config()
 

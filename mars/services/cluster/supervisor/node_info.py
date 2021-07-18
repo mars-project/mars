@@ -29,7 +29,7 @@ class NodeInfoCollectorActor(mo.Actor):
 
     def __init__(self, timeout=None, check_interval=None):
         self._role_to_nodes = defaultdict(set)
-        self._role_to_notifiers = defaultdict(WatchNotifier)
+        self._role_to_notifier = defaultdict(WatchNotifier)
 
         self._node_infos = dict()
 
@@ -46,7 +46,8 @@ class NodeInfoCollectorActor(mo.Actor):
     async def check_dead_nodes(self):
         affect_roles = set()
         for address, info in self._node_infos.items():
-            if time.time() - info.update_time > self._node_timeout:
+            if info.status == NodeStatus.READY \
+                    and time.time() - info.update_time > self._node_timeout:
                 info.status = NodeStatus.STOPPED
                 node_role = info.role
                 affect_roles.add(node_role)
@@ -58,7 +59,7 @@ class NodeInfoCollectorActor(mo.Actor):
 
     async def _notify_roles(self, roles):
         for role in roles:
-            await self._role_to_notifiers[role].notify()
+            await self._role_to_notifier[role].notify()
 
     async def update_node_info(self, address: str, role: NodeRole, env: Dict = None,
                                resource: Dict = None, detail: Dict = None,
@@ -137,7 +138,7 @@ class NodeInfoCollectorActor(mo.Actor):
                           resource: bool = False, detail: bool = False,
                           statuses: Set[NodeStatus] = None,
                           version: Optional[int] = None):
-        version = yield self._role_to_notifiers[role].watch(version=version)
+        version = yield self._role_to_notifier[role].watch(version=version)
         raise mo.Return((version, self.get_nodes_info(
             role=role, env=env, resource=resource, detail=detail,
             statuses=statuses)))
@@ -146,5 +147,21 @@ class NodeInfoCollectorActor(mo.Actor):
                               statuses: Set[NodeStatus] = None,
                               version: Optional[int] = None):
         role = role or NodeRole.WORKER
-        version = yield self._role_to_notifiers[role].watch(version=version)
+        version = yield self._role_to_notifier[role].watch(version=version)
         raise mo.Return((version, self.get_all_bands(role=role, statuses=statuses)))
+
+    def put_starting_nodes(self, nodes: List[str], role: NodeRole):
+        for node_ep in nodes:
+            if node_ep in self._node_infos \
+                    and self._node_infos[node_ep].status not in {NodeStatus.STARTING, NodeStatus.STOPPED}:
+                continue
+            self._node_infos[node_ep] = NodeInfo(
+                role, NodeStatus.STARTING, update_time=time.time())
+            self._role_to_nodes[role].add(node_ep)
+
+        nodes_set = set(nodes)
+        for node, info in self._node_infos.items():
+            if info.status == NodeStatus.STARTING and node not in nodes_set:
+                info.status = NodeStatus.STOPPED
+
+        self._role_to_notifier[role].notify()

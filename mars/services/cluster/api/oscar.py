@@ -214,13 +214,13 @@ class ClusterAPI(AbstractClusterAPI):
 class MockClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
-        from ..locator import SupervisorLocatorActor
+        from ..supervisor.locator import SupervisorPeerLocatorActor
         from ..uploader import NodeInfoUploaderActor
         from ..supervisor.node_info import NodeInfoCollectorActor
 
         dones, _ = await asyncio.wait([
-            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
-                            uid=SupervisorLocatorActor.default_uid(),
+            mo.create_actor(SupervisorPeerLocatorActor, 'fixed', address,
+                            uid=SupervisorPeerLocatorActor.default_uid(),
                             address=address),
             mo.create_actor(NodeInfoCollectorActor,
                             uid=NodeInfoCollectorActor.default_uid(),

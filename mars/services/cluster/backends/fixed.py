@@ -14,6 +14,7 @@
 
 from typing import AsyncGenerator, List, Optional
 
+from ..core import NodeRole
 from .base import AbstractClusterBackend, register_cluster_backend
 
 
@@ -25,15 +26,12 @@ class FixedClusterBackend(AbstractClusterBackend):
         self._supervisors = [n.strip() for n in lookup_address.split(',')]
 
     @classmethod
-    async def create(cls, lookup_address: Optional[str],
+    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
                      pool_address: str):
         return cls(lookup_address)
 
     async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         yield self._supervisors
 
-    async def get_supervisors(self) -> List[str]:
-        return self._supervisors
-
-    async def get_expected_supervisors(self) -> List[str]:
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
         return self._supervisors

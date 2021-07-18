@@ -17,9 +17,11 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     scipy \
     tornado \
     aiohttp \
+    lz4 \
   && /srv/retry.sh 3 /opt/conda/bin/conda install -c conda-forge \
     libiconv \
     pyarrow\>=1.0 \
     tiledb-py \
     python-kubernetes \
+    uvloop \
   && /opt/conda/bin/conda clean --all -f -y
