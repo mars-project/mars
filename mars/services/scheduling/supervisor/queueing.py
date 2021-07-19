@@ -25,6 +25,7 @@ from ....utils import dataslots, extensible
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
+from ...cluster.core import NodeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,6 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._band_slot_nums = dict()
         self._band_watch_task = None
-        self._available_bands = []
-        self._available_band_watch_task = None
         self._max_enqueue_id = 0
 
         self._periodical_submit_task = None
@@ -75,8 +74,12 @@ class SubtaskQueueingActor(mo.Actor):
         self._band_slot_nums = {}
 
         async def watch_bands():
-            async for bands in self._cluster_api.watch_all_bands():
+            async for bands in self._cluster_api.watch_all_bands(
+                exclude_statuses={NodeStatus.STOPPED}
+            ):
                 self._band_slot_nums = bands
+                if self._band_queues:
+                    await self.balance_queued_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -93,20 +96,6 @@ class SubtaskQueueingActor(mo.Actor):
         if self._submit_period > 0:
             self._periodical_submit_task = \
                 self.ref().periodical_submit.tell_delay(delay=self._submit_period)
-
-        async def watch_bands():
-            while True:
-                self._band_slot_nums = await self._cluster_api.get_all_bands(watch=True)
-
-        self._band_watch_task = asyncio.create_task(watch_bands())
-
-        async def watch_available_bands():
-            while True:
-                self._available_bands = list(await self._slots_ref.watch_available_bands())
-                # when more bands available or some bands blocked
-                await self.balance_queued_subtasks()
-
-        self._available_band_watch_task = asyncio.create_task(watch_available_bands())
 
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
@@ -144,7 +133,8 @@ class SubtaskQueueingActor(mo.Actor):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
-            self._band_slot_nums = await self._cluster_api.get_all_bands()
+            self._band_slot_nums = await self._cluster_api.get_all_bands(
+                exclude_statuses={NodeStatus.STOPPED})
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []

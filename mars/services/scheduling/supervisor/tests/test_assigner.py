@@ -13,27 +13,62 @@
 # limitations under the License.
 
 import numpy as np
+import asyncio
 import pytest
 
 import mars.oscar as mo
 from mars.core import ChunkGraph
-from mars.services.cluster import MockClusterAPI
+from mars.services.cluster import ClusterAPI
+from mars.services.cluster.core import NodeRole, NodeStatus
+from mars.services.cluster.locator import SupervisorLocatorActor
+from mars.services.cluster.uploader import NodeInfoUploaderActor
+from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
-from mars.services.scheduling.supervisor import AssignerActor, GlobalSlotManagerActor
+from mars.services.scheduling.supervisor import AssignerActor
 from mars.services.subtask import Subtask
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import TensorTreeAdd
 
 
-class MockSlotsActor(mo.Actor):
-    def watch_available_bands(self):
-        return {('address0', 'numa-0'): 2,
-                ('address2', 'numa-0'): 2}
+class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
+    def get_all_bands(self, role=None, statuses=None):
+        if statuses == {NodeStatus.READY}:
+            return {('address0', 'numa-0'): 2,
+                    ('address2', 'numa-0'): 2}
+        else:
+            return {('address0', 'numa-0'): 2,
+                    ('address1', 'numa-0'): 2,
+                    ('address2', 'numa-0'): 2}
 
-    def get_available_bands(self):
-        return {('address0', 'numa-0'): 2,
-                ('address2', 'numa-0'): 2}
+
+class FakeClusterAPI(ClusterAPI):
+    @classmethod
+    async def create(cls, address: str, **kw):
+        dones, _ = await asyncio.wait([
+            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
+                            uid=SupervisorLocatorActor.default_uid(),
+                            address=address),
+            mo.create_actor(MockNodeInfoCollectorActor,
+                            uid=NodeInfoCollectorActor.default_uid(),
+                            address=address),
+            mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
+                            interval=kw.get('upload_interval'),
+                            band_to_slots=kw.get('band_to_slots'),
+                            use_gpu=kw.get('use_gpu', False),
+                            uid=NodeInfoUploaderActor.default_uid(),
+                            address=address),
+        ])
+
+        for task in dones:
+            try:
+                task.result()
+            except mo.ActorAlreadyExist:  # pragma: no cover
+                pass
+
+        api = await super().create(address=address)
+        await api.mark_node_ready()
+        return api
 
 
 @pytest.fixture
@@ -42,12 +77,9 @@ async def actor_pool():
 
     async with pool:
         session_id = 'test_session'
-        await MockClusterAPI.create(pool.external_address)
+        await FakeClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
-        await mo.create_actor(MockSlotsActor,
-                              uid=GlobalSlotManagerActor.default_uid(),
-                              address=pool.external_address)
         assigner_ref = await mo.create_actor(
             AssignerActor, session_id, uid=AssignerActor.gen_uid(session_id),
             address=pool.external_address)

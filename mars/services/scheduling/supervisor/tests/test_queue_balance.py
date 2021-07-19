@@ -17,41 +17,61 @@ import pytest
 from typing import Tuple, List
 
 import mars.oscar as mo
-from mars.services.cluster import MockClusterAPI
+from mars.services.cluster import ClusterAPI
+from mars.services.cluster.core import NodeRole, NodeStatus
+from mars.services.cluster.locator import SupervisorLocatorActor
+from mars.services.cluster.uploader import NodeInfoUploaderActor
+from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.scheduling.supervisor import AssignerActor, \
     SubtaskManagerActor, SubtaskQueueingActor, GlobalSlotManagerActor
 from mars.services.subtask import Subtask
 from mars.utils import extensible
 
 
+class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
+    def get_all_bands(self, role, statuses):
+        if statuses == {NodeStatus.READY}:
+            return {('address0', 'numa-0'): 2,
+                    ('address2', 'numa-0'): 2}
+        else:
+            return {('address0', 'numa-0'): 2,
+                    ('address1', 'numa-0'): 2,
+                    ('address2', 'numa-0'): 2}
+
+
+class FakeClusterAPI(ClusterAPI):
+    @classmethod
+    async def create(cls, address: str, **kw):
+        dones, _ = await asyncio.wait([
+            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
+                            uid=SupervisorLocatorActor.default_uid(),
+                            address=address),
+            mo.create_actor(MockNodeInfoCollectorActor,
+                            uid=NodeInfoCollectorActor.default_uid(),
+                            address=address),
+            mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
+                            interval=kw.get('upload_interval'),
+                            band_to_slots=kw.get('band_to_slots'),
+                            use_gpu=kw.get('use_gpu', False),
+                            uid=NodeInfoUploaderActor.default_uid(),
+                            address=address),
+        ])
+
+        for task in dones:
+            try:
+                task.result()
+            except mo.ActorAlreadyExist:  # pragma: no cover
+                pass
+
+        api = await super().create(address=address)
+        await api.mark_node_ready()
+        return api
+
+
 class MockSlotsActor(mo.Actor):
-    def __init__(self):
-        self._available_band_events = set()
-
-    async def add_to_blocklist(self, band: Tuple):
-        for event in self._available_band_events:
-            event.set()
-
     def apply_subtask_slots(self, band: Tuple, session_id: str,
                             subtask_ids: List[str], subtask_slots: List[int]):
         return subtask_ids
-
-    def get_available_bands(self):
-        return {('address0', 'numa-0'): 10,
-                ('address2', 'numa-0'): 10}
-
-    async def watch_available_bands(self):
-        event = asyncio.Event()
-        self._available_band_events.add(event)
-
-        async def waiter():
-            try:
-                await event.wait()
-                return self.get_available_bands()
-            finally:
-                self._available_band_events.remove(event)
-
-        return waiter()
 
 
 class MockAssignerActor(mo.Actor):
@@ -82,7 +102,7 @@ async def actor_pool():
 
     async with pool:
         session_id = 'test_session'
-        await MockClusterAPI.create(pool.external_address)
+        cluster_api = await FakeClusterAPI.create(pool.external_address)
 
         # create assigner actor
         await mo.create_actor(MockAssignerActor,
@@ -102,7 +122,7 @@ async def actor_pool():
                                              uid=SubtaskQueueingActor.gen_uid(session_id),
                                              address=pool.external_address)
 
-        yield pool, session_id, queueing_ref, slots_ref, manager_ref
+        yield pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref
 
         await mo.destroy_actor(queueing_ref)
 
@@ -120,13 +140,14 @@ async def _queue_subtasks(num_subtasks, expect_bands, queueing_ref):
 
 @pytest.mark.asyncio
 async def test_subtask_queueing(actor_pool):
-    _pool, session_id, queueing_ref, slots_ref, manager_ref = actor_pool
+    _pool, session_id, cluster_api, queueing_ref, slots_ref, manager_ref = actor_pool
     nums_subtasks = [9, 8, 1]
     expects_bands = [('address0', 'numa-0'), ('address1', 'numa-0'),
                      ('address2', 'numa-0')]
     for num_subtasks, expect_bands in zip(nums_subtasks, expects_bands):
         await _queue_subtasks(num_subtasks, expect_bands, queueing_ref)
-    await slots_ref.add_to_blocklist(('address0', 'numa-0'))
+    await cluster_api.set_node_status(
+        node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
 
     # 9 subtasks on ('address0', 'numa-0')
     await queueing_ref.submit_subtasks(band=('address0', 'numa-0'), limit=10)

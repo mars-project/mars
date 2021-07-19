@@ -20,6 +20,7 @@ from typing import List, DefaultDict, Dict, Tuple
 from .... import oscar as mo
 from ....utils import extensible
 from ...core import BandType
+from ...cluster.core import NodeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,12 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_used_slots = defaultdict(lambda: 0)
         self._band_total_slots = dict()
         # TODO: maybe one node with mutliple bands
-        self._blocked_bands = set()
-        self._available_band_events = set()
+        self._available_bands = []
 
         self._cluster_api = None
 
         self._band_watch_task = None
+        self._available_band_watch_task = None
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -48,13 +49,19 @@ class GlobalSlotManagerActor(mo.Actor):
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
                 self._band_total_slots = bands
-                for event in self._available_band_events:
-                    event.set()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
+        async def watch_available_bands():
+            async for available_bands in \
+                    self._cluster_api.watch_all_bands(statuses={NodeStatus.READY}):
+                self._available_bands = list(available_bands)
+
+        self._available_band_watch_task = asyncio.create_task(watch_available_bands())
+
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
+        self._available_band_watch_task.cancel()
 
     async def apply_subtask_slots(self, band: Tuple, session_id: str,
                                   subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:
@@ -63,7 +70,7 @@ class GlobalSlotManagerActor(mo.Actor):
 
         idx = 0
         total_slots = self._band_total_slots[band]
-        if band not in self._blocked_bands:
+        if band in self._available_bands:
             for stid, slots in zip(subtask_ids, subtask_slots):
                 if self._band_used_slots[band] + slots > total_slots:
                     break
@@ -95,43 +102,3 @@ class GlobalSlotManagerActor(mo.Actor):
 
     def get_used_slots(self):
         return self._band_used_slots
-
-    async def get_available_bands(self):
-        if not self._band_total_slots:
-            self._band_total_slots = await self._cluster_api.get_all_bands()
-
-        def exclude_bands(all_bands_slots, excluded_bands):
-            return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
-        return exclude_bands(self._band_total_slots, self._blocked_bands)
-
-    async def watch_available_bands(self):
-        event = asyncio.Event()
-        self._available_band_events.add(event)
-
-        async def waiter():
-            try:
-                await event.wait()
-                return await self.get_available_bands()
-            finally:
-                self._available_band_events.remove(event)
-
-        return waiter()
-
-    async def add_to_blocklist(self, band: BandType):
-        assert band in self._band_total_slots
-        self._blocked_bands.add(band)
-        for event in self._available_band_events:
-            event.set()
-
-    async def remove_from_blocklist(self, band: BandType):
-        assert band in self._blocked_bands
-        self._blocked_bands.remove(band)
-        for event in self._available_band_events:
-            event.set()
-
-    def get_blocked_bands(self):
-        return self._blocked_bands
-
-    def band_is_blocked(self, band: BandType):
-        assert band in self._band_total_slots
-        return band in self._blocked_bands
