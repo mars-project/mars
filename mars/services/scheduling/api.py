@@ -14,7 +14,6 @@
 
 import asyncio
 from abc import ABC
-from mars.services.core import BandType
 from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from ... import oscar as mo
@@ -171,20 +170,6 @@ class SchedulingAPI(ABC):
             whether to schedule succeeding subtasks
         """
         await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
-
-    async def add_to_blocklist(self, band: BandType):
-        await self._global_slot_ref.add_to_blocklist(band)
-
-    async def remove_from_blocklist(self, band: BandType):
-        await self._global_slot_ref.remove_from_blocklist(band)
-
-    def get_blocked_bands(self):
-        return self._global_slot_ref.get_blocked_bands()
-
-    async def get_available_bands(self, watch: bool = False):
-        if watch:
-            return await self._global_slot_ref.watch_available_bands()
-        return await self._global_slot_ref.get_available_bands()
 
 
 class MockSchedulingAPI(SchedulingAPI):
