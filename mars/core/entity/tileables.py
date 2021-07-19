@@ -51,6 +51,11 @@ class OperandTilesHandler:
         cls._handlers[cls._get_op_cls(op)] = tile_handler
 
     @classmethod
+    def unregister(cls,
+                   op: OperandType):
+        del cls._handlers[cls._get_op_cls(op)]
+
+    @classmethod
     def get_handler(cls, op: OperandType) -> Callable[[OperandType], List[TileableType]]:
         op_cls = cls._get_op_cls(op)
         return cls._handlers.get(op_cls, op_cls.tile)
@@ -123,6 +128,7 @@ class OperandTilesHandler:
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register
+unregister = OperandTilesHandler.unregister
 
 
 class _ChunksIndexer:
