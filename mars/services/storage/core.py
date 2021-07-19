@@ -97,8 +97,7 @@ class StorageQuotaActor(mo.Actor):
         return f'storage_quota_{level}'
 
     def update_quota(self, size: int):
-        if self._total_size is not None:
-            self._used_size += size
+        self._used_size += size
         logger.debug('Update %s bytes of %s, used size now is %s',
                      size, self._level, self._used_size)
 
@@ -106,10 +105,7 @@ class StorageQuotaActor(mo.Actor):
         if self._total_size is not None and size > self._total_size:  # pragma: no cover
             raise StorageFull(f'Request size {size} is larger '
                               f'than total size {self._total_size}')
-        if self._total_size is None:
-            self._used_size += size
-            return True
-        elif self._used_size + size >= self._total_size:
+        if self._total_size is not None and self._used_size + size > self._total_size:
             logger.debug('Request %s bytes of %s, used size now is %s,'
                          'space is not enough for the request', size, self._level, self._used_size)
             return False
