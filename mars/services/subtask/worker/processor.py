@@ -25,7 +25,6 @@ from ....core import ChunkGraph, OperandType
 from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
-from ....lib.aio import alru_cache
 from ....optimization.physical import optimize
 from ...context import ThreadedServiceContext
 from ...core import BandType
@@ -46,6 +45,7 @@ class DataStore(dict):
 
 class SubtaskProcessor:
     _chunk_graph: ChunkGraph
+    _chunk_key_to_data_keys: Dict[str, List[str]]
 
     def __init__(self,
                  subtask: Subtask,
@@ -124,7 +124,7 @@ class SubtaskProcessor:
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
                     fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
-            logger.debug('Start getting input data keys: %s, '
+            logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
             await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
@@ -134,15 +134,10 @@ class SubtaskProcessor:
         return keys
 
     @staticmethod
-    @alru_cache(cache_exceptions=False)
-    async def _get_task_api(supervisor_address: str, session_id: str) -> TaskAPI:
-        return await TaskAPI.create(session_id, supervisor_address)
-
-    @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
                                          result: SubtaskResult):
-        task_api = await SubtaskProcessor._get_task_api(
-            supervisor_address, result.session_id)
+        task_api = await TaskAPI.create(
+            result.session_id, supervisor_address)
         # notify task service
         await task_api.set_subtask_result(result)
 
@@ -158,8 +153,8 @@ class SubtaskProcessor:
         return ref_counts
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
+                                     loop: asyncio.AbstractEventLoop,
+                                     executor: futures.Executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         self._op_progress[op.key] = 0.0
@@ -342,6 +337,7 @@ class SubtaskProcessor:
     async def run(self):
         self.result.status = SubtaskStatus.running
         input_keys = None
+        unpinned = False
         try:
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
@@ -355,6 +351,7 @@ class SubtaskProcessor:
                 await self._execute_graph(chunk_graph)
             finally:
                 # unpin inputs data
+                unpinned = True
                 await self._unpin_data(input_keys)
             # store results data
             stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
@@ -371,7 +368,7 @@ class SubtaskProcessor:
             await self.done()
             raise
         finally:
-            if input_keys is not None:
+            if input_keys is not None and not unpinned:
                 await self._unpin_data(input_keys)
 
         await self.done()

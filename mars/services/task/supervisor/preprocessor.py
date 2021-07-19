@@ -151,16 +151,16 @@ class TaskPreprocessor:
         analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
         return analyzer.gen_subtask_graph()
 
-    @property
-    def done(self) -> bool:
+    def _get_done(self):
         return self._done.is_set()
 
-    @done.setter
-    def done(self, is_done: bool):
+    def _set_done(self, is_done: bool):
         if is_done:
             self._done.set()
         else:  # pragma: no cover
             self._done.clear()
+
+    done = property(_get_done, _set_done)
 
     def cancel(self):
         self._cancelled.set()

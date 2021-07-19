@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_object_overhead, calc_data_size
+from ...utils import calc_data_size
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
@@ -225,11 +225,11 @@ class TileableOperandMixin:
         outputs = op.outputs
         pure_dep_keys = \
             set(inp.key for inp, is_dep in zip(op.inputs or (), op.pure_depends or ()) if is_dep)
-        if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
+        if all(not c.is_sparse() and hasattr(c, 'nbytes') and
+               not np.isnan(c.nbytes) for c in outputs):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
 
-        all_overhead = 0
         for inp in op.inputs or ():
             if inp.key in pure_dep_keys:
                 continue
@@ -242,9 +242,7 @@ class TileableOperandMixin:
                 # execution size of a specific data chunk may be
                 # larger than stored type due to objects
                 for key, shape in keys_and_shapes:
-                    overhead = calc_object_overhead(inp, shape)
-                    all_overhead += overhead
-                    exec_size += ctx[key][0] + overhead
+                    exec_size += ctx[key][0]
             except KeyError:
                 if not op.sparse:
                     inp_size = calc_data_size(inp)
@@ -257,7 +255,7 @@ class TileableOperandMixin:
         for out in outputs:
             try:
                 if not out.is_sparse():
-                    chunk_size = calc_data_size(out) + all_overhead // len(outputs)
+                    chunk_size = calc_data_size(out)
                 else:
                     chunk_size = exec_size
                 if np.isnan(chunk_size):

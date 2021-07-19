@@ -33,7 +33,7 @@ from mars.services.lifecycle import MockLifecycleAPI
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
-from mars.services.storage.core import StorageHandlerActor
+from mars.services.storage.handler import StorageHandlerActor
 from mars.services.subtask import MockSubtaskAPI, Subtask
 from mars.services.task.supervisor.manager import TaskManagerActor
 from mars.tensor.fetch import TensorFetch
