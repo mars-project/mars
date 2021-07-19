@@ -14,12 +14,10 @@
 
 import asyncio
 import uuid
-from typing import List, Optional
-
-import pandas as pd
+from typing import List, Optional, Union
 
 from ...core import recursive_tile
-from ...core.context import get_context
+from ...core.context import get_context, Context
 from ...serialization.serializables import Int64Field, StringField
 from ...typing import TileableType, ChunkType, OperandType
 from ..core import IndexValue
@@ -90,32 +88,23 @@ class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
 
 
 class _IncrementalIndexRecorder:
-    _semaphores: List[Optional[asyncio.Semaphore]]
+    _done: List[Optional[asyncio.Event]]
     _chunk_sizes: List[Optional[int]]
 
     def __init__(self, n_chunk: int):
         self._n_chunk = n_chunk
-        self._semaphores = [None] * n_chunk
+        self._done = [asyncio.Event() for _ in range(n_chunk)]
         self._chunk_sizes = [None] * n_chunk
-
-    async def init(self):
-        for i in range(self._n_chunk):
-            if i > 0:
-                sem = asyncio.Semaphore(i)
-                for _ in range(i):
-                    await sem.acquire()
-                self._semaphores[i] = sem
 
     async def wait(self, i: int):
         if i == 0:
             return 0
-        await self._semaphores[i].acquire()
+        await asyncio.gather(*(e.wait() for e in self._done[:i]))
         return sum(self._chunk_sizes[:i])
 
     async def done(self, i: int, size: int):
         self._chunk_sizes[i] = size
-        for j in range(i + 1, self._n_chunk):
-            self._semaphores[j].release()
+        self._done[i].set()
         return i == self._n_chunk - 1
 
 
@@ -137,23 +126,23 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
-    def post_tile(cls, op: OperandType, result: TileableType):
-        if result is not None and \
-                isinstance(result.index_value.value, IndexValue.RangeIndex):
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
+        if results is not None and \
+                isinstance(results[0].index_value.value, IndexValue.RangeIndex):
+            result = results[0]
             n_chunk = len(result.chunks)
             ctx = get_context()
             name = str(uuid.uuid4())
-            recorder = ctx.create_remote_object(
+            ctx.create_remote_object(
                 name, _IncrementalIndexRecorder, n_chunk)
-            recorder.init()
             for chunk in result.chunks:
                 chunk.op.incremental_index_recorder_name = name
 
     @classmethod
-    def post_execute(cls, ctx: dict, op: OperandType):
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         out = op.outputs[0]
         result = ctx[out.key]
-        if isinstance(result.index, pd.RangeIndex):
+        if isinstance(out.index_value.value, IndexValue.RangeIndex):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]

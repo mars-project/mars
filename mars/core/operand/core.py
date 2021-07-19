@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import List, Dict, Type, Callable, Any
+from typing import Any, Callable, Dict, List, Type, Union
 
 import numpy as np
 try:
@@ -23,6 +23,7 @@ except ImportError:  # pragma: no cover
 
 from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_data_size
+from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
@@ -221,11 +222,11 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def post_tile(cls, op: OperandType, result: TileableType):
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
         """
         Operation after tile.
 
@@ -233,12 +234,12 @@ class TileableOperandMixin:
         ----------
         op : OperandType
           Operand to tile.
-        result: TileableType
-          Tiled result
+        results: list
+          List of tiled results.
         """
 
     @classmethod
-    def pre_execute(cls, ctx: Dict, op: OperandType):
+    def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operation before execute.
 
@@ -251,11 +252,11 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def execute(cls, ctx: dict, op: OperandType):
+    def execute(cls, ctx: Union[dict, Context], op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def post_execute(cls, ctx: dict, op: OperandType):
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operand before execute.
 

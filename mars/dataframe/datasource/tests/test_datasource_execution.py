@@ -370,18 +370,17 @@ def test_read_csv_execution(setup):
                           columns=['a', 'b', 'c'])
         df.to_csv(file_path, index=False)
 
-        mdf = md.read_csv(file_path,
-                                                          usecols=['c', 'b']).execute().fetch()
+        mdf = md.read_csv(file_path, usecols=['c', 'b']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, usecols=['c', 'b']), mdf)
 
         mdf = md.read_csv(file_path, names=['a', 'b', 'c'],
-                                                          usecols=['c', 'b']).execute().fetch()
+                          usecols=['c', 'b']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, names=['a', 'b', 'c'], usecols=['c', 'b']), mdf)
 
         mdf = md.read_csv(file_path, names=['a', 'b', 'c'],
-                                                          usecols=['a', 'c']).execute().fetch()
+                          usecols=['a', 'c']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, names=['a', 'b', 'c'], usecols=['a', 'c']), mdf)
 
@@ -477,7 +476,7 @@ def test_read_csv_execution(setup):
                                                            chunk_bytes='1k').execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf2)
 
-    # test multiply files
+    # test multiple files
     with tempfile.TemporaryDirectory() as tempdir:
         df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
@@ -603,11 +602,21 @@ def test_read_csv_without_index(setup):
         df.to_csv(file_path, index=False)
 
         pdf = pd.read_csv(file_path)
-        mdf = md.read_csv(file_path, incremental_index=True).execute().fetch()
+        mdf = md.read_csv(file_path).execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf)
 
-        mdf2 = md.read_csv(file_path, incremental_index=True, chunk_bytes=10).execute().fetch()
+        mdf2 = md.read_csv(file_path, chunk_bytes=10).execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf2)
+
+        file_path2 = os.path.join(tempdir, 'test.csv')
+        df = pd.DataFrame(np.random.RandomState(0).rand(100, 10),
+                          columns=[f'col{i}' for i in range(10)])
+        df.to_csv(file_path2, index=False)
+
+        mdf3 = md.read_csv(file_path2, chunk_bytes=os.stat(file_path2).st_size / 5)
+        result = mdf3.execute().fetch()
+        expected = pd.read_csv(file_path2)
+        pd.testing.assert_frame_equal(result, expected)
 
 
 def test_read_sql_execution(setup):
