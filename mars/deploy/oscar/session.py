@@ -17,6 +17,7 @@ import concurrent.futures
 import itertools
 import logging
 import threading
+import time
 import uuid
 import warnings
 from abc import ABC, ABCMeta, abstractmethod
@@ -565,7 +566,8 @@ class _IsolatedSession(AbstractAsyncSession):
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
                  cluster_api: AbstractClusterAPI,
-                 client: ClientType = None):
+                 client: ClientType = None,
+                 timeout: float = None):
         super().__init__(address, session_id)
         self._session_api = session_api
         self._task_api = task_api
@@ -573,6 +575,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self._lifecycle_api = lifecycle_api
         self._cluster_api = cluster_api
         self.client = client
+        self.timeout = timeout
 
         self._tileable_to_fetch = WeakKeyDictionary()
         self._asyncio_task_timeout_detector_task = \
@@ -582,7 +585,8 @@ class _IsolatedSession(AbstractAsyncSession):
     async def _init(cls,
                     address: str,
                     session_id: str,
-                    new: bool = True):
+                    new: bool = True,
+                    timeout: float = None):
         session_api = await SessionAPI.create(address)
         if new:
             # create new session
@@ -596,7 +600,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api)
+                   cluster_api, timeout=timeout)
 
     @classmethod
     @implements(AbstractAsyncSession.init)
@@ -604,11 +608,12 @@ class _IsolatedSession(AbstractAsyncSession):
                    address: str,
                    session_id: str,
                    new: bool = True,
+                   timeout: float = None,
                    **kwargs) -> "AbstractAsyncSession":
         init_local = kwargs.pop('init_local', False)
         if init_local:
             from .local import new_cluster_in_isolation
-            return (await new_cluster_in_isolation(address, **kwargs)).session
+            return (await new_cluster_in_isolation(address, timeout=timeout, **kwargs)).session
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -616,9 +621,9 @@ class _IsolatedSession(AbstractAsyncSession):
                             f'arguments: {unexpected_keys}')
 
         if urlparse(address).scheme == 'http':
-            return await _IsolatedWebSession._init(address, session_id, new=new)
+            return await _IsolatedWebSession._init(address, session_id, new=new, timeout=timeout)
         else:
-            return await cls._init(address, session_id, new=new)
+            return await cls._init(address, session_id, new=new, timeout=timeout)
 
     async def _run_in_background(self,
                                  tileables: list,
@@ -627,6 +632,7 @@ class _IsolatedSession(AbstractAsyncSession):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
+            start_time = time.time()
             while True:
                 try:
                     if not cancelled:
@@ -646,6 +652,9 @@ class _IsolatedSession(AbstractAsyncSession):
                     # cancelled
                     cancelled = True
                     await self._task_api.cancel_task(task_id)
+                finally:
+                    if self.timeout is not None and time.time() - start_time > self.timeout:
+                        raise TimeoutError(f'Task({task_id}) running time > {self.timeout}')
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
@@ -884,7 +893,8 @@ class _IsolatedWebSession(_IsolatedSession):
     async def _init(cls,
                     address: str,
                     session_id: str,
-                    new=True):
+                    new: bool = True,
+                    timeout: float = None):
         from ...services.session import WebSessionAPI
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
@@ -905,7 +915,7 @@ class _IsolatedWebSession(_IsolatedSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api)
+                   cluster_api, timeout=timeout)
 
 
 def _delegate_to_isolated_session(func: Union[Callable, Coroutine]):
@@ -1153,7 +1163,8 @@ class SyncSession(AbstractSyncSession):
                         show_progress=show_progress, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         try:
-            execution_info: ExecutionInfo = fut.result()
+            execution_info: ExecutionInfo = fut.result(
+                timeout=self._isolated_session.timeout)
         except KeyboardInterrupt:  # pragma: no cover
             logger.warning('Cancelling running task')
             cancelled.set()
