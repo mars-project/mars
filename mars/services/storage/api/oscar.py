@@ -176,7 +176,7 @@ class StorageAPI(AbstractStorageAPI):
         """
         await self._storage_handler_ref.fetch(
             self._session_id, data_key, level,
-            band_name, dest_address, error)
+            dest_address, band_name, error)
 
     @extensible
     async def unpin(self, data_key: str,

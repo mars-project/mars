@@ -151,6 +151,7 @@ class ObjectMeta(_TileableMeta):
 class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
     bands: List[BandType] = None
+    object_refs: Any = None
 
 
 @_register_type(TENSOR_CHUNK_TYPE)

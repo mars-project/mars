@@ -128,9 +128,9 @@ class AutoscalerActor(mo.Actor):
                 for data_key in band_data_keys:
                     dest_band = self._select_target_band(src_band, data_key)
                     # For ray backend, there will only be meta update rather than data transfer
-                    await self._get_storage_api(dest_band[0]).fetch(
+                    await (await self._get_storage_api(session_id, dest_band[0])).fetch(
                         data_key, band_name=src_band[1], dest_address=src_band[0])
-                    await self._get_storage_api(src_band[0]).delete(data_key)
+                    await (await self._get_storage_api(session_id, src_band[0])).delete(data_key)
                     chunk_bands = (await meta_api.get_chunk_meta(data_key, fields=['bands'])).get('bands')
                     chunk_bands.remove(src_band)
                     chunk_bands.append(dest_band)
@@ -142,9 +142,9 @@ class AutoscalerActor(mo.Actor):
         return random.choice(bands)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_storage_api(self, address: str):
+    async def _get_storage_api(self, session_id: str, address: str):
         from mars.services.storage import StorageAPI
-        return await StorageAPI.create(self._session_id, address)
+        return await StorageAPI.create(session_id, address)
 
 
 class AbstractScaleStrategy(ABC):
