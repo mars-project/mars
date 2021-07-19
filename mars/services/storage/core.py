@@ -15,7 +15,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
@@ -124,7 +124,7 @@ class StorageQuotaActor(mo.Actor):
         logger.debug('Release %s bytes of %s, used size now is %s,'
                      'total size is %s', size, self._level, self._used_size, self._total_size)
 
-    def get_quota(self):
+    def get_quota(self) -> Tuple[float, float]:
         return self._total_size, self._used_size
 
 
