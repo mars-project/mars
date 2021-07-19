@@ -35,7 +35,7 @@ class WorkerSupervisorLocatorActor(SupervisorLocatorActor):
 
     async def _set_supervisors(self, supervisors: List[str]):
         await super()._set_supervisors(supervisors)
-        if self._node_info_ref is None:
+        if supervisors and self._node_info_ref is None:
             from ..supervisor.node_info import NodeInfoCollectorActor
             supervisor_addr = self.get_supervisor(
                 NodeInfoCollectorActor.default_uid())

@@ -150,7 +150,7 @@ class NodeInfoCollectorActor(mo.Actor):
         version = yield self._role_to_notifier[role].watch(version=version)
         raise mo.Return((version, self.get_all_bands(role=role, statuses=statuses)))
 
-    def put_starting_nodes(self, nodes: List[str], role: NodeRole):
+    async def put_starting_nodes(self, nodes: List[str], role: NodeRole):
         for node_ep in nodes:
             if node_ep in self._node_infos \
                     and self._node_infos[node_ep].status not in {NodeStatus.STARTING, NodeStatus.STOPPED}:
@@ -164,4 +164,4 @@ class NodeInfoCollectorActor(mo.Actor):
             if info.status == NodeStatus.STARTING and node not in nodes_set:
                 info.status = NodeStatus.STOPPED
 
-        self._role_to_notifier[role].notify()
+        await self._role_to_notifier[role].notify()

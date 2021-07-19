@@ -78,7 +78,8 @@ class KubernetesCluster:
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
                  worker_min_cache_mem=None, worker_mem_limit_ratio=None,
-                 web_port=None, service_type=None, timeout=None, **kwargs):
+                 web_port=None, service_name=None, service_type=None,
+                 timeout=None, **kwargs):
         from kubernetes import client as kube_client
 
         self._api_client = kube_api_client
@@ -87,6 +88,7 @@ class KubernetesCluster:
         self._namespace = namespace
         self._image = image
         self._timeout = timeout
+        self._service_name = service_name or 'marsservice'
         self._service_type = service_type or 'NodePort'
         self._extra_volumes = kwargs.pop('extra_volumes', ())
         self._pre_stop_command = kwargs.pop('pre_stop_command', None)
@@ -158,31 +160,10 @@ class KubernetesCluster:
             raise NotImplementedError(f'Service type {self._service_type} not supported')
 
         service_config = ServiceConfig(
-            'marsservice', service_type='NodePort', port=self._web_port,
+            self._service_name, service_type='NodePort', port=self._web_port,
             selector={'mars/service-type': MarsSupervisorsConfig.rc_name},
         )
         self._core_api.create_namespaced_service(self._namespace, service_config.build())
-
-        time.sleep(1)
-
-        svc_data = self._core_api.read_namespaced_service('marsservice', self._namespace).to_dict()
-        port = svc_data['spec']['ports'][0]['node_port']
-
-        web_pods = self._core_api.list_namespaced_pod(
-            self._namespace, label_selector='mars/service-type=' + MarsSupervisorsConfig.rc_name).to_dict()
-        host_ip = random.choice(web_pods['items'])['status']['host_ip']
-
-        # docker desktop use a VM to hold docker processes, hence
-        # we need to use API address instead
-        desktop_nodes = self._core_api.list_node(field_selector='metadata.name=docker-desktop').to_dict()
-        if desktop_nodes['items']:  # pragma: no cover
-            addresses = set(
-                addr_info['address']
-                for addr_info in desktop_nodes['items'][0].get('status', {}).get('addresses', ())
-            )
-            if host_ip in addresses:
-                host_ip = urlparse(self._core_api.api_client.configuration.host).netloc.split(':', 1)[0]
-        return f'http://{host_ip}:{port}'
 
     def _get_ready_pod_count(self, label_selector):
         query = self._core_api.list_namespaced_pod(
@@ -210,7 +191,7 @@ class KubernetesCluster:
     def _create_roles_and_bindings(self):
         # create role and binding
         role_config = RoleConfig('mars-pod-operator', self._namespace, api_groups='',
-                                 resources='pods,replicationcontrollers/scale',
+                                 resources='pods,endpoints,services',
                                  verbs='get,watch,list,patch')
         role_config.create_namespaced(self._api_client, self._namespace)
         role_binding_config = RoleBindingConfig(
@@ -222,7 +203,9 @@ class KubernetesCluster:
             self._supervisor_num, image=self._image, cpu=self._supervisor_cpu,
             memory=self._supervisor_mem, memory_limit_ratio=self._supervisor_mem_limit_ratio,
             modules=self._supervisor_extra_modules, volumes=self._extra_volumes,
-            service_port=self._supervisor_service_port, web_port=self._web_port,
+            service_name=self._service_name,
+            service_port=self._supervisor_service_port,
+            web_port=self._web_port,
             pre_stop_command=self._pre_stop_command,
         )
         supervisors_config.add_simple_envs(self._supervisor_extra_env)
@@ -237,8 +220,10 @@ class KubernetesCluster:
             modules=self._worker_extra_modules, volumes=self._extra_volumes,
             worker_cache_mem=self._worker_cache_mem,
             min_cache_mem=self._worker_min_cache_men,
+            service_name=self._service_name,
             service_port=self._worker_service_port,
             pre_stop_command=self._pre_stop_command,
+            supervisor_web_port=self._web_port,
         )
         workers_config.add_simple_envs(self._worker_extra_env)
         workers_config.add_labels(self._worker_extra_labels)
@@ -264,6 +249,23 @@ class KubernetesCluster:
         if self._timeout is not None:  # pragma: no branch
             self._timeout -= time.time() - start_time
 
+    def _get_web_address(self):
+        svc_data = self._core_api.read_namespaced_service(
+            'marsservice', self._namespace).to_dict()
+        node_port = svc_data['spec']['ports'][0]['node_port']
+
+        # docker desktop use a VM to hold docker processes, hence
+        # we need to use API address instead
+        desktop_nodes = self._core_api.list_node(
+            field_selector='metadata.name=docker-desktop').to_dict()
+        if desktop_nodes['items']:  # pragma: no cover
+            host_ip = urlparse(self._core_api.api_client.configuration.host).netloc.split(':', 1)[0]
+        else:
+            web_pods = self._core_api.list_namespaced_pod(
+                self._namespace, label_selector='mars/service-type=' + MarsSupervisorsConfig.rc_name).to_dict()
+            host_ip = random.choice(web_pods['items'])['status']['host_ip']
+        return f'http://{host_ip}:{node_port}'
+
     def _wait_web_ready(self):
         loop = new_isolation().loop
 
@@ -278,6 +280,7 @@ class KubernetesCluster:
                         break
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                     if self._timeout is not None and time.time() - start_time > self._timeout:
+                        logger.exception('Error when fetching supervisors')
                         raise TimeoutError('Wait for kubernetes cluster timed out') from None
 
         asyncio.run_coroutine_threadsafe(get_supervisors(), loop).result()
@@ -296,10 +299,11 @@ class KubernetesCluster:
             self._create_roles_and_bindings()
 
             self._create_services()
+            self._create_kube_service()
 
             self._wait_services_ready()
 
-            self._external_web_endpoint = self._create_kube_service()
+            self._external_web_endpoint = self._get_web_address()
             self._wait_web_ready()
             return self._external_web_endpoint
         except:  # noqa: E722

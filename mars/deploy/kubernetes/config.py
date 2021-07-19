@@ -40,6 +40,7 @@ def _get_k8s_api(api_version, k8s_api_client):
     return getattr(kube_client, _kube_api_mapping[api_version])(k8s_api_client)
 
 
+@functools.lru_cache(10)
 def _camel_to_underline(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
@@ -150,6 +151,9 @@ class ServiceConfig(KubeConfig):
             'kind': 'Service',
             'metadata': {
                 'name': self._name,
+                'labels': {
+                    'mars/service-name': self._name,
+                },
             },
             'spec': _remove_nones({
                 'type': self._type,
@@ -424,7 +428,7 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
                  memory_limit_ratio=None, image=None, modules=None, volumes=None,
-                 service_port=None, **kwargs):
+                 service_name=None, service_port=None, **kwargs):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -438,6 +442,7 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
         limit_res = ResourceConfig(
             req_res.cpu, req_res.memory * (memory_limit_ratio or 1)) if req_res and memory else None
 
+        self._service_name = service_name
         self._service_port = service_port
 
         super().__init__(
@@ -458,6 +463,8 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
         self.add_env('MARS_K8S_POD_NAMESPACE', field_path='metadata.namespace')
         self.add_env('MARS_K8S_POD_IP', field_path='status.podIP')
 
+        if self._service_name:
+            self.add_env('MARS_K8S_SERVICE_NAME', str(self._service_name))
         if self._service_port:
             self.add_env('MARS_K8S_SERVICE_PORT', str(self._service_port))
 
@@ -532,6 +539,7 @@ class MarsWorkersConfig(MarsReplicationConfig):
         worker_cache_mem = kwargs.pop('worker_cache_mem', None)
         min_cache_mem = kwargs.pop('min_cache_mem', None)
         self._readiness_port = kwargs.pop('readiness_port', self.default_readiness_port)
+        supervisor_web_port = kwargs.pop('supervisor_web_port', None)
 
         super().__init__(*args, **kwargs)
 
@@ -554,6 +562,8 @@ class MarsWorkersConfig(MarsReplicationConfig):
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
         if min_cache_mem:
             self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
+        if supervisor_web_port:
+            self.add_env('MARS_K8S_SUPERVISOR_WEB_PORT', supervisor_web_port)
 
     def config_readiness_probe(self):
         return TcpSocketProbeConfig(

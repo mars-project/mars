@@ -71,8 +71,11 @@ class SupervisorLocatorActor(mo.Actor):
         except asyncio.CancelledError:
             return
 
-    def get_supervisors(self):
-        return self._supervisors
+    async def get_supervisors(self, filter_ready: bool = True):
+        if filter_ready:
+            return self._supervisors
+        else:
+            return await self._get_supervisors_from_backend(filter_ready=filter_ready)
 
     @extensible
     def get_supervisor(self, key: str, size=1):
@@ -96,7 +99,7 @@ class SupervisorLocatorActor(mo.Actor):
     async def wait_all_supervisors_ready(self):
         version = None
         while True:
-            version = yield self._watch_notifier.watch(version)
             expected_supervisors = await self._get_supervisors_from_backend(filter_ready=False)
-            if set(self._supervisors) == set(expected_supervisors):
+            if self._supervisors and set(self._supervisors) == set(expected_supervisors):
                 break
+            version = yield self._watch_notifier.watch(version)
