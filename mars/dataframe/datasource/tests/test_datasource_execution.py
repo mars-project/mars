@@ -865,7 +865,8 @@ def test_read_parquet_arrow(setup):
         test_df.to_parquet(file_path, row_group_size=5)
 
         df = md.read_parquet(file_path, groups_as_chunks=True,
-                             use_arrow_dtype=True)
+                             use_arrow_dtype=True,
+                             incremental_index=True)
         result = df.execute().fetch()
         assert isinstance(df.dtypes.iloc[1], md.ArrowStringDtype)
         assert isinstance(result.dtypes.iloc[1], md.ArrowStringDtype)

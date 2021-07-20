@@ -15,6 +15,7 @@
 import asyncio
 import os
 import threading
+import tempfile
 import time
 import uuid
 
@@ -232,6 +233,22 @@ def test_sync_execute():
         d = session.execute(c)
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            pdf = pd.DataFrame(np.random.RandomState(0).rand(100, 10),
+                              columns=[f'col{i}' for i in range(10)])
+            pdf.to_csv(file_path, index=False)
+
+            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+            result = df.sum(axis=1).execute().fetch()
+            expected = pd.read_csv(file_path).sum(axis=1)
+            pd.testing.assert_series_equal(result, expected)
+
+            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+            result = df.head(10).execute().fetch()
+            expected = pd.read_csv(file_path).head(10)
+            pd.testing.assert_frame_equal(result, expected)
 
     for worker_pool in session._session.client._cluster._worker_pools:
         _assert_storage_cleaned(session.session_id, worker_pool.external_address,

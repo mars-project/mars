@@ -429,7 +429,7 @@ class DataFrameReadParquet(IncrementalIndexDatasource,
 
 def read_parquet(path, engine: str = "auto", columns=None,
                  groups_as_chunks=False, use_arrow_dtype=None,
-                 incremental_index=True, storage_options=None,
+                 incremental_index=False, storage_options=None,
                  memory_scale=None, **kwargs):
     """
     Load a parquet object from the file path, returning a DataFrame.
@@ -456,7 +456,7 @@ def read_parquet(path, engine: str = "auto", columns=None,
         if True, each row group correspond to a chunk.
         if False, each file correspond to a chunk.
         Only available for 'pyarrow' engine.
-    incremental_index: bool, default True
+    incremental_index: bool, default False
         If index_col not specified, ensure range index incremental,
         gain a slightly better performance if setting False.
     use_arrow_dtype: bool, default None

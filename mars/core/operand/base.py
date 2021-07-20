@@ -62,7 +62,7 @@ class SchedulingHint(Serializable):
     # will this operand be assigned a worker or not
     reassign_worker = BoolField('reassign_worker', default=False)
     # True means control dependency, False means data dependency
-    _pure_depends = ListField('pure_depends', FieldTypes.bool)
+    _pure_depends = ListField('pure_depends', FieldTypes.bool, default=None)
     # useful when setting chunk index as priority,
     # useful for those op like read_csv, the first chunk
     # need to be executed not later than the later ones,
@@ -74,6 +74,15 @@ class SchedulingHint(Serializable):
     def all_hint_names(cls):
         return list(cls._FIELDS)
 
+    def can_be_fused(self) -> bool:
+        if self.reassign_worker:
+            return False
+        if self._pure_depends and \
+                any(depend for depend in self._pure_depends):
+            # control dependency exists
+            return False
+        return True
+
 
 def _install_scheduling_hint_properties(cls: Type["Operand"]):
     def get_hint(name):
@@ -83,9 +92,9 @@ def _install_scheduling_hint_properties(cls: Type["Operand"]):
 
         def _set_val(operand: "Operand", val: Any):
             if not operand.scheduling_hint:
-                operand.scheduling_hint = SchedulingHint(**{hint_name: val})
+                operand.scheduling_hint = SchedulingHint(**{name: val})
             else:
-                setattr(operand.scheduling_hint, hint_name, val)
+                setattr(operand.scheduling_hint, name, val)
 
         return property(_get_val, _set_val)
 
@@ -126,7 +135,8 @@ class Operand(Base, metaclass=OperandMetaclass):
     _output_types = ListField('output_type', FieldTypes.reference(OutputType))
 
     def __init__(self: OperandType, *args, **kwargs):
-        extras = AttributeDict((k, kwargs.pop(k)) for k in set(kwargs) - set(self._FIELDS))
+        extra_names = set(kwargs) - set(self._FIELDS) - set(SchedulingHint.all_hint_names)
+        extras = AttributeDict((k, kwargs.pop(k)) for k in extra_names)
         kwargs['extra_params'] = kwargs.pop('extra_params', extras)
         self._extract_scheduling_hint(kwargs)
         super().__init__(*args, **kwargs)

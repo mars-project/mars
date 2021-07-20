@@ -137,7 +137,8 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
         out = op.outputs[0]
         result = ctx[out.key]
         if op.incremental_index and \
-                isinstance(out.index_value.value, IndexValue.RangeIndex):
+                isinstance(out.index_value.value, IndexValue.RangeIndex) and \
+                getattr(op, 'incremental_index_recorder_name', None):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]
