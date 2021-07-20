@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class SupervisorLocatorActor(mo.Actor):
     _backend: Optional[AbstractClusterBackend]
-    _node_role: NodeRole
+    _node_role: NodeRole = None
 
     def __init__(self, backend_name: str, lookup_address: str):
         self._backend_name = backend_name

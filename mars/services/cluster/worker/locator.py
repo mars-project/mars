@@ -39,9 +39,12 @@ class WorkerSupervisorLocatorActor(SupervisorLocatorActor):
             from ..supervisor.node_info import NodeInfoCollectorActor
             supervisor_addr = self.get_supervisor(
                 NodeInfoCollectorActor.default_uid())
-            self._node_info_ref = await mo.actor_ref(
-                uid=NodeInfoCollectorActor.default_uid(), address=supervisor_addr
-            )
+            try:
+                self._node_info_ref = await mo.actor_ref(
+                    uid=NodeInfoCollectorActor.default_uid(), address=supervisor_addr
+                )
+            except (OSError, mo.ServerClosed, mo.ActorNotExist):
+                self._node_info_ref = None
 
     async def _get_supervisors_from_backend(self, filter_ready: bool = True):
         try:
@@ -51,7 +54,8 @@ class WorkerSupervisorLocatorActor(SupervisorLocatorActor):
             infos = await self._node_info_ref.get_nodes_info(
                 role=NodeRole.SUPERVISOR, statuses=statuses)
             return list(infos)
-        except (AssertionError, ConnectionError, mo.ServerClosed):
+        except (AssertionError, OSError,
+                mo.ServerClosed, mo.ActorNotExist):
             self._node_info_ref = None
             return await self._backend.get_supervisors(filter_ready=filter_ready)
 
@@ -68,7 +72,8 @@ class WorkerSupervisorLocatorActor(SupervisorLocatorActor):
             try:
                 async for supervisors in self._watch_supervisor_from_node_info():
                     yield supervisors
-            except (AssertionError, ConnectionError, mo.ServerClosed):
+            except (AssertionError, OSError,
+                    mo.ServerClosed, mo.ActorNotExist):
                 self._node_info_ref = None
 
             async for supervisors in self._backend.watch_supervisors():

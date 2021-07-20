@@ -136,15 +136,14 @@ class K8SClusterBackend(AbstractClusterBackend):
             name=self._service_name,
             namespace=self._k8s_namespace,
         )).to_dict()
-        supervisors = self._format_endpoint_query_result(result, filter_ready=filter_ready)
-        return supervisors
+        return self._format_endpoint_query_result(result, filter_ready=filter_ready)
 
     async def _get_supervisors_by_cluster_web_api(self, filter_ready: bool = True):
         api = self._get_web_cluster_api()
         try:
             supervisors = await api.get_supervisors(filter_ready=filter_ready)
             return supervisors
-        except (OSError, asyncio.TimeoutError):
+        except (OSError, asyncio.TimeoutError):  # pragma: no cover
             return []
 
     async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
