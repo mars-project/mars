@@ -87,7 +87,6 @@ class SubtaskQueueingActor(mo.Actor):
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
-
         from .assigner import AssignerActor
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
