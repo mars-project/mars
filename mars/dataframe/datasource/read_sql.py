@@ -16,6 +16,7 @@ import binascii
 import datetime
 import pickle
 import uuid
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
@@ -23,18 +24,21 @@ import cloudpickle
 
 from ... import opcodes as OperandDef
 from ...config import options
+from ...core.context import Context
 from ...serialization.serializables import StringField, AnyField, BoolField, ListField, \
     Int64Field, Float64Field, BytesField
 from ...tensor.utils import normalize_chunk_sizes
+from ...typing import OperandType, TileableType
 from ..arrays import ArrowStringDtype
-from ..core import IndexValue
 from ..operands import OutputType
-from ..utils import parse_index, create_sa_connection, \
-    standardize_range_index, to_arrow_dtypes
-from .core import ColumnPruneSupportedDataSourceMixin, HeadOptimizedDataSource
+from ..utils import parse_index, create_sa_connection, to_arrow_dtypes
+from .core import IncrementalIndexDatasource, ColumnPruneSupportedDataSourceMixin, \
+    IncrementalIndexDataSourceMixin
 
 
-class DataFrameReadSQL(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin):
+class DataFrameReadSQL(IncrementalIndexDatasource,
+                       ColumnPruneSupportedDataSourceMixin,
+                       IncrementalIndexDataSourceMixin):
     _op_type_ = OperandDef.READ_SQL
 
     _table_or_sql = AnyField('table_or_sql')
@@ -398,10 +402,6 @@ class DataFrameReadSQL(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
                                            index=(i, 0))
             out_chunks.append(out_chunk)
 
-        if op.incremental_index and len(out_chunks) > 1 and \
-                isinstance(df.index_value._index_value, IndexValue.RangeIndex):
-            out_chunks = standardize_range_index(out_chunks)
-
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         new_op = op.copy()
         return new_op.new_dataframes(None, chunks=out_chunks, nsplits=nsplits,
@@ -413,6 +413,13 @@ class DataFrameReadSQL(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
             return cls._tile_offset(op)
         else:
             return cls._tile_partition(op)
+
+    @classmethod
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
+        if op.method != 'offset':
+            # method `offset` knows shape of each chunk
+            # just skip incremental process
+            return super().post_tile(op, results)
 
     @classmethod
     def execute(cls, ctx, op: 'DataFrameReadSQL'):
@@ -498,6 +505,13 @@ class DataFrameReadSQL(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMi
         finally:
             engine.dispose()
 
+    @classmethod
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
+        if op.method != 'offset':
+            # method `offset` knows shape of each chunk
+            # just skip incremental process
+            return super().post_execute(ctx, op)
+
 
 def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
               params=None, parse_dates=None, columns=None, chunksize=None,
@@ -521,7 +535,7 @@ def _read_sql(table_or_sql, con, schema=None, index_col=None, coerce_float=True,
 
 def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
              columns=None, chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-             incremental_index=None, partition_col=None, num_partitions=None, low_limit=None,
+             incremental_index=True, partition_col=None, num_partitions=None, low_limit=None,
              high_limit=None):
     """
     Read SQL query or database table into a DataFrame.
@@ -571,16 +585,15 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
         If specified, return an iterator where `chunksize` is the number of rows
         to include in each chunk. Note that this argument is only kept for
         compatibility. If a non-none value passed, an error will be reported.
-    incremental_index: bool, default False
-        Sort RangeIndex if csv doesn't contain index columns.
     test_rows: int, default 5
         The number of rows to fetch for inferring dtypes.
     chunk_size: : int or tuple of ints, optional
         Specifies chunk size for each dimension.
     engine_kwargs: dict, default None
         Extra kwargs to pass to sqlalchemy.create_engine
-    incremental_index: bool, default False
-        Create a new RangeIndex if csv doesn't contain index columns.
+    incremental_index: bool, default True
+        If index_col not specified, ensure range index incremental,
+        gain a slightly better performance if setting False.
     partition_col : str, default None
         Specify name of the column to split the result of the query. If
         specified, the range ``[low_limit, high_limit]`` will be divided
@@ -619,7 +632,7 @@ def read_sql(sql, con, index_col=None, coerce_float=True, params=None, parse_dat
 
 def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=True,
                    parse_dates=None, columns=None, chunksize=None, test_rows=5,
-                   chunk_size=None, engine_kwargs=None, incremental_index=False,
+                   chunk_size=None, engine_kwargs=None, incremental_index=True,
                    use_arrow_dtype=None, partition_col=None, num_partitions=None,
                    low_limit=None, high_limit=None):
     """
@@ -665,8 +678,9 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
         Specifies chunk size for each dimension.
     engine_kwargs: dict, default None
         Extra kwargs to pass to sqlalchemy.create_engine
-    incremental_index: bool, default False
-        Create a new RangeIndex if csv doesn't contain index columns.
+    incremental_index: bool, default True
+        If index_col not specified, ensure range index incremental,
+        gain a slightly better performance if setting False.
     use_arrow_dtype: bool, default None
         If True, use arrow dtype to store columns.
     partition_col : str, default None
@@ -719,7 +733,7 @@ def read_sql_table(table_name, con, schema=None, index_col=None, coerce_float=Tr
 
 def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, parse_dates=None,
                    chunksize=None, test_rows=5, chunk_size=None, engine_kwargs=None,
-                   incremental_index=None, use_arrow_dtype=None,
+                   incremental_index=True, use_arrow_dtype=None,
                    partition_col=None, num_partitions=None,
                    low_limit=None, high_limit=None):
     """
@@ -763,8 +777,9 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
         rows to include in each chunk. Note that this argument is only kept
         for compatibility. If a non-none value passed, an error will be
         reported.
-    incremental_index: bool, default False
-        Sort RangeIndex if csv doesn't contain index columns.
+    incremental_index: bool, default True
+        If index_col not specified, ensure range index incremental,
+        gain a slightly better performance if setting False.
     use_arrow_dtype: bool, default None
         If True, use arrow dtype to store columns.
     test_rows: int, default 5
@@ -773,8 +788,6 @@ def read_sql_query(sql, con, index_col=None, coerce_float=True, params=None, par
         Specifies chunk size for each dimension.
     engine_kwargs: dict, default None
         Extra kwargs to pass to sqlalchemy.create_engine
-    incremental_index: bool, default False
-        Create a new RangeIndex if csv doesn't contain index columns.
     partition_col : str, default None
         Specify name of the column to split the result of the query. If
         specified, the range ``[low_limit, high_limit]`` will be divided

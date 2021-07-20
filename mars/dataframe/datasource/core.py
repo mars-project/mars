@@ -19,7 +19,7 @@ from typing import List, Optional, Union
 from ...core import recursive_tile
 from ...core.context import get_context, Context
 from ...serialization.serializables import Int64Field, StringField
-from ...typing import TileableType, ChunkType, OperandType
+from ...typing import TileableType, OperandType
 from ..core import IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
@@ -117,19 +117,13 @@ class IncrementalIndexDatasource(HeadOptimizedDataSource):
 class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
     __slots__ = ()
 
-    def _new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
-        self.index_as_priority = True
-        return super()._new_tileables(inputs, kws=kws, **kw)
-
-    def _new_chunks(self, inputs, kws=None, **kw) -> List[ChunkType]:
-        self.index_as_priority = True
-        return super()._new_chunks(inputs, kws=kws, **kw)
-
     @classmethod
     def post_tile(cls, op: OperandType, results: List[TileableType]):
-        if results is not None and \
+        if op.incremental_index and results is not None and \
                 isinstance(results[0].index_value.value, IndexValue.RangeIndex):
             result = results[0]
+            for chunk in result.chunks:
+                chunk.op.priority = -chunk.index[0]
             n_chunk = len(result.chunks)
             ctx = get_context()
             name = str(uuid.uuid4())
@@ -142,13 +136,14 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
     def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         out = op.outputs[0]
         result = ctx[out.key]
-        if isinstance(out.index_value.value, IndexValue.RangeIndex):
+        if op.incremental_index and \
+                isinstance(out.index_value.value, IndexValue.RangeIndex):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]
-            # wait for previous chunks to finish
+            done = recorder.done(index, len(result))
+            # wait for previous chunks to finish, then update index
             size = recorder.wait(index)
             result.index += size
-            done = recorder.done(index, len(result))
             if done:
                 ctx.destroy_remote_object(recorder_name)

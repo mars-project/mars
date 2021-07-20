@@ -63,11 +63,12 @@ class SchedulingHint(Serializable):
     reassign_worker = BoolField('reassign_worker', default=False)
     # True means control dependency, False means data dependency
     _pure_depends = ListField('pure_depends', FieldTypes.bool)
-    # chunk index as priority, useful for those op like read_csv,
-    # the first chunk need to be executed not later than the later ones,
+    # useful when setting chunk index as priority,
+    # useful for those op like read_csv, the first chunk
+    # need to be executed not later than the later ones,
     # because the range index of later chunk should be accumulated from
     # indexes of previous ones
-    index_as_priority = BoolField('index_as_priority', default=False)
+    priority = Int32Field('priority', default=0)
 
     @classproperty
     def all_hint_names(cls):

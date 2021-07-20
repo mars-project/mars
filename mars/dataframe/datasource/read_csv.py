@@ -32,9 +32,7 @@ from ...serialization.serializables import StringField, DictField, ListField, In
     Int64Field, BoolField, AnyField
 from ...utils import parse_readable_size, lazy_import, FixedSizeFileObject
 from ..arrays import ArrowStringDtype
-from ..core import IndexValue
-from ..utils import parse_index, build_empty_df, standardize_range_index, \
-    to_arrow_dtypes, contain_arrow_dtype
+from ..utils import parse_index, build_empty_df, to_arrow_dtypes, contain_arrow_dtype
 from .core import IncrementalIndexDatasource, ColumnPruneSupportedDataSourceMixin, \
     IncrementalIndexDataSourceMixin
 
@@ -239,9 +237,6 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
                 index_num += 1
                 offset += chunk_bytes
 
-        if op.incremental_index and len(out_chunks) > 1 and \
-                isinstance(df.index_value._index_value, IndexValue.RangeIndex):
-            out_chunks = standardize_range_index(out_chunks)
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (df.shape[1],))
         return new_op.new_dataframes(None, df.shape, dtypes=dtypes,
@@ -352,7 +347,7 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
 
 def read_csv(path, names=None, sep=',', index_col=None, compression=None, header='infer',
              dtype=None, usecols=None, nrows=None, chunk_bytes='64M', gpu=None, head_bytes='100k',
-             head_lines=None, incremental_index=False, use_arrow_dtype=None,
+             head_lines=None, incremental_index=True, use_arrow_dtype=None,
              storage_options=None, memory_scale=None, **kwargs):
     r"""
     Read a comma-separated values (csv) file into DataFrame.
@@ -612,8 +607,9 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
         Number of bytes to use in the head of file, mainly for data inference.
     head_lines: int, optional
         Number of lines to use in the head of file, mainly for data inference.
-    incremental_index: bool, default False
-        Create a new RangeIndex if csv doesn't contain index columns.
+    incremental_index: bool, default True
+        If index_col not specified, ensure range index incremental,
+        gain a slightly better performance if setting False.
     use_arrow_dtype: bool, default None
         If True, use arrow dtype to store columns.
     storage_options: dict, optional

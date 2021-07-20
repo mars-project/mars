@@ -193,12 +193,7 @@ class GraphAnalyzer:
                         for inp_chunk in inp_chunks) + 1
         else:
             depth = 0
-        if chunk.op.index_as_priority:
-            # chunk index smaller means higher priority
-            order = -chunk.index[0]
-        else:
-            order = 0
-        priority = (depth, order)
+        priority = (depth, chunk.op.priority)
         for out in chunk.op.outputs:
             chunk_to_priorities[out] = priority
 
