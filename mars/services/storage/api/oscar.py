@@ -177,9 +177,45 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_handler_ref.fetch(
-            self._session_id, data_key, level,
-            band_name, dest_address, error)
+        await self._storage_handler_ref.fetch_batch(
+            self._session_id, [data_key], level,
+            dest_address, band_name, error)
+
+    @classmethod
+    def _get_fetch_arg(cls,
+                       data_key: str,
+                       level: StorageLevel = StorageLevel.MEMORY,
+                       band_name: str = None,
+                       dest_address: str = None,
+                       error: str = 'raise'):
+        return data_key, level, band_name, dest_address, error
+
+    @fetch.batch
+    async def batch_fetch(self, args_list, kwargs_list):
+        last_level = None
+        last_band_name = None
+        last_address = None
+        last_error = None
+        data_keys = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            data_key, level, band_name, dest_address, error = \
+                self._get_fetch_arg(*args, **kwargs)
+            if last_level is not None:
+                assert last_level == level
+            last_level = level
+            if last_band_name is not None:
+                assert last_band_name == band_name
+            last_band_name = band_name
+            if last_address is not None:
+                assert last_address == dest_address
+            last_address = dest_address
+            if last_error is not None:
+                assert last_error == error
+            last_error = error
+            data_keys.append(data_key)
+        await self._storage_handler_ref.fetch_batch(
+            self._session_id, data_keys, last_level,
+            last_band_name, last_address, last_error)
 
     @extensible
     async def unpin(self, data_key: str,

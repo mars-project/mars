@@ -127,7 +127,7 @@ class StorageHandlerActor(mo.Actor):
                   obj: object,
                   level: StorageLevel) -> DataInfo:
         size = calc_data_size(obj)
-        await self._request_quota_with_spill(level, size)
+        await self.request_quota_with_spill(level, size)
         object_info = await self._clients[level].put(obj)
         data_info = build_data_info(object_info, level, size)
         await self._data_manager_ref.put_data_info(
@@ -163,7 +163,7 @@ class StorageHandlerActor(mo.Actor):
             data_keys.append(data_key)
             sizes.append(size)
 
-        await self._request_quota_with_spill(level, sum(sizes))
+        await self.request_quota_with_spill(level, sum(sizes))
 
         data_infos = []
         put_infos = []
@@ -277,8 +277,10 @@ class StorageHandlerActor(mo.Actor):
                           session_id: str,
                           data_key: str,
                           size: int,
-                          level: StorageLevel) -> WrappedStorageFileObject:
-        await self._request_quota_with_spill(level, size)
+                          level: StorageLevel,
+                          request_quota=True) -> WrappedStorageFileObject:
+        if request_quota:
+            await self.request_quota_with_spill(level, size)
         writer = await self._clients[level].open_writer(size)
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
                                         self._data_manager_ref, self._clients[level])
@@ -293,73 +295,80 @@ class StorageHandlerActor(mo.Actor):
 
     async def _fetch_remote(self,
                             session_id: str,
-                            data_key: Union[str, tuple],
+                            data_keys: List[Union[str, tuple]],
                             level: StorageLevel,
                             remote_address: str):
-        remote_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
-                                                address=remote_address)
-        data_info = await remote_manager_ref.get_data_info(session_id, data_key)
-        await self._data_manager_ref.put_data_info(
-            session_id, data_key, data_info, None)
-        try:
-            await self._clients[level].fetch(data_info.object_id)
-        except asyncio.CancelledError:  # pragma: no cover
-            await self._data_manager_ref.delete_data_info(
-                session_id, data_key, data_info.level)
-            raise
+        remote_manager_ref: Union[mo.ActorRef, DataManagerActor] = await mo.actor_ref(
+            uid=DataManagerActor.default_uid(), address=remote_address)
+        get_data_infos = []
+        for data_key in data_keys:
+            get_data_infos.append(
+                remote_manager_ref.get_data_info.delay(session_id, data_key))
+        data_infos = await remote_manager_ref.get_data_info.batch(*get_data_infos)
+        for data_info, data_key in zip(data_infos, data_keys):
+            try:
+                await self._clients[level].fetch(data_info.object_id)
+            except asyncio.CancelledError:  # pragma: no cover
+                await self._data_manager_ref.delete_data_info.tell(
+                    session_id, data_key, data_info.level)
+                raise
 
     async def _fetch_via_transfer(self,
                                   session_id: str,
-                                  data_key: Union[str, tuple],
+                                  data_keys: List[Union[str, tuple]],
                                   level: StorageLevel,
                                   remote_address: str):
         from .transfer import SenderManagerActor
 
-        sender_ref = await mo.actor_ref(
+        sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
             address=remote_address, uid=SenderManagerActor.default_uid())
-        await sender_ref.send_data(
-            session_id, data_key, self._data_manager_ref.address, level)
+        await sender_ref.send_batch_data(
+            session_id, data_keys, self._data_manager_ref.address, level)
 
-    async def fetch(self,
-                    session_id: str,
-                    data_key: str,
-                    level: StorageLevel,
-                    address: str,
-                    band_name: str,
-                    error: str):
-
+    async def fetch_batch(self,
+                          session_id: str,
+                          data_keys: List[str],
+                          level: StorageLevel,
+                          address: str,
+                          band_name: str,
+                          error: str):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
 
-        try:
-            await self._data_manager_ref.get_data_info(session_id, data_key)
-            await self._data_manager_ref.pin(session_id, data_key)
-        except DataNotExist:
-            # Not exists in local, fetch from remote worker
+        remote_keys = defaultdict(list)
+        for data_key in data_keys:
             try:
+                await self._data_manager_ref.get_data_info(session_id, data_key)
+                await self._data_manager_ref.pin(session_id, data_key)
+            except DataNotExist:
+                # Not exists in local, fetch from remote worker
                 meta_api = await self._get_meta_api(session_id)
-                if address is None:
+                if address is None or band_name is None:
                     # we get meta using main key when fetch shuffle data
                     main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-                    address = (await meta_api.get_chunk_meta(
-                        main_key, fields=['bands']))['bands'][0][0]
-                logger.debug('Begin to fetch data %s from %s', data_key, address)
-                if StorageLevel.REMOTE in self._quota_refs:
-                    yield self._fetch_remote(session_id, data_key, level, address)
-                else:
-                    await self._fetch_via_transfer(session_id, data_key, level, address)
-                logger.debug('finish fetching data %s from %s', data_key, address)
-                if not isinstance(data_key, tuple):
-                    # no need to update meta for shuffle data
-                    await meta_api.add_chunk_bands(
-                        data_key, [(address, band_name or 'numa-0')])
-            except DataNotExist:
-                if error == 'raise':  # pragma: no cover
-                    raise
+                    address, band_name = (await meta_api.get_chunk_meta(
+                        main_key, fields=['bands']))['bands'][0]
+                remote_keys[address, band_name].append(data_key)
 
-    async def _request_quota_with_spill(self,
-                                        level: StorageLevel,
-                                        size: int):
+        try:
+            if StorageLevel.REMOTE in self._quota_refs:
+                # if storage support remote level, just fetch object id
+                for band, data_keys in remote_keys.items():
+                    await self._fetch_remote(
+                        session_id, data_keys, level, band[0])
+            else:
+                # fetch via transfer
+                for band, data_keys in remote_keys.items():
+                    await self._fetch_via_transfer(
+                        session_id, data_keys, level, band[0])
+
+        except DataNotExist:
+            if error == 'raise':  # pragma: no cover
+                raise
+
+    async def request_quota_with_spill(self,
+                                       level: StorageLevel,
+                                       size: int):
         if await self._quota_refs[level].request_quota(size):
             return
         else:
