@@ -126,11 +126,12 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
                 chunk.op.priority = -chunk.index[0]
             n_chunk = len(result.chunks)
             ctx = get_context()
-            name = str(uuid.uuid4())
-            ctx.create_remote_object(
-                name, _IncrementalIndexRecorder, n_chunk)
-            for chunk in result.chunks:
-                chunk.op.incremental_index_recorder_name = name
+            if ctx:
+                name = str(uuid.uuid4())
+                ctx.create_remote_object(
+                    name, _IncrementalIndexRecorder, n_chunk)
+                for chunk in result.chunks:
+                    chunk.op.incremental_index_recorder_name = name
 
     @classmethod
     def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
