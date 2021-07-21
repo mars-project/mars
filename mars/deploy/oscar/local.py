@@ -42,14 +42,15 @@ async def new_cluster_in_isolation(
         subprocess_start_method: str = None,
         backend: str = None,
         config: Union[str, Dict] = None,
-        web: bool = True) -> ClientType:
+        web: bool = True,
+        timeout: float = None) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = \
             'spawn' if sys.platform == 'win32' else 'forkserver'
     cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
                            subprocess_start_method, config, web)
     await cluster.start()
-    return await LocalClient.create(cluster, backend)
+    return await LocalClient.create(cluster, backend, timeout)
 
 
 async def new_cluster(address: str = '0.0.0.0',
@@ -88,7 +89,8 @@ class LocalCluster:
                  n_gpu: Union[int, str] = 'auto',
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
-                 web: Union[bool, str] = 'auto'):
+                 web: Union[bool, str] = 'auto',
+                 timeout: float = None):
         # load config file to dict.
         if not config or isinstance(config, str):
             config = load_config(config)
@@ -187,10 +189,12 @@ class LocalClient:
     @classmethod
     async def create(cls,
                      cluster: LocalCluster,
-                     backend: str = None) -> ClientType:
+                     backend: str = None,
+                     timeout: float = None) -> ClientType:
         backend = backend or 'oscar'
         session = await _new_session(
-            cluster.external_address, backend=backend, default=True)
+            cluster.external_address, backend=backend,
+            default=True, timeout=timeout)
         client = LocalClient(cluster, session)
         session.client = client
         return client
