@@ -3,7 +3,7 @@
 |PyPI version| |Docs| |Build| |Coverage| |Quality| |License|
 
 Mars is a tensor-based unified framework for large-scale data computation
-which scales Numpy, Pandas and Scikit-learn.
+which scales numpy, pandas, scikit-learn and many other libraries.
 
 `Documentation`_, `中文文档`_
 
@@ -15,14 +15,6 @@ Mars is easy to install by
 .. code-block:: bash
 
     pip install pymars
-
-When you need to install dependencies needed by the distributed version, you can use the command below.
-
-.. code-block:: bash
-
-    pip install 'pymars[distributed]'
-
-For now, distributed version is only available on Linux and Mac OS.
 
 
 Developer Install
@@ -42,7 +34,31 @@ More details about installing Mars can be found at
 Mars document.
 
 
-Mars tensor
+Architecture Overview
+---------------------
+
+
+
+
+Getting Started
+---------------
+
+Starting a new runtime locally via:
+
+.. code-block:: python
+
+    >>> import mars
+    >>> mars.new_session()
+
+Or connecting to a Mars cluster which is already initialized.
+
+.. code-block:: python
+
+    >>> import mars
+    >>> mars.new_session('http://<web_ip>:<ui_port>')
+
+
+Mars Tensor
 -----------
 
 Mars tensor provides a familiar interface like Numpy.
@@ -97,7 +113,7 @@ Mars DataFrame provides a familiar interface like pandas.
 +-----------------------------------------+-----------------------------------------+
 
 
-Mars learn
+Mars Learn
 ----------
 
 Mars learn provides a familiar interface like scikit-learn.
@@ -211,89 +227,34 @@ Easy to scale in and scale out
 ------------------------------
 
 Mars can scale in to a single machine, and scale out to a cluster with thousands of machines.
-Both the local and distributed version share the same piece of code,
 it's fairly simple to migrate from a single machine to a cluster due to the increase of data.
 
-Running on a single machine including thread-based scheduling,
-local cluster scheduling which bundles the whole distributed components.
-Mars is also easy to scale out to a cluster by starting different components of
+
+Bare Metal Deployment
+`````````````````````
+
+Mars is easy to scale out to a cluster by starting different components of
 mars distributed runtime on different machines in the cluster.
 
-Threaded
-````````
-
-``execute`` method will by default run on the thread-based scheduler on a single machine.
-
-.. code-block:: python
-
-    >>> import mars.tensor as mt
-    >>> a = mt.ones((10, 10))
-    >>> a.execute()
-
-Users can create a session explicitly.
-
-.. code-block:: python
-
-    >>> from mars.session import new_session
-    >>> session = new_session()
-    >>> (a * 2).execute(session=session)
-    >>> # session will be released when out of with statement
-    >>> with new_session() as session2:
-    >>>     (a / 3).execute(session=session2)
-
-
-Local cluster
-`````````````
-
-Users can start the local cluster bundled with the distributed runtime on a single machine.
-Local cluster mode requires mars distributed version.
-
-.. code-block:: python
-
-    >>> from mars.deploy.local import new_cluster
-
-    >>> # cluster will create a session and set it as default
-    >>> cluster = new_cluster()
-
-    >>> # run on the local cluster
-    >>> (a + 1).execute()
-
-    >>> # create a session explicitly by specifying the cluster's endpoint
-    >>> session = new_session(cluster.endpoint)
-    >>> (a * 3).execute(session=session)
-
-
-Distributed
-```````````
-
-After installing the distributed version on every node in the cluster,
 A node can be selected as scheduler and another as web service,
 leaving other nodes as workers.  The scheduler can be started with the following command:
 
 .. code-block:: bash
 
-    mars-scheduler -a <scheduler_ip> -p <scheduler_port>
-
-Web service can be started with the following command:
-
-.. code-block:: bash
-
-    mars-web -a <web_ip> -s <scheduler_endpoint> --ui-port <ui_port_exposed_to_user>
+    mars-supervisor -h <host_name> -p <scheduler_port> -w <web_port>
 
 Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_endpoint>
+    mars-worker -h <host_name> -p <worker_port> -s <supervisor_endpoint>
 
 After all mars processes are started, users can run
 
 .. code-block:: python
 
     >>> sess = new_session('http://<web_ip>:<ui_port>')
-    >>> a = mt.ones((2000, 2000), chunk_size=200)
-    >>> b = mt.inner(a, a)
-    >>> b.execute(session=sess)
+    >>> # perform computation
 
 
 Getting involved
