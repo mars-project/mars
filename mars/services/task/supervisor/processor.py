@@ -100,16 +100,11 @@ class TaskProcessor:
     def get_tiled(self, tileable: TileableType):
         return self._preprocessor.get_tiled(tileable)
 
-    @classmethod
-    async def _run_in_thread(cls, func: Callable):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, func)
-
     @_record_error
     async def optimize(self) -> TileableGraph:
         # optimization, run it in executor,
         # since optimization may be a CPU intensive operation
-        return await self._run_in_thread(self._preprocessor.optimize)
+        return await asyncio.to_thread(self._preprocessor.optimize)
 
     @_record_error
     async def incref_fetch_tileables(self):
@@ -214,7 +209,7 @@ class TaskProcessor:
             except StopIteration:
                 return
 
-        fut = self._run_in_thread(next_chunk_graph)
+        fut = asyncio.to_thread(next_chunk_graph)
         chunk_graph = await fut
         return chunk_graph
 

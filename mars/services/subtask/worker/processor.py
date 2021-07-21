@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import concurrent.futures as futures
 import logging
 import sys
 from collections import defaultdict
@@ -153,14 +152,11 @@ class SubtaskProcessor:
         return ref_counts
 
     async def _async_execute_operand(self,
-                                     loop: asyncio.AbstractEventLoop,
-                                     executor: futures.Executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         self._op_progress[op.key] = 0.0
         get_context().set_running_operand_key(self._session_id, op.key)
-        return loop.run_in_executor(executor, self._execute_operand,
-                                    ctx, op)
+        return asyncio.to_thread(self._execute_operand, ctx, op)
 
     def set_op_progress(self, op_key: str, progress: float):
         if op_key in self._op_progress:  # pragma: no branch
@@ -173,7 +169,6 @@ class SubtaskProcessor:
 
     async def _execute_graph(self, chunk_graph: ChunkGraph):
         loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
         ref_counts = self._init_ref_counts()
 
         # from data_key to results
@@ -184,10 +179,20 @@ class SubtaskProcessor:
                 logger.debug('Start executing operand: %s,'
                              'chunk: %s, subtask id: %s', chunk.op, chunk,
                              self.subtask.subtask_id)
-                future = await self._async_execute_operand(loop, executor,
-                                                           self._datastore, chunk.op)
+                future = asyncio.create_task(
+                    await self._async_execute_operand(self._datastore, chunk.op))
+                to_wait = loop.create_future()
+
+                def cb(fut):
+                    if not to_wait.done():
+                        if fut.exception():
+                            to_wait.set_exception(fut.exception())
+                        else:
+                            to_wait.set_result(fut.result())
+                future.add_done_callback(cb)
+
                 try:
-                    await future
+                    await to_wait
                     logger.debug('Finish executing operand: %s,'
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
@@ -196,7 +201,7 @@ class SubtaskProcessor:
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
                     # wait for this computation to finish
-                    await loop.run_in_executor(None, executor.shutdown)
+                    await future
                     # if cancelled, stop next computation
                     logger.debug('Cancelled operand: %s, chunk: %s, '
                                  'subtask id: %s', chunk.op, chunk,

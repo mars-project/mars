@@ -92,7 +92,7 @@ jobs:
     - bash: |
         set -e
         source ci/reload-env.sh
-        pytest -x $PYTEST_CONFIG mars/$(mars.test.module)
+        pytest $PYTEST_CONFIG mars/$(mars.test.module)
         coverage report
         coverage xml
       displayName: 'Run tests'

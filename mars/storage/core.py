@@ -37,6 +37,11 @@ class StorageFileObject(AioFileObject):
     def object_id(self):
         return self._object_id
 
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await super().__aexit__(exc_type, exc_val, exc_tb)
+        if self._executor:
+            self._executor.shutdown(wait=False)
+
 
 class BufferWrappedFileObject(ABC):
     def __init__(self,
