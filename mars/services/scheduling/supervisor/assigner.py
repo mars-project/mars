@@ -123,7 +123,7 @@ class AssignerActor(mo.Actor):
     async def reassign_subtasks(self, band_num_queued_subtasks: Dict[Tuple, int]) -> Dict[Tuple, int]:
         num_used_bands = len(band_num_queued_subtasks.keys())
         if num_used_bands == 1:
-            (band, length), = list(band_num_queued_subtasks.items())
+            [(band, length)] = band_num_queued_subtasks.items()
             if length == 0:
                 return {band: 0}
             # no need to balance when there's only one band initially
@@ -150,6 +150,10 @@ class AssignerActor(mo.Actor):
                 move_queued_subtasks[band] = -band_num_queued_subtasks.get(band, 0)
         # ensure the balance of moving in and out
         total_move = sum(move_queued_subtasks.values())
+        # int() is going to be closer to zero, so `mean` is no more than actual mean value
+        # total_move = mean * len(self._bands) - num_all_subtasks
+        #            <= actual_mean * len(self._bands) - num_all_subtasks = 0
+        assert total_move <= 0
         if total_move != 0:
             move_queued_subtasks[self.reassign_band()] -= total_move
         return dict(sorted(move_queued_subtasks.items(), key=lambda item: item[1]))
