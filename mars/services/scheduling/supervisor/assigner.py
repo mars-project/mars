@@ -65,11 +65,11 @@ class AssignerActor(mo.Actor):
                     # pass if all expected bands are available
                     selected_bands[subtask.subtask_id] = subtask.expect_bands
                 else:
-                    # exclude expected but blocked bands
+                    # exclude expected but unready bands
                     expect_available_bands = [expect_band
                                               for expect_band in subtask.expect_bands
                                               if expect_band in self._bands]
-                    # fill in if all expected bands are blocked
+                    # fill in if all expected bands are unready
                     if not expect_available_bands:
                         expect_available_bands = [self.reassign_band()]
                     selected_bands[subtask.subtask_id] = expect_available_bands
@@ -121,16 +121,33 @@ class AssignerActor(mo.Actor):
         return random.choice(self._bands)
 
     async def reassign_subtasks(self, band_num_queued_subtasks: Dict[Tuple, int]) -> Dict[Tuple, int]:
-        used_bands = band_num_queued_subtasks.keys()
-        # select available bands which may contain new available unused ones
-        bands_to_assign = [used_band for used_band in used_bands if used_band in self._bands]
-        # approximate total of subtasks in each band
-        mean = int(sum(band_num_queued_subtasks.values()) / len(bands_to_assign))
+        num_used_bands = len(band_num_queued_subtasks.keys())
+        if num_used_bands == 1:
+            (band, length), = list(band_num_queued_subtasks.items())
+            if length == 0:
+                return {band: 0}
+            # no need to balance when there's only one band initially
+            if len(self._bands) == 1 and band == self._bands[0]:
+                return {band: 0}
+        # approximate total of subtasks moving to each ready band
+        num_all_subtasks = sum(band_num_queued_subtasks.values())
+        mean = int(num_all_subtasks / len(self._bands))
+        # all_bands (namely) includes:
+        # a. ready bands recorded in band_num_queued_subtasks
+        # b. ready bands not recorded in band_num_queued_subtasks
+        # c. unready bands recorded in band_num_queued_subtasks
+        # a. + b. = self._bands, a. + c. = bands in band_num_queued_subtasks
+        all_bands = list(set(self._bands) | set(band_num_queued_subtasks.keys()))
         # calculate the differential steps of moving subtasks
         # move < 0 means subtasks should move out and vice versa
-        # blocked bands no longer hold subtasks
-        move_queued_subtasks = {band: mean - num if band in self._bands else -num
-                                for band, num in band_num_queued_subtasks.items()}
+        # unready bands no longer hold subtasks
+        # assuming bands not recorded in band_num_queued_subtasks hold 0 subtasks
+        move_queued_subtasks = {}
+        for band in all_bands:
+            if band in self._bands:
+                move_queued_subtasks[band] = mean - band_num_queued_subtasks.get(band, 0)
+            else:
+                move_queued_subtasks[band] = -band_num_queued_subtasks.get(band, 0)
         # ensure the balance of moving in and out
         total_move = sum(move_queued_subtasks.values())
         if total_move != 0:

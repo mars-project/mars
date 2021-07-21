@@ -25,7 +25,6 @@ from ....utils import dataslots, extensible
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
-from ...cluster.core import NodeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +73,7 @@ class SubtaskQueueingActor(mo.Actor):
         self._band_slot_nums = {}
 
         async def watch_bands():
-            async for bands in self._cluster_api.watch_all_bands(
-                exclude_statuses={NodeStatus.STOPPED}
-            ):
+            async for bands in self._cluster_api.watch_all_bands():
                 self._band_slot_nums = bands
                 if self._band_queues:
                     await self.balance_queued_subtasks()
@@ -132,8 +129,11 @@ class SubtaskQueueingActor(mo.Actor):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
-            self._band_slot_nums = await self._cluster_api.get_all_bands(
-                exclude_statuses={NodeStatus.STOPPED})
+            self._band_slot_nums = await self._cluster_api.get_all_bands()
+
+        if band and band not in self._band_slot_nums:
+            await self.balance_queued_subtasks(from_band=band)
+            return
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
@@ -193,14 +193,18 @@ class SubtaskQueueingActor(mo.Actor):
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
 
-    async def balance_queued_subtasks(self):
-        # record bands with length of band queues
-        band_num_queued_subtasks = {band: len(self._band_queues[band]) for band in self._band_slot_nums.keys()}
+    async def balance_queued_subtasks(self, from_band: Tuple = None):
+        # record length of band queues of one specific band or all bands
+        if from_band:
+            band_num_queued_subtasks = {from_band: len(self._band_queues[from_band])}
+        else:
+            band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
         items = []
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():
             task_queue = self._band_queues[band]
+            assert move + len(task_queue) >= 0
             for _ in range(abs(move)):
                 if move < 0:
                     item = heapq.heappop(task_queue)

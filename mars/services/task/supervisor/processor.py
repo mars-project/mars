@@ -27,6 +27,7 @@ from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType
 from ....utils import build_fetch, extensible
+from ...core import BandType
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -83,9 +84,6 @@ class TaskProcessor:
         self._chunk_graph_iter = None
         self._raw_tile_context = preprocessor.tile_context.copy()
         self._lifecycle_processed_tileables = set()
-
-        # TODO: TaskProcessor not being a Actor, band_watch_task need extra thought
-        self._band_slots = dict()
 
     @property
     def preprocessor(self):
@@ -220,6 +218,9 @@ class TaskProcessor:
         chunk_graph = await fut
         return chunk_graph
 
+    async def _get_available_band_slots(self) -> Dict[BandType, int]:
+        return await self._cluster_api.get_all_bands()
+
     def _init_chunk_graph_iter(self, tileable_graph: TileableGraph):
         if self._chunk_graph_iter is None:
             self._chunk_graph_iter = iter(self._preprocessor.tile(tileable_graph))
@@ -240,14 +241,13 @@ class TaskProcessor:
             self._preprocessor.done = True
             return
 
-        if not self._band_slots:
-            self._band_slots = await self._cluster_api.get_all_bands()
         # gen subtask graph
+        available_bands = await self._get_available_band_slots()
         subtask_graph = self._preprocessor.analyze(
-            chunk_graph, self._band_slots)
+            chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
-            list(self._band_slots), self._get_chunk_optimization_records(),
+            list(available_bands), self._get_chunk_optimization_records(),
             self._scheduling_api, self._meta_api)
         return stage_processor
 

@@ -79,6 +79,9 @@ class MockAssignerActor(mo.Actor):
         return [subtask.expect_bands[0] for subtask in subtasks]
 
     def reassign_subtasks(self, band_num_queued_subtasks):
+        if len(band_num_queued_subtasks.keys()) == 1:
+            (band, _), = list(band_num_queued_subtasks.items())
+            return {band: 0}
         return {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 0,
                 ('address2', 'numa-0'): 8}
 

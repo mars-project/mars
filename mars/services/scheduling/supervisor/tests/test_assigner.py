@@ -32,10 +32,22 @@ from mars.tensor.arithmetic import TensorTreeAdd
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
+    def __init__(self, timeout=None, check_interval=None):
+        super().__init__(timeout=timeout, check_interval=check_interval)
+        self.ready_nodes = {('address0', 'numa-0'): 2,
+                            ('address1', 'numa-0'): 2,
+                            ('address2', 'numa-0'): 2}
+
+    async def update_node_info(self, address, role, env=None,
+                               resource=None, detail=None, status=None):
+        if 'address' in address and status == NodeStatus.STOPPING:
+            del self.ready_nodes[(address, 'numa-0')]
+        await super().update_node_info(address, role, env,
+                                       resource, detail, status)
+
     def get_all_bands(self, role=None, statuses=None):
         if statuses == {NodeStatus.READY}:
-            return {('address0', 'numa-0'): 2,
-                    ('address2', 'numa-0'): 2}
+            return self.ready_nodes
         else:
             return {('address0', 'numa-0'): 2,
                     ('address1', 'numa-0'): 2,
@@ -77,21 +89,21 @@ async def actor_pool():
 
     async with pool:
         session_id = 'test_session'
-        await FakeClusterAPI.create(pool.external_address)
+        cluster_api = await FakeClusterAPI.create(pool.external_address)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         assigner_ref = await mo.create_actor(
             AssignerActor, session_id, uid=AssignerActor.gen_uid(session_id),
             address=pool.external_address)
 
-        yield pool, session_id, assigner_ref, meta_api
+        yield pool, session_id, assigner_ref, cluster_api, meta_api
 
         await mo.destroy_actor(assigner_ref)
 
 
 @pytest.mark.asyncio
 async def test_assigner(actor_pool):
-    pool, session_id, assigner_ref, meta_api = actor_pool
+    pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
 
     input1 = TensorFetch(key='a', source_key='a', dtype=np.dtype(int)).new_chunk([])
     input2 = TensorFetch(key='b', source_key='b', dtype=np.dtype(int)).new_chunk([])
@@ -115,6 +127,9 @@ async def test_assigner(actor_pool):
     await meta_api.set_chunk_meta(input3, memory_size=400, store_size=400,
                                   bands=[('address2', 'numa-0')])
 
+    await cluster_api.set_node_status(
+        node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+
     subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
@@ -131,6 +146,15 @@ async def test_assigner(actor_pool):
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
 
+
+@pytest.mark.asyncio
+async def test_reassign_subtasks(actor_pool):
+    pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
+
+    # ('address0', 'numa-0'), ('address2', 'numa-0') are ready
+    await cluster_api.set_node_status(
+        node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+
     band_num_queued_subtasks = {('address0', 'numa-0'): 9, ('address1', 'numa-0'): 8,
                                 ('address2', 'numa-0'): 0}
     move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
@@ -140,3 +164,23 @@ async def test_assigner(actor_pool):
                                     {('address1', 'numa-0'): -8,
                                      ('address0', 'numa-0'): 0,
                                      ('address2', 'numa-0'): 8})
+
+    band_num_queued_subtasks = {('address1', 'numa-0'): 8}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 4,
+                                    ('address2', 'numa-0'): 4}
+
+    band_num_queued_subtasks = {('address1', 'numa-0'): 0}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == {('address1', 'numa-0'): 0}
+
+    # only ('address0', 'numa-0') is ready, i.e. there's only one band initially
+    await cluster_api.set_node_status(
+        node='address2', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+    band_num_queued_subtasks = {('address0', 'numa-0'): 8}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == {('address0', 'numa-0'): 0}
+
+    band_num_queued_subtasks = {('address1', 'numa-0'): 8}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 8}

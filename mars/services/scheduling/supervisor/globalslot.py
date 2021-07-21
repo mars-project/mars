@@ -20,7 +20,6 @@ from typing import List, DefaultDict, Dict, Tuple
 from .... import oscar as mo
 from ....utils import extensible
 from ...core import BandType
-from ...cluster.core import NodeStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +33,10 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_stid_slots = defaultdict(dict)
         self._band_used_slots = defaultdict(lambda: 0)
         self._band_total_slots = dict()
-        # TODO: maybe one node with mutliple bands
-        self._available_bands = []
 
         self._cluster_api = None
 
         self._band_watch_task = None
-        self._available_band_watch_task = None
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
@@ -52,16 +48,8 @@ class GlobalSlotManagerActor(mo.Actor):
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
-        async def watch_available_bands():
-            async for available_bands in \
-                    self._cluster_api.watch_all_bands(statuses={NodeStatus.READY}):
-                self._available_bands = list(available_bands)
-
-        self._available_band_watch_task = asyncio.create_task(watch_available_bands())
-
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
-        self._available_band_watch_task.cancel()
 
     async def apply_subtask_slots(self, band: Tuple, session_id: str,
                                   subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:
@@ -69,8 +57,9 @@ class GlobalSlotManagerActor(mo.Actor):
             self._band_total_slots = await self._cluster_api.get_all_bands()
 
         idx = 0
-        total_slots = self._band_total_slots[band]
-        if band in self._available_bands:
+        # only ready bands will pass
+        if band in self._band_total_slots:
+            total_slots = self._band_total_slots[band]
             for stid, slots in zip(subtask_ids, subtask_slots):
                 if self._band_used_slots[band] + slots > total_slots:
                     break
