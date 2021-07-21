@@ -20,7 +20,7 @@ from itertools import chain
 from typing import Any, Dict, List, Optional, Type
 
 from .... import oscar as mo
-from ....core import ChunkGraph, OperandType
+from ....core import ChunkGraph, OperandType, enter_mode
 from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
@@ -162,6 +162,7 @@ class SubtaskProcessor:
         if op_key in self._op_progress:  # pragma: no branch
             self._op_progress[op_key] = progress
 
+    @enter_mode(build=False, kernel=True)
     def _execute_operand(self,
                          ctx: Dict[str, Any],
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
