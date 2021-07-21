@@ -18,7 +18,6 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core import OutputType
-from ...serialization.serializables import StringField
 from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
@@ -39,15 +38,6 @@ class UniqueReduction(CustomReduction):
 class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.UNIQUE
     _func_name = 'unique'
-
-    _method = StringField('method')
-
-    def __init__(self, method=None, **kw):
-        super().__init__(_method=method, **kw)
-
-    @property
-    def method(self):
-        return self._method
 
     @classmethod
     def get_reduction_callable(cls, op):

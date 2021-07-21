@@ -33,11 +33,8 @@ class MockSlotsActor(mo.Actor):
     def apply_subtask_slots(self, band: Tuple, session_id: str,
                             subtask_ids: List[str], subtask_slots: List[int]):
         idx = min(self._capacity, len(subtask_ids)) \
-                if self._capacity >= 0 else len(subtask_ids)
+            if self._capacity >= 0 else len(subtask_ids)
         return subtask_ids[:idx]
-
-    def get_available_bands(self):
-        return {(self.address, 'numa-0'): 2}
 
 
 class MockAssignerActor(mo.Actor):

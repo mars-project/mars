@@ -279,6 +279,9 @@ def disk_io_usage(path=None) -> Optional[_disk_io_usage_type]:
 
     last_read_bytes, last_write_bytes, last_time = _last_disk_io_metas[path]
     delta_time = tst - last_time
+    if delta_time == 0:
+        return None
+
     read_speed = (read_bytes - last_read_bytes) / delta_time
     write_speed = (write_bytes - last_write_bytes) / delta_time
 
@@ -303,6 +306,9 @@ def net_io_usage():
 
     last_send_bytes, last_recv_bytes, last_time = _last_net_io_meta
     delta_time = tst - last_time
+    if delta_time == 0:
+        return None
+
     recv_speed = (recv_bytes - last_recv_bytes) / delta_time
     send_speed = (send_bytes - last_send_bytes) / delta_time
 

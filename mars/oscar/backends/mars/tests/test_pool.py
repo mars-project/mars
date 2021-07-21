@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import os
 import re
 import sys
@@ -89,7 +90,7 @@ def clear_routers():
     Router.set_instance(None)
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
 async def test_sub_actor_pool(notify_main_pool):
@@ -220,7 +221,7 @@ async def test_sub_actor_pool(notify_main_pool):
     assert pool.stopped
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_main_actor_pool():
     config = ActorPoolConfig()
@@ -348,7 +349,7 @@ async def test_main_actor_pool():
     assert pool.stopped
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_create_actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -418,7 +419,7 @@ async def test_create_actor_pool():
     assert len(global_router._mapping) == 0
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_errors():
     with pytest.raises(ValueError):
@@ -437,7 +438,7 @@ async def test_errors():
                                     auto_recover='illegal')
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_server_closed():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -477,7 +478,7 @@ async def test_server_closed():
         await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sys.platform.startswith('win'), reason='skip under Windows')
 @pytest.mark.parametrize(
@@ -500,6 +501,10 @@ async def test_auto_recover(auto_recover):
     async with pool:
         ctx = get_context()
 
+        # wait for recover of main pool always returned immediately
+        await ctx.wait_actor_pool_recovered(
+            pool.external_address, pool.external_address)
+
         # create actor on main
         actor_ref = await ctx.create_actor(
             TestActor, address=pool.external_address,
@@ -518,7 +523,9 @@ async def test_auto_recover(auto_recover):
 
         if auto_recover:
             # process must have been killed
-            await recovered.wait()
+            await ctx.wait_actor_pool_recovered(
+                actor_ref.address, pool.external_address)
+            assert recovered.is_set()
 
             expect_has_actor = True if auto_recover in ['actor', True] else False
             assert await ctx.has_actor(actor_ref) is expect_has_actor
@@ -527,7 +534,7 @@ async def test_auto_recover(auto_recover):
                 await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_two_pools():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -582,7 +589,7 @@ async def test_two_pools():
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
 
 
-@flaky(platform='win', max_runs=10)
+@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_parallel_allocate_idle_label():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -604,3 +611,31 @@ async def test_parallel_allocate_idle_label():
     refs = await asyncio.gather(*tasks)
     # outputs identical process ids, while the result should be different
     assert len({await ref.get_pid() for ref in refs}) == 2
+
+
+@flaky(platform='win', max_runs=3)
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging_conf', [
+    {'file': os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          'test-logging.conf')},
+    {'level': logging.DEBUG}
+])
+async def test_logging_config(logging_conf):
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=1,
+                                   subprocess_start_method=start_method,
+                                   labels=[None, 'my_label'],
+                                   logging_conf=logging_conf)
+
+    class _Actor(Actor):
+        def get_logger_level(self):
+            logger = logging.getLogger(__name__)
+            return logger.getEffectiveLevel()
+
+    async with pool:
+        ctx = get_context()
+        strategy = IdleLabel('my_label', 'tests')
+        ref = await ctx.create_actor(_Actor, allocate_strategy=strategy,
+                                     address=pool.external_address)
+        assert await ref.get_logger_level() == logging.DEBUG

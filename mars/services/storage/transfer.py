@@ -21,7 +21,8 @@ from ...serialization.serializables import Serializable, BoolField,\
     StringField, ReferenceField, AnyField
 from ...storage import StorageLevel
 from ...utils import extensible
-from .core import StorageHandlerActor, DataManagerActor
+from .core import DataManagerActor
+from .handler import StorageHandlerActor
 
 DEFAULT_TRANSFER_BLOCK_SIZE = 5 * 1024 ** 2
 

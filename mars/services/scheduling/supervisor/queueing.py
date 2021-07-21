@@ -17,6 +17,7 @@ import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
+from mars.services.core import BandType
 from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
@@ -64,8 +65,6 @@ class SubtaskQueueingActor(mo.Actor):
 
         self._band_slot_nums = dict()
         self._band_watch_task = None
-        self._available_bands = []
-        self._available_band_watch_task = None
         self._max_enqueue_id = 0
 
         self._periodical_submit_task = None
@@ -74,13 +73,20 @@ class SubtaskQueueingActor(mo.Actor):
     async def __post_create__(self):
         from ...cluster import ClusterAPI
         self._cluster_api = await ClusterAPI.create(self.address)
-        self._band_slot_nums = await self._cluster_api.get_all_bands()
+        self._band_slot_nums = {}
+
+        async def watch_bands():
+            async for bands in self._cluster_api.watch_all_bands():
+                self._band_slot_nums = bands
+                if self._band_queues:
+                    await self.balance_queued_subtasks()
+
+        self._band_watch_task = asyncio.create_task(watch_bands())
 
         from .globalslot import GlobalSlotManagerActor
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
-
         from .assigner import AssignerActor
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
@@ -90,21 +96,8 @@ class SubtaskQueueingActor(mo.Actor):
             self._periodical_submit_task = \
                 self.ref().periodical_submit.tell_delay(delay=self._submit_period)
 
-        async def watch_bands():
-            while True:
-                self._band_slot_nums = await self._cluster_api.get_all_bands(watch=True)
-
-        self._band_watch_task = asyncio.create_task(watch_bands())
-
-        async def watch_available_bands():
-            while True:
-                self._available_bands = list(await self._slots_ref.watch_available_bands())
-                # when more bands available or some bands blocked
-                await self.balance_queued_subtasks()
-
-        self._available_band_watch_task = asyncio.create_task(watch_available_bands())
-
     async def __pre_destroy__(self):
+        self._band_watch_task.cancel()
         if self._periodical_submit_task is not None:  # pragma: no branch
             self._periodical_submit_task.cancel()
 
@@ -135,11 +128,15 @@ class SubtaskQueueingActor(mo.Actor):
             heapq.heappush(self._band_queues[band], heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
-    async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
+    async def submit_subtasks(self, band: BandType = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
             self._band_slot_nums = await self._cluster_api.get_all_bands()
+
+        if band and band not in self._band_slot_nums:
+            await self.balance_queued_subtasks(from_band=band)
+            return
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
@@ -173,7 +170,6 @@ class SubtaskQueueingActor(mo.Actor):
                             continue
                         item = submit_items[stid]
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
-                        print(f"===_available_bands {self._available_bands}")
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
                         self.remove_queued_subtasks([item.subtask.subtask_id])
@@ -212,14 +208,16 @@ class SubtaskQueueingActor(mo.Actor):
         """Return pending task nums of all bands queue."""
         return {band: len(band_queue) for band, band_queue in self._band_queues.items()}
 
-    async def balance_queued_subtasks(self):
-        # record bands with length of band queues
-        band_num_queued_subtasks = {band: len(self._band_queues[band]) for band in self._band_slot_nums.keys()}
+    async def balance_queued_subtasks(self, from_band: BandType = None):
+        # record length of band queues of one specific band or all bands
+        band_num_queued_subtasks = {from_band: len(self._band_queues[from_band])} if from_band else \
+            {band: len(queue) for band, queue in self._band_queues.items()}
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
         items = []
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():
             task_queue = self._band_queues[band]
+            assert move + len(task_queue) >= 0
             for _ in range(abs(move)):
                 if move < 0:
                     item = heapq.heappop(task_queue)

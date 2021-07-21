@@ -48,6 +48,8 @@ class OscarCommandRunner:
         self.config = {}
         self.pool = None
 
+        self.logging_conf = {}
+
         self._running = False
 
     def config_args(self, parser):
@@ -78,6 +80,7 @@ class OscarCommandRunner:
         for path in conf_file_paths:
             conf_path = os.path.join(path, log_conf) if path else log_conf
             if os.path.exists(conf_path):
+                self.logging_conf['file'] = conf_path
                 logging.config.fileConfig(conf_path, disable_existing_loggers=False)
                 break
         else:
@@ -85,6 +88,7 @@ class OscarCommandRunner:
             level = getattr(logging, log_level.upper()) if log_level else logging.INFO
             logging.getLogger('mars').setLevel(level)
             logging.basicConfig(format=self.args.log_format)
+            self.logging_conf.update({'level': log_level, 'format': self.args.log_format})
 
     @classmethod
     def _build_endpoint_file_path(cls, pid: int = None, asterisk: bool = False):
@@ -187,11 +191,7 @@ class OscarCommandRunner:
     async def stop_services(self):
         raise NotImplementedError
 
-    def __call__(self, argv: List[str] = None):
-        parser = argparse.ArgumentParser(description=self.command_description)
-        self.config_args(parser)
-        self.args = self.parse_args(parser, argv)
-
+    def create_loop(self):
         use_uvloop = self.args.use_uvloop
         if not use_uvloop:
             loop = asyncio.get_event_loop()
@@ -205,6 +205,14 @@ class OscarCommandRunner:
                     loop = asyncio.get_event_loop()
                 else:  # pragma: no cover
                     raise
+        return loop
+
+    def __call__(self, argv: List[str] = None):
+        parser = argparse.ArgumentParser(description=self.command_description)
+        self.config_args(parser)
+        self.args = self.parse_args(parser, argv)
+
+        loop = self.create_loop()
         task = loop.create_task(self._main(argv))
         for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
             loop.add_signal_handler(sig, task.cancel)

@@ -20,7 +20,7 @@ from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
 from ....utils import extensible
-from ...core import BandType, NodeRole
+from ...core import BandType
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,6 @@ class GlobalSlotManagerActor(mo.Actor):
         self._initial_idle_start_time = time.time()
         self._band_idle_start_time = defaultdict(lambda: self._initial_idle_start_time)
         self._band_total_slots = dict()
-        # TODO: maybe one node with mutliple bands
-        self._blocked_bands = set()
-        self._blocklist_event = []
 
         self._cluster_api = None
 
@@ -50,16 +47,16 @@ class GlobalSlotManagerActor(mo.Actor):
         self._cluster_api = await ClusterAPI.create(self.address)
 
         async def watch_bands():
-            while True:
-                self._band_total_slots = await self._cluster_api.get_all_bands(
-                    NodeRole.WORKER, watch=True)
-                for lck in self._blocklist_event:
-                    lck.set()
+            async for bands in self._cluster_api.watch_all_bands():
+                self._band_total_slots = bands
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
+
+    async def refresh_bands(self):
+        self._band_total_slots = self._cluster_api.get_all_bands()
 
     async def apply_subtask_slots(self, band: BandType, session_id: str,
                                   subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:
@@ -67,8 +64,9 @@ class GlobalSlotManagerActor(mo.Actor):
             self._band_total_slots = await self._cluster_api.get_all_bands()
 
         idx = 0
-        total_slots = self._band_total_slots[band]
-        if band not in self._blocked_bands:
+        # only ready bands will pass
+        if band in self._band_total_slots:
+            total_slots = self._band_total_slots[band]
             for stid, slots in zip(subtask_ids, subtask_slots):
                 if self._band_used_slots[band] + slots > total_slots:
                     break
@@ -108,45 +106,6 @@ class GlobalSlotManagerActor(mo.Actor):
 
     def get_used_slots(self) -> Dict[BandType, int]:
         return self._band_used_slots
-
-    async def get_available_bands(self):
-        if not self._band_total_slots:
-            self._band_total_slots = await self._cluster_api.get_all_bands()
-
-        def exclude_bands(all_bands_slots, excluded_bands):
-            return {x: all_bands_slots[x] for x in all_bands_slots if x not in excluded_bands}
-        return exclude_bands(self._band_total_slots, self._blocked_bands)
-
-    async def watch_available_bands(self):
-        lck = asyncio.Event()
-        self._blocklist_event.append(lck)
-        async def waiter():
-            try:
-                await lck.wait()
-                return await self.get_available_bands()
-            finally:
-                pass
-
-        return waiter()
-
-    async def add_to_blocklist(self, band: BandType):
-        assert band in self._band_total_slots
-        self._blocked_bands.add(band)
-        for lck in self._blocklist_event:
-            lck.set()
-
-    async def remove_from_blocklist(self, band: BandType):
-        assert band in self._blocked_bands
-        self._blocked_bands.remove(band)
-        for lck in self._blocklist_event:
-            lck.set()
-
-    def get_blocked_bands(self):
-        return self._blocked_bands
-
-    def band_is_blocked(self, band: BandType):
-        assert band in self._band_total_slots
-        return band in self._blocked_bands
 
     async def get_idle_bands(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""

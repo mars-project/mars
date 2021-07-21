@@ -14,12 +14,12 @@
 
 import asyncio
 from abc import ABC
-from mars.services.core import BandType
 from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...utils import extensible
+from ..core import BandType
 from ..subtask import Subtask
 
 APIType = TypeVar('APIType', bound='SchedulingAPI')
@@ -27,14 +27,13 @@ APIType = TypeVar('APIType', bound='SchedulingAPI')
 
 class SchedulingAPI(ABC):
     def __init__(self, session_id: str, address: str,
-                 manager_ref=None, queueing_ref=None, global_slot_ref=None):
+                 manager_ref=None, queueing_ref=None):
         self._session_id = session_id
         self._address = address
 
         self._global_slot_ref = None
         self._manager_ref = manager_ref
         self._queueing_ref = queueing_ref
-        self._global_slot_ref = global_slot_ref
 
     @classmethod
     @alru_cache
@@ -49,13 +48,9 @@ class SchedulingAPI(ABC):
         queueing_ref = await mo.actor_ref(
             SubtaskQueueingActor.gen_uid(session_id), address=address
         )
-        from .supervisor.globalslot import GlobalSlotManagerActor
-        global_slot_ref = await mo.actor_ref(
-            GlobalSlotManagerActor.default_uid(), address=address
-        )
 
         scheduling_api = SchedulingAPI(
-            session_id, address, manager_ref, queueing_ref, global_slot_ref)
+            session_id, address, manager_ref, queueing_ref)
         return scheduling_api
 
     @classmethod
@@ -180,31 +175,6 @@ class SchedulingAPI(ABC):
         """
         await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
     
-    async def add_to_blocklist(self, 
-                               band: BandType):
-        await self._global_slot_ref.add_to_blocklist(band)
-
-    async def remove_from_blocklist(self, 
-                               band: BandType):
-        await self._global_slot_ref.remove_from_blocklist(band)
-    
-    async def get_available_bands(self):
-        return await self._global_slot_ref.get_available_bands()
-
-    async def add_to_blocklist(self, band: BandType):
-        await self._global_slot_ref.add_to_blocklist(band)
-
-    async def remove_from_blocklist(self, band: BandType):
-        await self._global_slot_ref.remove_from_blocklist(band)
-
-    def get_blocked_bands(self):
-        return self._global_slot_ref.get_blocked_bands()
-
-    async def get_available_bands(self, watch: bool = False):
-        if watch:
-            return await self._global_slot_ref.watch_available_bands()
-        return await self._global_slot_ref.get_available_bands()
-
 
 class MockSchedulingAPI(SchedulingAPI):
     @classmethod

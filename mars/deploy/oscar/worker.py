@@ -74,7 +74,8 @@ class WorkerCommandRunner(OscarCommandRunner):
         return await create_worker_actor_pool(
             self.args.endpoint, self.band_to_slot, ports=self.ports,
             n_io_process=self.n_io_process, modules=list(self.args.load_modules),
-            subprocess_start_method='forkserver' if os.name == 'nt' else 'spawn'
+            logging_conf=self.logging_conf,
+            subprocess_start_method='forkserver' if os.name != 'nt' else 'spawn'
         )
 
     async def start_services(self):

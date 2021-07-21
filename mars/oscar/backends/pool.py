@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures as futures
 import contextlib
 import itertools
+import logging
 import os
 import threading
 import multiprocessing
@@ -41,6 +42,7 @@ from .message import _MessageBase, new_message_id, DEFAULT_PROTOCOL, MessageType
     CancelMessage, ControlMessage, ControlMessageType
 from .router import Router
 
+logger = logging.getLogger(__name__)
 ray = lazy_import("ray")
 
 
@@ -632,7 +634,8 @@ class SubActorPoolBase(ActorPoolBase):
 
 class MainActorPoolBase(ActorPoolBase):
     __slots__ = '_allocated_actors', 'sub_actor_pool_manager', '_auto_recover', \
-                '_monitor_task', '_on_process_down', '_on_process_recover'
+                '_monitor_task', '_on_process_down', '_on_process_recover', \
+                '_recover_events'
 
     def __init__(self,
                  process_index: int,
@@ -656,6 +659,7 @@ class MainActorPoolBase(ActorPoolBase):
         self._monitor_task: Optional[asyncio.Task] = None
         self._on_process_down = on_process_down
         self._on_process_recover = on_process_recover
+        self._recover_events: Dict[str, asyncio.Event] = dict()
 
         # states
         self._allocated_actors: allocated_type = \
@@ -858,6 +862,14 @@ class MainActorPoolBase(ActorPoolBase):
                     self.sub_processes[message.address],
                     timeout=timeout,
                     force=force)
+                if self._auto_recover:
+                    self._recover_events[message.address] = asyncio.Event()
+                processor.result = ResultMessage(message.message_id, True,
+                                                 protocol=message.protocol)
+            elif message.control_message_type == ControlMessageType.wait_pool_recovered:
+                event = self._recover_events.get(message.address, None)
+                if event is not None:
+                    await event.wait()
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             else:
@@ -1027,9 +1039,13 @@ class MainActorPoolBase(ActorPoolBase):
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)
                         if self._auto_recover:
+                            if address not in self._recover_events:
+                                self._recover_events[address] = asyncio.Event()
                             await self.recover_sub_pool(address)
                             if self._on_process_recover is not None:
                                 self._on_process_recover(self, address)
+                            event = self._recover_events.pop(address)
+                            event.set()
 
                 # check every half second
                 await asyncio.sleep(.5)
@@ -1061,6 +1077,7 @@ async def create_actor_pool(address: str, *,
                             modules: List[str] = None,
                             suspend_sigint: bool = None,
                             use_uvloop: Union[str, bool] = 'auto',
+                            logging_conf: Union[Dict, None] = None,
                             on_process_down: Callable[[MainActorPoolType, str], None] = None,
                             on_process_recover: Callable[[MainActorPoolType, str], None] = None,
                             **kwargs) -> MainActorPoolType:
@@ -1083,6 +1100,7 @@ async def create_actor_pool(address: str, *,
             use_uvloop = True
         except ImportError:
             use_uvloop = False
+
     external_addresses = pool_cls.get_external_addresses(address, n_process=n_process, ports=ports)
     actor_pool_config = ActorPoolConfig()
     # add main config
@@ -1096,6 +1114,7 @@ async def create_actor_pool(address: str, *,
         modules=modules,
         suspend_sigint=suspend_sigint,
         use_uvloop=use_uvloop,
+        logging_conf=logging_conf,
         kwargs=kwargs)
     # add sub configs
     for i in range(n_process):
@@ -1109,6 +1128,7 @@ async def create_actor_pool(address: str, *,
             modules=modules,
             suspend_sigint=suspend_sigint,
             use_uvloop=use_uvloop,
+            logging_conf=logging_conf,
             kwargs=kwargs)
 
     pool: MainActorPoolType = await pool_cls.create({

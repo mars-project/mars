@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 from .... import oscar as mo
 from ...core import NodeRole, BandType
-from ..core import NodeInfo
+from ..core import NodeInfo, WatchNotifier, NodeStatus
 from mars.services.cluster.backends import AbstractClusterBackend, get_cluster_backend
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
@@ -31,7 +30,7 @@ class NodeInfoCollectorActor(mo.Actor):
 
     def __init__(self, timeout=None, check_interval=None):
         self._role_to_nodes = defaultdict(set)
-        self._role_to_events = defaultdict(set)
+        self._role_to_notifiers = defaultdict(WatchNotifier)
 
         self._node_infos = dict()
 
@@ -45,44 +44,30 @@ class NodeInfoCollectorActor(mo.Actor):
     async def __pre_destroy__(self):
         self._check_task.cancel()
 
-    def check_dead_nodes(self):
-        dead_nodes = []
+    async def check_dead_nodes(self):
         affect_roles = set()
         for address, info in self._node_infos.items():
             if time.time() - info.update_time > self._node_timeout:
+                info.status = NodeStatus.STOPPED
                 node_role = info.role
-                self._role_to_nodes[node_role].difference_update([address])
-                dead_nodes.append(address)
                 affect_roles.add(node_role)
 
-        if dead_nodes:
-            for address in dead_nodes:
-                self._node_infos.pop(address, None)
-
-            self._notify_roles(affect_roles)
+        if affect_roles:
+            await self._notify_roles(affect_roles)
 
         self._check_task = self.ref().check_dead_nodes.tell_delay(delay=self._check_interval)
 
-    def mark_dead_nodes(self, addresses: List[str]):
-        affect_roles = set()
-        for address in addresses:
-            info = self._node_infos.pop(address, None)
-            self._role_to_nodes[info.role].difference_update([address])
-            affect_roles.add(info.role)
-
-        self._notify_roles(affect_roles)
-
-    def _notify_roles(self, roles):
+    async def _notify_roles(self, roles):
         for role in roles:
-            for event in self._role_to_events[role]:
-                event.set()
+            await self._role_to_notifiers[role].notify()
 
-    def update_node_info(self, address: str, role: NodeRole, env: Dict = None,
-                         resource: Dict = None, state: Dict = None):
-        is_new = False
+    async def update_node_info(self, address: str, role: NodeRole, env: Dict = None,
+                               resource: Dict = None, detail: Dict = None,
+                               status: NodeStatus = None):
+        need_notify = False
         if address not in self._node_infos:
-            is_new = True
-            info = self._node_infos[address] = NodeInfo(role=role)
+            need_notify = True
+            info = self._node_infos[address] = NodeInfo(role=role, status=status)
         else:
             info = self._node_infos[address]
 
@@ -91,16 +76,20 @@ class NodeInfoCollectorActor(mo.Actor):
             info.env.update(env)
         if resource is not None:
             info.resource.update(resource)
-        if state is not None:
-            info.state.update(state)
+        if detail is not None:
+            info.detail.update(detail)
+        if status is not None:
+            need_notify = need_notify or (info.status != status)
+            info.status = status
 
-        if is_new:
+        if need_notify:
             self._role_to_nodes[role].add(address)
-            self._notify_roles([role])
+            await self._notify_roles([role])
 
     def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
                        env: bool = False, resource: bool = False,
-                       state: bool = False):
+                       detail: bool = False, statuses: Set[NodeStatus] = None):
+        statuses = statuses or {NodeStatus.READY}
         if nodes is None:
             nodes = self._role_to_nodes.get(role) if role is not None \
                 else self._node_infos.keys()
@@ -110,19 +99,27 @@ class NodeInfoCollectorActor(mo.Actor):
             if node not in self._node_infos:
                 continue
             info = self._node_infos[node]
+            if info.status not in statuses:
+                continue
+
             ret_infos[node] = dict(
+                status=info.status,
                 update_time=info.update_time,
                 env=info.env if env else None,
                 resource=info.resource if resource else None,
-                state=info.state if state else None,
+                detail=info.detail if detail else None,
             )
         return ret_infos
 
-    def get_all_bands(self, role: NodeRole = None) -> Dict[BandType, int]:
+    def get_all_bands(self, role: NodeRole = None,
+                      statuses: Set[NodeStatus] = None) -> Dict[BandType, int]:
+        statuses = statuses or {NodeStatus.READY}
         role = role or NodeRole.WORKER
         nodes = self._role_to_nodes.get(role, [])
         band_slots = dict()
         for node in nodes:
+            if self._node_infos[node].status not in statuses:
+                continue
             node_resource = self._node_infos[node].resource
             for resource_type, info in node_resource.items():
                 if resource_type.startswith('numa'):
@@ -138,33 +135,20 @@ class NodeInfoCollectorActor(mo.Actor):
         return list(sorted(versions))
 
     async def watch_nodes(self, role: NodeRole, env: bool = False,
-                          resource: bool = False, state: bool = False):
-        event = asyncio.Event()
-        self._role_to_events[role].add(event)
+                          resource: bool = False, detail: bool = False,
+                          statuses: Set[NodeStatus] = None,
+                          version: Optional[int] = None):
+        version = yield self._role_to_notifiers[role].watch(version=version)
+        raise mo.Return((version, self.get_nodes_info(
+            role=role, env=env, resource=resource, detail=detail,
+            statuses=statuses)))
 
-        async def waiter():
-            try:
-                await event.wait()
-                return self.get_nodes_info(
-                    role=role, env=env, resource=resource, state=state)
-            finally:
-                self._role_to_events[role].remove(event)
-
-        return waiter()
-
-    async def watch_all_bands(self, role: NodeRole = None):
+    async def watch_all_bands(self, role: NodeRole = None,
+                              statuses: Set[NodeStatus] = None,
+                              version: Optional[int] = None):
         role = role or NodeRole.WORKER
-        event = asyncio.Event()
-        self._role_to_events[role].add(event)
-
-        async def waiter():
-            try:
-                await event.wait()
-                return self.get_all_bands(role=role)
-            finally:
-                self._role_to_events[role].remove(event)
-
-        return waiter()
+        version = yield self._role_to_notifiers[role].watch(version=version)
+        raise mo.Return((version, self.get_all_bands(role=role, statuses=statuses)))
 
 
 class NodeAllocatorActor(mo.Actor):

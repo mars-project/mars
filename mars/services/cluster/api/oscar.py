@@ -15,11 +15,13 @@
 import asyncio
 import logging
 import time
-from typing import List, Dict, Type, TypeVar
+from typing import List, Dict, Optional, Set, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ...core import NodeRole, BandType
+from ..core import watch_method, NodeStatus, WorkerSlotInfo, QuotaInfo, \
+    DiskInfo, StorageInfo
 from .core import AbstractClusterAPI
 
 APIType = TypeVar('APIType', bound='ClusterAPI')
@@ -52,13 +54,15 @@ class ClusterAPI(AbstractClusterAPI):
         await api_obj._init()
         return api_obj
 
-    async def get_supervisors(self, watch=False) -> List[str]:
-        if watch:
-            return await self._locator_ref.watch_supervisors()
-        else:
-            return await self._locator_ref.get_supervisors()
+    async def get_supervisors(self) -> List[str]:
+        return await self._locator_ref.get_supervisors()
 
-    async def get_supervisors_by_keys(self, keys: List[str], watch: bool = False) -> List[str]:
+    @watch_method
+    async def watch_supervisors(self,
+                                version: Optional[int] = None):
+        return await self._locator_ref.watch_supervisors(version=version)
+
+    async def get_supervisors_by_keys(self, keys: List[str]) -> List[str]:
         """
         Get supervisor address hosting the specified key
 
@@ -74,15 +78,17 @@ class ClusterAPI(AbstractClusterAPI):
         out
             addresses of the supervisor
         """
-        if not watch:
-            get_supervisor = self._locator_ref.get_supervisor
-            return await get_supervisor.batch(
-                *(get_supervisor.delay(k) for k in keys)
-            )
-        else:
-            return await self._locator_ref.watch_supervisors_by_keys(keys)
+        get_supervisor = self._locator_ref.get_supervisor
+        return await get_supervisor.batch(
+            *(get_supervisor.delay(k) for k in keys)
+        )
 
-    async def get_supervisor_refs(self, uids: List[str], watch: bool = False) -> List[mo.ActorRef]:
+    @watch_method
+    async def watch_supervisors_by_keys(self, keys: List[str],
+                                        version: Optional[int] = None):
+        return await self._locator_ref.watch_supervisors_by_keys(keys, version=version)
+
+    async def get_supervisor_refs(self, uids: List[str]) -> List[mo.ActorRef]:
         """
         Get actor references hosting the specified actor uid
 
@@ -98,26 +104,66 @@ class ClusterAPI(AbstractClusterAPI):
         out : List[mo.ActorRef]
             references of the actors
         """
-        addrs = await self.get_supervisors_by_keys(uids, watch=watch)
+        addrs = await self.get_supervisors_by_keys(uids)
         return await asyncio.gather(*[
             mo.actor_ref(uid, address=addr) for addr, uid in zip(addrs, uids)
         ])
 
+    async def watch_supervisor_refs(self, uids: List[str]):
+        async for addrs in self.watch_supervisors_by_keys(uids):
+            yield await asyncio.gather(*[
+                mo.actor_ref(uid, address=addr) for addr, uid in zip(addrs, uids)
+            ])
+
+    @watch_method
     async def watch_nodes(self, role: NodeRole, env: bool = False,
-                          resource: bool = False, state: bool = False) -> List[Dict[str, Dict]]:
+                          resource: bool = False, detail: bool = False,
+                          version: Optional[int] = None,
+                          statuses: Set[NodeStatus] = None,
+                          exclude_statuses: Set[NodeStatus] = None) -> List[Dict[str, Dict]]:
+        statuses = self._calc_statuses(statuses, exclude_statuses)
         return await self._node_info_ref.watch_nodes(
-            role, env=env, resource=resource, state=state)
+            role, env=env, resource=resource, detail=detail,
+            statuses=statuses, version=version)
 
     async def get_nodes_info(self, nodes: List[str] = None, role: NodeRole = None,
-                             env: bool = False, resource: bool = False, state: bool = False):
+                             env: bool = False, resource: bool = False, detail: bool = False,
+                             statuses: Set[NodeStatus] = None,
+                             exclude_statuses: Set[NodeStatus] = None):
+        statuses = self._calc_statuses(statuses, exclude_statuses)
         return await self._node_info_ref.get_nodes_info(
-            nodes=nodes, role=role, env=env, resource=resource, state=state)
+            nodes=nodes, role=role, env=env, resource=resource,
+            detail=detail, statuses=statuses)
+
+    async def set_node_status(self, node: str, role: NodeRole, status: NodeStatus):
+        """
+        Set status of node
+
+        Parameters
+        ----------
+        node : str
+            address of node
+        role: NodeRole
+            role of node
+        status : NodeStatus
+            status of node
+        """
+        await self._node_info_ref.update_node_info(node, role, status=status)
 
     async def get_all_bands(self, role: NodeRole = None,
-                            watch: bool = False) -> Dict[BandType, int]:
-        if watch:
-            return await self._node_info_ref.watch_all_bands(role)
-        return await self._node_info_ref.get_all_bands(role)
+                            statuses: Set[NodeStatus] = None,
+                            exclude_statuses: Set[NodeStatus] = None) -> Dict[BandType, int]:
+        statuses = self._calc_statuses(statuses, exclude_statuses)
+        return await self._node_info_ref.get_all_bands(role, statuses=statuses)
+
+    @watch_method
+    async def watch_all_bands(self, role: NodeRole = None,
+                              version: Optional[int] = None,
+                              statuses: Set[NodeStatus] = None,
+                              exclude_statuses: Set[NodeStatus] = None):
+        statuses = self._calc_statuses(statuses, exclude_statuses)
+        return await self._node_info_ref.watch_all_bands(
+            role, statuses=statuses, version=version)
 
     async def get_mars_versions(self) -> List[str]:
         return await self._node_info_ref.get_mars_versions()
@@ -139,17 +185,31 @@ class ClusterAPI(AbstractClusterAPI):
         """
         await self._uploader_ref.mark_node_ready()
 
+    async def wait_node_ready(self):
+        """
+        Wait current node to be ready
+        """
+        await self._uploader_ref.wait_node_ready()
+
     async def wait_all_supervisors_ready(self):
         """
         Wait till all expected supervisors are ready
         """
         await self._locator_ref.wait_all_supervisors_ready()
 
-    async def set_band_slot_infos(self, band_name, slot_infos):
+    async def set_band_slot_infos(self, band_name: str,
+                                  slot_infos: List[WorkerSlotInfo]):
         await self._uploader_ref.set_band_slot_infos.tell(band_name, slot_infos)
 
-    async def set_band_quota_info(self, band_name, quota_info):
+    async def set_band_quota_info(self, band_name: str,
+                                  quota_info: QuotaInfo):
         await self._uploader_ref.set_band_quota_info.tell(band_name, quota_info)
+
+    async def set_node_disk_info(self, disk_info: List[DiskInfo]):
+        await self._uploader_ref.set_node_disk_info(disk_info)
+
+    async def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
+        await self._uploader_ref.set_band_storage_info(band_name, storage_info)
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
@@ -158,8 +218,8 @@ class ClusterAPI(AbstractClusterAPI):
         return address
 
     async def release_worker_node(self, address: str):
-        await self._node_info_ref.mark_dead_nodes([address])
         await self._node_allocator_ref.release_worker_node(address)
+        await self._node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
 
 
 class MockClusterAPI(ClusterAPI):

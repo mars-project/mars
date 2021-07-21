@@ -23,7 +23,8 @@ from ...core import OutputType, ENTITY_TYPE, is_build_mode, \
     is_kernel_mode, enter_mode, recursive_tile
 from ...core.operand import OperandStage
 from ...utils import tokenize
-from ...serialization.serializables import BoolField, AnyField, DataTypeField, Int32Field
+from ...serialization.serializables import BoolField, AnyField, \
+    DataTypeField, Int32Field, StringField
 from ..core import SERIES_TYPE
 from ..utils import parse_index, build_df, build_empty_df, build_series, \
     build_empty_series, validate_axis
@@ -38,17 +39,19 @@ class DataFrameReductionOperand(DataFrameOperand):
     _bool_only = BoolField('bool_only')
     _min_count = Int32Field('min_count')
     _use_inf_as_na = BoolField('use_inf_as_na')
+    _method = StringField('method')
 
     _dtype = DataTypeField('dtype')
     _combine_size = Int32Field('combine_size')
 
     def __init__(self, axis=None, skipna=None, level=None, numeric_only=None, bool_only=None,
-                 min_count=None, stage=None, dtype=None, combine_size=None, gpu=None,
-                 sparse=None, output_types=None, use_inf_as_na=None, **kw):
+                 min_count=None, dtype=None, combine_size=None, gpu=None,
+                 sparse=None, output_types=None, use_inf_as_na=None, method=None, **kw):
         super().__init__(_axis=axis, _skipna=skipna, _level=level, _numeric_only=numeric_only,
                          _bool_only=bool_only, _min_count=min_count, _dtype=dtype,
                          _combine_size=combine_size, _gpu=gpu, _sparse=sparse,
-                         _output_types=output_types, _use_inf_as_na=use_inf_as_na, **kw)
+                         _output_types=output_types, _use_inf_as_na=use_inf_as_na,
+                         _method=method, **kw)
 
     @property
     def axis(self):
@@ -89,6 +92,10 @@ class DataFrameReductionOperand(DataFrameOperand):
     @property
     def is_atomic(self):
         return False
+
+    @property
+    def method(self):
+        return self._method
 
     def get_reduction_args(self, axis=None):
         args = dict(skipna=self.skipna)
@@ -174,7 +181,8 @@ class DataFrameReductionMixin(DataFrameOperandMixin):
         return [out_df]
 
     def _call_groupby_level(self, df, level):
-        return df.groupby(level=level).agg(self.get_reduction_callable(self))
+        return df.groupby(level=level).agg(self.get_reduction_callable(self),
+                                           method=self.method)
 
     def _call_dataframe(self, df):
         axis = getattr(self, 'axis', None) or 0

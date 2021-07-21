@@ -582,7 +582,9 @@ def build_series(series_obj, fill_value=1, size=1, name=None, ensure_string=Fals
 def concat_index_value(index_values, store_data=False):
     if not isinstance(index_values, (list, tuple)):
         index_values = [index_values]
-    result = index_values[0].value.to_pandas()
+    result = index_values[0]
+    if not isinstance(result, pd.Index):
+        result = result.to_pandas()
     for index_value in index_values[1:]:
         if isinstance(index_value, pd.Index):
             result = result.append(index_value)

@@ -25,6 +25,7 @@ from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...core import BandType
 from .... import oscar as mo
+from mars.services.cluster.core import NodeRole, NodeStatus
 
 import ray
 logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO)
@@ -41,7 +42,6 @@ class AutoscalerActor(mo.Actor):
         self.queueing_refs = dict()
         self.global_slot_ref = None
         self.band_total_slots = None
-        self._worker_bands = defaultdict(list)
         self._dynamic_workers: Set[str] = set()
 
     async def __post_create__(self):
@@ -58,24 +58,6 @@ class AutoscalerActor(mo.Actor):
         self._strategy = await strategy_cls.create(self._autoscale_conf, self)
         logger.info(f'Auto scale strategy %s started', self._strategy)
         await self._strategy.start()
-
-        async def watch_slots():
-            while True:
-                await self.refresh_worker_bands(watch=True)
-
-        self._band_watch_task = asyncio.create_task(watch_slots())
-
-    async def __pre_destroy__(self):
-        await self._strategy.stop()
-        self._band_watch_task.cancel()
-
-    async def refresh_worker_bands(self, watch=False):
-        self.band_total_slots = await self._cluster_api.get_all_bands(watch=watch)
-        worker_bands = defaultdict(list)
-        for band in self.band_total_slots.keys():
-            worker_address, resource_type = band
-            worker_bands[worker_address].append(band)
-        self._worker_bands = worker_bands
 
     async def register_session(self, session_id: str, address: str):
         from .queueing import SubtaskQueueingActor
@@ -95,15 +77,25 @@ class AutoscalerActor(mo.Actor):
         return worker_address
 
     async def release_worker_node(self, address: str):
+        """
+        Release a worker node.
+        Parameters
+        ----------
+        address : str
+            The address of the specified node.
+        """
         bands = await self.get_worker_bands(address)
         logger.info("Start to release worker %s which has bands %s.", address, bands)
         start_time = time.time()
-        await asyncio.gather(*[self.global_slot_ref.add_to_blocklist(band) for band in bands])
+        await self._cluster_api.set_node_status(
+            node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+        # Ensure global_slot_manager get latest bands timely, so that we can invoke `is_band_idle`
+        # to ensure there won't be new tasks scheduled to the stopping worker.
+        await self.global_slot_ref.refresh_bands()
         for band in bands:
             while not await self.global_slot_ref.is_band_idle(band):
                 await asyncio.sleep(0.1)
-        # Use actor lock to avoid dest worker migrating data at the same time.
-        await self.ref().migrate_data_of_bands(bands)
+        await self.migrate_data_of_bands(bands)
         await self._cluster_api.release_worker_node(address)
         self._dynamic_workers.remove(address)
         logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
@@ -115,7 +107,9 @@ class AutoscalerActor(mo.Actor):
         return len(self._dynamic_workers)
 
     async def get_worker_bands(self, worker_address) -> List[BandType]:
-        return self._worker_bands[worker_address]
+        node_info = (await self._cluster_api.get_nodes_info(
+            [worker_address], resource=True, exclude_statuses=set()))[worker_address]
+        return [(worker_address, resource_type) for resource_type in node_info['resource'].keys()]
 
     async def migrate_data_of_bands(self, bands: List[BandType]):
         """Move data from `bands` to other available bands"""
@@ -247,9 +241,10 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         if worker_addresses:
             start_time = time.time()
             logger.info("Try to offline idle workers %s with bands %s.", worker_addresses, idle_bands)
-            # release workers
-            await asyncio.gather(*[self._autoscaler.release_worker_node(worker_address)
-                                   for worker_address in worker_addresses])
+            # Release workers one by one to ensure others workers which the current is moving data to
+            # is not being releasing.
+            for worker_address in worker_addresses:
+                await self._autoscaler.release_worker_node(worker_address)
             logger.info('Finished offline workers %s in %.4f seconds', worker_addresses, time.time() - start_time)
 
     async def stop(self):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 import inspect
 import logging
@@ -182,7 +183,16 @@ class MarsWebAPIClientMixin:
             self._client_obj = aiohttp.ClientSession()
             return self._client_obj
 
+    def __del__(self):
+        if hasattr(self, '_client_obj'):
+            loop = getattr(self, '_running_loop', None) or \
+                asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.get_event_loop()
+            loop.create_task(self._client_obj.close())
+
     async def _request_url(self, method, path, **kwargs):
+        self._running_loop = asyncio.get_running_loop()
         res = await self._client.request(method, path, **kwargs)
         if res.status < 400:
             return res

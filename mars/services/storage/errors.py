@@ -20,3 +20,7 @@ DataNotExist = DataNotExist
 
 class NoDataToSpill(Exception):
     pass
+
+
+class StorageFull(Exception):
+    pass
