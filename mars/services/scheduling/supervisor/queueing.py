@@ -17,7 +17,6 @@ import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from mars.services.core import BandType
 from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
@@ -126,7 +125,7 @@ class SubtaskQueueingActor(mo.Actor):
             heapq.heappush(self._band_queues[band], heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
-    async def submit_subtasks(self, band: BandType = None, limit: Optional[int] = None):
+    async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
@@ -194,9 +193,10 @@ class SubtaskQueueingActor(mo.Actor):
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
 
-    async def balance_queued_subtasks(self, from_band: BandType = None):
+    async def balance_queued_subtasks(self, from_band: Tuple = None):
         # record length of band queues of one specific band or all bands
-        band_num_queued_subtasks = {from_band: len(self._band_queues[from_band])} if from_band else \
+        band_num_queued_subtasks = \
+            {from_band: len(self._band_queues[from_band])} if from_band is not None else \
             {band: len(queue) for band, queue in self._band_queues.items()}
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
         items = []
