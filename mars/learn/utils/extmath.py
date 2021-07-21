@@ -71,3 +71,21 @@ def row_norms(X, squared=False):
     if not squared:
         norms = mt.sqrt(norms)
     return norms
+
+
+def safe_sparse_dot(a, b, *, dense_output=False):
+    """Dot product that handle the sparse matrix case correctly.
+
+    Parameters
+    ----------
+    a : {ndarray, sparse matrix}
+    b : {ndarray, sparse matrix}
+    dense_output : bool, default=False
+        When False, ``a`` and ``b`` both being sparse will yield sparse output.
+        When True, output will always be a dense array.
+
+    Returns
+    -------
+    dot_product : {ndarray, sparse matrix}
+        Sparse if ``a`` and ``b`` are sparse and ``dense_output=False``.
+    """

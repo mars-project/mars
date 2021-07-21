@@ -99,6 +99,7 @@ class RegressorMixin:
         """
 
         from .metrics import r2_score
+
         y_pred = self.predict(X)
         return r2_score(y, y_pred, sample_weight=sample_weight)
 
@@ -147,6 +148,9 @@ class BaseEstimator(SklearnBaseEstimator):
                 )
             X = check_array(X, **check_params)
             out = X
+        elif y == "no_validation":
+            X = check_array(X, **check_params)
+            out = X
         else:  # pragma: no cover
             if validate_separately:
                 # We need this because some estimators validate X and y
@@ -165,3 +169,10 @@ class BaseEstimator(SklearnBaseEstimator):
             self._check_n_features(X, reset=reset)
 
         return out
+
+
+class MultiOutputMixin:
+    """Mixin to mark estimators that support multioutput."""
+
+    def _more_tags(self):
+        return {"multioutput": True}
