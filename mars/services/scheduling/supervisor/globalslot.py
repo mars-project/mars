@@ -56,7 +56,7 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_watch_task.cancel()
 
     async def refresh_bands(self):
-        self._band_total_slots = self._cluster_api.get_all_bands()
+        self._band_total_slots = await self._cluster_api.get_all_bands()
 
     async def apply_subtask_slots(self, band: BandType, session_id: str,
                                   subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:

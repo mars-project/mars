@@ -41,7 +41,6 @@ class AutoscalerActor(mo.Actor):
         self._cluster_api = None
         self.queueing_refs = dict()
         self.global_slot_ref = None
-        self.band_total_slots = None
         self._dynamic_workers: Set[str] = set()
 
     async def __post_create__(self):
@@ -120,7 +119,7 @@ class AutoscalerActor(mo.Actor):
             for src_band in bands:
                 band_data_keys = await meta_api.get_band_chunks(src_band)
                 for data_key in band_data_keys:
-                    dest_band = self._select_target_band(src_band, data_key)
+                    dest_band = await self._select_target_band(src_band, data_key)
                     # For ray backend, there will only be meta update rather than data transfer
                     await (await self._get_storage_api(session_id, dest_band[0])).fetch(
                         data_key, band_name=src_band[1], dest_address=src_band[0])
@@ -130,8 +129,8 @@ class AutoscalerActor(mo.Actor):
                     chunk_bands.append(dest_band)
                     await meta_api.set_chunk_bands(data_key, chunk_bands)
 
-    def _select_target_band(self, band: BandType, data_key: str):
-        bands = list(b for b in self.band_total_slots.keys() if b[1] == band[1] and b != band)
+    async def _select_target_band(self, band: BandType, data_key: str):
+        bands = list(b for b in (await self._cluster_api.get_all_bands()).keys() if b[1] == band[1] and b != band)
         # TODO select band based on remaining store space size of other bands
         return random.choice(bands)
 
