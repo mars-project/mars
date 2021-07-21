@@ -50,7 +50,7 @@ class TransferMessage(Serializable):
                          is_eof=is_eof)
 
 
-class SenderManagerActor(mo.Actor):
+class SenderManagerActor(mo.StatelessActor):
     def __init__(self,
                  transfer_block_size: int = None):
         self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
@@ -100,19 +100,22 @@ class SenderManagerActor(mo.Actor):
                               data_keys: List[str],
                               address: str,
                               level: StorageLevel,
-                              block_size: int = None):
+                              block_size: int = None,
+                              error: str = 'raise'):
         logger.debug('Begin to send data (%s, %s) to %s', session_id, data_keys, address)
         block_size = block_size or self._transfer_block_size
         receiver_ref: Union[ReceiverManagerActor, mo.ActorRef] = await self.get_receiver_ref(address)
         get_infos = []
         for data_key in data_keys:
-            get_infos.append(self._data_manager_ref.get_data_info.delay(session_id, data_key))
+            get_infos.append(self._data_manager_ref.get_data_info.delay(session_id, data_key, error))
         infos = await self._data_manager_ref.get_data_info.batch(*get_infos)
+        infos, data_keys = zip(*[(data_info, data_key) for data_info, data_key in
+                               zip(infos, data_keys) if data_info is not None])
         data_sizes = [info.store_size for info in infos]
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)
 
         send_tasks = []
-        for data_key, info in zip(data_keys, infos):
+        for data_key in data_keys:
             send_task = asyncio.create_task(
                 self._send_data(receiver_ref, session_id, data_key,
                                 level, block_size))
@@ -154,7 +157,7 @@ class ReceiverManagerActor(mo.Actor):
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
-            [t.cancel() for t in tasks]
+            _ = [task.cancel() for task in tasks]
             raise
 
     async def do_write(self, message: TransferMessage):
@@ -165,7 +168,6 @@ class ReceiverManagerActor(mo.Actor):
             await writer.close()
 
     async def receive_part_data(self, message: TransferMessage):
-
         try:
             yield self.do_write(message)
         except asyncio.CancelledError:

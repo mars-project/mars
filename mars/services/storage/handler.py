@@ -180,8 +180,6 @@ class StorageHandlerActor(mo.Actor):
             put_infos.append(
                 self._data_manager_ref.put_data_info.delay(
                     session_id, data_key, data_info, object_info))
-            logger.debug('Finish putting data key %s, size is %s, '
-                         'object_id is %s', data_key, size, data_info.object_id)
         await self._quota_refs[level].update_quota(quota_delta)
         await self._data_manager_ref.put_data_info.batch(*put_infos)
         await self.notify_spillable_space(level)
@@ -297,16 +295,21 @@ class StorageHandlerActor(mo.Actor):
                             session_id: str,
                             data_keys: List[Union[str, tuple]],
                             level: StorageLevel,
-                            remote_address: str):
+                            remote_address: str,
+                            error: str):
         remote_manager_ref: Union[mo.ActorRef, DataManagerActor] = await mo.actor_ref(
             uid=DataManagerActor.default_uid(), address=remote_address)
         get_data_infos = []
         for data_key in data_keys:
             get_data_infos.append(
-                remote_manager_ref.get_data_info.delay(session_id, data_key))
+                remote_manager_ref.get_data_info.delay(session_id, data_key, error))
         data_infos = await remote_manager_ref.get_data_info.batch(*get_data_infos)
+        data_infos, data_keys = zip(*[(data_info, data_key) for data_info, data_key in
+                                    zip(data_infos, data_keys) if data_info is not None])
         for data_info, data_key in zip(data_infos, data_keys):
             try:
+                await self._data_manager_ref.put_data_info(
+                    session_id, data_key, data_info, None)
                 await self._clients[level].fetch(data_info.object_id)
             except asyncio.CancelledError:  # pragma: no cover
                 await self._data_manager_ref.delete_data_info.tell(
@@ -317,54 +320,65 @@ class StorageHandlerActor(mo.Actor):
                                   session_id: str,
                                   data_keys: List[Union[str, tuple]],
                                   level: StorageLevel,
-                                  remote_address: str):
+                                  remote_address: str,
+                                  error: str):
         from .transfer import SenderManagerActor
 
+        logger.debug('Begin to fetch %s from worker %s', data_keys, remote_address)
         sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
             address=remote_address, uid=SenderManagerActor.default_uid())
         await sender_ref.send_batch_data(
-            session_id, data_keys, self._data_manager_ref.address, level)
+            session_id, data_keys, self._data_manager_ref.address, level, error=error)
 
     async def fetch_batch(self,
                           session_id: str,
                           data_keys: List[str],
                           level: StorageLevel,
-                          address: str,
                           band_name: str,
+                          address: str,
                           error: str):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
 
-        remote_keys = defaultdict(list)
+        meta_api = await self._get_meta_api(session_id)
+        remote_keys = defaultdict(set)
+        missing_keys = []
+        get_metas = []
         for data_key in data_keys:
             try:
                 await self._data_manager_ref.get_data_info(session_id, data_key)
                 await self._data_manager_ref.pin(session_id, data_key)
             except DataNotExist:
                 # Not exists in local, fetch from remote worker
-                meta_api = await self._get_meta_api(session_id)
+                missing_keys.append(data_key)
                 if address is None or band_name is None:
                     # we get meta using main key when fetch shuffle data
                     main_key = data_key[0] if isinstance(data_key, tuple) else data_key
-                    address, band_name = (await meta_api.get_chunk_meta(
-                        main_key, fields=['bands']))['bands'][0]
-                remote_keys[address, band_name].append(data_key)
+                    get_metas.append(meta_api.get_chunk_meta.delay(
+                        main_key, fields=['bands']))
+        if get_metas:
+            metas = await meta_api.get_chunk_meta.batch(*get_metas)
+        else:  # pragma: no cover
+            metas = [(address, band_name)] * len(missing_keys)
+        for data_key, bands in zip(missing_keys, metas):
+            remote_keys[bands['bands'][0]].add(data_key)
 
-        try:
+        for band, data_keys in remote_keys.items():
             if StorageLevel.REMOTE in self._quota_refs:
                 # if storage support remote level, just fetch object id
-                for band, data_keys in remote_keys.items():
-                    await self._fetch_remote(
-                        session_id, data_keys, level, band[0])
+                await self._fetch_remote(
+                    session_id, list(data_keys), level, band[0], error)
             else:
                 # fetch via transfer
-                for band, data_keys in remote_keys.items():
-                    await self._fetch_via_transfer(
-                        session_id, data_keys, level, band[0])
-
-        except DataNotExist:
-            if error == 'raise':  # pragma: no cover
-                raise
+                await self._fetch_via_transfer(
+                    session_id, list(data_keys), level, band[0], error)
+            append_bands = []
+            for data_key in data_keys:
+                if not isinstance(data_key, tuple):
+                    # no need to update meta for shuffle data
+                    append_bands.append(meta_api.add_chunk_bands.delay(
+                        data_key, [(self.address, band_name or 'numa-0')]))
+            await meta_api.add_chunk_bands.batch(*append_bands)
 
     async def request_quota_with_spill(self,
                                        level: StorageLevel,

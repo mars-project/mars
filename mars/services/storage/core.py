@@ -217,9 +217,8 @@ class DataManagerActor(mo.Actor):
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
-        if object_info is not None:
-            self._spill_strategy[data_info.level].record_put_info(
-                (session_id, data_key), data_info.store_size)
+        self._spill_strategy[data_info.level].record_put_info(
+            (session_id, data_key), data_info.store_size)
         if isinstance(data_key, tuple):
             self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
