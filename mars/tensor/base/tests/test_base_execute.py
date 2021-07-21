@@ -1532,7 +1532,7 @@ def _handle_result(result, axis, largest, order):
 @pytest.mark.parametrize('axis', [0, 1, 2, None])
 @pytest.mark.parametrize('largest', [True, False])
 @pytest.mark.parametrize('to_sort', [True, False])
-@pytest.mark.parametrize('parallel_kind', ['psrs'])
+@pytest.mark.parametrize('parallel_kind', ['tree', 'psrs'])
 def test_topk_execution(setup, chunk_size, axis, largest, to_sort, parallel_kind):
     raw1, order1 = np.random.rand(5, 6, 7), None
     raw2 = np.empty((5, 6, 7), dtype=[('a', np.int32), ('b', np.float64)])

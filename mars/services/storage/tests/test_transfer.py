@@ -194,10 +194,8 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     await asyncio.sleep(0.5)
     send_task.cancel()
 
-    try:
+    with pytest.raises(asyncio.CancelledError):
         await send_task
-    except asyncio.CancelledError:
-        pass
 
     used = (await quota_refs[StorageLevel.MEMORY].get_quota())[1]
     assert used == used_before
