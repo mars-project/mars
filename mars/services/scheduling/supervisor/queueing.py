@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import heapq
 import logging
 from collections import defaultdict
@@ -74,7 +75,11 @@ class SubtaskQueueingActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
-                self._band_slot_nums = bands
+                # confirm ready bands indeed changed
+                if bands != self._band_slot_nums:
+                    self._band_slot_nums = copy.deepcopy(bands)
+                    if self._band_queues:
+                        await self.balance_queued_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -186,3 +191,23 @@ class SubtaskQueueingActor(mo.Actor):
         for stid in subtask_ids:
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
+
+    async def balance_queued_subtasks(self):
+        # record length of band queues
+        band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
+        move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+        items = []
+        # rewrite band queues according to feedbacks from assigner
+        for band, move in move_queued_subtasks.items():
+            task_queue = self._band_queues[band]
+            assert move + len(task_queue) >= 0
+            for _ in range(abs(move)):
+                if move < 0:
+                    # TODO: pop item of low priority
+                    item = heapq.heappop(task_queue)
+                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    items.append(item)
+                elif move > 0:
+                    item = items.pop()
+                    self._stid_to_bands[item.subtask.subtask_id].append(band)
+                    heapq.heappush(task_queue, item)
