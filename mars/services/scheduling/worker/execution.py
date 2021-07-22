@@ -22,10 +22,10 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
-import mars.oscar.errors
 from .... import oscar as mo
 from ....core.graph import DAG
 from ....core.operand import Fetch
+from ....oscar.errors import MarsError
 from ....lib.aio import alru_cache
 from ....storage import StorageLevel
 from ....utils import dataslots
@@ -102,7 +102,7 @@ async def _retry_run(subtask: Subtask,
     while True:
         try:
             return await target_async_func(*args)
-        except (OSError, mars.oscar.errors.MarsError) as ex:
+        except (OSError, MarsError) as ex:
             if subtask_info.num_retries < subtask_info.max_retries:
                 logger.error('Rerun the %s of subtask %s due to %s',
                              target_async_func, subtask.subtask_id, ex)
@@ -330,6 +330,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     raise ex
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
+        # TODO(fyrestone): For the retryable op, we should rerun it when
+        # any exceptions occurred.
         if retryable:
             return await _retry_run(subtask, subtask_info, _run_subtask_once)
         else:
