@@ -40,6 +40,7 @@ from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.manager import \
     TaskConfigurationActor, TaskManagerActor
 from mars.utils import Timer, merge_chunks
+from mars.tests.core import flaky
 
 
 @pytest.fixture
@@ -149,6 +150,7 @@ async def test_run_tasks_with_same_name(actor_pool):
         np.testing.assert_array_equal(result, e)
 
 
+@flaky(max_runs=3)
 @pytest.mark.asyncio
 async def test_error_task(actor_pool):
     pool, session_id, meta_api, lifecycle_api, storage_api, manager = actor_pool
