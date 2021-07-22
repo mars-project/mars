@@ -178,6 +178,7 @@ async def test_web_session(create_cluster):
     session_id = str(uuid.uuid4())
     web_address = create_cluster.web_address
     session = await AsyncSession.init(web_address, session_id)
+    assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
     await test_execute(create_cluster)
@@ -193,6 +194,7 @@ def test_sync_execute():
 
     # web not started
     assert session._session.client.web_address is None
+    assert session.get_web_endpoint() is None
 
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
@@ -233,6 +235,7 @@ def test_no_default_session():
 @pytest.fixture
 def setup_session():
     session = new_session(n_cpu=2, default=True, use_uvloop=False)
+    assert session.get_web_endpoint() is not None
 
     with session:
         with option_context({'show_progress': False}):
