@@ -21,7 +21,11 @@ from mars.remote import spawn
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
 from mars.oscar.errors import FaultInjectionError, ServerClosed
-from ....services.tests.fault_injection_manager import FaultType, AbstractFaultInjectionManager, ExtraConfigKey
+from mars.services.tests.fault_injection_manager import (
+    FaultType,
+    AbstractFaultInjectionManager,
+    ExtraConfigKey,
+)
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')
