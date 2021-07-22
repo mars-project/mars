@@ -15,9 +15,12 @@
 import asyncio
 import enum
 import importlib
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Union
 
-BandType = Tuple[str, str]
+from ..typing import BandType
+
+
+BandType = BandType
 
 
 class NodeRole(enum.Enum):

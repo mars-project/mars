@@ -453,7 +453,7 @@ class SubtaskProcessorActor(mo.Actor):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
             session_id, self._supervisor_address,
-            self.address, loop)
+            self.address, loop, band=self._band)
         await context.init()
         set_context(context)
 

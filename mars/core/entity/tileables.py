@@ -59,16 +59,22 @@ class OperandTilesHandler:
     def tile(cls, tileables: List[TileableType]) \
             -> Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
         op = tileables[0].op
-        tile_handler = cls.get_handler(op)
-        if inspect.isgeneratorfunction(tile_handler):
-            # op.tile can be a generator function,
-            # each time an operand yield some chunks,
-            # they will be put into ChunkGraph and executed first.
-            # After execution, resume from the yield place.
-            tiled_result = yield from tile_handler(op)
-        else:
-            # without iterative tiling
-            tiled_result = tile_handler(op)
+        # pre tile
+        op.pre_tile(op)
+        tiled_result = None
+        try:
+            tile_handler = cls.get_handler(op)
+            if inspect.isgeneratorfunction(tile_handler):
+                # op.tile can be a generator function,
+                # each time an operand yield some chunks,
+                # they will be put into ChunkGraph and executed first.
+                # After execution, resume from the yield place.
+                tiled_result = yield from tile_handler(op)
+            else:
+                # without iterative tiling
+                tiled_result = tile_handler(op)
+        finally:
+            op.post_tile(op, tiled_result)
 
         if not isinstance(tiled_result, list):
             tiled_result = [tiled_result]
