@@ -88,8 +88,6 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
         return await super().run()
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         fault = await self._fault_injection_manager.on_execute_operand()
@@ -101,4 +99,4 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
         assert fault == FaultType.NoFault, \
             f"Got unexpected fault from on_execute_operand: {fault}"
 
-        return await super()._async_execute_operand(loop, executor, ctx, op)
+        return await super()._async_execute_operand(ctx, op)

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import concurrent.futures as futures
 import logging
 import sys
 from collections import defaultdict
@@ -21,11 +20,10 @@ from itertools import chain
 from typing import Any, Dict, List, Optional, Type
 
 from .... import oscar as mo
-from ....core import ChunkGraph, OperandType
+from ....core import ChunkGraph, OperandType, enter_mode
 from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
-from ....lib.aio import alru_cache
 from ....optimization.physical import optimize
 from ...context import ThreadedServiceContext
 from ...core import BandType
@@ -46,6 +44,7 @@ class DataStore(dict):
 
 class SubtaskProcessor:
     _chunk_graph: ChunkGraph
+    _chunk_key_to_data_keys: Dict[str, List[str]]
 
     def __init__(self,
                  subtask: Subtask,
@@ -124,7 +123,7 @@ class SubtaskProcessor:
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
                     fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
-            logger.debug('Start getting input data keys: %s, '
+            logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
             await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
@@ -134,15 +133,10 @@ class SubtaskProcessor:
         return keys
 
     @staticmethod
-    @alru_cache(cache_exceptions=False)
-    async def _get_task_api(supervisor_address: str, session_id: str) -> TaskAPI:
-        return await TaskAPI.create(session_id, supervisor_address)
-
-    @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
                                          result: SubtaskResult):
-        task_api = await SubtaskProcessor._get_task_api(
-            supervisor_address, result.session_id)
+        task_api = await TaskAPI.create(
+            result.session_id, supervisor_address)
         # notify task service
         await task_api.set_subtask_result(result)
 
@@ -158,19 +152,17 @@ class SubtaskProcessor:
         return ref_counts
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         self._op_progress[op.key] = 0.0
         get_context().set_running_operand_key(self._session_id, op.key)
-        return loop.run_in_executor(executor, self._execute_operand,
-                                    ctx, op)
+        return asyncio.to_thread(self._execute_operand, ctx, op)
 
     def set_op_progress(self, op_key: str, progress: float):
         if op_key in self._op_progress:  # pragma: no branch
             self._op_progress[op_key] = progress
 
+    @enter_mode(build=False, kernel=True)
     def _execute_operand(self,
                          ctx: Dict[str, Any],
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
@@ -178,7 +170,6 @@ class SubtaskProcessor:
 
     async def _execute_graph(self, chunk_graph: ChunkGraph):
         loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
         ref_counts = self._init_ref_counts()
 
         # from data_key to results
@@ -189,10 +180,20 @@ class SubtaskProcessor:
                 logger.debug('Start executing operand: %s,'
                              'chunk: %s, subtask id: %s', chunk.op, chunk,
                              self.subtask.subtask_id)
-                future = await self._async_execute_operand(loop, executor,
-                                                           self._datastore, chunk.op)
+                future = asyncio.create_task(
+                    await self._async_execute_operand(self._datastore, chunk.op))
+                to_wait = loop.create_future()
+
+                def cb(fut):
+                    if not to_wait.done():
+                        if fut.exception():
+                            to_wait.set_exception(fut.exception())
+                        else:
+                            to_wait.set_result(fut.result())
+                future.add_done_callback(cb)
+
                 try:
-                    await future
+                    await to_wait
                     logger.debug('Finish executing operand: %s,'
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
@@ -201,7 +202,7 @@ class SubtaskProcessor:
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
                     # wait for this computation to finish
-                    await loop.run_in_executor(None, executor.shutdown)
+                    await future
                     # if cancelled, stop next computation
                     logger.debug('Cancelled operand: %s, chunk: %s, '
                                  'subtask id: %s', chunk.op, chunk,
@@ -342,6 +343,7 @@ class SubtaskProcessor:
     async def run(self):
         self.result.status = SubtaskStatus.running
         input_keys = None
+        unpinned = False
         try:
             chunk_graph = optimize(self._chunk_graph, self._engines)
             self._gen_chunk_key_to_data_keys()
@@ -355,6 +357,7 @@ class SubtaskProcessor:
                 await self._execute_graph(chunk_graph)
             finally:
                 # unpin inputs data
+                unpinned = True
                 await self._unpin_data(input_keys)
             # store results data
             stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
@@ -371,7 +374,7 @@ class SubtaskProcessor:
             await self.done()
             raise
         finally:
-            if input_keys is not None:
+            if input_keys is not None and not unpinned:
                 await self._unpin_data(input_keys)
 
         await self.done()

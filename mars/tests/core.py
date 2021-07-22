@@ -22,6 +22,7 @@ from typing import Dict
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     from flaky import flaky as _raw_flaky
 except ImportError:
@@ -33,6 +34,7 @@ except ImportError:
 _mock = mock
 
 from ..config import option_context
+from ..core.operand import OperandStage
 from ..utils import lazy_import
 
 
@@ -49,7 +51,7 @@ def setup():
 
     sess = new_test_session(address='test://127.0.0.1',
                             init_local=True,
-                            default=True)
+                            default=True, timeout=300)
     with option_context({'show_progress': False}):
         try:
             yield sess
@@ -357,6 +359,10 @@ class ObjectCheckMixin:
         from mars.tensor.core import TENSOR_CHUNK_TYPE
         from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
             GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
+
+        op = getattr(expected, 'op', None)
+        if op and getattr(op, 'stage', None) == OperandStage.map:
+            return
 
         if isinstance(expected, (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
             self.assert_tensor_consistent(expected, real)

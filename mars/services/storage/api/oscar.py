@@ -19,8 +19,10 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
-from ..core import StorageHandlerActor, StorageManagerActor, DataManagerActor, \
+from ...cluster import StorageInfo
+from ..core import StorageManagerActor, DataManagerActor, \
     DataInfo, WrappedStorageFileObject
+from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
 APIType = TypeVar('APIType', bound='StorageAPI')
@@ -248,6 +250,22 @@ class StorageAPI(AbstractStorageAPI):
             list of data keys
         """
         return await self._storage_handler_ref.list(level=level)
+
+    async def get_storage_level_info(self,
+                                     level: StorageLevel) -> StorageInfo:
+        """
+        Get storage level's info.
+
+        Parameters
+        ----------
+        level : StorageLevel
+            Storage level.
+
+        Returns
+        -------
+        storage_level_info : StorageInfo
+        """
+        return await self._storage_handler_ref.get_storage_level_info(level)
 
 
 class MockStorageAPI(StorageAPI):
