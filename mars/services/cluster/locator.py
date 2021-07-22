@@ -94,3 +94,9 @@ class SupervisorLocatorActor(mo.Actor):
             expected_supervisors = await self._backend.get_expected_supervisors()
             if set(self._supervisors) == set(expected_supervisors):
                 break
+
+    def get_backend_name(self):
+        return self._backend_name
+
+    def get_lookup_address(self):
+        return self._lookup_address

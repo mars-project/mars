@@ -18,7 +18,6 @@ import logging
 import random
 import time
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
 from ....lib.aio import alru_cache
@@ -27,8 +26,6 @@ from ...core import BandType
 from .... import oscar as mo
 from mars.services.cluster.core import NodeRole, NodeStatus
 
-import ray
-logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

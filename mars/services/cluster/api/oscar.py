@@ -38,14 +38,13 @@ class ClusterAPI(AbstractClusterAPI):
     async def _init(self):
         from ..locator import SupervisorLocatorActor
         from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_info import NodeInfoCollectorActor, NodeAllocatorActor
+        from ..supervisor.node_info import NodeInfoCollectorActor
 
         self._locator_ref = await mo.actor_ref(SupervisorLocatorActor.default_uid(),
                                                address=self._address)
         self._uploader_ref = await mo.actor_ref(NodeInfoUploaderActor.default_uid(),
                                                 address=self._address)
-        [self._node_info_ref, self._node_allocator_ref] = await self.get_supervisor_refs(
-            [NodeInfoCollectorActor.default_uid(), NodeAllocatorActor.default_uid()])
+        [self._node_info_ref] = await self.get_supervisor_refs([NodeInfoCollectorActor.default_uid()])
 
     @classmethod
     @alru_cache(cache_exceptions=False)
@@ -213,13 +212,21 @@ class ClusterAPI(AbstractClusterAPI):
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        address = await self._node_allocator_ref.request_worker_node(
-            worker_cpu, worker_mem, timeout)
+        cluster_backend = await self._get_cluster_backend()
+        address = await cluster_backend.request_worker_node(worker_cpu, worker_mem, timeout)
         return address
 
     async def release_worker_node(self, address: str):
-        await self._node_allocator_ref.release_worker_node(address)
+        cluster_backend = await self._get_cluster_backend()
+        await cluster_backend.release_worker_node(address)
         await self._node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_cluster_backend(self):
+        from ..backends import get_cluster_backend
+        backend_cls = get_cluster_backend(await self._locator_ref.get_backend_name())
+        return await backend_cls.create(
+            await self._locator_ref.get_lookup_address(),  self._locator_ref.address)
 
 
 class MockClusterAPI(ClusterAPI):
