@@ -29,10 +29,22 @@ from mars.utils import extensible
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
-    def get_all_bands(self, role, statuses):
+    def __init__(self, timeout=None, check_interval=None):
+        super().__init__(timeout=timeout, check_interval=check_interval)
+        self.ready_nodes = {('address0', 'numa-0'): 2,
+                            ('address1', 'numa-0'): 2,
+                            ('address2', 'numa-0'): 2}
+
+    async def update_node_info(self, address, role, env=None,
+                               resource=None, detail=None, status=None):
+        if 'address' in address and status == NodeStatus.STOPPING:
+            del self.ready_nodes[(address, 'numa-0')]
+        await super().update_node_info(address, role, env,
+                                       resource, detail, status)
+
+    def get_all_bands(self, role=None, statuses=None):
         if statuses == {NodeStatus.READY}:
-            return {('address0', 'numa-0'): 2,
-                    ('address2', 'numa-0'): 2}
+            return self.ready_nodes
         else:
             return {('address0', 'numa-0'): 2,
                     ('address1', 'numa-0'): 2,
@@ -80,7 +92,7 @@ class MockAssignerActor(mo.Actor):
 
     def reassign_subtasks(self, band_num_queued_subtasks):
         if len(band_num_queued_subtasks.keys()) == 1:
-            (band, _), = list(band_num_queued_subtasks.items())
+            [(band, _)] = band_num_queued_subtasks.items()
             return {band: 0}
         return {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 0,
                 ('address2', 'numa-0'): 8}
@@ -149,6 +161,7 @@ async def test_subtask_queueing(actor_pool):
                      ('address2', 'numa-0')]
     for num_subtasks, expect_bands in zip(nums_subtasks, expects_bands):
         await _queue_subtasks(num_subtasks, expect_bands, queueing_ref)
+
     await cluster_api.set_node_status(
         node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
 

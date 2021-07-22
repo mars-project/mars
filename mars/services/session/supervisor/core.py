@@ -17,6 +17,7 @@ import functools
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
+from ....utils import to_binary
 from ...cluster import ClusterAPI
 from ..core import SessionInfo
 
@@ -182,13 +183,13 @@ class SessionActor(mo.Actor):
                                    object_cls, *args, **kwargs):
         return await mo.create_actor(
             RemoteObjectActor, object_cls, args, kwargs,
-            address=self.address, uid=name)
+            address=self.address, uid=to_binary(name))
 
     async def get_remote_object(self, name: str):
-        return await mo.actor_ref(mo.ActorRef(self.address, name))
+        return await mo.actor_ref(mo.ActorRef(self.address, to_binary(name)))
 
     async def destroy_remote_object(self, name: str):
-        return await mo.destroy_actor(mo.ActorRef(self.address, name))
+        return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
 
 
 class RemoteObjectActor(mo.Actor):

@@ -13,17 +13,16 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import heapq
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from mars.services.core import BandType
 from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....utils import dataslots, extensible
-from ...core import BandType
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -44,10 +43,9 @@ class HeapItem:
 
 
 class SubtaskQueueingActor(mo.Actor):
-    _stid_to_bands: DefaultDict[str, List[BandType]]
+    _stid_to_bands: DefaultDict[str, List[Tuple]]
     _stid_to_items: Dict[str, HeapItem]
-    # clear related bands when we remove a worker
-    _band_queues: DefaultDict[BandType, List[HeapItem]]
+    _band_queues: DefaultDict[Tuple, List[HeapItem]]
 
     @classmethod
     def gen_uid(cls, session_id: str):
@@ -77,9 +75,11 @@ class SubtaskQueueingActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
-                self._band_slot_nums = bands
-                if self._band_queues:
-                    await self.balance_queued_subtasks()
+                # confirm ready bands indeed changed
+                if bands != self._band_slot_nums:
+                    self._band_slot_nums = copy.deepcopy(bands)
+                    if self._band_queues:
+                        await self.balance_queued_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -128,15 +128,11 @@ class SubtaskQueueingActor(mo.Actor):
             heapq.heappush(self._band_queues[band], heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
-    async def submit_subtasks(self, band: BandType = None, limit: Optional[int] = None):
+    async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
         logger.debug('Submitting subtasks with limit %s', limit)
 
         if not limit and band not in self._band_slot_nums:
             self._band_slot_nums = await self._cluster_api.get_all_bands()
-
-        if band and band not in self._band_slot_nums:
-            await self.balance_queued_subtasks(from_band=band)
-            return
 
         bands = [band] if band is not None else list(self._band_slot_nums.keys())
         submit_aio_tasks = []
@@ -195,7 +191,6 @@ class SubtaskQueueingActor(mo.Actor):
         for stid in subtask_ids:
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
-            # FIXME remove subtask from band queue?
 
     async def all_bands_busy(self) -> bool:
         """Return True if all bands queue has tasks waiting to be submitted."""
@@ -204,14 +199,9 @@ class SubtaskQueueingActor(mo.Actor):
             return all(len(self._band_queues[band]) > 0 for band in bands)
         return False
 
-    async def get_band_pending_task_nums(self) -> Dict[BandType, int]:
-        """Return pending task nums of all bands queue."""
-        return {band: len(band_queue) for band, band_queue in self._band_queues.items()}
-
-    async def balance_queued_subtasks(self, from_band: BandType = None):
-        # record length of band queues of one specific band or all bands
-        band_num_queued_subtasks = {from_band: len(self._band_queues[from_band])} if from_band else \
-            {band: len(queue) for band, queue in self._band_queues.items()}
+    async def balance_queued_subtasks(self):
+        # record length of band queues
+        band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
         items = []
         # rewrite band queues according to feedbacks from assigner
@@ -220,6 +210,7 @@ class SubtaskQueueingActor(mo.Actor):
             assert move + len(task_queue) >= 0
             for _ in range(abs(move)):
                 if move < 0:
+                    # TODO: pop item of low priority
                     item = heapq.heappop(task_queue)
                     self._stid_to_bands[item.subtask.subtask_id].remove(band)
                     items.append(item)

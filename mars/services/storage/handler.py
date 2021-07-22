@@ -21,7 +21,7 @@ from ... import oscar as mo
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
 from ...utils import calc_data_size, extensible
-from ..cluster import ClusterAPI
+from ..cluster import ClusterAPI, StorageInfo
 from ..meta import MetaAPI
 from .core import StorageQuotaActor, DataManagerActor, DataInfo, \
     build_data_info, WrappedStorageFileObject
@@ -390,7 +390,14 @@ class StorageHandlerActor(mo.Actor):
     async def list(self, level: StorageLevel) -> List:
         return await self._data_manager_ref.list(level)
 
-    async def unpin(self, session_id, data_key, error):
+    async def unpin(self, session_id: str, data_key: str, error: str):
         level = await self._data_manager_ref.unpin(session_id, data_key, error)
         if level is not None:
             await self.notify_spillable_space(level)
+
+    async def get_storage_level_info(self, level: StorageLevel) -> StorageInfo:
+        quota_ref = self._quota_refs[level]
+        total_size, used_size = await quota_ref.get_quota()
+        return StorageInfo(storage_level=level,
+                           total_size=int(total_size) if total_size else total_size,
+                           used_size=int(used_size))

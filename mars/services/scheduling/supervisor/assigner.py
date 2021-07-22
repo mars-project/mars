@@ -129,6 +129,14 @@ class AssignerActor(mo.Actor):
             # no need to balance when there's only one band initially
             if len(self._bands) == 1 and band == self._bands[0]:
                 return {band: 0}
+        # unready bands recorded in band_num_queued_subtasks, some of them may hold 0 subtasks
+        unready_bands = list(set(band_num_queued_subtasks.keys()) - set(self._bands))
+        # ready bands not recorded in band_num_queued_subtasks, all of them hold 0 subtasks
+        new_ready_bands = list(set(self._bands) - set(band_num_queued_subtasks.keys()))
+        # when there are new ready bands, make all bands hold same amount of subtasks
+        # when there are no new ready bands now, move out subtasks left on them
+        if not new_ready_bands and unready_bands:
+            band_num_queued_subtasks = {k: band_num_queued_subtasks[k] for k in unready_bands}
         # approximate total of subtasks moving to each ready band
         num_all_subtasks = sum(band_num_queued_subtasks.values())
         mean = int(num_all_subtasks / len(self._bands))

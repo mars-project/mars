@@ -36,7 +36,8 @@ class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
         super().__init__(timeout=timeout, check_interval=check_interval)
         self.ready_nodes = {('address0', 'numa-0'): 2,
                             ('address1', 'numa-0'): 2,
-                            ('address2', 'numa-0'): 2}
+                            ('address2', 'numa-0'): 2,
+                            ('address3', 'numa-0'): 2}
 
     async def update_node_info(self, address, role, env=None,
                                resource=None, detail=None, status=None):
@@ -51,7 +52,8 @@ class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
         else:
             return {('address0', 'numa-0'): 2,
                     ('address1', 'numa-0'): 2,
-                    ('address2', 'numa-0'): 2}
+                    ('address2', 'numa-0'): 2,
+                    ('address3', 'numa-0'): 2}
 
 
 class FakeClusterAPI(ClusterAPI):
@@ -129,6 +131,8 @@ async def test_assigner(actor_pool):
 
     await cluster_api.set_node_status(
         node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+    await cluster_api.set_node_status(
+        node='address3', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
 
     subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
     [result] = await assigner_ref.assign_subtasks([subtask])
@@ -151,24 +155,37 @@ async def test_assigner(actor_pool):
 async def test_reassign_subtasks(actor_pool):
     pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
 
+    # ('address0', 'numa-0'), ('address1', 'numa-0'), ('address2', 'numa-0') are ready
+    await cluster_api.set_node_status(
+        node='address3', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+
+    band_num_queued_subtasks = {('address0', 'numa-0'): 3, ('address1', 'numa-0'): 4}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks in \
+        ({('address1', 'numa-0'): -1, ('address0', 'numa-0'): -1, ('address2', 'numa-0'): 2},
+         {('address1', 'numa-0'): -2, ('address0', 'numa-0'): 0,  ('address2', 'numa-0'): 2},
+         {('address1', 'numa-0'): -2, ('address0', 'numa-0'): -1, ('address2', 'numa-0'): 3})
+
     # ('address0', 'numa-0'), ('address2', 'numa-0') are ready
     await cluster_api.set_node_status(
         node='address1', role=NodeRole.WORKER, status=NodeStatus.STOPPING)
 
-    band_num_queued_subtasks = {('address0', 'numa-0'): 9, ('address1', 'numa-0'): 8,
+    band_num_queued_subtasks = {('address0', 'numa-0'): 9, ('address1', 'numa-0'): 7,
                                 ('address2', 'numa-0'): 0}
     move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
-    assert move_queued_subtasks in ({('address1', 'numa-0'): -8,
-                                     ('address0', 'numa-0'): -1,
-                                     ('address2', 'numa-0'): 9},
-                                    {('address1', 'numa-0'): -8,
-                                     ('address0', 'numa-0'): 0,
-                                     ('address2', 'numa-0'): 8})
+    assert move_queued_subtasks in \
+        ({('address1', 'numa-0'): -7, ('address0', 'numa-0'): 3, ('address2', 'numa-0'): 4},
+         {('address1', 'numa-0'): -7, ('address0', 'numa-0'): 4, ('address2', 'numa-0'): 3})
+
+    band_num_queued_subtasks = {('address0', 'numa-0'): 9, ('address1', 'numa-0'): 7}
+    move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+    assert move_queued_subtasks == \
+        {('address1', 'numa-0'): -7, ('address0', 'numa-0'): -1, ('address2', 'numa-0'): 8}
 
     band_num_queued_subtasks = {('address1', 'numa-0'): 8}
     move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
-    assert move_queued_subtasks == {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 4,
-                                    ('address2', 'numa-0'): 4}
+    assert move_queued_subtasks == \
+        {('address1', 'numa-0'): -8, ('address0', 'numa-0'): 4, ('address2', 'numa-0'): 4}
 
     band_num_queued_subtasks = {('address1', 'numa-0'): 0}
     move_queued_subtasks = await assigner_ref.reassign_subtasks(band_num_queued_subtasks)
