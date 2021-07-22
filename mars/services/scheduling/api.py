@@ -109,7 +109,7 @@ class SchedulingAPI(ABC):
             list of priorities of subtasks
         """
         if priorities is None:
-            priorities = [(subtask.priority,) for subtask in subtasks]
+            priorities = [subtask.priority or tuple() for subtask in subtasks]
         await self._manager_ref.add_subtasks(subtasks, priorities)
 
     @extensible
