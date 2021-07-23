@@ -25,8 +25,8 @@ from typing import Dict, Optional, Union
 from .... import oscar as mo
 from ....core.graph import DAG
 from ....core.operand import Fetch
-from ....oscar.errors import MarsError
 from ....lib.aio import alru_cache
+from ....oscar.errors import MarsError
 from ....storage import StorageLevel
 from ....utils import dataslots
 from ...cluster import ClusterAPI
