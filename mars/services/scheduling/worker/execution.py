@@ -64,25 +64,31 @@ class SubtaskExecutionActor(mo.Actor):
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_slot_manager_ref(self, band: str) -> Union[mo.ActorRef, BandSlotManagerActor]:
+        return await mo.actor_ref(BandSlotManagerActor.gen_uid(band), address=self.address)
+
+    @alru_cache(cache_exceptions=False)
+    async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
+        return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
+
+    @staticmethod
+    @alru_cache(cache_exceptions=False)
+    async def _get_task_api(supervisor_address: str, session_id: str):
+        from ...task import TaskAPI
+        return await TaskAPI.create(session_id, supervisor_address)
+
+    async def _get_global_slot_ref(self):
+        if self._global_slot_ref is not None:
+            return self._global_slot_ref
+
         try:
             [self._global_slot_ref] = await self._cluster_api.get_supervisor_refs(
                 [GlobalSlotManagerActor.default_uid()])
         except mo.ActorNotExist:
             self._global_slot_ref = None
-
-    @alru_cache
-    async def _get_slot_manager_ref(self, band: str) -> Union[mo.ActorRef, BandSlotManagerActor]:
-        return await mo.actor_ref(BandSlotManagerActor.gen_uid(band), address=self.address)
-
-    @alru_cache
-    async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
-        return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
-
-    @staticmethod
-    @alru_cache
-    async def _get_task_api(supervisor_address: str, session_id: str):
-        from ...task import TaskAPI
-        return await TaskAPI.create(session_id, supervisor_address)
+        return self._global_slot_ref
 
     async def _prepare_input_data(self, subtask: Subtask):
         queries = []
@@ -259,10 +265,12 @@ class SubtaskExecutionActor(mo.Actor):
                 await slot_manager_ref.release_free_slot(slot_id)
 
             self._subtask_info.pop(subtask.subtask_id, None)
-            if self._global_slot_ref is not None:
+
+            global_slot_ref = await self._get_global_slot_ref()
+            if global_slot_ref is not None:
                 yield (
                     # make sure slot is released before marking tasks as finished
-                    self._global_slot_ref.release_subtask_slots(
+                    global_slot_ref.release_subtask_slots(
                         (self.address, band_name), subtask.session_id, subtask.subtask_id),
                     # make sure new slot usages are uploaded in time
                     slot_manager_ref.upload_slot_usages(periodical=False)

@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import importlib
 import logging
 from typing import Dict, Optional, Type, Union
 
 from .... import oscar as mo
+from ....lib.aio import alru_cache
 from ...core import BandType
+from ...cluster import ClusterAPI
 from ..core import Subtask, SubtaskResult
 from ..errors import SlotOccupiedAlready
 from .processor import SubtaskProcessor, SubtaskProcessorActor
@@ -38,17 +41,20 @@ class SubtaskRunnerActor(mo.Actor):
         return f'slot_{band_name}_{slot_id}_subtask_runner'
 
     def __init__(self,
-                 supervisor_address: str,
                  band: BandType,
                  subtask_processor_cls: Type = None):
-        self._supervisor_address = supervisor_address
         self._band = band
         self._subtask_processor_cls = \
             self._get_subtask_processor_cls(subtask_processor_cls)
 
+        self._cluster_api = None
+
         self._session_id_to_processors = dict()
         self._running_processor = None
         self._last_processor = None
+
+    async def __post_create__(self):
+        self._cluster_api = await ClusterAPI.create(address=self.address)
 
     async def __pre_destroy__(self):
         await asyncio.gather(*[
@@ -69,6 +75,11 @@ class SubtaskRunnerActor(mo.Actor):
         self._subtask_info.processor = processor
         return await processor.run()
 
+    @alru_cache(cache_exceptions=False)
+    async def _get_supervisor_address(self, session_id: str):
+        [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
+        return address
+
     async def run_subtask(self, subtask: Subtask):
         if self._running_processor is not None:  # pragma: no cover
             running_subtask_id = await self._running_processor.get_running_subtask_id()
@@ -78,10 +89,11 @@ class SubtaskRunnerActor(mo.Actor):
                 f'at {self.address}, cannot run subtask {subtask.subtask_id}')
 
         session_id = subtask.session_id
+        supervisor_address = await self._get_supervisor_address(session_id)
         if session_id not in self._session_id_to_processors:
             self._session_id_to_processors[session_id] = await mo.create_actor(
                 SubtaskProcessorActor, session_id, self._band,
-                self._supervisor_address, self._subtask_processor_cls,
+                supervisor_address, self._subtask_processor_cls,
                 uid=SubtaskProcessorActor.gen_uid(session_id),
                 address=self.address)
         processor = self._session_id_to_processors[session_id]

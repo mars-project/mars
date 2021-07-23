@@ -42,7 +42,7 @@ class SessionManagerActor(mo.Actor):
         if session_id in self._session_refs:
             raise mo.Return(self._session_refs[session_id])
 
-        address = (await self._cluster_api.get_supervisors_by_keys([session_id]))[0]
+        [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
         session_actor_ref = await mo.create_actor(
             SessionActor, session_id, self._service_config,
             address=address,

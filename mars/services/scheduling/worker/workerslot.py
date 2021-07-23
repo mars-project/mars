@@ -22,7 +22,7 @@ import psutil
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
-from ...cluster import WorkerSlotInfo
+from ...cluster import WorkerSlotInfo, ClusterAPI
 from ...core import BandType
 
 logger = logging.getLogger(__name__)
@@ -43,12 +43,7 @@ class WorkerSlotManagerActor(mo.Actor):
         self._band_slot_managers = dict()  # type: Dict[str, mo.ActorRef]
 
     async def __post_create__(self):
-        from ...cluster.api import ClusterAPI
-        from ..supervisor import GlobalSlotManagerActor
-
         self._cluster_api = await ClusterAPI.create(self.address)
-        [self._global_slots_ref] = await self._cluster_api.get_supervisor_refs([
-            GlobalSlotManagerActor.default_uid()])
 
         band_to_slots = await self._cluster_api.get_bands()
         for band, n_slot in band_to_slots.items():
@@ -96,7 +91,6 @@ class BandSlotManagerActor(mo.Actor):
         self._usage_upload_task = None
 
     async def __post_create__(self):
-        from ...cluster.api import ClusterAPI
         try:
             self._cluster_api = await ClusterAPI.create(self.address)
         except mo.ActorNotExist:
@@ -117,6 +111,15 @@ class BandSlotManagerActor(mo.Actor):
 
     async def __pre_destroy__(self):
         self._usage_upload_task.cancel()
+
+    async def _get_global_slot_ref(self):
+        if self._global_slots_ref is not None:
+            return self._global_slots_ref
+
+        from ..supervisor import GlobalSlotManagerActor
+        [self._global_slots_ref] = await self._cluster_api.get_supervisor_refs([
+            GlobalSlotManagerActor.default_uid()])
+        return self._global_slots_ref
 
     async def acquire_free_slot(self, session_stid: Tuple[str, str]):
         yield self._semaphore.acquire()
@@ -177,6 +180,7 @@ class BandSlotManagerActor(mo.Actor):
     async def upload_slot_usages(self, periodical: bool = False):
         delays = []
         slot_infos = []
+        global_slots_ref = await self._get_global_slot_ref()
         for slot_id, proc in self._slot_to_proc.items():
             if slot_id not in self._slot_to_session_stid:
                 continue
@@ -194,13 +198,13 @@ class BandSlotManagerActor(mo.Actor):
                 processor_usage=usage
             ))
 
-            if self._global_slots_ref is not None:  # pragma: no branch
+            if global_slots_ref is not None:  # pragma: no branch
                 # FIXME fix band slot mistake
-                delays.append(self._global_slots_ref.update_subtask_slots.delay(
+                delays.append(global_slots_ref.update_subtask_slots.delay(
                     self._band[1], session_id, subtask_id, max(1.0, usage)))
 
         if delays:  # pragma: no branch
-            yield self._global_slots_ref.update_subtask_slots.batch(*delays)
+            yield global_slots_ref.update_subtask_slots.batch(*delays)
         if self._cluster_api is not None:
             await self._cluster_api.set_band_slot_infos(self._band_name, slot_infos)
 

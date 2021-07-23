@@ -16,7 +16,8 @@ import os
 
 import pytest
 
-from mars.deploy.utils import load_service_config_file, get_third_party_modules_from_config
+from mars.deploy.utils import load_service_config_file, \
+    get_third_party_modules_from_config, next_in_thread
 from mars.services import NodeRole
 
 _cwd = os.path.abspath(os.getcwd())
@@ -84,3 +85,17 @@ def test_get_third_party_modules_from_config():
     config = {'third_party_modules': {'supervisor': 'a.module'}}
     with pytest.raises(TypeError, match='str'):
         get_third_party_modules_from_config(config, NodeRole.SUPERVISOR)
+
+
+@pytest.mark.asyncio
+async def test_next_in_thread():
+    def gen_fun():
+        yield 1
+        yield 2
+
+    gen = gen_fun()
+
+    assert await next_in_thread(gen) == 1
+    assert await next_in_thread(gen) == 2
+    with pytest.raises(StopAsyncIteration):
+        await next_in_thread(gen)

@@ -31,7 +31,7 @@ class AbstractClusterAPI:
             return {NodeStatus.READY}
 
     @abstractmethod
-    async def get_supervisors(self) -> List[str]:
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
         """
         Get supervisor addresses
 

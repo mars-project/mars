@@ -95,7 +95,7 @@ async def test_web_api(actor_pool):
     await start_web(web_config, pool_addr)
 
     web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
-    assert await web_api.get_supervisors() == []
+    assert await web_api.get_supervisors() == [pool_addr]
 
     assert len(await web_api.get_all_bands(statuses={NodeStatus.READY})) > 0
     assert len(await web_api.get_nodes_info(
