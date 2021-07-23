@@ -20,8 +20,8 @@ from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
 from ....optimization.logical import OptimizationRecords
+from ....typing import BandType
 from ....utils import get_params_fields
-from ...core import BandType
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
 from ...meta import MetaAPI

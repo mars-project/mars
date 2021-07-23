@@ -15,7 +15,8 @@
 from abc import abstractmethod
 from typing import List, Dict, Set
 
-from ...core import NodeRole, BandType
+from ....typing import BandType
+from ...core import NodeRole
 from ..core import NodeStatus
 
 

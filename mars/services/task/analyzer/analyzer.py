@@ -17,8 +17,8 @@ from typing import Dict, List, Tuple, Type, Union
 
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, Fuse, VirtualOperand
+from ....typing import BandType
 from ....utils import build_fetch
-from ...core import BandType
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner

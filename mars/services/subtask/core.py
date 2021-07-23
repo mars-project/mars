@@ -19,7 +19,7 @@ from ...core import ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, Int32Field, Int64Field, Float64Field, \
     BoolField, AnyField, DictField, ListField, TupleField, FieldTypes
-from ..core import BandType
+from ...typing import BandType
 
 
 class SubtaskStatus(Enum):
