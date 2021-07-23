@@ -20,10 +20,10 @@ import numpy as np
 from mars.core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
 from mars.core.operand import Fetch
 from mars.tests.core import _check_args, ObjectCheckMixin
-from mars.services.core import BandType
 from mars.services.subtask import SubtaskGraph
 from mars.services.task.analyzer import GraphAnalyzer
 from mars.services.task.supervisor.preprocessor import TaskPreprocessor
+from mars.typing import BandType
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):

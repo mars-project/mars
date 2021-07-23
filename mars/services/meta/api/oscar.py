@@ -22,8 +22,8 @@ from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
     DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
     SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 from ....lib.aio import alru_cache
+from ....typing import BandType
 from ....utils import extensible
-from ...core import BandType
 from ..core import get_meta_type
 from ..store import AbstractMetaStore
 from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor

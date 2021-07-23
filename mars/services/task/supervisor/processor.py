@@ -25,9 +25,8 @@ from ....config import Config
 from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy
 from ....optimization.logical import OptimizationRecords
-from ....typing import TileableType
+from ....typing import TileableType, BandType
 from ....utils import build_fetch, extensible
-from ...core import BandType
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI

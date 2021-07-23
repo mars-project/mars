@@ -26,8 +26,8 @@ from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
 from ....lib.aio import alru_cache
 from ....optimization.physical import optimize
+from ....typing import BandType
 from ...context import ThreadedServiceContext
-from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
 from ...session import SessionAPI

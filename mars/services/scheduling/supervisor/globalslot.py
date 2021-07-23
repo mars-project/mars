@@ -18,8 +18,8 @@ from collections import defaultdict
 from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
+from ....typing import BandType
 from ....utils import extensible
-from ...core import BandType
 
 logger = logging.getLogger(__name__)
 
