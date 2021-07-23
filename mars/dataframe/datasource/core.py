@@ -18,6 +18,7 @@ from typing import List, Optional, Union
 
 from ...core import recursive_tile
 from ...core.context import get_context, Context
+from ...oscar import ActorNotExist
 from ...serialization.serializables import Int64Field, StringField
 from ...typing import TileableType, OperandType
 from ..core import IndexValue
@@ -102,10 +103,12 @@ class _IncrementalIndexRecorder:
         await asyncio.gather(*(e.wait() for e in self._done[:i]))
         return sum(self._chunk_sizes[:i])
 
-    async def done(self, i: int, size: int):
+    async def finish(self, i: int, size: int):
         self._chunk_sizes[i] = size
         self._done[i].set()
-        return i == self._n_chunk - 1
+
+    def is_done(self) -> bool:
+        return all(e.is_set() for e in self._done)
 
 
 class IncrementalIndexDatasource(HeadOptimizedDataSource):
@@ -143,9 +146,13 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]
-            done = recorder.done(index, len(result))
+            recorder.finish(index, len(result))
             # wait for previous chunks to finish, then update index
             size = recorder.wait(index)
             result.index += size
-            if done:
-                ctx.destroy_remote_object(recorder_name)
+            is_done = recorder.is_done()
+            if is_done:
+                try:
+                    ctx.destroy_remote_object(recorder_name)
+                except ActorNotExist:
+                    pass
