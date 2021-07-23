@@ -20,8 +20,8 @@ import mars.oscar as mo
 from mars.core import ChunkGraph
 from mars.services.cluster import ClusterAPI
 from mars.services.cluster.core import NodeRole, NodeStatus
-from mars.services.cluster.locator import SupervisorLocatorActor
 from mars.services.cluster.uploader import NodeInfoUploaderActor
+from mars.services.cluster.supervisor.locator import SupervisorPeerLocatorActor
 from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
@@ -60,8 +60,8 @@ class FakeClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls, address: str, **kw):
         dones, _ = await asyncio.wait([
-            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
-                            uid=SupervisorLocatorActor.default_uid(),
+            mo.create_actor(SupervisorPeerLocatorActor, 'fixed', address,
+                            uid=SupervisorPeerLocatorActor.default_uid(),
                             address=address),
             mo.create_actor(MockNodeInfoCollectorActor,
                             uid=NodeInfoCollectorActor.default_uid(),
