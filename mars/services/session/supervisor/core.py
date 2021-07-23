@@ -42,7 +42,7 @@ class SessionManagerActor(mo.Actor):
         if session_id in self._session_refs:
             raise mo.Return(self._session_refs[session_id])
 
-        address = (await self._cluster_api.get_supervisors_by_keys([session_id]))[0]
+        [address] = await self._cluster_api.get_supervisors_by_keys([session_id])
         session_actor_ref = await mo.create_actor(
             SessionActor, session_id, self._service_config,
             address=address,
@@ -204,6 +204,10 @@ class RemoteObjectActor(mo.Actor):
         @functools.wraps(func)
         async def wrap(*args, **kwargs):
             # return coroutine to not block current actor
-            return asyncio.to_thread(func, *args, **kwargs)
+            if asyncio.iscoroutinefunction(func):
+                return func(*args, **kwargs)
+            else:
+                # for sync call, running in thread
+                return asyncio.to_thread(func, *args, **kwargs)
 
         return wrap

@@ -75,7 +75,7 @@ class TaskStageProcessor:
             return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
-            subtasks, [(subtask.priority,) for subtask in subtasks])
+            subtasks, [subtask.priority for subtask in subtasks])
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []

@@ -286,7 +286,8 @@ class StorageHandlerActor(mo.Actor):
     async def _get_meta_api(self, session_id: str):
         if self._supervisor_address is None:
             cluster_api = await ClusterAPI.create(self.address)
-            self._supervisor_address = (await cluster_api.get_supervisors())[0]
+            [self._supervisor_address] = await cluster_api.get_supervisors_by_keys([session_id])
+
         return await MetaAPI.create(session_id=session_id,
                                     address=self._supervisor_address)
 

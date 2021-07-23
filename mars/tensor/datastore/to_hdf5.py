@@ -20,6 +20,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core.context import get_context
+from ...oscar import ActorNotExist
 from ...serialization.serializables import FieldTypes, KeyField, \
     StringField, DictField, TupleField
 from ...lib.filesystem import open_file
@@ -183,7 +184,11 @@ class TensorHDF5DataStore(TensorDataStore):
                     container.mark_done(op.key)
         finally:
             if container:
-                container.release()
+                try:
+                    container.release()
+                except ActorNotExist:
+                    # destroyed by other execution, just ignore
+                    return
                 if container.is_done():
                     ctx.destroy_remote_object(container_name)
 

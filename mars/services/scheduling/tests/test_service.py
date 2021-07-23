@@ -185,7 +185,7 @@ async def test_schedule_queue(actor_pools):
         subtask = _gen_subtask(a, session_id)
         subtask.subtask_id = f'test_schedule_queue_subtask_{task_id}'
         subtask.expect_bands = [(worker_pool.external_address, 'numa-0')]
-        subtask.priority = 4 - task_id
+        subtask.priority = (4 - task_id,)
         wait_tasks.append(asyncio.create_task(_waiter_fun(subtask.subtask_id)))
         subtasks.append(subtask)
 
@@ -239,7 +239,7 @@ async def test_schedule_cancel(actor_pools):
         subtask = _gen_subtask(a, session_id)
         subtask.subtask_id = f'test_schedule_queue_subtask_{task_id}'
         subtask.expect_bands = [(worker_pool.external_address, 'numa-0')]
-        subtask.priority = 4 - task_id
+        subtask.priority = (4 - task_id,)
         wait_tasks.append(asyncio.create_task(_waiter_fun(subtask.subtask_id)))
         subtasks.append(subtask)
 

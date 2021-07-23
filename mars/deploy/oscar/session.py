@@ -30,6 +30,7 @@ from weakref import WeakKeyDictionary
 from typing import Any, Callable, Coroutine, Dict, List, \
     Optional, Tuple, Type, Union
 
+from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.operand import Fetch
@@ -41,6 +42,7 @@ from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
+from ...services.web import OscarWebAPI
 from ...tensor.utils import slice_split
 from ...typing import ClientType
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
@@ -277,6 +279,17 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    async def get_web_endpoint(self) -> Optional[str]:
+        """
+        Get web endpoint of current session
+
+        Returns
+        -------
+        web_endpoint : str
+            web endpoint
+        """
+
+    @abstractmethod
     async def create_remote_object(self,
                                    session_id: str,
                                    name: str,
@@ -470,6 +483,17 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
             List of versions
         """
 
+    @abstractmethod
+    def get_web_endpoint(self) -> Optional[str]:
+        """
+        Get web endpoint of current session
+
+        Returns
+        -------
+        web_endpoint : str
+            web endpoint
+        """
+
     def fetch_log(self,
                   tileables: List[TileableType],
                   offsets: List[int] = None,
@@ -566,6 +590,7 @@ class _IsolatedSession(AbstractAsyncSession):
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
                  cluster_api: AbstractClusterAPI,
+                 web_api: Optional[OscarWebAPI],
                  client: ClientType = None,
                  timeout: float = None):
         super().__init__(address, session_id)
@@ -574,6 +599,7 @@ class _IsolatedSession(AbstractAsyncSession):
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
         self._cluster_api = cluster_api
+        self._web_api = web_api
         self.client = client
         self.timeout = timeout
 
@@ -597,10 +623,15 @@ class _IsolatedSession(AbstractAsyncSession):
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
         cluster_api = await ClusterAPI.create(session_address)
+        try:
+            web_api = await OscarWebAPI.create(session_address)
+        except mo.ActorNotExist:
+            web_api = None
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, timeout=timeout)
+                   cluster_api, web_api,
+                   timeout=timeout)
 
     @classmethod
     @implements(AbstractAsyncSession.init)
@@ -859,6 +890,11 @@ class _IsolatedSession(AbstractAsyncSession):
     async def get_cluster_versions(self) -> List[str]:
         return list(await self._cluster_api.get_mars_versions())
 
+    async def get_web_endpoint(self) -> Optional[str]:
+        if self._web_api is None:
+            return None
+        return await self._web_api.get_web_address()
+
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
@@ -915,7 +951,10 @@ class _IsolatedWebSession(_IsolatedSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, timeout=timeout)
+                   cluster_api, None, timeout=timeout)
+
+    async def get_web_endpoint(self) -> Optional[str]:
+        return self.address
 
 
 def _delegate_to_isolated_session(func: Union[Callable, Coroutine]):
@@ -1046,6 +1085,11 @@ class AsyncSession(AbstractAsyncSession):
     async def destroy_remote_object(self,
                                     session_id: str,
                                     name: str):
+        pass  # pragma: no cover
+
+    @implements(AbstractAsyncSession.get_web_endpoint)
+    @_delegate_to_isolated_session
+    async def get_web_endpoint(self) -> Optional[str]:
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.stop_server)
@@ -1217,6 +1261,11 @@ class SyncSession(AbstractSyncSession):
     @implements(AbstractSyncSession.get_total_n_cpu)
     @_delegate_to_isolated_session
     def get_total_n_cpu(self):
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.get_web_endpoint)
+    @_delegate_to_isolated_session
+    def get_web_endpoint(self) -> Optional[str]:
         pass  # pragma: no cover
 
     @implements(AbstractSyncSession.get_cluster_versions)
