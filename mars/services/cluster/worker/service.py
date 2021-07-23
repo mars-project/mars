@@ -14,8 +14,8 @@
 
 from .... import oscar as mo
 from ...core import NodeRole
-from ..locator import SupervisorLocatorActor
 from ..uploader import NodeInfoUploaderActor
+from .locator import WorkerSupervisorLocatorActor
 
 
 async def start(config: dict, address: str):
@@ -46,10 +46,10 @@ async def start(config: dict, address: str):
     lookup_address = svc_config.get('lookup_address',
                                     address if backend == 'fixed' else None)
     await mo.create_actor(
-        SupervisorLocatorActor,
+        WorkerSupervisorLocatorActor,
         backend_name=backend,
         lookup_address=lookup_address,
-        uid=SupervisorLocatorActor.default_uid(),
+        uid=WorkerSupervisorLocatorActor.default_uid(),
         address=address)
     await mo.create_actor(
         NodeInfoUploaderActor,
@@ -65,5 +65,5 @@ async def stop(config: dict, address: str):
         uid=NodeInfoUploaderActor.default_uid(), address=address
     ))
     await mo.destroy_actor(mo.create_actor_ref(
-        uid=SupervisorLocatorActor.default_uid(), address=address
+        uid=WorkerSupervisorLocatorActor.default_uid(), address=address
     ))
