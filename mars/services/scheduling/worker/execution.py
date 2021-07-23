@@ -283,11 +283,14 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
             self._subtask_info.pop(subtask.subtask_id, None)
             if self._global_slot_ref is not None:
-                # make sure slot is released before marking tasks as finished
-                await self._global_slot_ref.release_subtask_slots(
-                    (self.address, band_name), subtask.session_id, subtask.subtask_id)
-                # make sure new slot usages are uploaded in time
-                await slot_manager_ref.upload_slot_usages(periodical=False)
+                co_tasks = [
+                    # make sure slot is released before marking tasks as finished
+                    self._global_slot_ref.release_subtask_slots(
+                            (self.address, band_name), subtask.session_id, subtask.subtask_id),
+                    # make sure new slot usages are uploaded in time
+                    slot_manager_ref.upload_slot_usages(periodical=False),
+                ]
+                await asyncio.gather(*co_tasks)
                 logger.debug('Slot released for band %s after subtask %s',
                              band_name, subtask.subtask_id)
 
