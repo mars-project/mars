@@ -51,7 +51,7 @@ def setup():
 
     sess = new_test_session(address='test://127.0.0.1',
                             init_local=True,
-                            default=True)
+                            default=True, timeout=300)
     with option_context({'show_progress': False}):
         try:
             yield sess

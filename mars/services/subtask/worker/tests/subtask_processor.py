@@ -83,12 +83,10 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
         return await super().run()
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         fault = await self._fault_injection_manager.on_execute_operand()
         if fault:
             raise RuntimeError("Fault Injection")
 
-        return await super()._async_execute_operand(loop, executor, ctx, op)
+        return await super()._async_execute_operand(ctx, op)
