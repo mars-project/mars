@@ -16,8 +16,9 @@ import json
 from typing import Dict, List, Optional, Set
 
 from ....lib.aio import alru_cache
+from ....typing import BandType
 from ....utils import serialize_serializable, deserialize_serializable
-from ...core import NodeRole, BandType
+from ...core import NodeRole
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import watch_method, NodeStatus
 from .core import AbstractClusterAPI

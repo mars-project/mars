@@ -18,7 +18,8 @@ from typing import List, Dict, Optional, Set, Type, TypeVar
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ...core import NodeRole, BandType
+from ....typing import BandType
+from ...core import NodeRole
 from ..core import watch_method, NodeStatus, WorkerSlotInfo, QuotaInfo, \
     DiskInfo, StorageInfo
 from .core import AbstractClusterAPI

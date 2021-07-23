@@ -17,11 +17,6 @@ import enum
 import importlib
 from typing import Dict, List, Union
 
-from ..typing import BandType
-
-
-BandType = BandType
-
 
 class NodeRole(enum.Enum):
     SUPERVISOR = 0

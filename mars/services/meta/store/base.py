@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type
 
-from ...core import BandType
+from ....typing import BandType
 from ..core import _CommonMeta
 
 

@@ -18,6 +18,7 @@ from typing import List, Optional, Union
 
 from ...core import recursive_tile
 from ...core.context import get_context, Context
+from ...oscar import ActorNotExist
 from ...serialization.serializables import Int64Field, StringField
 from ...typing import TileableType, OperandType
 from ..core import IndexValue
@@ -95,17 +96,25 @@ class _IncrementalIndexRecorder:
         self._n_chunk = n_chunk
         self._done = [asyncio.Event() for _ in range(n_chunk)]
         self._chunk_sizes = [None] * n_chunk
+        self._waiters = set()
+
+    def _can_destroy(self):
+        return all(e.is_set() for e in self._done) and not self._waiters
 
     async def wait(self, i: int):
         if i == 0:
-            return 0
-        await asyncio.gather(*(e.wait() for e in self._done[:i]))
-        return sum(self._chunk_sizes[:i])
+            return 0, self._can_destroy()
+        self._waiters.add(i)
+        try:
+            await asyncio.gather(*(e.wait() for e in self._done[:i]))
+        finally:
+            self._waiters.remove(i)
+        # all chunk finished and no waiters
+        return sum(self._chunk_sizes[:i]), self._can_destroy()
 
-    async def done(self, i: int, size: int):
+    async def finish(self, i: int, size: int):
         self._chunk_sizes[i] = size
         self._done[i].set()
-        return i == self._n_chunk - 1
 
 
 class IncrementalIndexDatasource(HeadOptimizedDataSource):
@@ -143,9 +152,12 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
             recorder_name = op.incremental_index_recorder_name
             recorder = ctx.get_remote_object(recorder_name)
             index = out.index[0]
-            done = recorder.done(index, len(result))
+            recorder.finish(index, len(result))
             # wait for previous chunks to finish, then update index
-            size = recorder.wait(index)
+            size, can_destroy = recorder.wait(index)
             result.index += size
-            if done:
-                ctx.destroy_remote_object(recorder_name)
+            if can_destroy:
+                try:
+                    ctx.destroy_remote_object(recorder_name)
+                except ActorNotExist:
+                    pass
