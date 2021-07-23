@@ -24,7 +24,7 @@ from ....core.operand import Fetch
 from ....typing import TileableType, ChunkType
 from ....optimization.logical.chunk import optimize as optimize_chunk_graph
 from ....optimization.logical.tileable import optimize as optimize_tileable_graph
-from ...core import BandType
+from ....typing import BandType
 from ...subtask import SubtaskGraph
 from ..analyzer import GraphAnalyzer
 from ..core import Task

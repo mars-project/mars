@@ -16,7 +16,7 @@ from dataclasses import asdict
 from typing import Dict, List
 
 from ....utils import implements, extensible
-from ...core import BandType
+from ....typing import BandType
 from ..core import _CommonMeta, _ChunkMeta
 from .base import AbstractMetaStore, register_meta_store
 

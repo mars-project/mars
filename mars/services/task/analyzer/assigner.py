@@ -21,8 +21,8 @@ import numpy as np
 
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
+from ....typing import BandType
 from ....utils import implements
-from ...core import BandType
 
 
 class AbstractGraphAssigner(ABC):

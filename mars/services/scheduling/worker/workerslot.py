@@ -22,8 +22,8 @@ import psutil
 
 from .... import oscar as mo
 from ....oscar.backends.allocate_strategy import IdleLabel
+from ....typing import BandType
 from ...cluster import WorkerSlotInfo, ClusterAPI
-from ...core import BandType
 
 logger = logging.getLogger(__name__)
 

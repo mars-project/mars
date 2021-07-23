@@ -186,11 +186,11 @@ class TensorHDF5DataStore(TensorDataStore):
             if container:
                 try:
                     container.release()
+                    if container.is_done():
+                        ctx.destroy_remote_object(container_name)
                 except ActorNotExist:
                     # destroyed by other execution, just ignore
                     return
-                if container.is_done():
-                    ctx.destroy_remote_object(container_name)
 
 
 def tohdf5(hdf5_file, x, group=None, dataset=None, **kwds):

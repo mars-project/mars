@@ -17,7 +17,8 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set
 
 from .... import oscar as mo
-from ...core import NodeRole, BandType
+from ....typing import BandType
+from ...core import NodeRole
 from ..core import NodeInfo, WatchNotifier, NodeStatus
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
