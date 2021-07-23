@@ -54,8 +54,8 @@ class _TileableSession:
             if not decref_in_isolation:
                 # if decref in isolation, means that this tileable
                 # is not required for main thread, thus we do not need
-                # to wait for decref, otherwise, wait it
-                fut.result()
+                # to wait for decref, otherwise, wait a bit
+                fut.result(.5)
 
         self.tileable = ref(tileable, cb)
 
