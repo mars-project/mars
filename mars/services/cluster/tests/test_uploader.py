@@ -18,7 +18,8 @@ import pytest
 
 import mars.oscar as mo
 from mars.services import NodeRole
-from mars.services.cluster.locator import SupervisorLocatorActor
+from mars.services.cluster.supervisor.locator import \
+    SupervisorPeerLocatorActor
 from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.cluster.uploader import NodeInfoUploaderActor
 
@@ -35,8 +36,8 @@ async def actor_pool():
 async def test_uploader(actor_pool):
     pool_addr = actor_pool.external_address
     await mo.create_actor(
-        SupervisorLocatorActor, 'fixed', pool_addr,
-        uid=SupervisorLocatorActor.default_uid(), address=pool_addr)
+        SupervisorPeerLocatorActor, 'fixed', pool_addr,
+        uid=SupervisorPeerLocatorActor.default_uid(), address=pool_addr)
     node_info_ref = await mo.create_actor(
         NodeInfoCollectorActor, timeout=0.5, check_interval=0.1,
         uid=NodeInfoCollectorActor.default_uid(), address=pool_addr

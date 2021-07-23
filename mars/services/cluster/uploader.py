@@ -71,6 +71,9 @@ class NodeInfoUploaderActor(mo.Actor):
             SupervisorLocatorActor.default_uid(), address=self.address)
         supervisor_addr = await locator_ref.get_supervisor(
             NodeInfoCollectorActor.default_uid())
+        if supervisor_addr is None:
+            raise ValueError
+
         return await mo.actor_ref(
             NodeInfoCollectorActor.default_uid(), address=supervisor_addr)
 
@@ -105,14 +108,19 @@ class NodeInfoUploaderActor(mo.Actor):
                 res_dict.update(res)
 
             if self._upload_enabled:
-                node_info_ref = await self._get_node_info_ref()
-                await node_info_ref.update_node_info(
-                    address=self.address, role=self._info.role,
-                    env=self._info.env if not self._env_uploaded else None,
-                    resource=self._info.resource, detail=self._info.detail,
-                    status=status
-                )
-                self._env_uploaded = True
+                try:
+                    node_info_ref = await self._get_node_info_ref()
+                    if not self._env_uploaded:
+                        status = status or NodeStatus.READY
+                    await node_info_ref.update_node_info(
+                        address=self.address, role=self._info.role,
+                        env=self._info.env if not self._env_uploaded else None,
+                        resource=self._info.resource, detail=self._info.detail,
+                        status=status
+                    )
+                    self._env_uploaded = True
+                except ValueError:
+                    pass
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             logger.exception(f'Failed to upload node info')
             raise

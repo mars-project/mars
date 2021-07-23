@@ -147,3 +147,10 @@ def get_third_party_modules_from_config(config: Dict, role: NodeRole):
     for mods in tuple(modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
         all_modules.extend(mods.split(',') if mods else [])
     return all_modules
+
+
+async def next_in_thread(gen):
+    res = await asyncio.to_thread(next, gen, StopIteration)
+    if res is StopIteration:
+        raise StopAsyncIteration
+    return res

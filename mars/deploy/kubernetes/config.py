@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import abc
+import functools
+import re
 
 from ... import __version__ as mars_version
 from ...utils import parse_readable_size
@@ -25,10 +27,45 @@ def _remove_nones(cfg):
     return dict((k, v) for k, v in cfg.items() if v is not None)
 
 
-class RoleConfig:
+_kube_api_mapping = {
+    'v1': 'CoreV1Api',
+    'apps/v1': 'AppsV1Api',
+    'rbac.authorization.k8s.io/v1': 'RbacAuthorizationV1Api',
+}
+
+
+@functools.lru_cache(10)
+def _get_k8s_api(api_version, k8s_api_client):
+    from kubernetes import client as kube_client
+    return getattr(kube_client, _kube_api_mapping[api_version])(k8s_api_client)
+
+
+@functools.lru_cache(10)
+def _camel_to_underline(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+class KubeConfig(abc.ABC):
+    api_version = 'v1'
+
+    def create_namespaced(self, k8s_api_client, namespace):
+        api = _get_k8s_api(self.api_version, k8s_api_client)
+        config = self.build()
+        method_name = f'create_namespaced_{_camel_to_underline(config["kind"])}'
+        return getattr(api, method_name)(namespace, config)
+
+    @abc.abstractmethod
+    def build(self):
+        """Build config dict of the object"""
+
+
+class RoleConfig(KubeConfig):
     """
     Configuration builder for Kubernetes RBAC roles
     """
+    api_version = 'rbac.authorization.k8s.io/v1'
+
     def __init__(self, name, namespace, api_groups, resources, verbs):
         self._name = name
         self._namespace = namespace
@@ -48,10 +85,12 @@ class RoleConfig:
         }
 
 
-class RoleBindingConfig:
+class RoleBindingConfig(KubeConfig):
     """
     Configuration builder for Kubernetes RBAC role bindings
     """
+    api_version = 'rbac.authorization.k8s.io/v1'
+
     def __init__(self, name, namespace, role_name, service_account_name):
         self._name = name
         self._namespace = namespace
@@ -75,7 +114,7 @@ class RoleBindingConfig:
         }
 
 
-class NamespaceConfig:
+class NamespaceConfig(KubeConfig):
     """
     Configuration builder for Kubernetes namespaces
     """
@@ -94,7 +133,7 @@ class NamespaceConfig:
         }
 
 
-class ServiceConfig:
+class ServiceConfig(KubeConfig):
     """
     Configuration builder for Kubernetes services
     """
@@ -112,6 +151,9 @@ class ServiceConfig:
             'kind': 'Service',
             'metadata': {
                 'name': self._name,
+                'labels': {
+                    'mars/service-name': self._name,
+                },
             },
             'spec': _remove_nones({
                 'type': self._type,
@@ -271,12 +313,11 @@ class TcpSocketProbeConfig(ProbeConfig):
         return ret
 
 
-class ReplicationConfig(abc.ABC):
+class ReplicationConfig(KubeConfig):
     """
     Base configuration builder for Kubernetes replication controllers
     """
-
-    _default_kind = 'ReplicationController'
+    _default_kind = 'Deployment'
 
     def __init__(self, name, image, replicas, resource_request=None, resource_limit=None,
                  liveness_probe=None, readiness_probe=None, pre_stop_command=None,
@@ -299,6 +340,10 @@ class ReplicationConfig(abc.ABC):
         self._readiness_probe = readiness_probe
 
         self._pre_stop_command = pre_stop_command
+
+    @property
+    def api_version(self):
+        return 'apps/v1' if self._kind in ('Deployment', 'ReplicaSet') else 'v1'
 
     def add_env(self, name, value=None, field_path=None):
         self._envs[name] = ContainerEnvConfig(name, value=value, field_path=field_path)
@@ -383,7 +428,7 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
 
     def __init__(self, replicas, cpu=None, memory=None, limit_resources=False,
                  memory_limit_ratio=None, image=None, modules=None, volumes=None,
-                 service_port=None, **kwargs):
+                 service_name=None, service_port=None, **kwargs):
         self._cpu = cpu
         self._memory, ratio = parse_readable_size(memory) if memory is not None else (None, False)
         assert not ratio
@@ -397,6 +442,7 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
         limit_res = ResourceConfig(
             req_res.cpu, req_res.memory * (memory_limit_ratio or 1)) if req_res and memory else None
 
+        self._service_name = service_name
         self._service_port = service_port
 
         super().__init__(
@@ -417,6 +463,8 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
         self.add_env('MARS_K8S_POD_NAMESPACE', field_path='metadata.namespace')
         self.add_env('MARS_K8S_POD_IP', field_path='status.podIP')
 
+        if self._service_name:
+            self.add_env('MARS_K8S_SERVICE_NAME', str(self._service_name))
         if self._service_port:
             self.add_env('MARS_K8S_SERVICE_PORT', str(self._service_port))
 
@@ -443,7 +491,10 @@ class MarsReplicationConfig(ReplicationConfig, abc.ABC):
 
     def build(self):
         result = super().build()
-        result['spec']['selector'] = {'mars/service-type': self.rc_name}
+        if self._kind in ('Deployment', 'ReplicaSet'):
+            result['spec']['selector'] = {'matchLabels': {'mars/service-type': self.rc_name}}
+        else:
+            result['spec']['selector'] = {'mars/service-type': self.rc_name}
         return result
 
 
@@ -488,6 +539,7 @@ class MarsWorkersConfig(MarsReplicationConfig):
         worker_cache_mem = kwargs.pop('worker_cache_mem', None)
         min_cache_mem = kwargs.pop('min_cache_mem', None)
         self._readiness_port = kwargs.pop('readiness_port', self.default_readiness_port)
+        supervisor_web_port = kwargs.pop('supervisor_web_port', None)
 
         super().__init__(*args, **kwargs)
 
@@ -510,6 +562,8 @@ class MarsWorkersConfig(MarsReplicationConfig):
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
         if min_cache_mem:
             self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
+        if supervisor_web_port:
+            self.add_env('MARS_K8S_SUPERVISOR_WEB_PORT', supervisor_web_port)
 
     def config_readiness_probe(self):
         return TcpSocketProbeConfig(
