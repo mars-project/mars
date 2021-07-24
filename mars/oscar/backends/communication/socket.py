@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures as futures
 import os
 import socket
+import sys
 import tempfile
 from abc import ABCMeta
 from asyncio import StreamReader, StreamWriter, AbstractServer
@@ -29,6 +30,8 @@ from ....utils import implements, to_binary, classproperty
 from .base import Channel, ChannelType, Server, Client
 from .core import register_client, register_server
 from .utils import read_buffers, write_buffers
+
+_is_windows: bool = sys.platform.startswith('win')
 
 
 class SocketChannel(Channel):
@@ -199,6 +202,11 @@ class SocketServer(_BaseSocketServer):
 
         aio_server = await asyncio.start_server(
             handle_connection, host=host, port=port, **config)
+
+        if _is_windows:
+            for sock in aio_server.sockets:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
+
         server = SocketServer(host, port, aio_server,
                               channel_handler=handle_channel)
         return server
