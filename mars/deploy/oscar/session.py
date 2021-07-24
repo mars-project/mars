@@ -1281,7 +1281,8 @@ class SyncSession(AbstractSyncSession):
     def stop_server(self):
         try:
             coro = self._isolated_session.stop_server()
-            asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+            future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+            future.result(timeout=5)
         finally:
             self.reset_default()
             stop_isolation()
