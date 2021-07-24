@@ -20,7 +20,7 @@ from typing import Dict, List
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage import StorageLevel
-from ..core import BandType
+from ...typing import BandType
 from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, \
     DiskInfo, StorageInfo
 from .gather import gather_node_env, gather_node_resource, \

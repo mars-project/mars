@@ -19,7 +19,7 @@ from typing import Dict, Optional, Type, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ...core import BandType
+from ....typing import BandType
 from ...cluster import ClusterAPI
 from ..core import Subtask, SubtaskResult
 from ..errors import SlotOccupiedAlready

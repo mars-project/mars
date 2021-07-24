@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import uuid
+from typing import List, Optional, Union
+
 from ...core import recursive_tile
-from ...core.context import get_context
-from ...serialization.serializables import Int64Field
+from ...core.context import get_context, Context
+from ...oscar import ActorNotExist
+from ...serialization.serializables import Int64Field, StringField
+from ...typing import TileableType, OperandType
+from ..core import IndexValue
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
@@ -79,3 +86,78 @@ class ColumnPruneSupportedDataSourceMixin(DataFrameOperandMixin):
 
     def set_pruned_columns(self, columns, *, keep_order=None):  # pragma: no cover
         raise NotImplementedError
+
+
+class _IncrementalIndexRecorder:
+    _done: List[Optional[asyncio.Event]]
+    _chunk_sizes: List[Optional[int]]
+
+    def __init__(self, n_chunk: int):
+        self._n_chunk = n_chunk
+        self._done = [asyncio.Event() for _ in range(n_chunk)]
+        self._chunk_sizes = [None] * n_chunk
+        self._waiters = set()
+
+    def _can_destroy(self):
+        return all(e.is_set() for e in self._done) and not self._waiters
+
+    async def wait(self, i: int):
+        if i == 0:
+            return 0, self._can_destroy()
+        self._waiters.add(i)
+        try:
+            await asyncio.gather(*(e.wait() for e in self._done[:i]))
+        finally:
+            self._waiters.remove(i)
+        # all chunk finished and no waiters
+        return sum(self._chunk_sizes[:i]), self._can_destroy()
+
+    async def finish(self, i: int, size: int):
+        self._chunk_sizes[i] = size
+        self._done[i].set()
+
+
+class IncrementalIndexDatasource(HeadOptimizedDataSource):
+    __slots__ = ()
+
+    incremental_index_recorder_name = StringField('incremental_index_recorder_name')
+
+
+class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
+    __slots__ = ()
+
+    @classmethod
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
+        if op.incremental_index and results is not None and \
+                isinstance(results[0].index_value.value, IndexValue.RangeIndex):
+            result = results[0]
+            for chunk in result.chunks:
+                chunk.op.priority = -chunk.index[0]
+            n_chunk = len(result.chunks)
+            ctx = get_context()
+            if ctx:
+                name = str(uuid.uuid4())
+                ctx.create_remote_object(
+                    name, _IncrementalIndexRecorder, n_chunk)
+                for chunk in result.chunks:
+                    chunk.op.incremental_index_recorder_name = name
+
+    @classmethod
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
+        out = op.outputs[0]
+        result = ctx[out.key]
+        if op.incremental_index and \
+                isinstance(out.index_value.value, IndexValue.RangeIndex) and \
+                getattr(op, 'incremental_index_recorder_name', None):
+            recorder_name = op.incremental_index_recorder_name
+            recorder = ctx.get_remote_object(recorder_name)
+            index = out.index[0]
+            recorder.finish(index, len(result))
+            # wait for previous chunks to finish, then update index
+            size, can_destroy = recorder.wait(index)
+            result.index += size
+            if can_destroy:
+                try:
+                    ctx.destroy_remote_object(recorder_name)
+                except ActorNotExist:
+                    pass

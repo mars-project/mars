@@ -20,7 +20,7 @@ from typing import List, Dict
 from .. import oscar as mo
 from ..lib.aio import new_isolation
 from ..core.context import Context
-from ..typing import SessionType
+from ..typing import BandType, SessionType
 from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
@@ -39,10 +39,12 @@ class ThreadedServiceContext(Context):
                  session_id: str,
                  supervisor_address: str,
                  current_address: str,
-                 loop: asyncio.AbstractEventLoop):
+                 loop: asyncio.AbstractEventLoop,
+                 band: BandType = None):
         super().__init__(session_id=session_id,
                          supervisor_address=supervisor_address,
-                         current_address=current_address)
+                         current_address=current_address,
+                         band=band)
         self._loop = loop
         # new isolation with current loop,
         # so that session created in tile and execute

@@ -16,7 +16,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Dict
 
-from ..typing import SessionType
+from ..typing import BandType, SessionType
 
 
 class Context(ABC):
@@ -30,7 +30,8 @@ class Context(ABC):
     def __init__(self,
                  session_id: str = None,
                  supervisor_address: str = None,
-                 current_address: str = None):
+                 current_address: str = None,
+                 band: BandType = None):
         if session_id is None:
             # try to get session id from environment
             session_id = os.environ.get('MARS_SESSION_ID')
@@ -47,6 +48,7 @@ class Context(ABC):
         self.session_id = session_id
         self.supervisor_address = supervisor_address
         self.current_address = current_address
+        self.band = band
 
     @abstractmethod
     def get_current_session(self) -> SessionType:
