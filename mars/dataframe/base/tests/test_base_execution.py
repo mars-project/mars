@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 from mars.config import options, option_context
 from mars.dataframe import eval as mars_eval, cut, qcut
 from mars.dataframe.base import to_gpu, to_cpu
+from mars.dataframe.base.rebalance import DataFrameRebalance
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
@@ -1666,25 +1667,31 @@ def test_cartesian_chunk_execution(setup):
 
 
 def test_rebalance_execution(setup):
-    session = setup
     raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
     df = from_pandas_df(raw)
 
+    def _expect_count(n):
+        def _tile_rebalance(op):
+            tileable = yield from op.tile(op)
+            assert len(tileable.chunks) == n
+            return tileable
+        return _tile_rebalance
+
     r = df.rebalance(num_partitions=3)
-    result = r.execute().fetch()
+    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(3)}}
+    result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
-    assert len(session._session._tileable_to_fetch[r.data].chunks) == 3
 
     r = df.rebalance(factor=0.5)
-    result = r.execute().fetch()
+    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(1)}}
+    result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
-    assert len(session._session._tileable_to_fetch[r.data].chunks) == 1
 
     # test worker has two cores
     r = df.rebalance()
-    result = r.execute().fetch()
+    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(2)}}
+    result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
-    assert len(session._session._tileable_to_fetch[r.data].chunks) == 2
 
 
 def test_stack_execution(setup):
