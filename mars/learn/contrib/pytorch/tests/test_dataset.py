@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from mars.learn.contrib.xgboost import train
+<<<<<<< HEAD
+=======
+import sys
+sys.path.append("/mnt/d/OneDrive/专业/420实验室/开源之夏/project/mars")
+>>>>>>> 10bb3397127f0c91e7be73ea235820106c39dcec
 import unittest
 
 import mars.tensor as mt
@@ -20,6 +25,11 @@ from mars.session import new_session
 from mars.tests import setup
 from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler, MarsSequentialSampler
+<<<<<<< HEAD
+=======
+# from mars.learn.contrib.pytorch.dataset import MarsDataset
+# from mars.learn.contrib.pytorch.sampler import MarsSequentialSampler, MarsRandomSampler
+>>>>>>> 10bb3397127f0c91e7be73ea235820106c39dcec
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
@@ -43,7 +53,11 @@ def testMarsDataset(setup):
     assert isinstance(train_dataset, Dataset)
     assert isinstance(train_dataset[1][0], np.ndarray)
 
+<<<<<<< HEAD
 def testDatasetWithtorchSampler(setup):
+=======
+def testMarsDatasetWithSampler(setup):
+>>>>>>> 10bb3397127f0c91e7be73ea235820106c39dcec
     import torch
     from torch.utils.data import SequentialSampler, RandomSampler
 
