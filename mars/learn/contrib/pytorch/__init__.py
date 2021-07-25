@@ -14,11 +14,7 @@
 
 from .run_script import run_pytorch_script
 from .dataset import MarsDataset
-<<<<<<< HEAD
 from .sampler import MarsSequentialSampler, MarsRandomSampler
-=======
-from .sampler import MarsDistributedSampler, MarsSequentialSampler, MarsRandomSampler
->>>>>>> 10bb3397127f0c91e7be73ea235820106c39dcec
 
 
 def register_op():
