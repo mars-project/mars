@@ -4,12 +4,12 @@ if [ -n "$WITH_CYTHON" ]; then
   mkdir -p build
   export POOL_START_METHOD=forkserver
 
-  coverage run --rcfile=setup.cfg -m pytest -s $PYTEST_CONFIG_WITHOUT_COV mars/tests mars/core/graph
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/tests mars/core/graph
   python .github/workflows/remove_tracer_errors.py
   coverage combine
   mv .coverage build/.coverage.non-oscar.file
 
-  coverage run --rcfile=setup.cfg -m pytest -s $PYTEST_CONFIG_WITHOUT_COV mars/oscar
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/oscar
   python .github/workflows/remove_tracer_errors.py
   coverage combine
   mv .coverage build/.coverage.oscar_ctx.file
