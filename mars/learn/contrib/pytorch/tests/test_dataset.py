@@ -13,8 +13,6 @@
 # limitations under the License.
 
 from mars.learn.contrib.xgboost import train
-import sys
-sys.path.append("/mnt/d/OneDrive/专业/420实验室/开源之夏/project/mars")
 import unittest
 
 import mars.tensor as mt
@@ -22,8 +20,6 @@ from mars.session import new_session
 from mars.tests import setup
 from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler, MarsSequentialSampler
-# from mars.learn.contrib.pytorch.dataset import MarsDataset
-# from mars.learn.contrib.pytorch.sampler import MarsSequentialSampler, MarsRandomSampler
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
