@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from mars.tensor.random.noncentral_chisquare import noncentral_chisquare
 import math
 from typing import Generator, Iterator, Sized
 
@@ -100,9 +98,7 @@ class MarsSequentialSampler(Sampler):
 
 class MarsRandomSampler(Sampler):
     r""""Note: recommend to use torch original API RandomSampler. 
-    """
-
-    r"""Samples elements randomly. If without replacement, then sample from a shuffled dataset.
+    Samples elements randomly. If without replacement, then sample from a shuffled dataset.
     If with replacement, then user can specify :attr:`num_samples` to draw.
 
     Args:
@@ -154,9 +150,6 @@ class MarsRandomSampler(Sampler):
             yield from torch.randint(high=n, size=(self.num_samples % 32,), dtype=torch.int64, generator=generator).tolist()
         else:
             yield from torch.randperm(n, generator=generator).tolist()
-            # indices = torch.randperm(n).tolist()
-            # self.data_source.prefetch(indices)
-            # return iter(indices)
 
     def __len__(self) -> int:
         return self.num_samples
