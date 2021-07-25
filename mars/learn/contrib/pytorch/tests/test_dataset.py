@@ -47,7 +47,7 @@ def testMarsDataset(setup):
     assert isinstance(train_dataset, Dataset)
     assert isinstance(train_dataset[1][0], np.ndarray)
 
-def testMarsDatasetWithSampler(setup):
+def testDatasetWithtorchSampler(setup):
     import torch
     from torch.utils.data import SequentialSampler, RandomSampler
 

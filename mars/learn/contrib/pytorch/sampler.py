@@ -18,7 +18,7 @@ from typing import Generator, Iterator, Sized
 try:
     import torch
     from torch.utils.data import Sampler
-except ImportError:  # pragma: no cover
+except ImportError:  
     torch = None
     Sampler = object
 
