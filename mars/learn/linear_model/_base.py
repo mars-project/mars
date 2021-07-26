@@ -23,6 +23,7 @@ from ..base import BaseEstimator, RegressorMixin, MultiOutputMixin
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
 from ..utils.fixes import delayed
 from ..preprocessing._data import _is_constant_feature
+from mars.tensor.datasource import tensor as astensor
 
 
 # FIXME in 1.2: parameter 'normalize' should be removed from linear models
@@ -196,7 +197,7 @@ def _preprocess_data(
                     last_mean=0.0,
                     last_variance=0.0,
                     last_sample_count=0.0,
-                    sample_weight=sample_weight,
+                    # sample_weight=sample_weight,
                 )
             else:
                 X_offset = np.average(X, axis=0, weights=sample_weight)
@@ -214,6 +215,7 @@ def _preprocess_data(
                 X_var *= X.shape[0]
             else:
                 X_var *= sample_weight.sum()
+            # X_var = X_var.to_numpy() # transform to tensor obj
             X_scale = np.sqrt(X_var, out=X_var)
             X_scale[constant_mask] = 1.0
             if sp.issparse(X):
