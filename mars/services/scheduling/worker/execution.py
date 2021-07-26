@@ -292,7 +292,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             if global_slot_ref is not None:
                 await asyncio.gather(
                     # make sure slot is released before marking tasks as finished
-                    self._global_slot_ref.release_subtask_slots(
+                    global_slot_ref.release_subtask_slots(
                             (self.address, band_name), subtask.session_id, subtask.subtask_id),
                     # make sure new slot usages are uploaded in time
                     slot_manager_ref.upload_slot_usages(periodical=False),
