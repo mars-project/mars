@@ -335,7 +335,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     raise ex
                 except Exception as ex:
                     # TODO(fyrestone): Handle slot exception correctly.
-                    ctx.kill_slot_when_exit()
+                    if subtask_info.num_retries < subtask_info.max_retries:
+                        ctx.kill_slot_when_exit()
                     raise ex
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
