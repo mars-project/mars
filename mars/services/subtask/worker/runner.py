@@ -104,9 +104,6 @@ class SubtaskRunnerActor(mo.Actor):
             self._running_processor = None
         raise mo.Return(result)
 
-    async def wait_subtask(self):
-        yield self._running_processor.wait()
-
     async def get_subtask_result(self) -> SubtaskResult:
         return self._last_processor.result()
 

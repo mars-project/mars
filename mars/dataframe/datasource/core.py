@@ -101,6 +101,9 @@ class _IncrementalIndexRecorder:
     def _can_destroy(self):
         return all(e.is_set() for e in self._done) and not self._waiters
 
+    def add_waiter(self, i: int):
+        self._waiters.add(i)
+
     async def wait(self, i: int):
         if i == 0:
             return 0, self._can_destroy()
@@ -141,6 +144,17 @@ class IncrementalIndexDataSourceMixin(DataFrameOperandMixin):
                     name, _IncrementalIndexRecorder, n_chunk)
                 for chunk in result.chunks:
                     chunk.op.incremental_index_recorder_name = name
+
+    @classmethod
+    def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
+        out = op.outputs[0]
+        if op.incremental_index and \
+                isinstance(out.index_value.value, IndexValue.RangeIndex) and \
+                getattr(op, 'incremental_index_recorder_name', None):
+            index = out.index[0]
+            recorder_name = op.incremental_index_recorder_name
+            recorder = ctx.get_remote_object(recorder_name)
+            recorder.add_waiter(index)
 
     @classmethod
     def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
