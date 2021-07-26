@@ -75,6 +75,7 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
 
         task_name = body_args.get('task_name', None) or None
         fuse_enabled = body_args.get('fuse')
+
         graph = body_args['graph']
         extra_config = body_args.get('extra_config', None)
 
@@ -102,6 +103,18 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_task_result(task_id)
         self.write(json.dumps(_json_serial_task_result(res)))
+
+    @web_api('(?P<task_id>[^/]+)' + '/tileables', method='get')
+    async def get_tileable_ids_by_task_id(self, session_id: str, task_id: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_ids_by_task_id(task_id)
+        self.write(json.dumps(res))
+
+    @web_api('(?P<task_id>[^/]+)' + '/tileables/' + '(?P<tileable_key>[^/]+)', method='get')
+    async def get_tileable_detail_by_key(self, session_id: str, task_id: str, tileable_key: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_detail_by_key(tileable_key)
+        self.write(json.dumps(res))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
     async def get_task_progress(self, session_id: str, task_id: str):

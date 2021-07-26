@@ -32,11 +32,34 @@ class TaskList extends React.Component {
         this.state = {};
     }
 
+    fetchTileableDetail(task_id, tileable_id) {
+        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables/${tileable_id}`)
+            .then(res => res.json())
+            .then((res) => {})
+            .catch((error) => {})
+    }
+
+    fetchTaskTileables(task_id) {
+        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables`)
+            .then(res => res.json())
+            .then((res) => {
+                for (let i = 0;  i < res.length; i++) {
+                    this.fetchTileableDetail(task_id, res[i]);
+                }
+            })
+            .catch((error) => {})
+    }
+
     refreshInfo() {
         fetch('api/session/' + this.props.sessionId + '/task?progress=1')
             .then(res => res.json())
             .then((res) => {
+                console.log("task detail: ", res)
                 this.setState(res);
+                
+                for (let i = 0; i < res.tasks.length; i++) {
+                    this.fetchTaskTileables(res.tasks[i].task_id);
+                }
             })
     }
 

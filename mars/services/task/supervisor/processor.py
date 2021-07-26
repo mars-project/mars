@@ -51,6 +51,35 @@ def _record_error(func: Union[Callable, Coroutine]):
 
     return inner
 
+def format_graph_data(graph: TileableGraph):
+    node_list = []
+    edge_list = []
+
+    for node in graph.iter_nodes():
+        print(node)
+        node_name = str(node.op)
+
+        node_list.append({
+            "tileable_id": node.key,
+            "tileable_name": node_name
+        })
+
+        for node_successor in graph.iter_successors(node):
+            edge_list.append({
+                "from_tileable_id": node_successor.key,
+                "from_tileable_name": str(node_successor.op),
+
+                "to_tileable_id": node.key,
+                "to_tileable_name": node_name
+            })
+            
+    res = { 
+        "tileables": node_list, 
+        "dependencies": edge_list
+        }
+
+    return res
+
 
 class TaskProcessor:
     stage_processors: List[TaskStageProcessor]
@@ -454,9 +483,21 @@ class TaskProcessorActor(mo.Actor):
             result.append(build_fetch(tiled))
         return result
 
+    def get_result_tileable_graph(self, tileable_key: str):
+        processor = list(self._task_id_to_processor.values())[-1]
+    
+        res_tileable_graph = processor.tileable_graph
+
+        res_tileable_context = processor.tile_context
+        print(res_tileable_context)
+        res_tiled_percentage = len(res_tileable_context) / len(res_tileable_graph)
+        print(res_tiled_percentage)
+
+        return format_graph_data(res_tileable_graph)
+
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
-        tileable_graph = processor.tileable_graph
+
         for result_tileable in tileable_graph.result_tileables:
             if result_tileable.key == tileable_key:
                 tiled = processor.get_tiled(result_tileable)
