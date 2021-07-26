@@ -30,7 +30,7 @@ from .errors import DataNotExist, NoDataToSpill
 logger = logging.getLogger(__name__)
 
 
-class StorageHandlerActor(mo.Actor):
+class StorageHandlerActor(mo.StatelessActor):
     """
     Storage handler actor, provide methods like `get`, `put`, etc.
     This actor is stateless and created on worker's sub pools.
@@ -324,7 +324,6 @@ class StorageHandlerActor(mo.Actor):
                                   error: str):
         from .transfer import SenderManagerActor
 
-        logger.debug('Begin to fetch %s from worker %s', data_keys, remote_address)
         sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
             address=remote_address, uid=SenderManagerActor.default_uid())
         await sender_ref.send_batch_data(

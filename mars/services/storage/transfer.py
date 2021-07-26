@@ -103,7 +103,15 @@ class SenderManagerActor(mo.StatelessActor):
                     session_id, data_key) as reader:
                 while True:
                     part_data = await reader.read(block_size)
-                    is_eof = len(part_data) < block_size
+                    # Notes on [How to decide whether the reader reaches EOF?]
+                    #
+                    # In some storage backend, e.g., the reported memory usage (i.e., the
+                    # `store_size`) may not same with the byte size that need to be transferred
+                    # when moving to a remote worker. Thus, we think the reader reaches EOF
+                    # when a `read` request returns nothing, rather than comparing the `sent_size`
+                    # and the `store_size`.
+                    #
+                    is_eof = not part_data  # can be non-empty bytes, empty bytes and None
                     await sender.send(part_data, is_eof, data_key)
                     if is_eof:
                         break
@@ -124,8 +132,12 @@ class SenderManagerActor(mo.StatelessActor):
         for data_key in data_keys:
             get_infos.append(self._data_manager_ref.get_data_info.delay(session_id, data_key, error))
         infos = await self._data_manager_ref.get_data_info.batch(*get_infos)
-        infos, data_keys = zip(*[(data_info, data_key) for data_info, data_key in
-                               zip(infos, data_keys) if data_info is not None])
+        filtered = [(data_info, data_key) for data_info, data_key in
+                    zip(infos, data_keys) if data_info is not None]
+        if filtered:
+            infos, data_keys = zip(*filtered)
+        else:
+            infos, data_keys = [], []
         data_sizes = [info.store_size for info in infos]
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)
 
@@ -168,6 +180,7 @@ class ReceiverManagerActor(mo.Actor):
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
+            await self._quota_refs[level].release_quota(sum(data_sizes))
             _ = [task.cancel() for task in tasks]
             raise
 
@@ -186,11 +199,12 @@ class ReceiverManagerActor(mo.Actor):
             yield self.do_write(message)
         except asyncio.CancelledError:
             for data_key in message.data_keys:
-                writer, data_size, level = self._key_to_writer_info[
-                    (message.session_id, data_key)]
-                await self._quota_refs[level].release_quota(data_size)
-                await self._storage_handler.delete(
-                    message.session_id, data_key, error='ignore')
-                await writer.clean_up()
-                self._key_to_writer_info.pop((
-                    message.session_id, data_key))
+                if (message.session_id, data_key) in self._key_to_writer_info:
+                    writer, data_size, level = self._key_to_writer_info[
+                        (message.session_id, data_key)]
+                    await self._quota_refs[level].release_quota(data_size)
+                    await self._storage_handler.delete(
+                        message.session_id, data_key, error='ignore')
+                    await writer.clean_up()
+                    self._key_to_writer_info.pop((
+                        message.session_id, data_key))

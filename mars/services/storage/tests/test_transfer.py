@@ -157,7 +157,8 @@ class MockSenderManagerActor2(SenderManagerActor):
 
 
 @pytest.mark.parametrize('mock_sender, mock_receiver',
-                         [(MockSenderManagerActor, MockReceiverManagerActor)])
+                         [(MockSenderManagerActor, MockReceiverManagerActor),
+                          (MockSenderManagerActor2, MockReceiverManagerActor2)])
 @pytest.mark.asyncio
 async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     worker_address_1, worker_address_2 = create_actors
