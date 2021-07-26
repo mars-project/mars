@@ -481,7 +481,8 @@ class TaskProcessorActor(mo.Actor):
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
                     for chunk in subtask.chunk_graph:
-                        if isinstance(chunk.op, MapReduceOperand):
+                        if isinstance(chunk.op, MapReduceOperand) and \
+                                chunk.op.stage == OperandStage.reduce:
                             data_keys = chunk.op.get_dependent_data_keys()
                             decref_chunk_keys.extend(data_keys)
                             # decref main key as well
