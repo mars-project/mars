@@ -241,7 +241,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
         await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(aiotask, timeout=30)
-    assert timer.duration < 6
+    assert timer.duration < 15
 
     # check for different phases
     if ref_to_delay is not None:
