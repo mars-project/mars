@@ -929,6 +929,8 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
+        # turn off auto recover to avoid errors
+        self._auto_recover = False
         self._stopped.set()
         if self._monitor_task and not self._monitor_task.done():
             await self._monitor_task

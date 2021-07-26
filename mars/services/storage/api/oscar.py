@@ -25,6 +25,7 @@ from ..core import StorageManagerActor, DataManagerActor, \
 from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
+_is_windows = sys.platform.lower().startswith('win')
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
@@ -286,9 +287,12 @@ class MockStorageAPI(StorageAPI):
                 store_memory=10 * 1024 * 1024,
                 plasma_directory=plasma_dir,
                 check_dir_size=False)
-            storage_configs = {
-                "plasma": plasma_setup_params,
-            }
+            if _is_windows:
+                storage_configs = {"shared_memory": {}}
+            else:
+                storage_configs = {
+                    "plasma": plasma_setup_params,
+                }
 
         storage_handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         await mo.create_actor(StorageManagerActor,

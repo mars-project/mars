@@ -119,16 +119,19 @@ async def test_multiprocess_comm(server_type, config, con):
     p.daemon = True
     p.start()
 
-    await AioEvent(server_started).wait()
+    try:
+        await AioEvent(server_started).wait()
 
-    # create client
-    client = await server_type.client_type.connect(con)
-    await client.channel.send(test_data)
+        # create client
+        client = await server_type.client_type.connect(con)
+        await client.channel.send(test_data)
 
-    assert 'success' == await client.recv()
+        assert 'success' == await client.recv()
 
-    await client.close()
-    assert client.closed
+        await client.close()
+        assert client.closed
+    finally:
+        p.kill()
 
 
 cupy_data = np.arange(100).reshape((10, 10))

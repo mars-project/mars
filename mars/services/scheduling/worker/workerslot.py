@@ -96,7 +96,7 @@ class BandSlotManagerActor(mo.Actor):
         except mo.ActorNotExist:
             pass
 
-        strategy = IdleLabel(self._band_name, 'worker_slot_control')
+        strategy = IdleLabel(self._band_name, f'worker_slot_control')
         for slot_id in range(self._n_slots):
             self._slot_control_refs[slot_id] = await mo.create_actor(
                 BandSlotControlActor,

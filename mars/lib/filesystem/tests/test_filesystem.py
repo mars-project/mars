@@ -97,7 +97,8 @@ def test_filesystems(fs_type):
                                        os.stat(test1_file).st_mtime,
                                        decimal=6)
 
-        walked = fs.walk(root)
+        walked = [(os.path.normpath(root), dirs, files)
+                  for root, dirs, files in fs.walk(root)]
         expected = os.walk(root)
         assert sorted(walked) == sorted(expected)
 
@@ -106,16 +107,20 @@ def test_filesystems(fs_type):
             f.write(b'def test')
 
         for recursive in [False, True]:
-            globs = fs.glob(os.path.join(root, '*'),
-                            recursive=recursive)
-            expected = _glob.glob(os.path.join(root, '*'),
-                                  recursive=recursive)
+            globs = [
+                os.path.normpath(p)
+                for p in fs.glob(os.path.join(root, '*'), recursive=recursive)
+            ]
+            expected = [
+                os.path.normpath(p)
+                for p in _glob.glob(os.path.join(root, '*'), recursive=recursive)
+            ]
             assert sorted(globs) == sorted(expected)
 
         for path in [os.path.join(root, '*', '*'),
                      test1_dir]:
-            globs = fs.glob(path)
-            expected = _glob.glob(path)
+            globs = [os.path.normpath(p) for p in fs.glob(path)]
+            expected = [os.path.normpath(p) for p in _glob.glob(path)]
             assert sorted(globs) == sorted(expected)
 
         test1_new_file = os.path.join(test1_dir, 'test1_new')
