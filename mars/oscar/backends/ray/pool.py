@@ -33,6 +33,7 @@ from .utils import process_address_to_placement, process_placement_to_address, g
 
 ray = lazy_import('ray')
 logger = logging.getLogger(__name__)
+_is_windows: bool = sys.platform.startswith('win')
 
 
 @_register_message_handler
@@ -137,13 +138,14 @@ class RayPoolBase(ABC):
     _actor_pool: Optional['AbstractActorPool']
 
     def __new__(cls, *args, **kwargs):
-        try:
-            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
-                # register coverage hooks on SIGTERM
-                from pytest_cov.embed import cleanup_on_sigterm
-                cleanup_on_sigterm()
-        except ImportError:  # pragma: no cover
-            pass
+        if not _is_windows:
+            try:
+                if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                    # register coverage hooks on SIGTERM
+                    from pytest_cov.embed import cleanup_on_sigterm
+                    cleanup_on_sigterm()
+            except ImportError:  # pragma: no cover
+                pass
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):

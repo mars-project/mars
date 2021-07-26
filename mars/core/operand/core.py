@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_object_overhead, calc_data_size
+from ...utils import calc_data_size
 from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \

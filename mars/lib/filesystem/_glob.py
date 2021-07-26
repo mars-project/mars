@@ -77,7 +77,8 @@ class FileSystemGlob:
         return it
 
     def _iglob(self, pathname, recursive, dironly):
-        dirname, basename = self._fs.path_split(pathname)
+        dirname, basename = self._fs.path_split(
+            pathname.replace(os.path.sep, '/'))
         if not has_magic(pathname):
             assert not dironly
             if basename:

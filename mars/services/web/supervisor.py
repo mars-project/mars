@@ -115,7 +115,10 @@ class WebActor(mo.Actor):
             self._web_server.stop()
 
     def get_web_address(self):
-        return self._web_address
+        web_address = self._web_address
+        if os.name == 'nt':
+            web_address = web_address.replace('0.0.0.0', '127.0.0.1')
+        return web_address
 
 
 async def start(config: dict, address: str = None):

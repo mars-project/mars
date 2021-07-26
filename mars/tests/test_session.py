@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import io
+import os
 import sys
 import tempfile
 from collections import namedtuple
@@ -391,8 +392,8 @@ def test_fetch_log(fetch_log_setup):
 
     # test negative offsets
     log = fs.fetch_log(offsets=-20, sizes=10)
-    assert str(log[0]).strip() == ('f1' * 30 + '\n')[-20:-10]
-    assert str(log[1]).strip() == ('f1' * 40 + '\n')[-20:-10]
+    assert str(log[0]).strip() == ('f1' * 30 + os.linesep)[-20:-10]
+    assert str(log[1]).strip() == ('f1' * 40 + os.linesep)[-20:-10]
     assert all(s > 0 for s in log[0].offsets) is True
     assert len(log[1].offsets) > 0
     assert all(s > 0 for s in log[1].offsets) is True
@@ -400,8 +401,8 @@ def test_fetch_log(fetch_log_setup):
 
     # test negative offsets which represented in string
     log = fetch_log(*fs, offsets='-0.02K', sizes='0.01K')
-    assert str(log[0]).strip() == ('f1' * 30 + '\n')[-20:-10]
-    assert str(log[1]).strip() == ('f1' * 40 + '\n')[-20:-10]
+    assert str(log[0]).strip() == ('f1' * 30 + os.linesep)[-20:-10]
+    assert str(log[1]).strip() == ('f1' * 40 + os.linesep)[-20:-10]
     assert all(s > 0 for s in log[0].offsets) is True
     assert len(log[1].offsets) > 0
     assert all(s > 0 for s in log[1].offsets) is True

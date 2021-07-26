@@ -28,6 +28,8 @@ from mars.services.storage.handler import StorageHandlerActor
 from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
 from mars.storage import StorageLevel
 
+_is_windows = sys.platform.lower().startswith('win')
+
 
 @pytest.fixture
 async def actor_pools():
@@ -62,7 +64,7 @@ async def create_actors(actor_pools):
         check_dir_size=False)
     storage_configs = {
         "plasma": plasma_setup_params,
-    }
+    } if not _is_windows else {"shared_memory": {}}
 
     manager_ref1 = await mo.create_actor(
         StorageManagerActor, storage_configs,

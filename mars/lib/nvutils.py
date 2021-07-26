@@ -62,6 +62,8 @@ class _nvmlBAR1Memory_t(Structure):
         ('used', c_ulonglong),
     ]
 
+_is_windows: bool = sys.platform.startswith('win')
+
 
 def _load_nv_library(*libnames):
     for lib in libnames:
@@ -151,7 +153,7 @@ def _init_cp():
     if _init_pid == os.getpid():
         return
 
-    _cuda_lib = _load_nv_library('libcuda.so', 'libcuda.dylib', 'cuda.dll')
+    _cuda_lib = _load_nv_library('libcuda.so', 'libcuda.dylib', 'cuda.dll', 'nvcuda.dll')
 
     if _cuda_lib is None:
         return
@@ -174,7 +176,7 @@ def _init_nvml():
         return
 
     nvml_paths = ['libnvidia-ml.so', 'libnvidia-ml.so.1', 'libnvidia-ml.dylib', 'nvml.dll']
-    if sys.platform[:3] == "win":
+    if _is_windows:
         nvml_paths.append(os.path.join(os.getenv("ProgramFiles", "C:/Program Files"),
                                        "NVIDIA Corporation/NVSMI/nvml.dll"))
     _nvml_lib = _load_nv_library(*nvml_paths)

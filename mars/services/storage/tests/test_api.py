@@ -54,7 +54,8 @@ plasma_setup_params = dict(
     store_memory=plasma_storage_size,
     plasma_directory=plasma_dir,
     check_dir_size=False)
-storage_configs.append({'plasma': plasma_setup_params})
+if not sys.platform.lower().startswith('win'):
+    storage_configs.append({'plasma': plasma_setup_params})
 
 # ray backend
 if ray is not None:

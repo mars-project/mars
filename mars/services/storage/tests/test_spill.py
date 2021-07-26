@@ -27,6 +27,10 @@ from mars.services.storage.handler import StorageHandlerActor
 from mars.storage import StorageLevel, PlasmaStorage
 from mars.utils import calc_data_size
 
+# todo enable this test module when spill support added
+#  on storage quotas
+if sys.platform.lower().startswith('win'):
+    pytestmark = pytest.mark.skip
 
 MEMORY_SIZE = 100 * 1024
 

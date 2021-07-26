@@ -67,7 +67,7 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
     def _read_init(self):
         self.shm = shm = SharedMemoryForRead(name=self._object_id)
         self._buffer = self._mv = buf = shm.buf
-        self._size = buf.nbytes
+        self._size = self._size or buf.nbytes
 
     def _write_close(self):
         pass
@@ -185,10 +185,10 @@ class SharedMemoryStorage(StorageBackend):
         async with ShmStorageFileObject(shm_file, object_id) as f:
             deserializer = AioDeserializer(f)
             size = await deserializer.get_size()
-        if _is_windows:
-            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
-        else:
+        if not _is_windows:
             return ObjectInfo(size=size, object_id=object_id)
+        else:
+            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
@@ -201,7 +201,13 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        shm_file = SharedMemoryFileObject(object_id, mode='r')
+        if not _is_windows:
+            shm_file = SharedMemoryFileObject(object_id, mode='r')
+        else:
+            # as SharedMemory object returns aligned size in Windows, we need to get
+            # actual size from its object info.
+            real_info = await self.object_info(object_id)
+            shm_file = SharedMemoryFileObject(object_id, mode='r', size=real_info.size)
         return ShmStorageFileObject(shm_file, object_id=object_id)
 
     @implements(StorageBackend.list)

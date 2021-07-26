@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class StorageHandlerActor(mo.Actor):
     """
     Storage handler actor, provide methods like `get`, `put`, etc.
-    This actor is stateless and created on worker's subpools.
+    This actor is stateless and created on worker's sub pools.
     """
     def __init__(self,
                  storage_init_params: Dict,
