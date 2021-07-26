@@ -755,7 +755,8 @@ class _IsolatedSession(AbstractAsyncSession):
         from ...tensor.core import TensorOrder
         from ...tensor.array_utils import get_array_module
 
-        if kwargs:  # pragma: no cover
+        only_refs = kwargs.get('only_refs', False)
+        if kwargs and 'only_refs' not in kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError(f'`fetch` got unexpected '
                             f'arguments: {unexpected_keys}')
@@ -796,33 +797,40 @@ class _IsolatedSession(AbstractAsyncSession):
                 chunk = fetch_info.chunk
                 addr = chunk_to_addr[chunk]
                 storage_api = await self._get_storage_api(addr)
-                storage_api_to_gets[storage_api].append(
-                    storage_api.get.delay(chunk.key, conditions=conditions))
+                get = storage_api.get.delay(chunk.key, conditions=conditions) \
+                    if not only_refs else storage_api.get_infos.delay(chunk.key)
+                storage_api_to_gets[storage_api].append(get)
                 storage_api_to_fetch_infos[storage_api].append(fetch_info)
             for storage_api in storage_api_to_gets:
                 fetched_data = await storage_api.get.batch(
-                    *storage_api_to_gets[storage_api])
+                    *storage_api_to_gets[storage_api]) if not only_refs else \
+                        await storage_api.get_infos.batch(
+                            *storage_api_to_gets[storage_api])
                 infos = storage_api_to_fetch_infos[storage_api]
                 for info, data in zip(infos, fetched_data):
                     info.data = data
 
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
-                index_to_data = [(fetch_info.chunk.index, fetch_info.data)
-                                 for fetch_info in fetch_infos]
-                merged = merge_chunks(index_to_data)
-                if hasattr(tileable, 'order') and tileable.ndim > 0:
-                    module = get_array_module(merged)
-                    if tileable.order == TensorOrder.F_ORDER and \
-                            hasattr(module, 'asfortranarray'):
-                        merged = module.asfortranarray(merged)
-                    elif tileable.order == TensorOrder.C_ORDER and \
-                            hasattr(module, 'ascontiguousarray'):
-                        merged = module.ascontiguousarray(merged)
-                if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
-                        getattr(merged, 'size', None) == 1:
-                    merged = merged.item()
-                result.append(self._process_result(tileable, merged))
+                if only_refs:
+                    result += [(chunk_to_addr[fetch_info.chunk], fetch_info.data[0].object_id)
+                               for fetch_info in fetch_infos]
+                else:
+                    index_to_data = [(fetch_info.chunk.index, fetch_info.data)
+                                     for fetch_info in fetch_infos]
+                    merged = merge_chunks(index_to_data)
+                    if hasattr(tileable, 'order') and tileable.ndim > 0:
+                        module = get_array_module(merged)
+                        if tileable.order == TensorOrder.F_ORDER and \
+                                hasattr(module, 'asfortranarray'):
+                            merged = module.asfortranarray(merged)
+                        elif tileable.order == TensorOrder.C_ORDER and \
+                                hasattr(module, 'ascontiguousarray'):
+                            merged = module.ascontiguousarray(merged)
+                    if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
+                            getattr(merged, 'size', None) == 1:
+                        merged = merged.item()
+                    result.append(self._process_result(tileable, merged))
             return result
 
     async def decref(self, *tileable_keys):
@@ -1308,7 +1316,7 @@ async def _fetch(tileable: TileableType,
         tileable, tileables = tileable[0], tileable[1:]
     session = _get_isolated_session(session)
     data = await session.fetch(tileable, *tileables, **kwargs)
-    return data[0] if len(tileables) == 0 else data
+    return data[0] if len(tileables) == 0 and len(data) == 1 else data
 
 
 def fetch(tileable: TileableType,
