@@ -15,7 +15,6 @@
 import os
 import pytest
 import numpy as np
-from contextlib import nullcontext
 
 import mars.tensor as mt
 from mars.remote import spawn
