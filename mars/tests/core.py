@@ -59,6 +59,20 @@ def setup():
             sess.stop_server()
 
 
+@pytest.fixture(scope='module')
+def setup_cluster():
+    from ..deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(address='127.0.0.1',
+                            init_local=True, n_worker=2,
+                            default=True, timeout=300)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server()
+
+
 def flaky(o=None, *args, **kwargs):
     platform = kwargs.pop('platform', '')
     if _raw_flaky is None or not sys.platform.startswith(platform):
