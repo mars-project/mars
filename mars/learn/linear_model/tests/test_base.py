@@ -8,6 +8,7 @@ import pytest
 import numpy as np
 from scipy import sparse
 from scipy import linalg
+import re
 
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import assert_array_equal
@@ -96,8 +97,9 @@ def test_linear_regression_sample_weights():
 
 
 def test_raises_value_error_if_positive_and_sparse():
-    error_msg = ('A sparse matrix was passed, '
-                 'but dense data is required.')
+    error_msg = (re.escape('A sparse tensor was passed, but dense '
+                           'data is required. Use X.todense() to '
+                           'convert to a dense tensor.'))
     # X must not be sparse if positive == True
     X = sparse.eye(10)
     y = np.ones(10)

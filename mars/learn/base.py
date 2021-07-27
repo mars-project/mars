@@ -148,7 +148,7 @@ class BaseEstimator(SklearnBaseEstimator):
                 )
             X = check_array(X, **check_params)
             out = X
-        elif y == "no_validation":
+        elif isinstance(y, str) and y == 'no_validation':
             X = check_array(X, **check_params)
             out = X
         else:  # pragma: no cover
