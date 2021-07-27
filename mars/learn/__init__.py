@@ -22,7 +22,6 @@ from . import preprocessing
 from . import proxima
 from . import neighbors
 from . import utils
-from ._config import get_config, config_context
 
 for _mod in [xgboost, tensorflow, pytorch, lightgbm, proxima, neighbors, statsmodels]:
     _mod.register_op()
