@@ -38,10 +38,6 @@ except ImportError:
 
 from mars.lib.version import parse as parse_version
 from mars.tensor import tensor
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(scipy is None, reason='scipy not installed')

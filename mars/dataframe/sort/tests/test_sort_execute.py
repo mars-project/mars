@@ -20,11 +20,7 @@ import pandas as pd
 import pytest
 
 from mars.dataframe import DataFrame, Series, ArrowStringDtype
-from mars.tests import setup
 from mars.tests.core import require_cudf
-
-
-setup = setup
 
 
 @pytest.mark.parametrize(

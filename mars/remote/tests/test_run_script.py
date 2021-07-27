@@ -20,7 +20,6 @@ import pytest
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.remote import run_script
-from mars.tests import setup_cluster
 
 
 script1 = b"""
@@ -42,9 +41,6 @@ assert len(tensor.chunks) > 0
 assert isinstance(tensor.chunks[0].op, Fetch)
 tensor.fetch().sum() == df.fetch()['s'].sum()
 """
-
-
-setup_cluster = setup_cluster
 
 
 def test_local_run_script(setup_cluster):

@@ -25,10 +25,6 @@ except ImportError:  # pragma: no cover
 
 import mars.tensor as mt
 from mars.learn.utils.multiclass import is_multilabel, type_of_target
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_is_multilabel(setup):

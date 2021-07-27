@@ -27,10 +27,6 @@ from mars import tensor as mt
 from mars.dataframe.core import DATAFRAME_TYPE
 from mars.learn.model_selection import train_test_split
 from mars.lib.sparse import SparseNDArray
-from mars.tests import setup
-
-
-setup = setup
     
     
 def test_train_test_split_errors(setup):

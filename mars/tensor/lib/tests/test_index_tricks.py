@@ -20,10 +20,6 @@ import pytest
 from mars import tensor as mt
 from mars.core import tile
 from mars.tensor.lib import nd_grid
-from mars.tests import setup
-
-
-setup = setup
 
     
 def test_index_tricks():

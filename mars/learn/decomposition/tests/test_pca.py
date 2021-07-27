@@ -26,12 +26,8 @@ except ImportError:
     sklearn = None
 
 import mars.tensor as mt
-from mars.tests import setup
 if sklearn:
     from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
-
-
-setup = setup
 
 
 iris = mt.tensor(datasets.load_iris().data)

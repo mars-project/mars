@@ -17,14 +17,11 @@ import os
 import pytest
 
 from mars.learn.contrib.tensorflow import run_tensorflow_script
-from mars.tests import setup_cluster
 
 try:
     import tensorflow
 except ImportError:
     tensorflow = None
-
-setup_cluster = setup_cluster
 
 
 @pytest.mark.skipif(tensorflow is None, reason='tensorflow not installed')

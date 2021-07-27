@@ -22,10 +22,6 @@ from mars.tensor.datasource import ones, tensor
 from mars.tensor.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
     nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod
 from mars.utils import ignore_warning
-from mars.tests import setup
-
-
-setup = setup
     
     
 def test_sum_prod_execution(setup):

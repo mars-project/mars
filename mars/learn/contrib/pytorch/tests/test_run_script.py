@@ -17,10 +17,8 @@ import os
 import pytest
 
 from mars.learn.contrib.pytorch import run_pytorch_script
-from mars.tests import setup_cluster
 from mars.utils import lazy_import
 
-setup_cluster = setup_cluster
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 

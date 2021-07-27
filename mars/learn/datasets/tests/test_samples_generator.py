@@ -29,10 +29,6 @@ from mars import tensor as mt
 from mars.learn.datasets.samples_generator import make_low_rank_matrix, \
     make_classification, make_blobs
 from mars.tensor.linalg import svd
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
