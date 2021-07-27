@@ -50,3 +50,7 @@ class Return(MarsError):
 
 class FaultInjectionError(MarsError):
     pass
+
+
+class FaultInjectionUnhandledError(Exception):
+    pass

@@ -20,7 +20,7 @@ import mars.tensor as mt
 from mars.remote import spawn
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
-from mars.oscar.errors import FaultInjectionError, ServerClosed
+from mars.oscar.errors import FaultInjectionError, FaultInjectionUnhandledError, ServerClosed
 from mars.services.tests.fault_injection_manager import (
     FaultType,
     AbstractFaultInjectionManager,
@@ -66,6 +66,8 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
 @pytest.mark.parametrize('fault_and_exception',
                          [[FaultType.Exception,
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
+                          [FaultType.UnhandledException,
+                            pytest.raises(FaultInjectionUnhandledError, match='Fault Injection Unhandled')],
                           [FaultType.ProcessExit,
                            pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
@@ -77,17 +79,13 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
         fault_count=1,
         fault_type=fault_type)
     extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
-    session = get_default_async_session()
 
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    # TODO(fyrestone): We can use b.execute() when the issue
-    # https://github.com/mars-project/mars/issues/2165 is fixed
     with first_run_raises:
-        info = await session.execute(b, extra_config=extra_config)
-        await info
+        b.execute(extra_config=extra_config)
 
     # execute again may raise an ConnectionRefusedError if the
     # ProcessExit occurred.
@@ -116,8 +114,6 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
 
-    # TODO(fyrestone): We can use b.execute() when the issue
-    # https://github.com/mars-project/mars/issues/2165 is fixed
     info = await session.execute(b, extra_config=extra_config)
     await info
     assert info.result() is None
@@ -135,6 +131,26 @@ async def test_rerun_subtask(fault_cluster, fault_config):
     info = await session.execute(b, extra_config=extra_config)
     with expect_raises:
         await info
+
+
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': RERUN_SUBTASK_CONFIG_FILE}],
+                         indirect=True)
+@pytest.mark.asyncio
+async def test_rerun_subtask_unhandled(fault_cluster):
+    name = await create_fault_injection_manager(
+        session_id=fault_cluster.session.session_id,
+        address=fault_cluster.session.address,
+        fault_count=1,
+        fault_type=FaultType.UnhandledException)
+    extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
+
+    raw = np.random.RandomState(0).rand(10, 10)
+    a = mt.tensor(raw, chunk_size=5)
+    b = a + 1
+
+    with pytest.raises(FaultInjectionUnhandledError):
+        b.execute(extra_config=extra_config)
 
 
 @pytest.mark.parametrize('fault_cluster',

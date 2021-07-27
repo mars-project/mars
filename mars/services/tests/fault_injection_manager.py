@@ -26,7 +26,8 @@ class ExtraConfigKey:
 class FaultType(enum.Enum):
     NoFault = 0
     Exception = 1
-    ProcessExit = 2
+    UnhandledException = 2
+    ProcessExit = 3
 
 
 class AbstractFaultInjectionManager(ABC):

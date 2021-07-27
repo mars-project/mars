@@ -40,7 +40,6 @@ from mars.services.task.core import TaskStatus, TaskResult
 from mars.services.task.supervisor.manager import \
     TaskConfigurationActor, TaskManagerActor
 from mars.utils import Timer, merge_chunks
-from mars.tests.core import flaky
 
 
 @pytest.fixture

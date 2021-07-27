@@ -109,6 +109,13 @@ async def _retry_run(subtask: Subtask,
                 subtask_info.num_retries += 1
                 continue
             raise ex
+        except Exception as ex:
+            if subtask_info.num_retries < subtask_info.max_retries:
+                logger.error('Failed to rerun the %s of subtask %s, '
+                             'num_retries: %s, max_retries: %s, unhandled exception: %s',
+                             target_async_func, subtask.subtask_id,
+                             subtask_info.num_retries, subtask_info.max_retries, ex)
+            raise ex
 
 
 class SubtaskExecutionActor(mo.StatelessActor):
@@ -333,7 +340,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     except asyncio.TimeoutError:
                         ctx.kill_slot_when_exit()
                     raise ex
-                except Exception as ex:
+                except (OSError, MarsError) as ex:
                     # TODO(fyrestone): Handle slot exception correctly.
                     if subtask_info.num_retries < subtask_info.max_retries:
                         ctx.kill_slot_when_exit()
