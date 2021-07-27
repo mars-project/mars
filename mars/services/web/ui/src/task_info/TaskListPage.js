@@ -33,7 +33,7 @@ class TaskList extends React.Component {
     }
 
     fetchTileableDetail(task_id, tileable_id) {
-        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables/${tileable_id}`)
+        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables/${tileable_id}?action=get_tileable_detail`)
             .then(res => res.json())
             .then((res) => {
                 console.log(res)
@@ -42,7 +42,7 @@ class TaskList extends React.Component {
     }
 
     fetchTaskTileables(task_id) {
-        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables`)
+        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables?action=get_tileable_ids`)
             .then(res => res.json())
             .then((res) => {
                 console.log(res);
