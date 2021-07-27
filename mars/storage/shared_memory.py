@@ -201,13 +201,7 @@ class SharedMemoryStorage(StorageBackend):
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        if not _is_windows:
-            shm_file = SharedMemoryFileObject(object_id, mode='r')
-        else:
-            # as SharedMemory object returns aligned size in Windows, we need to get
-            # actual size from its object info.
-            real_info = await self.object_info(object_id)
-            shm_file = SharedMemoryFileObject(object_id, mode='r', size=real_info.size)
+        shm_file = SharedMemoryFileObject(object_id, mode='r')
         return ShmStorageFileObject(shm_file, object_id=object_id)
 
     @implements(StorageBackend.list)
