@@ -14,8 +14,8 @@
 
 from .... import oscar as mo
 from ...core import NodeRole
-from ..locator import SupervisorLocatorActor
 from ..uploader import NodeInfoUploaderActor
+from .locator import SupervisorPeerLocatorActor
 from .node_info import NodeInfoCollectorActor
 
 
@@ -43,16 +43,16 @@ async def start(config: dict, address: str):
     lookup_address = svc_config.get('lookup_address',
                                     address if backend == 'fixed' else None)
     await mo.create_actor(
-        SupervisorLocatorActor,
-        backend_name=backend,
-        lookup_address=lookup_address,
-        uid=SupervisorLocatorActor.default_uid(),
-        address=address)
-    await mo.create_actor(
         NodeInfoCollectorActor,
         timeout=svc_config.get('node_timeout'),
         check_interval=svc_config.get('node_check_interval'),
         uid=NodeInfoCollectorActor.default_uid(),
+        address=address)
+    await mo.create_actor(
+        SupervisorPeerLocatorActor,
+        backend_name=backend,
+        lookup_address=lookup_address,
+        uid=SupervisorPeerLocatorActor.default_uid(),
         address=address)
     await mo.create_actor(
         NodeInfoUploaderActor,
@@ -64,10 +64,10 @@ async def start(config: dict, address: str):
 
 async def stop(config: dict, address: str):
     await mo.destroy_actor(mo.create_actor_ref(
-        uid=SupervisorLocatorActor.default_uid(),
+        uid=NodeInfoCollectorActor.default_uid(),
         address=address))
     await mo.destroy_actor(mo.create_actor_ref(
-        uid=NodeInfoCollectorActor.default_uid(),
+        uid=SupervisorPeerLocatorActor.default_uid(),
         address=address))
     await mo.destroy_actor(mo.create_actor_ref(
         uid=NodeInfoUploaderActor.default_uid(),

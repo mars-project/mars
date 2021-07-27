@@ -22,8 +22,8 @@ from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
     DATAFRAME_GROUPBY_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE, \
     SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 from ....lib.aio import alru_cache
+from ....typing import BandType
 from ....utils import extensible
-from ...core import BandType
 from ..core import get_meta_type
 from ..store import AbstractMetaStore
 from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
@@ -150,6 +150,7 @@ class MetaAPI(AbstractMetaAPI):
             # fuse op
             chunk = chunk.chunk
         params = chunk.params.copy()
+        chunk_key = extra.pop('chunk_key', chunk.key)
         if isinstance(chunk, (DATAFRAME_CHUNK_TYPE, DATAFRAME_GROUPBY_CHUNK_TYPE,
                               SERIES_GROUPBY_CHUNK_TYPE)):
             # dataframe chunk needs some special process for now
@@ -157,7 +158,7 @@ class MetaAPI(AbstractMetaAPI):
             params.pop('dtypes', None)
             params.pop('key_dtypes', None)
         params.update(extra)
-        return get_meta_type(type(chunk))(object_id=chunk.key,
+        return get_meta_type(type(chunk))(object_id=chunk_key,
                                           **params,
                                           bands=bands,
                                           memory_size=memory_size,

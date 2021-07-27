@@ -13,22 +13,19 @@
 # limitations under the License.
 
 import asyncio
-import concurrent.futures as futures
 import logging
 import sys
 from collections import defaultdict
-from itertools import chain
 from typing import Any, Dict, List, Optional, Type
 
 from .... import oscar as mo
-from ....core import ChunkGraph, OperandType
+from ....core import ChunkGraph, OperandType, enter_mode
 from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
-from ....lib.aio import alru_cache
 from ....optimization.physical import optimize
+from ....typing import BandType
 from ...context import ThreadedServiceContext
-from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
 from ...session import SessionAPI
@@ -46,6 +43,7 @@ class DataStore(dict):
 
 class SubtaskProcessor:
     _chunk_graph: ChunkGraph
+    _chunk_key_to_data_keys: Dict[str, List[str]]
 
     def __init__(self,
                  subtask: Subtask,
@@ -124,7 +122,7 @@ class SubtaskProcessor:
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
                     fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
-            logger.debug('Start getting input data keys: %s, '
+            logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
             await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
@@ -134,15 +132,10 @@ class SubtaskProcessor:
         return keys
 
     @staticmethod
-    @alru_cache(cache_exceptions=False)
-    async def _get_task_api(supervisor_address: str, session_id: str) -> TaskAPI:
-        return await TaskAPI.create(session_id, supervisor_address)
-
-    @staticmethod
     async def notify_task_manager_result(supervisor_address: str,
                                          result: SubtaskResult):
-        task_api = await SubtaskProcessor._get_task_api(
-            supervisor_address, result.session_id)
+        task_api = await TaskAPI.create(
+            result.session_id, supervisor_address)
         # notify task service
         await task_api.set_subtask_result(result)
 
@@ -158,19 +151,17 @@ class SubtaskProcessor:
         return ref_counts
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         self._op_progress[op.key] = 0.0
         get_context().set_running_operand_key(self._session_id, op.key)
-        return loop.run_in_executor(executor, self._execute_operand,
-                                    ctx, op)
+        return asyncio.to_thread(self._execute_operand, ctx, op)
 
     def set_op_progress(self, op_key: str, progress: float):
         if op_key in self._op_progress:  # pragma: no branch
             self._op_progress[op_key] = progress
 
+    @enter_mode(build=False, kernel=True)
     def _execute_operand(self,
                          ctx: Dict[str, Any],
                          op: OperandType):  # noqa: R0201  # pylint: disable=no-self-use
@@ -178,7 +169,6 @@ class SubtaskProcessor:
 
     async def _execute_graph(self, chunk_graph: ChunkGraph):
         loop = asyncio.get_running_loop()
-        executor = futures.ThreadPoolExecutor(1)
         ref_counts = self._init_ref_counts()
 
         # from data_key to results
@@ -189,10 +179,20 @@ class SubtaskProcessor:
                 logger.debug('Start executing operand: %s,'
                              'chunk: %s, subtask id: %s', chunk.op, chunk,
                              self.subtask.subtask_id)
-                future = await self._async_execute_operand(loop, executor,
-                                                           self._datastore, chunk.op)
+                future = asyncio.create_task(
+                    await self._async_execute_operand(self._datastore, chunk.op))
+                to_wait = loop.create_future()
+
+                def cb(fut):
+                    if not to_wait.done():
+                        if fut.exception():
+                            to_wait.set_exception(fut.exception())
+                        else:
+                            to_wait.set_result(fut.result())
+                future.add_done_callback(cb)
+
                 try:
-                    await future
+                    await to_wait
                     logger.debug('Finish executing operand: %s,'
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
@@ -201,7 +201,7 @@ class SubtaskProcessor:
                                  'chunk: %s, subtask id: %s', chunk.op, chunk,
                                  self.subtask.subtask_id)
                     # wait for this computation to finish
-                    await loop.run_in_executor(None, executor.shutdown)
+                    await future
                     # if cancelled, stop next computation
                     logger.debug('Cancelled operand: %s, chunk: %s, '
                                  'subtask id: %s', chunk.op, chunk,
@@ -236,7 +236,7 @@ class SubtaskProcessor:
                          if not isinstance(c.op, VirtualOperand)]
 
         # store data into storage
-        data_key_to_puts = defaultdict(list)
+        puts = []
         stored_keys = []
         for result_chunk in result_chunks:
             data_key = result_chunk.key
@@ -249,7 +249,7 @@ class SubtaskProcessor:
                     result_chunk.params = result_chunk.get_params_from_data(result_data)
 
                 put = self._storage_api.put.delay(data_key, result_data)
-                data_key_to_puts[data_key].append(put)
+                puts.append(put)
             else:
                 assert isinstance(result_chunk.op, MapReduceOperand)
                 keys = [store_key for store_key in self._datastore
@@ -258,22 +258,18 @@ class SubtaskProcessor:
                     stored_keys.append(key)
                     result_data = self._datastore[key]
                     put = self._storage_api.put.delay(key, result_data)
-                    data_key_to_puts[data_key].append(put)
+                    puts.append(put)
         logger.debug('Start putting data keys: %s, '
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
-        puts = list(chain(*data_key_to_puts.values()))
-        data_key_to_store_size = defaultdict(lambda: 0)
-        data_key_to_memory_size = defaultdict(lambda: 0)
+        data_key_to_store_size = dict()
+        data_key_to_memory_size = dict()
         if puts:
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
                 store_infos = await put_infos
-                store_infos_iter = iter(store_infos)
-                for data_key, puts in data_key_to_puts.items():
-                    for _ in puts:
-                        store_info = next(store_infos_iter)
-                        data_key_to_store_size[data_key] += store_info.store_size
-                        data_key_to_memory_size[data_key] += store_info.memory_size
+                for store_key, store_info in zip(stored_keys, store_infos):
+                    data_key_to_store_size[store_key] = store_info.store_size
+                    data_key_to_memory_size[store_key] = store_info.memory_size
                 logger.debug('Finish putting data keys: %s, '
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
@@ -295,17 +291,30 @@ class SubtaskProcessor:
                           stored_keys: List,
                           data_key_to_store_size: Dict,
                           data_key_to_memory_size: Dict):
+        key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
         set_chunk_metas = []
-        memory_sizes = []
-        for result_chunk in chunk_graph.result_chunks:
-            store_size = data_key_to_store_size[result_chunk.key]
-            memory_size = data_key_to_memory_size[result_chunk.key]
-            memory_sizes.append(memory_size)
+        result_data_size = 0
+        for chunk_key in stored_keys:
+            if isinstance(chunk_key, tuple):
+                result_chunk = key_to_result_chunk[chunk_key[0]]
+            else:
+                result_chunk = key_to_result_chunk[chunk_key]
+            store_size = data_key_to_store_size[chunk_key]
+            memory_size = data_key_to_memory_size[chunk_key]
+            result_data_size += memory_size
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,
-                    store_size=store_size, bands=[self._band]))
+                    store_size=store_size, bands=[self._band],
+                    chunk_key=chunk_key))
+        for chunk in chunk_graph.result_chunks:
+            if chunk.key not in data_key_to_store_size:
+                # mapper, set meta, so that storage can make sure
+                # this operand is executed, some sub key is absent
+                # due to it's empty actually
+                set_chunk_metas.append(self._meta_api.set_chunk_meta.delay(
+                    chunk, memory_size=0, store_size=0, bands=[self._band]))
         logger.debug('Start storing chunk metas for data keys: %s, '
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
         if set_chunk_metas:
@@ -331,7 +340,7 @@ class SubtaskProcessor:
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 raise
         # set result data size
-        self.result.data_size = sum(memory_sizes)
+        self.result.data_size = result_data_size
 
     async def done(self):
         if self.result.status == SubtaskStatus.running:
@@ -447,7 +456,7 @@ class SubtaskProcessorActor(mo.Actor):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
             session_id, self._supervisor_address,
-            self.address, loop)
+            self.address, loop, band=self._band)
         await context.init()
         set_context(context)
 

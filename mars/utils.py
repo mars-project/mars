@@ -204,12 +204,15 @@ def _get_ports_from_netstat() -> Set[int]:
         p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
         try:
             outs, _ = p.communicate(timeout=5)
-            outs = to_str(outs).split('\n')
+            outs = outs.split(to_binary(os.linesep))
             occupied = set()
             for line in outs:
-                if '.' not in line:
+                if b'.' not in line:
                     continue
+                line = to_str(line)
                 for part in line.split():
+                    # in windows, netstat uses ':' to separate host and port
+                    part = part.replace(':', '.')
                     if '.' in part:
                         _, port_str = part.rsplit('.', 1)
                         if port_str == '*':
@@ -227,13 +230,16 @@ def _get_ports_from_netstat() -> Set[int]:
 def get_next_port(typ: int = None,
                   occupy: bool = True) -> int:
     import psutil
-    try:
-        conns = psutil.net_connections()
-        typ = typ or socket.SOCK_STREAM
-        occupied = set(sc.laddr.port for sc in conns
-                       if sc.type == typ and LOW_PORT_BOUND <= sc.laddr.port <= HIGH_PORT_BOUND)
-    except psutil.AccessDenied:
+    if sys.platform.lower().startswith('win'):
         occupied = _get_ports_from_netstat()
+    else:
+        try:
+            conns = psutil.net_connections()
+            typ = typ or socket.SOCK_STREAM
+            occupied = set(sc.laddr.port for sc in conns
+                           if sc.type == typ and LOW_PORT_BOUND <= sc.laddr.port <= HIGH_PORT_BOUND)
+        except psutil.AccessDenied:
+            occupied = _get_ports_from_netstat()
 
     occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]

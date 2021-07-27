@@ -19,11 +19,13 @@ from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
 from ....utils import extensible
+from ...cluster import StorageInfo
 from ..core import StorageManagerActor, DataManagerActor, \
     DataInfo, WrappedStorageFileObject
 from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
+_is_windows = sys.platform.lower().startswith('win')
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
@@ -250,6 +252,22 @@ class StorageAPI(AbstractStorageAPI):
         """
         return await self._storage_handler_ref.list(level=level)
 
+    async def get_storage_level_info(self,
+                                     level: StorageLevel) -> StorageInfo:
+        """
+        Get storage level's info.
+
+        Parameters
+        ----------
+        level : StorageLevel
+            Storage level.
+
+        Returns
+        -------
+        storage_level_info : StorageInfo
+        """
+        return await self._storage_handler_ref.get_storage_level_info(level)
+
 
 class MockStorageAPI(StorageAPI):
     @classmethod
@@ -269,9 +287,12 @@ class MockStorageAPI(StorageAPI):
                 store_memory=10 * 1024 * 1024,
                 plasma_directory=plasma_dir,
                 check_dir_size=False)
-            storage_configs = {
-                "plasma": plasma_setup_params,
-            }
+            if _is_windows:
+                storage_configs = {"shared_memory": {}}
+            else:
+                storage_configs = {
+                    "plasma": plasma_setup_params,
+                }
 
         storage_handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         await mo.create_actor(StorageManagerActor,

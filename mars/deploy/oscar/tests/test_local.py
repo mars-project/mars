@@ -15,6 +15,7 @@
 import asyncio
 import os
 import threading
+import tempfile
 import time
 import uuid
 
@@ -36,6 +37,8 @@ from mars.deploy.oscar.session import get_default_async_session, \
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.service import load_config
 from mars.lib.aio import new_isolation
+from mars.storage import StorageLevel
+from mars.services.storage import StorageAPI
 from mars.tensor.arithmetic.add import TensorAdd
 from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
@@ -76,6 +79,23 @@ async def create_cluster(request):
         if request.param == 'default':
             assert client.session.client is not None
         yield client
+
+
+def _assert_storage_cleaned(session_id: str,
+                            addr: str,
+                            level: StorageLevel):
+
+    async def _assert(session_id: str,
+                                addr: str,
+                                level: StorageLevel):
+        storage_api = await StorageAPI.create(session_id, addr)
+        assert len(await storage_api.list(level)) == 0
+        info = await storage_api.get_storage_level_info(level)
+        assert info.used_size == 0
+
+    isolation = new_isolation()
+    asyncio.run_coroutine_threadsafe(
+        _assert(session_id, addr, level), isolation.loop).result()
 
 
 @pytest.mark.asyncio
@@ -178,6 +198,7 @@ async def test_web_session(create_cluster):
     session_id = str(uuid.uuid4())
     web_address = create_cluster.web_address
     session = await AsyncSession.init(web_address, session_id)
+    assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
     await test_execute(create_cluster)
@@ -193,6 +214,7 @@ def test_sync_execute():
 
     # web not started
     assert session._session.client.web_address is None
+    assert session.get_web_endpoint() is None
 
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
@@ -211,6 +233,26 @@ def test_sync_execute():
         d = session.execute(c)
         assert d is c
         assert abs(session.fetch(d) - raw.sum()) < 0.001
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            file_path = os.path.join(tempdir, 'test.csv')
+            pdf = pd.DataFrame(np.random.RandomState(0).rand(100, 10),
+                              columns=[f'col{i}' for i in range(10)])
+            pdf.to_csv(file_path, index=False)
+
+            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+            result = df.sum(axis=1).execute().fetch()
+            expected = pd.read_csv(file_path).sum(axis=1)
+            pd.testing.assert_series_equal(result, expected)
+
+            df = md.read_csv(file_path, chunk_bytes=os.stat(file_path).st_size / 5)
+            result = df.head(10).execute().fetch()
+            expected = pd.read_csv(file_path).head(10)
+            pd.testing.assert_frame_equal(result, expected)
+
+    for worker_pool in session._session.client._cluster._worker_pools:
+        _assert_storage_cleaned(session.session_id, worker_pool.external_address,
+                                StorageLevel.MEMORY)
 
     session.stop_server()
     assert get_default_async_session() is None
@@ -233,6 +275,7 @@ def test_no_default_session():
 @pytest.fixture
 def setup_session():
     session = new_session(n_cpu=2, default=True, use_uvloop=False)
+    assert session.get_web_endpoint() is not None
 
     with session:
         with option_context({'show_progress': False}):
@@ -263,6 +306,27 @@ def test_decref(setup_session):
     del c
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 1
+    del d
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
+
+    rs = np.random.RandomState(0)
+    pdf = pd.DataFrame({
+        'a': rs.randint(10, size=10),
+        'b': rs.rand(10)
+    })
+    df = md.DataFrame(pdf, chunk_size=5)
+    df2 = df.groupby('a').agg('mean', method='shuffle')
+    result = df2.execute().fetch()
+    expected = pdf.groupby('a').agg('mean')
+    pd.testing.assert_frame_equal(result, expected)
+
+    del df, df2
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
+
+    worker_addr = session._session.client._cluster._worker_pools[0].external_address
+    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
 
 def _cancel_when_execute(session, cancelled):
@@ -277,6 +341,9 @@ def _cancel_when_execute(session, cancelled):
     del rs
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
+
+    worker_addr = session._session.client._cluster._worker_pools[0].external_address
+    _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
 
 class SlowTileAdd(TensorAdd):

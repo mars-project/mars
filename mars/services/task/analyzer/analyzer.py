@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from collections import deque
-from typing import Type, Dict, List
+from typing import Dict, List, Tuple, Type, Union
 
 from ....core import ChunkGraph, ChunkType, enter_mode
 from ....core.operand import Fetch, Fuse, VirtualOperand
+from ....typing import BandType
 from ....utils import build_fetch
-from ...core import BandType
 from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
@@ -77,8 +77,14 @@ class GraphAnalyzer:
         assert len(to_fuse_nodes_list) == len(fused_nodes)
         fuse_to_fused = dict()
         for to_fuse_nodes, fused_node in zip(to_fuse_nodes_list, fused_nodes):
+            priority = None
             for to_fuse_node in to_fuse_nodes:
+                if to_fuse_node.op.priority:
+                    assert priority is None or priority == to_fuse_node.op.priority
+                    priority = to_fuse_node.op.priority
                 fuse_to_fused[to_fuse_node] = fused_node
+            if priority:
+                fused_node.op.priority = priority
         # modify chunk_to_bands if some chunk fused
         new_chunk_to_bands = dict()
         for chunk, band in chunk_to_bands.items():
@@ -181,7 +187,7 @@ class GraphAnalyzer:
 
     def _gen_subtask(self,
                      chunk: ChunkType,
-                     chunk_to_priorities: Dict[ChunkType, int],
+                     chunk_to_priorities: Dict[ChunkType, Tuple[int, ...]],
                      chunk_to_bands: Dict[ChunkType, BandType],
                      chunk_to_fetch_chunk: Dict[ChunkType, ChunkType]) -> Subtask:
         virtual = isinstance(chunk.op, VirtualOperand)
@@ -189,10 +195,11 @@ class GraphAnalyzer:
                       if not isinstance(inp_chunk.op, Fetch)]
         # calculate priority
         if inp_chunks:
-            priority = max(chunk_to_priorities[inp_chunk]
-                           for inp_chunk in inp_chunks) + 1
+            depth = max(chunk_to_priorities[inp_chunk][0]
+                        for inp_chunk in inp_chunks) + 1
         else:
-            priority = 0
+            depth = 0
+        priority = (depth, chunk.op.priority or 0)
         for out in chunk.op.outputs:
             chunk_to_priorities[out] = priority
 
@@ -215,6 +222,14 @@ class GraphAnalyzer:
             extra_config=self._extra_config)
         return subtask
 
+    @staticmethod
+    def _to_band(band_or_worker: Union[BandType, str]) -> BandType:
+        if isinstance(band_or_worker, tuple) and len(band_or_worker) == 2:
+            # band already
+            return band_or_worker
+        else:
+            return band_or_worker, 'numa-0'
+
     @enter_mode(build=True)
     def gen_subtask_graph(self) -> SubtaskGraph:
         """
@@ -226,17 +241,24 @@ class GraphAnalyzer:
             Subtask graph.
         """
         fetch_removed_chunk_graph = self._chunk_graph.copy()
+        reassign_worker_ops = []
         for chunk in self._chunk_graph:
             if isinstance(chunk.op, Fetch):
                 fetch_removed_chunk_graph.remove_node(chunk)
+            elif chunk.op.reassign_worker:
+                reassign_worker_ops.append(chunk.op)
 
         start_ops = list(self._iter_start_ops(fetch_removed_chunk_graph)) \
             if len(fetch_removed_chunk_graph) > 0 else []
 
         # assign start chunks
+        to_assign_ops = start_ops + reassign_worker_ops
         assigner = self._graph_assigner_cls(
-            fetch_removed_chunk_graph, start_ops, self._band_slots)
-        chunk_to_bands = assigner.assign()
+            fetch_removed_chunk_graph, to_assign_ops, self._band_slots)
+        # assign expect workers
+        cur_assigns = {op.key: self._to_band(op.expect_worker)
+                       for op in start_ops if op.expect_worker is not None}
+        chunk_to_bands = assigner.assign(cur_assigns=cur_assigns)
 
         # fuse node
         if self._fuse_enabled:

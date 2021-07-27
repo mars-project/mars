@@ -23,11 +23,10 @@ from typing import Callable, Coroutine, Dict, Iterator, \
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
-from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy
+from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy, OperandStage
 from ....optimization.logical import OptimizationRecords
-from ....typing import TileableType
+from ....typing import TileableType, BandType
 from ....utils import build_fetch, extensible
-from ...core import BandType
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -131,16 +130,11 @@ class TaskProcessor:
     def get_tiled(self, tileable: TileableType):
         return self._preprocessor.get_tiled(tileable)
 
-    @classmethod
-    async def _run_in_thread(cls, func: Callable):
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, func)
-
     @_record_error
     async def optimize(self) -> TileableGraph:
         # optimization, run it in executor,
         # since optimization may be a CPU intensive operation
-        return await self._run_in_thread(self._preprocessor.optimize)
+        return await asyncio.to_thread(self._preprocessor.optimize)
 
     @_record_error
     async def incref_fetch_tileables(self):
@@ -192,12 +186,16 @@ class TaskProcessor:
             n = subtask_graph.count_successors(subtask)
             for c in subtask.chunk_graph.results:
                 incref_chunk_keys.extend([c.key] * n)
-                # for shuffle reducer, incref its mapper chunk
-                for pre_graph in subtask_graph.predecessors(subtask):
-                    for chk in pre_graph.chunk_graph.results:
-                        if isinstance(chk.op, ShuffleProxy):
-                            incref_chunk_keys.extend(
-                                [map_chunk.key for map_chunk in chk.inputs])
+            # process reducer, since mapper will generate sub keys
+            # we incref (main_key, sub_key) for reducer
+            for chunk in subtask.chunk_graph:
+                if isinstance(chunk.op, MapReduceOperand) and \
+                        chunk.op.stage == OperandStage.reduce:
+                    # reducer
+                    data_keys = chunk.op.get_dependent_data_keys()
+                    incref_chunk_keys.extend(data_keys)
+                    # main key incref as well, to ensure existence of mata
+                    incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
         await self._lifecycle_api.incref_chunks(incref_chunk_keys)
@@ -205,7 +203,7 @@ class TaskProcessor:
     @classmethod
     def _get_decref_stage_chunk_keys(cls,
                                      stage_processor: "TaskStageProcessor") -> List[str]:
-        decref_chunks = []
+        decref_chunk_keys = []
         error_or_cancelled = stage_processor.error_or_cancelled()
         if stage_processor.subtask_graph:
             subtask_graph = stage_processor.subtask_graph
@@ -216,10 +214,21 @@ class TaskProcessor:
                         continue
                     # if subtask not executed, rollback incref of predecessors
                     for inp_subtask in subtask_graph.predecessors(subtask):
-                        decref_chunks.extend(inp_subtask.chunk_graph.results)
+                        for result_chunk in inp_subtask.chunk_graph.results:
+                            # for reducer chunk, decref mapper chunks
+                            if isinstance(result_chunk.op, ShuffleProxy):
+                                for chunk in subtask.chunk_graph:
+                                    if isinstance(chunk.op, MapReduceOperand):
+                                        data_keys = chunk.op.get_dependent_data_keys()
+                                        decref_chunk_keys.extend(data_keys)
+                                        decref_chunk_keys.extend(
+                                            [key[0] for key in data_keys])
+                        decref_chunk_keys.extend(
+                            [c.key for c in inp_subtask.chunk_graph.results])
             # decref result of chunk graphs
-            decref_chunks.extend(stage_processor.chunk_graph.results)
-        return [c.key for c in decref_chunks]
+            decref_chunk_keys.extend(
+                [c.key for c in stage_processor.chunk_graph.results])
+        return decref_chunk_keys
 
     @extensible
     @_record_error
@@ -245,7 +254,7 @@ class TaskProcessor:
             except StopIteration:
                 return
 
-        fut = self._run_in_thread(next_chunk_graph)
+        fut = asyncio.to_thread(next_chunk_graph)
         chunk_graph = await fut
         return chunk_graph
 
@@ -503,16 +512,20 @@ class TaskProcessorActor(mo.Actor):
     async def _decref_input_subtasks(self,
                                      subtask: Subtask,
                                      subtask_graph: SubtaskGraph):
-        decref_chunks = []
+        decref_chunk_keys = []
         for in_subtask in subtask_graph.iter_predecessors(subtask):
             for result_chunk in in_subtask.chunk_graph.results:
                 # for reducer chunk, decref mapper chunks
                 if isinstance(result_chunk.op, ShuffleProxy):
-                    outputs_num = len([r for r in subtask.chunk_graph.results
-                                       if isinstance(r.op, MapReduceOperand)])
-                    decref_chunks.extend(result_chunk.inputs * outputs_num)
-                decref_chunks.append(result_chunk)
-        await self._lifecycle_api.decref_chunks([c.key for c in decref_chunks])
+                    for chunk in subtask.chunk_graph:
+                        if isinstance(chunk.op, MapReduceOperand) and \
+                                chunk.op.stage == OperandStage.reduce:
+                            data_keys = chunk.op.get_dependent_data_keys()
+                            decref_chunk_keys.extend(data_keys)
+                            # decref main key as well
+                            decref_chunk_keys.extend([key[0] for key in data_keys])
+                decref_chunk_keys.append(result_chunk.key)
+        await self._lifecycle_api.decref_chunks(decref_chunk_keys)
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         stage_processor = self._cur_processor.cur_stage_processor

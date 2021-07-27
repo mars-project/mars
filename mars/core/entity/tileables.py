@@ -51,6 +51,11 @@ class OperandTilesHandler:
         cls._handlers[cls._get_op_cls(op)] = tile_handler
 
     @classmethod
+    def unregister(cls,
+                   op: OperandType):
+        del cls._handlers[cls._get_op_cls(op)]
+
+    @classmethod
     def get_handler(cls, op: OperandType) -> Callable[[OperandType], List[TileableType]]:
         op_cls = cls._get_op_cls(op)
         return cls._handlers.get(op_cls, op_cls.tile)
@@ -59,16 +64,22 @@ class OperandTilesHandler:
     def tile(cls, tileables: List[TileableType]) \
             -> Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
         op = tileables[0].op
-        tile_handler = cls.get_handler(op)
-        if inspect.isgeneratorfunction(tile_handler):
-            # op.tile can be a generator function,
-            # each time an operand yield some chunks,
-            # they will be put into ChunkGraph and executed first.
-            # After execution, resume from the yield place.
-            tiled_result = yield from tile_handler(op)
-        else:
-            # without iterative tiling
-            tiled_result = tile_handler(op)
+        # pre tile
+        op.pre_tile(op)
+        tiled_result = None
+        try:
+            tile_handler = cls.get_handler(op)
+            if inspect.isgeneratorfunction(tile_handler):
+                # op.tile can be a generator function,
+                # each time an operand yield some chunks,
+                # they will be put into ChunkGraph and executed first.
+                # After execution, resume from the yield place.
+                tiled_result = yield from tile_handler(op)
+            else:
+                # without iterative tiling
+                tiled_result = tile_handler(op)
+        finally:
+            op.post_tile(op, tiled_result)
 
         if not isinstance(tiled_result, list):
             tiled_result = [tiled_result]
@@ -123,6 +134,7 @@ class OperandTilesHandler:
 
 handler = OperandTilesHandler()
 register = OperandTilesHandler.register
+unregister = OperandTilesHandler.unregister
 
 
 class _ChunksIndexer:

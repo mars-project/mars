@@ -17,13 +17,14 @@ from typing import Dict
 
 import numpy as np
 
-from mars.core import TileableType, ChunkGraph, OBJECT_TYPE, enter_mode
+from mars.core import TileableType, ChunkGraph, OBJECT_TYPE, \
+    enter_mode, register, unregister
 from mars.core.operand import Fetch
 from mars.tests.core import _check_args, ObjectCheckMixin
-from mars.services.core import BandType
 from mars.services.subtask import SubtaskGraph
 from mars.services.task.analyzer import GraphAnalyzer
 from mars.services.task.supervisor.preprocessor import TaskPreprocessor
+from mars.typing import BandType
 
 
 class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
@@ -34,9 +35,23 @@ class CheckedTaskPreprocessor(ObjectCheckMixin, TaskPreprocessor):
 
         check_options = dict()
         kwargs = self._task.extra_config or dict()
+        self._operand_tile_handlers = operand_tile_handlers = \
+            kwargs.pop('operand_tile_handlers', dict())
+        for op, tile_handler in operand_tile_handlers.items():
+            register(op, tile_handler)
         for key in _check_args:
             check_options[key] = kwargs.get(key, True)
         self._check_options = check_options
+
+    def _get_done(self):
+        return super()._get_done()
+
+    def _set_done(self, is_done: bool):
+        super()._set_done(is_done)
+        for op in self._operand_tile_handlers:
+            unregister(op)
+
+    done = property(_get_done, _set_done)
 
     def _check_nsplits(self, tiled: TileableType):
         if tiled.nsplits == () and len(tiled.chunks) == 1:

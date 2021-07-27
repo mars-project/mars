@@ -50,8 +50,10 @@ async def actor_pools():
     sv_pool, worker_pool = await asyncio.gather(
         start_pool(False), start_pool(True)
     )
-    yield sv_pool, worker_pool
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+    try:
+        yield sv_pool, worker_pool
+    finally:
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
 @pytest.mark.parametrize(indirect=True)
@@ -103,14 +105,14 @@ async def start_test_service(actor_pools, request):
                                               worker_pool.external_address)
 
     try:
-        yield task_api, storage_api
+        yield sv_pool.external_address, task_api, storage_api
     finally:
         await MockStorageAPI.cleanup(worker_pool.external_address)
 
 
 @pytest.mark.asyncio
 async def test_task_execution(start_test_service):
-    task_api, storage_api = start_test_service
+    _sv_pool_address, task_api, storage_api = start_test_service
 
     def f1():
         return np.arange(5)
@@ -147,7 +149,7 @@ async def test_task_execution(start_test_service):
 
 @pytest.mark.asyncio
 async def test_task_error(start_test_service):
-    task_api, storage_api = start_test_service
+    _sv_pool_address, task_api, storage_api = start_test_service
 
     # test job cancel
     def f1():
@@ -167,7 +169,7 @@ async def test_task_error(start_test_service):
 
 @pytest.mark.asyncio
 async def test_task_cancel(start_test_service):
-    task_api, storage_api = start_test_service
+    _sv_pool_address, task_api, storage_api = start_test_service
 
     # test job cancel
     def f1():
@@ -192,31 +194,50 @@ async def test_task_cancel(start_test_service):
     assert all(result.status == TaskStatus.terminated for result in results)
 
 
+class _ProgressController:
+    def __init__(self):
+        self._step_event = asyncio.Event()
+
+    async def wait(self):
+        await self._step_event.wait()
+        self._step_event.clear()
+
+    def set(self):
+        self._step_event.set()
+
+
 @pytest.mark.asyncio
 async def test_task_progress(start_test_service):
-    task_api, storage_api = start_test_service
+    sv_pool_address, task_api, storage_api = start_test_service
 
-    def f1(interval: float, count: int):
+    session_api = await SessionAPI.create(address=sv_pool_address)
+    ref = await session_api.create_remote_object(
+        task_api._session_id, 'progress_controller', _ProgressController)
+
+    def f1(count: int):
+        progress_controller = get_context().get_remote_object('progress_controller')
         for idx in range(count):
-            time.sleep(interval)
+            progress_controller.wait()
             get_context().set_progress((1 + idx) * 1.0 / count)
 
-    r = mr.spawn(f1, args=(0.75, 2))
+    r = mr.spawn(f1, args=(2,))
 
     graph = TileableGraph([r.data])
     next(TileableGraphBuilder(graph).build())
 
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+    await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.1)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 0.0
 
-    await asyncio.sleep(0.75)
+    await ref.set()
+    await asyncio.sleep(1)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 0.5
 
-    await task_api.wait_task(task_id, timeout=10)
+    await ref.set()
+    await asyncio.sleep(1)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 1.0
 

@@ -40,9 +40,9 @@ from ...serialization.serializables import AnyField, BoolField, DictField, ListF
 from ...utils import is_object_dtype
 from ..arrays import ArrowStringDtype
 from ..operands import OutputType
-from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype, \
-    standardize_range_index
-from .core import HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin
+from ..utils import parse_index, to_arrow_dtypes, contain_arrow_dtype
+from .core import IncrementalIndexDatasource, ColumnPruneSupportedDataSourceMixin, \
+    IncrementalIndexDataSourceMixin
 
 
 PARQUET_MEMORY_SCALE = 15
@@ -151,7 +151,9 @@ class FastpaquetEngine(ParquetEngine):
         return df
 
 
-class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSourceMixin):
+class DataFrameReadParquet(IncrementalIndexDatasource,
+                           ColumnPruneSupportedDataSourceMixin,
+                           IncrementalIndexDataSourceMixin):
     _op_type_ = OperandDef.READ_PARQUET
 
     _path = AnyField('path')
@@ -353,9 +355,6 @@ class DataFrameReadParquet(HeadOptimizedDataSource, ColumnPruneSupportedDataSour
                 out_chunks.append(new_chunk)
                 chunk_index += 1
 
-        if op.incremental_index:
-            out_chunks = standardize_range_index(out_chunks)
-
         new_op = op.copy()
         nsplits = ((np.nan,) * len(out_chunks), (out_df.shape[1],))
         return new_op.new_dataframes(None, out_df.shape, dtypes=dtypes,
@@ -458,7 +457,8 @@ def read_parquet(path, engine: str = "auto", columns=None,
         if False, each file correspond to a chunk.
         Only available for 'pyarrow' engine.
     incremental_index: bool, default False
-        Create a new RangeIndex if csv doesn't contain index columns.
+        If index_col not specified, ensure range index incremental,
+        gain a slightly better performance if setting False.
     use_arrow_dtype: bool, default None
         If True, use arrow dtype to store columns.
     storage_options: dict, optional

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import List, Dict, Type, Callable, Any
+from typing import Any, Callable, Dict, List, Type, Union
 
 import numpy as np
 try:
@@ -22,7 +22,8 @@ except ImportError:  # pragma: no cover
     UFuncTypeError = None
 
 from ...typing import TileableType, ChunkType, OperandType
-from ...utils import calc_object_overhead, calc_data_size
+from ...utils import calc_data_size
+from ..context import Context
 from ..mode import is_eager_mode
 from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
@@ -210,26 +211,76 @@ class TileableOperandMixin:
         return self.new_tileables(inputs, kws=kws, **kw)[0]
 
     @classmethod
-    def tile(cls, op):
+    def pre_tile(cls, op: OperandType):
+        """
+        Operation before tile.
+
+        Parameters
+        ----------
+        op : OperandType
+          Operand to tile
+        """
+
+    @classmethod
+    def tile(cls, op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def execute(cls, ctx, op):
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
+        """
+        Operation after tile.
+
+        Parameters
+        ----------
+        op : OperandType
+          Operand to tile.
+        results: list
+          List of tiled results.
+        """
+
+    @classmethod
+    def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
+        """
+        Operation before execute.
+
+        Parameters
+        ----------
+        ctx : dict
+            Data store.
+        op : OperandType
+            Operand to execute.
+        """
+
+    @classmethod
+    def execute(cls, ctx: Union[dict, Context], op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def estimate_size(cls, ctx, op):
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
+        """
+        Operand before execute.
+
+        Parameters
+        ----------
+        ctx : dict
+            Data store
+        op : OperandType
+            Operand to execute.
+        """
+
+    @classmethod
+    def estimate_size(cls, ctx: dict, op: OperandType):
         from .fetch import FetchShuffle
 
         exec_size = 0
         outputs = op.outputs
         pure_dep_keys = \
             set(inp.key for inp, is_dep in zip(op.inputs or (), op.pure_depends or ()) if is_dep)
-        if all(not c.is_sparse() and hasattr(c, 'nbytes') and not np.isnan(c.nbytes) for c in outputs):
+        if all(not c.is_sparse() and hasattr(c, 'nbytes') and
+               not np.isnan(c.nbytes) for c in outputs):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
 
-        all_overhead = 0
         for inp in op.inputs or ():
             if inp.key in pure_dep_keys:
                 continue
@@ -242,9 +293,7 @@ class TileableOperandMixin:
                 # execution size of a specific data chunk may be
                 # larger than stored type due to objects
                 for key, shape in keys_and_shapes:
-                    overhead = calc_object_overhead(inp, shape)
-                    all_overhead += overhead
-                    exec_size += ctx[key][0] + overhead
+                    exec_size += ctx[key][0]
             except KeyError:
                 if not op.sparse:
                     inp_size = calc_data_size(inp)
@@ -257,7 +306,7 @@ class TileableOperandMixin:
         for out in outputs:
             try:
                 if not out.is_sparse():
-                    chunk_size = calc_data_size(out) + all_overhead // len(outputs)
+                    chunk_size = calc_data_size(out)
                 else:
                     chunk_size = exec_size
                 if np.isnan(chunk_size):
@@ -337,6 +386,8 @@ def execute(results: Dict[str, Any], op: OperandType):
     except KeyError:
         executor = type(op).execute
 
+    # pre execute
+    op.pre_execute(results, op)
     try:
         if UFuncTypeError is None:  # pragma: no cover
             return executor(results, op)
@@ -354,6 +405,8 @@ def execute(results: Dict[str, Any], op: OperandType):
                 _op_type_to_executor[type(op)] = executor
                 return executor(results, op)
         raise KeyError(f'No handler found for op: {op}')
+    finally:
+        op.post_execute(results, op)
 
 
 def estimate_size(results: Dict[str, Any], op: OperandType):

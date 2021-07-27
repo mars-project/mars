@@ -18,8 +18,8 @@ from collections import defaultdict
 from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
+from ....typing import BandType
 from ....utils import extensible
-from ...core import BandType
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +57,15 @@ class GlobalSlotManagerActor(mo.Actor):
             self._band_total_slots = await self._cluster_api.get_all_bands()
 
         idx = 0
-        total_slots = self._band_total_slots[band]
-        for stid, slots in zip(subtask_ids, subtask_slots):
-            if self._band_used_slots[band] + slots > total_slots:
-                break
-            self._band_stid_slots[band][(session_id, stid)] = slots
-            self._band_used_slots[band] += slots
-            idx += 1
+        # only ready bands will pass
+        if band in self._band_total_slots:
+            total_slots = self._band_total_slots[band]
+            for stid, slots in zip(subtask_ids, subtask_slots):
+                if self._band_used_slots[band] + slots > total_slots:
+                    break
+                self._band_stid_slots[band][(session_id, stid)] = slots
+                self._band_used_slots[band] += slots
+                idx += 1
         if idx == 0:
             logger.debug('No slots available, status: %r, request: %r',
                          self._band_used_slots, subtask_slots)

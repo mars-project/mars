@@ -14,6 +14,7 @@
 
 import asyncio
 import concurrent.futures as futures
+import logging.config
 import multiprocessing
 import os
 import signal
@@ -24,6 +25,9 @@ from ....utils import get_next_port
 from ..config import ActorPoolConfig
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
 
+
+_is_windows: bool = sys.platform.startswith('win')
+
 if sys.version_info[:2] == (3, 9):
     # fix for Python 3.9, see https://bugs.python.org/issue43517
     if sys.platform == 'win32':
@@ -32,18 +36,25 @@ if sys.version_info[:2] == (3, 9):
         from multiprocessing import popen_spawn_posix as popen_spawn
     from multiprocessing import popen_forkserver, popen_fork, synchronize
     _ = popen_spawn, popen_forkserver, popen_fork, synchronize
-elif sys.version_info[:2] == (3, 6):
+elif sys.version_info[:2] == (3, 6):  # pragma: no cover
     # define kill method for multiprocessing
-    _kill_sig = getattr(signal, 'SIGKILL', signal.SIGTERM)
-
-    def _mp_kill(self):
-        try:  # pragma: no cover
-            os.kill(self.pid, _kill_sig)
-        except OSError:
-            pass
+    if not _is_windows:
+        def _mp_kill(self):
+            try:
+                os.kill(self.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except OSError:
+                if self.wait(timeout=0.1) is None:
+                    raise
+    else:
+        def _mp_kill(self):
+            self.terminate()
 
     from multiprocessing.process import BaseProcess
     BaseProcess.kill = _mp_kill
+
+logger = logging.getLogger(__name__)
 
 
 @_register_message_handler
@@ -118,18 +129,28 @@ class MainActorPool(MainActorPoolBase):
             actor_config: ActorPoolConfig,
             process_index: int,
             started: multiprocessing.Event):
-        try:
-            # register coverage hooks on SIGTERM
-            from pytest_cov.embed import cleanup_on_sigterm
-            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
-                cleanup_on_sigterm()
-        except ImportError:  # pragma: no cover
-            pass
+        if not _is_windows:
+            try:
+                # register coverage hooks on SIGTERM
+                from pytest_cov.embed import cleanup_on_sigterm
+                if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                    cleanup_on_sigterm()
+            except ImportError:  # pragma: no cover
+                pass
 
         conf = actor_config.get_pool_config(process_index)
         suspend_sigint = conf['suspend_sigint']
         if suspend_sigint:
             signal.signal(signal.SIGINT, lambda *_: None)
+
+        logging_conf = conf['logging_conf'] or {}
+        if logging_conf.get('file'):
+            logging.config.fileConfig(logging_conf['file'])
+        elif logging_conf.get('level'):
+            logging.basicConfig(
+                level=logging_conf['level'], format=logging_conf.get('format')
+            )
+
         use_uvloop = conf['use_uvloop']
         if use_uvloop:
             import uvloop
@@ -161,7 +182,7 @@ class MainActorPool(MainActorPoolBase):
 
     async def kill_sub_pool(self, process: multiprocessing.Process,
                             force: bool = False):
-        if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
+        if 'COV_CORE_SOURCE' in os.environ and not force and not _is_windows:  # pragma: no cover
             # must shutdown gracefully, or coverage info lost
             try:
                 os.kill(process.pid, signal.SIGINT)

@@ -299,16 +299,16 @@ def test_dataframe_groupby_agg(setup):
         assert r.op.groupby_params['as_index'] is False
 
     # test as_index=False takes no effect
-    r = mdf.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'], method='tree')
+    r = mdf.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count'])
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw.groupby(['c1', 'c2'], as_index=False).agg(['mean', 'count']))
     assert r.op.groupby_params['as_index'] is True
 
-    r = mdf.groupby('c2').agg(['cumsum', 'cumcount'], method='tree')
+    r = mdf.groupby('c2').agg(['cumsum', 'cumcount'])
     pd.testing.assert_frame_equal(r.execute().fetch().sort_index(),
                                   raw.groupby('c2').agg(['cumsum', 'cumcount']).sort_index())
 
-    r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2(), method='tree')
+    r = mdf[['c1', 'c3']].groupby(mdf['c2']).agg(MockReduction2())
     pd.testing.assert_frame_equal(r.execute().fetch(),
                                   raw[['c1', 'c3']].groupby(raw['c2']).agg(MockReduction2()))
 

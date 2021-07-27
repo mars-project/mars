@@ -79,7 +79,11 @@ def new_isolation(name: str = DEFAULT_ISOLATION,
 
 
 def get_isolation(name: str = DEFAULT_ISOLATION):
-    return _name_to_isolation[name]
+    isolation = _name_to_isolation[name]
+    if isolation.loop.is_closed():  # pragma: no cover
+        _name_to_isolation.pop(name)
+        raise KeyError(name)
+    return isolation
 
 
 def stop_isolation(name: str = DEFAULT_ISOLATION):

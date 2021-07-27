@@ -20,8 +20,8 @@ from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
 from ....optimization.logical import OptimizationRecords
+from ....typing import BandType
 from ....utils import get_params_fields
-from ...core import BandType
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
 from ...meta import MetaAPI
@@ -75,7 +75,7 @@ class TaskStageProcessor:
             return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
-            subtasks, [(subtask.priority,) for subtask in subtasks])
+            subtasks, [subtask.priority for subtask in subtasks])
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []
