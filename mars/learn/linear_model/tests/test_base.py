@@ -107,6 +107,7 @@ def test_raises_value_error_if_positive_and_sparse():
     with pytest.raises(TypeError, match=error_msg):
         reg.fit(X, y)
 
+
 def test_raises_value_error_if_sample_weights_greater_than_1d():
     # Sample weights must be either scalar or 1D
 
@@ -142,12 +143,12 @@ def test_fit_intercept():
     lr3_without_intercept = LinearRegression(fit_intercept=False).fit(X3, y)
     lr3_with_intercept = LinearRegression().fit(X3, y)
 
-    assert (lr2_with_intercept.coef_.shape ==
-            lr2_without_intercept.coef_.shape)
-    assert (lr3_with_intercept.coef_.shape ==
-            lr3_without_intercept.coef_.shape)
-    assert (lr2_without_intercept.coef_.ndim ==
-            lr3_without_intercept.coef_.ndim)
+    assert (lr2_with_intercept.coef_.shape
+            == lr2_without_intercept.coef_.shape)
+    assert (lr3_with_intercept.coef_.shape
+            == lr3_without_intercept.coef_.shape)
+    assert (lr2_without_intercept.coef_.ndim
+            == lr3_without_intercept.coef_.ndim)
 
 
 def test_linear_regression_sparse(random_state=0):
@@ -388,8 +389,8 @@ def test_preprocess_data_weighted():
 
     # XXX: if normalize=True, should we expect a weighted standard deviation?
     #      Currently not weighted, but calculated with respect to weighted mean
-    expected_X_norm = (np.sqrt(X.shape[0]) *
-                       np.mean((X - expected_X_mean) ** 2, axis=0) ** .5)
+    expected_X_norm = (np.sqrt(X.shape[0])
+                       * np.mean((X - expected_X_mean) ** 2, axis=0) ** .5)
 
     Xt, yt, X_mean, y_mean, X_norm = \
         _preprocess_data(X, y, fit_intercept=True, normalize=False,
@@ -426,7 +427,7 @@ def test_sparse_preprocess_data_with_return_mean():
     assert_array_almost_equal(X_mean, np.zeros(n_features))
     assert_array_almost_equal(y_mean, 0)
     assert_array_almost_equal(X_norm, np.ones(n_features))
-    assert_array_almost_equal(Xt.A, XA)
+    assert_array_almost_equal(Xt.to_numpy().A, XA)
     assert_array_almost_equal(yt, y)
 
     Xt, yt, X_mean, y_mean, X_norm = \

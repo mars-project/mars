@@ -181,7 +181,9 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
         """Set the intercept_"""
         if self.fit_intercept:
             self.coef_ = self.coef_ / X_scale
-            self.intercept_ = y_offset - np.dot(X_offset, self.coef_.T)
+            self.intercept_ = (
+                y_offset - np.dot(X_offset, self.coef_.T)
+            ).to_numpy()
         else:
             self.intercept_ = 0.0
 
