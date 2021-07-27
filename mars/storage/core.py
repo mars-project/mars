@@ -117,10 +117,8 @@ class BufferWrappedFileObject(ABC):
             self._read_init()
             self._initialized = True
 
-        if whence == os.SEEK_END:  # pragma: no cover
-            # shared memory often returns sizes larger than actually written,
-            # thus it is hard to implement os.SEEK_END
-            raise NotImplementedError
+        if whence == os.SEEK_END:
+            new_offset = self._size + offset
         elif whence == os.SEEK_CUR:
             new_offset = self._offset + offset
         else:

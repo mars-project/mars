@@ -215,6 +215,7 @@ async def test_reader_and_writer(ray_start_regular, storage_context):
 
         assert 5 == await reader.seek(5)
         assert 10 == await reader.seek(5, os.SEEK_CUR)
+        assert 10 == await reader.seek(-10 - size, os.SEEK_END)
         assert 10 == await reader.tell()
         r = await AioDeserializer(reader).run()
 
