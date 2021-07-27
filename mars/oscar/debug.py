@@ -17,6 +17,7 @@ import contextvars
 import json
 import logging
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Optional  # noqa: F401
@@ -62,8 +63,9 @@ def reload_debug_opts_from_env():
 
 
 async def _log_timeout(timeout, msg, *args, **kwargs):
+    start_time = time.time()
     await asyncio.sleep(timeout)
-    logger.warning(msg, *args, **kwargs)
+    logger.warning(msg + ' timeout for %.4f seconds.', *args, time.time() - start_time, **kwargs)
 
 
 @contextmanager

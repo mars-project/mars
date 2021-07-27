@@ -202,7 +202,7 @@ class RayTwoWayChannel(RayChannelBase):
             raise ChannelClosed('Channel already closed, cannot send message')
         object_ref = self._peer_actor.__on_ray_recv__.remote(self.channel_id, serialize(message))
         with debug_async_timeout('ray_object_retrieval_timeout',
-                                 'Message that the server sent to actor %s is %s', self._peer_actor, message):
+                                 'Message that the server sent to actor %s is %s', self.dest_address, message):
             result = await object_ref
         if isinstance(result, RayChannelException):  # pragma: no cover
             # Peer create channel may fail
