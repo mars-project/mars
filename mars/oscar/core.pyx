@@ -263,17 +263,17 @@ cdef class _BaseActor:
         cdef object res
         cdef object message_trace = None, pop_message_trace = None, set_message_trace = None
 
-        if _log_cycle_send:
-            from .debug import pop_message_trace, set_message_trace
-
+        from .debug import pop_message_trace, set_message_trace, debug_async_timeout
         try:
             res = None
             while True:
-                async with self._lock:
-                    if not is_exception:
-                        res = await gen.asend(res)
-                    else:
-                        res = await gen.athrow(*res)
+                with debug_async_timeout('lock_hold_timeout',
+                                         'async_generator % hold lock timeout', gen):
+                    async with self._lock:
+                        if not is_exception:
+                            res = await gen.asend(res)
+                        else:
+                            res = await gen.athrow(*res)
                 try:
                     if _log_cycle_send:
                         message_trace = pop_message_trace()
@@ -312,23 +312,30 @@ cdef class _BaseActor:
         message : tuple
             Message shall be (method_name,) + args + (kwargs,)
         """
+        from .debug import debug_async_timeout
         try:
             method, call_method, args, kwargs = message
             if call_method == CALL_METHOD_DEFAULT:
                 func = getattr(self, method)
-                async with self._lock:
-                    result = func(*args, **kwargs)
-                    if asyncio.iscoroutine(result):
-                        result = await result
+                with debug_async_timeout('lock_hold_timeout',
+                                         "Method %s of actor %s hold lock timeout.",
+                                         method, self.uid):
+                    async with self._lock:
+                        result = func(*args, **kwargs)
+                        if asyncio.iscoroutine(result):
+                            result = await result
             elif call_method == CALL_METHOD_BATCH:
                 func = getattr(self, method)
-                async with self._lock:
-                    delays = []
-                    for s_args, s_kwargs in zip(*args):
-                        delays.append(func.delay(*s_args, **s_kwargs))
-                    result = func.batch(*delays)
-                    if asyncio.iscoroutine(result):
-                        result = await result
+                with debug_async_timeout('lock_hold_timeout',
+                                         "Batch method %s of actor %s hold lock timeout, batch size %s.",
+                                         method, self.uid, len(args)):
+                    async with self._lock:
+                        delays = []
+                        for s_args, s_kwargs in zip(*args):
+                            delays.append(func.delay(*s_args, **s_kwargs))
+                        result = func.batch(*delays)
+                        if asyncio.iscoroutine(result):
+                            result = await result
             else:  # pragma: no cover
                 raise ValueError(f'call_method {call_method} not valid')
 

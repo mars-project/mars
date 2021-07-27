@@ -32,6 +32,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 class DebugOptions:
     actor_call_timeout: int = 10
     process_message_timeout: int = 30
+    lock_hold_timeout: int = 30
     ray_object_retrieval_timeout: int = 10
     log_unhandled_errors: bool = True
     log_cycle_send: bool = True
