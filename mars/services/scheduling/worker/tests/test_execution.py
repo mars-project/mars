@@ -116,7 +116,7 @@ async def actor_pool(request):
 
         # create assigner actor
         execution_ref = await mo.create_actor(SubtaskExecutionActor,
-                                              subtask_max_retries=1,
+                                              subtask_max_retries=0,
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor
