@@ -70,7 +70,9 @@ def format_graph_data(graph: TileableGraph):
                 "from_tileable_name": str(node_successor.op),
 
                 "to_tileable_id": node.key,
-                "to_tileable_name": node_name
+                "to_tileable_name": node_name,
+
+                "linkType": 0
             })
             
     res = { 
@@ -485,15 +487,9 @@ class TaskProcessorActor(mo.Actor):
 
     def get_result_tileable_graph(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
-    
-        res_tileable_graph = processor.tileable_graph
+        res_tileable_graph = format_graph_data(processor.tileable_graph)
 
-        res_tileable_context = processor.tile_context
-        print(res_tileable_context)
-        res_tiled_percentage = len(res_tileable_context) / len(res_tileable_graph)
-        print(res_tiled_percentage)
-
-        return format_graph_data(res_tileable_graph)
+        return res_tileable_graph
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

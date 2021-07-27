@@ -104,13 +104,13 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         res = await oscar_api.get_task_result(task_id)
         self.write(json.dumps(_json_serial_task_result(res)))
 
-    @web_api('(?P<task_id>[^/]+)' + '/tileables', method='get')
+    @web_api('(?P<task_id>[^/]+)' + '/tileables', method='get', arg_filter={'action': 'get_tileable_ids'})
     async def get_tileable_ids_by_task_id(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_tileable_ids_by_task_id(task_id)
         self.write(json.dumps(res))
 
-    @web_api('(?P<task_id>[^/]+)' + '/tileables/' + '(?P<tileable_key>[^/]+)', method='get')
+    @web_api('(?P<task_id>[^/]+)' + '/tileables/' + '(?P<tileable_key>[^/]+)', method='get', arg_filter={'action': 'get_tileable_detail'})
     async def get_tileable_detail_by_key(self, session_id: str, task_id: str, tileable_key: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_tileable_detail_by_key(tileable_key)
@@ -215,3 +215,17 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def cancel_task(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         await self._request_url(path=path, method='DELETE')
+
+    async def get_tileable_ids_by_task_id(self, task_id: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileables'
+        params = dict(action='get_tileable_ids')
+        res = await self._request_url(path=path, params=params, method='GET')
+        content = await res.read()
+        return json.loads(content.decode())
+
+    async def get_tileable_detail_by_key(self, task_id: str, tileable_key: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileables/{tileable_key}'
+        params = dict(action='get_tileable_detail')
+        res = await self._request_url(path=path, params=params, method='GET')
+        content = await res.read()
+        return json.loads(content.decode())

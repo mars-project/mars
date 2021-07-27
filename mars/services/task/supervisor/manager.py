@@ -182,6 +182,7 @@ class TaskManagerActor(mo.Actor):
     async def get_tileable_ids_by_task_id(self, task_id: str):
         if task_id not in self._task_id_to_tileable_ids:
             raise TaskNotExist(f'Task {task_id} does not exist')
+            return []
         else: 
             return self._task_id_to_tileable_ids[task_id]
 
@@ -189,10 +190,10 @@ class TaskManagerActor(mo.Actor):
         try:
             info = self._tileable_key_to_info[tileable_key][-1]
             res = await info.processor_ref.get_result_tileable_graph(tileable_key)
-            # print(res)
             return res
         except KeyError:  # pragma: no cover
             raise TileableKeyNotExist(f'Tileable with key {tileable_key} does not exist')
+            return {}
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
             Dict[TileableType, TileableType]:

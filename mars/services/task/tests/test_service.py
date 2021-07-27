@@ -219,3 +219,55 @@ async def test_task_progress(start_test_service):
     await task_api.wait_task(task_id, timeout=10)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 1.0
+
+
+@pytest.mark.asyncio
+async def test_get_tileables(start_test_service):
+    task_api, storage_api = start_test_service
+
+    def f1():
+        return np.arange(5)
+
+    def f2():
+        return np.arange(5, 10)
+
+    def f3(f1r, f2r):
+        return np.concatenate([f1r, f2r]).sum()
+
+    r1 = mr.spawn(f1)
+    r2 = mr.spawn(f2)
+    r3 = mr.spawn(f3, args=(r1, r2))
+
+    graph = TileableGraph([r3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    tileable_ids = await task_api.get_tileable_ids_by_task_id(task_id)
+
+    assert type(tileable_ids) is list
+    assert len(tileable_ids) > 0
+    
+    for tileable_key in tileable_ids:
+        assert len(tileable_key) > 0
+        assert type(tileable_key) is str
+
+        tileable_detail = await task_api.get_tileable_detail_by_key(task_id, tileable_key)
+        print('detail: ', tileable_detail)
+
+        num_tileable = len(tileable_detail.get("tileables"))
+        num_dependencies = len(tileable_detail.get("dependencies"))
+        assert  num_tileable > 0
+        assert  num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+
+        assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
+
+        if num_tileable > 1:
+            tileables = []
+            for tileable in tileable_detail.get("tileables"):
+                tileables.append(tileable.get("tileable_id"))
+            
+            for dependency in tileable_detail.get("dependencies"):
+                assert tileables.count(dependency.get("from_tileable_id")) == 1
+                assert tileables.count(dependency.get("to_tileable_id")) == 1
+                assert dependency.get("linkType") == 0 # need to be changed later
