@@ -502,7 +502,7 @@ class TaskProcessorActor(mo.Actor):
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
-
+        tileable_graph = processor.tileable_graph
         for result_tileable in tileable_graph.result_tileables:
             if result_tileable.key == tileable_key:
                 tiled = processor.get_tiled(result_tileable)
