@@ -86,6 +86,7 @@ class SenderManagerActor(mo.StatelessActor):
                         self._buffers, session_id, self._send_keys,
                         level, self._eof_marks)
                     await receiver_ref.receive_part_data(transfer_message)
+
                 self._buffers = []
                 self._send_keys = []
                 self._eof_marks = []
@@ -98,23 +99,27 @@ class SenderManagerActor(mo.StatelessActor):
                     await self.flush()
 
         sender = BufferedSender()
+        open_reader_tasks = []
         for data_key in data_keys:
-            async with await self._storage_handler.open_reader(
-                    session_id, data_key) as reader:
-                while True:
-                    part_data = await reader.read(block_size)
-                    # Notes on [How to decide whether the reader reaches EOF?]
-                    #
-                    # In some storage backend, e.g., the reported memory usage (i.e., the
-                    # `store_size`) may not same with the byte size that need to be transferred
-                    # when moving to a remote worker. Thus, we think the reader reaches EOF
-                    # when a `read` request returns nothing, rather than comparing the `sent_size`
-                    # and the `store_size`.
-                    #
-                    is_eof = not part_data  # can be non-empty bytes, empty bytes and None
-                    await sender.send(part_data, is_eof, data_key)
-                    if is_eof:
-                        break
+            open_reader_tasks.append(
+                self._storage_handler.open_reader.delay(session_id, data_key))
+        readers = await self._storage_handler.open_reader.batch(*open_reader_tasks)
+
+        for data_key, reader in zip(data_keys, readers):
+            while True:
+                part_data = await reader.read(block_size)
+                # Notes on [How to decide whether the reader reaches EOF?]
+                #
+                # In some storage backend, e.g., the reported memory usage (i.e., the
+                # `store_size`) may not same with the byte size that need to be transferred
+                # when moving to a remote worker. Thus, we think the reader reaches EOF
+                # when a `read` request returns nothing, rather than comparing the `sent_size`
+                # and the `store_size`.
+                #
+                is_eof = not part_data  # can be non-empty bytes, empty bytes and None
+                await sender.send(part_data, is_eof, data_key)
+                if is_eof:
+                    break
         await sender.flush()
 
     @extensible
@@ -141,10 +146,7 @@ class SenderManagerActor(mo.StatelessActor):
         data_sizes = [info.store_size for info in infos]
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)
 
-        send_task = asyncio.create_task(
-            self._send_data(receiver_ref, session_id, data_keys, level, block_size))
-        await asyncio.gather(send_task)
-
+        await self._send_data(receiver_ref, session_id, data_keys, level, block_size)
         logger.debug('Finish sending data (%s, %s) to %s', session_id, data_keys, address)
 
 
@@ -157,14 +159,18 @@ class ReceiverManagerActor(mo.Actor):
         self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
             await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
 
-    async def create_writer(self,
-                            session_id: str,
-                            data_key: str,
-                            data_size: int,
-                            level: StorageLevel):
-        writer = await self._storage_handler.open_writer(session_id, data_key,
-                                                         data_size, level, request_quota=False)
-        self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
+    async def create_writers(self,
+                             session_id: str,
+                             data_keys: List[str],
+                             data_sizes: List[int],
+                             level: StorageLevel):
+        tasks = []
+        for data_key, data_size in zip(data_keys, data_sizes):
+            tasks.append(self._storage_handler.open_writer.delay(
+                session_id, data_key, data_size, level, request_quota=False))
+        writers = await self._storage_handler.open_writer.batch(*tasks)
+        for data_key, data_size, writer in zip(data_keys, data_sizes, writers):
+            self._key_to_writer_info[(session_id, data_key)] = (writer, data_size, level)
 
     async def open_writers(self,
                            session_id: str,
@@ -172,27 +178,28 @@ class ReceiverManagerActor(mo.Actor):
                            data_sizes: List[int],
                            level: StorageLevel):
         await self._storage_handler.request_quota_with_spill(level, sum(data_sizes))
-        tasks = []
-        for data_key, data_size in zip(data_keys, data_sizes):
-            create_task = asyncio.create_task(
-                self.create_writer(session_id, data_key, data_size, level))
-            tasks.append(create_task)
+        future = asyncio.create_task(
+            self.create_writers(session_id, data_keys, data_sizes, level))
         try:
-            await asyncio.gather(*tasks)
+            await future
         except asyncio.CancelledError:
             await self._quota_refs[level].release_quota(sum(data_sizes))
-            _ = [task.cancel() for task in tasks]
+            future.cancel()
             raise
 
     async def do_write(self, message: TransferMessage):
+        # close may be a high cost operation, use create_task
+        close_tasks = []
         for data, data_key, is_eof in zip(message.data,
                                           message.data_keys,
                                           message.eof_marks):
             writer, _, _ = self._key_to_writer_info[
                 (message.session_id, data_key)]
-            await writer.write(data)
+            if data:
+                await writer.write(data)
             if is_eof:
-                await writer.close()
+                close_tasks.append(asyncio.create_task(writer.close()))
+        await asyncio.gather(*close_tasks)
 
     async def receive_part_data(self, message: TransferMessage):
         try:

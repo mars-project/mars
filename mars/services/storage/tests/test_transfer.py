@@ -140,13 +140,13 @@ class MockSenderManagerActor(SenderManagerActor):
 
 # test for cancelling happens when creating writer
 class MockReceiverManagerActor2(ReceiverManagerActor):
-    async def create_writer(self,
-                            session_id: str,
-                            data_key: str,
-                            data_size: int,
-                            level: StorageLevel):
+    async def create_writers(self,
+                             session_id,
+                             data_keys,
+                             data_sizes,
+                             level):
         await asyncio.sleep(3)
-        await super().create_writer(session_id, data_key, data_size, level)
+        await super().create_writers(session_id, data_keys, data_sizes, level)
 
 
 class MockSenderManagerActor2(SenderManagerActor):

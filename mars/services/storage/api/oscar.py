@@ -233,6 +233,15 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.unpin(self._session_id,
                                               data_key, error)
 
+    async def batch_unpin(self, args_list, kwargs_list):
+        unpins = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            unpins.append(
+                self._storage_handler_ref.unpin.delay(
+                    self._session_id, *args, **kwargs)
+            )
+        return await self._storage_handler_ref.unpin.batch(*unpins)
+
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """
         Return a file-like object for reading.

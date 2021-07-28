@@ -141,7 +141,7 @@ class InternalDataInfo:
     object_info: ObjectInfo
 
 
-class DataManagerActor(mo.Actor):
+class DataManagerActor(mo.StatelessActor):
     _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
 
     def __init__(self):
@@ -265,22 +265,23 @@ class DataManagerActor(mo.Actor):
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
 
+    @extensible
     def pin(self, session_id, data_key):
         level = self.get_data_info(session_id, data_key).level
         self._spill_strategy[level].pin_data((session_id, data_key))
 
-    def unpin(self, session_id, data_key, error: str = 'raise'):
+    def unpin(self,
+              session_id: str,
+              data_keys: List[str],
+              error: str = 'raise'):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
-        try:
-            level = self.get_data_info(session_id, data_key).level
+        levels = set()
+        for data_key in data_keys:
+            level = self.get_data_info(session_id, data_key, error).level
             self._spill_strategy[level].unpin_data((session_id, data_key))
-            return level
-        except DataNotExist:
-            if error == 'raise':
-                raise
-            else:
-                return
+            levels.add(level)
+        return list(levels)
 
     def get_spillable_size(self, level: StorageLevel):
         return self._spill_strategy[level].get_spillable_size()
