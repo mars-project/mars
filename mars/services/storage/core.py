@@ -278,9 +278,11 @@ class DataManagerActor(mo.StatelessActor):
             raise ValueError('error must be raise or ignore')
         levels = set()
         for data_key in data_keys:
-            level = self.get_data_info(session_id, data_key, error).level
-            self._spill_strategy[level].unpin_data((session_id, data_key))
-            levels.add(level)
+            info = self.get_data_info(session_id, data_key, error)
+            if info:
+                level = info.level
+                self._spill_strategy[level].unpin_data((session_id, data_key))
+                levels.add(level)
         return list(levels)
 
     def get_spillable_size(self, level: StorageLevel):

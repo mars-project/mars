@@ -489,9 +489,9 @@ class StorageHandlerActor(mo.StatelessActor):
 
     @extensible
     async def unpin(self, session_id: str, data_key: str, error: str):
-        [level] = await self._data_manager_ref.unpin(session_id, [data_key], error)
-        if level is not None:
-            await self.notify_spillable_space(level)
+        levels = await self._data_manager_ref.unpin(session_id, [data_key], error)
+        if levels:
+            await self.notify_spillable_space(levels[0])
 
     @unpin.batch
     async def batch_unpin(self, args_list, kwargs_list):
