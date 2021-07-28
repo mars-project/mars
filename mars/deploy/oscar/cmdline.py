@@ -19,14 +19,18 @@ import glob
 import importlib
 import json
 import os
-import signal
+import sys
 import tempfile
 from typing import List
 
+import psutil
+
 from ..utils import load_service_config_file
 
+_is_windows: bool = sys.platform.startswith('win')
+
 # make sure coverage is handled when starting with subprocess.Popen
-if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+if not _is_windows and 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
     try:
         from pytest_cov.embed import cleanup_on_sigterm
     except ImportError:
@@ -108,13 +112,11 @@ class OscarCommandRunner:
         endpoints = []
         for fn in glob.glob(self._build_endpoint_file_path(asterisk=True)):
             _, pid_str = os.path.basename(fn).rsplit('.', 1)
-            try:
-                # detect if process exists
-                os.kill(int(pid_str), 0)
-                with open(fn, 'r') as ep_file:
-                    endpoints.append(ep_file.read().strip())
-            except (TypeError, OSError):  # pragma: no cover
-                pass
+            # detect if process exists
+            if pid_str.isdigit() and not psutil.pid_exists(int(pid_str)):
+                continue
+            with open(fn, 'r') as ep_file:
+                endpoints.append(ep_file.read().strip())
         return endpoints
 
     @classmethod
@@ -136,9 +138,10 @@ class OscarCommandRunner:
             args.host = args.host or task_detail['cluster'][task_type][task_index]
             args.supervisors = args.supervisors or ','.join(task_detail['cluster']['supervisor'])
 
-        default_host = os.environ.get(
-            'MARS_BIND_HOST', os.environ.get('MARS_CONTAINER_IP', '0.0.0.0'))
-        args.host = args.host or default_host
+        default_host = '0.0.0.0' if not _is_windows else '127.0.0.1'
+        env_host = os.environ.get(
+            'MARS_BIND_HOST', os.environ.get('MARS_CONTAINER_IP', default_host))
+        args.host = args.host or env_host
 
         args.ports = args.ports or os.environ.get('MARS_BIND_PORT')
         if args.ports is not None:
@@ -214,6 +217,11 @@ class OscarCommandRunner:
 
         loop = self.create_loop()
         task = loop.create_task(self._main(argv))
-        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
-            loop.add_signal_handler(sig, task.cancel)
-        loop.run_until_complete(task)
+
+        try:
+            loop.run_until_complete(task)
+        except KeyboardInterrupt:
+            task.cancel()
+            loop.run_until_complete(task)
+            # avoid displaying exception-unhandled warnings
+            task.exception()

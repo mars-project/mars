@@ -32,10 +32,6 @@ import mars.tensor as mt
 from mars.dataframe.datasource.read_csv import DataFrameReadCSV
 from mars.dataframe.datasource.read_sql import DataFrameReadSQL
 from mars.dataframe.datasource.read_parquet import DataFrameReadParquet
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.parametrize('chunk_size', [2, (2, 3)])

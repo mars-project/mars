@@ -25,10 +25,6 @@ except ImportError:  # pragma: no cover
 
 from mars import tensor as mt
 from mars import dataframe as md
-from mars.tests import setup
-
-
-setup = setup
 
 
 def close(fignum=None):  # pragma: no cover

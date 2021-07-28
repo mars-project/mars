@@ -16,7 +16,6 @@ import pytest
 
 import mars.oscar as mo
 from mars.tests.core import require_ray
-from mars.tests.conftest import *  # noqa
 from mars.utils import lazy_import
 from mars.oscar.backends.ray.utils import placement_group_info_to_addresses
 from mars.services.task.supervisor.manager import TaskConfigurationActor

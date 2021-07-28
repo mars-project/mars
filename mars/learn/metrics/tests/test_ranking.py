@@ -32,10 +32,6 @@ import pytest
 from mars import dataframe as md
 from mars import tensor as mt
 from mars.learn.metrics import roc_curve, auc, accuracy_score
-from mars.tests import setup
-
-
-setup = setup
 
     
 def test_roc_curve(setup):

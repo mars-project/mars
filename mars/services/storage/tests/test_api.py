@@ -29,7 +29,6 @@ from mars.services.storage.api import MockStorageAPI, WebStorageAPI
 from mars.services.web import WebActor
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
-from mars.tests.conftest import *  # noqa
 from mars.utils import get_next_port
 
 try:
@@ -54,7 +53,8 @@ plasma_setup_params = dict(
     store_memory=plasma_storage_size,
     plasma_directory=plasma_dir,
     check_dir_size=False)
-storage_configs.append({'plasma': plasma_setup_params})
+if not sys.platform.lower().startswith('win'):
+    storage_configs.append({'plasma': plasma_setup_params})
 
 # ray backend
 if ray is not None:

@@ -18,10 +18,6 @@ import pytest
 
 from mars.dataframe import Series, DataFrame
 from mars.tensor import tensor
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_series_quantile_execution(setup):

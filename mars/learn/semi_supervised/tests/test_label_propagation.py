@@ -28,10 +28,6 @@ from mars import tensor as mt
 from mars.learn.metrics.pairwise import rbf_kernel
 from mars.learn.neighbors import NearestNeighbors
 from mars.learn.semi_supervised import LabelPropagation
-from mars.tests import setup
-
-
-setup = setup
 
 
 estimators = [

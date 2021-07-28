@@ -25,6 +25,8 @@ from mars.services import start_services, stop_services, NodeRole
 from mars.services.storage import StorageAPI
 from mars.storage import StorageLevel
 
+_is_windows = sys.platform.lower().startswith('win')
+
 
 @pytest.fixture
 async def actor_pools():
@@ -58,7 +60,7 @@ async def test_storage_service(actor_pools):
     config = {
         "services": ["storage"],
         "storage": {
-            "backends": ["plasma"],
+            "backends": ["plasma" if not _is_windows else "shared_memory"],
             "plasma": plasma_setup_params,
         }
     }

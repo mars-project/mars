@@ -17,10 +17,6 @@ import pandas as pd
 
 import mars.dataframe as md
 import mars.tensor as mt
-from mars.tests import setup
-
-
-setup = setup
 
     
 def test_dataframe_initializer(setup):

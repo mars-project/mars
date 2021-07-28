@@ -23,10 +23,6 @@ except ImportError:  # pragma: no cover
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import haversine_distances
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

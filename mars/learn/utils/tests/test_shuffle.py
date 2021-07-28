@@ -21,10 +21,6 @@ import mars.dataframe as md
 from mars.core import tile
 from mars.learn.utils import shuffle
 from mars.learn.utils.shuffle import LearnShuffle
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_shuffle_expr():

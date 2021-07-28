@@ -96,7 +96,7 @@ class BandSlotManagerActor(mo.Actor):
         except mo.ActorNotExist:
             pass
 
-        strategy = IdleLabel(self._band_name, 'worker_slot_control')
+        strategy = IdleLabel(self._band_name, f'worker_slot_control')
         for slot_id in range(self._n_slots):
             self._slot_control_refs[slot_id] = await mo.create_actor(
                 BandSlotControlActor,
@@ -154,7 +154,12 @@ class BandSlotManagerActor(mo.Actor):
             return
 
         event = self._slot_kill_events[slot_id] = asyncio.Event()
-        await mo.kill_actor(self._slot_control_refs[slot_id])
+        # TODO(fyrestone): Make it more reliable. e.g. kill_actor
+        # success but the actor does not restart.
+        try:
+            await mo.kill_actor(self._slot_control_refs[slot_id])
+        except ConnectionError:
+            pass
         await event.wait()
 
     async def kill_slot(self, slot_id: int):

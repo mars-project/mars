@@ -116,6 +116,7 @@ async def actor_pool(request):
 
         # create assigner actor
         execution_ref = await mo.create_actor(SubtaskExecutionActor,
+                                              subtask_max_retries=0,
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor
@@ -240,7 +241,7 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
         await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(aiotask, timeout=30)
-    assert timer.duration < 6
+    assert timer.duration < 15
 
     # check for different phases
     if ref_to_delay is not None:

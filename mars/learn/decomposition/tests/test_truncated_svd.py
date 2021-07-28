@@ -23,11 +23,9 @@ except ImportError:
     sklearn = None
 
 import mars.tensor as mt
-from mars.tests import setup
 if sklearn:
     from mars.learn.decomposition import TruncatedSVD
 
-setup = setup
 
 # Make an X that looks somewhat like a small tf-idf matrix.
 # XXX newer versions of SciPy >0.16 have scipy.sparse.rand for this.

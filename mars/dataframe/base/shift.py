@@ -22,7 +22,7 @@ from ...utils import has_unknown_shape
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index, build_df, build_series, validate_axis
 
-_need_consolidate = pd.__version__ in ('1.1.0', '1.3.0')
+_need_consolidate = pd.__version__ in ('1.1.0', '1.3.0', '1.3.1')
 
 
 class DataFrameShift(DataFrameOperand, DataFrameOperandMixin):

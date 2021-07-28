@@ -23,12 +23,8 @@ except ImportError:
     sklearn = None
 
 from mars import tensor as mt
-from mars.tests import setup
 if sklearn:
     from mars.learn.preprocessing import MinMaxScaler, minmax_scale
-
-
-setup = setup
 
 
 def assert_correct_incr(i, batch_start, batch_stop, n, chunk_size,

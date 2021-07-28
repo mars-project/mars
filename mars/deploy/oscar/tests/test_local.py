@@ -310,6 +310,21 @@ def test_decref(setup_session):
     ref_counts = session._get_ref_counts()
     assert len(ref_counts) == 0
 
+    rs = np.random.RandomState(0)
+    pdf = pd.DataFrame({
+        'a': rs.randint(10, size=10),
+        'b': rs.rand(10)
+    })
+    df = md.DataFrame(pdf, chunk_size=5)
+    df2 = df.groupby('a').agg('mean', method='shuffle')
+    result = df2.execute().fetch()
+    expected = pdf.groupby('a').agg('mean')
+    pd.testing.assert_frame_equal(result, expected)
+
+    del df, df2
+    ref_counts = session._get_ref_counts()
+    assert len(ref_counts) == 0
+
     worker_addr = session._session.client._cluster._worker_pools[0].external_address
     _assert_storage_cleaned(session.session_id, worker_addr, StorageLevel.MEMORY)
 
