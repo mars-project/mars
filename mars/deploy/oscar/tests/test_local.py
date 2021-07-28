@@ -173,6 +173,10 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
+def _my_func():
+    print('output from function')
+
+
 async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await AsyncSession.init(web_address, session_id)
@@ -190,10 +194,7 @@ async def _run_web_session_test(web_address):
     np.testing.assert_equal(raw + 1, await session.fetch(b))
     del a, b
 
-    def f():
-        print('output from function')
-
-    r = mr.spawn(f)
+    r = mr.spawn(_my_func)
     info = await session.execute(r)
     await info
     assert info.result() is None
