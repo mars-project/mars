@@ -201,6 +201,12 @@ async def _run_web_session_test(web_address):
     assert info.exception() is None
     assert info.progress() == 1
     assert 'output from function' in str(r.fetch_log(session=session))
+    assert 'output from function' in str(r.fetch_log(session=session,
+                                                     offsets='0k',
+                                                     sizes=[1000]))
+    assert 'output from function' in str(r.fetch_log(session=session,
+                                                     offsets={r.op.key: '0k'},
+                                                     sizes=[1000]))
 
     AsyncSession.reset_default()
     await session.destroy()

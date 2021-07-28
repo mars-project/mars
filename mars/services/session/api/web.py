@@ -41,7 +41,7 @@ def _decode_size(encoded: str) -> Union[int, str, Dict[str, Union[int, List[int]
         ret = dict()
         for kv in encoded.split(','):
             k, v = kv.split('=', 1)
-            ret[k] = int(v)
+            ret[k] = int(parse_readable_size(v)[0])
         return ret
 
 
