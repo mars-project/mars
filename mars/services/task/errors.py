@@ -15,6 +15,3 @@
 
 class TaskNotExist(Exception):
     pass
-
-class TileableKeyNotExist(Exception):
-    pass
