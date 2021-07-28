@@ -18,11 +18,7 @@
 import numpy as np
 
 from mars.tensor.datasource import tensor
-from mars.tests import setup
 from mars.utils import ignore_warning
-
-
-setup = setup
 
 
 def test_base_execution(setup):

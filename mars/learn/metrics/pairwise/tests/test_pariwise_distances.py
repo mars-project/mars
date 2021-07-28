@@ -27,10 +27,6 @@ except ImportError:
 from mars import tensor as mt
 from mars.learn.metrics import pairwise_distances, pairwise_distances_topk
 from mars.session import execute, fetch
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

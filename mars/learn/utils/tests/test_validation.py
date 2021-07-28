@@ -28,12 +28,8 @@ except ImportError:
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.tensor.core import Tensor
-from mars.tests import setup
 if sklearn:
     from mars.learn.utils.validation import check_array, check_consistent_length
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

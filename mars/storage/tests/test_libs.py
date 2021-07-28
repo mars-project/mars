@@ -35,7 +35,6 @@ from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
 from mars.tests.core import require_ray, require_cudf, require_cupy
-from mars.tests.conftest import *  # noqa
 
 try:
     import vineyard

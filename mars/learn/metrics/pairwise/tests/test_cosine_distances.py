@@ -24,10 +24,7 @@ except ImportError:
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import cosine_distances
-from mars.tests import setup
 
-
-setup = setup
 
 raw_dense_x = np.random.rand(25, 10)
 raw_dense_y = np.random.rand(17, 10)

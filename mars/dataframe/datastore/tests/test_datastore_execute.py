@@ -37,12 +37,6 @@ except ImportError:
 
 import mars.dataframe as md
 from mars.dataframe import DataFrame
-from mars.tests import setup
-
-_exec_timeout = 120 if 'CI' in os.environ else -1
-
-
-setup = setup
 
 
 def test_to_csv_execution(setup):

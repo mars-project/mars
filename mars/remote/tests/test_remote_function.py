@@ -25,10 +25,6 @@ from mars.deploy.oscar.session import get_default_session
 from mars.learn.utils import shuffle
 from mars.lib.mmh3 import hash as mmh3_hash
 from mars.remote import spawn, ExecutableTuple
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_params():

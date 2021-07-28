@@ -15,7 +15,6 @@
 import pytest
 
 import mars.tensor as mt
-from mars.tests import setup
 
 try:
     import statsmodels
@@ -23,7 +22,6 @@ try:
 except ImportError:  # pragma: no cover
     statsmodels = MarsDistributedModel = MarsResults = None
 
-setup = setup
 
 n_rows = 1000
 n_columns = 10

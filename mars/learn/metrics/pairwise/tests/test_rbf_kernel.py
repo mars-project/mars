@@ -22,10 +22,6 @@ except ImportError:  # pragma: no cover
     sklearn = None
 
 from mars.learn.metrics.pairwise import rbf_kernel
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

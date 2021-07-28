@@ -26,12 +26,8 @@ except ImportError:  # pragma: no cover
 import mars.dataframe as md
 from mars.core.operand import OperandStage
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
-from mars.tests import setup
 from mars.tests.core import assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
-
-
-setup = setup
 
 
 class MockReduction1(md.CustomReduction):

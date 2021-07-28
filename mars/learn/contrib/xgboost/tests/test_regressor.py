@@ -16,14 +16,12 @@ import pytest
 
 import mars.tensor as mt
 from mars.learn.contrib.xgboost import XGBRegressor
-from mars.tests import setup
 
 try:
     import xgboost
 except ImportError:
     xgboost = None
 
-setup = setup
 n_rows = 1000
 n_columns = 10
 chunk_size = 200
