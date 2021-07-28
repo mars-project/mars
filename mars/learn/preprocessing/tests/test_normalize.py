@@ -24,10 +24,6 @@ except ImportError:
 
 from mars import tensor as mt
 from mars.learn.preprocessing import normalize
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

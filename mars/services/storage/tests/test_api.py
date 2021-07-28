@@ -29,7 +29,6 @@ from mars.services.storage.api import MockStorageAPI, WebStorageAPI
 from mars.services.web import WebActor
 from mars.storage import StorageLevel
 from mars.tests.core import require_ray
-from mars.tests.conftest import *  # noqa
 from mars.utils import get_next_port
 
 try:

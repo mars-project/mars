@@ -17,10 +17,6 @@ import pandas as pd
 import pytest
 
 from mars.dataframe import DataFrame, Series
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_dot_execution(setup):

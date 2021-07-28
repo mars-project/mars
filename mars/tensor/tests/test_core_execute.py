@@ -18,10 +18,6 @@ import numpy as np
 
 from mars.tensor import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
     atleast_3d, squeeze, tensor
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_array_function(setup):

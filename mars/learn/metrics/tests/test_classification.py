@@ -24,10 +24,7 @@ import mars.tensor as mt
 from mars.learn.metrics import accuracy_score
 from mars.learn.metrics._classification import _check_targets
 from mars.lib.sparse import SparseNDArray
-from mars.tests import setup
 
-
-setup = setup
 
 IND = 'multilabel-indicator'
 MC = 'multiclass'

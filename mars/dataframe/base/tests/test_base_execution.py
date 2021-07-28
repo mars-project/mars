@@ -31,14 +31,10 @@ from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.tensor import tensor
-from mars.tests import setup
 from mars.tests.core import require_cudf
 from mars.utils import lazy_import
 
 cudf = lazy_import('cudf', globals=globals())
-
-
-setup = setup
 
 
 @require_cudf

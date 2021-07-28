@@ -29,11 +29,7 @@ from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
     build_split_idx_to_origin_idx, parse_index, filter_index_value, \
     infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
     make_dtypes, build_concatenated_rows_frame, merge_index_value
-from mars.tests import setup
 from mars.utils import Timer
-
-
-setup = setup
 
     
 def test_decide_dataframe_chunks():

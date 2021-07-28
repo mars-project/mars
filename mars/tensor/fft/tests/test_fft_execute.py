@@ -20,10 +20,6 @@ from mars.lib.mkl_interface import mkl_free_buffers
 from mars.tensor.datasource import tensor
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
-from mars.tests import setup
-
-
-setup = setup
 
     
 def test_fft_execution(setup):

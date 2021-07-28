@@ -23,10 +23,6 @@ import mars.dataframe as md
 from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
 from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 from mars.optimization.logical.tileable import optimize
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.fixture(scope='module')

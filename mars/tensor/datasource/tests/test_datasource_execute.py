@@ -46,10 +46,6 @@ from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, f
     arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
     triu, tril, from_dataframe, fromtiledb, fromhdf5, fromzarr
 from mars.tensor.lib import nd_grid
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_create_sparse_execution(setup):
