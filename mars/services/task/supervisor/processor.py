@@ -55,7 +55,6 @@ def format_graph_data(graph: TileableGraph):
     edge_list = []
 
     for node in graph.iter_nodes():
-        print(node)
         node_name = str(node.op)
 
         node_list.append({
@@ -71,7 +70,7 @@ def format_graph_data(graph: TileableGraph):
                 "to_tileable_id": node.key,
                 "to_tileable_name": node_name,
 
-                "linkType": 0
+                "linkType": 0,
             })
             
     res = { 
@@ -494,7 +493,7 @@ class TaskProcessorActor(mo.Actor):
             result.append(build_fetch(tiled))
         return result
 
-    def get_result_tileable_graph(self, tileable_key: str):
+    def get_result_tileable_graph(self):
         processor = list(self._task_id_to_processor.values())[-1]
         res_tileable_graph = format_graph_data(processor.tileable_graph)
 

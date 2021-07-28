@@ -62,8 +62,6 @@ class TaskManagerActor(mo.Actor):
     _task_name_to_parent_task_id: Dict[str, str]
     _task_name_to_task_ids: Dict[str, List[str]]
 
-    _task_id_to_tileable_ids: Dict[str, List[str]]
-
     _task_id_to_processor_ref: Dict[str, Union[TaskProcessorActor, mo.ActorRef]]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
@@ -80,9 +78,7 @@ class TaskManagerActor(mo.Actor):
 
         self._task_name_to_parent_task_id = dict()
         self._task_name_to_task_ids = defaultdict(list)
-        
-        self._task_id_to_tileable_ids = defaultdict(list)
-        
+
         self._task_id_to_processor_ref = dict()
         self._tileable_key_to_info = defaultdict(list)
 
@@ -171,29 +167,19 @@ class TaskManagerActor(mo.Actor):
             task, tiled_context, self._config, self._task_preprocessor_cls)
 
         for tileable in graph.result_tileables:
-            self._task_id_to_tileable_ids[task_id].append(tileable.key)
-
             info = ResultTileableInfo(tileable=tileable,
                                       processor_ref=processor_ref)
             self._tileable_key_to_info[tileable.key].append(info)
 
         return task_id
 
-    async def get_tileable_ids_by_task_id(self, task_id: str):
-        if task_id not in self._task_id_to_tileable_ids:
+    async def get_tileable_detail_by_key(self, task_id):
+        if task_id not in self._task_id_to_processor_ref:
             raise TaskNotExist(f'Task {task_id} does not exist')
-            return []
         else: 
-            return self._task_id_to_tileable_ids[task_id]
-
-    async def get_tileable_detail_by_key(self, tileable_key):
-        try:
-            info = self._tileable_key_to_info[tileable_key][-1]
-            res = await info.processor_ref.get_result_tileable_graph(tileable_key)
+            processor_ref = self._task_id_to_processor_ref[task_id]
+            res = await processor_ref.get_result_tileable_graph()
             return res
-        except KeyError:  # pragma: no cover
-            raise TileableKeyNotExist(f'Tileable with key {tileable_key} does not exist')
-            return {}
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
             Dict[TileableType, TileableType]:

@@ -244,7 +244,7 @@ async def test_task_progress(start_test_service):
 
 @pytest.mark.asyncio
 async def test_get_tileables(start_test_service):
-    task_api, storage_api = start_test_service
+    _sv_pool_address, task_api, storage_api = start_test_service
 
     def f1():
         return np.arange(5)
@@ -264,31 +264,51 @@ async def test_get_tileables(start_test_service):
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
-    tileable_ids = await task_api.get_tileable_ids_by_task_id(task_id)
+    tileable_detail = await task_api.get_tileable_detail_by_key(task_id)
 
-    assert type(tileable_ids) is list
-    assert len(tileable_ids) > 0
+    num_tileable = len(tileable_detail.get("tileables"))
+    num_dependencies = len(tileable_detail.get("dependencies"))
+    assert  num_tileable > 0
+    assert  num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+
+    assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
+
+    graph_nodes = []
+    graph_dependencies = []
+    for node in graph.iter_nodes():
+        graph_nodes.append(node.key)
+
+        for node_successor in graph.iter_successors(node):
+            graph_dependencies.append({
+                "from_tileable_id": node_successor.key,
+                "from_tileable_name": str(node_successor.op),
+
+                "to_tileable_id": node.key,
+                "to_tileable_name": str(node.op),
+
+                "linkType": 0,
+            })
+
+
+    for tileable in tileable_detail.get("tileables"):
+        graph_nodes.remove(tileable.get("tileable_id"))
     
-    for tileable_key in tileable_ids:
-        assert len(tileable_key) > 0
-        assert type(tileable_key) is str
+    assert len(graph_nodes) == 0
 
-        tileable_detail = await task_api.get_tileable_detail_by_key(task_id, tileable_key)
-        print('detail: ', tileable_detail)
 
-        num_tileable = len(tileable_detail.get("tileables"))
-        num_dependencies = len(tileable_detail.get("dependencies"))
-        assert  num_tileable > 0
-        assert  num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+    for i in range(num_dependencies):
+        dependency = tileable_detail.get("dependencies")[i]
+        assert graph_dependencies[i].get("from_tileable_id") == \
+               dependency.get("from_tileable_id")
 
-        assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
+        assert graph_dependencies[i].get("from_tileable_name") == \
+               dependency.get("from_tileable_name")
 
-        if num_tileable > 1:
-            tileables = []
-            for tileable in tileable_detail.get("tileables"):
-                tileables.append(tileable.get("tileable_id"))
-            
-            for dependency in tileable_detail.get("dependencies"):
-                assert tileables.count(dependency.get("from_tileable_id")) == 1
-                assert tileables.count(dependency.get("to_tileable_id")) == 1
-                assert dependency.get("linkType") == 0 # need to be changed later
+        assert graph_dependencies[i].get("to_tileable_id") == \
+               dependency.get("to_tileable_id")
+
+        assert graph_dependencies[i].get("to_tileable_name") == \
+               dependency.get("to_tileable_name")
+
+        assert graph_dependencies[i].get("linkType") == \
+               dependency.get("linkType")

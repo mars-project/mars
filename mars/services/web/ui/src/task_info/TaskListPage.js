@@ -32,45 +32,36 @@ class TaskList extends React.Component {
         this.state = {};
     }
 
-    fetchTileableDetail(task_id, tileable_id) {
-        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables/${tileable_id}?action=get_tileable_detail`)
-            .then(res => res.json())
-            .then((res) => {
-                console.log(res)
-            })
-            .catch((error) => {})
-    }
+    fetchTilebaleGraph() {
+        if (this.state === undefined || this.state["tasks"] === undefined) {
+            return;
+        }
 
-    fetchTaskTileables(task_id) {
-        fetch('api/session/' + this.props.sessionId + `/task/${task_id}/tileables?action=get_tileable_ids`)
+        console.log(this.state["tasks"]);
+        for (let i = 0; i < this.state["tasks"].length; i++) {
+            fetch('api/session/' + this.props.sessionId + `/task/${this.state["tasks"][i].task_id}/tileable_graph?action=get_tileable_graph`)
             .then(res => res.json())
             .then((res) => {
                 console.log(res);
-                
-                for (let i = 0;  i < res.length; i++) {
-                    this.fetchTileableDetail(task_id, res[i]);
-                }
-            })
-            .catch((error) => {})
+            });
+        }
     }
 
     refreshInfo() {
         fetch('api/session/' + this.props.sessionId + '/task?progress=1')
             .then(res => res.json())
             .then((res) => {
-                console.log("task detail: ", res)
                 this.setState(res);
-                
-                for (let i = 0; i < res.tasks.length; i++) {
-                    this.fetchTaskTileables(res.tasks[i].task_id);
-                }
-            })
+            });
     }
 
     componentDidMount() {
         if (this.interval !== undefined)
             clearInterval(this.interval);
-        this.interval = setInterval(() => this.refreshInfo(), 5000);
+        this.interval = setInterval(() => {
+            this.refreshInfo();
+            this.fetchTilebaleGraph();
+        }, 5000);
         this.refreshInfo();
     }
 
