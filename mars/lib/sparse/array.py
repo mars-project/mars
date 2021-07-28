@@ -664,6 +664,21 @@ class SparseArray(SparseNDArray):
     kl_div = partialmethod(_scipy_binary, 'kl_div')
     xlogy = partialmethod(_scipy_binary, 'xlogy')
 
+    jv = partialmethod(_scipy_binary, 'jv')
+    jve = partialmethod(_scipy_binary, 'jve')
+    yn = partialmethod(_scipy_binary, 'yn')
+    yv = partialmethod(_scipy_binary, 'yv')
+    yve = partialmethod(_scipy_binary, 'yve')
+    kn = partialmethod(_scipy_binary, 'kn')
+    kv = partialmethod(_scipy_binary, 'kv')
+    kve = partialmethod(_scipy_binary, 'kve')
+    iv = partialmethod(_scipy_binary, 'iv')
+    ive = partialmethod(_scipy_binary, 'ive')
+    hankel1 = partialmethod(_scipy_binary, 'hankel1')
+    hankel1e = partialmethod(_scipy_binary, 'hankel1e')
+    hankel2 = partialmethod(_scipy_binary, 'hankel2')
+    hankel2e = partialmethod(_scipy_binary, 'hankel2e')
+    
     def __eq__(self, other):
         try:
             naked_other = naked(other)
