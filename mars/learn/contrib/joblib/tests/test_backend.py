@@ -24,10 +24,8 @@ except ImportError:
     joblib = sklearn = None
 
 from mars.learn.contrib.joblib import register_mars_backend
-from mars.tests import setup
 
 register_mars_backend()
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

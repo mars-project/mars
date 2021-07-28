@@ -16,10 +16,6 @@ import numpy as np
 import pandas as pd
 
 from mars import dataframe as md
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_rolling_agg_execution(setup):

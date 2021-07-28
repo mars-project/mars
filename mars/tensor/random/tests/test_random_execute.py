@@ -23,10 +23,6 @@ from mars import tensor
 from mars.core import tile
 from mars.lib.sparse.core import issparse
 from mars.tensor.datasource import tensor as from_ndarray
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_rand_execution(setup):

@@ -27,10 +27,6 @@ from mars.config import option_context
 from mars.lib.sparse import SparseNDArray
 from mars.learn.metrics import euclidean_distances
 from mars.learn.utils import check_array
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')

@@ -28,11 +28,7 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
     trapz, shape, to_gpu, to_cpu, swapaxes
 from mars.tensor.datasource import tensor, ones, zeros, arange
-from mars.tests import setup
 from mars.tests.core import require_cupy
-
-
-setup = setup
 
 
 def test_rechunk_execution(setup):

@@ -21,10 +21,6 @@ import pytest
 
 from mars.core import enter_mode
 from mars.dataframe.initializer import DataFrame
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_comp(setup):

@@ -18,10 +18,6 @@ import numpy as np
 
 from mars.tensor.datasource import tensor
 from mars.tensor import einsum
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_einsum_execution(setup):

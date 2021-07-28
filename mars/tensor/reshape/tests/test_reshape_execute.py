@@ -15,10 +15,6 @@
 import numpy as np
 
 from mars.tensor.datasource import ones, tensor
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_reshape_execution(setup):

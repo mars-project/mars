@@ -28,15 +28,11 @@ from mars.dataframe import CustomReduction, NamedAgg
 from mars.dataframe.base import to_gpu
 from mars.deploy.oscar.session import get_default_session
 from mars.lib.version import parse as parse_version
-from mars.tests import setup
 from mars.tests.core import require_cudf, require_cupy
 from mars.utils import lazy_import
 
 cp = lazy_import('cupy', rename='cp', globals=globals())
 _agg_size_as_series = parse_version(pd.__version__) >= parse_version('1.3.0')
-
-
-setup = setup
 
 
 @pytest.fixture

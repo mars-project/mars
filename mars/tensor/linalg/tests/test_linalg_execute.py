@@ -23,11 +23,7 @@ from mars.tensor.datasource import tensor, diag, ones, arange
 from mars.tensor.linalg import qr, svd, cholesky, norm, lu, \
     solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 from mars.tensor.random import uniform
-from mars.tests import setup
 from mars.utils import ignore_warning
-
-
-setup = setup
 
 
 def test_qr_execution(setup):
