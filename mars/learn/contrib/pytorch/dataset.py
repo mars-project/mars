@@ -20,10 +20,6 @@ except ImportError:  # pragma: no cover
     torch = None
     Dataset = object
 
-<<<<<<< HEAD
-=======
-# from ....context import get_context, RunningMode
->>>>>>> add dataset
 from ....core.context import get_context
 from ....tensor.core import TENSOR_TYPE
 from ....tensor.indexing.core import process_index
@@ -34,15 +30,8 @@ from ....utils import require_not_none
 @require_not_none(torch)
 class MarsDataset(Dataset):
     def __init__(self, *tileables):
-<<<<<<< HEAD
 
         self._context = get_context() 
-=======
-        # from ....session import Session
-
-        self._context = get_context() 
-        # or Session.default_or_local().context
->>>>>>> add dataset
 
         self.tileables = tileables
         self._datas = None
@@ -60,16 +49,8 @@ class MarsDataset(Dataset):
             return process_iloc_indexes(t, index)
 
     def _get_data(self, item):
-<<<<<<< HEAD
+        return tuple(t[item].fetch() for t in self.tileables)
 
-        return tuple(t[item].fetch() for t in self.tileables)
-=======
-        # if self._context.running_mode != RunningMode.distributed:
-        #     return tuple(t[item].fetch() for t in self.tileables)
-        return tuple(t[item].fetch() for t in self.tileables)
-        # return tuple(self._context.get_tileable_data(
-        #     t.key, self._process_index(t, item)) for t in self.tileables)
->>>>>>> add dataset
 
     def __len__(self):
         return self.tileables[0].shape[0]
