@@ -32,7 +32,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 class DebugOptions:
     actor_call_timeout: int = 10
     process_message_timeout: int = 30
-    lock_hold_timeout: int = 30
+    actor_lock_timeout: int = 30
     ray_object_retrieval_timeout: int = 10
     log_unhandled_errors: bool = True
     log_cycle_send: bool = True
@@ -69,7 +69,7 @@ async def _log_timeout(timeout, msg, *args, **kwargs):
     while True:
         await asyncio.sleep(timeout * rnd)
         rnd += 1
-        logger.warning(msg + ' timeout for %.4f seconds.', *args, time.time() - start_time, **kwargs)
+        logger.warning(msg + '(timeout for %.4f seconds).', *args, time.time() - start_time, **kwargs)
 
 
 @contextmanager

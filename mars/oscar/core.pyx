@@ -267,8 +267,8 @@ cdef class _BaseActor:
         try:
             res = None
             while True:
-                with debug_async_timeout('lock_hold_timeout',
-                                         'async_generator % hold lock timeout', gen):
+                with debug_async_timeout('actor_lock_timeout',
+                                         'async_generator %r hold lock timeout', gen):
                     async with self._lock:
                         if not is_exception:
                             res = await gen.asend(res)
@@ -317,7 +317,7 @@ cdef class _BaseActor:
             method, call_method, args, kwargs = message
             if call_method == CALL_METHOD_DEFAULT:
                 func = getattr(self, method)
-                with debug_async_timeout('lock_hold_timeout',
+                with debug_async_timeout('actor_lock_timeout',
                                          "Method %s of actor %s hold lock timeout.",
                                          method, self.uid):
                     async with self._lock:
@@ -326,7 +326,7 @@ cdef class _BaseActor:
                             result = await result
             elif call_method == CALL_METHOD_BATCH:
                 func = getattr(self, method)
-                with debug_async_timeout('lock_hold_timeout',
+                with debug_async_timeout('actor_lock_timeout',
                                          "Batch method %s of actor %s hold lock timeout, batch size %s.",
                                          method, self.uid, len(args)):
                     async with self._lock:
