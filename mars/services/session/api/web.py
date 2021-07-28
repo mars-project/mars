@@ -13,19 +13,39 @@
 # limitations under the License.
 
 import json
-from typing import List, Union
+from typing import Dict, List, Union
 
 from ....lib.aio import alru_cache
+from ....utils import parse_readable_size
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import SessionInfo
 from .core import AbstractSessionAPI
 
 
-class SessionWebAPIHandler(MarsServiceWebAPIHandler):
-    @classmethod
-    def get_root_pattern(cls):
-        return '/api/session(?:/(?P<sub_path>[^/]*)$|$)'
+def _encode_size(size: Union[str, Dict[str, List[int]]]) -> str:
+    if not isinstance(size, dict):
+        return size
+    else:
+        return ','.join(f'{k}={v}' for k, v in size.items())
 
+
+def _decode_size(encoded: str) -> Union[int, str, Dict[str, Union[int, List[int]]]]:
+    if not encoded:
+        return 0
+    if ',' not in encoded and '=' not in encoded:
+        try:
+            return int(encoded)
+        except ValueError:
+            return int(parse_readable_size(encoded)[0])
+    else:
+        ret = dict()
+        for kv in encoded.split(','):
+            k, v = kv.split('=', 1)
+            ret[k] = int(v)
+        return ret
+
+
+class SessionWebAPIBaseHandler(MarsServiceWebAPIHandler):
     @alru_cache(cache_exceptions=False)
     async def _get_cluster_api(self):
         from ...cluster import ClusterAPI
@@ -37,6 +57,12 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
         cluster_api = await self._get_cluster_api()
         [address] = await cluster_api.get_supervisors_by_keys(['Session'])
         return await SessionAPI.create(address)
+
+
+class SessionWebAPIHandler(SessionWebAPIBaseHandler):
+    @classmethod
+    def get_root_pattern(cls):
+        return '/api/session(?:/(?P<sub_path>[^/]*)$|$)'
 
     @web_api('(?P<session_id>[^/]+)', method='put')
     async def create_session(self, session_id: str):
@@ -73,8 +99,24 @@ class SessionWebAPIHandler(MarsServiceWebAPIHandler):
         ]}))
 
 
+class SessionWebLogAPIHandler(SessionWebAPIBaseHandler):
+    _root_pattern = '/api/session/(?P<session_id>[^/]+)/op/(?P<op_key>[^/]+)/log'
+
+    @web_api('', method='get')
+    async def fetch_tileable_op_logs(self,
+                                     session_id: str,
+                                     op_key: str):
+        oscar_api = await self._get_oscar_session_api()
+        offsets = _decode_size(self.get_argument('offsets', None))
+        sizes = _decode_size(self.get_argument('sizes', None))
+        log_result = await oscar_api.fetch_tileable_op_logs(
+            session_id, op_key, offsets, sizes)
+        self.write(json.dumps(log_result))
+
+
 web_handlers = {
-    SessionWebAPIHandler.get_root_pattern(): SessionWebAPIHandler
+    SessionWebAPIHandler.get_root_pattern(): SessionWebAPIHandler,
+    SessionWebLogAPIHandler.get_root_pattern(): SessionWebLogAPIHandler
 }
 
 
@@ -110,3 +152,15 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         res = await self._request_url('GET', addr, params=params)
         content = await res.read()
         return float(content) if content else None
+
+    async def fetch_tileable_op_logs(self,
+                                     session_id: str,
+                                     tileable_op_key: str,
+                                     chunk_op_key_to_offsets: Dict[str, List[int]],
+                                     chunk_op_key_to_sizes: Dict[str, List[int]]) -> Dict:
+        addr = f'{self._address}/api/session/{session_id}/op/{tileable_op_key}/log'
+        params = dict(offsets=_encode_size(chunk_op_key_to_offsets),
+                      sizes=_encode_size(chunk_op_key_to_sizes))
+        res = await self._request_url('GET', addr, params=params)
+        content = await res.read()
+        return json.loads(content)

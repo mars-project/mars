@@ -177,6 +177,7 @@ async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await AsyncSession.init(web_address, session_id)
     session.as_default()
+
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
@@ -188,6 +189,17 @@ async def _run_web_session_test(web_address):
     assert info.progress() == 1
     np.testing.assert_equal(raw + 1, await session.fetch(b))
     del a, b
+
+    def f():
+        print('output from function')
+
+    r = mr.spawn(f)
+    info = await session.execute(r)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    assert 'output from function' in str(r.fetch_log(session=session))
 
     AsyncSession.reset_default()
     await session.destroy()
