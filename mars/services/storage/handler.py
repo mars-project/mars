@@ -417,10 +417,8 @@ class StorageHandlerActor(mo.StatelessActor):
                 # Not exists in local, fetch from remote worker
                 missing_keys.append(data_key)
                 if address is None or band_name is None:
-                    # we get meta using main key when fetch shuffle data
-                    main_key = data_key[0] if isinstance(data_key, tuple) else data_key
                     get_metas.append(meta_api.get_chunk_meta.delay(
-                        main_key, fields=['bands']))
+                        data_key, fields=['bands']))
         await self._data_manager_ref.pin.batch(*pin_delays)
 
         if get_metas:
@@ -447,9 +445,8 @@ class StorageHandlerActor(mo.StatelessActor):
 
         append_bands_delays = []
         for data_key in fetch_keys:
-            if not isinstance(data_key, tuple):
-                append_bands_delays.append(meta_api.add_chunk_bands.delay(
-                        data_key, [(self.address, band_name or 'numa-0')]))
+            append_bands_delays.append(meta_api.add_chunk_bands.delay(
+                    data_key, [(self.address, band_name or 'numa-0')]))
         await meta_api.add_chunk_bands.batch(*append_bands_delays)
 
     async def request_quota_with_spill(self,

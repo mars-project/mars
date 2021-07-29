@@ -152,9 +152,6 @@ class DataManagerActor(mo.StatelessActor):
         self._data_key_to_info = defaultdict(list)
         self._data_info_list = dict()
         self._spill_strategy = dict()
-        # data key may be a tuple in some cases,
-        # we record main key to manage their lifecycle
-        self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
             self._spill_strategy[level] = FIFOStrategy(level)
@@ -164,19 +161,11 @@ class DataManagerActor(mo.StatelessActor):
                         data_key: str,
                         error: str) -> Union[List[DataInfo], None]:
         try:
-            if (session_id, data_key) not in self._data_key_to_info:
-                if (session_id, data_key) in self._main_key_to_sub_keys:
-                    infos = []
-                    for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
-                        infos.extend([info.data_info for info in
-                                      self._data_key_to_info.get((session_id, sub_key))])
-                    return infos
-                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
             return [info.data_info for info in
-                    self._data_key_to_info.get((session_id, data_key))]
-        except DataNotExist:
+                    self._data_key_to_info[session_id, data_key]]
+        except KeyError:
             if error == 'raise':
-                raise
+                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
             else:
                 return
 
@@ -219,8 +208,6 @@ class DataManagerActor(mo.StatelessActor):
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
         self._spill_strategy[data_info.level].record_put_info(
             (session_id, data_key), data_info.store_size)
-        if isinstance(data_key, tuple):
-            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
 
     @extensible
     def put_data_info(self,
@@ -236,24 +223,19 @@ class DataManagerActor(mo.StatelessActor):
                           data_key: str,
                           level: StorageLevel
                           ):
-        if (session_id, data_key) in self._main_key_to_sub_keys:
-            to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
-        else:
-            to_delete_keys = [data_key]
         logger.debug('Begin to delete data keys for level %s '
-                     'in data manager: %s', level, to_delete_keys)
-        for key in to_delete_keys:
-            if (session_id, key) in self._data_key_to_info:
-                self._data_info_list[level].pop((session_id, key))
-                self._spill_strategy[level].record_delete_info((session_id, key))
-                infos = self._data_key_to_info[(session_id, key)]
-                rest = [info for info in infos if info.data_info.level != level]
-                if len(rest) == 0:
-                    del self._data_key_to_info[(session_id, key)]
-                else:  # pragma: no cover
-                    self._data_key_to_info[(session_id, key)] = rest
+                     'in data manager: %s', level, data_key)
+        if (session_id, data_key) in self._data_key_to_info:
+            self._data_info_list[level].pop((session_id, data_key))
+            self._spill_strategy[level].record_delete_info((session_id, data_key))
+            infos = self._data_key_to_info[(session_id, data_key)]
+            rest = [info for info in infos if info.data_info.level != level]
+            if len(rest) == 0:
+                del self._data_key_to_info[(session_id, data_key)]
+            else:  # pragma: no cover
+                self._data_key_to_info[(session_id, data_key)] = rest
         logger.debug('Finish deleting data keys for level %s '
-                     'in data manager: %s', level, to_delete_keys)
+                     'in data manager: %s', level, data_key)
 
     @extensible
     def delete_data_info(self,

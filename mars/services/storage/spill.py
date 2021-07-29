@@ -107,7 +107,7 @@ class FIFOStrategy(SpillStrategy):
         return spill_sizes, spill_keys
 
 
-class SpillManagerActor(mo.Actor):
+class SpillManagerActor(mo.StatelessActor):
     """
     The actor to handle the race condition when NoDataToSpill happens.
     There are two situations when spill raises `NoDataToSpill`,
