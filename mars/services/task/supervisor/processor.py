@@ -488,9 +488,9 @@ class TaskProcessorActor(mo.Actor):
 
                     "linkType": 0,
                 })
-                
-        graph_dict = { 
-            "tileables": node_list, 
+
+        graph_dict = {
+            "tileables": node_list,
             "dependencies": edge_list
             }
 
