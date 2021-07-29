@@ -150,7 +150,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
             _reload_args(worker_args), env=os.environ.copy()) for _ in range(2)]
         _wait_worker_ready(oscar_ep, w_procs)
 
-        new_session(api_ep, default=True)
+        new_session(api_ep)
         data = np.random.rand(10, 10)
         res = mt.tensor(data, chunk_size=5).sum().execute().fetch()
         np.testing.assert_almost_equal(res, data.sum())

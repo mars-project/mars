@@ -228,8 +228,7 @@ async def test_web_session(create_cluster):
 
 
 def test_sync_execute():
-    session = new_session(n_cpu=2, default=True,
-                          web=False, use_uvloop=False)
+    session = new_session(n_cpu=2, web=False, use_uvloop=False)
 
     # web not started
     assert session._session.client.web_address is None
@@ -293,7 +292,7 @@ def test_no_default_session():
 
 @pytest.fixture
 def setup_session():
-    session = new_session(n_cpu=2, default=True, use_uvloop=False)
+    session = new_session(n_cpu=2, use_uvloop=False)
     assert session.get_web_endpoint() is not None
 
     with session:
@@ -420,22 +419,18 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
 
     config['third_party_modules'] = set()
     with pytest.raises(TypeError, match='set'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = ['mars.deploy.oscar.tests.modules.replace_op']
-    session = new_session(n_cpu=2, default=True,
-                          web=False, config=config)
+    session = new_session(n_cpu=2, web=False, config=config)
     # web not started
     assert session._session.client.web_address is None
 
@@ -451,8 +446,8 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     session.stop_server()
     assert get_default_session() is None
 
-    session = new_session(n_cpu=2, default=True,
-                          web=False, config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
+    session = new_session(n_cpu=2, web=False,
+                          config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
     # web not started
     assert session._session.client.web_address is None
 
