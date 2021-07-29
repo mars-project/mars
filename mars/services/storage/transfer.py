@@ -141,7 +141,7 @@ class SenderManagerActor(mo.StatelessActor):
                     zip(infos, data_keys) if data_info is not None]
         if filtered:
             infos, data_keys = zip(*filtered)
-        else:
+        else:  # pragma: no cover
             infos, data_keys = [], []
         data_sizes = [info.store_size for info in infos]
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)

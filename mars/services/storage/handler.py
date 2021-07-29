@@ -488,7 +488,7 @@ class StorageHandlerActor(mo.StatelessActor):
         return await self._data_manager_ref.list(level)
 
     @extensible
-    async def unpin(self, session_id: str, data_key: str, error: str):
+    async def unpin(self, session_id: str, data_key: str, error: str = 'raise'):
         levels = await self._data_manager_ref.unpin(session_id, [data_key], error)
         if levels:
             await self.notify_spillable_space(levels[0])
@@ -507,8 +507,12 @@ class StorageHandlerActor(mo.StatelessActor):
                 assert last_error == error
             last_error = error
             data_keys.append(data_key)
-        levels = await self._data_manager_ref.unpin(
-            last_session_id, data_keys, last_error)
+        if last_error:
+            levels = await self._data_manager_ref.unpin(
+                last_session_id, data_keys, last_error)
+        else:
+            levels = await self._data_manager_ref.unpin(
+                last_session_id, data_keys)
         for level in levels:
             await self.notify_spillable_space(level)
 

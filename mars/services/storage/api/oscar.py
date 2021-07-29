@@ -203,10 +203,10 @@ class StorageAPI(AbstractStorageAPI):
             if last_level is not None:
                 assert last_level == level
             last_level = level
-            if last_band_name is not None:
+            if last_band_name is not None:  # pragma: no cover
                 assert last_band_name == band_name
             last_band_name = band_name
-            if last_address is not None:
+            if last_address is not None:  # pragma: no cover
                 assert last_address == dest_address
             last_address = dest_address
             if last_error is not None:
@@ -233,12 +233,18 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.unpin(self._session_id,
                                               data_key, error)
 
+    @classmethod
+    def _get_unpin_args(cls, data_key, error='raise'):
+        return data_key, error
+
+    @unpin.batch
     async def batch_unpin(self, args_list, kwargs_list):
         unpins = []
         for args, kwargs in zip(args_list, kwargs_list):
+            data_key, error = self._get_unpin_args(*args, **kwargs)
             unpins.append(
                 self._storage_handler_ref.unpin.delay(
-                    self._session_id, *args, **kwargs)
+                    self._session_id, data_key, error)
             )
         return await self._storage_handler_ref.unpin.batch(*unpins)
 
