@@ -10,6 +10,7 @@ from sklearn.preprocessing import normalize as f_normalize
 from sklearn.utils.fixes import delayed
 
 import numpy as np
+from numpy.linalg import LinAlgError
 from joblib import Parallel
 import scipy.sparse as sp
 from scipy import sparse
@@ -19,6 +20,7 @@ from scipy import linalg
 
 from ..base import BaseEstimator, RegressorMixin, MultiOutputMixin
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
+import mars.tensor as mt
 
 # from mars.tensor.datasource import tensor as astensor
 
@@ -371,9 +373,13 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 self.coef_ = np.vstack([out[0] for out in outs])
                 self._residues = np.vstack([out[3] for out in outs])
         else:
-            self.coef_, self._residues, self.rank_, self.singular_ = \
-                linalg.lstsq(X, y)
-            self.coef_ = self.coef_.T
+            try:
+                self.coef_ = mt.dot(mt.linalg.inv(mt.dot(mt.transpose(X), X)),
+                                    mt.dot(mt.transpose(X), y))
+            except LinAlgError:
+                self.coef_, self._residues, self.rank_, self.singular_ = \
+                    linalg.lstsq(X, y)
+                self.coef_ = self.coef_.T
 
         if y.ndim == 1:
             self.coef_ = np.ravel(self.coef_)
