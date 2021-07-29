@@ -14,8 +14,7 @@
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialMultiOp, \
-    TensorSpecialBinOp, _register_special_op
+from .core import spspecial, TensorSpecialBinOp, _register_special_op
 
 
 @_register_special_op

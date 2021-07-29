@@ -678,7 +678,7 @@ class SparseArray(SparseNDArray):
     hankel1e = partialmethod(_scipy_binary, 'hankel1e')
     hankel2 = partialmethod(_scipy_binary, 'hankel2')
     hankel2e = partialmethod(_scipy_binary, 'hankel2e')
-    
+
     def __eq__(self, other):
         try:
             naked_other = naked(other)
