@@ -32,7 +32,7 @@ class YarnClusterClient:
         self._is_client_managed = is_client_managed
         self._application_id = application_id
         self._endpoint = endpoint
-        self._session = new_session(endpoint).as_default()
+        self._session = new_session(endpoint)
 
     @property
     def session(self):
