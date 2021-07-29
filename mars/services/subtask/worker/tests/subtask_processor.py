@@ -17,10 +17,9 @@ from typing import Any, Dict
 
 from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
+from mars.services.tests.fault_injection_manager import FaultType, \
+    ExtraConfigKey, FaultInjectionError, FaultInjectionUnhandledError
 from mars.tests.core import _check_args, ObjectCheckMixin
-from mars.oscar.errors import FaultInjectionError, FaultInjectionUnhandledError
-
-from ....tests.fault_injection_manager import FaultType, ExtraConfigKey
 
 
 class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):

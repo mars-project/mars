@@ -14,9 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-class MarsError(Exception):
-    pass
+from mars.core.base import MarsError
 
 
 class ActorPoolNotStarted(MarsError):
@@ -46,11 +44,3 @@ class CannotCancelTask(MarsError):
 class Return(MarsError):
     def __init__(self, value):
         self.value = value
-
-
-class FaultInjectionError(MarsError):
-    pass
-
-
-class FaultInjectionUnhandledError(Exception):
-    pass
