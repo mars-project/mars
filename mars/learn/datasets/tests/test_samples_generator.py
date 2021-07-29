@@ -16,14 +16,8 @@ from functools import partial
 from collections import defaultdict
 
 import numpy as np
-import pytest
-
-try:
-    import sklearn
-    from sklearn.utils._testing import assert_array_almost_equal, assert_raises, \
-        assert_almost_equal, assert_raise_message
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.utils._testing import assert_array_almost_equal, assert_raises, \
+    assert_almost_equal, assert_raise_message
 
 from mars import tensor as mt
 from mars.learn.datasets.samples_generator import make_low_rank_matrix, \
@@ -31,7 +25,6 @@ from mars.learn.datasets.samples_generator import make_low_rank_matrix, \
 from mars.tensor.linalg import svd
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_make_classification(setup):
     weights = [0.1, 0.25]
     X, y = make_classification(n_samples=100, n_features=20, n_informative=5,
@@ -61,7 +54,6 @@ def test_make_classification(setup):
         -1, X.shape[1]).shape[0] == 2000
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_make_classification_informative_features(setup):
     """Test the construction of informative features in make_classification
 
@@ -142,7 +134,6 @@ def test_make_classification_informative_features(setup):
                   n_clusters_per_class=2)
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_make_blobs(setup):
     cluster_stds = np.array([0.05, 0.2, 0.4])
     cluster_centers = np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
@@ -165,7 +156,6 @@ def test_make_blobs_n_samples_list(setup):
     assert all(np.bincount(y, minlength=len(n_samples)) == n_samples) is True
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_make_blobs_n_samples_list_with_centers(setup):
     n_samples = [20, 20, 20]
     centers = np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
@@ -190,7 +180,6 @@ def test_make_blobs_n_samples_centers_none(setup):
         assert all(np.bincount(y, minlength=len(n_samples)) == n_samples) is True
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_make_blobs_error(setup):
     n_samples = [20, 20, 20]
     centers = np.array([[0.0, 0.0], [1.0, 1.0], [0.0, 1.0]])

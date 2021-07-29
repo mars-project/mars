@@ -17,30 +17,25 @@ import functools
 
 import numpy as np
 import pytest
-try:
-    import scipy
-    from scipy.stats import (
-        entropy as sp_entropy,
-        power_divergence as sp_power_divergence,
-        chisquare as sp_chisquare,
-        ttest_rel as sp_ttest_rel,
-        ttest_ind as sp_ttest_ind,
-        ttest_ind_from_stats as sp_ttest_ind_from_stats,
-        ttest_1samp as sp_ttest_1samp,
-    )
-
-    from mars.tensor.stats import (
-        entropy, power_divergence, chisquare,
-        ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
-    )
-except ImportError:
-    scipy = None
+import scipy
+from scipy.stats import (
+    entropy as sp_entropy,
+    power_divergence as sp_power_divergence,
+    chisquare as sp_chisquare,
+    ttest_rel as sp_ttest_rel,
+    ttest_ind as sp_ttest_ind,
+    ttest_ind_from_stats as sp_ttest_ind_from_stats,
+    ttest_1samp as sp_ttest_1samp,
+)
 
 from mars.lib.version import parse as parse_version
 from mars.tensor import tensor
+from mars.tensor.stats import (
+    entropy, power_divergence, chisquare,
+    ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
+)
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
 def test_entropy_execution(setup):
     rs = np.random.RandomState(0)
     a = rs.rand(10)
@@ -82,7 +77,6 @@ def test_entropy_execution(setup):
         entropy(t1, t2[:7])
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
 def test_power_divergence_execution(setup):
     f_obs_raw = np.array([16, 18, 16, 14, 12, 12])
     f_exp_raw = np.array([16, 16, 16, 16, 16, 8])
@@ -118,7 +112,6 @@ def test_power_divergence_execution(setup):
         np.testing.assert_almost_equal(expected[1], result[1])
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
 def test_chisquare_execution(setup):
     f_obs_raw = np.array([16, 18, 16, 14, 12, 12])
     f_exp_raw = np.array([16, 16, 16, 16, 16, 8])
@@ -134,7 +127,6 @@ def test_chisquare_execution(setup):
     np.testing.assert_almost_equal(expected[1], result[1])
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
 def test_t_test_execution(setup):
     if parse_version(scipy.__version__) >= parse_version('1.6.0'):
         alternatives = ['less', 'greater', 'two-sided']

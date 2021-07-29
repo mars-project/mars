@@ -54,7 +54,7 @@ class KubeDLClusterClient:
 
     def start(self):
         self._endpoint = self._cluster.start()
-        self._session = new_session(self._endpoint, verify_ssl=self._cluster.verify_ssl).as_default()
+        self._session = new_session(self._endpoint, verify_ssl=self._cluster.verify_ssl)
 
     def stop(self, wait=False, timeout=0):
         self._cluster.stop(wait=wait, timeout=timeout)

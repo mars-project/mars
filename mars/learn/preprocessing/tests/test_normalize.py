@@ -15,18 +15,12 @@
 import numpy as np
 import scipy.sparse as sps
 import pytest
-try:
-    import sklearn
-
-    from sklearn.preprocessing import normalize as sk_normalize
-except ImportError:
-    sklearn = None
+from sklearn.preprocessing import normalize as sk_normalize
 
 from mars import tensor as mt
 from mars.learn.preprocessing import normalize
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_normalize_op():
     with pytest.raises(ValueError):
         normalize(mt.random.random(10, 3), norm='unknown')
@@ -38,7 +32,6 @@ def test_normalize_op():
         normalize(mt.random.rand(10, 3, 3))
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_normalize_execution(setup):
     raw_dense = np.random.rand(10, 10)
     raw_sparse = sps.random(10, 10, density=0.4, format='csr')

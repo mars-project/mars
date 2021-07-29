@@ -52,7 +52,7 @@ jobs:
 
         pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
-        pip install -e ".[dev,distributed]"
+        pip install -e ".[dev,extra]"
         pip install virtualenv flaky flake8
 
         if [ -z "$NO_COMMON_TESTS" ]; then
@@ -74,13 +74,6 @@ jobs:
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
             pip install torch torchvision
             pip install statsmodels tsfresh
-          fi
-          virtualenv testenv && source testenv/bin/activate
-          pip install -e . && pip install pytest pytest-timeout
-          if [ -z "$DEFAULT_VENV" ]; then
-            deactivate
-          else
-            source $DEFAULT_VENV/bin/activate
           fi
         fi
         retry ./.github/workflows/download-etcd.sh

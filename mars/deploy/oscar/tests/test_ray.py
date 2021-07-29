@@ -72,7 +72,7 @@ async def test_execute_describe(ray_large_cluster, create_cluster):
 @pytest.mark.asyncio
 def test_sync_execute(ray_large_cluster, create_cluster):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
         a = mt.tensor(raw, chunk_size=5).sum(axis=1)
@@ -99,7 +99,7 @@ def _run_web_session(web_address):
 
 def _sync_web_session_test(web_address):
     register_ray_serializers()
-    new_session(web_address, backend='oscar', default=True)
+    new_session(web_address, backend='oscar')
     raw = np.random.RandomState(0).rand(10, 5)
     a = mt.tensor(raw, chunk_size=5).sum(axis=1)
     b = a.execute(show_progress=False)
@@ -182,7 +182,7 @@ async def test_load_third_party_modules(ray_large_cluster):
 @pytest.mark.asyncio
 def test_load_third_party_modules2(ray_large_cluster, create_cluster):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)

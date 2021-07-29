@@ -13,18 +13,12 @@
 # limitations under the License.
 
 import pytest
-try:
-    import sklearn
-
-    from sklearn.datasets import load_iris
-    from sklearn.utils import gen_batches
-    from sklearn.utils._testing import assert_array_almost_equal, assert_allclose
-except ImportError:
-    sklearn = None
+from sklearn.datasets import load_iris
+from sklearn.utils import gen_batches
+from sklearn.utils._testing import assert_array_almost_equal, assert_allclose
 
 from mars import tensor as mt
-if sklearn:
-    from mars.learn.preprocessing import MinMaxScaler, minmax_scale
+from mars.learn.preprocessing import MinMaxScaler, minmax_scale
 
 
 def assert_correct_incr(i, batch_start, batch_stop, n, chunk_size,
@@ -51,7 +45,6 @@ X_1col = X_2d[:, 0].reshape(n_samples, 1)
 iris = mt.tensor(load_iris().data)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('chunk_size', [200, X_2d.shape[0], X_2d.shape[0] + 42])
 def test_min_max_scaler_partial_fit(setup, chunk_size):
     # Test if partial_fit run over many batches of size 1 and 50
@@ -102,7 +95,6 @@ def test_min_max_scaler_partial_fit(setup, chunk_size):
                             n_samples_seen=scaler_incr.n_samples_seen_)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_min_max_scaler_iris(setup):
     X = iris
     scaler = MinMaxScaler()
@@ -135,7 +127,6 @@ def test_min_max_scaler_iris(setup):
         scaler.fit(X)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_min_max_scaler_zero_variance_features(setup):
     # Check min max scaler on toy data with zero variance features
     X = [[0., 1., +0.5],
@@ -177,7 +168,6 @@ def test_min_max_scaler_zero_variance_features(setup):
     assert_array_almost_equal(X_trans, X_expected_1_2)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_minmax_scale_axis1(setup):
     X = iris
     X_trans = minmax_scale(X, axis=1)
@@ -185,7 +175,6 @@ def test_minmax_scale_axis1(setup):
     assert_array_almost_equal(mt.max(X_trans, axis=1), 1)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_min_max_scaler1d(setup):
     X_list_1row = X_1row.to_numpy().tolist()
     X_list_1col = X_1col.to_numpy().tolist()
@@ -229,7 +218,6 @@ def test_min_max_scaler1d(setup):
                               minmax_scale(X_1d, copy=True))
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('feature_range', [(0, 1), (-10, 10)])
 def test_minmax_scaler_clip(setup, feature_range):
     # test behaviour of the parameter 'clip' in MinMaxScaler
