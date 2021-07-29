@@ -30,6 +30,8 @@ from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
 
 ray = lazy_import('ray')
 
+CONFIG_FILE = os.path.join(
+    os.path.dirname(__file__), 'local_test_with_ray_config.yml')
 CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'ray_test_with_third_parity_modules_config.yml')
 
@@ -37,7 +39,7 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
 @pytest.fixture
 async def create_cluster(request):
     param = getattr(request, "param", {})
-    ray_config = _load_config()
+    ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get('config', {}))
     client = await new_cluster('test_cluster',
                                worker_num=2,
