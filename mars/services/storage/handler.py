@@ -221,7 +221,7 @@ class StorageHandlerActor(mo.StatelessActor):
             level = info.level
             await self._data_manager_ref.delete_data_info(
                 session_id, data_key, level)
-            yield self._clients[level].delete(info.object_id)
+            await self._clients[level].delete(info.object_id)
             await self._quota_refs[level].release_quota(info.store_size)
 
     @delete.batch
@@ -255,10 +255,11 @@ class StorageHandlerActor(mo.StatelessActor):
             return
 
         await self._data_manager_ref.delete_data_info.batch(*delete_infos)
-        logger.debug('Begin to delete batch data %s', to_removes)
+        delete_tasks = []
         for level, object_id in to_removes:
-            yield self._clients[level].delete(object_id)
-        logger.debug('Finish deleting batch data %s', to_removes)
+            delete_tasks.append(
+                asyncio.create_task(self._clients[level].delete(object_id)))
+        await asyncio.gather(*delete_tasks)
         for level, size in level_sizes.items():
             await self._quota_refs[level].release_quota(size)
 
@@ -417,8 +418,9 @@ class StorageHandlerActor(mo.StatelessActor):
                 # Not exists in local, fetch from remote worker
                 missing_keys.append(data_key)
                 if address is None or band_name is None:
+                    # some mapper keys are absent, specify error='ignore'
                     get_metas.append(meta_api.get_chunk_meta.delay(
-                        data_key, fields=['bands']))
+                        data_key, fields=['bands'], error='ignore'))
         await self._data_manager_ref.pin.batch(*pin_delays)
 
         if get_metas:
@@ -426,7 +428,8 @@ class StorageHandlerActor(mo.StatelessActor):
         else:  # pragma: no cover
             metas = [(address, band_name)] * len(missing_keys)
         for data_key, bands in zip(missing_keys, metas):
-            remote_keys[bands['bands'][0]].add(data_key)
+            if bands is not None:
+                remote_keys[bands['bands'][0]].add(data_key)
 
         transfer_tasks = []
         fetch_keys = []

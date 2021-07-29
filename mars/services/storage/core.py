@@ -160,10 +160,10 @@ class DataManagerActor(mo.StatelessActor):
                         session_id: str,
                         data_key: str,
                         error: str) -> Union[List[DataInfo], None]:
-        try:
+        if (session_id, data_key) in self._data_key_to_info:
             return [info.data_info for info in
                     self._data_key_to_info[session_id, data_key]]
-        except KeyError:
+        else:
             if error == 'raise':
                 raise DataNotExist(f'Data key {session_id, data_key} not exists.')
             else:
@@ -223,8 +223,6 @@ class DataManagerActor(mo.StatelessActor):
                           data_key: str,
                           level: StorageLevel
                           ):
-        logger.debug('Begin to delete data keys for level %s '
-                     'in data manager: %s', level, data_key)
         if (session_id, data_key) in self._data_key_to_info:
             self._data_info_list[level].pop((session_id, data_key))
             self._spill_strategy[level].record_delete_info((session_id, data_key))
@@ -234,8 +232,6 @@ class DataManagerActor(mo.StatelessActor):
                 del self._data_key_to_info[(session_id, data_key)]
             else:  # pragma: no cover
                 self._data_key_to_info[(session_id, data_key)] = rest
-        logger.debug('Finish deleting data keys for level %s '
-                     'in data manager: %s', level, data_key)
 
     @extensible
     def delete_data_info(self,
