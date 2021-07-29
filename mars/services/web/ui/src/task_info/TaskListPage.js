@@ -32,21 +32,6 @@ class TaskList extends React.Component {
         this.state = {};
     }
 
-    fetchTilebaleGraph() {
-        if (this.state === undefined || this.state["tasks"] === undefined) {
-            return;
-        }
-
-        console.log(this.state["tasks"]);
-        for (let i = 0; i < this.state["tasks"].length; i++) {
-            fetch('api/session/' + this.props.sessionId + `/task/${this.state["tasks"][i].task_id}/tileable_graph?action=get_tileable_graph`)
-            .then(res => res.json())
-            .then((res) => {
-                console.log(res);
-            });
-        }
-    }
-
     refreshInfo() {
         fetch('api/session/' + this.props.sessionId + '/task?progress=1')
             .then(res => res.json())
@@ -58,10 +43,7 @@ class TaskList extends React.Component {
     componentDidMount() {
         if (this.interval !== undefined)
             clearInterval(this.interval);
-        this.interval = setInterval(() => {
-            this.refreshInfo();
-            this.fetchTilebaleGraph();
-        }, 5000);
+        this.interval = setInterval(() => this.refreshInfo(), 5000);
         this.refreshInfo();
     }
 

@@ -111,8 +111,8 @@ class TaskAPI(AbstractTaskAPI):
         except mo.ActorNotExist:
             raise RuntimeError('Session closed already')
 
-    async def get_tileable_detail_by_key(self, task_id: str):
-        return await self._task_manager_ref.get_tileable_detail_by_key(
+    async def get_tileable_graph_dict_by_task_id(self, task_id: str):
+        return await self._task_manager_ref.get_tileable_graph_dict_by_task_id(
             task_id
         )
 

@@ -50,36 +50,6 @@ def _record_error(func: Union[Callable, Coroutine]):
 
     return inner
 
-def format_graph_data(graph: TileableGraph):
-    node_list = []
-    edge_list = []
-
-    for node in graph.iter_nodes():
-        node_name = str(node.op)
-
-        node_list.append({
-            "tileable_id": node.key,
-            "tileable_name": node_name
-        })
-
-        for node_successor in graph.iter_successors(node):
-            edge_list.append({
-                "from_tileable_id": node_successor.key,
-                "from_tileable_name": str(node_successor.op),
-
-                "to_tileable_id": node.key,
-                "to_tileable_name": node_name,
-
-                "linkType": 0,
-            })
-            
-    res = { 
-        "tileables": node_list, 
-        "dependencies": edge_list
-        }
-
-    return res
-
 
 class TaskProcessor:
     stage_processors: List[TaskStageProcessor]
@@ -493,11 +463,38 @@ class TaskProcessorActor(mo.Actor):
             result.append(build_fetch(tiled))
         return result
 
-    def get_result_tileable_graph(self):
+    def get_tileable_graph_as_dict(self):
         processor = list(self._task_id_to_processor.values())[-1]
-        res_tileable_graph = format_graph_data(processor.tileable_graph)
+        graph = processor.tileable_graph
 
-        return res_tileable_graph
+        node_list = []
+        edge_list = []
+
+        for node in graph.iter_nodes():
+            node_name = str(node.op)
+
+            node_list.append({
+                "tileable_id": node.key,
+                "tileable_name": node_name
+            })
+
+            for node_successor in graph.iter_successors(node):
+                edge_list.append({
+                    "from_tileable_id": node_successor.key,
+                    "from_tileable_name": str(node_successor.op),
+
+                    "to_tileable_id": node.key,
+                    "to_tileable_name": node_name,
+
+                    "linkType": 0,
+                })
+                
+        graph_dict = { 
+            "tileables": node_list, 
+            "dependencies": edge_list
+            }
+
+        return graph_dict
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

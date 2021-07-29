@@ -264,7 +264,7 @@ async def test_get_tileables(start_test_service):
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
-    tileable_detail = await task_api.get_tileable_detail_by_key(task_id)
+    tileable_detail = await task_api.get_tileable_graph_dict_by_task_id(task_id)
 
     num_tileable = len(tileable_detail.get("tileables"))
     num_dependencies = len(tileable_detail.get("dependencies"))
@@ -289,12 +289,10 @@ async def test_get_tileables(start_test_service):
                 "linkType": 0,
             })
 
-
     for tileable in tileable_detail.get("tileables"):
         graph_nodes.remove(tileable.get("tileable_id"))
     
     assert len(graph_nodes) == 0
-
 
     for i in range(num_dependencies):
         dependency = tileable_detail.get("dependencies")[i]

@@ -173,12 +173,12 @@ class TaskManagerActor(mo.Actor):
 
         return task_id
 
-    async def get_tileable_detail_by_key(self, task_id):
+    async def get_tileable_graph_dict_by_task_id(self, task_id):
         if task_id not in self._task_id_to_processor_ref:
             raise TaskNotExist(f'Task {task_id} does not exist')
         else: 
             processor_ref = self._task_id_to_processor_ref[task_id]
-            res = await processor_ref.get_result_tileable_graph()
+            res = await processor_ref.get_tileable_graph_as_dict()
             return res
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
