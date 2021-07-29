@@ -28,7 +28,9 @@ from mars.services.storage import MockStorageAPI
 from mars.services.web import WebActor
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus, WebTaskAPI
+from mars.services.task.errors import TaskNotExist
 from mars.utils import Timer
+
 
 
 @pytest.fixture
@@ -264,6 +266,9 @@ async def test_get_tileables(start_test_service):
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
+    with pytest.raises(TaskNotExist):
+        await task_api.get_tileable_graph_dict_by_task_id("qffw2")
+
     tileable_detail = await task_api.get_tileable_graph_dict_by_task_id(task_id)
 
     num_tileable = len(tileable_detail.get("tileables"))
@@ -291,7 +296,7 @@ async def test_get_tileables(start_test_service):
 
     for tileable in tileable_detail.get("tileables"):
         graph_nodes.remove(tileable.get("tileable_id"))
-    
+
     assert len(graph_nodes) == 0
 
     for i in range(num_dependencies):
