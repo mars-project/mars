@@ -72,6 +72,20 @@ def test_unary_execution(setup, func):
     'rel_entr',
     'kl_div',
     'xlogy',
+    'jv',
+    'jve',
+    'yn',
+    'yv',
+    'yve',
+    'kn',
+    'kv',
+    'kve',
+    'iv',
+    'ive',
+    'hankel1',
+    'hankel1e',
+    'hankel2',
+    'hankel2e',
 ])
 def test_binary_execution(setup, func):
     sp_func = getattr(spspecial, func)
