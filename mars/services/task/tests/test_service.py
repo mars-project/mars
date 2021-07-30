@@ -32,7 +32,6 @@ from mars.services.task.errors import TaskNotExist
 from mars.utils import Timer
 
 
-
 @pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
