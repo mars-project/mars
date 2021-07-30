@@ -61,6 +61,7 @@ class ResultTileableInfo:
 class TaskManagerActor(mo.Actor):
     _task_name_to_parent_task_id: Dict[str, str]
     _task_name_to_task_ids: Dict[str, List[str]]
+
     _task_id_to_processor_ref: Dict[str, Union[TaskProcessorActor, mo.ActorRef]]
     _tileable_key_to_info: Dict[str, List[ResultTileableInfo]]
 
@@ -77,6 +78,7 @@ class TaskManagerActor(mo.Actor):
 
         self._task_name_to_parent_task_id = dict()
         self._task_name_to_task_ids = defaultdict(list)
+
         self._task_id_to_processor_ref = dict()
         self._tileable_key_to_info = defaultdict(list)
 
@@ -170,6 +172,15 @@ class TaskManagerActor(mo.Actor):
             self._tileable_key_to_info[tileable.key].append(info)
 
         return task_id
+
+    async def get_tileable_graph_dict_by_task_id(self, task_id):
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:
+            raise TaskNotExist(f'Task {task_id} does not exist')
+
+        res = await processor_ref.get_tileable_graph_as_dict()
+        return res
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
             Dict[TileableType, TileableType]:
