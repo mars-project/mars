@@ -268,7 +268,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                                             task_id=subtask.task_id,
                                             status=SubtaskStatus.pending)
         batch_quota_req = quota_ref = slot_manager_ref = None
-
+        print('subtask:', subtask)
         try:
             quota_ref = await self._get_band_quota_ref(band_name)
             slot_manager_ref = await self._get_slot_manager_ref(band_name)
@@ -285,6 +285,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req)
+            print('subtask ok')
         except asyncio.CancelledError as ex:
             subtask_info.result.status = SubtaskStatus.cancelled
             subtask_info.result.progress = 1.0
@@ -326,6 +327,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         assert subtask_info.max_retries >= 0
 
         async def _run_subtask_once():
+            print(f'retry run {subtask_info.num_retries}')
             # check quota each retry.
             await quota_ref.request_batch_quota(batch_quota_req)
 
@@ -354,6 +356,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     finally:
                         raise ex
                 except (OSError, MarsError) as ex:
+                    print('caught excepthion:', type(ex))
                     # TODO(fyrestone): Handle slot exception correctly.
                     if subtask_info.num_retries < subtask_info.max_retries:
                         ctx.kill_slot_when_exit()

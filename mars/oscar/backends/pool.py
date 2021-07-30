@@ -425,7 +425,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             if actor_id in self._actors:
                 raise ActorAlreadyExist(f'Actor {actor_id} already exist, '
                                         f'cannot create')
-
+            print('create actor:', message.actor_id, message.actor_cls, message.args, message.kwargs)
             actor = message.actor_cls(*message.args, **message.kwargs)
             actor.uid = actor_id
             actor.address = address = self.external_address
@@ -573,7 +573,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             create_server_tasks.append(task)
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
-
+        print('create pool:', cls, actor_pool_config.as_dict(), kw)
         # create pool
         pool = cls(**kw)
         return pool
@@ -1032,6 +1032,7 @@ class MainActorPoolBase(ActorPoolBase):
             for _, message in self._allocated_actors[address].values():
                 create_actor_message: CreateActorMessage = message
                 await self.call(address, create_actor_message)
+        print('recover done!')
 
     async def monitor_sub_pools(self):
         try:
@@ -1039,6 +1040,7 @@ class MainActorPoolBase(ActorPoolBase):
                 for address in self.sub_processes:
                     process = self.sub_processes[address]
                     if not await self.is_sub_pool_alive(process):  # pragma: no cover
+                        print(f'found the death of {process}!')
                         if self._on_process_down is not None:
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)

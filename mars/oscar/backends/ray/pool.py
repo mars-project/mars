@@ -23,6 +23,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
+from ..message import CreateActorMessage
 from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 from ..config import ActorPoolConfig
@@ -77,9 +78,23 @@ class RayMainActorPool(MainActorPoolBase):
         actor_handle = ray.remote(RaySubPool).options(
             num_cpus=num_cpus, name=external_address,
             max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
+            max_restarts=-1,     # Auto restarts by ray
             placement_group=pg, placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle
+
+    async def recover_sub_pool(self, address: str):
+        process = self.sub_processes[address]
+        print('try to recover:', address, process)
+        process_index = self._config.get_process_index(address)
+        await process.start.remote(self._config, process_index)
+
+        if self._auto_recover == 'actor':
+            # need to recover all created actors
+            for _, message in self._allocated_actors[address].values():
+                create_actor_message: CreateActorMessage = message
+                await self.call(address, create_actor_message)
+        print('recover done!')
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
@@ -97,17 +112,19 @@ class RayMainActorPool(MainActorPoolBase):
             await self._kill_actor_forcibly(process)
 
     async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
-        ray.kill(process)
-        wait_time, waited_time = 30, 0
-        while await self.is_sub_pool_alive(process):  # pragma: no cover
-            if waited_time > wait_time:
-                raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
-            await asyncio.sleep(1)
-            logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
+        print('Dont really kill', self)
+        # ray.kill(process)
+        # wait_time, waited_time = 30, 0
+        # while await self.is_sub_pool_alive(process):  # pragma: no cover
+        #     if waited_time > wait_time:
+        #         raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
+        #     await asyncio.sleep(1)
+        #     logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
             await process.health_check.remote()
+            await process.actor_pool.remote('process_index')
             return True
         except Exception:
             logger.info("Detected RaySubPool %s died", process)
@@ -149,6 +166,7 @@ class RayPoolBase(ABC):
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):
+        print('Constrcting Ray Actor', self)
         self._actor_pool = None
         self._ray_server = None
         register_ray_serializers()
