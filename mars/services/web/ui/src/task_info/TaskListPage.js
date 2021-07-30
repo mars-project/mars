@@ -37,7 +37,7 @@ class TaskList extends React.Component {
             .then(res => res.json())
             .then((res) => {
                 this.setState(res);
-            })
+            });
     }
 
     componentDidMount() {
