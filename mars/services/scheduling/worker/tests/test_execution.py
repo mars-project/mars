@@ -61,9 +61,9 @@ class CancelDetectActorMixin:
 
 
 class MockStorageHandlerActor(StorageHandlerActor, CancelDetectActorMixin):
-    async def fetch(self, *args, **kwargs):
+    async def fetch_batch(self, *args, **kwargs):
         async with self._delay_method():
-            return super().fetch(*args, **kwargs)
+            return super().fetch_batch(*args, **kwargs)
 
 
 class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
