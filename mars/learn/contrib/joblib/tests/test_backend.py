@@ -13,22 +13,16 @@
 # limitations under the License.
 
 import numpy as np
-import pytest
-try:
-    import joblib
-    import sklearn
-    from sklearn.datasets import load_digits
-    from sklearn.model_selection import RandomizedSearchCV
-    from sklearn.svm import SVC
-except ImportError:
-    joblib = sklearn = None
+import joblib
+from sklearn.datasets import load_digits
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.svm import SVC
 
 from mars.learn.contrib.joblib import register_mars_backend
 
 register_mars_backend()
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_sk_learn_svc_train(setup):
     digits = load_digits()
     param_space = {

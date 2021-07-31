@@ -53,7 +53,7 @@ jobs:
           fi
 
           pip install numpy scipy cython
-          pip install -e ".[dev,distributed]"
+          pip install -e ".[dev,extra]"
           conda list -n test
 
       - name: Deploy packages

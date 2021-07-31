@@ -57,7 +57,7 @@ class KubernetesClusterClient:
     def start(self):
         try:
             self._endpoint = self._cluster.start()
-            self._session = new_session(self._endpoint, default=True)
+            self._session = new_session(self._endpoint)
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             self.stop()
             raise

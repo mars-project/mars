@@ -443,8 +443,8 @@ def test_fetch_log(fetch_log_setup):
 
     ds = [mr.spawn(test_host, n, retry_when_fail=False)
           for n in np.random.rand(4)]
-    xtp = execute(*ds)
-    for log in fetch_log(*xtp):
+    xtp = execute(ds)
+    for log in fetch_log(xtp):
         assert str(log).strip() == 'log_content'
 
     def test_threaded():

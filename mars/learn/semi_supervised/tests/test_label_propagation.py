@@ -14,15 +14,10 @@
 
 import numpy as np
 import pytest
-try:
-    import sklearn
-
-    from sklearn.datasets import make_classification
-    from sklearn.model_selection import train_test_split
-    from sklearn.exceptions import ConvergenceWarning
-    from sklearn.utils._testing import assert_no_warnings, assert_warns
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import assert_no_warnings, assert_warns
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import rbf_kernel
@@ -76,7 +71,6 @@ def test_predict_proba(setup, estimator, parameters):
                                    np.array([[0.5, 0.5]]))
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_label_propagation_closed_form(setup):
     n_classes = 2
     X, y = make_classification(n_classes=n_classes, n_samples=200,
@@ -107,7 +101,6 @@ def test_label_propagation_closed_form(setup):
         expected, clf.label_distributions_.fetch(), 4)
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_convergence_warning(setup):
     # This is a non-regression test for #5774
     X = np.array([[1., 0.], [0., 1.], [1., 2.5]])
@@ -121,7 +114,6 @@ def test_convergence_warning(setup):
     assert_no_warnings(mdl.fit, X, y)
 
 
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 def test_predict_sparse_callable_kernel(setup):
     # This is a non-regression test for #15866
 

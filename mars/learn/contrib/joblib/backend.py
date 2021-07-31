@@ -36,7 +36,7 @@ class MarsDistributedBackend(AutoBatchingMixin, ParallelBackendBase):
 
         if session is None:
             if service is not None:
-                self.session = new_session(service, backend=backend)
+                self.session = new_session(service, backend=backend, default=False)
             else:
                 self.session = get_default_session()
         else:

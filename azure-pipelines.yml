@@ -69,7 +69,7 @@ jobs:
         else
           pip install numpy scipy cython
         fi
-        pip install -e ".[dev,distributed]"
+        pip install -e ".[dev,extra]"
         pip install virtualenv flaky flake8
 
         if [ -z "$NO_COMMON_TESTS" ]; then

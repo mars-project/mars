@@ -14,22 +14,16 @@
 
 import numpy as np
 import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics import pairwise_distances as sk_pairwise_distances
-    from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
-    from sklearn.exceptions import DataConversionWarning
-    from sklearn.utils._testing import assert_warns
-except ImportError:
-    sklearn = None
+from sklearn.metrics import pairwise_distances as sk_pairwise_distances
+from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
+from sklearn.exceptions import DataConversionWarning
+from sklearn.utils._testing import assert_warns
 
 from mars import tensor as mt
 from mars.learn.metrics import pairwise_distances, pairwise_distances_topk
 from mars.session import execute, fetch
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pairwise_distances_execution(setup):
     raw_x = np.random.rand(20, 5)
     raw_y = np.random.rand(21, 5)
@@ -78,7 +72,6 @@ def test_pairwise_distances_execution(setup):
         _ = pairwise_distances(x, y, metric='unknown')
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pairwise_distances_topk_execution(setup):
     rs = np.random.RandomState(0)
     raw_x = rs.rand(20, 5)

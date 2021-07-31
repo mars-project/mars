@@ -18,6 +18,7 @@ import os
 import subprocess
 import sys
 import time
+from concurrent import futures
 from typing import List
 
 import numpy as np
@@ -36,6 +37,8 @@ from mars.utils import get_next_port, kill_process_tree
 
 class _ProcessExitedException(Exception):
     pass
+
+_TimeoutErrors = (asyncio.TimeoutError, futures.TimeoutError, TimeoutError)
 
 
 def _wait_supervisor_ready(supervisor_proc: subprocess.Popen, timeout=120):
@@ -79,7 +82,7 @@ def _wait_worker_ready(supervisor_addr, worker_procs: List[subprocess.Popen],
                 await asyncio.sleep(0.1)
 
     isolation = get_isolation()
-    asyncio.run_coroutine_threadsafe(wait_for_workers(), isolation.loop).result()
+    asyncio.run_coroutine_threadsafe(wait_for_workers(), isolation.loop).result(120)
 
 
 _test_port_cache = dict()
@@ -124,15 +127,21 @@ def _reload_args(args):
     return [arg if not callable(arg) else arg() for arg in args]
 
 
+_rerun_errors = (_ProcessExitedException,) + _TimeoutErrors
+
+
 @pytest.mark.parametrize('supervisor_args,worker_args,use_web_addr',
                          list(start_params.values()), ids=list(start_params.keys()))
-@flaky(rerun_filter=lambda *args: issubclass(args[0][0], _ProcessExitedException))
+@flaky(rerun_filter=lambda *args: issubclass(args[0][0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None
     try:
+        env = os.environ.copy()
+        env['MARS_CPU_TOTAL'] = '2'
+
         sv_args = _reload_args(supervisor_args)
-        sv_proc = subprocess.Popen(sv_args, env=os.environ.copy())
+        sv_proc = subprocess.Popen(sv_args, env=env)
 
         oscar_port = _get_labelled_port('supervisor', create=False)
         if not oscar_port:
@@ -147,10 +156,10 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
             api_ep = oscar_ep
 
         w_procs = [subprocess.Popen(
-            _reload_args(worker_args), env=os.environ.copy()) for _ in range(2)]
+            _reload_args(worker_args), env=env) for _ in range(2)]
         _wait_worker_ready(oscar_ep, w_procs)
 
-        new_session(api_ep, default=True)
+        new_session(api_ep)
         data = np.random.rand(10, 10)
         res = mt.tensor(data, chunk_size=5).sum().execute().fetch()
         np.testing.assert_almost_equal(res, data.sum())
