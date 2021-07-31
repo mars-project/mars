@@ -266,6 +266,21 @@ xlogy = partial(_call_bin, 'xlogy')
 
 erf = partial(_call_unary, 'erf')
 
+jv = partial(_call_bin, 'jv')
+jve = partial(_call_bin, 'jve')
+yn = partial(_call_bin, 'yn')
+yv = partial(_call_bin, 'yv')
+yve = partial(_call_bin, 'yve')
+kn = partial(_call_bin, 'kn')
+kv = partial(_call_bin, 'kv')
+kve = partial(_call_bin, 'kve')
+iv = partial(_call_bin, 'iv')
+ive = partial(_call_bin, 'ive')
+hankel1 = partial(_call_bin, 'hankel1')
+hankel1e = partial(_call_bin, 'hankel1e')
+hankel2 = partial(_call_bin, 'hankel2')
+hankel2e = partial(_call_bin, 'hankel2e')
+
 
 def equal(a, b, **_):
     try:
