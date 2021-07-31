@@ -137,7 +137,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
                   obj: object,
                   level: StorageLevel):
         size = calc_data_size(obj)
-        await self._request_quota_with_spill(level, size)
+        await self.request_quota_with_spill(level, size)
         # sleep to trigger `NoDataToSpill`
         await asyncio.sleep(0.5)
         object_info = await self._clients[level].put(obj)

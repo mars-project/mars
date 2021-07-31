@@ -174,15 +174,14 @@ class MetaAPI(AbstractMetaAPI):
         meta = self._extract_chunk_meta(
             chunk, memory_size=memory_size, store_size=store_size,
             bands=bands, **extra)
-        return await self._meta_store.set_meta(chunk.key, meta)
+        return await self._meta_store.set_meta(meta.object_id, meta)
 
     @set_chunk_meta.batch
     async def batch_set_chunk_meta(self, args_list, kwargs_list):
         set_chunk_metas = []
         for args, kwargs in zip(args_list, kwargs_list):
-            chunk = args[0]
             meta = self._extract_chunk_meta(*args, **kwargs)
-            set_chunk_metas.append(self._meta_store.set_meta.delay(chunk.key, meta))
+            set_chunk_metas.append(self._meta_store.set_meta.delay(meta.object_id, meta))
         return await self._meta_store.set_meta.batch(*set_chunk_metas)
 
     @extensible
