@@ -13,20 +13,19 @@
 # limitations under the License.
 
 from mars.learn.contrib.xgboost import train
-import unittest
+import pytest
+import os
 
 import mars.tensor as mt
 from mars.session import new_session
-from mars.tests import setup
 from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, MarsRandomSampler, MarsSequentialSampler
+from mars.learn.contrib.pytorch import run_pytorch_script
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
-setup = setup
-
-@unittest.skipIf(not torch_installed, 'pytorch not installed')
-def testMarsDataset(setup):
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
+def testMarsDataset(setup_cluster):
     import torch
     from torch.utils.data import Dataset
     import numpy as np
@@ -36,21 +35,22 @@ def testMarsDataset(setup):
     data.execute()
     labels.execute()
 
-    train_dataset = MarsDataset(data, labels)
-    assert len(train_dataset) == 1000
-    assert train_dataset[1][0].shape == (32,)
-    assert train_dataset[1][1].shape == (10,)
-    assert isinstance(train_dataset, Dataset)
-    assert isinstance(train_dataset[1][0], np.ndarray)
+    sess = setup_cluster
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'pytorch_dataset.py')
 
-def testDatasetWithtorchSampler(setup):
+    assert run_pytorch_script(
+        path, data = {"data": data, "labels": labels}, n_workers=2, command_argv=['multiple'],
+        port=9945, session=sess).fetch()['status'] == 'ok'
+
+def testDatasetWithtorchSampler(setup_cluster):
     import torch
     from torch.utils.data import SequentialSampler, RandomSampler
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
-    data.execute().fetch()
-    labels.execute().fetch()
+    data.execute()
+    labels.execute()
 
     train_dataset = MarsDataset(data, labels)
 
@@ -79,7 +79,7 @@ def testDatasetWithtorchSampler(setup):
             loss.backward()
             optimizer.step()
 
-def testMarsSequentialSampler(setup):
+def testMarsSequentialSampler(setup_cluster):
     import torch
 
     data = mt.random.rand(1000, 32, dtype='f4')
@@ -114,7 +114,7 @@ def testMarsSequentialSampler(setup):
             loss.backward()
             optimizer.step()
 
-def testMarsRandomSampler(setup):
+def testMarsRandomSampler(setup_cluster):
     import torch
 
     data = mt.random.rand(1000, 32, dtype='f4')
