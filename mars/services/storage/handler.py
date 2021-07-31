@@ -255,11 +255,8 @@ class StorageHandlerActor(mo.StatelessActor):
             return
 
         await self._data_manager_ref.delete_data_info.batch(*delete_infos)
-        delete_tasks = []
-        for level, object_id in to_removes:
-            delete_tasks.append(
-                asyncio.create_task(self._clients[level].delete(object_id)))
-        await asyncio.gather(*delete_tasks)
+        await asyncio.gather(*[self._clients[level].delete(object_id)
+                               for level, object_id in to_removes])
         for level, size in level_sizes.items():
             await self._quota_refs[level].release_quota(size)
 
@@ -280,12 +277,9 @@ class StorageHandlerActor(mo.StatelessActor):
             get_data_infos.append(
                 self._data_manager_ref.get_data_info.delay(*args, **kwargs))
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_data_infos)
-
-        readers = []
-        for data_info in data_infos:
-            readers.append(await self._clients[data_info.level].open_reader(
-                data_info.object_id))
-        return readers
+        return await asyncio.gather(
+            *[self._clients[data_info.level].open_reader(data_info.object_id)
+            for data_info in data_infos])
 
     @extensible
     async def open_writer(self,
@@ -311,36 +305,26 @@ class StorageHandlerActor(mo.StatelessActor):
 
     @open_writer.batch
     async def batch_open_writers(self, args_list, kwargs_list):
-        last_session_id = None
-        last_level = None
-        last_request_quota = None
+        extracted_args = None
         data_keys, sizes = [], []
         for args, kwargs in zip(args_list, kwargs_list):
             session_id, data_key, size, level, request_quota = \
                 self._get_open_writer_args(*args, **kwargs)
-            if last_session_id is not None:
-                assert last_session_id == session_id
-            last_session_id = session_id
-            if last_level is not None:
-                assert last_level == level
-            last_level = level
-            if last_request_quota is not None:
-                assert last_request_quota == request_quota
-            last_request_quota = request_quota
+            if extracted_args:
+                assert extracted_args == (session_id, level, request_quota)
+            extracted_args = (session_id, level, request_quota)
             data_keys.append(data_key)
             sizes.append(size)
-        if last_request_quota:
-            await self.request_quota_with_spill(last_level, sum(sizes))
-        open_writer_tasks = []
-        for size in sizes:
-            open_writer_tasks.append(
-                asyncio.create_task(self._clients[last_level].open_writer(size)))
-        writers = await asyncio.gather(*open_writer_tasks)
+        session_id, level, request_quota = extracted_args
+        if request_quota:  # pragma: no cover
+            await self.request_quota_with_spill(level, sum(sizes))
+        writers = await asyncio.gather(*[self._clients[level].open_writer(size)
+                                         for size in sizes])
         wrapped_writers = []
         for writer, size, data_key in zip(writers, sizes, data_keys):
             wrapped_writers.append(
-                WrappedStorageFileObject(writer, last_level, size, last_session_id, data_key,
-                                         self._data_manager_ref, self._clients[last_level]))
+                WrappedStorageFileObject(writer, level, size, session_id, data_key,
+                                         self._data_manager_ref, self._clients[level]))
         return wrapped_writers
 
     async def _get_meta_api(self, session_id: str):
@@ -366,15 +350,15 @@ class StorageHandlerActor(mo.StatelessActor):
         data_infos = await remote_manager_ref.get_data_info.batch(*get_data_infos)
         data_infos, data_keys = zip(*[(data_info, data_key) for data_info, data_key in
                                     zip(data_infos, data_keys) if data_info is not None])
+        put_data_info_delays = []
+        fetch_tasks = []
         for data_info, data_key in zip(data_infos, data_keys):
-            try:
-                await self._data_manager_ref.put_data_info(
-                    session_id, data_key, data_info, None)
-                await self._clients[level].fetch(data_info.object_id)
-            except asyncio.CancelledError:  # pragma: no cover
-                await self._data_manager_ref.delete_data_info.tell(
-                    session_id, data_key, data_info.level)
-                raise
+            put_data_info_delays.append(
+                self._data_manager_ref.put_data_info.delay(
+                    session_id, data_key, data_info, None))
+            fetch_tasks.append(self._clients[level].fetch(data_info.object_id))
+        await self._data_manager_ref.put_data_info.batch(*put_data_info_delays)
+        await asyncio.gather(*fetch_tasks)
 
     async def _fetch_via_transfer(self,
                                   session_id: str,
@@ -466,10 +450,12 @@ class StorageHandlerActor(mo.StatelessActor):
     async def notify_spillable_space(self, level):
         if await self._spill_manager_refs[level].has_spill_task():
             total, used = await self._quota_refs[level].get_quota()
+            tasks = []
             if total is not None:
                 spillable_size = await self._data_manager_ref.get_spillable_size(level)
-                await self._spill_manager_refs[level].notify_spillable_space(
-                    spillable_size, total - used)
+                tasks.append(self._spill_manager_refs[level].notify_spillable_space(
+                    spillable_size, total - used))
+            await asyncio.gather(*tasks)
 
     async def spill(self,
                     level: StorageLevel,
@@ -495,26 +481,20 @@ class StorageHandlerActor(mo.StatelessActor):
 
     @unpin.batch
     async def batch_unpin(self, args_list, kwargs_list):
-        last_session_id = None
-        last_error = None
+        extracted_args = []
         data_keys = []
         for arg, _ in zip(args_list, kwargs_list):
             session_id, data_key, error = arg
-            if last_session_id is not None:
-                assert last_session_id == session_id
-            last_session_id = session_id
-            if last_error is not None:
-                assert last_error == error
-            last_error = error
+            if extracted_args:
+                assert extracted_args == (session_id, error)
+            extracted_args = session_id, error
             data_keys.append(data_key)
-        if last_error:
+        if extracted_args:
+            session_id, error = extracted_args
             levels = await self._data_manager_ref.unpin(
-                last_session_id, data_keys, last_error)
-        else:
-            levels = await self._data_manager_ref.unpin(
-                last_session_id, data_keys)
-        for level in levels:
-            await self.notify_spillable_space(level)
+                    session_id, data_keys, error)
+            for level in levels:
+                await self.notify_spillable_space(level)
 
     async def get_storage_level_info(self, level: StorageLevel) -> StorageInfo:
         quota_ref = self._quota_refs[level]

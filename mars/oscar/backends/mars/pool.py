@@ -193,6 +193,7 @@ class MainActorPool(MainActorPoolBase):
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(wait_pool, process.join, 3)
         process.kill()
+        await asyncio.to_thread(process.join, 5)
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
         return process.is_alive()

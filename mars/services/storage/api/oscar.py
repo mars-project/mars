@@ -192,30 +192,17 @@ class StorageAPI(AbstractStorageAPI):
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
-        last_level = None
-        last_band_name = None
-        last_address = None
-        last_error = None
+        extracted_args = []
         data_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
             data_key, level, band_name, dest_address, error = \
                 self._get_fetch_arg(*args, **kwargs)
-            if last_level is not None:
-                assert last_level == level
-            last_level = level
-            if last_band_name is not None:  # pragma: no cover
-                assert last_band_name == band_name
-            last_band_name = band_name
-            if last_address is not None:  # pragma: no cover
-                assert last_address == dest_address
-            last_address = dest_address
-            if last_error is not None:
-                assert last_error == error
-            last_error = error
+            if extracted_args:
+                assert extracted_args == (level, band_name, dest_address, error)
+            extracted_args = (level, band_name, dest_address, error)
             data_keys.append(data_key)
         await self._storage_handler_ref.fetch_batch(
-            self._session_id, data_keys, last_level,
-            last_band_name, last_address, last_error)
+            self._session_id, data_keys, *extracted_args)
 
     @extensible
     async def unpin(self, data_key: str,
