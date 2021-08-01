@@ -16,7 +16,7 @@ import asyncio
 import itertools
 import random
 from collections import defaultdict
-from typing import List, Dict, Tuple
+from typing import Dict, List
 
 from .... import oscar as mo
 from ....core.operand import Fetch, FetchShuffle
