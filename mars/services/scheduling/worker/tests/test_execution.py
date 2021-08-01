@@ -99,7 +99,7 @@ class MockTaskManager(mo.Actor):
 
 @pytest.fixture
 async def actor_pool(request):
-    n_slots = request.param
+    n_slots, enable_kill = request.param
     pool = await mo.create_actor_pool('127.0.0.1',
                                       labels=[None] + ['numa-0'] * n_slots,
                                       n_process=n_slots)
@@ -116,6 +116,7 @@ async def actor_pool(request):
 
         # create assigner actor
         execution_ref = await mo.create_actor(SubtaskExecutionActor,
+                                              enable_kill_slot=enable_kill,
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor
@@ -136,7 +137,7 @@ async def actor_pool(request):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('actor_pool', [1], indirect=True)
+@pytest.mark.parametrize('actor_pool', [(1, True)], indirect=True)
 async def test_execute_tensor(actor_pool):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
 
@@ -192,7 +193,7 @@ _cancel_phases = [
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('actor_pool,cancel_phase',
-                         [(1, phase) for phase in _cancel_phases],
+                         [((1, True), phase) for phase in _cancel_phases],
                          indirect=['actor_pool'])
 async def test_execute_with_cancel(actor_pool, cancel_phase):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
@@ -258,3 +259,47 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, 'numa-0', pool.external_address),
         timeout=30)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('actor_pool', [(1, False)], indirect=True)
+async def test_cancel_without_kill(actor_pool):
+    pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+
+    def delay_fun(delay):
+        import mars
+        time.sleep(delay)
+        mars._slot_marker = 1
+        return delay
+
+    def check_fun():
+        import mars
+        return getattr(mars, '_slot_marker', False)
+
+    remote_result = RemoteFunction(function=delay_fun, function_args=[2],
+                                   function_kwargs={}).new_chunk([])
+    chunk_graph = ChunkGraph([remote_result])
+    chunk_graph.add_node(remote_result)
+
+    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+                      chunk_graph=chunk_graph)
+    aiotask = asyncio.create_task(execution_ref.run_subtask(
+        subtask, 'numa-0', pool.external_address))
+    await asyncio.sleep(0.5)
+
+    await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(aiotask, timeout=30)
+
+    remote_result = RemoteFunction(function=check_fun, function_args=[],
+                                   function_kwargs={}).new_chunk([])
+    chunk_graph = ChunkGraph([remote_result])
+    chunk_graph.add_node(remote_result)
+
+    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+                      chunk_graph=chunk_graph)
+    await execution_ref.run_subtask(
+        subtask, 'numa-0', pool.external_address)
+
+    # check if results are correct
+    assert await storage_api.get(remote_result.key)

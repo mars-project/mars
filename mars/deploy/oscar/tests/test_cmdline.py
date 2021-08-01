@@ -38,8 +38,6 @@ from mars.utils import get_next_port, kill_process_tree
 class _ProcessExitedException(Exception):
     pass
 
-_TimeoutErrors = (asyncio.TimeoutError, futures.TimeoutError, TimeoutError)
-
 
 def _wait_supervisor_ready(supervisor_proc: subprocess.Popen, timeout=120):
     start_time = time.time()
@@ -127,12 +125,13 @@ def _reload_args(args):
     return [arg if not callable(arg) else arg() for arg in args]
 
 
-_rerun_errors = (_ProcessExitedException,) + _TimeoutErrors
+_rerun_errors = (_ProcessExitedException,) \
+    + (asyncio.TimeoutError, futures.TimeoutError, TimeoutError)
 
 
 @pytest.mark.parametrize('supervisor_args,worker_args,use_web_addr',
                          list(start_params.values()), ids=list(start_params.keys()))
-@flaky(rerun_filter=lambda *args: issubclass(args[0][0], _rerun_errors))
+@flaky(rerun_filter=lambda err, *_: not issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None

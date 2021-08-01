@@ -92,15 +92,19 @@ class NodeInfoUploaderActor(mo.Actor):
     async def upload_node_info(self, call_next: bool = True, status: NodeStatus = None):
         try:
             if not self._info.env:
-                self._info.env = gather_node_env()
-            self._info.detail.update(gather_node_details(
+                self._info.env = await asyncio.to_thread(gather_node_env)
+            self._info.detail.update(await asyncio.to_thread(
+                gather_node_details,
                 disk_infos=self._disk_infos,
                 band_storage_infos=self._band_storage_infos,
                 band_slot_infos=self._band_slot_infos,
                 band_quota_infos=self._band_quota_infos
             ))
-            for band, res in gather_node_resource(
-                    self._band_to_slots, use_gpu=self._use_gpu).items():
+
+            band_resources = await asyncio.to_thread(
+                gather_node_resource, self._band_to_slots, use_gpu=self._use_gpu)
+
+            for band, res in band_resources.items():
                 try:
                     res_dict = self._info.resource[band]
                 except KeyError:
