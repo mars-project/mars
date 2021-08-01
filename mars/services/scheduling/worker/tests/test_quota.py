@@ -133,7 +133,8 @@ async def test_batch_quota_allocation(actor_pool):
 
 
 @pytest.mark.asyncio
-async def test_mem_quota_allocation(actor_pool):
+@pytest.mark.parametrize('enable_kill_slot', [False, True])
+async def test_mem_quota_allocation(actor_pool, enable_kill_slot):
     from mars.utils import AttributeDict
 
     mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
@@ -143,6 +144,7 @@ async def test_mem_quota_allocation(actor_pool):
     quota_ref = await mo.create_actor(
         MemQuotaActor, (actor_pool.external_address, 'numa-0'), 300,
         hard_limit=300, refresh_time=0.1,
+        enable_kill_slot=enable_kill_slot,
         uid=MemQuotaActor.gen_uid('cpu-0'),
         address=actor_pool.external_address)  # type: Union[QuotaActorRef, mo.ActorRef]
 
@@ -162,4 +164,4 @@ async def test_mem_quota_allocation(actor_pool):
         mock_mem_stat['free'] = 150
         await asyncio.wait_for(task, timeout=1)
         assert 0.15 < abs(time_recs[0] - time_recs[1]) < 1
-        assert await mock_band_slot_manager_ref.get_restart_record()
+        assert bool(await mock_band_slot_manager_ref.get_restart_record()) == enable_kill_slot

@@ -18,7 +18,6 @@ import logging
 import operator
 import sys
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
@@ -59,10 +58,12 @@ class SubtaskExecutionInfo:
 
 class SlotContext:
     def __init__(self, subtask: Subtask,
-                 slot_manager_ref: Union[mo.ActorRef, BandSlotManagerActor]):
+                 slot_manager_ref: Union[mo.ActorRef, BandSlotManagerActor],
+                 enable_kill_slot: bool = True):
         self._subtask = subtask
         self._slot_manager_ref = slot_manager_ref
         self._slot_id = None
+        self._enable_kill_slot = enable_kill_slot
         self._should_kill_slot = False
 
     @property
@@ -70,7 +71,8 @@ class SlotContext:
         return self._slot_id
 
     def kill_slot_when_exit(self):
-        self._should_kill_slot = True
+        if self._enable_kill_slot:  # pragma: no branch
+            self._should_kill_slot = True
 
     async def __aenter__(self):
         self._slot_id = await self._slot_manager_ref.acquire_free_slot(
@@ -85,7 +87,7 @@ class SlotContext:
                     await self._slot_manager_ref.kill_slot(self._slot_id)
                 finally:
                     # TODO(fyrestone): Make the slot management more reliable.
-                    # currently, the slot will not be freed if we kill slot failed.
+                    #  currently, the slot will not be freed if we kill slot failed.
                     self._slot_id = None
         finally:
             if self._slot_id is not None:
@@ -121,13 +123,14 @@ async def _retry_run(subtask: Subtask,
 class SubtaskExecutionActor(mo.StatelessActor):
     _subtask_info: Dict[str, SubtaskExecutionInfo]
 
-    def __init__(self, subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES):
+    def __init__(self, subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES,
+                 enable_kill_slot: bool = True):
         self._cluster_api = None
         self._global_slot_ref = None
         self._subtask_max_retries = subtask_max_retries
+        self._enable_kill_slot = enable_kill_slot
 
         self._subtask_info = dict()
-        self._size_pool = ThreadPoolExecutor(1)
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
@@ -268,9 +271,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
             await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask)
 
             input_sizes = await self._collect_input_sizes(subtask, subtask_info.supervisor_address)
-            loop = asyncio.get_running_loop()
-            _store_size, calc_size = await loop.run_in_executor(
-                self._size_pool, self._estimate_sizes, subtask, input_sizes)
+            _store_size, calc_size = await asyncio.to_thread(
+                self._estimate_sizes, subtask, input_sizes)
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
@@ -323,14 +325,17 @@ class SubtaskExecutionActor(mo.StatelessActor):
             # check quota each retry.
             await quota_ref.request_batch_quota(batch_quota_req)
 
-            async with SlotContext(subtask, slot_manager_ref) as ctx:
+            async with SlotContext(subtask, slot_manager_ref,
+                                   enable_kill_slot=self._enable_kill_slot) as ctx:
+                aiotask = None
                 try:
                     if subtask_info.cancelling:
                         raise asyncio.CancelledError
 
                     subtask_info.result.status = SubtaskStatus.running
-                    return await asyncio.shield(subtask_api.run_subtask_in_slot(
-                            band_name, ctx.slot_id, subtask))
+                    aiotask = asyncio.create_task(subtask_api.run_subtask_in_slot(
+                        band_name, ctx.slot_id, subtask))
+                    return await asyncio.shield(aiotask)
                 except asyncio.CancelledError as ex:
                     try:
                         await asyncio.wait_for(
@@ -338,8 +343,12 @@ class SubtaskExecutionActor(mo.StatelessActor):
                                         band_name, ctx.slot_id)),
                                 subtask_info.kill_timeout)
                     except asyncio.TimeoutError:
-                        ctx.kill_slot_when_exit()
-                    raise ex
+                        if self._enable_kill_slot:
+                            ctx.kill_slot_when_exit()
+                        else:
+                            await aiotask
+                    finally:
+                        raise ex
                 except (OSError, MarsError) as ex:
                     # TODO(fyrestone): Handle slot exception correctly.
                     if subtask_info.num_retries < subtask_info.max_retries:
@@ -348,7 +357,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
         # TODO(fyrestone): For the retryable op, we should rerun it when
-        # any exceptions occurred.
+        #  any exceptions occurred.
         if retryable:
             return await _retry_run(subtask, subtask_info, _run_subtask_once)
         else:
