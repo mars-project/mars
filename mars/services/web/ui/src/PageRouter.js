@@ -26,6 +26,7 @@ import SupervisorDetailPage from "./node_info/SupervisorDetailPage";
 import WorkerDetailPage from "./node_info/WorkerDetailPage";
 import SessionListPage from "./SessionListPage";
 import TaskListPage from "./task_info/TaskListPage";
+import TaskTileableChart from "./task_info/TaskTileableChart";
 
 function NodePageWrapper(props) {
     let {endpoint} = useParams();
@@ -55,6 +56,7 @@ export default function PageRouter() {
             <Route exact path="/worker/:endpoint"
                    render={() => (<NodePageWrapper component={WorkerDetailPage} nodeRole={"worker"} />)} />
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
+            <Route exact path="/session/:session_id/task/:task_id/graph" component={TaskTileableChart} />
             <Route exact path="/" component={Dashboard} />
         </Switch>
     )
