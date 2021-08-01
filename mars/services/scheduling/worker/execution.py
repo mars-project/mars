@@ -18,7 +18,6 @@ import logging
 import operator
 import sys
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
@@ -55,12 +54,12 @@ class SubtaskExecutionInfo:
 class SubtaskExecutionActor(mo.Actor):
     _subtask_info: Dict[str, SubtaskExecutionInfo]
 
-    def __init__(self):
+    def __init__(self, enable_kill_slot: bool = True):
         self._cluster_api = None
         self._global_slot_ref = None
+        self._enable_kill_slot = enable_kill_slot
 
         self._subtask_info = dict()
-        self._size_pool = ThreadPoolExecutor(1)
 
     async def __post_create__(self):
         self._cluster_api = await ClusterAPI.create(self.address)
@@ -202,9 +201,8 @@ class SubtaskExecutionActor(mo.Actor):
             yield self._prepare_input_data(subtask)
 
             input_sizes = await self._collect_input_sizes(subtask, subtask_info.supervisor_address)
-            loop = asyncio.get_running_loop()
-            _store_size, calc_size = yield loop.run_in_executor(
-                self._size_pool, self._estimate_sizes, subtask, input_sizes)
+            _store_size, calc_size = await asyncio.to_thread(
+                self._estimate_sizes, subtask, input_sizes)
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
@@ -233,8 +231,11 @@ class SubtaskExecutionActor(mo.Actor):
             if slot_id is not None:
                 cancel_task = asyncio.create_task(subtask_api.cancel_subtask_in_slot(band_name, slot_id))
                 try:
-                    yield asyncio.wait_for(asyncio.shield(cancel_task),
-                                           subtask_info.kill_timeout)
+                    if self._enable_kill_slot:
+                        yield asyncio.wait_for(asyncio.shield(cancel_task),
+                                               subtask_info.kill_timeout)
+                    else:
+                        await cancel_task
                 except asyncio.TimeoutError:
                     slot_manager_ref = await self._get_slot_manager_ref(subtask_info.band_name)
                     yield slot_manager_ref.kill_slot(slot_id)
