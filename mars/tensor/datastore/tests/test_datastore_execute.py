@@ -39,12 +39,8 @@ except ImportError:
     vineyard = None
 
 from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
-from mars.tests import setup
 
 _exec_timeout = 120 if 'CI' in os.environ else -1
-
-
-setup = setup
 
 
 @pytest.mark.skipif(tiledb is None, reason='tiledb not installed')

@@ -15,25 +15,15 @@
 import numpy as np
 import scipy.sparse as sps
 import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics import euclidean_distances as sk_euclidean_distances
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.metrics import euclidean_distances as sk_euclidean_distances
 
 from mars import tensor as mt
 from mars.config import option_context
 from mars.lib.sparse import SparseNDArray
 from mars.learn.metrics import euclidean_distances
 from mars.learn.utils import check_array
-from mars.tests import setup
 
 
-setup = setup
-
-
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_euclidean_distances_op():
     x = mt.random.rand(10, 3)
     xx = mt.random.rand(1, 10)
@@ -60,7 +50,6 @@ def test_euclidean_distances_op():
         euclidean_distances(x, y, Y_norm_squared=mt.random.rand(10))
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_euclidean_distances_execution(setup):
     dense_raw_x = np.random.rand(30, 10)
     dense_raw_y = np.random.rand(40, 10)

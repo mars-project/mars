@@ -18,10 +18,6 @@ import pytest
 from mars import tensor as mt
 from mars.lib.mmh3 import hash_from_buffer as mmh3_hash_from_buffer
 from mars.tensor.utils import hash_on_axis, normalize_axis_tuple, fetch_corner_data
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_hash_on_axis():

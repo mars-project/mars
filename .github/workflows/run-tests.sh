@@ -25,13 +25,4 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     --ignore mars/learn --ignore mars/remote mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report
-
-  export DEFAULT_VENV=$VIRTUAL_ENV
-  source testenv/bin/activate
-  pytest --timeout=1500 mars/tests/test_session.py mars/lib/filesystem/tests/test_filesystem.py
-  if [ -z "$DEFAULT_VENV" ]; then
-    deactivate
-  else
-    source $DEFAULT_VENV/bin/activate
-  fi
 fi

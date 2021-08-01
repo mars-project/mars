@@ -17,9 +17,11 @@ import subprocess
 
 import pytest
 
-from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
+from mars.config import option_context
+from mars.lib.aio import stop_isolation
 from mars.oscar.backends.router import Router
 from mars.oscar.backends.ray.communication import RayServer
+from mars.serialization.ray import register_ray_serializers, unregister_ray_serializers
 from mars.utils import lazy_import
 
 ray = lazy_import('ray')
@@ -71,4 +73,47 @@ def ray_large_cluster():
             subprocess.check_call(["ray", "stop", "--force"])
 
 
-__all__ = ['ray_start_regular', 'ray_large_cluster']
+@pytest.fixture(scope='module')
+def _stop_isolation():
+    yield
+    stop_isolation()
+
+
+@pytest.fixture(scope='module')
+def _new_test_session(_stop_isolation):
+    from .deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(address='test://127.0.0.1',
+                            init_local=True,
+                            default=True, timeout=300)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server(isolation=False)
+
+
+@pytest.fixture(scope='module')
+def _new_integrated_test_session(_stop_isolation):
+    from .deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(address='127.0.0.1',
+                            init_local=True, n_worker=2,
+                            default=True, timeout=300)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server(isolation=False)
+
+
+@pytest.fixture
+def setup(_new_test_session):
+    _new_test_session.as_default()
+    yield _new_test_session
+
+
+@pytest.fixture
+def setup_cluster(_new_integrated_test_session):
+    _new_integrated_test_session.as_default()
+    yield _new_integrated_test_session

@@ -56,7 +56,7 @@ jobs:
             pip install pandas\<1.3
           fi
 
-          pip install -e ".[dev,distributed]"
+          pip install -e ".[dev,extra]"
 
           if [[ $UNAME == "windows" ]]; then
             pip install virtualenv flaky flake8

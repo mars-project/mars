@@ -22,11 +22,7 @@ try:
 except ImportError:
     Image = None
 
-from mars.tests import setup
 from mars.tensor.images import imread
-
-
-setup = setup
 
 
 @pytest.mark.skipif(not Image, reason='Pillow not installed')

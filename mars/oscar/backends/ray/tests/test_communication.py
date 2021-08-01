@@ -19,12 +19,11 @@ import sys
 
 import pytest
 
+from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
 from ..communication import ChannelID, Channel, RayServer, RayClient
-from mars.tests.conftest import *  # noqa
-from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
 _is_windows: bool = sys.platform.startswith('win')

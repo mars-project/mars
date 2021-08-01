@@ -18,15 +18,12 @@ import pytest
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.learn.contrib.xgboost import train, MarsDMatrix
-from mars.tests import setup
 
 try:
     import xgboost
     from xgboost import Booster
 except ImportError:
     xgboost = None
-
-setup = setup
 
 n_rows = 1000
 n_columns = 10

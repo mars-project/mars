@@ -14,20 +14,13 @@
 
 import numpy as np
 import pytest
-try:
-    import sklearn
-    import scipy.sparse as sp
-    from sklearn.utils import check_random_state
-    from sklearn.utils._testing import assert_array_almost_equal, assert_array_less
-except ImportError:
-    sklearn = None
+import scipy.sparse as sp
+from sklearn.utils import check_random_state
+from sklearn.utils._testing import assert_array_almost_equal, assert_array_less
 
 import mars.tensor as mt
-from mars.tests import setup
-if sklearn:
-    from mars.learn.decomposition import TruncatedSVD
+from mars.learn.decomposition import TruncatedSVD
 
-setup = setup
 
 # Make an X that looks somewhat like a small tf-idf matrix.
 # XXX newer versions of SciPy >0.16 have scipy.sparse.rand for this.
@@ -42,7 +35,6 @@ n_samples = n_samples
 n_features = n_features
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_attributes(setup):
     for n_components in (10, 25, 41):
         tsvd = TruncatedSVD(n_components).fit(X)
@@ -50,7 +42,6 @@ def test_attributes(setup):
         assert tsvd.components_.shape == (n_components, n_features)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_too_many_components(setup):
     for n_components in (n_features, n_features + 1):
         tsvd = TruncatedSVD(n_components=n_components, algorithm='randomized')
@@ -58,7 +49,6 @@ def test_too_many_components(setup):
             tsvd.fit(X)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_sparse_formats(setup):
     tsvd = TruncatedSVD(n_components=11)
     Xtrans = tsvd.fit_transform(Xdense)
@@ -67,7 +57,6 @@ def test_sparse_formats(setup):
     assert Xtrans.shape == (n_samples, 11)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_inverse_transform(setup):
     # We need a lot of components for the reconstruction to be "almost
     # equal" in all positions. XXX Test means or sums instead?
@@ -77,7 +66,6 @@ def test_inverse_transform(setup):
     assert_array_almost_equal(Xinv.fetch(), Xdense, decimal=1)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_integers(setup):
     Xint = X.astype(np.int64)
     tsvd = TruncatedSVD(n_components=6)
@@ -85,7 +73,6 @@ def test_integers(setup):
     assert Xtrans.shape == (n_samples, tsvd.n_components)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_explained_variance(setup):
     # Test sparse data
     svd_r_10_sp = TruncatedSVD(10, algorithm="randomized", random_state=42)
@@ -153,7 +140,6 @@ def test_explained_variance(setup):
         )
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_singular_values(setup):
     # Check that the TruncatedSVD output has the correct singular values
 
