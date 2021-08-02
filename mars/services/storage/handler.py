@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Union
 from ... import oscar as mo
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
-from ...utils import calc_data_size, extensible
+from ...utils import calc_data_size
 from ..cluster import ClusterAPI, StorageInfo
 from ..meta import MetaAPI
 from .core import StorageQuotaActor, DataManagerActor, DataInfo, \
@@ -78,7 +78,7 @@ class StorageHandlerActor(mo.StatelessActor):
                 res = sliced_value
         raise mo.Return(res)
 
-    @extensible
+    @mo.extensible
     async def get(self,
                   session_id: str,
                   data_key: str,
@@ -120,7 +120,7 @@ class StorageHandlerActor(mo.StatelessActor):
                 results.append(result)
         raise mo.Return(results)
 
-    @extensible
+    @mo.extensible
     async def put(self,
                   session_id: str,
                   data_key: str,
@@ -204,7 +204,7 @@ class StorageHandlerActor(mo.StatelessActor):
         await self._clients[level].delete(object_id)
         await self._quota_refs[level].release_quota(data_size)
 
-    @extensible
+    @mo.extensible
     async def delete(self,
                      session_id: str,
                      data_key: str,
@@ -260,7 +260,7 @@ class StorageHandlerActor(mo.StatelessActor):
         for level, size in level_sizes.items():
             await self._quota_refs[level].release_quota(size)
 
-    @extensible
+    @mo.extensible
     async def open_reader(self,
                           session_id: str,
                           data_key: str) -> StorageFileObject:
@@ -281,7 +281,7 @@ class StorageHandlerActor(mo.StatelessActor):
             *[self._clients[data_info.level].open_reader(data_info.object_id)
             for data_info in data_infos])
 
-    @extensible
+    @mo.extensible
     async def open_writer(self,
                           session_id: str,
                           data_key: str,
@@ -473,7 +473,7 @@ class StorageHandlerActor(mo.StatelessActor):
     async def list(self, level: StorageLevel) -> List:
         return await self._data_manager_ref.list(level)
 
-    @extensible
+    @mo.extensible
     async def unpin(self, session_id: str, data_key: str, error: str = 'raise'):
         levels = await self._data_manager_ref.unpin(session_id, [data_key], error)
         if levels:

@@ -26,7 +26,7 @@ from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy, OperandStage
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
-from ....utils import build_fetch, extensible
+from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -199,7 +199,7 @@ class TaskProcessor:
                 [c.key for c in stage_processor.chunk_graph.results])
         return decref_chunk_keys
 
-    @extensible
+    @mo.extensible
     @_record_error
     async def decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)

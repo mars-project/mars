@@ -20,7 +20,6 @@ from ... import oscar as mo
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, AnyField, ListField
 from ...storage import StorageLevel
-from ...utils import extensible
 from .core import DataManagerActor
 from .handler import StorageHandlerActor
 
@@ -122,7 +121,7 @@ class SenderManagerActor(mo.StatelessActor):
                     break
         await sender.flush()
 
-    @extensible
+    @mo.extensible
     async def send_batch_data(self,
                               session_id: str,
                               data_keys: List[str],

@@ -14,8 +14,9 @@
 
 from typing import Dict, List, Optional
 
+from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import serialize_serializable, deserialize_serializable, extensible
+from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from .core import AbstractMetaAPI
 
@@ -56,7 +57,7 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
         self._session_id = session_id
         self._address = address.rstrip('/')
 
-    @extensible
+    @mo.extensible
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None,

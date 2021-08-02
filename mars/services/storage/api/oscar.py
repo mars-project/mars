@@ -18,7 +18,6 @@ from typing import Any, List, Type, TypeVar, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
-from ....utils import extensible
 from ...cluster import StorageInfo
 from ..core import StorageManagerActor, DataManagerActor, \
     DataInfo, WrappedStorageFileObject
@@ -73,7 +72,7 @@ class StorageAPI(AbstractStorageAPI):
         await api._init()
         return api
 
-    @extensible
+    @mo.extensible
     async def get(self,
                   data_key: str,
                   conditions: List = None,
@@ -91,7 +90,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.get.batch(*gets)
 
-    @extensible
+    @mo.extensible
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
@@ -111,7 +110,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.put.batch(*puts)
 
-    @extensible
+    @mo.extensible
     async def get_infos(self, data_key: str) -> List[DataInfo]:
         """
         Get data information items for specific data key
@@ -129,7 +128,7 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, data_key
         )
 
-    @extensible
+    @mo.extensible
     async def delete(self, data_key: str, error: str = 'raise'):
         """
         Delete object.
@@ -154,7 +153,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.delete.batch(*deletes)
 
-    @extensible
+    @mo.extensible
     async def fetch(self,
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
@@ -204,7 +203,7 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.fetch_batch(
             self._session_id, data_keys, *extracted_args)
 
-    @extensible
+    @mo.extensible
     async def unpin(self, data_key: str,
                     error: str = 'raise'):
         """
