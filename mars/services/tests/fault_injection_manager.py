@@ -16,7 +16,8 @@ import enum
 import uuid
 from abc import ABC, abstractmethod
 
-from ...services.session import SessionAPI
+from mars.core.base import MarsError
+from mars.services.session import SessionAPI
 
 
 class ExtraConfigKey:
@@ -28,6 +29,14 @@ class FaultType(enum.Enum):
     Exception = 1
     UnhandledException = 2
     ProcessExit = 3
+
+
+class FaultInjectionError(MarsError):
+    pass
+
+
+class FaultInjectionUnhandledError(Exception):
+    pass
 
 
 class AbstractFaultInjectionManager(ABC):
