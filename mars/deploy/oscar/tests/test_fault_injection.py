@@ -20,11 +20,13 @@ import mars.tensor as mt
 from mars.remote import spawn
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
-from mars.oscar.errors import FaultInjectionError, FaultInjectionUnhandledError, ServerClosed
+from mars.oscar.errors import ServerClosed
 from mars.services.tests.fault_injection_manager import (
     FaultType,
     AbstractFaultInjectionManager,
     ExtraConfigKey,
+    FaultInjectionError,
+    FaultInjectionUnhandledError
 )
 
 CONFIG_FILE = os.path.join(
