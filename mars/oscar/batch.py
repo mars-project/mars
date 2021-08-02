@@ -16,8 +16,58 @@
 
 import asyncio
 import functools
+import inspect
+import textwrap
+from collections import namedtuple
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
+
+
+def build_args_binder(func, remove_self: bool = True) -> Optional[Callable]:
+    try:
+        spec = inspect.getfullargspec(func)
+    except TypeError:  # pragma: no cover
+        return None
+
+    sig_list = list(spec.args)
+    args_list = list(spec.args)
+    if remove_self:
+        args_list = args_list[1:]
+
+    if spec.varargs:
+        sig_list.append(f'*{spec.varargs}')
+        args_list.append(spec.varargs)
+    elif spec.kwonlyargs:
+        sig_list.append('*')
+
+    sig_list.extend(spec.kwonlyargs)
+    args_list.extend(spec.kwonlyargs)
+
+    if spec.varkw:
+        sig_list.append(f'**{spec.varkw}')
+        args_list.append(spec.varkw)
+
+    if getattr(func, '__name__', None).isidentifier():
+        ret_func_name = f'{func.__name__}_binder'
+        ret_type_name = f'_Args_{func.__name__}'
+    else:
+        ret_func_name = f'anon_{id(func)}_binder'
+        ret_type_name = f'_ArgsAnon_{id(func)}'
+
+    func_str = textwrap.dedent(f"""
+    def {ret_func_name}({', '.join(sig_list)}):
+        return {ret_type_name}({', '.join(args_list)})
+    """)
+
+    glob_vars = globals().copy()
+    glob_vars[ret_type_name] = namedtuple(ret_type_name, args_list)
+    loc_vars = dict()
+    exec(func_str, glob_vars, loc_vars)
+    ext_func = loc_vars[ret_func_name]
+    ext_func.__defaults__ = spec.defaults
+    ext_func.__kwdefaults__ = spec.kwonlydefaults
+
+    return ext_func
 
 
 @dataclass
@@ -58,10 +108,12 @@ class _ExtensibleCallable:
 class _ExtensibleWrapper(_ExtensibleCallable):
     def __init__(self,
                  func: Callable,
-                 batch_func: Callable = None,
+                 batch_func: Optional[Callable] = None,
+                 bind_func: Optional[Callable] = None,
                  is_async: bool = False):
         self.func = func
         self.batch_func = batch_func
+        self.bind_func = bind_func
         self.is_async = is_async
 
     @staticmethod
@@ -107,6 +159,11 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         else:
             return self._sync_batch(*delays)
 
+    def bind(self, *args, **kwargs):
+        if self.bind_func is None:
+            raise TypeError(f'bind function not exist for method {self.func.__name__}')
+        return self.bind_func(*args, **kwargs)
+
 
 class _ExtensibleAccessor(_ExtensibleCallable):
     func: Callable
@@ -115,6 +172,7 @@ class _ExtensibleAccessor(_ExtensibleCallable):
     def __init__(self, func: Callable):
         self.func = func
         self.batch_func = None
+        self.bind_func = build_args_binder(func, remove_self=True)
         self.is_async = asyncio.iscoroutinefunction(self.func)
 
     def batch(self, func: Callable):
@@ -130,8 +188,11 @@ class _ExtensibleAccessor(_ExtensibleCallable):
         func = self.func.__get__(instance, owner)
         batch_func = self.batch_func.__get__(instance, owner) \
             if self.batch_func is not None else None
+        bind_func = self.bind_func.__get__(instance, owner) \
+            if self.bind_func is not None else None
 
         return _ExtensibleWrapper(func, batch_func=batch_func,
+                                  bind_func=bind_func,
                                   is_async=self.is_async)
 
 

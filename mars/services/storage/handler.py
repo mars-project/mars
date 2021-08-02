@@ -138,14 +138,6 @@ class StorageHandlerActor(mo.StatelessActor):
         await self.notify_spillable_space(level)
         return data_info
 
-    @classmethod
-    def _get_put_arg(cls,
-                     session_id: str,
-                     data_key: str,
-                     obj: object,
-                     level: StorageLevel):
-        return session_id, data_key, obj, level, calc_data_size(obj)
-
     @put.batch
     async def batch_put(self, args_list, kwargs_list):
         objs = []
@@ -154,8 +146,9 @@ class StorageHandlerActor(mo.StatelessActor):
         level = last_level = None
         sizes = []
         for args, kwargs in zip(args_list, kwargs_list):
-            session_id, data_key, obj, level, size = \
-                self._get_put_arg(*args, **kwargs)
+            session_id, data_key, obj, level = \
+                self.put.bind(*args, **kwargs)
+            size = calc_data_size(obj)
             if last_level is not None:
                 assert last_level == level
             last_level = level
@@ -294,22 +287,13 @@ class StorageHandlerActor(mo.StatelessActor):
         return WrappedStorageFileObject(writer, level, size, session_id, data_key,
                                         self._data_manager_ref, self._clients[level])
 
-    @classmethod
-    def _get_open_writer_args(cls,
-                              session_id: str,
-                              data_key: str,
-                              size: int,
-                              level: StorageLevel,
-                              request_quota: bool):
-        return session_id, data_key, size, level, request_quota
-
     @open_writer.batch
     async def batch_open_writers(self, args_list, kwargs_list):
         extracted_args = None
         data_keys, sizes = [], []
         for args, kwargs in zip(args_list, kwargs_list):
             session_id, data_key, size, level, request_quota = \
-                self._get_open_writer_args(*args, **kwargs)
+                self.open_writer.bind(*args, **kwargs)
             if extracted_args:
                 assert extracted_args == (session_id, level, request_quota)
             extracted_args = (session_id, level, request_quota)
@@ -483,8 +467,8 @@ class StorageHandlerActor(mo.StatelessActor):
     async def batch_unpin(self, args_list, kwargs_list):
         extracted_args = []
         data_keys = []
-        for arg, _ in zip(args_list, kwargs_list):
-            session_id, data_key, error = arg
+        for args, kw in zip(args_list, kwargs_list):
+            session_id, data_key, error = self.unpin.bind(*args, **kw)
             if extracted_args:
                 assert extracted_args == (session_id, error)
             extracted_args = session_id, error

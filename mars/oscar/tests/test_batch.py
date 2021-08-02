@@ -19,7 +19,7 @@ import sys
 
 import pytest
 
-from mars.oscar.batch import extensible
+from mars.oscar.batch import extensible, build_args_binder
 
 
 def _wrap_async(use_async):
@@ -30,6 +30,51 @@ def _wrap_async(use_async):
         _wrapped.__name__ = func.__name__
         return _wrapped if use_async else func
     return wrapper
+
+
+def test_args_binder():
+    anon_binder = build_args_binder(lambda x, y=10: None, remove_self=False)
+    assert (20, 10) == anon_binder(20)
+
+    def fun1(a, b=10): pass
+    binder1 = build_args_binder(fun1, remove_self=False)
+    assert (20, 10) == binder1(20)
+
+    async def fun2(*, kw_only=10, **kw): pass
+    binder2 = build_args_binder(fun2, remove_self=False)
+    assert (20, {'ext_arg': 5}) == binder2(kw_only=20, ext_arg=5)
+
+    async def fun3(x, *args, kw_only=10, **kw): pass
+    binder3 = build_args_binder(fun3, remove_self=False)
+    assert 10 == binder3(20, 36, ext_arg=5).kw_only
+    assert (20, (36,), 10, {'ext_arg': 5}) \
+        == binder3(20, 36, ext_arg=5)
+
+
+def test_extensible_bind():
+    class TestClass:
+        def __init__(self):
+            self.a_list = []
+            self.b_list = []
+
+        @extensible
+        def method(self, a, b=10):
+            pass
+
+        @method.batch
+        def method(self, args_list, kwargs_list):
+            for args, kwargs in zip(args_list, kwargs_list):
+                a, b = self.method.bind(*args, **kwargs)
+                self.a_list.append(a)
+                self.b_list.append(b)
+
+    test_inst = TestClass()
+    test_inst.method.batch(
+        test_inst.method.delay(20),
+        test_inst.method.delay(30, 5),
+    )
+    assert test_inst.a_list == [20, 30]
+    assert test_inst.b_list == [10, 5]
 
 
 @pytest.mark.asyncio

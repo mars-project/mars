@@ -180,22 +180,13 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, [data_key], level,
             dest_address, band_name, error)
 
-    @classmethod
-    def _get_fetch_arg(cls,
-                       data_key: str,
-                       level: StorageLevel = StorageLevel.MEMORY,
-                       band_name: str = None,
-                       dest_address: str = None,
-                       error: str = 'raise'):
-        return data_key, level, band_name, dest_address, error
-
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
         extracted_args = []
         data_keys = []
         for args, kwargs in zip(args_list, kwargs_list):
             data_key, level, band_name, dest_address, error = \
-                self._get_fetch_arg(*args, **kwargs)
+                self.fetch.bind(*args, **kwargs)
             if extracted_args:
                 assert extracted_args == (level, band_name, dest_address, error)
             extracted_args = (level, band_name, dest_address, error)
@@ -219,15 +210,11 @@ class StorageAPI(AbstractStorageAPI):
         await self._storage_handler_ref.unpin(self._session_id,
                                               data_key, error)
 
-    @classmethod
-    def _get_unpin_args(cls, data_key, error='raise'):
-        return data_key, error
-
     @unpin.batch
     async def batch_unpin(self, args_list, kwargs_list):
         unpins = []
         for args, kwargs in zip(args_list, kwargs_list):
-            data_key, error = self._get_unpin_args(*args, **kwargs)
+            data_key, error = self.unpin.bind(*args, **kwargs)
             unpins.append(
                 self._storage_handler_ref.unpin.delay(
                     self._session_id, data_key, error)
