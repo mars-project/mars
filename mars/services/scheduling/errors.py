@@ -15,5 +15,9 @@
 from ...core.base import MarsError
 
 
-class TileableNotTracked(MarsError):
-    pass
+class NoMatchingSlots(MarsError):
+    def __init__(self, slot_prefix):
+        self.slot_prefix = slot_prefix
+
+    def __str__(self):
+        return str(self.slot_prefix)
