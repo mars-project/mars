@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core.base import MarsError
 from ...storage.errors import DataNotExist
 
 
 DataNotExist = DataNotExist
 
 
-class NoDataToSpill(Exception):
+class NoDataToSpill(MarsError):
     pass
 
 
-class StorageFull(Exception):
+class StorageFull(MarsError):
     pass

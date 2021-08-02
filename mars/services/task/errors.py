@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ...core.base import MarsError
 
-class TaskNotExist(Exception):
+
+class TaskNotExist(MarsError):
     pass
