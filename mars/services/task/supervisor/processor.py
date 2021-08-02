@@ -228,7 +228,9 @@ class TaskProcessor:
         return chunk_graph
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
-        return await self._cluster_api.get_all_bands()
+        async for bands in self._cluster_api.watch_all_bands():
+            if bands:
+                return bands
 
     def _init_chunk_graph_iter(self, tileable_graph: TileableGraph):
         if self._chunk_graph_iter is None:

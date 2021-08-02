@@ -69,18 +69,21 @@ class AssignerActor(mo.Actor):
         self._address_to_bands = {k: list(v) for k, v in grouped_bands}
 
         grouped_bands = itertools.groupby(
-            sorted(('cpu' if b[1].startswith('numa') else 'gpu', b) for b in bands),
+            sorted(('numa' if b[1].startswith('numa') else 'gpu', b) for b in bands),
             key=lambda tp: tp[0]
         )
         self._device_type_to_bands = {k: [v[1] for v in tps] for k, tps in grouped_bands}
 
-    @staticmethod
-    def _get_device_bands(bands: List[BandType], is_gpu: bool):
+    def _get_device_bands(self, is_gpu: bool):
         band_prefix = 'numa' if not is_gpu else 'gpu'
-        filtered_bands = [band for band in bands if band[1].startswith(band_prefix)]
+        filtered_bands = self._device_type_to_bands.get(band_prefix) or []
         if not filtered_bands:
             raise NoMatchingSlots('gpu' if is_gpu else 'cpu')
         return filtered_bands
+
+    def _get_random_band(self, is_gpu: bool):
+        avail_bands = self._get_device_bands(is_gpu)
+        return random.choice(avail_bands)
 
     async def assign_subtasks(self, subtasks: List[Subtask]):
         inp_keys = set()
@@ -99,7 +102,7 @@ class AssignerActor(mo.Actor):
                                               if expect_band in self._bands]
                     # fill in if all expected bands are unready
                     if not expect_available_bands:
-                        expect_available_bands = [self.get_random_band(is_gpu)]
+                        expect_available_bands = [self._get_random_band(is_gpu)]
                     selected_bands[subtask.subtask_id] = expect_available_bands
                 continue
             for indep_chunk in subtask.chunk_graph.iter_indep():
@@ -109,7 +112,7 @@ class AssignerActor(mo.Actor):
                     if not self._bands:
                         self._update_bands(list(await self._cluster_api.get_all_bands(
                             NodeRole.WORKER)))
-                    selected_bands[subtask.subtask_id] = [self.get_random_band(is_gpu)]
+                    selected_bands[subtask.subtask_id] = [self._get_random_band(is_gpu)]
                     break
 
         fields = ['store_size', 'bands']
@@ -123,7 +126,7 @@ class AssignerActor(mo.Actor):
         for subtask in subtasks:
             is_gpu = any(c.op.gpu for c in subtask.chunk_graph.result_chunks)
             band_prefix = 'numa' if not is_gpu else 'gpu'
-            filtered_bands = self._get_device_bands(self._bands, is_gpu)
+            filtered_bands = self._get_device_bands(is_gpu)
 
             if subtask.subtask_id in selected_bands:
                 bands = selected_bands[subtask.subtask_id]
@@ -140,7 +143,7 @@ class AssignerActor(mo.Actor):
                             if sel_bands:
                                 band = (band[0], random.choice(sel_bands))
                         if band not in filtered_bands:
-                            band = self.get_random_band(is_gpu)
+                            band = self._get_random_band(is_gpu)
                         band_sizes[band] += meta['store_size']
                 bands = []
                 max_size = -1
@@ -152,10 +155,6 @@ class AssignerActor(mo.Actor):
                         bands.append(band)
             assigns.append(random.choice(bands))
         return assigns
-
-    def get_random_band(self, is_gpu: bool):
-        avail_bands = self._get_device_bands(self._bands, is_gpu)
-        return random.choice(avail_bands)
 
     async def reassign_subtasks(self, band_to_queued_num: Dict[BandType, int]) \
             -> Dict[BandType, int]:
@@ -214,6 +213,6 @@ class AssignerActor(mo.Actor):
             #            <= actual_mean * len(self._bands) - num_all_subtasks = 0
             assert total_move <= 0
             if total_move != 0:
-                band_move_nums[self.get_random_band(False)] -= total_move
+                band_move_nums[self._get_random_band(False)] -= total_move
             move_queued_subtasks.update(band_move_nums)
         return dict(sorted(move_queued_subtasks.items(), key=lambda item: item[1]))
