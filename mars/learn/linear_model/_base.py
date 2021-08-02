@@ -1,3 +1,17 @@
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from abc import ABCMeta, abstractmethod
 import numbers
 
@@ -21,8 +35,7 @@ from scipy import linalg
 from ..base import BaseEstimator, RegressorMixin, MultiOutputMixin
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
 import mars.tensor as mt
-
-# from mars.tensor.datasource import tensor as astensor
+from mars.tensor.datasource import tensor as astensor
 
 
 def _preprocess_data(
@@ -56,7 +69,7 @@ def _preprocess_data(
     if isinstance(sample_weight, numbers.Number):
         sample_weight = None
     if sample_weight is not None:
-        sample_weight = np.asarray(sample_weight)
+        sample_weight = astensor(sample_weight)
 
     if check_input:
         X = check_array(X, copy=copy, accept_sparse=['csr', 'csc'],
@@ -67,7 +80,7 @@ def _preprocess_data(
         else:
             X = X.copy(order='K')
 
-    y = np.asarray(y, dtype=X.dtype)
+    y = astensor(y, dtype=X.dtype)
 
     if fit_intercept:
         if sp.issparse(X):
@@ -83,30 +96,30 @@ def _preprocess_data(
 
                 # transform variance to norm in-place
                 X_var *= X.shape[0]
-                X_scale = np.sqrt(X_var, X_var)
+                X_scale = mt.sqrt(X_var, X_var)
                 del X_var
                 X_scale[X_scale == 0] = 1
                 inplace_column_scale(X, 1. / X_scale)
             else:
-                X_scale = np.ones(X.shape[1], dtype=X.dtype)
+                X_scale = mt.ones(X.shape[1], dtype=X.dtype)
 
         else:
-            X_offset = np.average(X, axis=0, weights=sample_weight)
+            X_offset = mt.average(X, axis=0, weights=sample_weight)
             X -= X_offset
             if normalize:
                 X, X_scale = f_normalize(X, axis=0, copy=False,
                                          return_norm=True)
             else:
-                X_scale = np.ones(X.shape[1], dtype=X.dtype)
-        y_offset = np.average(y, axis=0, weights=sample_weight)
+                X_scale = mt.ones(X.shape[1], dtype=X.dtype)
+        y_offset = mt.average(y, axis=0, weights=sample_weight)
         y = y - y_offset
     else:
-        X_offset = np.zeros(X.shape[1], dtype=X.dtype)
-        X_scale = np.ones(X.shape[1], dtype=X.dtype)
+        X_offset = mt.zeros(X.shape[1], dtype=X.dtype)
+        X_scale = mt.ones(X.shape[1], dtype=X.dtype)
         if y.ndim == 1:
             y_offset = X.dtype.type(0)
         else:
-            y_offset = np.zeros(y.shape[1], dtype=X.dtype)
+            y_offset = mt.zeros(y.shape[1], dtype=X.dtype)
 
     return X, y, X_offset, y_offset, X_scale
 
@@ -128,13 +141,13 @@ def _rescale_data(X, y, sample_weight):
     y_rescaled : {array-like, sparse matrix}
     """
     n_samples = X.shape[0]
-    sample_weight = np.asarray(sample_weight)
+    sample_weight = mt.asarray(sample_weight)
     if sample_weight.ndim == 0:
-        sample_weight = np.full(
+        sample_weight = mt.full(
             n_samples,
             sample_weight,
             dtype=sample_weight.dtype)
-    sample_weight = np.sqrt(sample_weight)
+    sample_weight = mt.sqrt(sample_weight)
     sw_matrix = sparse.dia_matrix(
         (sample_weight, 0),
         shape=(n_samples, n_samples))
@@ -184,7 +197,7 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
         if self.fit_intercept:
             self.coef_ = self.coef_ / X_scale
             self.intercept_ = (
-                y_offset - np.dot(X_offset, self.coef_.T)
+                y_offset - mt.dot(X_offset, self.coef_.T)
             ).to_numpy()
         else:
             self.intercept_ = 0.0
@@ -347,7 +360,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 outs = Parallel(n_jobs=n_jobs_)(
                     delayed(optimize.nnls)(
                         X, y[:, j]) for j in range(y.shape[1]))
-                self.coef_, self._residues = map(np.vstack, zip(*outs))
+                self.coef_, self._residues = map(mt.vstack, zip(*outs))
         elif sp.issparse(X):
             X_offset_scale = X_offset / X_scale
 
@@ -355,7 +368,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 return X.dot(b) - b.dot(X_offset_scale)
 
             def rmatvec(b):
-                return X.T.dot(b) - X_offset_scale * np.sum(b)
+                return X.T.dot(b) - X_offset_scale * mt.sum(b)
 
             X_centered = sparse.linalg.LinearOperator(shape=X.shape,
                                                       matvec=matvec,
@@ -370,8 +383,8 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 outs = Parallel(n_jobs=n_jobs_)(
                     delayed(sparse_lsqr)(X_centered, y[:, j].ravel())
                     for j in range(y.shape[1]))
-                self.coef_ = np.vstack([out[0] for out in outs])
-                self._residues = np.vstack([out[3] for out in outs])
+                self.coef_ = mt.vstack([out[0] for out in outs])
+                self._residues = mt.vstack([out[3] for out in outs])
         else:
             try:
                 self.coef_ = mt.dot(mt.linalg.inv(mt.dot(mt.transpose(X), X)),
@@ -382,6 +395,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 self.coef_ = self.coef_.T
 
         if y.ndim == 1:
-            self.coef_ = np.ravel(self.coef_)
+            self.coef_ = mt.ravel(self.coef_)
         self._set_intercept(X_offset, y_offset, X_scale)
         return self
