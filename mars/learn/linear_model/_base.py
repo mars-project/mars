@@ -23,7 +23,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.preprocessing import normalize as f_normalize
 from sklearn.utils.fixes import delayed
 
-import numpy as np
+# import numpy as np
 from numpy.linalg import LinAlgError
 from joblib import Parallel
 import scipy.sparse as sp
