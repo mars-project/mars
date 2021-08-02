@@ -112,14 +112,13 @@ class RayMainActorPool(MainActorPoolBase):
             await self._kill_actor_forcibly(process)
 
     async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
-        print('Dont really kill', self)
-        # ray.kill(process)
-        # wait_time, waited_time = 30, 0
-        # while await self.is_sub_pool_alive(process):  # pragma: no cover
-        #     if waited_time > wait_time:
-        #         raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
-        #     await asyncio.sleep(1)
-        #     logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
+        ray.kill(process, no_restart=False)
+        wait_time, waited_time = 30, 0
+        while await self.is_sub_pool_alive(process):  # pragma: no cover
+            if waited_time > wait_time:
+                raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
+            await asyncio.sleep(1)
+            logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
@@ -166,7 +165,6 @@ class RayPoolBase(ABC):
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self):
-        print('Constrcting Ray Actor', self)
         self._actor_pool = None
         self._ray_server = None
         register_ray_serializers()
