@@ -17,8 +17,8 @@ Mars is easy to install by
     pip install pymars
 
 
-Developer Install
-`````````````````
+Installation for Developers
+```````````````````````````
 
 When you want to contribute code to Mars, you can follow the instructions below to install Mars
 for development:
@@ -37,7 +37,7 @@ Mars document.
 Architecture Overview
 ---------------------
 
-
+.. image:: https://raw.githubusercontent.com/mars-project/mars/master/docs/source/images/architecture.png
 
 
 Getting Started
