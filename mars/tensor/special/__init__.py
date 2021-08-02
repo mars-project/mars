@@ -44,5 +44,21 @@ try:
     from .convenience import (
         xlogy, TensorXLogY,
     )
+    from .bessel import (
+        jv, TensorJV,
+        jve, TensorJVE,
+        yn, TensorYN,
+        yv, TensorYV,
+        yve, TensorYVE,
+        kn, TensorKN,
+        kv, TensorKV,
+        kve, TensorKVE,
+        iv, TensorIV,
+        ive, TensorIVE,
+        hankel1, TensorHankel1,
+        hankel1e, TensorHankel1e,
+        hankel2, TensorHankel2,
+        hankel2e, TensorHankel2e,
+    )
 except ImportError:  # pragma: no cover
     pass

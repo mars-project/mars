@@ -21,7 +21,6 @@ from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import get_default_session, new_session
 from mars.deploy.oscar.tests import test_local
 from mars.serialization.ray import register_ray_serializers
-from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
 from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
@@ -31,6 +30,8 @@ from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
 
 ray = lazy_import('ray')
 
+CONFIG_FILE = os.path.join(
+    os.path.dirname(__file__), 'local_test_with_ray_config.yml')
 CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
     os.path.dirname(__file__), 'ray_test_with_third_parity_modules_config.yml')
 
@@ -38,7 +39,7 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
 @pytest.fixture
 async def create_cluster(request):
     param = getattr(request, "param", {})
-    ray_config = _load_config()
+    ray_config = _load_config(CONFIG_FILE)
     ray_config.update(param.get('config', {}))
     client = await new_cluster('test_cluster',
                                worker_num=2,
@@ -71,7 +72,7 @@ async def test_execute_describe(ray_large_cluster, create_cluster):
 @pytest.mark.asyncio
 def test_sync_execute(ray_large_cluster, create_cluster):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
         a = mt.tensor(raw, chunk_size=5).sum(axis=1)
@@ -98,7 +99,7 @@ def _run_web_session(web_address):
 
 def _sync_web_session_test(web_address):
     register_ray_serializers()
-    new_session(web_address, backend='oscar', default=True)
+    new_session(web_address, backend='oscar')
     raw = np.random.RandomState(0).rand(10, 5)
     a = mt.tensor(raw, chunk_size=5).sum(axis=1)
     b = a.execute(show_progress=False)
@@ -181,7 +182,7 @@ async def test_load_third_party_modules(ray_large_cluster):
 @pytest.mark.asyncio
 def test_load_third_party_modules2(ray_large_cluster, create_cluster):
     assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    session = new_session(address=create_cluster.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)

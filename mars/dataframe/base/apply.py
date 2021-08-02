@@ -250,10 +250,10 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
         if self.output_types[0] == OutputType.dataframe:
             if self.axis == 0:
                 return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=index_value,
-                                          columns_value=parse_index(dtypes.index))
+                                          columns_value=parse_index(dtypes.index, store_data=True))
             else:
                 return self.new_dataframe([df], shape=shape, dtypes=dtypes, index_value=df.index_value,
-                                          columns_value=parse_index(dtypes.index))
+                                          columns_value=parse_index(dtypes.index, store_data=True))
         else:
             name, dtype = dtypes
             return self.new_series([df], shape=shape, name=name, dtype=dtype, index_value=index_value)

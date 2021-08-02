@@ -24,10 +24,6 @@ except ImportError:  # pragma: no cover
     pa = None
 
 import mars.dataframe as md
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_check_na_execution(setup):

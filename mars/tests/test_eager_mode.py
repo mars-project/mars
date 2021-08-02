@@ -22,9 +22,6 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe.datasource.dataframe import from_pandas
-from mars.tests import setup
-
-setup = setup
     
     
 def test_base_execute(setup):

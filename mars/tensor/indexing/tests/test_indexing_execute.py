@@ -23,10 +23,6 @@ from mars.tensor.datasource import tensor, arange, zeros
 from mars.tensor.indexing import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero, fill_diagonal
 from mars.tensor import mod, stack, hstack
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_bool_indexing_execution(setup):

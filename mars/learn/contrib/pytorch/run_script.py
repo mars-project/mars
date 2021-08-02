@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import os
+from typing import Any, BinaryIO, Dict, List, Optional, TextIO, Union
 
 import numpy as np
 
 from .... import opcodes as OperandDef
 from ....core.context import get_context
-from ....remote.run_script import RunScript
+from ....remote.run_script import RunScript, _extract_inputs
 from ....serialization.serializables import Int32Field, StringField
+from ....typing import SessionType, TileableType
 from ....utils import to_binary
 from ..utils import pick_workers
 
@@ -35,7 +37,7 @@ class RunPyTorch(RunScript):
 
     def __init__(self, master_port=None, master_addr=None, init_method=None,
                  gpu=None, **kw):
-        super().__init__(mode='spawn', _master_port=master_port, _master_addr=master_addr,
+        super().__init__(_master_port=master_port, _master_addr=master_addr,
                          _init_method=init_method, _gpu=gpu, **kw)
 
     @property
@@ -49,9 +51,6 @@ class RunPyTorch(RunScript):
     @property
     def init_method(self):
         return self._init_method
-
-    def __call__(self):
-        return self.new_tileable(None)
 
     @classmethod
     def tile(cls, op):
@@ -90,21 +89,43 @@ class RunPyTorch(RunScript):
         super().execute(ctx, op)
 
 
-def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
-                       retry_when_fail=False, session=None, run_kwargs=None, port=None):
+def run_pytorch_script(script: Union[bytes, str, BinaryIO, TextIO],
+                       n_workers: int,
+                       data: Dict[str, TileableType] = None,
+                       gpu: Optional[bool] = None,
+                       command_argv: List[str] = None,
+                       retry_when_fail: bool = False,
+                       session: SessionType = None,
+                       run_kwargs: Dict[str, Any] = None,
+                       port: int = None):
     """
     Run PyTorch script in Mars cluster.
 
-    :param script: script to run
-    :type script: str or file-like object
-    :param n_workers: number of PyTorch workers
-    :param gpu: run PyTorch script on GPU
-    :param command_argv: extra command args for script
-    :param retry_when_fail: bool, default False. If True, retry when function failed.
-    :param session: Mars session, if not provided, will use default one
-    :param run_kwargs: extra kwargs for session.run
-    :param port: port of PyTorch worker or ps, will automatically increase for the same worker
-    :return: return {'status': 'ok'} if succeeded, or error raised
+    Parameters
+    ----------
+    script: str or file-like object
+        Script to run
+    n_workers : int
+        Number of PyTorch workers
+    data : dict
+        Variable name to data.
+    gpu : bool
+        Run PyTorch script on GPU
+    command_argv : list
+        Extra command args for script
+    retry_when_fail : bool
+        If True, retry when function failed.
+    session
+        Mars session, if not provided, will use default one.
+    run_kwargs : dict
+        Extra kwargs for `session.run`.
+    port : int
+        Port of PyTorch worker or ps, will automatically increase for the same worker
+
+    Returns
+    -------
+    status
+        return {'status': 'ok'} if succeeded, or error raised
     """
     if int(n_workers) <= 0:
         raise ValueError('n_workers should be at least 1')
@@ -114,7 +135,9 @@ def run_pytorch_script(script, n_workers, gpu=None, command_argv=None,
         with open(os.path.abspath(script), 'rb') as f:
             code = f.read()
 
+    inputs = _extract_inputs(data)
     port = 29500 if port is None else port
-    op = RunPyTorch(code=to_binary(code), world_size=int(n_workers), retry_when_fail=retry_when_fail,
+    op = RunPyTorch(data=data, code=to_binary(code),
+                    world_size=int(n_workers), retry_when_fail=retry_when_fail,
                     gpu=gpu, master_port=port, command_args=command_argv)
-    return op().execute(session=session, **(run_kwargs or {})).fetch(session=session)
+    return op(inputs).execute(session=session, **(run_kwargs or {}))

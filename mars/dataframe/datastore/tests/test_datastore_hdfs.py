@@ -17,12 +17,10 @@ import numpy as np
 import pytest
 
 import mars.dataframe as md
-from mars.tests import setup
 from mars.tests.core import require_hadoop
 
 
 TEST_DIR = '/tmp/test'
-setup = setup
 
 
 @require_hadoop

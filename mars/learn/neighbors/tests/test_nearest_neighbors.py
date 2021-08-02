@@ -32,14 +32,10 @@ from mars.core import tile
 from mars.learn.neighbors import NearestNeighbors
 from mars.learn.proxima.core import proxima
 from mars.lib.sparse import SparseNDArray
-from mars.tests import setup
 from mars.tests.core import require_cupy
 from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
-
-
-setup = setup
 
     
 def test_nearest_neighbors(setup):

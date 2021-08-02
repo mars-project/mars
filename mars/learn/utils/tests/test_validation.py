@@ -16,27 +16,17 @@ from itertools import product
 
 import numpy as np
 import pytest
-try:
-    import scipy.sparse as sp
-    import sklearn
-    from sklearn.utils.estimator_checks import NotAnArray
-    from sklearn.utils.mocking import MockDataFrame
-    from sklearn.utils._testing import assert_raise_message, assert_raises_regex
-except ImportError:
-    sklearn = None
+import scipy.sparse as sp
+from sklearn.utils.estimator_checks import _NotAnArray
+from sklearn.utils._mocking import MockDataFrame
+from sklearn.utils._testing import assert_raise_message, assert_raises_regex
 
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.tensor.core import Tensor
-from mars.tests import setup
-if sklearn:
-    from mars.learn.utils.validation import check_array, check_consistent_length
+from mars.learn.utils.validation import check_array, check_consistent_length
 
 
-setup = setup
-
-
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_ordering():
     # Check that ordering is enforced correctly by validation utilities.
     # We need to check each validation utility, because a 'copy' without
@@ -52,7 +42,6 @@ def test_ordering():
                 assert A is not B
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array(setup):
     # accept_sparse == False
     # raise error on sparse inputs
@@ -122,7 +111,7 @@ def test_check_array(setup):
         check_array(X_ndim.to_numpy().tolist())
     check_array(X_ndim.to_numpy().tolist(), allow_nd=True)  # doesn't raise
     # convert weird stuff to arrays
-    X_no_array = NotAnArray(X_dense.to_numpy())
+    X_no_array = _NotAnArray(X_dense.to_numpy())
     result = check_array(X_no_array)
     assert isinstance(result, Tensor)
 
@@ -145,7 +134,6 @@ def test_check_array(setup):
         _ = check_array(X).execute()
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_pandas_dtype_object_conversion():
     # test that data-frame like objects with dtype object
     # get converted
@@ -158,13 +146,11 @@ def test_check_array_pandas_dtype_object_conversion():
     assert check_array(X_df, ensure_2d=False).dtype.kind == "f"
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_from_dataframe():
     X = md.DataFrame({'a': [1.0, 2.0, 3.0]})
     assert check_array(X).dtype.kind == 'f'
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_accept_sparse_type_exception():
     X = [[1, 2], [3, 4]]
     X_csr = sp.csr_matrix(X)
@@ -185,7 +171,6 @@ def test_check_array_accept_sparse_type_exception():
         check_array(X_csr, accept_sparse=object)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_accept_sparse_no_exception():
     X = [[1, 2], [3, 4]]
     X_csr = sp.csr_matrix(X)
@@ -195,7 +180,6 @@ def test_check_array_accept_sparse_no_exception():
     assert array.issparse() is True
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_min_samples_and_features_messages():
     # empty list is considered 2D by default:
     msg = "0 feature(s) (shape=(1, 0)) while a minimum of 1 is required."
@@ -211,7 +195,6 @@ def test_check_array_min_samples_and_features_messages():
     assert_raise_message(TypeError, msg, check_array, 42, ensure_2d=False)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_array_complex_data_error():
     X = mt.array([[1 + 2j, 3 + 4j, 5 + 7j], [2 + 3j, 4 + 5j, 6 + 7j]])
     assert_raises_regex(
@@ -251,7 +234,6 @@ def test_check_array_complex_data_error():
         ValueError, "Complex data not supported", check_array, X)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_check_consistent_length(setup):
     t = mt.random.RandomState(0).rand(10, 5)
     t2 = t[t[:, 0] < 0.5]

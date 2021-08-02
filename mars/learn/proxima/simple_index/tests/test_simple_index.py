@@ -23,10 +23,6 @@ import mars.dataframe as md
 import mars.tensor as mt
 from mars.learn.proxima.core import proxima
 from mars.learn.proxima.simple_index import build_index, search_index, recall
-from mars.tests import setup
-
-
-setup = setup
 
 
 def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,

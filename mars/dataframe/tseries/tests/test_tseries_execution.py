@@ -16,9 +16,6 @@ import pandas as pd
 
 from mars.dataframe import to_datetime, Series, DataFrame, Index
 from mars.tensor import tensor
-from mars.tests import setup
-
-setup = setup
 
 
 def test_to_datetime_execution(setup):

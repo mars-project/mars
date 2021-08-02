@@ -26,12 +26,8 @@ except ImportError:  # pragma: no cover
 import mars.dataframe as md
 from mars.core.operand import OperandStage
 from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
-from mars.tests import setup
 from mars.tests.core import assert_groupby_equal, require_cudf
 from mars.utils import arrow_array_to_objects
-
-
-setup = setup
 
 
 class MockReduction1(md.CustomReduction):
@@ -676,16 +672,16 @@ def test_groupby_sample(setup):
     sample_count = 10
     src_data_list = []
     for b in range(5):
-        data_count = int(np.random.randint(20, 100))
+        data_count = int(rs.randint(20, 100))
         src_data_list.append(pd.DataFrame({
-            'a': np.random.randint(0, 100, size=data_count),
+            'a': rs.randint(0, 100, size=data_count),
             'b': np.array([b] * data_count),
-            'c': np.random.randint(0, 100, size=data_count),
-            'd': np.random.randint(0, 100, size=data_count),
+            'c': rs.randint(0, 100, size=data_count),
+            'd': rs.randint(0, 100, size=data_count),
         }))
     df1 = pd.concat(src_data_list)
     shuffle_idx = np.arange(len(df1))
-    np.random.shuffle(shuffle_idx)
+    rs.shuffle(shuffle_idx)
     df1 = df1.iloc[shuffle_idx].reset_index(drop=True)
 
     # test single chunk
