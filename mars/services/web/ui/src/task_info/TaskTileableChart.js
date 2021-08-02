@@ -1,5 +1,7 @@
 import React from 'react';
 import { withRouter } from "react-router-dom";
+import { Grid, Paper } from '@material-ui/core';
+import Title from "../Title";
 import * as d3 from "d3";
 import * as dagreD3 from "dagre-d3";
 
@@ -7,7 +9,7 @@ class tileableTileableChart extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            graphModification: false,
+            selectedTileable: null,
             tileables: [],
             dependencies: [],
         };
@@ -28,16 +30,13 @@ class tileableTileableChart extends React.Component {
     }
 
     componentDidMount() {
-        if (this.interval !== undefined)
-            clearInterval(this.interval);
-        this.interval = setInterval(() => this.fetchGraphDetail(), 5000);
         this.g =  new dagreD3.graphlib.Graph().setGraph({});
         this.fetchGraphDetail();
     };
 
     componentDidUpdate(prevProps, prevStates) {
         if (prevStates.tileables !== this.state.tileables && prevStates.dependencies !== this.state.dependencies) {
-            // d3.select("#svg-canvas").selectAll("*").remove();
+            d3.select("#svg-canvas").selectAll("*").remove();
 
             this.g = new dagreD3.graphlib.Graph().setGraph({});
             this.state.tileables.forEach((tileable) => {
@@ -47,7 +46,7 @@ class tileableTileableChart extends React.Component {
                 this.g.setNode(tileable.tileable_id, value);
 
                 // In future fill color based on progress
-                this.g.node(tileable.tileable_id).style = "fill: #9fb4c2";
+                this.g.node(tileable.tileable_id).style = "fill: #9fb4c2; cursor: pointer;";
             });
 
             this.state.dependencies.forEach((dependency) => {
@@ -59,7 +58,8 @@ class tileableTileableChart extends React.Component {
             var render = new dagreD3.render();
 
             // Set up an SVG group so that we can translate the final graph.
-            var svg = d3.select("svg"), inner = svg.append("g");
+            var svg = d3.select("#svg-canvas"),
+            inner = svg.append("g");
 
             // Set up zoom support
             var zoom = d3.zoom().on("zoom", function (e) {
@@ -67,16 +67,14 @@ class tileableTileableChart extends React.Component {
             });
             svg.call(zoom);
 
-            console.log(this.g, this.g.graph(), this.state.tileables);
             if (this.state.tileables.length !== 0) {
-                console.log("rendered");
                 // Run the renderer. This is what draws the final graph.
                 render(inner, this.g);
             }
 
             const handleClick = (e, node) => {
-                const selectedTilebale = this.state.tileables.filter((tileable) => tileable.tileable_id == node)[0];
-                console.log(node, selectedTilebale);
+                const selectedTileable = this.state.tileables.filter((tileable) => tileable.tileable_id == node)[0];
+                this.setState({ selectedTileable: selectedTileable});
             };
 
             inner.selectAll("g.node").on("click", handleClick);
@@ -96,16 +94,40 @@ class tileableTileableChart extends React.Component {
       }
     };
 
-    componentWillUnmount() {
-        clearInterval(this.interval);
-    }
-
     render() {
         return (
-            <div>
-                <h1>Graph: </h1>
-                <svg id="svg-canvas" />
-            </div>
+            <Grid container spacing={3} >
+                 <Grid item xs={12}>
+                    <Title>Graph</Title>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <Paper>
+                        <svg id="svg-canvas" style={{ margin: 10, width: 400, height: 600 }} />
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                    <Paper style={{ padding: 10 }}>
+                        <Grid item xs={12}>
+                            <Title>Tileable Detail: </Title>
+                        </Grid>
+                        <Grid item xs={12}>
+                            {
+                                this.state.selectedTileable
+                                    ?
+                                    <div>
+                                        <br/>
+                                        <div>Tileable ID: {this.state.selectedTileable.tileable_id}</div><br/>
+                                        <div>Tileable Name: {this.state.selectedTileable.tileable_name}</div><br/>
+                                    </div>
+                                    :
+                                    <div>
+                                        Select a tileable to view its detail
+                                    </div>
+                            }
+                        </Grid>
+                    </Paper>
+                </Grid>
+            </Grid>
         )
     }
 }

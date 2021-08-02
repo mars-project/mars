@@ -95,8 +95,8 @@ export const useStyles = makeStyles((theme) => ({
         display: 'flex',
         overflow: 'auto',
         flexDirection: 'column',
-  },
-  fixedHeight: {
-    height: 240,
-  },
+    },
+    fixedHeight: {
+        height: 240,
+    },
 }));
