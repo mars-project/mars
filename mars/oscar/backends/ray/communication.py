@@ -18,7 +18,7 @@ import itertools
 import logging
 from abc import ABC
 from collections import namedtuple
-from typing import Any, Callable, Coroutine, Dict, Type, Union
+from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
 from ....utils import implements, classproperty
@@ -88,7 +88,7 @@ class RayChannelBase(Channel, ABC):
 
 
 class RayClientChannel(RayChannelBase):
-    """A channel from ray driver to ray actor. Use ray call reply for client channel recv.
+    """A channel from ray driver/actor to ray actor. Use ray call reply for client channel recv.
     """
     __slots__ = '_peer_actor',
 
@@ -121,13 +121,16 @@ class RayClientChannel(RayChannelBase):
             if isinstance(result, RayChannelException):
                 raise result.exc_value.with_traceback(result.exc_traceback)
             return deserialize(*result)
+        except ray.exceptions.RayActorError:
+            if not self._closed.is_set():
+                raise EOFError('Server may be closed')
         except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():
                 raise e
 
 
 class RayServerChannel(RayChannelBase):
-    """A channel from ray actor to ray driver. Since ray actor can't call ray driver,
+    """A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
      we use ray call reply for server channel send. Note that there can't be multiple
      channel message sends for one received message, or else it will be taken as next
      message's reply.
@@ -179,58 +182,6 @@ class RayServerChannel(RayChannelBase):
             return await done.pop()
 
 
-class RayTwoWayChannel(RayChannelBase):
-    """
-    Channel for communications between ray actors.
-    """
-
-    __slots__ = '_peer_actor',
-
-    def __init__(self,
-                 local_address: str = None,
-                 dest_address: str = None,
-                 channel_index: int = None,
-                 channel_id: ChannelID = None,
-                 compression=None):
-        super().__init__(local_address, dest_address, channel_index, channel_id, compression)
-        # ray actor should be created with the address as the name.
-        self._peer_actor: 'ray.actor.ActorHandle' = ray.get_actor(dest_address)
-
-    @implements(Channel.send)
-    async def send(self, message: Any):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot send message')
-        object_ref = self._peer_actor.__on_ray_recv__.remote(self.channel_id, serialize(message))
-        with debug_async_timeout('ray_object_retrieval_timeout',
-                                 'Message that the server sent to actor %s is %s', self.dest_address, message):
-            result = await object_ref
-        if isinstance(result, RayChannelException):  # pragma: no cover
-            # Peer create channel may fail
-            raise result.exc_value.with_traceback(result.exc_traceback)
-        elif isinstance(result, Exception):
-            raise result
-        else:
-            assert result is None
-
-    @implements(Channel.recv)
-    async def recv(self):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed, cannot write message')
-        try:
-            result = await self._in_queue.get()
-            if isinstance(result, RayChannelException):  # pragma: no cover
-                raise result.exc_value.with_traceback(result.exc_traceback)
-            return deserialize(*result)
-        except (RuntimeError, ServerClosed) as e:  # pragma: no cover
-            if not self._closed.is_set():
-                raise e
-
-    async def __on_ray_recv__(self, message):
-        if self._closed.is_set():  # pragma: no cover
-            raise ChannelClosed('Channel already closed')
-        await self._in_queue.put(message)
-
-
 @register_server
 class RayServer(Server):
     __slots__ = '_closed', '_channels', '_tasks'
@@ -242,7 +193,7 @@ class RayServer(Server):
     def __init__(self, address, channel_handler: Callable[[Channel], Coroutine] = None):
         super().__init__(address, channel_handler)
         self._closed = asyncio.Event()
-        self._channels: Dict[ChannelID, Union[RayServerChannel, RayTwoWayChannel]] = dict()
+        self._channels: Dict[ChannelID, RayServerChannel] = dict()
         self._tasks: Dict[ChannelID, asyncio.Task] = dict()
 
     @classproperty
@@ -309,7 +260,7 @@ class RayServer(Server):
     @implements(Server.on_connected)
     async def on_connected(self, *args, **kwargs):
         channel = args[0]
-        assert isinstance(channel, (RayServerChannel, RayTwoWayChannel))
+        assert isinstance(channel, RayServerChannel)
         if kwargs:  # pragma: no cover
             raise TypeError(f'{type(self).__name__} got unexpected '
                             f'arguments: {",".join(kwargs)}')
@@ -338,19 +289,10 @@ class RayServer(Server):
         channel = self._channels.get(channel_id)
         if not channel:
             peer_local_address, _, peer_channel_index, peer_dest_address = channel_id
-            if not peer_local_address:
-                # Peer is a ray driver.
-                channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
-            else:
-                # Peer is a ray actor too.
-                channel = RayTwoWayChannel(
-                    peer_dest_address, peer_local_address, peer_channel_index, channel_id)
+            channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
             self._channels[channel_id] = channel
             self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
         return await channel.__on_ray_recv__(message)
-
-    def register_channel(self, channel_id: ChannelID, channel: RayTwoWayChannel):
-        self._channels[channel_id] = channel
 
 
 @register_client
@@ -375,26 +317,7 @@ class RayClient(Client):
         if urlparse(dest_address).scheme != RayServer.scheme:  # pragma: no cover
             raise ValueError(f'Destination address should start with "ray://" '
                              f'for RayClient, got {dest_address}')
-        if local_address:
-            if not RayServer.is_ray_actor_started():  # pragma: no cover
-                logger.info(f'Current process needs to be a ray actor for using {local_address} '
-                            f'as address to receive messages from other clients. '
-                            f'Use RayClientChannel instead to receive messages from {dest_address}.')
-                local_address = None  # make peer use RayClientChannel too.
-                client_channel = RayClientChannel(dest_address)
-            else:
-                server = RayServer.get_instance()
-                if server is None:
-                    raise RuntimeError(f'RayServer needs to be created first before RayClient '
-                                       f'local_address {local_address}, dest_address {dest_address}')
-                # Current process ia a ray actor, is connecting to another ray actor.
-                client_channel = RayTwoWayChannel(local_address, dest_address)
-                # The RayServer will push message to this channel's queue after it received
-                # the message from the `dest_address` actor.
-                server.register_channel(client_channel.channel_id, client_channel)
-        else:
-            # Current process ia a ray driver
-            client_channel = RayClientChannel(dest_address)
+        client_channel = RayClientChannel(dest_address)
         client = RayClient(local_address, dest_address, client_channel)
         return client
 
