@@ -573,7 +573,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             create_server_tasks.append(task)
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
-        print('create pool:', cls, actor_pool_config.as_dict(), kw)
+        print('create pool:', cls.__name__, internal_address, external_addresses)
         # create pool
         pool = cls(**kw)
         return pool
@@ -869,8 +869,13 @@ class MainActorPoolBase(ActorPoolBase):
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             elif message.control_message_type == ControlMessageType.wait_pool_recovered:
+                print('receive wait_pool_recovered')
+                while not await self.is_sub_pool_alive(self.sub_processes[message.address]):
+                    print('sub pool not alive')
+                    await asyncio.sleep(.5)
                 event = self._recover_events.get(message.address, None)
                 if event is not None:
+                    print('wait recover event')
                     await event.wait()
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)

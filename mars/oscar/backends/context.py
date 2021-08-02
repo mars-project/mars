@@ -166,16 +166,17 @@ class MarsActorContext(BaseActorContext):
 
     async def wait_actor_pool_recovered(self, address: str,
                                         main_address: str = None):
-        # get main_pool_address
-        control_message = ControlMessage(
-            new_message_id(), main_address,
-            ControlMessageType.get_config,
-            'main_pool_address',
-            protocol=DEFAULT_PROTOCOL)
-        main_address = self._process_result_message(
-            await self._call(main_address, control_message))
-
+        if main_address is None:
+            # get main_pool_address
+            control_message = ControlMessage(
+                new_message_id(), address,
+                ControlMessageType.get_config,
+                'main_pool_address',
+                protocol=DEFAULT_PROTOCOL)
+            main_address = self._process_result_message(
+                await self._call(address, control_message))
         # if address is main pool, it is never recovered
+        print('wait ready:', address, main_address)
         if address == main_address:
             return
 
@@ -185,5 +186,6 @@ class MarsActorContext(BaseActorContext):
             None,
             protocol=DEFAULT_PROTOCOL
         )
-        self._process_result_message(
+        result = self._process_result_message(
             await self._call(main_address, control_message))
+        print('wait ok:', result)
