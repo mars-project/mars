@@ -16,6 +16,8 @@ import struct
 from io import BytesIO
 from typing import Any
 
+import numpy as np
+
 from .core import pickle, serialize, deserialize
 
 
@@ -32,6 +34,23 @@ class AioSerializer:
 
     def _get_buffers(self):
         headers, buffers = serialize(self._obj)
+
+        def _is_cuda_buffer(buf):
+            try:
+                from cudf.core import Buffer as CPBuffer
+                from cupy import ndarray as cp_ndarray
+            except ImportError:
+                CPBuffer = cp_ndarray = None
+
+            if CPBuffer is not None and isinstance(buf, CPBuffer):
+                return True
+            elif cp_ndarray is not None and isinstance(buf, cp_ndarray):
+                return True
+            else:
+                return False
+
+        is_cuda_buffers = [_is_cuda_buffer(buf) for buf in buffers]
+        headers['is_cuda_buffers'] = np.array(is_cuda_buffers)
 
         # add buffer lengths into headers
         headers[BUFFER_SIZES_NAME] = [getattr(buf, 'nbytes', len(buf))

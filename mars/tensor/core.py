@@ -93,7 +93,9 @@ class TensorChunkData(ChunkData):
 
     @classmethod
     def get_params_from_data(cls, data: np.ndarray) -> Dict[str, Any]:
-        data = np.asarray(data)
+        from ..tensor.array_utils import as_np_array
+
+        data = as_np_array(data)
         order = TensorOrder.C_ORDER \
             if data.flags['C_CONTIGUOUS'] else TensorOrder.F_ORDER
         return {

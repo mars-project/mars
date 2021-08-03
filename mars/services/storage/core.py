@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from ... import oscar as mo
 from ...lib.aio import AioFileObject
 from ...oscar import ActorRef
 from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
+from ...resource import cuda_card_stats
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
@@ -30,15 +32,16 @@ from .errors import DataNotExist, StorageFull
 logger = logging.getLogger(__name__)
 
 
-def build_data_info(storage_info: ObjectInfo, level, size):
+def build_data_info(storage_info: ObjectInfo, level, size, band_name=None):
     # todo handle multiple
-    band = 'numa-0' if storage_info.device is None \
-        else f'gpu-{storage_info.device}'
+    if band_name is None:
+        band_name = 'numa-0' if storage_info.device is None \
+            else f'gpu-{storage_info.device}'
     if storage_info.size is None:
         store_size = size
     else:
         store_size = storage_info.size
-    return DataInfo(storage_info.object_id, level, size, store_size, band)
+    return DataInfo(storage_info.object_id, level, size, store_size, band_name)
 
 
 class WrappedStorageFileObject(AioFileObject):
@@ -93,8 +96,8 @@ class StorageQuotaActor(mo.Actor):
         self._level = level
 
     @classmethod
-    def gen_uid(cls, level: StorageLevel):
-        return f'storage_quota_{level}'
+    def gen_uid(cls, band_name: str, level: StorageLevel):
+        return f'storage_quota_{band_name}_{level}'
 
     def update_quota(self, size: int):
         self._used_size += size
@@ -288,18 +291,28 @@ class StorageManagerActor(mo.Actor):
         self._handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         self._storage_configs = storage_configs
         # params to init and teardown
-        self._init_params = dict()
-        self._teardown_params = dict()
-
+        self._init_params = defaultdict(dict)
+        self._teardown_params = defaultdict(dict)
         self._supervisor_address = None
 
         # transfer config
         self._transfer_block_size = transfer_block_size
+        self._quotas = None
+        self._spill_managers = None
 
     async def __post_create__(self):
+        from ..cluster.api import ClusterAPI
         from .handler import StorageHandlerActor
         from .spill import SpillManagerActor
         from .transfer import SenderManagerActor, ReceiverManagerActor
+
+        try:
+            cluster_api = await ClusterAPI.create(self.address)
+            band_to_slots = await cluster_api.get_bands()
+            all_slots = [band[1] for band in band_to_slots]
+        except mo.ActorNotExist:
+            # in some test cases, cluster service is not available
+            all_slots = ['numa-0']
 
         # stores the mapping from data key to storage info
         self._data_manager = await mo.create_actor(
@@ -308,71 +321,139 @@ class StorageManagerActor(mo.Actor):
             address=self.address)
 
         # setup storage backend
-        quotas = dict()
-        spill_managers = dict()
+        self._quotas = quotas = defaultdict(dict)
+        self._spill_managers = spill_managers = defaultdict(dict)
         for backend, setup_params in self._storage_configs.items():
-            client = await self._setup_storage(backend, setup_params)
+            if backend == 'cuda':
+                cuda_infos = await asyncio.to_thread(cuda_card_stats)
+                storage_bands = [s for s in all_slots if s.startswith('gpu-')]
+                clients = []
+                for gpu_band in storage_bands:
+                    index = int(gpu_band[4:])
+                    size = cuda_infos[index].fb_mem_info.available
+                    params = dict(size=size, **setup_params)
+                    clients.append(await self._setup_storage(gpu_band, backend, params))
+            else:
+                storage_bands = ['numa-0']
+                clients = [await self._setup_storage(band_name, backend, setup_params)
+                           for band_name in storage_bands]
+
             for level in StorageLevel.__members__.values():
-                if client.level & level:
-                    logger.debug('Create quota manager for %s,'
-                                 ' total size is %s', level, client.size)
-                    quotas[level] = await mo.create_actor(
-                        StorageQuotaActor, self._data_manager,
-                        level, client.size,
-                        uid=StorageQuotaActor.gen_uid(level),
-                        address=self.address,
-                    )
-                    spill_managers[level] = await mo.create_actor(
-                        SpillManagerActor, level,
-                        uid=SpillManagerActor.gen_uid(level),
-                        address=self.address)
+                for client, storage_band in zip(clients, storage_bands):
+                    if client.level & level:
+                        logger.debug('Create quota manager for %s,'
+                                     ' total size is %s', level, client.size)
+                        quotas[storage_band][level] = quota_ref = await mo.create_actor(
+                            StorageQuotaActor, self._data_manager,
+                            level, client.size,
+                            uid=StorageQuotaActor.gen_uid(storage_band, level),
+                            address=self.address,
+                        )
+                        spill_managers[storage_band][level] = await mo.create_actor(
+                            SpillManagerActor, level,
+                            uid=SpillManagerActor.gen_uid(storage_band, level),
+                            address=self.address)
+
+        # create in main process
+        default_band_name = 'numa-0'
+        await mo.create_actor(self._handler_cls,
+                              self._init_params[default_band_name],
+                              self._data_manager,
+                              spill_managers[default_band_name],
+                              quotas[default_band_name],
+                              default_band_name,
+                              uid=StorageHandlerActor.gen_uid(default_band_name),
+                              address=self.address)
 
         # create handler actors for every process
-        strategy = IdleLabel(None, 'StorageHandler')
-        while True:
-            try:
-                await mo.create_actor(self._handler_cls,
-                                      self._init_params,
-                                      self._data_manager,
-                                      spill_managers,
-                                      quotas,
-                                      uid=StorageHandlerActor.default_uid(),
-                                      address=self.address,
-                                      allocate_strategy=strategy)
-            except NoIdleSlot:
-                break
+        for band_name in self._init_params:
+            strategy = IdleLabel(band_name, 'StorageHandler')
+            sender_strategy = IdleLabel(band_name, 'sender')
+            receiver_strategy = IdleLabel(band_name, 'receiver')
+            init_params = self._get_band_init_params(band_name)
+            band_spill_managers = self._get_band_spill_managers(band_name)
+            band_quotas = self._get_band_quota_refs(band_name)
+            while True:
+                try:
+                    handler_ref = await mo.create_actor(
+                        self._handler_cls, init_params,
+                        self._data_manager, band_spill_managers,
+                        band_quotas, band_name,
+                        uid=StorageHandlerActor.gen_uid(band_name),
+                        address=self.address, allocate_strategy=strategy)
+                    # create transfer actor for GPU bands
+                    if band_name.startswith('gpu-'):
+                        await mo.create_actor(
+                            SenderManagerActor, storage_handler_ref=handler_ref,
+                            uid=SenderManagerActor.gen_uid(default_band_name),
+                            address=self.address, allocate_strategy=sender_strategy)
+                        await mo.create_actor(
+                            ReceiverManagerActor, band_quotas, handler_ref,
+                            address=self.address,
+                            uid=ReceiverManagerActor.gen_uid(default_band_name),
+                            allocate_strategy=receiver_strategy)
+                except NoIdleSlot:
+                    break
 
         # create actor for transfer
         sender_strategy = IdleLabel('io', 'sender')
         receiver_strategy = IdleLabel('io', 'receiver')
+        handler_strategy = IdleLabel('io', 'handler')
         while True:
             try:
+                handler_ref = await mo.create_actor(self._handler_cls,
+                                                    self._init_params[default_band_name],
+                                                    self._data_manager,
+                                                    spill_managers[default_band_name],
+                                                    quotas[default_band_name],
+                                                    default_band_name,
+                                                    uid=StorageHandlerActor.gen_uid(default_band_name),
+                                                    address=self.address,
+                                                    allocate_strategy=handler_strategy)
                 await mo.create_actor(
-                    SenderManagerActor, uid=SenderManagerActor.default_uid(),
+                    SenderManagerActor, storage_handler_ref=handler_ref,
+                    uid=SenderManagerActor.gen_uid(default_band_name),
                     address=self.address, allocate_strategy=sender_strategy)
 
                 await mo.create_actor(ReceiverManagerActor,
-                                      quotas,
+                                      quotas, handler_ref,
                                       address=self.address,
-                                      uid=ReceiverManagerActor.default_uid(),
+                                      uid=ReceiverManagerActor.gen_uid(default_band_name),
                                       allocate_strategy=receiver_strategy)
             except NoIdleSlot:
                 break
 
     async def __pre_destroy__(self):
-        for backend, teardown_params in self._teardown_params.items():
-            backend_cls = get_storage_backend(backend)
-            await backend_cls.teardown(**teardown_params)
+        for _, params in self._teardown_params:
+            for backend, teardown_params in params.items():
+                backend_cls = get_storage_backend(backend)
+                await backend_cls.teardown(**teardown_params)
+
+    def _get_band_init_params(self, band_name):
+        init_params = self._init_params['numa-0'].copy()
+        init_params.update(self._init_params[band_name])
+        return init_params
+
+    def _get_band_quota_refs(self, band_name):
+        band_quotas = self._quotas[band_name].copy()
+        band_quotas.update(self._quotas['numa-0'])
+        return band_quotas
+
+    def _get_band_spill_managers(self, band_name):
+        band_spill_managers = self._spill_managers[band_name].copy()
+        band_spill_managers.update(self._spill_managers['numa-0'])
+        return band_spill_managers
 
     async def _setup_storage(self,
+                             band_name: str,
                              storage_backend: str,
                              storage_config: Dict):
         backend = get_storage_backend(storage_backend)
         storage_config = storage_config or dict()
         init_params, teardown_params = await backend.setup(**storage_config)
         client = backend(**init_params)
-        self._init_params[storage_backend] = init_params
-        self._teardown_params[storage_backend] = teardown_params
+        self._init_params[band_name][storage_backend] = init_params
+        self._teardown_params[band_name][storage_backend] = teardown_params
         return client
 
     def get_client_params(self):

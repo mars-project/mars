@@ -14,7 +14,7 @@
 
 import asyncio
 import logging
-from typing import Union, Any, List
+from typing import Dict, Union, Any, List
 
 from ... import oscar as mo
 from ...serialization.serializables import Serializable, StringField, \
@@ -51,19 +51,26 @@ class TransferMessage(Serializable):
 
 class SenderManagerActor(mo.StatelessActor):
     def __init__(self,
-                 transfer_block_size: int = None):
+                 transfer_block_size: int = None,
+                 storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None):
+        self._storage_handler = storage_handler_ref
         self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
+
+    @classmethod
+    def gen_uid(cls, band_name: str):
+        return f'sender_manager_{band_name}'
 
     async def __post_create__(self):
         self._data_manager_ref: Union[mo.ActorRef, DataManagerActor] = \
             await mo.actor_ref(self.address, DataManagerActor.default_uid())
-        self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
+        if self._storage_handler is None:  # for test
+            self._storage_handler = await mo.actor_ref(
+                self.address, StorageHandlerActor.gen_uid('numa-0'))
 
     @staticmethod
     async def get_receiver_ref(address: str):
         return await mo.actor_ref(
-            address=address, uid=ReceiverManagerActor.default_uid())
+            address=address, uid=ReceiverManagerActor.gen_uid('numa-0'))
 
     async def _send_data(self,
                          receiver_ref: Union[mo.ActorRef],
@@ -150,13 +157,21 @@ class SenderManagerActor(mo.StatelessActor):
 
 
 class ReceiverManagerActor(mo.Actor):
-    def __init__(self, quota_refs):
+    def __init__(self,
+                 quota_refs: Dict,
+                 storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None):
         self._key_to_writer_info = dict()
         self._quota_refs = quota_refs
+        self._storage_handler = storage_handler_ref
 
     async def __post_create__(self):
-        self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
+        if self._storage_handler is None: # for test
+            self._storage_handler = await mo.actor_ref(
+                self.address, StorageHandlerActor.gen_uid('numa-0'))
+
+    @classmethod
+    def gen_uid(cls, band_name: str):
+        return f'sender_receiver_{band_name}'
 
     async def create_writers(self,
                              session_id: str,

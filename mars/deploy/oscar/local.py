@@ -107,8 +107,9 @@ class LocalCluster:
 
         self._band_to_slot = band_to_slot = dict()
         worker_cpus = self._n_cpu // n_worker
-        assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
-                                f"for {n_worker}, try to decrease workers."
+        if n_gpu == 0:
+            assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
+                                    f"for {n_worker}, try to decrease workers."
         band_to_slot['numa-0'] = worker_cpus
         for i in range(self._n_gpu):  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1

@@ -292,6 +292,10 @@ def parse_index(index_value, *args, store_data=False, key=None):
             _max_val_close=True,
             _key=key or tokenize(*args),
         ))
+    if hasattr(index_value, 'to_pandas'):  # pragma: no cover
+        # convert cudf.Index to pandas
+        index_value = index_value.to_pandas()
+
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))
     elif isinstance(index_value, pd.MultiIndex):

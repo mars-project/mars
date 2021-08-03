@@ -16,7 +16,8 @@
 
 import ctypes
 import os
-from typing import Tuple, Dict, List, Optional
+import uuid
+from typing import Tuple, Dict, List, Optional, Union
 
 from ..serialization import serialize, deserialize
 from ..utils import lazy_import, implements
@@ -31,11 +32,17 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 class CudaObjectId:
-    __slots__ = 'headers', 'ptrs'
+    __slots__ = 'headers_list', 'ptrs_list', 'object_id', 'is_tuple'
 
-    def __init__(self, headers: Dict, ptrs: List[int]):
-        self.headers = headers
-        self.ptrs = ptrs
+    def __init__(self,
+                 headers_list: List[Dict],
+                 ptrs_list: List[List[int]],
+                 object_id: str,
+                 is_tuple: bool = False):
+        self.headers_list = headers_list
+        self.ptrs_list = ptrs_list
+        self.object_id = object_id
+        self.is_tuple = is_tuple
 
 
 class CudaFileObject(BufferWrappedFileObject):
@@ -102,18 +109,18 @@ class CudaFileObject(BufferWrappedFileObject):
 class CudaStorage(StorageBackend):
     name = 'cuda'
 
-    def __init__(self, **kw):
-        if kw:  # pragma: no cover
-            raise TypeError(f'CudaStorage got unexpected arguments: {",".join(kw)}')
+    def __init__(self, size=None):
+        self._size = size
         self._id_to_buffers = dict()
 
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        size = kwargs.pop('size', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'CudaStorage got unexpected config: {",".join(kwargs)}')
 
-        return dict(), dict()
+        return dict(size=size), dict()
 
     @staticmethod
     @implements(StorageBackend.teardown)
@@ -124,6 +131,10 @@ class CudaStorage(StorageBackend):
     @implements(StorageBackend.level)
     def level(self):
         return StorageLevel.GPU
+
+    @property
+    def size(self) -> Union[int, None]:
+        return self._size
 
     @staticmethod
     def _to_cuda(obj):  # pragma: no cover
@@ -143,45 +154,58 @@ class CudaStorage(StorageBackend):
         if kwargs:  # pragma: no cover
             raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
 
-        headers = object_id.headers
-        ptrs = object_id.ptrs
-        data_type = headers.pop('data_type')
-        if data_type == 'cupy':
-            ptr = ptrs[0]
-            size = headers['lengths'][0]
-            cuda_buf = DeviceBuffer(ptr=ptr, size=size)
-            buffers = [cuda_buf]
-        elif data_type == 'cudf':
-            buffers = [Buffer(ptr, length, DeviceBuffer(ptr=ptr, size=length))
-                       for ptr, length in zip(ptrs, headers['lengths'])]
+        headers_list = object_id.headers_list
+        ptrs_list = object_id.ptrs_list
+        objs = []
+        for headers, ptrs in zip(headers_list, ptrs_list):
+            data_type = headers.pop('data_type')
+            if data_type == 'cupy':
+                ptr = ptrs[0]
+                size = headers['lengths'][0]
+                cuda_buf = DeviceBuffer(ptr=ptr, size=size)
+                buffers = [cuda_buf]
+            elif data_type == 'cudf':
+                buffers = [Buffer(ptr, length, DeviceBuffer(ptr=ptr, size=length))
+                           for ptr, length in zip(ptrs, headers['lengths'])]
+            else:
+                raise TypeError(f'Unknown data type {data_type}')
+            objs.append(deserialize(headers, buffers))
+        if object_id.is_tuple:
+            return tuple(objs)
         else:
-            raise TypeError(f'Unknown data type {data_type}')
-        return deserialize(headers, buffers)
+            return objs[0]
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        obj = self._to_cuda(obj)
-        headers, buffers = serialize(obj)
-        if isinstance(obj, cupy.ndarray):
-            device = obj.device.id
-            headers['data_type'] = 'cupy'
-            ptrs = [b.data.ptr for b in buffers]
-        elif isinstance(obj, (cudf.DataFrame, cudf.Series, cudf.Index)):
-            device = int(os.environ.get('CUDA_VISIBLE_DEVICES', '0').split(',', 1)[0])
-            headers['data_type'] = 'cudf'
-            ptrs = [b.ptr for b in buffers]
-        else:  # pragma: no cover
-            raise TypeError(f'Unsupported data type: {type(obj)}')
-
-        headers['device'] = device
-        object_id = CudaObjectId(headers, ptrs)
-        size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
-        self._id_to_buffers[object_id] = buffers
-        return ObjectInfo(size=size, object_id=object_id, device=device)
+        is_tuple = isinstance(obj, (tuple, list))
+        objs = obj if is_tuple else [obj]
+        size = 0
+        buffers_list = []
+        headers_list = []
+        ptrs_list = []
+        for obj in objs:
+            obj = self._to_cuda(obj)
+            headers, buffers = serialize(obj)
+            if isinstance(obj, cupy.ndarray):
+                headers['data_type'] = 'cupy'
+                ptrs = [b.data.ptr for b in buffers]
+            elif isinstance(obj, (cudf.DataFrame, cudf.Series, cudf.Index)):
+                headers['data_type'] = 'cudf'
+                ptrs = [b.ptr for b in buffers]
+            else:  # pragma: no cover
+                raise TypeError(f'Unsupported data type: {type(obj)}')
+            size += sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+            buffers_list.append(buffers)
+            headers_list.append(headers)
+            ptrs_list.append(ptrs)
+        string_id = str(uuid.uuid4())
+        object_id = CudaObjectId(headers_list, ptrs_list, string_id, is_tuple)
+        self._id_to_buffers[string_id] = buffers_list
+        return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.delete)
-    async def delete(self, object_id):
-        del self._id_to_buffers[object_id]
+    async def delete(self, object_id: CudaObjectId):
+        del self._id_to_buffers[object_id.object_id]
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id: CudaObjectId) -> ObjectInfo:
@@ -194,8 +218,9 @@ class CudaStorage(StorageBackend):
 
         cuda_buffer = Buffer.empty(size)
         headers = dict(size=size)
-        object_id = CudaObjectId(headers, [cuda_buffer.ptr])
-        self._id_to_buffers[object_id] = cuda_buffer
+        string_id = str(uuid.uuid4())
+        object_id = CudaObjectId([headers], [[cuda_buffer.ptr]], string_id)
+        self._id_to_buffers[string_id] = cuda_buffer
         cuda_writer = CudaFileObject(object_id, cuda_buffer=cuda_buffer, mode='w', size=size)
         return StorageFileObject(cuda_writer, object_id=object_id)
 

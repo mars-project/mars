@@ -445,7 +445,7 @@ class SubtaskProcessorActor(mo.Actor):
     async def __post_create__(self):
         coros = [
             SessionAPI.create(self._supervisor_address),
-            StorageAPI.create(self._session_id, self.address),
+            StorageAPI.create(self._session_id, self.address, self._band[1]),
             MetaAPI.create(self._session_id, self._supervisor_address)]
         coros = [asyncio.ensure_future(coro) for coro in coros]
         await asyncio.gather(*coros)

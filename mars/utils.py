@@ -466,14 +466,13 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     Data
     """
     from .lib.groupby_wrapper import GroupByWrapper
-    from .lib.sparse import SparseNDArray
-    from .tensor.array_utils import get_array_module
+    from .tensor.array_utils import get_array_module, is_array
 
     chunk_results = sorted(chunk_results, key=operator.itemgetter(0))
     v = chunk_results[0][1]
     if len(chunk_results) == 1 and not (chunk_results[0][0]):
         return v
-    if isinstance(v, (np.ndarray, SparseNDArray)):
+    if is_array(v):
         xp = get_array_module(v)
         ndim = v.ndim
         for i in range(ndim - 1):

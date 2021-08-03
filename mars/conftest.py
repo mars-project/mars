@@ -107,6 +107,26 @@ def _new_integrated_test_session(_stop_isolation):
             sess.stop_server(isolation=False)
 
 
+@pytest.fixture(scope='module')
+def _new_gpu_test_session(_stop_isolation):
+    from .deploy.oscar.tests.session import new_test_session
+
+    sess = new_test_session(address='127.0.0.1',
+                            init_local=True, n_worker=1, n_cpu=0, n_gpu=1,
+                            default=True, timeout=300)
+    with option_context({'show_progress': False}):
+        try:
+            yield sess
+        finally:
+            sess.stop_server(isolation=False)
+
+
+@pytest.fixture
+def setup_gpu(_new_gpu_test_session):
+    _new_gpu_test_session.as_default()
+    yield _new_test_session
+
+
 @pytest.fixture
 def setup(_new_test_session):
     _new_test_session.as_default()

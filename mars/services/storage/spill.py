@@ -123,8 +123,8 @@ class SpillManagerActor(mo.StatelessActor):
         self._lock = asyncio.Lock()
 
     @classmethod
-    def gen_uid(cls, level: StorageLevel):
-        return f'spill_manager_{level}'
+    def gen_uid(cls, band_name: str, level: StorageLevel):
+        return f'spill_manager_{band_name}_{level}'
 
     def has_spill_task(self):
         return self._event is not None

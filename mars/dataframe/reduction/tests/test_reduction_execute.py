@@ -280,7 +280,7 @@ def test_dataframe_level_reduction(setup, check_ref_counts, func_name, func_opts
 
 @require_cudf
 @require_cupy
-def test_gpu_execution(setup, check_ref_counts):
+def test_gpu_execution(setup_gpu, check_ref_counts):
     df_raw = pd.DataFrame(np.random.rand(30, 3), columns=list('abc'))
     df = to_gpu(md.DataFrame(df_raw, chunk_size=6))
 

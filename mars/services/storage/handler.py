@@ -40,7 +40,8 @@ class StorageHandlerActor(mo.StatelessActor):
                  data_manager_ref: Union[DataManagerActor, mo.ActorRef],
                  spill_manager_refs,
                  quota_refs: Dict[StorageLevel,
-                                  Union[StorageQuotaActor, mo.ActorRef]]):
+                                  Union[StorageQuotaActor, mo.ActorRef]],
+                 band_name: str = 'numa-0'):
         from .spill import SpillManagerActor
 
         self._storage_init_params = storage_init_params
@@ -48,7 +49,16 @@ class StorageHandlerActor(mo.StatelessActor):
         self._spill_manager_refs: \
             Dict[StorageLevel, Union[SpillManagerActor, mo.ActorRef]] = spill_manager_refs
         self._quota_refs = quota_refs
+        self._band_name = band_name
         self._supervisor_address = None
+
+    @classmethod
+    def gen_uid(cls, band_name: str):
+        return f'storage_handler_{band_name}'
+
+    @property
+    def highest_level(self):
+        return min(self._quota_refs)
 
     async def __post_create__(self):
         self._clients = clients = dict()
@@ -120,16 +130,34 @@ class StorageHandlerActor(mo.StatelessActor):
                 results.append(result)
         raise mo.Return(results)
 
+    def _get_default_level(self, obj):
+        obj = obj[0] if isinstance(obj, (list, tuple)) else obj
+        if self.highest_level != StorageLevel.GPU:
+            return self.highest_level
+        else:
+            try:
+                import cudf, cupy
+            except ImportError:
+                cudf = cupy = None
+            if cudf is not None and isinstance(obj, (cudf.DataFrame, cudf.Series, cudf.Index)):
+                return StorageLevel.GPU
+            elif cupy is not None and isinstance(obj, cupy.ndarray):
+                return StorageLevel.GPU
+            else:
+                return StorageLevel.MEMORY
+
     @mo.extensible
     async def put(self,
                   session_id: str,
                   data_key: str,
                   obj: object,
-                  level: StorageLevel) -> DataInfo:
+                  level: StorageLevel = None) -> DataInfo:
+        if level is None:
+            level = self._get_default_level(obj)
         size = await asyncio.to_thread(calc_data_size, obj)
         await self.request_quota_with_spill(level, size)
         object_info = await self._clients[level].put(obj)
-        data_info = build_data_info(object_info, level, size)
+        data_info = build_data_info(object_info, level, size, self._band_name)
         await self._data_manager_ref.put_data_info(
             session_id, data_key, data_info, object_info)
         if object_info.size is not None and data_info.memory_size != object_info.size:
@@ -148,6 +176,8 @@ class StorageHandlerActor(mo.StatelessActor):
         for args, kwargs in zip(args_list, kwargs_list):
             session_id, data_key, obj, level = \
                 self.put.bind(*args, **kwargs)
+            if level is None:
+                level = self._get_default_level(obj)
             size = await asyncio.to_thread(calc_data_size, obj)
             if last_level is not None:
                 assert last_level == level
@@ -163,7 +193,7 @@ class StorageHandlerActor(mo.StatelessActor):
         quota_delta = 0
         for size, data_key, obj in zip(sizes, data_keys, objs):
             object_info = await self._clients[level].put(obj)
-            data_info = build_data_info(object_info, level, size)
+            data_info = build_data_info(object_info, level, size, self._band_name)
             data_infos.append(data_info)
             if object_info.size is not None and \
                     data_info.memory_size != object_info.size:
@@ -381,7 +411,8 @@ class StorageHandlerActor(mo.StatelessActor):
         pin_delays = []
         for data_key, info in zip(data_keys, data_infos):
             if info is not None:
-                pin_delays.append(self._data_manager_ref.pin.delay(session_id, data_key))
+                if info.band:
+                    pin_delays.append(self._data_manager_ref.pin.delay(session_id, data_key))
             else:
                 # Not exists in local, fetch from remote worker
                 missing_keys.append(data_key)
