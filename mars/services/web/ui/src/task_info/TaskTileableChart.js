@@ -15,7 +15,6 @@ class tileableTileableChart extends React.Component {
         };
     }
 
-
     fetchGraphDetail() {
         const { session_id, task_id } = this.props.match.params;
 
@@ -52,6 +51,21 @@ class tileableTileableChart extends React.Component {
             this.state.dependencies.forEach((dependency) => {
                 // In future label may be named based on linkType?
                 this.g.setEdge(dependency.from_tileable_id, dependency.to_tileable_id, { label: "" });
+            });
+
+            let gInstance = this.g;
+            // Round the corners of the nodes
+            gInstance.nodes().forEach(function (v) {
+                var node = gInstance.node(v);
+                node.rx = node.ry = 5;
+            });
+
+            //makes the lines smooth
+            gInstance.edges().forEach(function (e) {
+                var edge = gInstance.edge(e.v, e.w);
+                edge.lineInterpolate = 'basis';
+
+                edge.style = "stroke: #333";
             });
 
             // Create the renderer
@@ -102,7 +116,12 @@ class tileableTileableChart extends React.Component {
                 </Grid>
                 <Grid item xs={12} md={6}>
                     <Paper>
-                        <svg id="svg-canvas" style={{ margin: 10, width: 400, height: 600 }} />
+                        <Grid item xs={12}>
+                            <svg
+                                id="svg-canvas"
+                                style={{ margin: 30, width: "100%", height: 700 }}
+                            />
+                        </Grid>
                     </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
