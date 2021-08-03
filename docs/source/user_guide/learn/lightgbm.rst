@@ -146,9 +146,9 @@ Take :meth:`LGBMRegressor.fit` as an example.
 .. code-block:: python
 
    # A cluster has been configured, and web UI is started on <web_ip>:<web_port>
-   from mars.session import new_session
+   import mars
    # set the session as the default one
-   sess = new_session('http://<web_ip>:<web_port>').as_default()
+   sess = mars.new_session('http://<web_ip>:<web_port>')
 
    lg_reg = lgb.LGBMRegressor()
 
