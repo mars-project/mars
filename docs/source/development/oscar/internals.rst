@@ -27,7 +27,7 @@ according to their locations.
 Ray backend
 -----------
 
-For Ray backend, Mars actor pool is created inside a Ray actor, the channel implemeneted via
+For Ray backend, Mars actor pool is created inside a Ray actor, the channel implemented via
 Ray call will be used for message passing between Mars actors.
 
 .. image:: ../../images/oscar-ray.png

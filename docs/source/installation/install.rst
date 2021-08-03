@@ -18,7 +18,7 @@ Create a default session
     import mars
     mars.new_session()
 
-Then calling `execute()` on a Mars objects e.g. tensor,
+Then calling ``execute()`` on a Mars objects e.g. tensor,
 computation will be performed.
 
 

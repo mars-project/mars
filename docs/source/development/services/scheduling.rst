@@ -38,7 +38,7 @@ execution:
 
 Worker Selection
 ````````````````
-The worker of initial operands are decided when the scheduler prepares an
+The worker of initial operands are decided when the supervisor prepares an
 operand graph.  We choose the worker of descendant operands given the location
 of input chunks. When there are multiple workers providing minimal network
 transfer, a worker satisfying resource requirements are selected.

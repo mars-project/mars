@@ -1,5 +1,8 @@
 .. _service_index:
 
+Services
+========
+
 Mars distributed execution layer is consist of a few services.
 
 .. toctree::

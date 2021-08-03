@@ -1,0 +1,77 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.8.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-03 19:30+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/oscar/internals.rst:4
+msgid "Oscar Internal"
+msgstr "Oscar 内部实现"
+
+#: ../../source/development/oscar/internals.rst:6
+msgid "Oscar supports multiple backends, including Mars itself as well as Ray."
+msgstr "Oscar 支持多种后端，包括 Mars 自己以及 Ray。"
+
+#: ../../source/development/oscar/internals.rst:9
+msgid "Mars backend"
+msgstr "Mars 后端"
+
+#: ../../source/development/oscar/internals.rst:11
+msgid ""
+"For mars backend, when each worker started, main process and sub "
+"processes will be created, each process owns a event loop. Each process "
+"is called actor pool in Mars."
+msgstr ""
+"对于 Mars 后端，每个 worker 启动的时候会创建主进程和若干子进程，每个进程"
+"包含一个时间循环。每个进程在 Mars 里被称为 actor pool。"
+
+#: ../../source/development/oscar/internals.rst:16
+msgid ""
+"Each actor can talk to another actor without considering if they are in a"
+" same process, or in a same machine, or even on different machines. The "
+"underlying communication will be achieved via an abstraction called "
+"channel."
+msgstr ""
+"每个 actor 可以和另一 actor 通信而不需要考虑它们是在同一个进程，亦或是"
+"同一个机器，还是在不同机器。底层的通信使用称为 channel 的概念。"
+
+#: ../../source/development/oscar/internals.rst:20
+msgid ""
+"As illustrated in the picuture above, when each process is started, "
+"socket server will be created to accept channel connection from other "
+"workers, unix socket server is created to accept channel connection from "
+"other processes, and dummy server is used to accept channel connection "
+"from the same process. When a message sent from an actor to another "
+"actor, the corresponding channel will be used according to their "
+"locations."
+msgstr ""
+"如图所示，每个进程启动的时候，socket 服务能接受来自其他 worker 的 channel"
+" 连接，unix socket 服务能接受来自其它进程的 channel 连接，dummy 服务用来"
+"接受本进程的 channel 连接。一个消息从一个 actor 发往另一个 actor 的时候，"
+"会根据他们的地址选择正确的 channel 类型。"
+
+#: ../../source/development/oscar/internals.rst:28
+msgid "Ray backend"
+msgstr "Ray 后端"
+
+#: ../../source/development/oscar/internals.rst:30
+msgid ""
+"For Ray backend, Mars actor pool is created inside a Ray actor, the "
+"channel implemented via Ray call will be used for message passing between"
+" Mars actors."
+msgstr "对于 Ray 后端，Mars actor pool 在 Ray 的 actor 中创建，"
+"通过 Ray 调用实现的 channel 会用来做 Mars actor 之间的消息传递。"
+

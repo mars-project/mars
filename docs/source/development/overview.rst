@@ -54,7 +54,7 @@ Tour of Task
 
 A task is consist of the following steps:
 
-1. When `.execute()` called on client side, a task that has a tileable graph
+1. When ``.execute()`` called on client side, a task that has a tileable graph
    will be submitted to task service.
 2. Task service will optimize tileable graph first, a few rules will be applied,
    e.g. column pruning. Tileable graph will then be tiled into chunk graph,

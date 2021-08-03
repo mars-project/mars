@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
 # This file is distributed under the same license as the mars package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2020.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: mars 0.5.0a2\n"
+"Project-Id-Version: mars 0.8.0a1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,15 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.7.0\n"
 
-#: ../../source/development/distributed/index.rst:3
-msgid "Distributed Scheduling"
-msgstr "分布式调度"
+#: ../../source/development/services/subtask.rst:4
+msgid "Subtask Service"
+msgstr "Subtask 服务"
+
+#: ../../source/development/services/subtask.rst:7
+msgid "APIs"
+msgstr "接口"
+
+#: ../../source/development/services/subtask.rst:14:<autosummary>:1
+msgid ":obj:`SubtaskAPI <mars.services.subtask.SubtaskAPI>`\\ \\(address\\)"
+msgstr ""
 

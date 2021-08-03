@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,35 +29,50 @@ msgstr ""
 msgid "Methods"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
-msgid ":obj:`__init__ <mars.remote.ExecutableTuple.__init__>`\\ \\(\\*\\_\\)"
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
+msgid ":obj:`__init__ <mars.remote.ExecutableTuple.__init__>`\\ \\(\\*args\\)"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid "Initialize self."
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid ":obj:`count <mars.remote.ExecutableTuple.count>`\\"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid "Return number of occurrences of value."
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid ":obj:`execute <mars.remote.ExecutableTuple.execute>`\\ \\(\\[session\\]\\)"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid ":obj:`fetch <mars.remote.ExecutableTuple.fetch>`\\ \\(\\[session\\]\\)"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
+msgid ""
+":obj:`fetch_log <mars.remote.ExecutableTuple.fetch_log>`\\ "
+"\\(\\[session\\, offsets\\, sizes\\]\\)"
+msgstr ""
+
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid ":obj:`index <mars.remote.ExecutableTuple.index>`\\"
 msgstr ""
 
-#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:20:<autosummary>:1
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
 msgid "Return first index of value."
 msgstr ""
+
+#: ../../source/reference/remote/generated/mars.remote.ExecutableTuple.rst:22:<autosummary>:1
+msgid ""
+":obj:`to_object <mars.remote.ExecutableTuple.to_object>`\\ "
+"\\(\\[session\\]\\)"
+msgstr ""
+
+#~ msgid ":obj:`__init__ <mars.remote.ExecutableTuple.__init__>`\\ \\(\\*\\_\\)"
+#~ msgstr ""
 

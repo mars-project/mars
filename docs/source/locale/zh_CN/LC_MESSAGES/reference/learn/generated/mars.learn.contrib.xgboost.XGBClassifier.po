@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -111,7 +111,7 @@ msgid ""
 msgstr ""
 
 #: ../../source/reference/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
-msgid "Get xgboost type parameters."
+msgid "Get xgboost specific parameters."
 msgstr ""
 
 #: ../../source/reference/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:34:<autosummary>:1
@@ -200,4 +200,7 @@ msgstr ""
 #: ../../source/reference/learn/generated/mars.learn.contrib.xgboost.XGBClassifier.rst:41:<autosummary>:1
 msgid "Intercept (bias) property"
 msgstr ""
+
+#~ msgid "Get xgboost type parameters."
+#~ msgstr ""
 

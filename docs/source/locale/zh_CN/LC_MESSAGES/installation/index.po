@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,11 +25,9 @@ msgstr "安装"
 msgid "You can simply install Mars via pip:"
 msgstr "你可以使用 ``pip`` 安装 Mars："
 
-#: ../../source/installation/index.rst:13
-msgid "Install Mars distributed by run:"
-msgstr "安装分布式版本可以："
+#~ msgid "Install Mars distributed by run:"
+#~ msgstr "安装分布式版本可以："
 
-#: ../../source/installation/index.rst:19
-msgid "For now, distributed version is only available for Linux and Mac OS."
-msgstr "目前，分布式版本只支持 Linux 和 MacOS。"
+#~ msgid "For now, distributed version is only available for Linux and Mac OS."
+#~ msgstr "目前，分布式版本只支持 Linux 和 MacOS。"
 
