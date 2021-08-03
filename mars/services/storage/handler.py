@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Union
 from ... import oscar as mo
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
+from ...typing import BandType
 from ...utils import calc_data_size
 from ..cluster import ClusterAPI, StorageInfo
 from ..meta import MetaAPI
@@ -353,10 +354,10 @@ class StorageHandlerActor(mo.StatelessActor):
                             session_id: str,
                             data_keys: List[Union[str, tuple]],
                             level: StorageLevel,
-                            remote_address: str,
+                            band: BandType,
                             error: str):
         remote_manager_ref: Union[mo.ActorRef, DataManagerActor] = await mo.actor_ref(
-            uid=DataManagerActor.default_uid(), address=remote_address)
+            uid=DataManagerActor.default_uid(), address=band[0])
         get_data_infos = []
         for data_key in data_keys:
             get_data_infos.append(
@@ -378,16 +379,16 @@ class StorageHandlerActor(mo.StatelessActor):
                                   session_id: str,
                                   data_keys: List[Union[str, tuple]],
                                   level: StorageLevel,
-                                  remote_address: str,
+                                  band: BandType,
                                   error: str):
         from .transfer import SenderManagerActor
 
-        logger.debug('Begin to fetch %s from worker %s', data_keys, remote_address)
+        logger.debug('Begin to fetch %s from band %s', data_keys, band)
         sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
-            address=remote_address, uid=SenderManagerActor.default_uid())
+            address=band[0], uid=SenderManagerActor.gen_uid(band[1]))
         await sender_ref.send_batch_data(
             session_id, data_keys, self._data_manager_ref.address, level, error=error)
-        logger.debug('Finish fetching %s from worker %s', data_keys, remote_address)
+        logger.debug('Finish fetching %s from band %s', data_keys, band)
 
     async def fetch_batch(self,
                           session_id: str,
@@ -410,9 +411,8 @@ class StorageHandlerActor(mo.StatelessActor):
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_info_delays)
         pin_delays = []
         for data_key, info in zip(data_keys, data_infos):
-            if info is not None:
-                if info.band:
-                    pin_delays.append(self._data_manager_ref.pin.delay(session_id, data_key))
+            if info is not None and info.band == self._band_name:
+                pin_delays.append(self._data_manager_ref.pin.delay(session_id, data_key))
             else:
                 # Not exists in local, fetch from remote worker
                 missing_keys.append(data_key)
@@ -432,15 +432,17 @@ class StorageHandlerActor(mo.StatelessActor):
 
         transfer_tasks = []
         fetch_keys = []
+        if level is None:
+            level = self.highest_level
         for band, keys in remote_keys.items():
             if StorageLevel.REMOTE in self._quota_refs:
                 # if storage support remote level, just fetch object id
                 transfer_tasks.append(self._fetch_remote(
-                    session_id, list(keys), level, band[0], error))
+                    session_id, list(keys), level, band, error))
             else:
                 # fetch via transfer
                 transfer_tasks.append(self._fetch_via_transfer(
-                    session_id, list(keys), level, band[0], error))
+                    session_id, list(keys), level, band, error))
             fetch_keys.extend(list(keys))
 
         await asyncio.gather(*transfer_tasks)

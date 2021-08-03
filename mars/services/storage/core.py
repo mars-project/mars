@@ -343,7 +343,7 @@ class StorageManagerActor(mo.Actor):
                     if client.level & level:
                         logger.debug('Create quota manager for %s,'
                                      ' total size is %s', level, client.size)
-                        quotas[storage_band][level] = quota_ref = await mo.create_actor(
+                        quotas[storage_band][level] = await mo.create_actor(
                             StorageQuotaActor, self._data_manager,
                             level, client.size,
                             uid=StorageQuotaActor.gen_uid(storage_band, level),
@@ -385,12 +385,12 @@ class StorageManagerActor(mo.Actor):
                     if band_name.startswith('gpu-'):
                         await mo.create_actor(
                             SenderManagerActor, storage_handler_ref=handler_ref,
-                            uid=SenderManagerActor.gen_uid(default_band_name),
+                            uid=SenderManagerActor.gen_uid(band_name),
                             address=self.address, allocate_strategy=sender_strategy)
                         await mo.create_actor(
                             ReceiverManagerActor, band_quotas, handler_ref,
                             address=self.address,
-                            uid=ReceiverManagerActor.gen_uid(default_band_name),
+                            uid=ReceiverManagerActor.gen_uid(band_name),
                             allocate_strategy=receiver_strategy)
                 except NoIdleSlot:
                     break

@@ -133,6 +133,7 @@ class CudaStorage(StorageBackend):
         return StorageLevel.GPU
 
     @property
+    @implements(StorageBackend.size)
     def size(self) -> Union[int, None]:
         return self._size
 
@@ -209,8 +210,8 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id: CudaObjectId) -> ObjectInfo:
-        size = sum(object_id.headers['lengths'])
-        return ObjectInfo(size=size, object_id=object_id, device=object_id.headers['device'])
+        size = sum(sum(headers['lengths']) for headers in object_id.headers_list)
+        return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

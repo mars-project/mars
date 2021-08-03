@@ -304,9 +304,7 @@ async def test_cuda_backend():
             await writer.write(buf)
 
     async with await storage.open_reader(writer.object_id) as reader:
-        content = await reader.read()
-        b = content.to_host_array().tobytes()
-        t2 = await AioDeserializer(io.BytesIO(b)).run()
+        t2 = await AioDeserializer(reader).run()
     np.testing.assert_array_equal(t, t2)
 
     # write cupy array

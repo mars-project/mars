@@ -160,9 +160,9 @@ class StorageAPI(AbstractStorageAPI):
     @mo.extensible
     async def fetch(self,
                     data_key: str,
-                    level: StorageLevel = StorageLevel.MEMORY,
+                    level: StorageLevel = None,
                     band_name: str = None,
-                    dest_address: str = None,
+                    remote_address: str = None,
                     error: str = 'raise'):
         """
         Fetch object from remote worker or load object from disk.
@@ -175,14 +175,14 @@ class StorageAPI(AbstractStorageAPI):
             the storage level to put into, MEMORY as default
         band_name: BandType
             put data on specific band
-        dest_address:
-            destination address for data
+        remote_address:
+            remote address that stores the data
         error: str
             raise or ignore
         """
         await self._storage_handler_ref.fetch_batch(
             self._session_id, [data_key], level,
-            dest_address, band_name, error)
+            remote_address, band_name, error)
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):

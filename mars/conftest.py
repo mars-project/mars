@@ -112,7 +112,7 @@ def _new_gpu_test_session(_stop_isolation):
     from .deploy.oscar.tests.session import new_test_session
 
     sess = new_test_session(address='127.0.0.1',
-                            init_local=True, n_worker=1, n_cpu=0, n_gpu=1,
+                            init_local=True, n_worker=1, n_cpu=0, n_gpu=2,
                             default=True, timeout=300)
     with option_context({'show_progress': False}):
         try:
