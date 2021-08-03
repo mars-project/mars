@@ -23,7 +23,6 @@ from ....dataframe.core import DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE, \
     SERIES_GROUPBY_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 from ....lib.aio import alru_cache
 from ....typing import BandType
-from ....utils import extensible
 from ..core import get_meta_type
 from ..store import AbstractMetaStore
 from ..supervisor.core import MetaStoreManagerActor, MetaStoreActor
@@ -106,7 +105,7 @@ class MetaAPI(AbstractMetaAPI):
             address, MetaStoreActor.gen_uid(session_id))
         return await mo.destroy_actor(meta_store_ref)
 
-    @extensible
+    @mo.extensible
     async def set_tileable_meta(self,
                                 tileable,
                                 memory_size: int = None,
@@ -128,13 +127,13 @@ class MetaAPI(AbstractMetaAPI):
                                              store_size=store_size)
         return await self._meta_store.set_meta(tileable.key, meta)
 
-    @extensible
+    @mo.extensible
     async def get_tileable_meta(self,
                                 object_id: str,
                                 fields: List[str] = None) -> Dict[str, Any]:
         return await self._meta_store.get_meta(object_id, fields=fields)
 
-    @extensible
+    @mo.extensible
     async def del_tileable_meta(self,
                                 object_id: str):
         return await self._meta_store.del_meta(object_id)
@@ -164,7 +163,7 @@ class MetaAPI(AbstractMetaAPI):
                                           memory_size=memory_size,
                                           store_size=store_size)
 
-    @extensible
+    @mo.extensible
     async def set_chunk_meta(self,
                              chunk: ChunkType,
                              memory_size: int = None,
@@ -184,7 +183,7 @@ class MetaAPI(AbstractMetaAPI):
             set_chunk_metas.append(self._meta_store.set_meta.delay(meta.object_id, meta))
         return await self._meta_store.set_meta.batch(*set_chunk_metas)
 
-    @extensible
+    @mo.extensible
     async def get_chunk_meta(self,
                              object_id: str,
                              fields: List[str] = None,
@@ -199,7 +198,7 @@ class MetaAPI(AbstractMetaAPI):
             get_chunk_metas.append(self._meta_store.get_meta.delay(*args, **kwargs))
         return await self._meta_store.get_meta.batch(*get_chunk_metas)
 
-    @extensible
+    @mo.extensible
     async def del_chunk_meta(self,
                              object_id: str):
         return await self._meta_store.del_meta(object_id)
@@ -211,7 +210,7 @@ class MetaAPI(AbstractMetaAPI):
             del_chunk_metas.append(self._meta_store.del_meta.delay(*args, **kwargs))
         return await self._meta_store.del_meta.batch(*del_chunk_metas)
 
-    @extensible
+    @mo.extensible
     async def add_chunk_bands(self,
                               object_id: str,
                               bands: List[BandType]):

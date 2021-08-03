@@ -26,7 +26,7 @@ from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy, OperandStage
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
-from ....utils import build_fetch, extensible
+from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -199,7 +199,7 @@ class TaskProcessor:
                 [c.key for c in stage_processor.chunk_graph.results])
         return decref_chunk_keys
 
-    @extensible
+    @mo.extensible
     @_record_error
     async def decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
@@ -228,7 +228,9 @@ class TaskProcessor:
         return chunk_graph
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
-        return await self._cluster_api.get_all_bands()
+        async for bands in self._cluster_api.watch_all_bands():
+            if bands:
+                return bands
 
     def _init_chunk_graph_iter(self, tileable_graph: TileableGraph):
         if self._chunk_graph_iter is None:
