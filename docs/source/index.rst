@@ -167,10 +167,10 @@ to process more data or gain a better performance.
 
 Mars can run in a few ways:
 
-- :ref:`Local thread-based scheduling <threaded>`
-- :ref:`Local process-basesd scheduling <local_cluster>`
+- :ref:`Local scheduling <local>`
 - :ref:`Run on cluster <deploy>`
 - :ref:`Run on Kubernetes <k8s>`
+- :ref:`Run on Yarn <mars_yarn>`
 
 .. toctree::
    :maxdepth: 2

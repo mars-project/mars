@@ -26,3 +26,4 @@ computation will be performed.
 
     a = mt.random.rand(10, 10)
     a.dot(a.T).execute()
+
