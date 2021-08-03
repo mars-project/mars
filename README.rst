@@ -77,10 +77,10 @@ Mars tensor provides a familiar interface like Numpy.
 +-----------------------------------------------+-----------------------------------------------+
 |.. code-block::                                |.. code-block::                                |
 |                                               |                                               |
-|    3.14151712                                 |     3.14161908                                |
-|    CPU times: user 12.5 s, sys: 7.16 s,       |     CPU times: user 17.5 s, sys: 3.56 s,      |
-|               total: 19.7 s                   |                total: 21.1 s                  |
-|    Wall time: 21.8 s                          |     Wall time: 5.59 s                         |
+|    3.14174502                                 |     3.14161908                                |
+|    CPU times: user 11.6 s, sys: 8.22 s,       |     CPU times: user 966 ms, sys: 544 ms,      |
+|               total: 19.9 s                   |                total: 1.51 s                  |
+|    Wall time: 22.5 s                          |     Wall time: 3.77 s                         |
 |                                               |                                               |
 +-----------------------------------------------+-----------------------------------------------+
 
@@ -107,9 +107,9 @@ Mars DataFrame provides a familiar interface like pandas.
 +-----------------------------------------+-----------------------------------------+
 |.. code-block::                          |.. code-block::                          |
 |                                         |                                         |
-|    CPU times: user 10.9 s, sys: 2.69 s, |    CPU times: user 16.5 s, sys: 3.52 s, |
-|               total: 13.6 s             |               total: 20 s               |
-|    Wall time: 11 s                      |    Wall time: 3.6 s                     |
+|    CPU times: user 10.9 s, sys: 2.69 s, |    CPU times: user 1.21 s, sys: 212 ms, |
+|               total: 13.6 s             |               total: 1.42 s             |
+|    Wall time: 11 s                      |    Wall time: 2.75 s                    |
 +-----------------------------------------+-----------------------------------------+
 
 
@@ -173,9 +173,9 @@ Mars remote allows users to execute functions in parallel.
 |.. code-block::                            |.. code-block::                             |
 |                                           |                                            |
 |    3.1416312                              |    3.1416312                               |
-|    CPU times: user 32.2 s, sys: 4.86 s,   |    CPU times: user 16.9 s, sys: 5.46 s,    |
-|               total: 37.1 s               |               total: 22.3 s                |
-|    Wall time: 12.4 s                      |    Wall time: 4.83 s                       |
+|    CPU times: user 32.2 s, sys: 4.86 s,   |    CPU times: user 616 ms, sys: 307 ms,    |
+|               total: 37.1 s               |               total: 923 ms                |
+|    Wall time: 12.4 s                      |    Wall time: 3.99 s                       |
 |                                           |                                            |
 +-------------------------------------------+--------------------------------------------+
 
@@ -227,7 +227,8 @@ Easy to scale in and scale out
 ------------------------------
 
 Mars can scale in to a single machine, and scale out to a cluster with thousands of machines.
-it's fairly simple to migrate from a single machine to a cluster due to the increase of data.
+It's fairly simple to migrate from a single machine to a cluster to
+process more data or gain a better performance.
 
 
 Bare Metal Deployment
@@ -236,12 +237,12 @@ Bare Metal Deployment
 Mars is easy to scale out to a cluster by starting different components of
 mars distributed runtime on different machines in the cluster.
 
-A node can be selected as scheduler and another as web service,
-leaving other nodes as workers.  The scheduler can be started with the following command:
+A node can be selected as supervisor which integrated a web service,
+leaving other nodes as workers.  The supervisor can be started with the following command:
 
 .. code-block:: bash
 
-    mars-supervisor -h <host_name> -p <scheduler_port> -w <web_port>
+    mars-supervisor -h <host_name> -p <supervisor_port> -w <web_port>
 
 Workers can be started with the following command:
 
@@ -255,6 +256,18 @@ After all mars processes are started, users can run
 
     >>> sess = new_session('http://<web_ip>:<ui_port>')
     >>> # perform computation
+
+
+Kubernetes Deployment
+`````````````````````
+
+Refer to `Run on Kubernetes`_ for more information.
+
+
+Yarn Deployment
+```````````````
+
+Refer to `Run on Yarn`_ for more information.
 
 
 Getting involved
@@ -285,3 +298,5 @@ Thank you in advance for your contributions!
 .. _`pull requests`: https://github.com/mars-project/mars/pulls
 .. _`Documentation`: https://docs.pymars.org
 .. _`中文文档`: https://docs.pymars.org/zh_CN/latest/
+.. _`Run on Kubernetes`: https://docs.pymars.org/en/latest/installation/kubernetes.html
+.. _`Run on Yarn`: https://docs.pymars.org/en/latest/installation/yarn.html

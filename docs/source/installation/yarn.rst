@@ -83,8 +83,7 @@ executable or pre-packed environment archive:
     cluster = new_cluster(environment='path/to/local/env/pack.tar.gz')
 
     # get web endpoint, may be used elsewhere
-    from mars.session import Session
-    print(Session.default_or_local().endpoint)
+    print(cluster.session.endpoint)
 
     # new cluster will start a session and set it as default one
     # execute will then run in the local cluster

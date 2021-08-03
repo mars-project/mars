@@ -10,38 +10,36 @@ Mars can be deployed on a cluster. First, you need to run
 
 .. code-block:: bash
 
-    pip install 'pymars[distributed]'
+    pip install pymars
 
 on every node in the cluster. This will install dependencies needed for
 distributed execution on your cluster. After that, you may select a node as
-scheduler and another as web service, leaving other nodes as workers.  The
-scheduler can be started with the following command:
+supervisor which also integrated web service, leaving other nodes as workers.
+
+The supervisor can be started with the following command:
 
 .. code-block:: bash
 
-    mars-scheduler -a <scheduler_ip> -p <scheduler_port>
+    mars-supervisor -h <host_name> -p <supervisor_port> -w <web_port>
 
-Web service can be started with the following command:
-
-.. code-block:: bash
-
-    mars-web -a <web_ip> -p <web_port> -s <scheduler_ip>:<scheduler_port>
+Web service will be started as well.
 
 Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>:<scheduler_port>
+    mars-worker -h <host_name> -p <worker_port> -s <supervisor_ip>:<supervisor_port>
 
 After all Mars processes are started, you can open a Python console and run
 
 .. code-block:: python
 
+    import mars
     import mars.tensor as mt
     import mars.dataframe as md
-    from mars.session import new_session
-    new_session('http://<web_ip>:<web_port>').as_default()
-    a = mt.ones((2000, 2000), chunk_size=200)
+    # create a default session that connects to the cluster
+    mars.new_session('http://<web_ip>:<web_port>')
+    a = mt.random.rand(2000, 2000, chunk_size=200)
     b = mt.inner(a, a)
     b.execute()  # submit tensor to cluster
     df = md.DataFrame(a).sum()
@@ -124,34 +122,34 @@ be found at the next section.
 |                   | store will not be considered in memory management.             |
 +-------------------+----------------------------------------------------------------+
 
-For instance, if you want to start a Mars cluster with two schedulers, two
+For instance, if you want to start a Mars cluster with two supervisors, two
 workers and one web service, you can run commands below (memory and CPU tunings
 are omitted):
 
-On Scheduler 1 (192.168.1.10):
+On Supervisor 1 (192.168.1.10):
 
 .. code-block:: bash
 
-    mars-scheduler -a 192.168.1.10 -p 7001 -s 192.168.1.10:7001,192.168.1.11:7002
+    mars-supervisor -h 192.168.1.10 -p 7001 -s 192.168.1.10:7001,192.168.1.11:7002
 
-On Scheduler 2 (192.168.1.11):
+On Supervisor 2 (192.168.1.11):
 
 .. code-block:: bash
 
-    mars-scheduler -a 192.168.1.11 -p 7002 -s 192.168.1.10:7001,192.168.1.11:7002
+    mars-supervisor -h 192.168.1.11 -p 7002 -s 192.168.1.10:7001,192.168.1.11:7002
 
 On Worker 1 (192.168.1.20):
 
 .. code-block:: bash
 
-    mars-worker -a 192.168.1.20 -p 7003 -s 192.168.1.10:7001,192.168.1.11:7002 \
+    mars-worker -h 192.168.1.20 -p 7003 -s 192.168.1.10:7001,192.168.1.11:7002 \
         --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
 
 On Worker 2 (192.168.1.21):
 
 .. code-block:: bash
 
-    mars-worker -a 192.168.1.21 -p 7004 -s 192.168.1.10:7001,192.168.1.11:7002 \
+    mars-worker -h 192.168.1.21 -p 7004 -s 192.168.1.10:7001,192.168.1.11:7002 \
         --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
 
 On the web server (192.168.1.30):

@@ -93,7 +93,7 @@ Examples above can work on a single GPU.
 Multiple GPU
 ~~~~~~~~~~~~
 
-For Mars tensor, multiple GPUs on a single machine can be utilized.
+For Mars tensor and DataFrame, multiple GPUs on a single machine can be utilized.
 
 .. code-block:: python
 
@@ -113,24 +113,20 @@ you can set environment variable ``CUDA_VISIBLE_DEVICES``.
 This will limit the ipython to GPU 0, 3 and 5 only.
 Thus all the Mars tensor executed in the ipython will run on the visible GPUs only.
 
-For Mars DataFrame, local thread-based scheduler cannot leverage multiple GPUs
-for DataFrame computation. In this case, please use distributed scheduler.
-
 Distributed
 ~~~~~~~~~~~
 
-For Mars scheduler and web, the command to start is the same. Refer to :ref:`deploy`.
+For Mars supervisor, the command to start is the same. Refer to :ref:`deploy`.
 
-For Mars worker, one worker can only bind to one GPU,
-thus if you want to leverage multiple GPUs, please start as many workers as the count of GPUs.
+For Mars worker, one worker can be bind to one or multiple GPUs.
 
 Basic command to start a worker that binds to some GPU is:
 
 .. code-block:: bash
 
-   mars-worker -a <worker_ip> -p <worker_port> -s <scheduler_ip>:<scheduler_port> --cuda-device 0
+   mars-worker -h <worker_ip> -p <worker_port> -s <supervisor_ip>:<supervisor_port> --cuda-device 0,1,2
 
-The worker started will be bind to GPU 0.
+The worker started will be bind to GPU 0, 1 and 2.
 
 Refer to :ref:`extra arguments for starting worker <deploy_extra_arguments>` for more information.
 
@@ -138,8 +134,8 @@ Once a Mars cluster is started, you can run the code below.
 
 .. code-block:: python
 
+   >>> import mars
    >>> import mars.tensor as mt
-   >>> from mars.session import new_session
-   >>> new_session('http://<web_ip>:<web_port>').as_default()
+   >>> new_session('http://<web_ip>:<web_port>')
    >>> t = mt.random.rand(20, 20, gpu=True)
    >>> t.sum().execute()  # run on workers which are bind to GPU

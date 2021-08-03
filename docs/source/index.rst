@@ -4,7 +4,31 @@
 Mars Documentation
 ==================
 
-Mars is a tensor-based unified framework for large-scale data computation.
+Mars is a tensor-based unified framework for large-scale data computation
+which scales numpy, pandas, scikit-learn and many other libraries.
+
+Architecture Overview
+---------------------
+
+.. image:: images/architecture.png
+
+Getting Started
+---------------
+
+Starting a new runtime locally via:
+
+.. code-block:: python
+
+    >>> import mars
+    >>> mars.new_session()
+
+Or connecting to a Mars cluster which is already initialized.
+
+.. code-block:: python
+
+    >>> import mars
+    >>> mars.new_session('http://<web_ip>:<ui_port>')
+
 
 Mars tensor
 -----------
@@ -27,10 +51,10 @@ Mars tensor provides a familiar interface like Numpy.
 +-----------------------------------------------+-----------------------------------------------+
 |.. code-block::                                |.. code-block::                                |
 |                                               |                                               |
-|    3.14151712                                 |     3.14161908                                |
-|    CPU times: user 12.5 s, sys: 7.16 s,       |     CPU times: user 17.5 s, sys: 3.56 s,      |
-|               total: 19.7 s                   |                total: 21.1 s                  |
-|    Wall time: 21.8 s                          |     Wall time: 5.59 s                         |
+|    3.14174502                                 |     3.14161908                                |
+|    CPU times: user 11.6 s, sys: 8.22 s,       |     CPU times: user 966 ms, sys: 544 ms,      |
+|               total: 19.9 s                   |                total: 1.51 s                  |
+|    Wall time: 22.5 s                          |     Wall time: 3.77 s                         |
 |                                               |                                               |
 +-----------------------------------------------+-----------------------------------------------+
 
@@ -58,9 +82,9 @@ Mars DataFrame provides a familiar interface like pandas.
 +-----------------------------------------+-----------------------------------------+
 |.. code-block::                          |.. code-block::                          |
 |                                         |                                         |
-|    CPU times: user 10.9 s, sys: 2.69 s, |    CPU times: user 16.5 s, sys: 3.52 s, |
-|               total: 13.6 s             |               total: 20 s               |
-|    Wall time: 11 s                      |    Wall time: 3.6 s                     |
+|    CPU times: user 10.9 s, sys: 2.69 s, |    CPU times: user 1.21 s, sys: 212 ms, |
+|               total: 13.6 s             |               total: 1.42 s             |
+|    Wall time: 11 s                      |    Wall time: 2.75 s                    |
 +-----------------------------------------+-----------------------------------------+
 
 Mars learn
@@ -90,6 +114,9 @@ Mars learn provides a familiar interface like scikit-learn.
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 
+Mars learn has also integrated many libraries, including :ref:`tensorflow`,
+:ref:`xgboost`, :ref:`lightgbm`, :ref:`joblib` and :ref:`statsmodels`.
+
 Mars remote
 -----------
 
@@ -97,8 +124,6 @@ Mars remote
 
 Mars remote allows users to execute functions in parallel.
 
-+-------------------------------------------+--------------------------------------------+
-| **Vanilla function calls**                | **Mars remote**                            |
 +-------------------------------------------+--------------------------------------------+
 |.. code-block:: python                     |.. code-block:: python                      |
 |                                           |                                            |
@@ -126,9 +151,9 @@ Mars remote allows users to execute functions in parallel.
 |.. code-block::                            |.. code-block::                             |
 |                                           |                                            |
 |    3.1416312                              |    3.1416312                               |
-|    CPU times: user 32.2 s, sys: 4.86 s,   |    CPU times: user 16.9 s, sys: 5.46 s,    |
-|               total: 37.1 s               |               total: 22.3 s                |
-|    Wall time: 12.4 s                      |    Wall time: 4.83 s                       |
+|    CPU times: user 32.2 s, sys: 4.86 s,   |    CPU times: user 616 ms, sys: 307 ms,    |
+|               total: 37.1 s               |               total: 923 ms                |
+|    Wall time: 12.4 s                      |    Wall time: 3.99 s                       |
 |                                           |                                            |
 +-------------------------------------------+--------------------------------------------+
 
@@ -137,7 +162,8 @@ Easy to scale in and scale out
 
 Mars can scale in to a single machine, and scale out to a cluster with hundreds of machines.
 Both the local and distributed version share the same piece of code,
-it's fairly simple to migrate from a single machine to a cluster due to the increase of data.
+it's fairly simple to migrate from a single machine to a cluster
+to process more data or gain a better performance.
 
 Mars can run in a few ways:
 
