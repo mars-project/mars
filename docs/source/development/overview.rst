@@ -13,25 +13,25 @@ Mars implements a lightweight actor framework called oscar,
 on top of it, the distributed execution layer is decoupled into
 a few services includes:
 
-1. Session service. Manage sessions. Each session is isolated,
+1. :ref:`Session service <session_service>`. Manage sessions. Each session is isolated,
    the data in one session can not be seen from another session.
-2. Cluster service. Monitor entire cluster.
-3. Meta service. Store meta of Mars objects, like shape of tensor etc.
-4. Storage service. Data can be put and get from storage service,
+2. :ref:`Cluster service <cluster_service>`. Monitor entire cluster.
+3. :ref:`Meta service <meta_service>`. Store meta of Mars objects, like shape of tensor etc.
+4. :ref:`Storage service <storage_service>`. Data can be put and get from storage service,
    functionalities like data spilling and data transfer between workers
    are integrated in storage service as well.
-5. Task service. When user called ``.execute()`` method, a task will be
+5. :ref:`Task service <task_service>`. When user called ``.execute()`` method, a task will be
    submitted to this service. Task service will try to tile a high-level
    coarse-grained computational graph into a low-level fine-grained graph
    in which each node in the graph is a subtask. This subtask graph will
    be handed over to scheduling service.
-6. Scheduling service. Accept a subtask graph, and schedule the subtasks
+6. :ref:`Scheduling service <scheduling_service>`. Accept a subtask graph, and schedule the subtasks
    to workers for execution according to many highly optimized scheduling strategies.
-7. Subtask service. Accept a subtask, execute them, then put data into storage,
+7. :ref:`Subtask service <subtask_service>`. Accept a subtask, execute them, then put data into storage,
    record meta in meta service, report back result to task service.
-8. Lifecycle service. Each Mars objects as well as chunk owns a reference count
-   in lifecycle service, when reference count reaches 0, notify storage service to
-   remove data, and tell meta service to remove meta.
+8. :ref:`Lifecycle service <lifecycle_service>`. Each Mars objects as well
+   as chunk owns a reference count in lifecycle service, when reference count reaches 0,
+   notify storage service to remove data, and tell meta service to remove meta.
 
 Code Structure
 ==============

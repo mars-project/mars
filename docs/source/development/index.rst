@@ -8,3 +8,4 @@ Development
    contributing
    overview
    oscar/index
+   services/index

@@ -3,6 +3,9 @@
 Cluster Service
 ===============
 
+APIs
+----
+
 .. currentmodule:: mars.services.cluster
 
 .. autosummary::

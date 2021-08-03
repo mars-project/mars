@@ -3,6 +3,9 @@
 Storage Service
 ===============
 
+APIs
+----
+
 .. currentmodule:: mars.services.storage
 
 .. autosummary::

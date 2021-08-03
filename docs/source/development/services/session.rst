@@ -3,6 +3,9 @@
 Session Service
 ===============
 
+APIs
+----
+
 .. currentmodule:: mars.services.session
 
 .. autosummary::

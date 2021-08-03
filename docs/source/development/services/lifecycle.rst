@@ -3,6 +3,9 @@
 Lifecycle Service
 =================
 
+APIs
+----
+
 .. currentmodule:: mars.services.lifecycle
 
 .. autosummary::
