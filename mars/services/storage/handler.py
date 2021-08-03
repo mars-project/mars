@@ -126,7 +126,7 @@ class StorageHandlerActor(mo.StatelessActor):
                   data_key: str,
                   obj: object,
                   level: StorageLevel) -> DataInfo:
-        size = calc_data_size(obj)
+        size = await asyncio.to_thread(calc_data_size, obj)
         await self.request_quota_with_spill(level, size)
         object_info = await self._clients[level].put(obj)
         data_info = build_data_info(object_info, level, size)
@@ -148,7 +148,7 @@ class StorageHandlerActor(mo.StatelessActor):
         for args, kwargs in zip(args_list, kwargs_list):
             session_id, data_key, obj, level = \
                 self.put.bind(*args, **kwargs)
-            size = calc_data_size(obj)
+            size = await asyncio.to_thread(calc_data_size, obj)
             if last_level is not None:
                 assert last_level == level
             last_level = level

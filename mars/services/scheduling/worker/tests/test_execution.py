@@ -176,7 +176,7 @@ async def test_execute_tensor(actor_pool):
     quota_ref = await mo.actor_ref(QuotaActor.gen_uid('numa-0'),
                                    address=pool.external_address)
     [quota] = await quota_ref.get_batch_quota_reqs()
-    assert quota[(subtask.subtask_id, subtask.subtask_id)] == data1.nbytes
+    assert quota[(subtask.session_id, subtask.subtask_id)] == data1.nbytes
 
     # check if metas are correct
     result_meta = await meta_api.get_chunk_meta(result_chunk.key)

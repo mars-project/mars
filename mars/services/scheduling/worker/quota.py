@@ -321,7 +321,10 @@ class MemQuotaActor(QuotaActor):
             return False
         return await super()._has_space(delta)
 
-    def _log_allocate(self, msg: str, *args, **kwargs):
+    def _log_allocate(self, msg: str, *args, **kwargs):  # pragma: no cover
+        if logger.getEffectiveLevel() > logging.DEBUG:
+            return
+
         if self._hard_limit is None:
             return super()._log_allocate(msg, *args, **kwargs)
 
