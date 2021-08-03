@@ -22,6 +22,7 @@ from .api import actor_ref, create_actor, has_actor, destroy_actor, \
     wait_actor_pool_recovered
 from .backends import allocate_strategy
 from .backends.pool import MainActorPoolType
+from .batch import extensible
 from .core import ActorRef
 from .debug import set_debug_options, DebugOptions
 from .errors import ActorNotExist, ActorAlreadyExist, ServerClosed, Return

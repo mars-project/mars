@@ -23,7 +23,6 @@ from .... import oscar as mo
 from ....core import TileableGraph, TileableType, enter_mode
 from ....core.context import set_context
 from ....core.operand import Fetch
-from ....utils import extensible
 from ...cluster.api import ClusterAPI
 from ...context import ThreadedServiceContext
 from ...lifecycle.api import LifecycleAPI
@@ -271,7 +270,7 @@ class TaskManagerActor(mo.Actor):
 
         yield processor_ref.set_subtask_result(subtask_result)
 
-    @extensible
+    @mo.extensible
     async def get_task_progress(self, task_id: str) -> float:
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]

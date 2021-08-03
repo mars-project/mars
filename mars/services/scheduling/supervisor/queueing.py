@@ -21,7 +21,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import dataslots, extensible
+from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -173,7 +173,7 @@ class SubtaskQueueingActor(mo.Actor):
         if submit_aio_tasks:
             await asyncio.gather(*submit_aio_tasks)
 
-    @extensible
+    @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
         if subtask_id not in self._stid_to_bands:
             return

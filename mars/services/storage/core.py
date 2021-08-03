@@ -24,7 +24,7 @@ from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
-from ...utils import dataslots, extensible
+from ...utils import dataslots
 from .errors import DataNotExist, StorageFull
 
 logger = logging.getLogger(__name__)
@@ -169,7 +169,7 @@ class DataManagerActor(mo.StatelessActor):
             else:
                 return
 
-    @extensible
+    @mo.extensible
     def get_data_infos(self,
                        session_id: str,
                        data_key: str,
@@ -191,7 +191,7 @@ class DataManagerActor(mo.StatelessActor):
                        key=lambda x: x.data_info.level)
         return infos[0].data_info
 
-    @extensible
+    @mo.extensible
     def get_data_info(self,
                       session_id: str,
                       data_key: str,
@@ -209,7 +209,7 @@ class DataManagerActor(mo.StatelessActor):
         self._spill_strategy[data_info.level].record_put_info(
             (session_id, data_key), data_info.store_size)
 
-    @extensible
+    @mo.extensible
     def put_data_info(self,
                       session_id: str,
                       data_key: str,
@@ -233,7 +233,7 @@ class DataManagerActor(mo.StatelessActor):
             else:  # pragma: no cover
                 self._data_key_to_info[(session_id, data_key)] = rest
 
-    @extensible
+    @mo.extensible
     def delete_data_info(self,
                          session_id: str,
                          data_key: str,
@@ -243,7 +243,7 @@ class DataManagerActor(mo.StatelessActor):
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
 
-    @extensible
+    @mo.extensible
     def pin(self, session_id, data_key):
         level = self.get_data_info(session_id, data_key).level
         self._spill_strategy[level].pin_data((session_id, data_key))

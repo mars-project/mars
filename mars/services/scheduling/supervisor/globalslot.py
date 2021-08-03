@@ -19,7 +19,6 @@ from typing import List, DefaultDict, Dict, Tuple
 
 from .... import oscar as mo
 from ....typing import BandType
-from ....utils import extensible
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,7 @@ class GlobalSlotManagerActor(mo.Actor):
                          self._band_used_slots, subtask_slots)
         return subtask_ids[:idx]
 
-    @extensible
+    @mo.extensible
     def update_subtask_slots(self, band: Tuple, session_id: str, subtask_id: str, slots: int):
         session_subtask_id = (session_id, subtask_id)
         subtask_slots = self._band_stid_slots[band]
@@ -81,7 +80,7 @@ class GlobalSlotManagerActor(mo.Actor):
         subtask_slots[session_subtask_id] = slots
         self._band_used_slots[band] += slots_delta
 
-    @extensible
+    @mo.extensible
     def release_subtask_slots(self, band: Tuple, session_id: str, subtask_id: str):
         # todo ensure slots released when subtasks ends in all means
         slots_delta = self._band_stid_slots[band].pop((session_id, subtask_id), 0)
