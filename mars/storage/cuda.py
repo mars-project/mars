@@ -179,7 +179,6 @@ class CudaFileObject:
         self._object_id = CudaObjectId(
             headers_list, ptrs_list, string_id, is_tuple)
         # hold cuda buffers
-        print(f'gen writer {string_id}, {os.getpid()}')
         _id_to_buffers[string_id] = self._cuda_buffers
 
         self._has_write_headers = None
@@ -246,7 +245,6 @@ class CudaStorage(StorageBackend):
 
         if kwargs:  # pragma: no cover
             raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
-        print(object_id.object_id in _id_to_buffers, object_id.object_id, os.getpid())
 
         headers_list = object_id.headers_list
         ptrs_list = object_id.ptrs_list
@@ -294,14 +292,13 @@ class CudaStorage(StorageBackend):
             ptrs_list.append(ptrs)
         string_id = str(uuid.uuid4())
         object_id = CudaObjectId(headers_list, ptrs_list, string_id, is_tuple)
-        print(f'gen {string_id}, {os.getpid()}')
         _id_to_buffers[string_id] = buffers_list
         return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id: CudaObjectId):
-        print(f'delete {object_id.object_id}, {os.getpid()}')
-        del _id_to_buffers[object_id.object_id]
+        if object_id.object_id in _id_to_buffers:
+            del _id_to_buffers[object_id.object_id]
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id: CudaObjectId) -> ObjectInfo:

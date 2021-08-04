@@ -270,7 +270,7 @@ class StorageHandlerActor(mo.StatelessActor):
                 level = info.level
                 delete_infos.append(
                     self._data_manager_ref.delete_data_info.delay(
-                        session_id, data_key, level, self._band_name))
+                        session_id, data_key, level, info.band))
                 to_removes.append((level, info.object_id))
                 level_sizes[level] += info.store_size
 
@@ -380,6 +380,7 @@ class StorageHandlerActor(mo.StatelessActor):
                                   data_keys: List[Union[str, tuple]],
                                   level: StorageLevel,
                                   remote_band: BandType,
+                                  fetch_band_name: str,
                                   error: str):
         from .transfer import SenderManagerActor
 
@@ -388,7 +389,7 @@ class StorageHandlerActor(mo.StatelessActor):
             address=remote_band[0], uid=SenderManagerActor.gen_uid(remote_band[1]))
         await sender_ref.send_batch_data(
             session_id, data_keys, self._data_manager_ref.address,
-            level, self._band_name, error=error)
+            level, fetch_band_name, error=error)
         logger.debug('Finish fetching %s from band %s', data_keys, remote_band)
 
     async def fetch_batch(self,
@@ -415,8 +416,7 @@ class StorageHandlerActor(mo.StatelessActor):
         for data_key, info in zip(data_keys, data_infos):
             # for gpu bands, need transfer between gpu cards
             if info is not None:
-                all_gpu_bands = info.band.startswith('gpu-') and self._band_name.startswith('gpu-')
-                if all_gpu_bands and info.band != self._band_name:
+                if band_name and band_name != info.band:
                     missing_keys.append(data_key)
                 else:
                     pin_delays.append(self._data_manager_ref.pin.delay(
@@ -448,7 +448,8 @@ class StorageHandlerActor(mo.StatelessActor):
             else:
                 # fetch via transfer
                 transfer_tasks.append(self._fetch_via_transfer(
-                    session_id, list(keys), level, band, error))
+                    session_id, list(keys), level, band,
+                    band_name or band[1], error))
             fetch_keys.extend(list(keys))
 
         await asyncio.gather(*transfer_tasks)

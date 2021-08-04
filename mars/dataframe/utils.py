@@ -31,7 +31,9 @@ except ImportError:  # pragma: no cover
 from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes
+from ..utils import tokenize, sbytes, lazy_import
+
+cudf = lazy_import('cudf', globals=globals(), rename='cudf')
 
 
 def hash_index(index, size):
@@ -48,6 +50,8 @@ def hash_dataframe_on(df, on, size, level=None):
         idx = df.index
         if level is not None:
             idx = idx.to_frame(False)[level]
+        if cudf and isinstance(idx, cudf.Index):
+            idx = idx.to_pandas()
         hashed_label = pd.util.hash_pandas_object(idx, categorize=False)
     elif callable(on):
         # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
@@ -1120,3 +1124,31 @@ def make_dtypes(dtypes):
         else:
             dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
+
+
+def is_dataframe(x):
+    if cudf is not None:
+        if isinstance(x, cudf.DataFrame):
+            return True
+    return isinstance(x, pd.DataFrame)
+
+
+def is_series(x):
+    if cudf is not None:
+        if isinstance(x, cudf.Series):
+            return True
+    return isinstance(x, pd.Series)
+
+
+def is_index(x):
+    if cudf is not None:
+        if isinstance(x, cudf.Index):
+            return True
+    return isinstance(x, pd.Index)
+
+
+def get_xdf(x):
+    if cudf is not None:
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return cudf
+    return pd

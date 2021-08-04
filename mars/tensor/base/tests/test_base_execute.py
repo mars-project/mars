@@ -1050,7 +1050,7 @@ def test_unique_execution(setup):
 
 
 @require_cupy
-def test_to_gpu_execution(setup):
+def test_to_gpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3)
 
@@ -1061,7 +1061,7 @@ def test_to_gpu_execution(setup):
 
 
 @require_cupy
-def test_to_cpu_execution(setup):
+def test_to_cpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3, gpu=True)
 

@@ -394,7 +394,7 @@ def build_fetch_chunk(chunk: ChunkType,
             source_mappers.append(get_chunk_mapper_id(pinp))
         op = chunk_op.get_fetch_op_cls(chunk)(
             source_keys=source_keys, source_idxes=source_idxes,
-            source_mappers=source_mappers)
+            source_mappers=source_mappers, gpu=chunk.op.gpu)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
@@ -465,6 +465,7 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     -------
     Data
     """
+    from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
     from .lib.groupby_wrapper import GroupByWrapper
     from .tensor.array_utils import get_array_module, is_array
 
@@ -485,15 +486,18 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
             return to_concat[0]
         concat_result = xp.concatenate(to_concat)
         return concat_result
-    elif isinstance(v, pd.DataFrame):
+    elif is_dataframe(v):
+        xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(pd.concat([c[1] for c in cs], axis='columns'))
-        return pd.concat(concats, axis='index')
-    elif isinstance(v, pd.Series):
-        return pd.concat([c[1] for c in chunk_results])
-    elif isinstance(v, pd.Index):
-        df = pd.concat([pd.DataFrame(index=r[1])
+            concats.append(xdf.concat([c[1] for c in cs], axis='columns'))
+        return xdf.concat(concats, axis='index')
+    elif is_series(v):
+        xdf = get_xdf(v)
+        return xdf.concat([c[1] for c in chunk_results])
+    elif is_index(v):
+        xdf = get_xdf(v)
+        df = xdf.concat([xdf.DataFrame(index=r[1])
                         for r in chunk_results])
         return df.index
     elif isinstance(v, pd.Categorical):

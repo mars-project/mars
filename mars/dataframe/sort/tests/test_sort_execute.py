@@ -329,7 +329,7 @@ def test_arrow_string_sort_values(setup):
 
 
 @require_cudf
-def test_gpu_execution(setup):
+def test_gpu_execution(setup_gpu):
     # test sort_values
     distinct_opts = ['0'] if sys.platform.lower().startswith('win') else ['0', '1']
     for add_distinct in distinct_opts:
