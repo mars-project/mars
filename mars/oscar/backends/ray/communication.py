@@ -88,7 +88,8 @@ class RayChannelBase(Channel, ABC):
 
 
 class RayClientChannel(RayChannelBase):
-    """A channel from ray driver/actor to ray actor. Use ray call reply for client channel recv.
+    """
+    A channel from ray driver/actor to ray actor. Use ray call reply for client channel recv.
     """
     __slots__ = '_peer_actor',
 
@@ -130,10 +131,11 @@ class RayClientChannel(RayChannelBase):
 
 
 class RayServerChannel(RayChannelBase):
-    """A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
-     we use ray call reply for server channel send. Note that there can't be multiple
-     channel message sends for one received message, or else it will be taken as next
-     message's reply.
+    """
+    A channel from ray actor to ray driver/actor. Since ray actor can't call ray driver,
+    we use ray call reply for server channel send. Note that there can't be multiple
+    channel message sends for one received message, or else it will be taken as next
+    message's reply.
     """
     __slots__ = '_out_queue', '_msg_recv_counter', '_msg_sent_counter'
 
@@ -288,7 +290,7 @@ class RayServer(Server):
                                f'from channel {channel_id}')
         channel = self._channels.get(channel_id)
         if not channel:
-            peer_local_address, _, peer_channel_index, peer_dest_address = channel_id
+            _, _, peer_channel_index, peer_dest_address = channel_id
             channel = RayServerChannel(peer_dest_address, peer_channel_index, channel_id)
             self._channels[channel_id] = channel
             self._tasks[channel_id] = asyncio.create_task(self.on_connected(channel))
