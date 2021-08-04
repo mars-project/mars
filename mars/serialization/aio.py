@@ -35,7 +35,7 @@ class AioSerializer:
     def _get_buffers(self):
         headers, buffers = serialize(self._obj)
 
-        def _is_cuda_buffer(buf):
+        def _is_cuda_buffer(buf):  # pragma: no cover
             try:
                 from cudf.core import Buffer as CPBuffer
                 from cupy import ndarray as cp_ndarray

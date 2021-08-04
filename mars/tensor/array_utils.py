@@ -29,8 +29,15 @@ def is_array(x):
         return True
     elif isinstance(x, sparse.SparseMatrix):
         return True
-    elif cp:
+    elif cp:  # pragma: no cover
         return isinstance(x, cp.ndarray)
+    else:
+        return False
+
+
+def is_cupy(x):
+    if cp and isinstance(x, cp.ndarray):
+        return True
     else:
         return False
 

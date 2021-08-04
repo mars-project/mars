@@ -129,8 +129,7 @@ class StorageAPI(AbstractStorageAPI):
             List of information for specified key
         """
         return await self._data_manager_ref.get_data_infos(
-            self._session_id, data_key
-        )
+            self._session_id, data_key, self._band_name)
 
     @mo.extensible
     async def delete(self, data_key: str, error: str = 'raise'):

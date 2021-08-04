@@ -68,6 +68,8 @@ class SchedulingHint(Serializable):
     # need to be executed not later than the later ones,
     # because the range index of later chunk should be accumulated from
     # indexes of previous ones
+    # `gpu` indicates that if the operand should be executed on the GPU.
+    gpu = BoolField('gpu', default=None)
     priority = Int32Field('priority', default=0)
 
     @classproperty
@@ -108,7 +110,6 @@ class Operand(Base, metaclass=OperandMetaclass):
     """
     Operand base class. All operands should have a type, which can be Add, Subtract etc.
     `sparse` indicates that if the operand is applied on a sparse tensor/chunk.
-    `gpu` indicates that if the operand should be executed on the GPU.
     `device`, 0 means the CPU, otherwise means the GPU device.
     Operand can have inputs and outputs
     which should be the :class:`mars.tensor.core.TensorData`, :class:`mars.tensor.core.ChunkData` etc.
@@ -119,7 +120,6 @@ class Operand(Base, metaclass=OperandMetaclass):
     _output_type_ = None
 
     sparse = BoolField('sparse', default=False)
-    gpu = BoolField('gpu', default=None)
     device = Int32Field('device', default=None)
     # will this operand create a view of input data or not
     create_view = BoolField('create_view', default=False)

@@ -51,8 +51,10 @@ class TransferMessage(Serializable):
 
 class SenderManagerActor(mo.StatelessActor):
     def __init__(self,
+                 band_name: str = 'numa-0',
                  transfer_block_size: int = None,
                  storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None):
+        self._band_name = band_name
         self._storage_handler = storage_handler_ref
         self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
 
@@ -68,9 +70,9 @@ class SenderManagerActor(mo.StatelessActor):
                 self.address, StorageHandlerActor.gen_uid('numa-0'))
 
     @staticmethod
-    async def get_receiver_ref(address: str):
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
-            address=address, uid=ReceiverManagerActor.gen_uid('numa-0'))
+            address=address, uid=ReceiverManagerActor.gen_uid(band_name))
 
     async def _send_data(self,
                          receiver_ref: Union[mo.ActorRef],
@@ -134,14 +136,17 @@ class SenderManagerActor(mo.StatelessActor):
                               data_keys: List[str],
                               address: str,
                               level: StorageLevel,
+                              band_name: str = 'numa-0',
                               block_size: int = None,
                               error: str = 'raise'):
         logger.debug('Begin to send data (%s, %s) to %s', session_id, data_keys, address)
         block_size = block_size or self._transfer_block_size
-        receiver_ref: Union[ReceiverManagerActor, mo.ActorRef] = await self.get_receiver_ref(address)
+        receiver_ref: Union[ReceiverManagerActor, mo.ActorRef] = \
+            await self.get_receiver_ref(address, band_name)
         get_infos = []
         for data_key in data_keys:
-            get_infos.append(self._data_manager_ref.get_data_info.delay(session_id, data_key, error))
+            get_infos.append(self._data_manager_ref.get_data_info.delay(
+                session_id, data_key, self._band_name, error))
         infos = await self._data_manager_ref.get_data_info.batch(*get_infos)
         filtered = [(data_info, data_key) for data_info, data_key in
                     zip(infos, data_keys) if data_info is not None]
@@ -150,6 +155,8 @@ class SenderManagerActor(mo.StatelessActor):
         else:  # pragma: no cover
             infos, data_keys = [], []
         data_sizes = [info.store_size for info in infos]
+        if level is None:
+            level = infos[0].level
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)
 
         await self._send_data(receiver_ref, session_id, data_keys, level, block_size)

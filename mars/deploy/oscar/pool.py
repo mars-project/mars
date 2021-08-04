@@ -53,9 +53,9 @@ async def create_worker_actor_pool(
     envs = []
     labels = ['main']
 
-    if cuda_devices is None:
+    if cuda_devices is None:  # pragma: no cover
         env_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
-        if not 'CUDA_VISIBLE_DEVICES':
+        if not env_devices:
             cuda_devices = list(range(cuda_count()))
         else:
             cuda_devices = [int(i) for i in env_devices.split(',')]

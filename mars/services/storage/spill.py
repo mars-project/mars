@@ -153,6 +153,7 @@ class SpillManagerActor(mo.StatelessActor):
 
 async def spill(request_size: int,
                 level: StorageLevel,
+                band_name: str,
                 data_manager: Union[mo.ActorRef, DataManagerActor],
                 storage_handler: Union[mo.ActorRef, StorageHandlerActor],
                 block_size=None,
@@ -163,7 +164,7 @@ async def spill(request_size: int,
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
-        level, request_size)
+        level, band_name, request_size)
     logger.debug('Decide to spill %s bytes, '
                  'data keys are %s', sum(spill_sizes), spill_keys)
 

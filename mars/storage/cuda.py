@@ -16,13 +16,14 @@
 
 import ctypes
 import os
+import pickle
 import uuid
-from typing import Tuple, Dict, List, Optional, Union
+from typing import Tuple, Dict, List, Union
 
 from ..serialization import serialize, deserialize
 from ..utils import lazy_import, implements
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
-from .core import BufferWrappedFileObject, StorageFileObject
+from .core import StorageFileObject
 
 import numpy as np
 import pandas as pd
@@ -31,13 +32,16 @@ cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
 
 
+_id_to_buffers = dict()
+
+
 class CudaObjectId:
     __slots__ = 'headers_list', 'ptrs_list', 'object_id', 'is_tuple'
 
     def __init__(self,
-                 headers_list: List[Dict],
-                 ptrs_list: List[List[int]],
-                 object_id: str,
+                 headers_list: List[Dict] = None,
+                 ptrs_list: List[List[int]] = None,
+                 object_id: str = None,
                  is_tuple: bool = False):
         self.headers_list = headers_list
         self.ptrs_list = ptrs_list
@@ -45,64 +49,153 @@ class CudaObjectId:
         self.is_tuple = is_tuple
 
 
-class CudaFileObject(BufferWrappedFileObject):
-    def __init__(self, object_id: CudaObjectId, mode: str,
-                 size: Optional[int] = None,
-                 cuda_buffer: Optional[object] = None):
-        self._cuda_buffer = cuda_buffer
-        self._cupy_memory = None
-        super().__init__(object_id, mode, size=size)
+class CudaFileObject:
+    def __init__(self,
+                 mode: str,
+                 object_id: CudaObjectId = None,
+                 size: int = None):
+        self._mode = mode
+        self._object_id = object_id
+        self._size = size
+        self._closed = False
+        self._cuda_buffers = None
+        self._cuda_header = None
+        self._offset = None
+        # for read
+        self._has_read_headers = None
+        # for write
+        self._has_write_headers = None
+        self._cur_buffer_index = None
+        if 'r' in mode:
+            assert object_id is not None
+            self._initialize_read()
+        elif 'w' in mode:
+            self._initialize_write()
 
-    def _read_init(self):
+    @property
+    def object_id(self):
+        return self._object_id
+
+    @property
+    def mode(self):
+        return self._mode
+
+    def _initialize_read(self):
         from cudf.core import Buffer
         from cupy.cuda.memory import UnownedMemory
 
-        ptr = self._object_id.ptrs[0]
-        self._size = self._object_id.headers['size']
-        self._buffer = Buffer(ptr, self._size)
-        self._cupy_memory = UnownedMemory(ptr, self._size, self._buffer)
+        self._offset = 0
+        self._has_read_headers = False
+        is_tuple = self._object_id.is_tuple
+        headers_list = self._object_id.headers_list
+        self._cuda_header = (is_tuple, headers_list)
+        self._cuda_buffers = []
+        for headers, ptrs in zip(headers_list, self._object_id.ptrs_list):
+            for length, ptr in zip(headers['lengths'], ptrs):
+                self._cuda_buffers.append(UnownedMemory(ptr, length, Buffer(ptr, length)))
 
-    def _write_init(self):
-        from cupy.cuda.memory import UnownedMemory
+    def _initialize_write(self):
+        self._had_write_headers = False
+        self._cur_buffer_index = 0
+        self._cuda_buffers = []
+        self._offset = 0
 
-        self._buffer = self._cuda_buffer
-        self._cupy_memory = UnownedMemory(self._buffer.ptr, self._size, self._buffer)
+    def read(self, size: int):
+        # we read cuda_header first and then read cuda buffers one by one,
+        # the return value's size is not exactly the specified size.
+        from cudf.core import Buffer
+        from cupy.cuda import MemoryPointer
+
+        if not self._has_read_headers:
+            self._has_read_headers = True
+            return pickle.dumps(self._cuda_header)
+        if len(self._cuda_buffers) == 0:
+            return ''
+        cur_buf = self._cuda_buffers[0]
+        if size >= cur_buf.size - self._offset:
+            # current buf read to end
+            cupy_pointer = MemoryPointer(cur_buf, self._offset)
+            content = Buffer(cupy_pointer.ptr, size=cur_buf.size - self._offset)
+            self._offset = 0
+            self._cuda_buffers.pop(0)
+            return content
+        else:
+            cupy_pointer = MemoryPointer(cur_buf, self._offset)
+            self._offset += size
+            return Buffer(cupy_pointer.ptr, size=size)
+
+    def _write_headers(self):
+        from cudf.core import Buffer
+
+        for headers in self._cuda_header[1]:
+            for length in headers['lengths']:
+                self._cuda_buffers.append(Buffer.empty(length))
 
     def write(self, content):
         from cupy.cuda import MemoryPointer
+        from cupy.cuda.memory import UnownedMemory
 
-        if not self._initialized:
-            self._write_init()
-            self._initialized = True
-
-        cupy_pointer = MemoryPointer(self._cupy_memory, self._offset)
+        if not self._has_write_headers:
+            self._cuda_header = pickle.loads(content)
+            self._has_write_headers = True
+            self._write_headers()
+            return
+        cur_buf = self._cuda_buffers[self._cur_buffer_index]
+        cur_cupy_memory = UnownedMemory(cur_buf.ptr, len(cur_buf), cur_buf)
+        cupy_pointer = MemoryPointer(cur_cupy_memory, self._offset)
 
         if isinstance(content, bytes):
             content_length = len(content)
             source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
         else:
-            content_length = content.mem.size
-            source_mem = content
+            source_mem = MemoryPointer(UnownedMemory(content.ptr, len(content), content), 0)
+            content_length = source_mem.mem.size
         cupy_pointer.copy_from(source_mem, content_length)
-        self._offset += content_length
-
-    def read(self, size=-1):
-        from cudf.core import Buffer
-        from cupy.cuda import MemoryPointer
-
-        if not self._initialized:
-            self._read_init()
-            self._initialized = True
-        size = self._size if size < 0 else size
-        cupy_pointer = MemoryPointer(self._cupy_memory, self._offset)
-        self._offset += size
-        return Buffer(cupy_pointer.ptr, size=size)
+        if content_length + self._offset >= cur_cupy_memory.size:
+            self._cur_buffer_index += 1
+            self._offset = 0
+        else:
+            self._offset += content_length
 
     def _read_close(self):
-        self._cupy_memory = None
+        self._offset = None
+        self._cuda_buffers = None
+        self._cuda_header = None
+        self._has_read_headers = None
 
     def _write_close(self):
-        self._cupy_memory = None
+        # generate object id
+        is_tuple, headers_list = self._cuda_header
+        ptr_idx = 0
+        ptrs_list = []
+        for headers in headers_list:
+            ptrs = []
+            for _ in headers['lengths']:
+                ptrs.append(self._cuda_buffers[ptr_idx].ptr)
+                ptr_idx += 1
+            ptrs_list.append(ptrs)
+
+        string_id = str(uuid.uuid4())
+        self._object_id = CudaObjectId(
+            headers_list, ptrs_list, string_id, is_tuple)
+        # hold cuda buffers
+        print(f'gen writer {string_id}, {os.getpid()}')
+        _id_to_buffers[string_id] = self._cuda_buffers
+
+        self._has_write_headers = None
+        self._cur_buffer_index = None
+        self._cuda_buffers = None
+        self._cuda_header = None
+        self._offset = None
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        if self._mode == 'w':
+            self._write_close()
+        else:
+            self._read_close()
 
 
 @register_storage_backend
@@ -111,7 +204,6 @@ class CudaStorage(StorageBackend):
 
     def __init__(self, size=None):
         self._size = size
-        self._id_to_buffers = dict()
 
     @classmethod
     @implements(StorageBackend.setup)
@@ -154,12 +246,13 @@ class CudaStorage(StorageBackend):
 
         if kwargs:  # pragma: no cover
             raise NotImplementedError('Got unsupported args: {",".join(kwargs)}')
+        print(object_id.object_id in _id_to_buffers, object_id.object_id, os.getpid())
 
         headers_list = object_id.headers_list
         ptrs_list = object_id.ptrs_list
         objs = []
         for headers, ptrs in zip(headers_list, ptrs_list):
-            data_type = headers.pop('data_type')
+            data_type = headers.get('data_type')
             if data_type == 'cupy':
                 ptr = ptrs[0]
                 size = headers['lengths'][0]
@@ -201,12 +294,14 @@ class CudaStorage(StorageBackend):
             ptrs_list.append(ptrs)
         string_id = str(uuid.uuid4())
         object_id = CudaObjectId(headers_list, ptrs_list, string_id, is_tuple)
-        self._id_to_buffers[string_id] = buffers_list
+        print(f'gen {string_id}, {os.getpid()}')
+        _id_to_buffers[string_id] = buffers_list
         return ObjectInfo(size=size, object_id=object_id)
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id: CudaObjectId):
-        del self._id_to_buffers[object_id.object_id]
+        print(f'delete {object_id.object_id}, {os.getpid()}')
+        del _id_to_buffers[object_id.object_id]
 
     @implements(StorageBackend.object_info)
     async def object_info(self, object_id: CudaObjectId) -> ObjectInfo:
@@ -215,19 +310,12 @@ class CudaStorage(StorageBackend):
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:
-        from cudf.core.buffer import Buffer
-
-        cuda_buffer = Buffer.empty(size)
-        headers = dict(size=size)
-        string_id = str(uuid.uuid4())
-        object_id = CudaObjectId([headers], [[cuda_buffer.ptr]], string_id)
-        self._id_to_buffers[string_id] = cuda_buffer
-        cuda_writer = CudaFileObject(object_id, cuda_buffer=cuda_buffer, mode='w', size=size)
-        return StorageFileObject(cuda_writer, object_id=object_id)
+        cuda_writer = CudaFileObject(object_id=None, mode='w', size=size)
+        return StorageFileObject(cuda_writer, object_id=None)
 
     @implements(StorageBackend.open_reader)
     async def open_reader(self, object_id) -> StorageFileObject:
-        cuda_reader = CudaFileObject(object_id, mode='r')
+        cuda_reader = CudaFileObject(mode='r', object_id=object_id)
         return StorageFileObject(cuda_reader, object_id=object_id)
 
     @implements(StorageBackend.list)

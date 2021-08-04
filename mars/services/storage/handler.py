@@ -97,7 +97,7 @@ class StorageHandlerActor(mo.StatelessActor):
                   error: str = 'raise'):
         try:
             data_info = await self._data_manager_ref.get_data_info(
-                session_id, data_key)
+                session_id, data_key, self._band_name)
             data = yield self._get_data(data_info, conditions)
             raise mo.Return(data)
         except DataNotExist:
@@ -110,7 +110,7 @@ class StorageHandlerActor(mo.StatelessActor):
                        conditions: List = None,
                        error: str = 'raise'):
         info = self._data_manager_ref.get_data_info.delay(
-            session_id, data_key, error)
+            session_id, data_key, self._band_name, error)
         return info, conditions
 
     @get.batch
@@ -135,7 +135,7 @@ class StorageHandlerActor(mo.StatelessActor):
         obj = obj[0] if isinstance(obj, (list, tuple)) else obj
         if self.highest_level != StorageLevel.GPU:
             return self.highest_level
-        else:
+        else:  # pragma: no cover
             try:
                 import cudf, cupy
             except ImportError:
@@ -214,7 +214,7 @@ class StorageHandlerActor(mo.StatelessActor):
                             data_key: str,
                             error: str = 'raise'):
         infos = self._data_manager_ref.get_data_infos.delay(
-            session_id, data_key, error)
+            session_id, data_key, self._band_name, error)
         return infos, session_id, data_key
 
     async def delete_object(self,
@@ -224,7 +224,7 @@ class StorageHandlerActor(mo.StatelessActor):
                             object_id: Any,
                             level: StorageLevel):
         await self._data_manager_ref.delete_data_info(
-            session_id, data_key, level)
+            session_id, data_key, level, self._band_name)
         await self._clients[level].delete(object_id)
         await self._quota_refs[level].release_quota(data_size)
 
@@ -237,14 +237,14 @@ class StorageHandlerActor(mo.StatelessActor):
             raise ValueError('error must be raise or ignore')
 
         infos = await self._data_manager_ref.get_data_infos(
-            session_id, data_key, error)
+            session_id, data_key, self._band_name, error)
         if not infos:
             return
 
         for info in infos:
             level = info.level
             await self._data_manager_ref.delete_data_info(
-                session_id, data_key, level)
+                session_id, data_key, level, self._band_name)
             await self._clients[level].delete(info.object_id)
             await self._quota_refs[level].release_quota(info.store_size)
 
@@ -270,7 +270,7 @@ class StorageHandlerActor(mo.StatelessActor):
                 level = info.level
                 delete_infos.append(
                     self._data_manager_ref.delete_data_info.delay(
-                        session_id, data_key, level))
+                        session_id, data_key, level, self._band_name))
                 to_removes.append((level, info.object_id))
                 level_sizes[level] += info.store_size
 
@@ -289,7 +289,7 @@ class StorageHandlerActor(mo.StatelessActor):
                           session_id: str,
                           data_key: str) -> StorageFileObject:
         data_info = await self._data_manager_ref.get_data_info(
-            session_id, data_key)
+            session_id, data_key, self._band_name)
         reader = await self._clients[data_info.level].open_reader(
             data_info.object_id)
         return reader
@@ -299,7 +299,8 @@ class StorageHandlerActor(mo.StatelessActor):
         get_data_infos = []
         for args, kwargs in zip(args_list, kwargs_list):
             get_data_infos.append(
-                self._data_manager_ref.get_data_info.delay(*args, **kwargs))
+                self._data_manager_ref.get_data_info.delay(
+                    *args, band_name=self._band_name, **kwargs))
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_data_infos)
         return await asyncio.gather(
             *[self._clients[data_info.level].open_reader(data_info.object_id)
@@ -353,11 +354,10 @@ class StorageHandlerActor(mo.StatelessActor):
     async def _fetch_remote(self,
                             session_id: str,
                             data_keys: List[Union[str, tuple]],
-                            level: StorageLevel,
-                            band: BandType,
+                            remote_band: BandType,
                             error: str):
         remote_manager_ref: Union[mo.ActorRef, DataManagerActor] = await mo.actor_ref(
-            uid=DataManagerActor.default_uid(), address=band[0])
+            uid=DataManagerActor.default_uid(), address=remote_band[0])
         get_data_infos = []
         for data_key in data_keys:
             get_data_infos.append(
@@ -371,7 +371,7 @@ class StorageHandlerActor(mo.StatelessActor):
             put_data_info_delays.append(
                 self._data_manager_ref.put_data_info.delay(
                     session_id, data_key, data_info, None))
-            fetch_tasks.append(self._clients[level].fetch(data_info.object_id))
+            fetch_tasks.append(self._clients[StorageLevel.REMOTE].fetch(data_info.object_id))
         await self._data_manager_ref.put_data_info.batch(*put_data_info_delays)
         await asyncio.gather(*fetch_tasks)
 
@@ -379,16 +379,17 @@ class StorageHandlerActor(mo.StatelessActor):
                                   session_id: str,
                                   data_keys: List[Union[str, tuple]],
                                   level: StorageLevel,
-                                  band: BandType,
+                                  remote_band: BandType,
                                   error: str):
         from .transfer import SenderManagerActor
 
-        logger.debug('Begin to fetch %s from band %s', data_keys, band)
+        logger.debug('Begin to fetch %s from band %s', data_keys, remote_band)
         sender_ref: Union[mo.ActorRef, SenderManagerActor] = await mo.actor_ref(
-            address=band[0], uid=SenderManagerActor.gen_uid(band[1]))
+            address=remote_band[0], uid=SenderManagerActor.gen_uid(remote_band[1]))
         await sender_ref.send_batch_data(
-            session_id, data_keys, self._data_manager_ref.address, level, error=error)
-        logger.debug('Finish fetching %s from band %s', data_keys, band)
+            session_id, data_keys, self._data_manager_ref.address,
+            level, self._band_name, error=error)
+        logger.debug('Finish fetching %s from band %s', data_keys, remote_band)
 
     async def fetch_batch(self,
                           session_id: str,
@@ -407,19 +408,26 @@ class StorageHandlerActor(mo.StatelessActor):
         get_info_delays = []
         for data_key in data_keys:
             get_info_delays.append(
-                self._data_manager_ref.get_data_info.delay(session_id, data_key, error='ignore'))
+                self._data_manager_ref.get_data_info.delay(
+                    session_id, data_key, error='ignore'))
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_info_delays)
         pin_delays = []
         for data_key, info in zip(data_keys, data_infos):
-            if info is not None and info.band == self._band_name:
-                pin_delays.append(self._data_manager_ref.pin.delay(session_id, data_key))
+            # for gpu bands, need transfer between gpu cards
+            if info is not None:
+                all_gpu_bands = info.band.startswith('gpu-') and self._band_name.startswith('gpu-')
+                if all_gpu_bands and info.band != self._band_name:
+                    missing_keys.append(data_key)
+                else:
+                    pin_delays.append(self._data_manager_ref.pin.delay(
+                        session_id, data_key, self._band_name))
             else:
                 # Not exists in local, fetch from remote worker
                 missing_keys.append(data_key)
-                if address is None or band_name is None:
-                    # some mapper keys are absent, specify error='ignore'
-                    get_metas.append(meta_api.get_chunk_meta.delay(
-                        data_key, fields=['bands'], error='ignore'))
+        if address is None or band_name is None:
+            # some mapper keys are absent, specify error='ignore'
+            get_metas = [(meta_api.get_chunk_meta.delay(
+                data_key, fields=['bands'], error='ignore')) for data_key in missing_keys]
         await self._data_manager_ref.pin.batch(*pin_delays)
 
         if get_metas:
@@ -432,13 +440,11 @@ class StorageHandlerActor(mo.StatelessActor):
 
         transfer_tasks = []
         fetch_keys = []
-        if level is None:
-            level = self.highest_level
         for band, keys in remote_keys.items():
             if StorageLevel.REMOTE in self._quota_refs:
                 # if storage support remote level, just fetch object id
                 transfer_tasks.append(self._fetch_remote(
-                    session_id, list(keys), level, band, error))
+                    session_id, list(keys), band, error))
             else:
                 # fetch via transfer
                 transfer_tasks.append(self._fetch_via_transfer(
@@ -450,7 +456,7 @@ class StorageHandlerActor(mo.StatelessActor):
         append_bands_delays = []
         for data_key in fetch_keys:
             append_bands_delays.append(meta_api.add_chunk_bands.delay(
-                    data_key, [(self.address, band_name or 'numa-0')]))
+                    data_key, [(self.address, self._band_name)]))
         await meta_api.add_chunk_bands.batch(*append_bands_delays)
 
     async def request_quota_with_spill(self,
@@ -469,7 +475,8 @@ class StorageHandlerActor(mo.StatelessActor):
             total, used = await self._quota_refs[level].get_quota()
             tasks = []
             if total is not None:
-                spillable_size = await self._data_manager_ref.get_spillable_size(level)
+                spillable_size = await self._data_manager_ref.get_spillable_size(
+                    level, self._band_name)
                 tasks.append(self._spill_manager_refs[level].notify_spillable_space(
                     spillable_size, total - used))
             await asyncio.gather(*tasks)
@@ -481,18 +488,19 @@ class StorageHandlerActor(mo.StatelessActor):
         from .spill import spill
 
         try:
-            await spill(request_size, level, self._data_manager_ref, self)
+            await spill(request_size, level, self._band_name, self._data_manager_ref, self)
         except NoDataToSpill:
             logger.warning('No data to spill %s bytes, waiting more space', request_size)
             size = await self._spill_manager_refs[level].wait_for_space(object_size)
-            await spill(size, level, self._data_manager_ref, self)
+            await spill(size, level, self._band_name, self._data_manager_ref, self)
 
     async def list(self, level: StorageLevel) -> List:
-        return await self._data_manager_ref.list(level)
+        return await self._data_manager_ref.list(level, self._band_name)
 
     @mo.extensible
     async def unpin(self, session_id: str, data_key: str, error: str = 'raise'):
-        levels = await self._data_manager_ref.unpin(session_id, [data_key], error)
+        levels = await self._data_manager_ref.unpin(
+            session_id, [data_key], self._band_name, error)
         if levels:
             await self.notify_spillable_space(levels[0])
 
@@ -509,7 +517,7 @@ class StorageHandlerActor(mo.StatelessActor):
         if extracted_args:
             session_id, error = extracted_args
             levels = await self._data_manager_ref.unpin(
-                    session_id, data_keys, error)
+                    session_id, data_keys, self._band_name, error)
             for level in levels:
                 await self.notify_spillable_space(level)
 

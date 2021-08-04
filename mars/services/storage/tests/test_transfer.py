@@ -133,7 +133,7 @@ class MockReceiverManagerActor(ReceiverManagerActor):
 
 class MockSenderManagerActor(SenderManagerActor):
     @staticmethod
-    async def get_receiver_ref(address: str):
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
             address=address, uid=MockReceiverManagerActor.default_uid())
 
@@ -151,7 +151,7 @@ class MockReceiverManagerActor2(ReceiverManagerActor):
 
 class MockSenderManagerActor2(SenderManagerActor):
     @staticmethod
-    async def get_receiver_ref(address: str):
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
             address=address, uid=MockReceiverManagerActor2.default_uid())
 

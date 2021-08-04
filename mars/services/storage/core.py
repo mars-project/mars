@@ -147,25 +147,36 @@ class InternalDataInfo:
 class DataManagerActor(mo.StatelessActor):
     _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
 
-    def __init__(self):
+    def __init__(self, bands: List):
         from .spill import FIFOStrategy
 
         # mapping key is (session_id, data_key)
         # mapping value is list of InternalDataInfo
+        self._bands = bands
         self._data_key_to_info = defaultdict(list)
         self._data_info_list = dict()
         self._spill_strategy = dict()
         for level in StorageLevel.__members__.values():
-            self._data_info_list[level] = dict()
-            self._spill_strategy[level] = FIFOStrategy(level)
+            for band_name in bands:
+                self._data_info_list[level, band_name] = dict()
+                self._spill_strategy[level, band_name] = FIFOStrategy(level)
 
     def _get_data_infos(self,
                         session_id: str,
                         data_key: str,
+                        band_name: str,
                         error: str) -> Union[List[DataInfo], None]:
         if (session_id, data_key) in self._data_key_to_info:
-            return [info.data_info for info in
-                    self._data_key_to_info[session_id, data_key]]
+            available_infos = []
+            for info in self._data_key_to_info[session_id, data_key]:
+                info_band = info.data_info.band
+                if info_band.startswith('gpu-'):  # pragma: no cover
+                    # not available for different GPU bands
+                    if info_band == band_name:
+                        available_infos.append(info.data_info)
+                else:
+                    available_infos.append(info.data_info)
+            return available_infos
         else:
             if error == 'raise':
                 raise DataNotExist(f'Data key {session_id, data_key} not exists.')
@@ -176,30 +187,30 @@ class DataManagerActor(mo.StatelessActor):
     def get_data_infos(self,
                        session_id: str,
                        data_key: str,
+                       band_name: str,
                        error: str = 'raise') -> List[DataInfo]:
-        return self._get_data_infos(session_id, data_key, error)
+        return self._get_data_infos(session_id, data_key, band_name, error)
 
     def _get_data_info(self,
                        session_id: str,
                        data_key: str,
+                       band_name: str,
                        error: str = 'raise') -> Union[DataInfo, None]:
         # if the data is stored in multiply levels,
         # return the lowest level info
-        if (session_id, data_key) not in self._data_key_to_info:
-            if error == 'raise':
-                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
-            else:
-                return None
-        infos = sorted(self._data_key_to_info.get((session_id, data_key)),
-                       key=lambda x: x.data_info.level)
-        return infos[0].data_info
+        infos = self._get_data_infos(session_id, data_key, band_name, error)
+        if not infos:
+            return
+        infos = sorted(infos, key=lambda x: x.level)
+        return infos[0]
 
     @mo.extensible
     def get_data_info(self,
                       session_id: str,
                       data_key: str,
+                      band_name: str = None,
                       error: str = 'raise') -> Union[DataInfo, None]:
-        return self._get_data_info(session_id, data_key, error)
+        return self._get_data_info(session_id, data_key, band_name, error)
 
     def _put_data_info(self,
                        session_id: str,
@@ -208,8 +219,9 @@ class DataManagerActor(mo.StatelessActor):
                        object_info: ObjectInfo = None):
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
-        self._data_info_list[data_info.level][(session_id, data_key)] = object_info
-        self._spill_strategy[data_info.level].record_put_info(
+        self._data_info_list[data_info.level,
+                             data_info.band][(session_id, data_key)] = object_info
+        self._spill_strategy[data_info.level, data_info.band].record_put_info(
             (session_id, data_key), data_info.store_size)
 
     @mo.extensible
@@ -224,11 +236,11 @@ class DataManagerActor(mo.StatelessActor):
     def _delete_data_info(self,
                           session_id: str,
                           data_key: str,
-                          level: StorageLevel
-                          ):
+                          level: StorageLevel,
+                          band_name: str):
         if (session_id, data_key) in self._data_key_to_info:
-            self._data_info_list[level].pop((session_id, data_key))
-            self._spill_strategy[level].record_delete_info((session_id, data_key))
+            self._data_info_list[level, band_name].pop((session_id, data_key))
+            self._spill_strategy[level, band_name].record_delete_info((session_id, data_key))
             infos = self._data_key_to_info[(session_id, data_key)]
             rest = [info for info in infos if info.data_info.level != level]
             if len(rest) == 0:
@@ -240,39 +252,44 @@ class DataManagerActor(mo.StatelessActor):
     def delete_data_info(self,
                          session_id: str,
                          data_key: str,
-                         level: StorageLevel):
-        self._delete_data_info(session_id, data_key, level)
+                         level: StorageLevel,
+                         band_name: str):
+        self._delete_data_info(session_id, data_key, level, band_name)
 
-    def list(self, level: StorageLevel):
-        return list(self._data_info_list[level].keys())
+    def list(self, level: StorageLevel, ban_name: str):
+        return list(self._data_info_list[level, ban_name].keys())
 
     @mo.extensible
-    def pin(self, session_id, data_key):
-        level = self.get_data_info(session_id, data_key).level
-        self._spill_strategy[level].pin_data((session_id, data_key))
+    def pin(self, session_id, data_key, band_name):
+        info = self.get_data_info(session_id, data_key, band_name)
+        self._spill_strategy[info.level, info.band].pin_data((session_id, data_key))
 
     def unpin(self,
               session_id: str,
               data_keys: List[str],
+              band_name: str,
               error: str = 'raise'):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
         levels = set()
         for data_key in data_keys:
-            info = self.get_data_info(session_id, data_key, error)
+            info = self.get_data_info(session_id, data_key, band_name, error)
             if info:
                 level = info.level
-                self._spill_strategy[level].unpin_data((session_id, data_key))
+                self._spill_strategy[level, info.band].unpin_data((session_id, data_key))
                 levels.add(level)
         return list(levels)
 
-    def get_spillable_size(self, level: StorageLevel):
-        return self._spill_strategy[level].get_spillable_size()
+    def get_spillable_size(self,
+                           level: StorageLevel,
+                           band_name: str):
+        return self._spill_strategy[level, band_name].get_spillable_size()
 
-    async def get_spill_keys(self, level: StorageLevel, size: int):
-        if level.spill_level() not in self._spill_strategy:  # pragma: no cover
-            raise RuntimeError(f'Spill level of {level} is not configured')
-        return self._spill_strategy[level].get_spill_keys(size)
+    async def get_spill_keys(self,
+                             level: StorageLevel,
+                             band_name: str,
+                             size: int):
+        return self._spill_strategy[level, band_name].get_spill_keys(size)
 
 
 class StorageManagerActor(mo.Actor):
@@ -309,14 +326,14 @@ class StorageManagerActor(mo.Actor):
         try:
             cluster_api = await ClusterAPI.create(self.address)
             band_to_slots = await cluster_api.get_bands()
-            all_slots = [band[1] for band in band_to_slots]
+            all_bands = [band[1] for band in band_to_slots]
         except mo.ActorNotExist:
             # in some test cases, cluster service is not available
-            all_slots = ['numa-0']
+            all_bands = ['numa-0']
 
         # stores the mapping from data key to storage info
         self._data_manager = await mo.create_actor(
-            DataManagerActor,
+            DataManagerActor, all_bands,
             uid=DataManagerActor.default_uid(),
             address=self.address)
 
@@ -324,9 +341,9 @@ class StorageManagerActor(mo.Actor):
         self._quotas = quotas = defaultdict(dict)
         self._spill_managers = spill_managers = defaultdict(dict)
         for backend, setup_params in self._storage_configs.items():
-            if backend == 'cuda':
+            if backend == 'cuda':  # pragma: no cover
                 cuda_infos = await asyncio.to_thread(cuda_card_stats)
-                storage_bands = [s for s in all_slots if s.startswith('gpu-')]
+                storage_bands = [s for s in all_bands if s.startswith('gpu-')]
                 clients = []
                 for gpu_band in storage_bands:
                     index = int(gpu_band[4:])
@@ -382,9 +399,10 @@ class StorageManagerActor(mo.Actor):
                         uid=StorageHandlerActor.gen_uid(band_name),
                         address=self.address, allocate_strategy=strategy)
                     # create transfer actor for GPU bands
-                    if band_name.startswith('gpu-'):
+                    if band_name.startswith('gpu-'):  # pragma: no cover
                         await mo.create_actor(
-                            SenderManagerActor, storage_handler_ref=handler_ref,
+                            SenderManagerActor, band_name,
+                            storage_handler_ref=handler_ref,
                             uid=SenderManagerActor.gen_uid(band_name),
                             address=self.address, allocate_strategy=sender_strategy)
                         await mo.create_actor(

@@ -71,7 +71,7 @@ async def read_buffers(header: Dict,
 
     buffers = []
     for is_cuda_buffer, buf_size in zip(is_cuda_buffers, buffer_sizes):
-        if is_cuda_buffer:
+        if is_cuda_buffer:  # pragma: no cover
             cuda_buffer = CPBuffer.empty(buf_size)
             cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
             offset = 0
@@ -87,4 +87,3 @@ async def read_buffers(header: Dict,
         else:
             buffers.append(await reader.readexactly(buf_size))
     return buffers
-

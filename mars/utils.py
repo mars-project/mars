@@ -398,7 +398,7 @@ def build_fetch_chunk(chunk: ChunkType,
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
-        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse)
+        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
@@ -1227,3 +1227,24 @@ def ensure_own_data(data: np.ndarray) -> np.ndarray:
         return data.copy()
     else:
         return data
+
+
+def get_chunk_key_to_data_keys(chunk_graph):
+    from .core.operand import FetchShuffle, MapReduceOperand, OperandStage
+
+    chunk_key_to_data_keys = dict()
+    for chunk in chunk_graph:
+        if chunk.key in chunk_key_to_data_keys:
+            continue
+        if not isinstance(chunk.op, FetchShuffle):
+            chunk_key_to_data_keys[chunk.key] = [chunk.key]
+        else:
+            keys = []
+            for succ in chunk_graph.iter_successors(chunk):
+                if isinstance(succ.op, MapReduceOperand) and \
+                        succ.op.stage == OperandStage.reduce:
+                    for key in succ.op.get_dependent_data_keys():
+                        if key not in keys:
+                            keys.append(key)
+            chunk_key_to_data_keys[chunk.key] = keys
+    return chunk_key_to_data_keys
