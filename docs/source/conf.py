@@ -237,7 +237,6 @@ class AccessorLevelDocumenter(Documenter):
             if path:
                 mod_cls = path.rstrip(".")
             else:
-                mod_cls = None
                 # if documenting a class-level object without path,
                 # there must be a current class, either from a parent
                 # auto directive ...
@@ -253,7 +252,10 @@ class AccessorLevelDocumenter(Documenter):
             # rpartition is needed
             modname, accessor = rpartition(mod_cls, ".")
             modname, cls = rpartition(modname, ".")
-            parents = [cls, accessor]
+            if cls:
+                parents = [cls, accessor]
+            else:
+                parents = [accessor]
             # if the module name is still missing, get it like above
             if not modname:
                 modname = self.env.temp_data.get("autodoc:module")

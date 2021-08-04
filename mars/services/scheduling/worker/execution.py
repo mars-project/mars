@@ -104,14 +104,17 @@ class SubtaskExecutionActor(mo.Actor):
             await storage_api.fetch.batch(*queries)
 
     async def _collect_input_sizes(self, subtask: Subtask, supervisor_address: str):
-        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
-        meta_api = await MetaAPI.create(subtask.session_id, address=supervisor_address)
-
         graph = subtask.chunk_graph
         sizes = dict()
 
         fetch_keys = list(
             set(n.key for n in graph.iter_indep() if isinstance(n.op, Fetch)))
+        if not fetch_keys:
+            return sizes
+
+        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
+        meta_api = await MetaAPI.create(subtask.session_id, address=supervisor_address)
+
         fetch_metas = await meta_api.get_chunk_meta.batch(
             *(meta_api.get_chunk_meta.delay(k, fields=['memory_size', 'store_size'])
               for k in fetch_keys))
@@ -122,9 +125,10 @@ class SubtaskExecutionActor(mo.Actor):
         for key, meta, infos in zip(fetch_keys, fetch_metas, data_infos):
             level = functools.reduce(operator.or_, (info.level for info in infos))
             if level & StorageLevel.MEMORY:
-                sizes[key] = (meta['memory_size'], meta['memory_size'] - meta['store_size'])
+                mem_cost = max(0, meta['memory_size'] - meta['store_size'])
             else:
-                sizes[key] = (meta['memory_size'], meta['memory_size'])
+                mem_cost = meta['memory_size']
+            sizes[key] = (mem_cost, mem_cost)
 
         return sizes
 
@@ -153,6 +157,7 @@ class SubtaskExecutionActor(mo.Actor):
         succ_ref_count = {k: op_key_graph.count_successors(k) for k in op_key_graph}
 
         visited_op_keys = set()
+        total_memory_cost = 0
         max_memory_cost = 0
         while key_stack:
             key = key_stack.pop()
@@ -160,8 +165,16 @@ class SubtaskExecutionActor(mo.Actor):
 
             if not isinstance(op, Fetch):
                 op.estimate_size(size_context, op)
-            max_memory_cost = max(
-                sum(ms for _, ms in size_context.values()), max_memory_cost)
+
+            calc_cost = sum(
+                size_context[out.key][1] for out in op.outputs)
+            total_memory_cost += calc_cost
+            max_memory_cost = max(total_memory_cost, max_memory_cost)
+
+            result_cost = sum(
+                size_context[out.key][0] for out in op.outputs)
+            total_memory_cost += result_cost - calc_cost
+
             visited_op_keys.add(op.key)
 
             for succ_op_key in op_key_graph.iter_successors(key):
@@ -171,18 +184,10 @@ class SubtaskExecutionActor(mo.Actor):
             for pred_op_key in op_key_graph.iter_predecessors(key):
                 succ_ref_count[pred_op_key] -= 1
                 if succ_ref_count[pred_op_key] == 0:
-                    size_context.pop(pred_op_key, None)
-        return sum(t[0] for t in size_context.values()), \
-            sum(t[1] for t in size_context.values())
-
-    @classmethod
-    def _build_quota_request(cls, subtask_id: str, calc_size: int, input_sizes: Dict):
-        batch_req = dict()
-        for input_key, (_input_store_size, input_calc_size) in input_sizes.items():
-            if input_calc_size > 0:
-                batch_req[(subtask_id, input_key)] = input_calc_size
-        batch_req[(subtask_id, subtask_id)] = calc_size
-        return batch_req
+                    pop_result_cost = sum(size_context.pop(out.key, (0, 0))[0]
+                                          for out in key_to_ops[pred_op_key][0].outputs)
+                    total_memory_cost -= pop_result_cost
+        return sum(t[1] for t in size_context.values()), max_memory_cost
 
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
@@ -206,8 +211,7 @@ class SubtaskExecutionActor(mo.Actor):
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
-            batch_quota_req = self._build_quota_request(
-                subtask.subtask_id, calc_size, input_sizes)
+            batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
 
             quota_aiotask = asyncio.create_task(
                 quota_ref.request_batch_quota(batch_quota_req))
