@@ -342,6 +342,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
+    from .dataframe.core import IndexValue
+
     if dt is None:
         return 0
 
@@ -359,7 +361,8 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
         size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
-            if hasattr(index_value_value, 'dtype'):
+            if hasattr(index_value_value, 'dtype') \
+                    and not isinstance(index_value_value, IndexValue.RangeIndex):
                 size += calc_data_size(index_value_value, shape=shape)
         except AttributeError:
             pass
