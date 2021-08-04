@@ -1192,14 +1192,6 @@ msgstr ""
 msgid "Create a scatter plot with varying marker point size and color."
 msgstr ""
 
-#: ../../source/reference/dataframe/frame.rst:244:<autosummary>:1
-msgid ":obj:`DataFrame.boxplot <DataFrame.boxplot>`\\"
-msgstr ""
-
-#: ../../source/reference/dataframe/frame.rst:244:<autosummary>:1
-msgid ":obj:`DataFrame.hist <DataFrame.hist>`\\"
-msgstr ""
-
 #: ../../source/reference/dataframe/frame.rst:248
 msgid "Serialization / IO / conversion"
 msgstr "序列化、IO 和转换"
@@ -1259,15 +1251,4 @@ msgstr ""
 #: ../../source/reference/dataframe/frame.rst:263:<autosummary>:1
 msgid "Make Data more balanced across entire cluster."
 msgstr ""
-
-#~ msgid ""
-#~ ":obj:`DataFrame.agg <mars.dataframe.DataFrame.agg>`\\ "
-#~ "\\(func\\[\\, axis\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`DataFrame.aggregate "
-#~ "<mars.dataframe.DataFrame.aggregate>`\\ \\(func\\[\\, "
-#~ "axis\\]\\)"
-#~ msgstr ""
 

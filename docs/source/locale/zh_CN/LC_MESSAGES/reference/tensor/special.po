@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.7.0a5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-03 18:42+0800\n"
+"POT-Creation-Date: 2021-08-04 16:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/reference/tensor/special.rst:2
 msgid "Special Functions"
@@ -42,170 +42,285 @@ msgid "Elementwise function for computing relative entropy."
 msgstr ""
 
 #: ../../source/reference/tensor/special.rst:16
+msgid "Bessel functions"
+msgstr "贝塞尔函数"
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.jv <mars.tensor.special.jv>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Bessel function of the first kind of real order and complex argument."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.jve <mars.tensor.special.jve>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled Bessel function of order `v`."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.yn <mars.tensor.special.yn>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Bessel function of the second kind of integer order and real argument."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.yv <mars.tensor.special.yv>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Bessel function of the second kind of real order and complex argument."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.yve <mars.tensor.special.yve>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled Bessel function of the second kind of real order."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.kn <mars.tensor.special.kn>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Modified Bessel function of the second kind of integer order `n`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.kv <mars.tensor.special.kv>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Modified Bessel function of the second kind of real order `v`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.kve <mars.tensor.special.kve>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled modified Bessel function of the second kind."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.iv <mars.tensor.special.iv>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Modified Bessel function of the first kind of real order."
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.ive <mars.tensor.special.ive>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled modified Bessel function of the first kind"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.hankel1 <mars.tensor.special.hankel1>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Hankel function of the first kind"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.hankel1e <mars.tensor.special.hankel1e>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled Hankel function of the first kind"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.hankel2 <mars.tensor.special.hankel2>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Hankel function of the second kind"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid ":obj:`mars.tensor.special.hankel2e <mars.tensor.special.hankel2e>`"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:37:<autosummary>:1
+msgid "Exponentially scaled Hankel function of the second kind"
+msgstr ""
+
+#: ../../source/reference/tensor/special.rst:39
 msgid "Error function"
 msgstr "误差函数"
 
-#: ../../source/reference/tensor/special.rst:24:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:47:<autosummary>:1
 msgid ":obj:`mars.tensor.special.erf <mars.tensor.special.erf>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:24:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:47:<autosummary>:1
 msgid "Returns the error function of complex argument."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:26
+#: ../../source/reference/tensor/special.rst:49
 msgid "Gamma and related functions"
 msgstr "Gamma 和相关函数"
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gamma <mars.tensor.special.gamma>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 #, fuzzy
 msgid "gamma function."
 msgstr "误差函数"
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammaln <mars.tensor.special.gammaln>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Logarithm of the absolute value of the Gamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.loggamma <mars.tensor.special.loggamma>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Principal branch of the logarithm of the gamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammasgn <mars.tensor.special.gammasgn>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Sign of the gamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammainc <mars.tensor.special.gammainc>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Regularized lower incomplete gamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammaincinv <mars.tensor.special.gammaincinv>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Inverse to the lower incomplete gamma function with respect to `x`."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammaincc <mars.tensor.special.gammaincc>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.gammainccinv <mars.tensor.special.gammainccinv>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Inverse of the upper incomplete gamma function with respect to `x`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.beta <mars.tensor.special.beta>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
-#, fuzzy
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Beta function."
-msgstr "特殊函数"
+msgstr "Beta 函数"
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.betaln <mars.tensor.special.betaln>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Natural logarithm of absolute value of beta function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.betainc <mars.tensor.special.betainc>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Incomplete beta function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.betaincinv <mars.tensor.special.betaincinv>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Inverse of the incomplete beta function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.psi <mars.tensor.special.psi>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "The digamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.rgamma <mars.tensor.special.rgamma>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Reciprocal of the gamma function."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.polygamma <mars.tensor.special.polygamma>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Polygamma functions."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.multigammaln <mars.tensor.special.multigammaln>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ""
 "Returns the log of multivariate gamma, also sometimes called the "
 "generalized gamma."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.digamma <mars.tensor.special.digamma>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid ":obj:`mars.tensor.special.poch <mars.tensor.special.poch>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:51:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:74:<autosummary>:1
 msgid "Pochhammer symbol."
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:53
+#: ../../source/reference/tensor/special.rst:76
 msgid "Convenience functions"
 msgstr "辅助函数"
 
-#: ../../source/reference/tensor/special.rst:59:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:82:<autosummary>:1
 msgid ":obj:`mars.tensor.special.xlogy <mars.tensor.special.xlogy>`"
 msgstr ""
 
-#: ../../source/reference/tensor/special.rst:59:<autosummary>:1
+#: ../../source/reference/tensor/special.rst:82:<autosummary>:1
 msgid "Compute ``x*log(y)`` so that the result is 0 if ``x = 0``."
 msgstr ""
 

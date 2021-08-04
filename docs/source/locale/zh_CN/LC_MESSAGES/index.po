@@ -22,12 +22,11 @@ msgid "Mars Documentation"
 msgstr "Mars 文档"
 
 #: ../../source/index.rst:7
-#, fuzzy
 msgid ""
 "Mars is a tensor-based unified framework for large-scale data computation"
 " which scales numpy, pandas, scikit-learn and many other libraries."
 msgstr "Mars 是基于张量的，用于进行大规模数据计算的统一计算框架，"
-"它可以用来并行和分布式 numpy、pandas、scikit-learn 等库。"
+"它可以用来并行和分布式 numpy、pandas、scikit-learn 以及众多其他 Python 库。"
 
 #: ../../source/index.rst:11
 msgid "Architecture Overview"
@@ -153,9 +152,8 @@ msgid "Mars can run in a few ways:"
 msgstr "Mars 能以若干种方式运行："
 
 #: ../../source/index.rst:170
-#, fuzzy
 msgid ":ref:`Local scheduling <local>`"
-msgstr ":ref:`本地基于多进程的调度 <local_cluster>`"
+msgstr ":ref:`本地执行 <local>`"
 
 #: ../../source/index.rst:171
 msgid ":ref:`Run on cluster <deploy>`"
@@ -166,16 +164,6 @@ msgid ":ref:`Run on Kubernetes <k8s>`"
 msgstr ":ref:`在 Kubernetes 中部署 <k8s>`"
 
 #: ../../source/index.rst:173
-#, fuzzy
 msgid ":ref:`Run on Yarn <mars_yarn>`"
-msgstr ":ref:`在 Kubernetes 中部署 <k8s>`"
-
-#~ msgid "**Vanilla function calls**"
-#~ msgstr "普通函数调用"
-
-#~ msgid "**Mars remote**"
-#~ msgstr "**Mars remote**"
-
-#~ msgid ":ref:`Local thread-based scheduling <threaded>`"
-#~ msgstr ":ref:`本地基于线程的调度 <threaded>`"
+msgstr ":ref:`在 Yarn 中部署 <k8s>`"
 

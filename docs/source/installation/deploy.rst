@@ -20,7 +20,7 @@ The supervisor can be started with the following command:
 
 .. code-block:: bash
 
-    mars-supervisor -h <host_name> -p <supervisor_port> -w <web_port>
+    mars-supervisor -H <host_name> -p <supervisor_port> -w <web_port>
 
 Web service will be started as well.
 
@@ -28,7 +28,7 @@ Workers can be started with the following command:
 
 .. code-block:: bash
 
-    mars-worker -h <host_name> -p <worker_port> -s <supervisor_ip>:<supervisor_port>
+    mars-worker -H <host_name> -p <worker_port> -s <supervisor_ip>:<supervisor_port>
 
 After all Mars processes are started, you can open a Python console and run
 
@@ -59,17 +59,16 @@ below.
 +------------------+----------------------------------------------------------------+
 | Argument         | Description                                                    |
 +==================+================================================================+
-| ``-a``           | Advertise address exposed to other processes in the cluster,   |
-|                  | useful when the server has multiple IP addresses, or the       |
-|                  | service is deployed inside a VM or container                   |
-+------------------+----------------------------------------------------------------+
 | ``-H``           | Service IP binding, ``0.0.0.0`` by default                     |
 +------------------+----------------------------------------------------------------+
 | ``-p``           | Port of the service. If absent, a randomized port will be used |
 +------------------+----------------------------------------------------------------+
-| ``-s``           | List of scheduler endpoints, separated by commas. Useful for   |
-|                  | workers and webs to spot schedulers, or when you want to run   |
-|                  | more than one schedulers                                       |
+| ``-f``           | Path to service configuration file. Absent when use default    |
+|                  | configuration.                                                 |
++------------------+----------------------------------------------------------------+
+| ``-s``           | List of supervisor endpoints, separated by commas. Useful for  |
+|                  | workers and webs to spot supervisors, or when you want to run  |
+|                  | more than one supervisor                                       |
 +------------------+----------------------------------------------------------------+
 | ``--log-level``  | Log level, can be ``debug``, ``info``, ``warning``, ``error``  |
 +------------------+----------------------------------------------------------------+
@@ -77,14 +76,15 @@ below.
 +------------------+----------------------------------------------------------------+
 | ``--log-conf``   | Python logging configuration file, ``logging.conf`` by default |
 +------------------+----------------------------------------------------------------+
+| ``--use-uvloop`` | Whether to use ``uvloop`` to accelerate, ``auto`` by default   |
++------------------+----------------------------------------------------------------+
 
-Extra arguments for schedulers are listed below.
+Extra arguments for supervisors are listed below.
 
 +------------------+----------------------------------------------------------------+
 | Argument         | Description                                                    |
 +==================+================================================================+
-| ``--nproc``      | Number of processes. If absent, the value will be the          |
-|                  | available number of cores                                      |
+| ``-w``           | Port of web service in supervisor                              |
 +------------------+----------------------------------------------------------------+
 
 Extra arguments for workers are listed below. Details about memory tuning can
@@ -92,93 +92,42 @@ be found at the next section.
 
 .. _deploy_extra_arguments:
 
-+-------------------+----------------------------------------------------------------+
-| Argument          | Description                                                    |
-+===================+================================================================+
-| ``--cpu-procs``   | Number of computation processes on CPUs. If absent, the value  |
-|                   | will be the available number of cores                          |
-+-------------------+----------------------------------------------------------------+
-| ``--net-procs``   | Number of processes for network transfer. 4 by default         |
-+-------------------+----------------------------------------------------------------+
-| ``--cuda-device`` | Index of the CUDA device to use. If not specified, CPUs will   |
-|                   | be used only.                                                  |
-+-------------------+----------------------------------------------------------------+
-| ``--phy-mem``     | Limit of physical memory, can be percentages of total memory   |
-|                   | or multiple of bytes. For instance, ``4g`` or ``80%`` are both |
-|                   | acceptable. If absent, the size of physical memory will be     |
-|                   | used                                                           |
-+-------------------+----------------------------------------------------------------+
-| ``--cache-mem``   | Size of shared memory, can be percentages of total memory or   |
-|                   | multiple of bytes. For instance, ``4g`` or ``80%`` are both    |
-|                   | acceptable. If absent, 50% of free memory will be used         |
-+-------------------+----------------------------------------------------------------+
-| ``--min-mem``     | Minimal free memory to start worker, can be percentages of     |
-|                   | total memory or multiple of bytes. For instance, ``4g`` or     |
-|                   | ``80%`` are both acceptable. ``128m`` by default               |
-+-------------------+----------------------------------------------------------------+
-| ``--spill-dir``   | Directories to spill to, separated by : in MacOS or Linux.     |
-+-------------------+----------------------------------------------------------------+
-| ``--plasma-dir``  | Directory of plasma store. When specified, the size of plasma  |
-|                   | store will not be considered in memory management.             |
-+-------------------+----------------------------------------------------------------+
++--------------------+----------------------------------------------------------------+
+| Argument           | Description                                                    |
++====================+================================================================+
+| ``--n-cpu``        | Number of CPU cores to use. If absent, the value will be       |
+|                    | the available number of cores                                  |
++--------------------+----------------------------------------------------------------+
+| ``--n-io-process`` | Number of IO processes for network operations. 1 by default    |
++--------------------+----------------------------------------------------------------+
+| ``--cuda-devices`` | Index of CUDA devices to use. If not specified, all devices    |
+|                    | will be used. Specifying an empty string will ignore all       |
+|                    | devices                                                        |
++--------------------+----------------------------------------------------------------+
 
-For instance, if you want to start a Mars cluster with two supervisors, two
-workers and one web service, you can run commands below (memory and CPU tunings
-are omitted):
+For instance, if you want to start a Mars cluster with two supervisors and two
+workers, you can run commands below (memory and CPU tunings are omitted):
 
 On Supervisor 1 (192.168.1.10):
 
 .. code-block:: bash
 
-    mars-supervisor -h 192.168.1.10 -p 7001 -s 192.168.1.10:7001,192.168.1.11:7002
+    mars-supervisor -H 192.168.1.10 -p 7001 -w 7005 -s 192.168.1.10:7001,192.168.1.11:7002
 
 On Supervisor 2 (192.168.1.11):
 
 .. code-block:: bash
 
-    mars-supervisor -h 192.168.1.11 -p 7002 -s 192.168.1.10:7001,192.168.1.11:7002
+    mars-supervisor -H 192.168.1.11 -p 7002 -s 192.168.1.10:7001,192.168.1.11:7002
 
 On Worker 1 (192.168.1.20):
 
 .. code-block:: bash
 
-    mars-worker -h 192.168.1.20 -p 7003 -s 192.168.1.10:7001,192.168.1.11:7002 \
-        --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
+    mars-worker -H 192.168.1.20 -p 7003 -s 192.168.1.10:7001,192.168.1.11:7002
 
 On Worker 2 (192.168.1.21):
 
 .. code-block:: bash
 
-    mars-worker -h 192.168.1.21 -p 7004 -s 192.168.1.10:7001,192.168.1.11:7002 \
-        --spill-dirs /mnt/disk2/spill:/mnt/disk3/spill
-
-On the web server (192.168.1.30):
-
-.. code-block:: bash
-
-    mars-web -p 7005 -s 192.168.1.10:7001,192.168.1.11:7002
-
-.. _worker_memory_tuning:
-
-Memory Tuning
--------------
-Mars worker manages two different parts of memory. The first is private process
-memory and the second is shared memory between all worker processes handled by
-`plasma_store in Apache Arrow
-<https://arrow.apache.org/docs/python/plasma.html>`_. When Mars Worker starts,
-it will take 50% of free memory space by default as shared memory and the left
-as private process memory. What's more, Mars provides soft and hard memory
-limits for memory allocations, which are 75% and 90% by default. If these
-configurations does not meet your need, you can configure them when Mars Worker
-starts. You can use ``--cache-mem`` argument to configure the size of shared
-memory, ``--phy-mem`` to configure total memory size, from which the soft and
-hard limits are computed.
-
-For instance, by using
-
-.. code-block:: bash
-
-    mars-worker -a localhost -p 9012 -s localhost:9010 --cache-mem 512m --phy-mem 90%
-
-We limit the size of shared memory as 512MB and the worker can use up to 90% of
-total physical memory.
+    mars-worker -H 192.168.1.21 -p 7004 -s 192.168.1.10:7001,192.168.1.11:7002

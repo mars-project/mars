@@ -176,8 +176,6 @@ class SubtaskQueueingActor(mo.Actor):
             for stid in non_submitted_ids:
                 heapq.heappush(task_queue, submit_items[stid])
 
-        if limit is None:
-            logger.warning('Submitted %d tasks without limits', len(submit_aio_tasks))
         if submit_aio_tasks:
             yield asyncio.gather(*submit_aio_tasks)
 

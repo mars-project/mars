@@ -84,11 +84,6 @@ Call ``.to_cpu()`` to tell Mars to move data to host memory.
    >>> df2 = df.to_cpu()     # df is allocated on GPU, move back to main memory
    >>> df2.sum().execute()     # execution will happen on CPU
 
-Single GPU
-~~~~~~~~~~
-
-:ref:`Local thread-based scheduler <threaded>` can work well on a single GPU.
-Examples above can work on a single GPU.
 
 Multiple GPU
 ~~~~~~~~~~~~
@@ -124,7 +119,7 @@ Basic command to start a worker that binds to some GPU is:
 
 .. code-block:: bash
 
-   mars-worker -h <worker_ip> -p <worker_port> -s <supervisor_ip>:<supervisor_port> --cuda-device 0,1,2
+   mars-worker -H <worker_ip> -p <worker_port> -s <supervisor_ip>:<supervisor_port> --cuda-devices 0,1,2
 
 The worker started will be bind to GPU 0, 1 and 2.
 

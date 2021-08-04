@@ -163,6 +163,7 @@ When you have an existing LightGBM model, it is also possible to predict on a
 Mars object with it by wrapping your model with Mars LightGBM classes:
 
 .. code-block:: python
+
    lg_reg = lgb.LGBMRegressor(raw_model)
 
    # training will submitted to cluster by default

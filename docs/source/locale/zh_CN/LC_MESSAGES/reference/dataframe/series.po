@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-03 18:42+0800\n"
+"POT-Creation-Date: 2021-08-04 16:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/reference/dataframe/series.rst:3
 msgid "Series"
@@ -1463,10 +1463,6 @@ msgstr ""
 "可通过 ``Series.str.<function/property>`` 来调用。"
 
 #: ../../source/reference/dataframe/series.rst:371:<autosummary>:1
-msgid ":obj:`Series.str.cgeneratedtalize <Series.str.cgeneratedtalize>`\\"
-msgstr ""
-
-#: ../../source/reference/dataframe/series.rst:371:<autosummary>:1
 msgid ":obj:`Series.str.casefold <mars.dataframe.Series.str.casefold>`\\ \\(\\)"
 msgstr ""
 
@@ -1898,10 +1894,6 @@ msgid ":obj:`Series.str.isspace <mars.dataframe.Series.str.isspace>`\\ \\(\\)"
 msgstr ""
 
 #: ../../source/reference/dataframe/series.rst:371:<autosummary>:1
-msgid "Check whether all characters in each string are whitespace."
-msgstr ""
-
-#: ../../source/reference/dataframe/series.rst:371:<autosummary>:1
 msgid ":obj:`Series.str.islower <mars.dataframe.Series.str.islower>`\\ \\(\\)"
 msgstr ""
 
@@ -2047,10 +2039,6 @@ msgstr ""
 msgid "Generate a pie plot."
 msgstr ""
 
-#: ../../source/reference/dataframe/series.rst:413:<autosummary>:1
-msgid ":obj:`Series.hist <Series.hist>`\\"
-msgstr ""
-
 #: ../../source/reference/dataframe/series.rst:415
 msgid "Serialization / IO / conversion"
 msgstr "序列化、IO 和转换"
@@ -2088,125 +2076,4 @@ msgstr ""
 #: ../../source/reference/dataframe/series.rst:428:<autosummary>:1
 msgid "Apply function to each chunk."
 msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.apply <mars.dataframe.Series.apply>`\\ "
-#~ "\\(func\\[\\, convert\\_dtype\\, args\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.agg <mars.dataframe.Series.agg>`\\ "
-#~ "\\(func\\[\\, axis\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.aggregate <mars.dataframe.Series.aggregate>`\\ "
-#~ "\\(func\\[\\, axis\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.map <mars.dataframe.Series.map>`\\ "
-#~ "\\(arg\\[\\, na\\_action\\, dtype\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.max <mars.dataframe.Series.max>`\\ "
-#~ "\\(\\[axis\\, skipna\\, level\\, "
-#~ "combine\\_size\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.mean <mars.dataframe.Series.mean>`\\ "
-#~ "\\(\\[axis\\, skipna\\, level\\, "
-#~ "combine\\_size\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.min <mars.dataframe.Series.min>`\\ "
-#~ "\\(\\[axis\\, skipna\\, level\\, "
-#~ "combine\\_size\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.reset_index <mars.dataframe.Series.reset_index>`\\"
-#~ " \\(\\[level\\, drop\\, name\\]\\)"
-#~ msgstr ""
-
-#~ msgid ":ref:`dt <api.series.dt>`"
-#~ msgstr ""
-
-#~ msgid ":ref:`str <api.series.str>`"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`Series.str.capitalize "
-#~ "<mars.dataframe.Series.str.capitalize>`\\ \\(\\)"
-#~ msgstr ""
-
-#~ msgid "Convert strings in the Series/Index to be capitalized."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Filling left and right side of "
-#~ "strings in the Series/Index with an "
-#~ "additional character."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "For each subject string in the "
-#~ "Series, extract groups from all matches"
-#~ " of regular expression pat."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Return lowest indexes in each strings"
-#~ " in the Series/Index where the "
-#~ "substring is fully contained between "
-#~ "[start:end]."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Return lowest indexes in each strings"
-#~ " where the substring is fully "
-#~ "contained between [start:end]."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Filling right side of strings in "
-#~ "the Series/Index with an additional "
-#~ "character."
-#~ msgstr ""
-
-#~ msgid "Determine if each string matches a regular expression."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Replace occurrences of pattern/regex in "
-#~ "the Series/Index with some other string."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Return highest indexes in each strings"
-#~ " in the Series/Index where the "
-#~ "substring is fully contained between "
-#~ "[start:end]."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Return highest indexes in each strings"
-#~ " where the substring is fully "
-#~ "contained between [start:end]."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Filling left side of strings in "
-#~ "the Series/Index with an additional "
-#~ "character."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "Wrap long strings in the Series/Index"
-#~ " to be formatted in paragraphs with"
-#~ " length less than a given width."
-#~ msgstr ""
 

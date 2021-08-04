@@ -36,14 +36,6 @@ msgid "Properties"
 msgstr "属性"
 
 #: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
-msgid ":obj:`Index.dtype <Index.dtype>`\\"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
-msgid ":obj:`Index.inferred_type <Index.inferred_type>`\\"
-msgstr ""
-
-#: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
 msgid ":obj:`Index.is_monotonic <mars.dataframe.Index.is_monotonic>`\\"
 msgstr ""
 
@@ -248,7 +240,4 @@ msgstr ""
 #: ../../source/reference/dataframe/indexing.rst:70:<autosummary>:1
 msgid "Create a Series with both index and values equal to the index keys."
 msgstr ""
-
-#~ msgid ":obj:`Index <mars.dataframe.Index>`\\ \\(data\\, \\*\\*\\_\\)"
-#~ msgstr ""
 

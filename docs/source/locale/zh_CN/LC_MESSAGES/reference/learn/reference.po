@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-03 18:42+0800\n"
+"POT-Creation-Date: 2021-08-04 16:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/reference/learn/reference.rst:5
 msgid "Mars Learn"
@@ -400,21 +400,21 @@ msgstr "LightGBM 集成"
 #: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMClassifier "
-"<mars.learn.contrib.lightgbm.LGBMClassifier>`\\ \\(\\*args\\, "
-"\\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMClassifier>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
 #: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMRegressor "
-"<mars.learn.contrib.lightgbm.LGBMRegressor>`\\ \\(\\*args\\, "
-"\\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMRegressor>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
 #: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMRanker "
-"<mars.learn.contrib.lightgbm.LGBMRanker>`\\ \\(\\*args\\, \\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMRanker>`\\ \\(\\*\\_\\, \\*\\*\\_\\_\\)"
 msgstr ""
 
 #: ../../source/reference/learn/reference.rst:226
@@ -429,22 +429,6 @@ msgstr ""
 
 #: ../../source/reference/learn/reference.rst:241:<autosummary>:1
 msgid "Run PyTorch script in Mars cluster."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:241:<autosummary>:1
-msgid ":obj:`contrib.pytorch.MarsDataset <contrib.pytorch.MarsDataset>`\\"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:241:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.MarsDistributedSampler "
-"<contrib.pytorch.MarsDistributedSampler>`\\"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:241:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.MarsRandomSampler "
-"<contrib.pytorch.MarsRandomSampler>`\\"
 msgstr ""
 
 #: ../../source/reference/learn/reference.rst:245
@@ -508,69 +492,13 @@ msgstr ""
 #: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.XGBClassifier "
-"<mars.learn.contrib.xgboost.XGBClassifier>`\\ \\(\\[max\\_depth\\, "
-"...\\]\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
-msgid "Implementation of the scikit-learn API for XGBoost classification."
+"<mars.learn.contrib.xgboost.XGBClassifier>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
 #: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.XGBRegressor "
-"<mars.learn.contrib.xgboost.XGBRegressor>`\\ \\(\\[max\\_depth\\, "
-"...\\]\\)"
+"<mars.learn.contrib.xgboost.XGBRegressor>`\\ \\(\\*\\_\\, \\*\\*\\_\\_\\)"
 msgstr ""
-
-#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
-msgid "Implementation of the scikit-learn API for XGBoost regressor."
-msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.pytorch.MarsDataset "
-#~ "<mars.learn.contrib.pytorch.MarsDataset>`\\"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.pytorch.MarsDistributedSampler "
-#~ "<mars.learn.contrib.pytorch.MarsDistributedSampler>`\\"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`utils.check_consistent_length "
-#~ "<mars.learn.utils.check_consistent_length>`\\ \\(\\*arrays\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.pytorch.MarsDataset "
-#~ "<mars.learn.contrib.pytorch.MarsDataset>`\\ \\(\\*tileables\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.pytorch.MarsDistributedSampler "
-#~ "<mars.learn.contrib.pytorch.MarsDistributedSampler>`\\ "
-#~ "\\(dataset\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.pytorch.MarsRandomSampler "
-#~ "<mars.learn.contrib.pytorch.MarsRandomSampler>`\\ "
-#~ "\\(data\\_source\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.lightgbm.LGBMClassifier "
-#~ "<mars.learn.contrib.lightgbm.LGBMClassifier>`\\"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.lightgbm.LGBMRegressor "
-#~ "<mars.learn.contrib.lightgbm.LGBMRegressor>`\\"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`contrib.lightgbm.LGBMRanker "
-#~ "<mars.learn.contrib.lightgbm.LGBMRanker>`\\"
-#~ msgstr ""
 

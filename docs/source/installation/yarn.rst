@@ -100,20 +100,20 @@ the cluster. You may use the argument ``app_name`` to customize the name of the
 Yarn application, or use the argument ``timeout`` to specify timeout of cluster
 creation.  Arguments for scaling up and out of the cluster are also available.
 
-Arguments for schedulers:
+Arguments for supervisors:
 
-+----------------------+------------------------------------------------------------+
-| Argument             | Description                                                |
-+======================+============================================================+
-| scheduler_num        | Number of schedulers in the cluster, 1 by default          |
-+----------------------+------------------------------------------------------------+
-| scheduler_cpu        | Number of CPUs for every scheduler                         |
-+----------------------+------------------------------------------------------------+
-| scheduler_mem        | Memory size for schedulers in the cluster, in bytes or size|
-|                      | units like ``1g``                                          |
-+----------------------+------------------------------------------------------------+
-| scheduler_extra_env  | A dict of environment variables to set in schedulers       |
-+----------------------+------------------------------------------------------------+
++----------------------+--------------------------------------------------------+
+| Argument             | Description                                            |
++======================+========================================================+
+| supervisor_num       | Number of supervisors in the cluster, 1 by default     |
++----------------------+--------------------------------------------------------+
+| supervisor_cpu       | Number of CPUs for every supervisor                    |
++----------------------+--------------------------------------------------------+
+| supervisor_mem       | Memory size for supervisors in the cluster, in bytes   |
+|                      | or size units like ``1g``                              |
++----------------------+--------------------------------------------------------+
+| supervisor_extra_env | A dict of environment variables to set in supervisors  |
++----------------------+--------------------------------------------------------+
 
 Arguments for workers:
 
@@ -139,24 +139,9 @@ Arguments for workers:
 | worker_extra_env   | A dict of environment variables to set in workers.             |
 +--------------------+----------------------------------------------------------------+
 
-Arguments for web services:
-
-+------------------+----------------------------------------------------------------+
-| Argument         | Description                                                    |
-+==================+================================================================+
-| web_num          | Number of web services in the cluster, 1 by default            |
-+------------------+----------------------------------------------------------------+
-| web_cpu          | Number of CPUs for every web service                           |
-+------------------+----------------------------------------------------------------+
-| web_mem          | Memory size for web services in the cluster, in bytes or size  |
-|                  | units like ``1g``                                              |
-+------------------+----------------------------------------------------------------+
-| web_extra_env    | A dict of environment variables to set in web services.        |
-+------------------+----------------------------------------------------------------+
-
-For instance, if you want to create a Mars cluster with 1 scheduler, 1 web
-service and 100 workers, each worker has 4 cores and 16GB memory, and stop
-waiting when 95 workers are ready, you can use the code below:
+For instance, if you want to create a Mars cluster with 1 supervisor and 100
+workers, each worker has 4 cores and 16GB memory, and stop waiting when 95
+workers are ready, you can use the code below:
 
 .. code-block:: python
 
@@ -166,6 +151,6 @@ waiting when 95 workers are ready, you can use the code below:
     os.environ['JAVA_HOME'] = '/usr/lib/jvm/java-1.8.0-openjdk'
     os.environ['HADOOP_HOME'] = '/usr/local/hadoop'
 
-    cluster = new_cluster('path/to/env/pack.tar.gz', scheduler_num=1, web_num=1,
+    cluster = new_cluster('path/to/env/pack.tar.gz', supervisor_num=1, web_num=1,
                           worker_num=100, worker_cpu=4, worker_mem='16g',
                           min_worker_num=95)
