@@ -53,8 +53,7 @@ def handle_fault(fault):
     elif fault == FaultType.ProcessExit:
         # used to simulate process crash, no cleanup.
         os._exit(-1)
-    assert fault == FaultType.NoFault, \
-        f"Got unexpected fault from on_execute_operand: {fault}"
+    assert fault == FaultType.NoFault, f"Got unexpected fault: {fault}"
 
 
 class AbstractFaultInjectionManager(ABC):

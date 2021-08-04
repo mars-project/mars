@@ -290,14 +290,15 @@ class SubtaskExecutionActor(mo.StatelessActor):
         batch_quota_req = quota_ref = slot_manager_ref = None
 
         # fault injection
-        fault_injection_manager_name = subtask.extra_config and subtask.extra_config.get(
-            ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
-        if fault_injection_manager_name is not None:
-            fault_injection_manager = await self._get_fault_injection_manager_ref(
-                subtask_info.supervisor_address, subtask.session_id, fault_injection_manager_name)
-            fault = await fault_injection_manager.get_fault(
-                FaultPosition.ON_RUN_SUBTASK, {'subtask': subtask})
-            handle_fault(fault)
+        if subtask.extra_config:
+            fault_injection_manager_name = subtask.extra_config.get(
+                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
+            if fault_injection_manager_name is not None:
+                fault_injection_manager = await self._get_fault_injection_manager_ref(
+                    subtask_info.supervisor_address, subtask.session_id, fault_injection_manager_name)
+                fault = await fault_injection_manager.get_fault(
+                    FaultPosition.ON_RUN_SUBTASK, {'subtask': subtask})
+                handle_fault(fault)
 
         try:
             quota_ref = await self._get_band_quota_ref(band_name)
