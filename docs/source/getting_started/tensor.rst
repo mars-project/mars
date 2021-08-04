@@ -69,15 +69,15 @@ numpy ndarray.  A shortcut ``.to_numpy()`` is identical to ``.execute().fetch()`
     the entire array on the server side and return it back to client,
     which is extremely inefficient and may cause OutOfMemory error.
 
-If multiple tensors need to be executed together,
-:class:`mars.tensor.ExecutableTuple` could be used.
+If multiple tensors need to be executed together, ``mars.execute()`` could be used.
 
 .. code-block:: python
 
+   >>> import mars
    >>> import mars.tensor as mt
    >>> z = mt.zeros((3, 3))
    >>> t = mt.ones((3, 3))
-   >>> mt.ExecutableTuple([z, t]).execute()
+   >>> mars.execute(z, t)
    (array([[0., 0., 0.],
            [0., 0., 0.],
            [0., 0., 0.]]),

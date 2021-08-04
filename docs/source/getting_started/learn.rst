@@ -6,18 +6,6 @@ Mars Learn
 Mars learn mimics scikit-learn API and leverages the ability of Mars tensor and
 DataFrame to process large data and execute in parallel.
 
-Mars does not require installation of scikit-learn, but if you want to use Mars
-learn, make sure scikit-learn is installed.
-
-Install scikit-learn via:
-
-.. code-block:: bash
-
-   pip install scikit-learn
-
-Refer to `installing scikit-learn <https://scikit-learn.org/stable/install.html>`_
-for more information.
-
 Let's take :class:`mars.learn.neighbors.NearestNeighbors` as an example.
 
 .. code-block:: python

@@ -1,0 +1,197 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.8.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-03 19:55+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/development/overview.rst:4
+msgid "Architecture"
+msgstr "架构"
+
+#: ../../source/development/overview.rst:6
+msgid "Main architecture is shown as below."
+msgstr "主要架构如图所示。"
+
+#: ../../source/development/overview.rst:10
+msgid "This development guide will mainly focus on the part in the ret dot lines."
+msgstr "本开发指引重心在图中红色点线包含的部分。"
+
+#: ../../source/development/overview.rst:12
+msgid ""
+"Mars implements a lightweight actor framework called oscar, on top of it,"
+" the distributed execution layer is decoupled into a few services "
+"includes:"
+msgstr ""
+"Mars 实现了一个轻量 actor 框架，叫 oscar，在其之上，分布式的执行层被"
+"分解成了几个服务："
+
+#: ../../source/development/overview.rst:16
+msgid ""
+":ref:`Session service <session_service>`. Manage sessions. Each session "
+"is isolated, the data in one session can not be seen from another "
+"session."
+msgstr ""
+":ref:`Session 服务 <session_service>`。管理 session。每个 session 是独立"
+"的，一个 session 看不到另一个 session 中的数据。"
+
+#: ../../source/development/overview.rst:18
+msgid ":ref:`Cluster service <cluster_service>`. Monitor entire cluster."
+msgstr ":ref:`Cluster 服务 <cluster_service>`。监控整个集群。"
+
+#: ../../source/development/overview.rst:19
+msgid ""
+":ref:`Meta service <meta_service>`. Store meta of Mars objects, like "
+"shape of tensor etc."
+msgstr ""
+":ref:`Meta 服务 <meta_service>`。存储 Mars 对象的 meta 信息，比如 tensor "
+"的形状等等。"
+
+#: ../../source/development/overview.rst:20
+msgid ""
+":ref:`Storage service <storage_service>`. Data can be put and get from "
+"storage service, functionalities like data spilling and data transfer "
+"between workers are integrated in storage service as well."
+msgstr ""
+":ref:`Storage 服务 <storage_service>`。数据能够从 storage 服务中放入和"
+"取出，类似数据 spill 以及 worker 间数据传输的功能也包含在这个服务中。"
+
+#: ../../source/development/overview.rst:23
+msgid ""
+":ref:`Task service <task_service>`. When user called ``.execute()`` "
+"method, a task will be submitted to this service. Task service will try "
+"to tile a high-level coarse-grained computational graph into a low-level "
+"fine-grained graph in which each node in the graph is a subtask. This "
+"subtask graph will be handed over to scheduling service."
+msgstr ""
+":ref:`Task 服务 <task_service>`。当用户调用 ``.execute()``，一个 task 会"
+"被提交到这个服务。Task 服务会尝试把一个高级别粗粒度的计算图 tile 成低级别"
+"细粒度的计算图，这个图上的每个节点就是一个 subtask。Subtask 图会被交给 "
+"scheduling服务调度。"
+
+#: ../../source/development/overview.rst:28
+msgid ""
+":ref:`Scheduling service <scheduling_service>`. Accept a subtask graph, "
+"and schedule the subtasks to workers for execution according to many "
+"highly optimized scheduling strategies."
+msgstr ""
+":ref:`Scheduling 服务 <scheduling_service>`。接受一个 subtask 图，使用"
+"很多优化的调度策略来调度 subtask 到 worker 上来执行。"
+
+#: ../../source/development/overview.rst:30
+msgid ""
+":ref:`Subtask service <subtask_service>`. Accept a subtask, execute them,"
+" then put data into storage, record meta in meta service, report back "
+"result to task service."
+msgstr ""
+":ref:`Subtask 服务 <subtask_service>`。接受一个 subtask，执行，把数据放入"
+"存储记录元数据信息，向 task 服务汇报结果。"
+
+#: ../../source/development/overview.rst:32
+msgid ""
+":ref:`Lifecycle service <lifecycle_service>`. Each Mars objects as well "
+"as chunk owns a reference count in lifecycle service, when reference "
+"count reaches 0, notify storage service to remove data, and tell meta "
+"service to remove meta."
+msgstr ""
+":ref:`Lifecycle 服务 <lifecycle_service>`。每个 Mars 对象以及 chunk 在 "
+"lifecycle 服务中更有一个引用计数，当引用计数为0的时候，通知 storage 服务"
+"删除数据，且通知 meta 服务删除元数据。"
+
+#: ../../source/development/overview.rst:37
+msgid "Code Structure"
+msgstr "代码结构"
+
+#: ../../source/development/overview.rst:39
+msgid "core: internal data structures, like tileables, chunks, operands, graphs."
+msgstr "core：包含内部数据结构，包括 tileable、chunk、operand 以及计算图。"
+
+#: ../../source/development/overview.rst:40
+msgid "lib: libraries, e.g. filesystem, sparse."
+msgstr "lib：库，比如 filesystem、sparse。"
+
+#: ../../source/development/overview.rst:41
+msgid "oscar: actor framework."
+msgstr "oscar：actor 框架。"
+
+#: ../../source/development/overview.rst:42
+msgid "deploy/oscar: local deploy."
+msgstr "deploy/oscar：本地部署。"
+
+#: ../../source/development/overview.rst:43
+msgid "deploy/kubernetes: deploy on Kubernetes."
+msgstr "deploy/kubernetes：Kubernetes 上部署"
+
+#: ../../source/development/overview.rst:44
+msgid "deploy/yarn: deploy on yarn."
+msgstr "deploy/yarn：Yarn 上部署。"
+
+#: ../../source/development/overview.rst:45
+msgid "services: all services."
+msgstr "services：所有的服务。"
+
+#: ../../source/development/overview.rst:46
+msgid "optimization: high-level and low-level optimization, e.g. fusion."
+msgstr "optimization：高级别和低级别优化，比如 fusion。"
+
+#: ../../source/development/overview.rst:47
+msgid "serialization: serialization based on pickle5 protocol."
+msgstr "serialization：基于 pickle5 协议的序列化。"
+
+#: ../../source/development/overview.rst:48
+msgid "storage: local storage backends, e.g. plasma, shared_memory, ray."
+msgstr "storage：本地存储，比如 plasma、shared_memory、ray。"
+
+#: ../../source/development/overview.rst:51
+msgid "Tour of Task"
+msgstr "Task 之旅"
+
+#: ../../source/development/overview.rst:55
+msgid "A task is consist of the following steps:"
+msgstr "一个 task 的执行包含几个步骤："
+
+#: ../../source/development/overview.rst:57
+#, fuzzy
+msgid ""
+"When ``.execute()`` called on client side, a task that has a tileable "
+"graph will be submitted to task service."
+msgstr ""
+"当客户端调用 ``.execute()``，一个包含 tileable 图的 task 会被提交到 task "
+"服务。"
+
+#: ../../source/development/overview.rst:59
+msgid ""
+"Task service will optimize tileable graph first, a few rules will be "
+"applied, e.g. column pruning. Tileable graph will then be tiled into "
+"chunk graph, chunk graph will be optimized as well, e.g. fusion. Each "
+"node on the fused chunk graph will be organized as a subtask, the subtask"
+" graph will be handed over to scheduling service."
+msgstr ""
+"Task 服务会首先优化 tileable 图，一系列的规则会被引用，比如列剪裁。"
+"Tileable 图会被 tile 成 chunk 图，chunk 图也会被优化，比如 fusion。融合的"
+"图上的一个节点会变成一个 subtask，subtask 会交给 schduling 服务运行。"
+
+#: ../../source/development/overview.rst:64
+msgid ""
+"Scheduling service schedules the subtasks according to a few highly "
+"optimized, e.g. depth-first, locality-aware, scheduling policies. "
+"Subtasks will be submitted to subtask service on workers for execution."
+msgstr "Scheduling 服务根据一系列优化过的策略来调度，比如深度优先、"
+
+#: ../../source/development/overview.rst:67
+msgid "A task will be finished until all subtasks have been accomplished."
+msgstr ""
+"一个 task 会等到所有 subtask 执行完成结束。"
+
