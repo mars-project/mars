@@ -21,26 +21,3 @@ msgstr ""
 msgid "mars.learn.contrib.pytorch.MarsRandomSampler"
 msgstr ""
 
-#~ msgid "Initialize self.  See help(type(self)) for accurate signature."
-#~ msgstr ""
-
-#~ msgid "Methods"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`__init__ "
-#~ "<mars.learn.contrib.pytorch.MarsRandomSampler.__init__>`\\ "
-#~ "\\(data\\_source\\[\\, replacement\\, num\\_samples\\]\\)"
-#~ msgstr ""
-
-#~ msgid "Initialize self."
-#~ msgstr ""
-
-#~ msgid "Attributes"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`num_samples "
-#~ "<mars.learn.contrib.pytorch.MarsRandomSampler.num_samples>`\\"
-#~ msgstr ""
-

@@ -184,6 +184,3 @@ msgstr ""
 msgid "Intercept (bias) property"
 msgstr ""
 
-#~ msgid "Get xgboost type parameters."
-#~ msgstr ""
-

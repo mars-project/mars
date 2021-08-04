@@ -149,6 +149,3 @@ msgstr ""
 msgid ":obj:`ExecutableTuple <mars.dataframe.ExecutableTuple>`\\ \\(\\*args\\)"
 msgstr ""
 
-#~ msgid ":obj:`ExecutableTuple <mars.dataframe.ExecutableTuple>`\\ \\(\\*\\_\\)"
-#~ msgstr ""
-

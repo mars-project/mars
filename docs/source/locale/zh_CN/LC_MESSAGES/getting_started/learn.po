@@ -68,22 +68,3 @@ msgstr "TensorFlow 参考 :ref:`tensorflow`。"
 msgid "For PyTorch, doc is coming soon."
 msgstr "PyTorch 集成的文档尚在编写中。"
 
-#~ msgid ""
-#~ "Mars does not require installation of"
-#~ " scikit-learn, but if you want "
-#~ "to use Mars learn, make sure "
-#~ "scikit-learn is installed."
-#~ msgstr "Mars 不要求依赖 scikit-learn，但如果要使用 Mars learn，需要先安装它。"
-
-#~ msgid "Install scikit-learn via:"
-#~ msgstr "安装 scikit-learn 可通过："
-
-#~ msgid ""
-#~ "Refer to `installing scikit-learn <https"
-#~ "://scikit-learn.org/stable/install.html>`_ for more "
-#~ "information."
-#~ msgstr ""
-#~ "参考 `安装 scikit-learn <https:/"
-#~ "/scikit-learn.org/stable/install.html"
-#~ ">`_ 获取更多信息"
-

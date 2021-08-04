@@ -347,10 +347,3 @@ msgstr ""
 msgid "Roll tensor elements along a given axis."
 msgstr ""
 
-#~ msgid ""
-#~ "Return a new array with sub-arrays"
-#~ " along an axis deleted. For a "
-#~ "onedimensional array, this returns those "
-#~ "entries not returned by`arr[obj]`."
-#~ msgstr ""
-

@@ -241,26 +241,3 @@ msgstr "下列方法仅对 ``SeriesGroupBy`` 对象可用。"
 msgid "The following methods are available only for ``DataFrameGroupBy`` objects."
 msgstr "下列方法仅对 ``DataFrameGroupBy`` 对象可用。"
 
-#~ msgid ""
-#~ ":obj:`GroupBy.apply <mars.dataframe.groupby.GroupBy.apply>`\\"
-#~ " \\(func\\, \\*args\\[\\, dtypes\\, index\\, "
-#~ "...\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`GroupBy.agg <mars.dataframe.groupby.GroupBy.agg>`\\ "
-#~ "\\(func\\[\\, method\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`GroupBy.aggregate "
-#~ "<mars.dataframe.groupby.GroupBy.aggregate>`\\ \\(func\\[\\, "
-#~ "method\\]\\)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ ":obj:`GroupBy.transform "
-#~ "<mars.dataframe.groupby.GroupBy.transform>`\\ \\(func\\, "
-#~ "\\*args\\[\\, dtypes\\, ...\\]\\)"
-#~ msgstr ""
-

@@ -25,9 +25,3 @@ msgstr "安装"
 msgid "You can simply install Mars via pip:"
 msgstr "你可以使用 ``pip`` 安装 Mars："
 
-#~ msgid "Install Mars distributed by run:"
-#~ msgstr "安装分布式版本可以："
-
-#~ msgid "For now, distributed version is only available for Linux and Mac OS."
-#~ msgstr "目前，分布式版本只支持 Linux 和 MacOS。"
-

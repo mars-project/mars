@@ -83,30 +83,3 @@ msgstr ""
 msgid "Return type"
 msgstr ""
 
-#~ msgid "script to run"
-#~ msgstr ""
-
-#~ msgid "number of TensorFlow workers"
-#~ msgstr ""
-
-#~ msgid "number of TensorFlow ps, optional"
-#~ msgstr ""
-
-#~ msgid "run TensorFlow script on GPU"
-#~ msgstr ""
-
-#~ msgid "extra command args for script"
-#~ msgstr ""
-
-#~ msgid "Mars session, if not provided, will use default one"
-#~ msgstr ""
-
-#~ msgid "extra kwargs for session.run"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "port of TensorFlow worker or ps, "
-#~ "will automatically increase for the same"
-#~ " worker"
-#~ msgstr ""
-

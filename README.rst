@@ -285,7 +285,7 @@ Thank you in advance for your contributions!
    :target: https://github.com/mars-project/mars/actions
 .. |Coverage| image:: https://codecov.io/gh/mars-project/mars/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/mars-project/mars
-.. |Quality| image:: https://img.shields.io/codacy/grade/4e15343492d14335847d67630bb3c319.svg
+.. |Quality| image:: https://img.shields.io/codacy/grade/6a80bb4659ed410eb33795f580c8615e.svg
    :target: https://app.codacy.com/project/mars-project/mars/dashboard
 .. |PyPI version| image:: https://img.shields.io/pypi/v/pymars.svg
    :target: https://pypi.python.org/pypi/pymars

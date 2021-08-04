@@ -35,6 +35,3 @@ msgstr "Spawn 一个函数，且返回一个 Mars 对象，它后续可以被执
 msgid ":obj:`ExecutableTuple <mars.remote.ExecutableTuple>`\\ \\(\\*args\\)"
 msgstr ""
 
-#~ msgid ":obj:`ExecutableTuple <mars.remote.ExecutableTuple>`\\ \\(\\*\\_\\)"
-#~ msgstr ""
-

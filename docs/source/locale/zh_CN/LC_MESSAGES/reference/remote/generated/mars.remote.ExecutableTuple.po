@@ -73,6 +73,3 @@ msgid ""
 "\\(\\[session\\]\\)"
 msgstr ""
 
-#~ msgid ":obj:`__init__ <mars.remote.ExecutableTuple.__init__>`\\ \\(\\*\\_\\)"
-#~ msgstr ""
-
