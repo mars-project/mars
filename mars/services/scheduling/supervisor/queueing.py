@@ -110,7 +110,7 @@ class SubtaskQueueingActor(mo.Actor):
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_manager_ref(self):
         from .manager import SubtaskManagerActor
         return await mo.actor_ref(
@@ -168,6 +168,7 @@ class SubtaskQueueingActor(mo.Actor):
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
+                        await asyncio.sleep(0)
                         self.remove_queued_subtasks([item.subtask.subtask_id])
                 else:
                     logger.debug('No slots available')
@@ -175,8 +176,10 @@ class SubtaskQueueingActor(mo.Actor):
             for stid in non_submitted_ids:
                 heapq.heappush(task_queue, submit_items[stid])
 
+        if limit is None:
+            logger.warning('Submitted %d tasks without limits', len(submit_aio_tasks))
         if submit_aio_tasks:
-            await asyncio.gather(*submit_aio_tasks)
+            yield asyncio.gather(*submit_aio_tasks)
 
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):

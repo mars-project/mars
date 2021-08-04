@@ -19,16 +19,20 @@ from typing import Dict, List
 import numpy as np
 
 from ....serialization.aio import BUFFER_SIZES_NAME
+from ....utils import lazy_import
+
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
 
 CUDA_CHUNK_SIZE = 16 * 1024 ** 2
 
 
 def write_buffers(writer: StreamWriter,
                   buffers: List):
-    try:
+    if cupy is not None and cudf is not None:
         from cudf.core import Buffer as CPBuffer
         from cupy import ndarray as cp_ndarray
-    except ImportError:
+    else:
         CPBuffer = cp_ndarray = None
 
     def _write_cuda_buffer(ptr):  # pragma: no cover
@@ -54,11 +58,11 @@ def write_buffers(writer: StreamWriter,
 
 async def read_buffers(header: Dict,
                        reader: StreamReader):
-    try:
+    if cupy is not None and cudf is not None:
         from cudf.core import Buffer as CPBuffer
         from cupy.cuda.memory import UnownedMemory as CPUnownedMemory, \
             MemoryPointer as CPMemoryPointer
-    except ImportError:
+    else:
         CPBuffer = CPUnownedMemory = CPMemoryPointer = None
 
     serializer = header.get('serializer')
