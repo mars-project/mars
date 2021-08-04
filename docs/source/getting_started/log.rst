@@ -15,9 +15,9 @@ For example, we define a function called ``calculate``.
 
 .. code-block:: python
 
-   >>> from mars.session import new_session
+   >>> import mars
    >>> # create a distributed session
-   >>> new_session('http://<ip>:<port>').as_default()
+   >>> mars.new_session('http://<ip>:<port>')
    >>>
    >>> import mars.remote as mr
    >>> def calculate(x):

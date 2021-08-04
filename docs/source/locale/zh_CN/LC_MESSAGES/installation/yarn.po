@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.7.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-18 14:07+0800\n"
+"POT-Creation-Date: 2021-08-04 17:36+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/installation/yarn.rst:4
 msgid "Run on YARN"
@@ -104,11 +104,11 @@ msgstr ""
 " 虚拟环境、Python 执行文件路径或者依照上面的方法制作的 Python 环境包，"
 "可以根据代码中的注释选择相应的行："
 
-#: ../../source/installation/yarn.rst:98
+#: ../../source/installation/yarn.rst:97
 msgid "Customizing cluster"
 msgstr "定制集群"
 
-#: ../../source/installation/yarn.rst:99
+#: ../../source/installation/yarn.rst:98
 msgid ""
 "``new_cluster`` function provides several keyword arguments for users to "
 "define the cluster. You may use the argument ``app_name`` to customize "
@@ -120,97 +120,95 @@ msgstr ""
 " 参数定义 YARN 应用的名称，``timeout`` 参数定义创建集群的超时时间。同时，"
 "该函数还提供调整集群规模的功能。"
 
-#: ../../source/installation/yarn.rst:104
-msgid "Arguments for schedulers:"
-msgstr "Scheduler 相关参数："
+#: ../../source/installation/yarn.rst:103
+msgid "Arguments for supervisors:"
+msgstr "Supervisor 相关参数："
 
-#: ../../source/installation/yarn.rst:107
-#: ../../source/installation/yarn.rst:122
-#: ../../source/installation/yarn.rst:146
+#: ../../source/installation/yarn.rst:106
+#: ../../source/installation/yarn.rst:121
 msgid "Argument"
 msgstr "参数"
 
-#: ../../source/installation/yarn.rst:107
-#: ../../source/installation/yarn.rst:122
-#: ../../source/installation/yarn.rst:146
+#: ../../source/installation/yarn.rst:106
+#: ../../source/installation/yarn.rst:121
 msgid "Description"
 msgstr "描述"
 
-#: ../../source/installation/yarn.rst:109
-msgid "scheduler_num"
+#: ../../source/installation/yarn.rst:108
+msgid "supervisor_num"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:109
-msgid "Number of schedulers in the cluster, 1 by default"
+#: ../../source/installation/yarn.rst:108
+msgid "Number of supervisors in the cluster, 1 by default"
+msgstr "每个 Supervisor 的 CPU 数目，默认为 1"
+
+#: ../../source/installation/yarn.rst:110
+msgid "supervisor_cpu"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:111
-msgid "scheduler_cpu"
-msgstr "每个 Scheduler 的 CPU 数目"
+#: ../../source/installation/yarn.rst:110
+msgid "Number of CPUs for every supervisor"
+msgstr "每个 Supervisor 的 CPU 数目"
 
-#: ../../source/installation/yarn.rst:111
-msgid "Number of CPUs for every scheduler"
+#: ../../source/installation/yarn.rst:112
+msgid "supervisor_mem"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:113
-msgid "scheduler_mem"
-msgstr ""
-
-#: ../../source/installation/yarn.rst:113
+#: ../../source/installation/yarn.rst:112
 msgid ""
-"Memory size for schedulers in the cluster, in bytes or size units like "
+"Memory size for supervisors in the cluster, in bytes or size units like "
 "``1g``"
-msgstr "每个 Scheduler 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
+msgstr "每个 Supervisor 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
 
-#: ../../source/installation/yarn.rst:116
-msgid "scheduler_extra_env"
+#: ../../source/installation/yarn.rst:115
+msgid "supervisor_extra_env"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:116
-msgid "A dict of environment variables to set in schedulers"
-msgstr "在 Scheduler 中额外增加的环境变量，以 dict 表示"
+#: ../../source/installation/yarn.rst:115
+msgid "A dict of environment variables to set in supervisors"
+msgstr "在 Supervisor 中额外增加的环境变量，以 dict 表示"
 
-#: ../../source/installation/yarn.rst:119
+#: ../../source/installation/yarn.rst:118
 msgid "Arguments for workers:"
 msgstr "Worker 相关参数："
 
-#: ../../source/installation/yarn.rst:124
+#: ../../source/installation/yarn.rst:123
 msgid "worker_num"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:124
+#: ../../source/installation/yarn.rst:123
 msgid "Number of workers in the cluster, 1 by default"
 msgstr "集群中 Worker 的数目，默认为 1"
 
-#: ../../source/installation/yarn.rst:126
+#: ../../source/installation/yarn.rst:125
 msgid "worker_cpu"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:126
+#: ../../source/installation/yarn.rst:125
 msgid "Number of CPUs for every worker"
 msgstr "每个 Worker 的 CPU 数目"
 
-#: ../../source/installation/yarn.rst:128
+#: ../../source/installation/yarn.rst:127
 msgid "worker_mem"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:128
+#: ../../source/installation/yarn.rst:127
 msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
 msgstr "每个 Worker 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
 
-#: ../../source/installation/yarn.rst:131
+#: ../../source/installation/yarn.rst:130
 msgid "worker_spill_paths"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:131
+#: ../../source/installation/yarn.rst:130
 msgid "List of spill paths for worker pods on hosts"
 msgstr "在宿主机上用于 Worker spill 的路径列表"
 
-#: ../../source/installation/yarn.rst:133
+#: ../../source/installation/yarn.rst:132
 msgid "worker_cache_mem"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:133
+#: ../../source/installation/yarn.rst:132
 msgid ""
 "Size or ratio of shared memory for every worker. Details about memory "
 "management of Mars workers can be found in :ref:`memory tuning "
@@ -219,11 +217,11 @@ msgstr ""
 "Worker 中共享内存的大小或者占比。关于 Mars Worker 中的内存管理细节可以"
 "参考 :ref:`内存调优 <worker_memory_tuning>` 章节。"
 
-#: ../../source/installation/yarn.rst:137
+#: ../../source/installation/yarn.rst:136
 msgid "min_worker_num"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:137
+#: ../../source/installation/yarn.rst:136
 msgid ""
 "Minimal number of ready workers for ``new_cluster`` to return, "
 "``worker_num`` by default"
@@ -231,59 +229,21 @@ msgstr ""
 "``new_cluster`` 结束执行时所需的最小可用 Worker 个数，默认为 ``worker_num"
 "``。"
 
-#: ../../source/installation/yarn.rst:140
+#: ../../source/installation/yarn.rst:139
 msgid "worker_extra_env"
 msgstr ""
 
-#: ../../source/installation/yarn.rst:140
+#: ../../source/installation/yarn.rst:139
 msgid "A dict of environment variables to set in workers."
 msgstr "在 Worker 中额外增加的环境变量，以 dict 表示"
 
-#: ../../source/installation/yarn.rst:143
-msgid "Arguments for web services:"
-msgstr "Web 服务相关参数："
-
-#: ../../source/installation/yarn.rst:148
-msgid "web_num"
-msgstr ""
-
-#: ../../source/installation/yarn.rst:148
-msgid "Number of web services in the cluster, 1 by default"
-msgstr "每个 Web 服务的 CPU 数目，默认为1"
-
-#: ../../source/installation/yarn.rst:150
-msgid "web_cpu"
-msgstr ""
-
-#: ../../source/installation/yarn.rst:150
-msgid "Number of CPUs for every web service"
-msgstr "每个 Web 服务的 CPU 数目"
-
-#: ../../source/installation/yarn.rst:152
-msgid "web_mem"
-msgstr ""
-
-#: ../../source/installation/yarn.rst:152
+#: ../../source/installation/yarn.rst:142
 msgid ""
-"Memory size for web services in the cluster, in bytes or size units like "
-"``1g``"
-msgstr "每个 Web 服务的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
-
-#: ../../source/installation/yarn.rst:155
-msgid "web_extra_env"
+"For instance, if you want to create a Mars cluster with 1 supervisor and "
+"100 workers, each worker has 4 cores and 16GB memory, and stop waiting "
+"when 95 workers are ready, you can use the code below:"
 msgstr ""
-
-#: ../../source/installation/yarn.rst:155
-msgid "A dict of environment variables to set in web services."
-msgstr "在 Web 服务中额外增加的环境变量，以 dict 表示"
-
-#: ../../source/installation/yarn.rst:158
-msgid ""
-"For instance, if you want to create a Mars cluster with 1 scheduler, 1 "
-"web service and 100 workers, each worker has 4 cores and 16GB memory, and"
-" stop waiting when 95 workers are ready, you can use the code below:"
-msgstr ""
-"例如，如果你需要创建一个包含单个 Scheduler、单个 Web 服务以及 100 个 "
-"Worker 的 Mars 集群，每个 Worker 拥有 4 核 16GB 内存，当 95 个 Worker "
-"可用时认为整个集群可用，你可以使用下面的代码："
+"例如，如果你需要创建一个包含单个 Supervisor 和 100 个 Worker 的 Mars 集群"
+"，每个 Worker 拥有 4 核 16GB 内存，当 95 个 Worker 可用时认为整个集群可用"
+"，你可以使用下面的代码："
 
