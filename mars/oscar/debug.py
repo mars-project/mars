@@ -14,6 +14,7 @@
 
 import asyncio.tasks
 import contextvars
+import functools
 import json
 import logging
 import os
@@ -157,4 +158,25 @@ def set_message_trace(message_trace):
     _message_trace_var.set(message_trace)
 
 
+_create_task = asyncio.create_task
+
+
+def aio_task_log_exception_patch():
+
+    async def task_with_ex_logged(coro):
+        try:
+            return await coro
+        except Exception as e:
+            logger.exception('Coroutine %r execution got exception %s.', coro, e)
+            raise
+
+    @functools.wraps(_create_task)
+    def _new_create_task(coro, *args, **kwargs):
+        return _create_task(task_with_ex_logged(coro), *args, **kwargs)
+
+    if _debug_opts:
+        asyncio.create_task = _new_create_task
+
+
 reload_debug_opts_from_env()
+aio_task_log_exception_patch()
