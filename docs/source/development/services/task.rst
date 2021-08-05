@@ -58,6 +58,17 @@ worker load balance. The algorithm is described below:
    average number of operands for every worker;
 5. Go to Step 1 when there are workers left.
 
+Configuration
+-------------
+
+.. code-block:: yaml
+
+    task:
+        default_config:
+            optimize_tileable_graph: true
+            optimize_chunk_graph: true
+            fuse_enabled: true
+
 APIs
 ----
 
