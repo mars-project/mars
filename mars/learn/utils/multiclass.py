@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 from collections.abc import Sequence
+from typing import List
 
 import numpy as np
 try:
@@ -22,100 +24,197 @@ except ImportError:  # pragma: no cover
 
 from ... import opcodes as OperandDef
 from ... import tensor as mt
-from ...core import ENTITY_TYPE, recursive_tile
-from ...serialization.serializables import KeyField, BoolField, TupleField, DataTypeField, AnyField, ListField
+from ...core import ENTITY_TYPE, TILEABLE_TYPE, recursive_tile
+from ...core.context import get_context
+from ...serialization.serializables import AnyField, ListField
 from ...tensor.core import TensorOrder
+from ...typing import TileableType
 from ..operands import LearnOperand, LearnOperandMixin, OutputType
 from ..utils import assert_all_finite
+from .validation import check_array
+
+
+def _unique_multiclass(y):
+    if hasattr(y, '__array__') or hasattr(y, '__mars_tensor__'):
+        return mt.unique(mt.asarray(y))
+    else:
+        return set(y)
+
+
+def _unique_indicator(y):
+    return mt.arange(
+        check_array(y, accept_sparse=True).shape[1]
+    )
+
+
+_FN_UNIQUE_LABELS = {
+    'binary': _unique_multiclass,
+    'multiclass': _unique_multiclass,
+    'multilabel-indicator': _unique_indicator,
+}
+
+
+class UniqueLabels(LearnOperand, LearnOperandMixin):
+    _op_type_ = OperandDef.UNIQUE_LABELS
+
+    ys = ListField('ys')
+
+    def __call__(self, ys: List[TileableType]):
+        self._output_types = [OutputType.tensor]
+        inputs = [y for y in ys if isinstance(y, TILEABLE_TYPE)]
+        return self.new_tileable(inputs, shape=(np.nan,),
+                                 dtype=mt.tensor(ys[0]).dtype,
+                                 order=TensorOrder.C_ORDER)
+
+    @classmethod
+    def tile(cls, op: "UniqueLabels"):
+        ys = op.ys
+        ctx = get_context()
+
+        target_types = yield from recursive_tile(
+            [type_of_target(x) for x in ys])
+        # yield chunks of target_types for execution
+        chunks = list(itertools.chain(*(t.chunks for t in target_types)))
+        yield chunks
+
+        ys_types = set([it.item() for it in
+                        ctx.get_chunks_result([c.key for c in chunks])])
+        if ys_types == {"binary", "multiclass"}:
+            ys_types = {"multiclass"}
+
+        if len(ys_types) > 1:
+            raise ValueError("Mix type of y not allowed, got types %s" % ys_types)
+
+        label_type = ys_types.pop()
+
+        # Check consistency for the indicator format
+        if label_type == "multilabel-indicator":
+            check_arrays = []
+            chunks = []
+            for y in ys:
+                arr = yield from recursive_tile(
+                    check_array(y, accept_sparse=True))
+                check_arrays.append(arr)
+                chunks.extend(arr.chunks)
+            yield check_arrays + chunks
+            if len(set(arr.shape[1] for arr in check_arrays)) > 1:
+                raise ValueError("Multi-label binary indicator input with "
+                                 "different numbers of labels")
+
+        # Get the unique set of labels
+        _unique_labels = _FN_UNIQUE_LABELS.get(label_type, None)
+        if not _unique_labels:
+            raise ValueError("Unknown label type: %s" % repr(ys))
+
+        labels = [_unique_labels(y) for y in ys]
+        labels_chunks = []
+        ys_labels = set()
+        for label in labels:
+            if isinstance(label, ENTITY_TYPE):
+                label = yield from recursive_tile(label)
+                labels_chunks.extend(label.chunks)
+            else:
+                ys_labels.update(label)
+        yield labels_chunks
+        ys_labels.update(itertools.chain.from_iterable(
+            ctx.get_chunks_result([c.key for c in labels_chunks])))
+
+        # Check that we don't mix string type with number type
+        if (len(set(isinstance(label, str) for label in ys_labels)) > 1):
+            raise ValueError("Mix of label input types (string and number)")
+
+        return (yield from recursive_tile(mt.array(sorted(ys_labels))))
+
+
+def unique_labels(*ys):
+    """
+    Extract an ordered array of unique labels.
+
+    We don't allow:
+        - mix of multilabel and multiclass (single label) targets
+        - mix of label indicator matrix and anything else,
+          because there are no explicit labels)
+        - mix of label indicator matrices of different sizes
+        - mix of string and integer labels
+
+    At the moment, we also don't allow "multiclass-multioutput" input type.
+
+    Parameters
+    ----------
+    *ys : array-likes
+
+    Returns
+    -------
+    out : ndarray of shape (n_unique_labels,)
+        An ordered array of unique labels.
+
+    Examples
+    --------
+    >>> from mars.learn.utils.multiclass import unique_labels
+    >>> unique_labels([3, 5, 5, 5, 7, 7]).execute()
+    array([3, 5, 7])
+    >>> unique_labels([1, 2, 3, 4], [2, 2, 3, 4]).execute()
+    array([1, 2, 3, 4])
+    >>> unique_labels([1, 2, 10], [5, 11]).execute()
+    array([ 1,  2,  5, 10, 11])
+    """
+    if not ys:
+        raise ValueError('No argument has been passed.')
+
+    ys = list(ys)
+    op = UniqueLabels(ys=ys)
+    return op(ys)
 
 
 class IsMultilabel(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.IS_MULTILABEL
 
-    _y = AnyField('y')
-    _unique_y = KeyField('unique_y')
-    # for chunk
-    _is_y_sparse = BoolField('is_y_sparse')
+    y = AnyField('y')
 
-    def __init__(self, y=None, unique_y=None, is_y_sparse=None, **kw):
-        super().__init__(_y=y, _unique_y=unique_y,
-                         _is_y_sparse=is_y_sparse, **kw)
-        self.output_types = [OutputType.tensor]
-
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def unique_y(self):
-        return self._unique_y
-
-    @property
-    def is_y_sparse(self):
-        return self._is_y_sparse
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        if isinstance(self._y, ENTITY_TYPE):
-            self._y = self._inputs[0]
-        if self._unique_y is not None:
-            self._unique_y = self._inputs[-1]
-
-    def __call__(self, y, y_unique=None):
+    def __call__(self, y):
+        self._output_types = [OutputType.tensor]
         inputs = [y] if isinstance(y, ENTITY_TYPE) else []
-        if y_unique is not None:
-            inputs.append(y_unique)
         return self.new_tileable(inputs, shape=(), dtype=np.dtype(bool),
                                  order=TensorOrder.C_ORDER)
 
     @classmethod
-    def tile(cls, op):
+    def _tile(cls, op: "IsMultilabel"):
         y = op.y
-        out = op.outputs[0]
+        ctx = get_context()
 
-        if not (hasattr(y, 'shape') and y.ndim == 2 and y.shape[1] > 1):
-            result = yield from recursive_tile(mt.array(False))
-            return [result]
-        else:
-            unique_y = op.unique_y
-            assert len(unique_y.chunks) == 1
-            unique_y_chunk = unique_y.chunks[0]
-            chunk_op = IsMultilabel(unique_y=unique_y_chunk,
-                                    is_y_sparse=y.issparse())
-            chunk = chunk_op.new_chunk([unique_y_chunk], dtype=out.dtype,
-                                       order=out.order, index=(0,),
-                                       shape=())
+        y = yield from recursive_tile(mt.tensor(y))
+        if any(np.isnan(s) for s in y.shape):
+            yield y.chunks + [y]
 
-            new_op = op.copy()
-            params = out.params
-            params['nsplits'] = ()
-            params['chunks'] = [chunk]
-            return new_op.new_tileables(op.inputs, kws=[params])
+        if not (hasattr(y, "shape") and y.ndim == 2 and y.shape[1] > 1):
+            return False
+
+        labels = yield from recursive_tile(mt.unique(y))
+        yield labels.chunks + [labels]
+
+        if len(labels) < 3:
+            if y.dtype.kind in 'biu':
+                return True
+            if y.dtype.kind == 'f':
+                is_integral_float = yield from recursive_tile(
+                    mt.all(mt.equal(y.astype(int), y)))
+                yield is_integral_float.chunks
+                is_integral_float = ctx.get_chunks_result(
+                    [is_integral_float.chunks[0].key])[0]
+                if is_integral_float:
+                    return True
+
+        return False
 
     @classmethod
-    def execute(cls, ctx, op):
-        unique_y = ctx[op.unique_y.key]
-
-        if op.is_y_sparse:
-            # sparse
-            result = (unique_y.size in (0, 1) and
-                      (unique_y.dtype.kind in 'biu' or  # bool, int, uint
-                       _is_integral_float(unique_y)))
-        else:
-            # dense
-            labels = unique_y
-            result = len(labels) < 3 and (unique_y.dtype.kind in 'biu' or  # bool, int, uint
-                                          _is_integral_float(labels))
-
-        ctx[op.outputs[0].key] = result
-
-
-def _is_integral_float(y):
-    return y.dtype.kind == 'f' and np.all(y.astype(int) == y)
+    def tile(cls, op: "IsMultilabel"):
+        result = yield from cls._tile(op)
+        return (yield from recursive_tile(mt.array(result)))
 
 
 def is_multilabel(y):
-    """ Check if ``y`` is in a multilabel format.
+    """
+    Check if ``y`` is in a multilabel format.
 
     Parameters
     ----------
@@ -152,186 +251,89 @@ def is_multilabel(y):
     else:
         yt = y = mt.tensor(y)
 
-    if hasattr(y, 'dtype') and y.dtype != np.object_:
-        unique_y = mt.unique(y, aggregate_size=1)
-    else:
-        unique_y = None
-    op = IsMultilabel(y=y, unique_y=unique_y)
-    return op(yt, unique_y)
+    op = IsMultilabel(y=y)
+    return op(yt)
 
 
 class TypeOfTarget(LearnOperand, LearnOperandMixin):
-    __slots__ = ('_unique_y_chunk', '_check_all_finite_chunk')
     _op_type_ = OperandDef.TYPE_OF_TARGET
 
-    _y = AnyField('y')
-    # for chunks
-    _is_multilabel = KeyField('is_multilabel')
-    _first_value = KeyField('first_value')
-    _check_float = KeyField('check_float')
-    _assert_all_finite = KeyField('assert_all_finite')
-    _unique_y = KeyField('unique_y')
-    _y_shape = TupleField('y_shape')
-    _y_dtype = DataTypeField('y_dtype')
-    _checked_targets = ListField('checked_targets')
+    y = AnyField('y')
 
-    def __init__(self, y=None, is_multilabel=None, first_value=None,
-                 check_float=None, assert_all_finite=None,
-                 unique_y=None, y_shape=None, y_dtype=None,
-                 checked_targets=None, **kw):
-        super().__init__(_y=y, _is_multilabel=is_multilabel,
-                         _first_value=first_value, _check_float=check_float,
-                         _assert_all_finite=assert_all_finite,
-                         _unique_y=unique_y, _y_shape=y_shape,
-                         _y_dtype=y_dtype, _checked_targets=checked_targets, **kw)
-        self.output_types = [OutputType.tensor]
-
-    @property
-    def y(self):
-        return self._y
-
-    @property
-    def is_multilabel(self):
-        return self._is_multilabel
-
-    @property
-    def first_value(self):
-        return self._first_value
-
-    @property
-    def check_float(self):
-        return self._check_float
-
-    @property
-    def assert_all_finite(self):
-        return self._assert_all_finite
-
-    @property
-    def unique_y(self):
-        return self._unique_y
-
-    @property
-    def y_shape(self):
-        return self._y_shape
-
-    @property
-    def y_dtype(self):
-        return self._y_dtype
-
-    @property
-    def checked_targets(self):
-        return self._checked_targets
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        inputs_iter = iter(self._inputs)
-        for attr in ['_y', '_is_multilabel', '_first_value',
-                     '_check_float', '_assert_all_finite',
-                     '_unique_y']:
-            v = getattr(self, attr)
-            if isinstance(v, ENTITY_TYPE):
-                setattr(self, attr, next(inputs_iter))
-
-    def __call__(self, y):
+    def __call__(self, y: TileableType):
+        self._output_types = [OutputType.tensor]
         inputs = [y] if isinstance(y, ENTITY_TYPE) else []
         return self.new_tileable(inputs, shape=(), order=TensorOrder.C_ORDER,
                                  dtype=np.dtype(object))
 
     @classmethod
-    def tile(cls, op):
-        out = op.outputs[0]
+    def _tile(cls, op: "TypeOfTarget"):
         y = op.y
+        ctx = get_context()
 
-        chunk_inputs = []
-        is_multilabel_chunk = (yield from recursive_tile(is_multilabel(y))).chunks[0]
-        chunk_inputs.append(is_multilabel_chunk)
-
-        if not isinstance(y, ENTITY_TYPE):
-            if hasattr(y, '__array__'):
-                y = np.asarray(y)
-            y = mt.asarray(y)
-        if np.isnan(y.size):  # pragma: no cover
-            yield
-
-        chunk_op = TypeOfTarget(is_multilabel=is_multilabel_chunk,
-                                y_shape=y.shape, y_dtype=y.dtype)
-
-        if y.ndim <= 2 and y.size > 0 and y.dtype == object:
-            first_value_chunk = (yield from recursive_tile(y[(0,) * y.ndim])).chunks[0]
-            chunk_inputs.append(first_value_chunk)
-            chunk_op._first_value = first_value_chunk
-
-        if y.dtype.kind == 'f':
-            check_float_chunk = (yield from recursive_tile(mt.any(y != y.astype(int)))).chunks[0]
-            chunk_inputs.append(check_float_chunk)
-            chunk_op._check_float = check_float_chunk
-
-            assert_all_finite_chunk = (yield from recursive_tile(assert_all_finite(y))).chunks[0]
-            chunk_inputs.append(assert_all_finite_chunk)
-            chunk_op._assert_all_finite = assert_all_finite_chunk
-
-        if y.size > 0:
-            unique_y_chunk = (yield from recursive_tile(mt.unique(y, aggregate_size=1))).chunks[0]
-            chunk_inputs.append(unique_y_chunk)
-            chunk_op._unique_y = unique_y_chunk
-
-        chunk = chunk_op.new_chunk(chunk_inputs, dtype=out.dtype,
-                                   shape=out.shape, order=out.order, index=())
-        params = out.params
-        params['nsplits'] = ()
-        params['chunks'] = [chunk]
-        new_op = op.copy()
-        return new_op.new_tileables(op.inputs, kws=[params])
-
-    @classmethod
-    def _execute(cls, ctx, op):
-        is_multilabel_ = ctx[op.is_multilabel.key]
-        shape = op.y_shape
-        ndim = len(shape)
-        dtype = op.y_dtype
-
-        if is_multilabel_:
+        multilabel = yield from recursive_tile(is_multilabel(y))
+        yield multilabel.chunks
+        multilabel = ctx.get_chunks_result([multilabel.chunks[0].key])[0]
+        if multilabel:
             return 'multilabel-indicator'
 
-        if ndim > 2 or (dtype == object and shape[0] and
-                        not isinstance(ctx[op.first_value.key], str)):
-            return 'unknown'  # [[[1, 2]]] or [obj_1] and not ["label_1"]
+        y = yield from recursive_tile(mt.tensor(y))
+        executed = False
+        if any(np.isnan(s) for s in y.shape):
+            # trigger execution
+            yield y.chunks + [y]
+            executed = True
 
-        if ndim == 2 and shape[1] == 0:
+        # Invalid inputs
+        if y.ndim > 2:
+            return 'unknown'
+        if y.dtype == object and len(y):
+            # [[[1, 2]]] or [obj_1] and not ["label_1"]
+            if isinstance(y, ENTITY_TYPE):
+                if not executed:
+                    yield y.chunks + [y]
+                first_val = ctx.get_chunks_result([y.chunks[0].key])[0].flat[0]
+            else:
+                first_val = y.flat[0]
+            if not isinstance(first_val, str):
+                return 'unknown'
+
+        if y.ndim == 2 and y.shape[1] == 0:
             return 'unknown'  # [[]]
 
-        if ndim == 2 and shape[1] > 1:
-            suffix = '-multioutput'  # [[1, 2], [1, 2]]
+        if y.ndim == 2 and y.shape[1] > 1:
+            suffix = "-multioutput"  # [[1, 2], [1, 2]]
         else:
             suffix = ""  # [1, 2, 3] or [[1], [2], [3]]
 
-        # check float and contains non-integer float values
-        if dtype.kind == 'f' and ctx[op.check_float.key]:
+        if y.dtype.kind == 'f':
+            # check float and contains non-integer float values
+            contain_float_values = yield from recursive_tile(
+                mt.any(y != y.astype(int)))
+            yield contain_float_values.chunks
+            contain_float_values = ctx.get_chunks_result(
+                [contain_float_values.chunks[0].key])[0]
             # [.1, .2, 3] or [[.1, .2, 3]] or [[1., .2]] and not [1., 2., 3.]
-            assert ctx[op.assert_all_finite.key]
-            return 'continuous' + suffix
+            if contain_float_values:
+                yield from recursive_tile(assert_all_finite(y))
+                return 'continuous' + suffix
 
-        if op.unique_y is not None:
-            unique_y_len = len(ctx[op.unique_y.key])
-        else:
-            # y.size == 0
-            unique_y_len = 0
-        if (unique_y_len > 2) or (ndim >= 2 and shape[1] > 1):
-            return 'multiclass' + suffix   # [1, 2, 3] or [[1., 2., 3]] or [[1, 2]]
+        unique_y = yield from recursive_tile(mt.unique(y))
+        yield unique_y.chunks + [unique_y]
+        if (len(unique_y) > 2) or (y.ndim >= 2 and len(y[0]) > 1):
+            return 'multiclass' + suffix  # [1, 2, 3] or [[1., 2., 3]] or [[1, 2]]
         else:
             return 'binary'  # [1, 2] or [["a"], ["b"]]
 
     @classmethod
-    def execute(cls, ctx, op):
-        target = cls._execute(ctx, op)
-        if op.checked_targets is not None and len(op.checked_targets) > 0:
-            if target not in op.checked_targets:
-                raise ValueError(f'Unknown label type: {target}')
-        ctx[op.outputs[0].key] = target
+    def tile(cls, op: "TypeOfTarget"):
+        result = yield from cls._tile(op)
+        return (yield from recursive_tile(mt.array(result)))
 
 
 def type_of_target(y):
-    """Determine the type of data indicated by the target.
+    """
+    Determine the type of data indicated by the target.
 
     Note that this type is the most specific type that can be inferred.
     For example:
@@ -415,7 +417,8 @@ def type_of_target(y):
 
 
 def check_classification_targets(y):
-    """Ensure that target y is of a non-regression type.
+    """
+    Ensure that target y is of a non-regression type.
 
     Only the following target types (as defined in type_of_target) are allowed:
         'binary', 'multiclass', 'multiclass-multioutput',

@@ -95,10 +95,12 @@ class Tiler:
             if need_process is None:
                 chunks = []
             else:
-                chunks = [self._get_data(c) for c in need_process
-                          if isinstance(c, CHUNK_TYPE)]
-                to_update_tileables.extend([t for t in need_process
-                                            if isinstance(t, TILEABLE_TYPE)])
+                chunks = []
+                for t in need_process:
+                    if isinstance(t, CHUNK_TYPE):
+                        chunks.append(self._get_data(t))
+                    elif isinstance(t, TILEABLE_TYPE):
+                        to_update_tileables.append(self._get_data(t))
             # not finished yet
             self._add_nodes(chunk_graph, chunks, visited)
             next_tileable_handlers.append((tileable, tile_handler))
