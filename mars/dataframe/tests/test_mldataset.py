@@ -18,23 +18,32 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-from mars.deploy.oscar.dataset import RayMLDataset
+from mars.dataframe.dataset import RayMLDataset
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
-from ray.util.data import MLDataset
 
 
 ray = lazy_import('ray')
-xgboost_ray = lazy_import('ray')
+ml_dataset = lazy_import('ray.util.data')
+xgboost_ray = lazy_import('xgboost_ray')
+sklearn = lazy_import('sklearn')
+sklearn_datasets = lazy_import('sklearn.datasets')
 
 
 def require_xgboost_ray(func):
     if pytest:
         func = pytest.mark.xgboost_ray(func)
     func = pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')(func)
+    return func
+
+
+def require_sklearn(func):
+    if pytest:
+        func = pytest.mark.sklearn(func)
+    func = pytest.mark.skipif(sklearn is None, reason='sklearn not installed')(func)
     return func
 
 
@@ -63,25 +72,26 @@ async def test_convert_to_mldataset(ray_large_cluster, create_cluster):
         df.execute()
 
         ds = RayMLDataset.from_mars(df, num_shards=4)
-        assert isinstance(ds, MLDataset)
+        assert isinstance(ds, ml_dataset.MLDataset)
 
 
 @require_ray
+@require_sklearn
+@require_xgboost_ray
 @pytest.mark.asyncio
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
-    from sklearn.datasets import load_breast_cancer
     from xgboost_ray import RayDMatrix, RayParams, train
 
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
-        train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
+        train_x, train_y = sklearn_datasets.load_breast_cancer(return_X_y=True, as_frame=True)
         pd_df = pd.concat([train_x, train_y], axis=1)
         df: md.DataFrame = md.DataFrame(pd_df)
 
         num_shards = 4
         ds = RayMLDataset.from_mars(df, num_shards=num_shards)
-        assert isinstance(ds, MLDataset)
+        assert isinstance(ds, ml_dataset.MLDataset)
 
         # train
         train_set = RayDMatrix(ds, "target")
