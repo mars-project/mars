@@ -332,7 +332,6 @@ class DataFrameReadCSV(IncrementalIndexDatasource,
                     df = df[op.usecols]
             else:
                 df = cls._cudf_read_csv(op) if op.gpu else cls._pandas_read_csv(f, op)
-
         ctx[out_df.key] = df
 
     def estimate_size(cls, ctx, op):

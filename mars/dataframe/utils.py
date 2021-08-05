@@ -1127,28 +1127,28 @@ def make_dtypes(dtypes):
 
 
 def is_dataframe(x):
-    if cudf is not None:
+    if cudf is not None:  # pragma: no cover
         if isinstance(x, cudf.DataFrame):
             return True
     return isinstance(x, pd.DataFrame)
 
 
 def is_series(x):
-    if cudf is not None:
+    if cudf is not None:  # pragma: no cover
         if isinstance(x, cudf.Series):
             return True
     return isinstance(x, pd.Series)
 
 
 def is_index(x):
-    if cudf is not None:
+    if cudf is not None:  # pragma: no cover
         if isinstance(x, cudf.Index):
             return True
     return isinstance(x, pd.Index)
 
 
 def get_xdf(x):
-    if cudf is not None:
+    if cudf is not None:  # pragma: no cover
         if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
             return cudf
     return pd

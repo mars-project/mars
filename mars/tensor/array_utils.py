@@ -36,7 +36,7 @@ def is_array(x):
 
 
 def is_cupy(x):
-    if cp and isinstance(x, cp.ndarray):
+    if cp and isinstance(x, cp.ndarray):  # pragma: no cover
         return True
     else:
         return False

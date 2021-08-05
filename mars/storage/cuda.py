@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import ctypes
-import os
 import pickle
 import uuid
 from typing import Tuple, Dict, List, Union

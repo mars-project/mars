@@ -250,6 +250,9 @@ class Operand(Base, metaclass=OperandMetaclass):
     def copy(self: OperandType) -> OperandType:
         new_op = super().copy()
         new_op.outputs = []
+        # copy scheduling_hint
+        new_op.scheduling_hint = SchedulingHint(**{field: getattr(self.scheduling_hint, field)
+                                                for field in SchedulingHint.all_hint_names})
         new_op.extra_params = deepcopy(self.extra_params)
         return new_op
 
