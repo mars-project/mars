@@ -11,3 +11,4 @@ for entire distributed layer.
 
    usage
    internals
+   batch
