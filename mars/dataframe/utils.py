@@ -1152,3 +1152,10 @@ def get_xdf(x):
         if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
             return cudf
     return pd
+
+
+def is_cudf(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return True
+    return False

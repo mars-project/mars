@@ -110,9 +110,12 @@ def _new_integrated_test_session(_stop_isolation):
 @pytest.fixture(scope='module')
 def _new_gpu_test_session(_stop_isolation):  # pragma: no cover
     from .deploy.oscar.tests.session import new_test_session
+    from .resource import cuda_count
+
+    cuda_devices = list(range(min(cuda_count(), 2)))
 
     sess = new_test_session(address='127.0.0.1',
-                            init_local=True, n_worker=1, n_cpu=1, cuda_devices=[0, 1],
+                            init_local=True, n_worker=1, n_cpu=1, cuda_devices=cuda_devices,
                             default=True, timeout=300)
     with option_context({'show_progress': False}):
         try:

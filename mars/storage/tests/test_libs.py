@@ -298,7 +298,7 @@ async def test_cuda_backend():
     async with await storage.open_reader(put_info1.object_id) as reader:
         while True:
             content = await reader.read(read_chunk)
-            if content is not None:
+            if content:
                 await writer.write(content)
             else:
                 break

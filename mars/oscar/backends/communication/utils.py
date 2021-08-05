@@ -72,18 +72,22 @@ async def read_buffers(header: Dict,
     buffers = []
     for is_cuda_buffer, buf_size in zip(is_cuda_buffers, buffer_sizes):
         if is_cuda_buffer:  # pragma: no cover
-            cuda_buffer = CPBuffer.empty(buf_size)
-            cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
-            offset = 0
-            chunk_size = CUDA_CHUNK_SIZE
-            while offset < buf_size:
-                read_size = chunk_size if (offset + chunk_size) < buf_size else buf_size - offset
-                content = await reader.readexactly(read_size)
-                source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
-                cupy_pointer = CPMemoryPointer(cupy_memory, offset)
-                cupy_pointer.copy_from(source_mem, len(content))
-                offset += read_size
-            buffers.append(cuda_buffer)
+            if buf_size == 0:
+                content = await reader.readexactly(buf_size)
+                buffers.append(content)
+            else:
+                cuda_buffer = CPBuffer.empty(buf_size)
+                cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
+                offset = 0
+                chunk_size = CUDA_CHUNK_SIZE
+                while offset < buf_size:
+                    read_size = chunk_size if (offset + chunk_size) < buf_size else buf_size - offset
+                    content = await reader.readexactly(read_size)
+                    source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
+                    cupy_pointer = CPMemoryPointer(cupy_memory, offset)
+                    cupy_pointer.copy_from(source_mem, len(content))
+                    offset += read_size
+                buffers.append(cuda_buffer)
         else:
             buffers.append(await reader.readexactly(buf_size))
     return buffers

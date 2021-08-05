@@ -331,12 +331,13 @@ def test_arrow_string_sort_values(setup):
 @require_cudf
 def test_gpu_execution(setup_gpu):
     # test sort_values
+    rs = np.random.RandomState(0)
     distinct_opts = ['0'] if sys.platform.lower().startswith('win') else ['0', '1']
     for add_distinct in distinct_opts:
         os.environ['PSRS_DISTINCT_COL'] = add_distinct
 
         # test dataframe
-        raw = pd.DataFrame(np.random.rand(100, 10), columns=['a' + str(i) for i in range(10)])
+        raw = pd.DataFrame(rs.rand(100, 10), columns=['a' + str(i) for i in range(10)])
         mdf = DataFrame(raw, chunk_size=30).to_gpu()
 
         result = mdf.sort_values(by='a0').execute().fetch()
@@ -344,7 +345,7 @@ def test_gpu_execution(setup_gpu):
         pd.testing.assert_frame_equal(result.to_pandas(), expected)
 
         # test series
-        raw = pd.Series(np.random.rand(10))
+        raw = pd.Series(rs.rand(10))
         series = Series(raw).to_gpu()
 
         result = series.sort_values().execute().fetch()

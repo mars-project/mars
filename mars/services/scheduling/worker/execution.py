@@ -170,14 +170,16 @@ class SubtaskExecutionActor(mo.StatelessActor):
             pure_dep_keys.update(
                 inp.key for inp, pure_dep in zip(n.inputs, n.op.pure_depends) if pure_dep)
         for chunk in subtask.chunk_graph:
-            if not chunk.op.gpu:  # pragma: no cover
-                band_name = 'numa-0'
+            if chunk.op.gpu:  # pragma: no cover
+                to_fetch_band = band_name
+            else:
+                to_fetch_band = 'numa-0'
             if isinstance(chunk.op, Fetch):
-                queries.append(storage_api.fetch.delay(chunk.key, band_name=band_name))
+                queries.append(storage_api.fetch.delay(chunk.key, band_name=to_fetch_band))
             elif isinstance(chunk.op, FetchShuffle):
                 for key in chunk_key_to_data_keys[chunk.key]:
                     queries.append(storage_api.fetch.delay(
-                        key, band_name=band_name, error='ignore'))
+                        key, band_name=to_fetch_band, error='ignore'))
         if queries:
             await storage_api.fetch.batch(*queries)
 

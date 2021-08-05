@@ -27,7 +27,7 @@ cp = lazy_import('cupy', globals=globals(), rename='cp')
 def is_array(x):
     if isinstance(x, np.ndarray):
         return True
-    elif isinstance(x, sparse.SparseMatrix):
+    elif isinstance(x, (sparse.SparseMatrix, sparse.SparseVector)):
         return True
     elif cp:  # pragma: no cover
         return isinstance(x, cp.ndarray)

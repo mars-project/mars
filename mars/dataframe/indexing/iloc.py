@@ -29,7 +29,7 @@ from ...tensor.datasource.empty import empty
 from ...tensor.indexing.core import calc_shape
 from ...utils import ceildiv
 from ..operands import DataFrameOperand, DataFrameOperandMixin, DATAFRAME_TYPE
-from ..utils import indexing_index_value
+from ..utils import indexing_index_value, is_cudf
 from .index_lib import DataFrameIlocIndexesHandler
 
 
@@ -358,6 +358,8 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
         r = df.iloc[indexes]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
+        if is_cudf(r):
+            r = r.copy()
         ctx[chunk.key] = r
 
 

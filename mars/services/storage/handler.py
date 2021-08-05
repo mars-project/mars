@@ -410,7 +410,7 @@ class StorageHandlerActor(mo.StatelessActor):
         for data_key in data_keys:
             get_info_delays.append(
                 self._data_manager_ref.get_data_info.delay(
-                    session_id, data_key, error='ignore'))
+                    session_id, data_key, band_name, error='ignore'))
         data_infos = await self._data_manager_ref.get_data_info.batch(*get_info_delays)
         pin_delays = []
         for data_key, info in zip(data_keys, data_infos):
