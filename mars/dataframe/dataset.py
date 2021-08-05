@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 from ..utils import lazy_import
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
@@ -24,12 +24,10 @@ ml_dataset = lazy_import('ray.util.data')
 
 class RayObjectPiece:
     def __init__(self,
-                 addr: str,
-                 obj_ref: ray.ObjectRef,
+                 addr,
+                 obj_ref,
                  row_ids: Optional[List[int]]):
-        """
-        RayObjectPiece is a single entity holding the object ref
-        """
+        """Represents a single entity holding the object ref."""
         self.row_ids = row_ids
         self.addr = addr
         self.obj_ref = obj_ref
@@ -51,9 +49,7 @@ class RecordBatch:
                  record_pieces: List[RayObjectPiece],
                  shuffle: bool,
                  shuffle_seed: int):
-        """
-        RecordBatch holds a list of RayObjectPieces
-        """
+        """Holding a list of RayObjectPieces."""
         self._shard_id = shard_id
         self._prefix = prefix
         self.record_pieces = record_pieces
@@ -68,9 +64,7 @@ class RecordBatch:
         return self._shard_id
 
     def __iter__(self) -> Iterable[pd.DataFrame]:
-        """
-        Returns the item_generator required from ParallelIteratorWorker
-        """
+        """Returns the item_generator required from ParallelIteratorWorker."""
         if self.shuffle:
             np.random.seed(self.shuffle_seed)
             np.random.shuffle(self.record_pieces)
@@ -83,7 +77,7 @@ def _create_ml_dataset(name: str,
                        record_pieces: List[RayObjectPiece],
                        num_shards: int,
                        shuffle: bool,
-                       shuffle_seed: int) -> ml_dataset.MLDataset:
+                       shuffle_seed: int):
     if shuffle_seed:
         np.random.seed(shuffle_seed)
     else:
@@ -110,13 +104,12 @@ class RayMLDataset:
     def from_mars(df,
                   num_shards: int = None,
                   shuffle: bool = False,
-                  shuffle_seed: int = None) -> ml_dataset.MLDataset:
+                  shuffle_seed: int = None):
         if num_shards:
             df = df.rebalance(axis=1, num_partitions=1)
             df = df.rebalance(axis=0, num_partitions=num_shards)
             df.execute()
         # it's ensured that df has been executed
-        chunk_addr_refs: List[Tuple(str, ray.ObjectRef)] = df.fetch(only_refs=True)
+        chunk_addr_refs = df.fetch(only_refs=True)
         record_pieces = [RayObjectPiece(addr, obj_ref, None) for addr, obj_ref in chunk_addr_refs]
-        return _create_ml_dataset("from_mars", record_pieces, num_shards,
-                                  shuffle, shuffle_seed)
+        return _create_ml_dataset("from_mars", record_pieces, num_shards, shuffle, shuffle_seed)

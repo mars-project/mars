@@ -21,8 +21,8 @@ import mars.dataframe as md
 from mars.dataframe.dataset import RayMLDataset
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
-from mars.tests.conftest import *  # noqa
 from mars.tests.core import require_ray
+from ...tests.conftest import *  # noqa
 from mars.utils import lazy_import
 
 
@@ -33,6 +33,7 @@ sklearn = lazy_import('sklearn')
 sklearn_datasets = lazy_import('sklearn.datasets')
 
 
+# TODO: register custom marks
 def require_xgboost_ray(func):
     if pytest:
         func = pytest.mark.xgboost_ray(func)
@@ -40,6 +41,7 @@ def require_xgboost_ray(func):
     return func
 
 
+# TODO: register custom marks
 def require_sklearn(func):
     if pytest:
         func = pytest.mark.sklearn(func)
@@ -72,7 +74,8 @@ async def test_convert_to_mldataset(ray_large_cluster, create_cluster):
         df.execute()
 
         ds = RayMLDataset.from_mars(df, num_shards=4)
-        assert isinstance(ds, ml_dataset.MLDataset)
+        if ml_dataset:
+            assert isinstance(ds, ml_dataset.MLDataset)
 
 
 @require_ray
@@ -91,7 +94,8 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
 
         num_shards = 4
         ds = RayMLDataset.from_mars(df, num_shards=num_shards)
-        assert isinstance(ds, ml_dataset.MLDataset)
+        if ml_dataset:
+            assert isinstance(ds, ml_dataset.MLDataset)
 
         # train
         train_set = RayDMatrix(ds, "target")
