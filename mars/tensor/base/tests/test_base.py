@@ -459,7 +459,7 @@ def test_isin():
     mask, element = tile(mask, element)
 
     assert len(mask.chunks) == len(element.chunks)
-    assert len(mask.op.test_elements.chunks) == 1
+    assert len(mask.op.inputs[1].chunks) == 1
     assert mask.chunks[0].inputs[0] is element.chunks[0].data
 
     element = 2 * arange(4, chunk_size=1).reshape(2, 2)
@@ -468,13 +468,6 @@ def test_isin():
     mask = isin(element, test_elements, invert=True)
     assert mask.shape == (2, 2)
     assert mask.dtype == np.bool_
-
-    mask, element = tile(mask, element)
-
-    assert len(mask.chunks) == len(element.chunks)
-    assert len(mask.op.test_elements.chunks) == 1
-    assert mask.chunks[0].inputs[0] is element.chunks[0].data
-    assert mask.chunks[0].op.invert is True
 
 
 def test_create_view():
