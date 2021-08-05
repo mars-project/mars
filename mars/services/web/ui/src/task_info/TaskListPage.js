@@ -15,7 +15,6 @@
  */
 
 import React from 'react';
-import { Link } from "react-router-dom";
 import Grid from "@material-ui/core/Grid";
 import Paper from "@material-ui/core/Paper";
 import Table from "@material-ui/core/Table";
@@ -75,7 +74,6 @@ class TaskList extends React.Component {
                         <TableCell style={{fontWeight: 'bolder'}}>End Time</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>Progress</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>Status</TableCell>
-                        <TableCell style={{fontWeight: 'bolder'}}>Graph Visualization</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -86,11 +84,6 @@ class TaskList extends React.Component {
                             <TableCell>{task['end_time'] ? formatTime(task['end_time']) : 'N/A'}</TableCell>
                             <TableCell>{Math.floor(task['progress'] * 100).toString() + "%"}</TableCell>
                             <TableCell>{this.formatTaskStatus(task)}</TableCell>
-                            <TableCell>
-                                <Link to={`/session/${this.props.sessionId}/task/${task['task_id']}/graph`}>
-                                    See Visualization
-                                </Link>
-                            </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

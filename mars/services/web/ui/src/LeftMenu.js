@@ -24,6 +24,7 @@ import DashboardIcon from '@material-ui/icons/Dashboard';
 import SupervisedUserCircleIcon from '@material-ui/icons/SupervisedUserCircle';
 import MemoryIcon from '@material-ui/icons/Memory';
 import AssignmentReturnedIcon from '@material-ui/icons/AssignmentReturned';
+import AssignmentIcon from '@material-ui/icons/Assignment';
 import DescriptionIcon from '@material-ui/icons/Description';
 import GitHub from "@material-ui/icons/GitHub";
 
@@ -54,6 +55,12 @@ export default function LeftMenu() {
               <AssignmentReturnedIcon/>
             </ListItemIcon>
             <ListItemText primary="Sessions"/>
+          </ListItem>
+          <ListItem button component="a" href="/#/tasks">
+            <ListItemIcon>
+              <AssignmentIcon/>
+            </ListItemIcon>
+            <ListItemText primary="Task Details"/>
           </ListItem>
           <ListItem button component="a" href="https://docs.pymars.org" target="_blank">
             <ListItemIcon>

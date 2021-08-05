@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
     Switch,
     Route,
@@ -26,7 +26,12 @@ import SupervisorDetailPage from "./node_info/SupervisorDetailPage";
 import WorkerDetailPage from "./node_info/WorkerDetailPage";
 import SessionListPage from "./SessionListPage";
 import TaskListPage from "./task_info/TaskListPage";
-import TaskTileableChart from "./task_info/TaskTileableChart";
+const TaskTileableChart = lazy(() => {
+    return import("./task_visualization/TaskTileableChart");
+});
+const TaskDetailList = lazy(() => {
+    return import("./task_visualization/TaskDetailList");
+});
 
 function NodePageWrapper(props) {
     let {endpoint} = useParams();
@@ -56,7 +61,10 @@ export default function PageRouter() {
             <Route exact path="/worker/:endpoint"
                    render={() => (<NodePageWrapper component={WorkerDetailPage} nodeRole={"worker"} />)} />
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
-            <Route exact path="/session/:session_id/task/:task_id/graph" component={TaskTileableChart} />
+            <Suspense fallback={<div>Loading...</div>}>
+                <Route exact path="/tasks" component={TaskDetailList} />
+                <Route exact path="/tasks/:session_id/:task_id/graph" component={TaskTileableChart} />
+            </Suspense>
             <Route exact path="/" component={Dashboard} />
         </Switch>
     )
