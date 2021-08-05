@@ -39,11 +39,17 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 mars --config="default" --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Codespell check
+      - name: Check spellings
         shell: bash
         run: |
           source ./ci/reload-env.sh
           codespell
+
+      - name: Check copyright headers
+        shell: bash
+        run: |
+          source ./ci/reload-env.sh
+          python ci/copycheck.py
 
       - name: Check JS with ESLint
         shell: bash

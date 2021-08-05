@@ -53,7 +53,7 @@ jobs:
         pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
         pip install -e ".[dev,extra]"
-        pip install virtualenv flaky flake8
+        pip install virtualenv flaky
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
