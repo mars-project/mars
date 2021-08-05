@@ -25,8 +25,8 @@ class IndexHandler(MarsRequestHandler):
             index_file = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), 'index.html'
             )
-            with open(index_file, 'r') as fo:
-                self._index_page = fo.read()
+            with open(index_file, 'r') as file_obj:
+                self._index_page = file_obj.read()
             return self._index_page
 
     def get(self):
