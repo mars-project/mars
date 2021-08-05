@@ -110,9 +110,7 @@ export default function TaskListPage(props) {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <TaskList sessionId={props.sessionId} />
-                    </>
+                    <TaskList sessionId={props.sessionId} />
                 </Paper>
             </Grid>
         </Grid>

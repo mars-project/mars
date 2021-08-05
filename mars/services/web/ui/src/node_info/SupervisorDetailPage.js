@@ -42,18 +42,16 @@ export default function SupervisorDetailPage(props) {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <Tabs value={value} onChange={handleChange}>
-                            <Tab label="Environment" />
-                            <Tab label="Resources" />
-                        </Tabs>
-                        <TabPanel value={value} index={0}>
-                            <NodeEnvTab endpoint={props.endpoint} />
-                        </TabPanel>
-                        <TabPanel value={value} index={1}>
-                            <NodeResourceTab endpoint={props.endpoint} />
-                        </TabPanel>
-                    </>
+                    <Tabs value={value} onChange={handleChange}>
+                        <Tab label="Environment" />
+                        <Tab label="Resources" />
+                    </Tabs>
+                    <TabPanel value={value} index={0}>
+                        <NodeEnvTab endpoint={props.endpoint} />
+                    </TabPanel>
+                    <TabPanel value={value} index={1}>
+                        <NodeResourceTab endpoint={props.endpoint} />
+                    </TabPanel>
                 </Paper>
             </Grid>
         </Grid>

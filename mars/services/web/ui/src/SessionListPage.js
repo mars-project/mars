@@ -89,9 +89,7 @@ export default function SessionListPage() {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <SessionList />
-                    </>
+                    <SessionList />
                 </Paper>
             </Grid>
         </Grid>

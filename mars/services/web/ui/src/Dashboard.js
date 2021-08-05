@@ -104,11 +104,11 @@ class NodeInfo extends React.Component {
                         <TableCell>CPU Info</TableCell>
                         <TableCell>
                             <div>
-                Usage:
+                                Usage:
                                 {resourceStats.cpu_used.toFixed(2)}
                             </div>
                             <div>
-                Total:
+                                Total:
                                 {resourceStats.cpu_total.toFixed(2)}
                             </div>
                         </TableCell>
@@ -117,11 +117,11 @@ class NodeInfo extends React.Component {
                         <TableCell>Memory Info</TableCell>
                         <TableCell>
                             <div>
-                Usage:
+                                Usage:
                                 {toReadableSize(resourceStats.memory_used)}
                             </div>
                             <div>
-                Total:
+                                Total:
                                 {toReadableSize(resourceStats.memory_total)}
                             </div>
                         </TableCell>
@@ -153,18 +153,14 @@ export default function Dashboard() {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <Title>Supervisors</Title>
-                        <NodeInfo nodeRole="supervisor" />
-                    </>
+                    <Title>Supervisors</Title>
+                    <NodeInfo nodeRole="supervisor" />
                 </Paper>
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <Title>Workers</Title>
-                        <NodeInfo nodeRole="worker" />
-                    </>
+                    <Title>Workers</Title>
+                    <NodeInfo nodeRole="worker" />
                 </Paper>
             </Grid>
         </Grid>

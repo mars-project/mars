@@ -132,9 +132,7 @@ export default function NodeListPage(props) {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <>
-                        <NodeList nodeRole={props.nodeRole} />
-                    </>
+                    <NodeList nodeRole={props.nodeRole} />
                 </Paper>
             </Grid>
         </Grid>
