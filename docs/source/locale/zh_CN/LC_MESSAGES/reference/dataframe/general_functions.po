@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-01-18 15:28+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -146,6 +146,6 @@ msgid ""
 msgstr ""
 
 #: ../../source/reference/dataframe/general_functions.rst:50:<autosummary>:1
-msgid ":obj:`ExecutableTuple <mars.dataframe.ExecutableTuple>`\\ \\(\\*\\_\\)"
+msgid ":obj:`ExecutableTuple <mars.dataframe.ExecutableTuple>`\\ \\(\\*args\\)"
 msgstr ""
 

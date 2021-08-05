@@ -12,6 +12,29 @@ Information Theory functions
    mars.tensor.special.rel_entr
 
 
+Bessel functions
+----------------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   mars.tensor.special.jv
+   mars.tensor.special.jve
+   mars.tensor.special.yn
+   mars.tensor.special.yv
+   mars.tensor.special.yve
+   mars.tensor.special.kn
+   mars.tensor.special.kv
+   mars.tensor.special.kve
+   mars.tensor.special.iv
+   mars.tensor.special.ive
+   mars.tensor.special.hankel1
+   mars.tensor.special.hankel1e
+   mars.tensor.special.hankel2
+   mars.tensor.special.hankel2e
+
+
 Error function
 --------------
 
