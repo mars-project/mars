@@ -19,7 +19,7 @@ import os
 import mars.tensor as mt
 from mars.session import new_session
 from mars.utils import lazy_import
-from mars.learn.contrib.tensorflow import MarsTFDataset
+from mars.learn.contrib.tensorflow import MarsDataset
 
 tf_installed = lazy_import('tensorflow', globals=globals()) is not None
 
@@ -36,7 +36,7 @@ def testMarsTFDataset(setup_cluster):
     data.execute()
     labels.execute()
 
-    dataset = MarsTFDataset(data, labels).get_tfdataset()
+    dataset = MarsDataset(data, labels).get_tfdataset()
     # output_shapes=((32, ), (10, )), output_types=(tf.float32, tf.int32)
     print(list(dataset.take(1)))
 
