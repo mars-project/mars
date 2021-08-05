@@ -20,10 +20,12 @@ from urllib.parse import urlparse
 from ..compression import compress
 from .base import path_type, FileSystem
 from .local import LocalFileSystem
+from .oss import OSSFileSystem
 
 
 _filesystems = {
-    'file': LocalFileSystem
+    'file': LocalFileSystem,
+    'oss': OSSFileSystem
 }
 
 

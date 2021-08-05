@@ -250,3 +250,25 @@ class FileSystem(ABC):
         if parsed_uri.password:
             options["password"] = parsed_uri.password
         return options
+
+
+class FileEntry(ABC):
+    def __init__(self, path, storage_options=None):
+        self._path = path
+        self._name = os.path.basename(path)
+        self._storage_options = storage_options
+    @abstractmethod
+    def is_dir(self):
+        pass
+    @abstractmethod
+    def is_file(self):
+        pass
+    @abstractmethod
+    def stat(self):
+        pass
+    @property
+    def name(self):
+        return self._name
+    @property
+    def path(self):
+        return self._path
