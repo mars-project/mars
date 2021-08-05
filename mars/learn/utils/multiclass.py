@@ -429,6 +429,12 @@ def check_classification_targets(y):
     y : array-like
     """
     y_type = type_of_target(y)
-    y_type.op._checked_targets = ['binary', 'multiclass', 'multiclass-multioutput',
-                                  'multilabel-indicator', 'multilabel-sequences']
+
+    def check(t):
+        if t not in ['binary', 'multiclass', 'multiclass-multioutput',
+                          'multilabel-indicator', 'multilabel-sequences']:
+            raise ValueError("Unknown label type: %r" % y_type)
+        return t
+
+    y_type = y_type.map_chunk(check, dtype=y_type.dtype)
     return y_type
