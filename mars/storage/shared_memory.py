@@ -15,6 +15,7 @@
 import asyncio
 import os
 import random
+import struct
 import sys
 from string import ascii_letters, digits
 from typing import Any, Dict, List, Tuple, Optional
@@ -43,6 +44,7 @@ from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_bac
 from .core import BufferWrappedFileObject, StorageFileObject
 
 _is_windows: bool = sys.platform.startswith('win')
+_qword_pack = struct.Struct('<Q')
 
 
 @dataslots
@@ -59,15 +61,24 @@ class SharedMemoryFileObject(BufferWrappedFileObject):
         self.shm = None
         super().__init__(object_id, mode, size=size)
 
+    def _write_actual_size(self):
+        # we need to reopen the SharedMemory object as the size
+        # of the original one is less than the actual size.
+        actual_shm = SharedMemory(name=self._object_id)
+        actual_shm.buf[-8:] = _qword_pack.pack(self._size)
+
     def _write_init(self):
+        # keep last 8 bytes to record actual memory size
         self.shm = shm = SharedMemory(
-            name=self._object_id, create=True, size=self._size)
+            name=self._object_id, create=True, size=self._size + 8)
+        self._write_actual_size()
         self._buffer = self._mv = shm.buf
 
     def _read_init(self):
         self.shm = shm = SharedMemoryForRead(name=self._object_id)
-        self._buffer = self._mv = buf = shm.buf
-        self._size = buf.nbytes
+        self._buffer = self._mv = shm.buf
+        if self._size is None:
+            self._size, = _qword_pack.unpack(shm.buf[-8:])
 
     def _write_close(self):
         pass
@@ -185,10 +196,10 @@ class SharedMemoryStorage(StorageBackend):
         async with ShmStorageFileObject(shm_file, object_id) as f:
             deserializer = AioDeserializer(f)
             size = await deserializer.get_size()
-        if _is_windows:
-            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
-        else:
+        if not _is_windows:
             return ObjectInfo(size=size, object_id=object_id)
+        else:
+            return WinShmObjectInfo(size=size, object_id=object_id, shm=shm_file)
 
     @implements(StorageBackend.open_writer)
     async def open_writer(self, size=None) -> StorageFileObject:

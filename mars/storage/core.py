@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import asyncio
+import os
 from abc import ABC, abstractmethod
 from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Any, Optional, Union
@@ -36,6 +37,11 @@ class StorageFileObject(AioFileObject):
     @property
     def object_id(self):
         return self._object_id
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await super().__aexit__(exc_type, exc_val, exc_tb)
+        if self._executor:
+            self._executor.shutdown(wait=False)
 
 
 class BufferWrappedFileObject(ABC):
@@ -105,6 +111,26 @@ class BufferWrappedFileObject(ABC):
         new_offset = offset + content_length
         self._mv[offset: new_offset] = content
         self._offset = new_offset
+
+    def seek(self, offset: int, whence: int = os.SEEK_SET):
+        if not self._initialized:
+            self._read_init()
+            self._initialized = True
+
+        if whence == os.SEEK_END:
+            new_offset = self._size + offset
+        elif whence == os.SEEK_CUR:
+            new_offset = self._offset + offset
+        else:
+            assert whence == os.SEEK_SET
+            new_offset = offset
+        if new_offset < 0 or new_offset >= self._size:
+            raise ValueError(f'File offset should be limited to (0, {self._size})')
+        self._offset = new_offset
+        return self._offset
+
+    def tell(self):
+        return self._offset
 
     @abstractmethod
     def _read_close(self):

@@ -15,7 +15,8 @@
 from abc import abstractmethod
 from typing import List, Dict, Set
 
-from ...core import NodeRole, BandType
+from ....typing import BandType
+from ...core import NodeRole
 from ..core import NodeStatus
 
 
@@ -31,7 +32,7 @@ class AbstractClusterAPI:
             return {NodeStatus.READY}
 
     @abstractmethod
-    async def get_supervisors(self) -> List[str]:
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
         """
         Get supervisor addresses
 

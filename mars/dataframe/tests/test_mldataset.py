@@ -22,7 +22,6 @@ from mars.dataframe.dataset import RayMLDataset
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
-from ...tests.conftest import *  # noqa
 from mars.utils import lazy_import
 
 

@@ -19,8 +19,7 @@ import os
 import signal
 import uuid
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
-from typing import AsyncGenerator, Callable, Dict, List, Optional, TypeVar
+from typing import AsyncGenerator, Dict, List, Optional, TypeVar
 
 from ... import oscar as mo
 from ...services import NodeRole
@@ -51,7 +50,6 @@ class YarnNodeWatchActor(mo.Actor):
     def __init__(self):
         assert ApplicationClient is not None
         self._app_client = ApplicationClient.from_current()
-        self._executor = ThreadPoolExecutor(2)
 
         self._nodes = defaultdict(set)
         self._supervisor_watch_task = None
@@ -64,20 +62,14 @@ class YarnNodeWatchActor(mo.Actor):
         if self._supervisor_watch_task is not None:  # pragma: no branch
             self._watch_task.cancel()
 
-    async def _spawn_executor(self, func: Callable[..., RetType],
-                              *args, **kwargs) -> RetType:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self._executor, lambda: func(*args, **kwargs))
-
     async def get_container_mappings(self, role: NodeRole) -> Dict[str, str]:
         key_prefix = _role_to_config[role].service_name
 
-        container_specs = await self._spawn_executor(
+        container_specs = await asyncio.to_thread(
             self._app_client.get_containers, [key_prefix])
         cid_to_endpoint = {c.yarn_container_id: None for c in container_specs}
 
-        prefixes = await self._spawn_executor(
+        prefixes = await asyncio.to_thread(
             self._app_client.kv.get_prefix, key_prefix)
         for val in prefixes.values():
             ep, cid = to_str(val).split('@', 1)
@@ -131,7 +123,7 @@ class YarnClusterBackend(AbstractClusterBackend):
         self._watch_ref = watch_ref
 
     @classmethod
-    async def create(cls, lookup_address: Optional[str],
+    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
                      pool_address: str) -> "AbstractClusterBackend":
         try:
             ref = await mo.create_actor(
@@ -142,16 +134,16 @@ class YarnClusterBackend(AbstractClusterBackend):
                                      address=pool_address)
         return YarnClusterBackend(pool_address, ref)
 
-    async def get_supervisors(self) -> List[str]:
-        return await self._watch_ref.get_nodes(NodeRole.SUPERVISOR)
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
+        if filter_ready:
+            return await self._watch_ref.get_nodes(NodeRole.SUPERVISOR)
+        else:
+            mapping = await self._watch_ref.get_container_mappings(NodeRole.SUPERVISOR)
+            return [v if v is not None else k for k, v in mapping.items()]
 
     async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         while True:
             yield await self._watch_ref.wait_nodes(NodeRole.SUPERVISOR)
-
-    async def get_expected_supervisors(self) -> List[str]:
-        mapping = await self._watch_ref.get_container_mappings(NodeRole.SUPERVISOR)
-        return [v if v is not None else k for k, v in mapping.items()]
 
 
 class YarnServiceMixin(object):

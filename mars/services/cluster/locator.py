@@ -18,15 +18,15 @@ from typing import List, Optional
 
 from ... import oscar as mo
 from ...lib.uhashring import HashRing
-from ...utils import extensible
 from .backends import AbstractClusterBackend, get_cluster_backend
-from .core import WatchNotifier
+from .core import NodeRole, WatchNotifier
 
 logger = logging.getLogger(__name__)
 
 
 class SupervisorLocatorActor(mo.Actor):
     _backend: Optional[AbstractClusterBackend]
+    _node_role: NodeRole = None
 
     def __init__(self, backend_name: str, lookup_address: str):
         self._backend_name = backend_name
@@ -41,23 +41,42 @@ class SupervisorLocatorActor(mo.Actor):
     async def __post_create__(self):
         backend_cls = get_cluster_backend(self._backend_name)
         self._backend = await backend_cls.create(
-            self._lookup_address, self.address)
-        await self._set_supervisors(await self._backend.get_supervisors())
+            self._node_role, self._lookup_address, self.address)
+        await self._set_supervisors(await self._get_supervisors_from_backend())
 
-        self._watch_task = asyncio.create_task(self._watch_backend())
+        self._watch_task = asyncio.create_task(self._watch_supervisor_changes())
 
     async def __pre_destroy__(self):
         self._watch_task.cancel()
-
-    def get_supervisors(self):
-        return self._supervisors
 
     async def _set_supervisors(self, supervisors: List[str]):
         self._supervisors = supervisors
         self._hash_ring = HashRing(nodes=supervisors, hash_fn='ketama')
         await self._watch_notifier.notify()
 
-    @extensible
+    async def _get_supervisors_from_backend(self, filter_ready: bool = True):
+        raise NotImplementedError
+
+    def _watch_supervisors_from_backend(self):
+        raise NotImplementedError
+
+    async def _watch_supervisor_changes(self):
+        last_supervisors = set()
+        try:
+            async for sv_list in self._watch_supervisors_from_backend():
+                if set(sv_list) != last_supervisors:
+                    await self._set_supervisors(sv_list)
+                    last_supervisors = set(sv_list)
+        except asyncio.CancelledError:
+            return
+
+    async def get_supervisors(self, filter_ready: bool = True):
+        if filter_ready:
+            return self._supervisors
+        else:
+            return await self._get_supervisors_from_backend(filter_ready=filter_ready)
+
+    @mo.extensible
     def get_supervisor(self, key: str, size=1):
         if self._supervisors is None:  # pragma: no cover
             return None
@@ -66,13 +85,6 @@ class SupervisorLocatorActor(mo.Actor):
         else:
             return tuple(it['nodename']
                          for it in self._hash_ring.range(key, size=size))
-
-    async def _watch_backend(self):
-        last_supervisors = set()
-        async for sv_list in self._backend.watch_supervisors():
-            if set(sv_list) != last_supervisors:
-                await self._set_supervisors(sv_list)
-                last_supervisors = set(sv_list)
 
     async def watch_supervisors(self, version: Optional[int] = None):
         version = yield self._watch_notifier.watch(version)
@@ -84,13 +96,9 @@ class SupervisorLocatorActor(mo.Actor):
         raise mo.Return((version, [self.get_supervisor(k) for k in keys]))
 
     async def wait_all_supervisors_ready(self):
-        expected_supervisors = await self._backend.get_expected_supervisors()
-        if set(self._supervisors or []) == set(expected_supervisors):
-            return
-
         version = None
         while True:
-            version = yield self._watch_notifier.watch(version)
-            expected_supervisors = await self._backend.get_expected_supervisors()
-            if set(self._supervisors) == set(expected_supervisors):
+            expected_supervisors = await self._get_supervisors_from_backend(filter_ready=False)
+            if self._supervisors and set(self._supervisors) == set(expected_supervisors):
                 break
+            version = yield self._watch_notifier.watch(version)

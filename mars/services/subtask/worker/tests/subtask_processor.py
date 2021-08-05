@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Dict
 
 from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
+from mars.services.tests.fault_injection_manager import FaultType, \
+    ExtraConfigKey, FaultInjectionError, FaultInjectionUnhandledError
 from mars.tests.core import _check_args, ObjectCheckMixin
 
 
@@ -53,7 +56,7 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
             op.unregister_executor()
 
 
-_fault_args = ['fault_injection_manager_name']
+_fault_args = [ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME]
 
 
 class FaultInjectionSubtaskProcessor(SubtaskProcessor):
@@ -79,16 +82,22 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
 
     async def run(self):
         self._fault_injection_manager = await self._session_api.get_remote_object(
-                self._session_id, self._fault_options['fault_injection_manager_name'])
+                self._session_id,
+                self._fault_options[ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME])
         return await super().run()
 
     async def _async_execute_operand(self,
-                                     loop,
-                                     executor,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
         fault = await self._fault_injection_manager.on_execute_operand()
-        if fault:
-            raise RuntimeError("Fault Injection")
+        if fault == FaultType.Exception:
+            raise FaultInjectionError("Fault Injection")
+        elif fault == FaultType.UnhandledException:
+            raise FaultInjectionUnhandledError("Fault Injection Unhandled")
+        elif fault == FaultType.ProcessExit:
+            # used to simulate process crash, no cleanup.
+            os._exit(-1)
+        assert fault == FaultType.NoFault, \
+            f"Got unexpected fault from on_execute_operand: {fault}"
 
-        return await super()._async_execute_operand(loop, executor, ctx, op)
+        return await super()._async_execute_operand(ctx, op)

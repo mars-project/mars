@@ -14,6 +14,7 @@
 
 import asyncio
 import atexit
+import logging
 import sys
 from concurrent.futures import Future as SyncFuture
 from typing import Dict, Union
@@ -27,6 +28,8 @@ from ..utils import get_third_party_modules_from_config
 from .pool import create_supervisor_actor_pool, create_worker_actor_pool
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker, load_config
 from .session import AbstractSession, _new_session, ensure_isolation_created
+
+logger = logging.getLogger(__name__)
 
 _is_exiting_future = SyncFuture()
 atexit.register(lambda: _is_exiting_future.set_result(0)
@@ -42,14 +45,15 @@ async def new_cluster_in_isolation(
         subprocess_start_method: str = None,
         backend: str = None,
         config: Union[str, Dict] = None,
-        web: bool = True) -> ClientType:
+        web: bool = True,
+        timeout: float = None) -> ClientType:
     if subprocess_start_method is None:
         subprocess_start_method = \
             'spawn' if sys.platform == 'win32' else 'forkserver'
     cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
                            subprocess_start_method, config, web)
     await cluster.start()
-    return await LocalClient.create(cluster, backend)
+    return await LocalClient.create(cluster, backend, timeout)
 
 
 async def new_cluster(address: str = '0.0.0.0',
@@ -88,7 +92,8 @@ class LocalCluster:
                  n_gpu: Union[int, str] = 'auto',
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
-                 web: Union[bool, str] = 'auto'):
+                 web: Union[bool, str] = 'auto',
+                 timeout: float = None):
         # load config file to dict.
         if not config or isinstance(config, str):
             config = load_config(config)
@@ -131,6 +136,7 @@ class LocalCluster:
             web_actor = await mo.actor_ref(WebActor.default_uid(),
                                            address=self.supervisor_address)
             self.web_address = await web_actor.get_web_address()
+            logger.warning('Web service started at %s', self.web_address)
 
         self._exiting_check_task = asyncio.create_task(self._check_exiting())
 
@@ -187,10 +193,12 @@ class LocalClient:
     @classmethod
     async def create(cls,
                      cluster: LocalCluster,
-                     backend: str = None) -> ClientType:
+                     backend: str = None,
+                     timeout: float = None) -> ClientType:
         backend = backend or 'oscar'
         session = await _new_session(
-            cluster.external_address, backend=backend, default=True)
+            cluster.external_address, backend=backend,
+            default=True, timeout=timeout)
         client = LocalClient(cluster, session)
         session.client = client
         return client

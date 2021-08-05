@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
 import weakref
 from urllib.parse import urlparse
 from typing import List, Dict, Union, Tuple, Iterator, BinaryIO, TextIO
@@ -207,6 +209,12 @@ class HadoopFileSystem(ArrowBasedFileSystem):
     def __init__(self, host="default", port=0, user=None, kerb_ticket=None,
                  driver='libhdfs', extra_conf=None):
         assert driver == 'libhdfs'
+        if 'HADOOP_HOME' in os.environ and 'CLASSPATH' not in os.environ:
+            classpath_proc = subprocess.run(
+                [os.environ['HADOOP_HOME'] + '/bin/hdfs', 'classpath', '--glob'],
+                stdout=subprocess.PIPE
+            )
+            os.environ['CLASSPATH'] = classpath_proc.stdout.decode().strip()
         arrow_fs = ArrowHadoopFileSystem(host=host, port=port, user=user,
                                          kerb_ticket=kerb_ticket,
                                          extra_conf=extra_conf)

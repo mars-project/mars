@@ -158,9 +158,9 @@ and prediction shown above will be submitted to the cluster, or you can specify
 .. code-block:: python
 
    # A cluster has been configured, and web UI is started on <web_ip>:<web_port>
-   from mars.session import new_session
+   import mars
    # set the session as the default one
-   sess = new_session('http://<web_ip>:<web_port>').as_default()
+   sess = mars.new_session('http://<web_ip>:<web_port>')
 
    # submitted to cluster by default
    run_tensorflow_script('tf_demo.py', n_workers=1)

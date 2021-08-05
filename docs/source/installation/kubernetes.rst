@@ -40,8 +40,8 @@ Kubernetes client for Python locally. It can be installed with ``pip`` or
     # install with conda
     conda install -c conda-forge python-kubernetes
 
-After all these steps we can create a Mars cluster with one scheduler, one
-worker and one web service with kubernetes and run some jobs on it:
+After all these steps we can create a Mars cluster with one supervisor and one
+worker with kubernetes and run some jobs on it:
 
 .. code-block:: python
 
@@ -82,20 +82,20 @@ the cluster. You may use the argument ``image`` to specify the image for all
 Mars pods, or use the argument ``timeout`` to specify timeout of cluster
 creation.  Arguments for scaling up and out of the cluster are also available.
 
-Arguments for schedulers:
+Arguments for supervisors:
 
-+---------------------+-------------------------------------------------------------+
-| Argument            | Description                                                 |
-+=====================+=============================================================+
-| scheduler_num       | Number of schedulers in the cluster, 1 by default           |
-+---------------------+-------------------------------------------------------------+
-| scheduler_cpu       | Number of CPUs for every scheduler                          |
-+---------------------+-------------------------------------------------------------+
-| scheduler_mem       | Memory size for schedulers in the cluster, in bytes or size |
-|                     | units like ``1g``                                           |
-+---------------------+-------------------------------------------------------------+
-| scheduler_extra_env | A mapping of environment variables to set in schedulers     |
-+---------------------+-------------------------------------------------------------+
++----------------------+-----------------------------------------------------------+
+| Argument             | Description                                               |
++======================+===========================================================+
+| supervisor_num       | Number of supervisors in the cluster, 1 by default        |
++----------------------+-----------------------------------------------------------+
+| supervisor_cpu       | Number of CPUs for every supervisor                       |
++----------------------+-----------------------------------------------------------+
+| supervisor_mem       | Memory size for supervisors in the cluster, in bytes      |
+|                      | or size units like ``1g``                                 |
++----------------------+-----------------------------------------------------------+
+| supervisor_extra_env | A mapping of environment variables to set in supervisors  |
++----------------------+-----------------------------------------------------------+
 
 Arguments for workers:
 
@@ -121,24 +121,9 @@ Arguments for workers:
 | worker_extra_env   | A dict of environment variables to set in workers.             |
 +--------------------+----------------------------------------------------------------+
 
-Arguments for web services:
-
-+------------------+----------------------------------------------------------------+
-| Argument         | Description                                                    |
-+==================+================================================================+
-| web_num          | Number of web services in the cluster, 1 by default            |
-+------------------+----------------------------------------------------------------+
-| web_cpu          | Number of CPUs for every web service                           |
-+------------------+----------------------------------------------------------------+
-| web_mem          | Memory size for web services in the cluster, in bytes or size  |
-|                  | units like ``1g``                                              |
-+------------------+----------------------------------------------------------------+
-| web_extra_env    | A dict of environment variables to set in web services.        |
-+------------------+----------------------------------------------------------------+
-
-For instance, if you want to create a Mars cluster with 1 scheduler, 1 web
-service and 100 workers, each worker has 4 cores and 16GB memory, and stop
-waiting when 95 workers are ready, you can use the code below:
+For instance, if you want to create a Mars cluster with 1 supervisor and 100
+workers, each worker has 4 cores and 16GB memory, and stop waiting when 95
+workers are ready, you can use the code below:
 
 .. code-block:: python
 
@@ -146,27 +131,8 @@ waiting when 95 workers are ready, you can use the code below:
     from mars.deploy.kubernetes import new_cluster
 
     api_client = config.new_client_from_config()
-    cluster = new_cluster(api_client, scheduler_num=1, web_num=1, worker_num=100,
-                          worker_cpu=4, worker_mem='16g', min_worker_num=95)
-
-
-Rescaling workers
------------------
-
-.. note::
-
-    Currently it is not ensured that data are still kept when rescaling workers in
-    a Mars cluster created in Kubernetes. Please make sure that all data are stored
-    before conducting the operation below.
-
-Mars supports scaling up or down the number of workers in a created Kubernetes cluster.
-After creating a cluster in Kubernetes, you can rescale the number of workers in it
-by calling
-
-.. code-block:: python
-
-    num_of_workers = 20
-    cluster.rescale_workers(20)
+    cluster = new_cluster(api_client, supervisor_num=1, worker_num=100, worker_cpu=4,
+                          worker_mem='16g', min_worker_num=95)
 
 Implementation details
 ----------------------
@@ -175,21 +141,20 @@ When ``new_cluster`` is called, it will create an independent `namespace
 for all objects including roles, role bindings, pods and services. When the
 user destroys the service, the whole namespace will be destroyed.
 
-Schedulers, workers and web services are created with `replication controllers
-<https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/>`_.
-Services discover schedulers by directly accessing Kubernetes API via the
+Supervisors and workers are created with `deployments
+<https://kubernetes.io/docs/concepts/workloads/controllers/deployment/>`_.
+Services discover supervisors by directly accessing Kubernetes API via the
 default `service account
 <https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/>`_.
-Pod addresses and their readiness are read by workers and web services to
-decide whether to start. Meanwhile the client read statuses of all pods and
-check if all schedulers, web services and at least ``min_worker_num`` workers
-are ready.
+Pod addresses and their readiness are read by workers to decide whether to
+start. Meanwhile the client read statuses of all pods and check if all
+supervisors and at least ``min_worker_num`` workers are ready.
 
 The readiness of Mars services are decided by `readiness probes
 <https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/>`_
-whose result can be obtained via Pod statuses. For schedulers and workers, when
-the service starts, a ``ReadinessActor`` will be created in the service and the
-probe can detect it. For web services, the web port is detected.
+whose result can be obtained via Pod statuses. For supervisors and workers,
+when the service starts, an extra port will be opened in the service and the
+pod can detect it.
 
 As the default service account does not have privilege to read pods in
 Kubernetes API, we create `roles
@@ -201,5 +166,5 @@ This enables Mars containers to detect the status of other containers.
 Mars uses `Kubernetes services
 <https://kubernetes.io/docs/concepts/services-networking/service/>`_ to expose
 its service. Currently only ``NodePort`` mode is supported, and Mars looks for
-the host hosting the pod of a web service as its endpoint. ``LoadBalancer``
-mode is not supported yet.
+the web endpoint of the supervisor as its endpoint. ``LoadBalancer`` mode is
+not supported yet.

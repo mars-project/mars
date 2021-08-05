@@ -16,7 +16,6 @@ from typing import Dict, List, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import extensible
 from ..supervisor.tracker import LifecycleTrackerActor
 from .core import AbstractLifecycleAPI
 
@@ -93,7 +92,7 @@ class LifecycleAPI(AbstractLifecycleAPI):
             address, LifecycleTrackerActor.gen_uid(session_id))
         return await mo.destroy_actor(lifecycle_tracker_ref)
 
-    @extensible
+    @mo.extensible
     async def track(self,
                     tileable_key: str,
                     chunk_keys: List[str]):

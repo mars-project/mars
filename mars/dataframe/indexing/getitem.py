@@ -402,6 +402,12 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 mask = mask[df.columns.tolist()]
             ctx[op.outputs[0].key] = df[mask]
 
+    @classmethod
+    def estimate_size(cls, ctx: dict, op: "DataFrameIndex"):
+        super().estimate_size(ctx, op)
+        result_size = ctx[op.outputs[0].key][0]
+        ctx[op.outputs[0].key] = (result_size, result_size)
+
 
 _list_like_types = (list, np.ndarray, SERIES_TYPE, pd.Series, TENSOR_TYPE)
 

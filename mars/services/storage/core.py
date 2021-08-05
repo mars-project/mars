@@ -15,7 +15,7 @@
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 
 from ... import oscar as mo
 from ...lib.aio import AioFileObject
@@ -24,7 +24,7 @@ from ...oscar.backends.allocate_strategy import IdleLabel, NoIdleSlot
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.base import ObjectInfo, StorageBackend
 from ...storage.core import StorageFileObject
-from ...utils import dataslots, extensible
+from ...utils import dataslots
 from .errors import DataNotExist, StorageFull
 
 logger = logging.getLogger(__name__)
@@ -97,8 +97,7 @@ class StorageQuotaActor(mo.Actor):
         return f'storage_quota_{level}'
 
     def update_quota(self, size: int):
-        if self._total_size is not None:
-            self._used_size += size
+        self._used_size += size
         logger.debug('Update %s bytes of %s, used size now is %s',
                      size, self._level, self._used_size)
 
@@ -106,10 +105,7 @@ class StorageQuotaActor(mo.Actor):
         if self._total_size is not None and size > self._total_size:  # pragma: no cover
             raise StorageFull(f'Request size {size} is larger '
                               f'than total size {self._total_size}')
-        if self._total_size is None:
-            self._used_size += size
-            return True
-        elif self._used_size + size >= self._total_size:
+        if self._total_size is not None and self._used_size + size > self._total_size:
             logger.debug('Request %s bytes of %s, used size now is %s,'
                          'space is not enough for the request', size, self._level, self._used_size)
             return False
@@ -124,7 +120,7 @@ class StorageQuotaActor(mo.Actor):
         logger.debug('Release %s bytes of %s, used size now is %s,'
                      'total size is %s', size, self._level, self._used_size, self._total_size)
 
-    def get_quota(self):
+    def get_quota(self) -> Tuple[float, float]:
         return self._total_size, self._used_size
 
 
@@ -145,7 +141,7 @@ class InternalDataInfo:
     object_info: ObjectInfo
 
 
-class DataManagerActor(mo.Actor):
+class DataManagerActor(mo.StatelessActor):
     _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
 
     def __init__(self):
@@ -156,9 +152,6 @@ class DataManagerActor(mo.Actor):
         self._data_key_to_info = defaultdict(list)
         self._data_info_list = dict()
         self._spill_strategy = dict()
-        # data key may be a tuple in some cases,
-        # we record main key to manage their lifecycle
-        self._main_key_to_sub_keys = defaultdict(set)
         for level in StorageLevel.__members__.values():
             self._data_info_list[level] = dict()
             self._spill_strategy[level] = FIFOStrategy(level)
@@ -167,24 +160,16 @@ class DataManagerActor(mo.Actor):
                         session_id: str,
                         data_key: str,
                         error: str) -> Union[List[DataInfo], None]:
-        try:
-            if (session_id, data_key) not in self._data_key_to_info:
-                if (session_id, data_key) in self._main_key_to_sub_keys:
-                    infos = []
-                    for sub_key in self._main_key_to_sub_keys[(session_id, data_key)]:
-                        infos.extend([info.data_info for info in
-                                      self._data_key_to_info.get((session_id, sub_key))])
-                    return infos
-                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
+        if (session_id, data_key) in self._data_key_to_info:
             return [info.data_info for info in
-                    self._data_key_to_info.get((session_id, data_key))]
-        except DataNotExist:
+                    self._data_key_to_info[session_id, data_key]]
+        else:
             if error == 'raise':
-                raise
+                raise DataNotExist(f'Data key {session_id, data_key} not exists.')
             else:
                 return
 
-    @extensible
+    @mo.extensible
     def get_data_infos(self,
                        session_id: str,
                        data_key: str,
@@ -206,7 +191,7 @@ class DataManagerActor(mo.Actor):
                        key=lambda x: x.data_info.level)
         return infos[0].data_info
 
-    @extensible
+    @mo.extensible
     def get_data_info(self,
                       session_id: str,
                       data_key: str,
@@ -221,13 +206,10 @@ class DataManagerActor(mo.Actor):
         info = InternalDataInfo(data_info, object_info)
         self._data_key_to_info[(session_id, data_key)].append(info)
         self._data_info_list[data_info.level][(session_id, data_key)] = object_info
-        if object_info is not None:
-            self._spill_strategy[data_info.level].record_put_info(
-                (session_id, data_key), data_info.store_size)
-        if isinstance(data_key, tuple):
-            self._main_key_to_sub_keys[(session_id, data_key[0])].update([data_key])
+        self._spill_strategy[data_info.level].record_put_info(
+            (session_id, data_key), data_info.store_size)
 
-    @extensible
+    @mo.extensible
     def put_data_info(self,
                       session_id: str,
                       data_key: str,
@@ -241,26 +223,17 @@ class DataManagerActor(mo.Actor):
                           data_key: str,
                           level: StorageLevel
                           ):
-        if (session_id, data_key) in self._main_key_to_sub_keys:
-            to_delete_keys = self._main_key_to_sub_keys[(session_id, data_key)]
-        else:
-            to_delete_keys = [data_key]
-        logger.debug('Begin to delete data keys for level %s '
-                     'in data manager: %s', level, to_delete_keys)
-        for key in to_delete_keys:
-            if (session_id, key) in self._data_key_to_info:
-                self._data_info_list[level].pop((session_id, key))
-                self._spill_strategy[level].record_delete_info((session_id, key))
-                infos = self._data_key_to_info[(session_id, key)]
-                rest = [info for info in infos if info.data_info.level != level]
-                if len(rest) == 0:
-                    del self._data_key_to_info[(session_id, key)]
-                else:  # pragma: no cover
-                    self._data_key_to_info[(session_id, key)] = rest
-        logger.debug('Finish deleting data keys for level %s '
-                     'in data manager: %s', level, to_delete_keys)
+        if (session_id, data_key) in self._data_key_to_info:
+            self._data_info_list[level].pop((session_id, data_key))
+            self._spill_strategy[level].record_delete_info((session_id, data_key))
+            infos = self._data_key_to_info[(session_id, data_key)]
+            rest = [info for info in infos if info.data_info.level != level]
+            if len(rest) == 0:
+                del self._data_key_to_info[(session_id, data_key)]
+            else:  # pragma: no cover
+                self._data_key_to_info[(session_id, data_key)] = rest
 
-    @extensible
+    @mo.extensible
     def delete_data_info(self,
                          session_id: str,
                          data_key: str,
@@ -270,22 +243,25 @@ class DataManagerActor(mo.Actor):
     def list(self, level: StorageLevel):
         return list(self._data_info_list[level].keys())
 
+    @mo.extensible
     def pin(self, session_id, data_key):
         level = self.get_data_info(session_id, data_key).level
         self._spill_strategy[level].pin_data((session_id, data_key))
 
-    def unpin(self, session_id, data_key, error: str = 'raise'):
+    def unpin(self,
+              session_id: str,
+              data_keys: List[str],
+              error: str = 'raise'):
         if error not in ('raise', 'ignore'):  # pragma: no cover
             raise ValueError('error must be raise or ignore')
-        try:
-            level = self.get_data_info(session_id, data_key).level
-            self._spill_strategy[level].unpin_data((session_id, data_key))
-            return level
-        except DataNotExist:
-            if error == 'raise':
-                raise
-            else:
-                return
+        levels = set()
+        for data_key in data_keys:
+            info = self.get_data_info(session_id, data_key, error)
+            if info:
+                level = info.level
+                self._spill_strategy[level].unpin_data((session_id, data_key))
+                levels.add(level)
+        return list(levels)
 
     def get_spillable_size(self, level: StorageLevel):
         return self._spill_strategy[level].get_spillable_size()

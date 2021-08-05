@@ -14,31 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from mars.core.base import MarsError
 
-class ActorPoolNotStarted(Exception):
+
+class ActorPoolNotStarted(MarsError):
     pass
 
 
-class ActorNotExist(Exception):
+class ActorNotExist(MarsError):
     pass
 
 
-class ActorAlreadyExist(Exception):
+class ActorAlreadyExist(MarsError):
     pass
 
 
-class NoIdleSlot(Exception):
+class NoIdleSlot(MarsError):
     pass
 
 
-class ServerClosed(Exception):
+class ServerClosed(MarsError):
     pass
 
 
-class CannotCancelTask(Exception):
+class CannotCancelTask(MarsError):
     pass
 
 
-class Return(Exception):
+class Return(MarsError):
     def __init__(self, value):
         self.value = value

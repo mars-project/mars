@@ -17,6 +17,7 @@ import concurrent.futures
 import itertools
 import logging
 import threading
+import time
 import uuid
 import warnings
 from abc import ABC, ABCMeta, abstractmethod
@@ -29,6 +30,7 @@ from weakref import WeakKeyDictionary
 from typing import Any, Callable, Coroutine, Dict, List, \
     Optional, Tuple, Type, Union
 
+from ... import oscar as mo
 from ...config import options
 from ...core import ChunkType, TileableType, TileableGraph, enter_mode
 from ...core.operand import Fetch
@@ -40,6 +42,7 @@ from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
+from ...services.web import OscarWebAPI
 from ...tensor.utils import slice_split
 from ...typing import ClientType
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
@@ -104,8 +107,9 @@ class ExecutionInfo:
         return self._future_local.aio_future.__await__()
 
 
-warning_msg = """No session found, local session \
-will be created in the background, \
+warning_msg = """
+No session found, local session \
+will be created in background, \
 it may take a while before execution. \
 If you want to new a local session by yourself, \
 run code below:
@@ -113,7 +117,7 @@ run code below:
 ```
 import mars
 
-mars.new_session(default=True)
+mars.new_session()
 ```
 """
 
@@ -273,6 +277,17 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         -------
         version_list : list
             List of versions
+        """
+
+    @abstractmethod
+    async def get_web_endpoint(self) -> Optional[str]:
+        """
+        Get web endpoint of current session
+
+        Returns
+        -------
+        web_endpoint : str
+            web endpoint
         """
 
     @abstractmethod
@@ -469,6 +484,17 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
             List of versions
         """
 
+    @abstractmethod
+    def get_web_endpoint(self) -> Optional[str]:
+        """
+        Get web endpoint of current session
+
+        Returns
+        -------
+        web_endpoint : str
+            web endpoint
+        """
+
     def fetch_log(self,
                   tileables: List[TileableType],
                   offsets: List[int] = None,
@@ -565,14 +591,18 @@ class _IsolatedSession(AbstractAsyncSession):
                  lifecycle_api: AbstractLifecycleAPI,
                  task_api: AbstractTaskAPI,
                  cluster_api: AbstractClusterAPI,
-                 client: ClientType = None):
+                 web_api: Optional[OscarWebAPI],
+                 client: ClientType = None,
+                 timeout: float = None):
         super().__init__(address, session_id)
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
         self._cluster_api = cluster_api
+        self._web_api = web_api
         self.client = client
+        self.timeout = timeout
 
         self._tileable_to_fetch = WeakKeyDictionary()
         self._asyncio_task_timeout_detector_task = \
@@ -582,7 +612,8 @@ class _IsolatedSession(AbstractAsyncSession):
     async def _init(cls,
                     address: str,
                     session_id: str,
-                    new: bool = True):
+                    new: bool = True,
+                    timeout: float = None):
         session_api = await SessionAPI.create(address)
         if new:
             # create new session
@@ -593,10 +624,15 @@ class _IsolatedSession(AbstractAsyncSession):
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
         cluster_api = await ClusterAPI.create(session_address)
+        try:
+            web_api = await OscarWebAPI.create(session_address)
+        except mo.ActorNotExist:
+            web_api = None
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api)
+                   cluster_api, web_api,
+                   timeout=timeout)
 
     @classmethod
     @implements(AbstractAsyncSession.init)
@@ -604,11 +640,12 @@ class _IsolatedSession(AbstractAsyncSession):
                    address: str,
                    session_id: str,
                    new: bool = True,
+                   timeout: float = None,
                    **kwargs) -> "AbstractAsyncSession":
         init_local = kwargs.pop('init_local', False)
         if init_local:
             from .local import new_cluster_in_isolation
-            return (await new_cluster_in_isolation(address, **kwargs)).session
+            return (await new_cluster_in_isolation(address, timeout=timeout, **kwargs)).session
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -616,9 +653,9 @@ class _IsolatedSession(AbstractAsyncSession):
                             f'arguments: {unexpected_keys}')
 
         if urlparse(address).scheme == 'http':
-            return await _IsolatedWebSession._init(address, session_id, new=new)
+            return await _IsolatedWebSession._init(address, session_id, new=new, timeout=timeout)
         else:
-            return await cls._init(address, session_id, new=new)
+            return await cls._init(address, session_id, new=new, timeout=timeout)
 
     async def _run_in_background(self,
                                  tileables: list,
@@ -627,6 +664,7 @@ class _IsolatedSession(AbstractAsyncSession):
         with enter_mode(build=True, kernel=True):
             # wait for task to finish
             cancelled = False
+            start_time = time.time()
             while True:
                 try:
                     if not cancelled:
@@ -646,6 +684,9 @@ class _IsolatedSession(AbstractAsyncSession):
                     # cancelled
                     cancelled = True
                     await self._task_api.cancel_task(task_id)
+                finally:
+                    if self.timeout is not None and time.time() - start_time > self.timeout:
+                        raise TimeoutError(f'Task({task_id}) running time > {self.timeout}')
             if task_result.error:
                 raise task_result.error.with_traceback(task_result.traceback)
             if cancelled:
@@ -858,6 +899,11 @@ class _IsolatedSession(AbstractAsyncSession):
     async def get_cluster_versions(self) -> List[str]:
         return list(await self._cluster_api.get_mars_versions())
 
+    async def get_web_endpoint(self) -> Optional[str]:
+        if self._web_api is None:
+            return None
+        return await self._web_api.get_web_address()
+
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
@@ -892,7 +938,8 @@ class _IsolatedWebSession(_IsolatedSession):
     async def _init(cls,
                     address: str,
                     session_id: str,
-                    new=True):
+                    new: bool = True,
+                    timeout: float = None):
         from ...services.session import WebSessionAPI
         from ...services.lifecycle import WebLifecycleAPI
         from ...services.meta import WebMetaAPI
@@ -913,7 +960,10 @@ class _IsolatedWebSession(_IsolatedSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api)
+                   cluster_api, None, timeout=timeout)
+
+    async def get_web_endpoint(self) -> Optional[str]:
+        return self.address
 
 
 def _delegate_to_isolated_session(func: Union[Callable, Coroutine]):
@@ -1046,6 +1096,11 @@ class AsyncSession(AbstractAsyncSession):
                                     name: str):
         pass  # pragma: no cover
 
+    @implements(AbstractAsyncSession.get_web_endpoint)
+    @_delegate_to_isolated_session
+    async def get_web_endpoint(self) -> Optional[str]:
+        pass  # pragma: no cover
+
     @implements(AbstractAsyncSession.stop_server)
     async def stop_server(self):
         coro = self._isolated_session.stop_server()
@@ -1161,7 +1216,8 @@ class SyncSession(AbstractSyncSession):
                         show_progress=show_progress, **kwargs)
         fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
         try:
-            execution_info: ExecutionInfo = fut.result()
+            execution_info: ExecutionInfo = fut.result(
+                timeout=self._isolated_session.timeout)
         except KeyboardInterrupt:  # pragma: no cover
             logger.warning('Cancelling running task')
             cancelled.set()
@@ -1216,6 +1272,11 @@ class SyncSession(AbstractSyncSession):
     def get_total_n_cpu(self):
         pass  # pragma: no cover
 
+    @implements(AbstractSyncSession.get_web_endpoint)
+    @_delegate_to_isolated_session
+    def get_web_endpoint(self) -> Optional[str]:
+        pass  # pragma: no cover
+
     @implements(AbstractSyncSession.get_cluster_versions)
     @_delegate_to_isolated_session
     def get_cluster_versions(self) -> List[str]:
@@ -1226,11 +1287,15 @@ class SyncSession(AbstractSyncSession):
         asyncio.run_coroutine_threadsafe(coro, self._loop).result()
         self.reset_default()
 
-    def stop_server(self):
-        coro = self._isolated_session.stop_server()
-        asyncio.run_coroutine_threadsafe(coro, self._loop).result()
-        self.reset_default()
-        stop_isolation()
+    def stop_server(self, isolation=True):
+        try:
+            coro = self._isolated_session.stop_server()
+            future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+            future.result(timeout=5)
+        finally:
+            self.reset_default()
+            if isolation:
+                stop_isolation()
 
     def close(self):
         self.destroy()
@@ -1298,6 +1363,8 @@ def execute(tileable: TileableType,
             new_session_kwargs: dict = None,
             show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
+    if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
     if session is None:
         session = get_default_or_create(
             **(new_session_kwargs or dict()))
@@ -1337,6 +1404,8 @@ def fetch(tileable: TileableType,
 def fetch_log(*tileables: TileableType,
               session: SyncSession = None,
               **kwargs):
+    if len(tileables) == 1 and isinstance(tileables[0], (list, tuple)):
+        tileables = tileables[0]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
@@ -1386,7 +1455,7 @@ async def _new_session(address: str,
 def new_session(address: str = None,
                 session_id: str = None,
                 backend: str = 'oscar',
-                default: bool = False,
+                default: bool = True,
                 **kwargs) -> AbstractSession:
     ensure_isolation_created(kwargs)
 
@@ -1425,7 +1494,7 @@ def get_default_or_create(**kwargs):
             # no session attached, try to create one
             warnings.warn(warning_msg)
             session = new_session(
-                '127.0.0.1', default=True, init_local=True, **kwargs)
+                '127.0.0.1', init_local=True, **kwargs)
             session.as_default()
     if isinstance(session, _IsolatedSession):
         session = SyncSession.from_isolated_session(session)

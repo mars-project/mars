@@ -39,12 +39,8 @@ from mars.dataframe.datasource.series import from_pandas as from_pandas_series
 from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
 from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from mars.dataframe.datasource.from_records import from_records
-from mars.tests import setup
 from mars.tests.core import require_cudf
 from mars.utils import arrow_array_to_objects
-
-
-setup = setup
 
 
 def test_from_pandas_dataframe_execution(setup):
@@ -370,18 +366,17 @@ def test_read_csv_execution(setup):
                           columns=['a', 'b', 'c'])
         df.to_csv(file_path, index=False)
 
-        mdf = md.read_csv(file_path,
-                                                          usecols=['c', 'b']).execute().fetch()
+        mdf = md.read_csv(file_path, usecols=['c', 'b']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, usecols=['c', 'b']), mdf)
 
         mdf = md.read_csv(file_path, names=['a', 'b', 'c'],
-                                                          usecols=['c', 'b']).execute().fetch()
+                          usecols=['c', 'b']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, names=['a', 'b', 'c'], usecols=['c', 'b']), mdf)
 
         mdf = md.read_csv(file_path, names=['a', 'b', 'c'],
-                                                          usecols=['a', 'c']).execute().fetch()
+                          usecols=['a', 'c']).execute().fetch()
         pd.testing.assert_frame_equal(
             pd.read_csv(file_path, names=['a', 'b', 'c'], usecols=['a', 'c']), mdf)
 
@@ -477,7 +472,7 @@ def test_read_csv_execution(setup):
                                                            chunk_bytes='1k').execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf2)
 
-    # test multiply files
+    # test multiple files
     with tempfile.TemporaryDirectory() as tempdir:
         df = pd.DataFrame(np.random.rand(300, 3), columns=['a', 'b', 'c'])
 
@@ -603,11 +598,29 @@ def test_read_csv_without_index(setup):
         df.to_csv(file_path, index=False)
 
         pdf = pd.read_csv(file_path)
-        mdf = md.read_csv(file_path, incremental_index=True).execute().fetch()
+        mdf = md.read_csv(file_path).execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf)
 
-        mdf2 = md.read_csv(file_path, incremental_index=True, chunk_bytes=10).execute().fetch()
+        mdf2 = md.read_csv(file_path, chunk_bytes=10).execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf2)
+
+        file_path2 = os.path.join(tempdir, 'test.csv')
+        df = pd.DataFrame(np.random.RandomState(0).rand(100, 10),
+                          columns=[f'col{i}' for i in range(10)])
+        df.to_csv(file_path2, index=False)
+
+        mdf3 = md.read_csv(file_path2, chunk_bytes=os.stat(file_path2).st_size / 5)
+        result = mdf3.execute().fetch()
+        expected = pd.read_csv(file_path2)
+        pd.testing.assert_frame_equal(result, expected)
+
+        # test incremental_index = False
+        mdf4 = md.read_csv(file_path2, chunk_bytes=os.stat(file_path2).st_size / 5,
+                           incremental_index=False)
+        result = mdf4.execute().fetch()
+        assert not result.index.is_monotonic_increasing
+        expected = pd.read_csv(file_path2)
+        pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
 
 
 def test_read_sql_execution(setup):
@@ -634,23 +647,20 @@ def test_read_sql_execution(setup):
 
         # test read with sql string and offset method
         r = md.read_sql_query('select * from test where c > 0.5', uri,
-                              parse_dates=['d'], chunk_size=4,
-                              incremental_index=True)
+                              parse_dates=['d'], chunk_size=4)
         result = r.execute().fetch()
         pd.testing.assert_frame_equal(result, test_df[test_df.c > 0.5].reset_index(drop=True))
 
         # test read with sql string and partition method with integer cols
         r = md.read_sql('select * from test where b > \'s5\'', uri,
-                        parse_dates=['d'], partition_col='a', num_partitions=3,
-                        incremental_index=True)
+                        parse_dates=['d'], partition_col='a', num_partitions=3)
         result = r.execute().fetch()
         pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].reset_index(drop=True))
 
         # test read with sql string and partition method with datetime cols
         r = md.read_sql_query('select * from test where b > \'s5\'', uri,
                               parse_dates={'d': '%Y-%m-%d %H:%M:%S'},
-                              partition_col='d', num_partitions=3,
-                              incremental_index=True)
+                              partition_col='d', num_partitions=3)
         result = r.execute().fetch()
         pd.testing.assert_frame_equal(result, test_df[test_df.b > 's5'].reset_index(drop=True))
 
@@ -737,7 +747,6 @@ def test_read_sql_use_arrow_dtype(setup):
         # test read with sql string and offset method
         r = md.read_sql_query('select * from test where c > 0.5', uri,
                               parse_dates=['d'], chunk_size=4,
-                              incremental_index=True,
                               use_arrow_dtype=True)
         result = r.execute().fetch()
         assert isinstance(r.dtypes.iloc[1], md.ArrowStringDtype)
@@ -840,7 +849,7 @@ def test_read_parquet_arrow(setup):
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
 
     with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, 'test.csv')
+        file_path = os.path.join(tempdir, 'test.parquet')
         test_df.to_parquet(file_path, row_group_size=3)
 
         df = md.read_parquet(file_path, groups_as_chunks=True, columns=['a', 'b'])
@@ -848,7 +857,7 @@ def test_read_parquet_arrow(setup):
         pd.testing.assert_frame_equal(result.reset_index(drop=True), test_df[['a', 'b']])
 
     with tempfile.TemporaryDirectory() as tempdir:
-        file_path = os.path.join(tempdir, 'test.csv')
+        file_path = os.path.join(tempdir, 'test.parquet')
         test_df.to_parquet(file_path, row_group_size=5)
 
         df = md.read_parquet(file_path, groups_as_chunks=True,

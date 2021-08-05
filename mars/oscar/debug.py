@@ -17,6 +17,7 @@ import contextvars
 import json
 import logging
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Optional  # noqa: F401
@@ -30,6 +31,8 @@ logger: logging.Logger = logging.getLogger(__name__)
 @dataclass
 class DebugOptions:
     actor_call_timeout: int = 10
+    process_message_timeout: int = 30
+    actor_lock_timeout: int = 30
     ray_object_retrieval_timeout: int = 10
     log_unhandled_errors: bool = True
     log_cycle_send: bool = True
@@ -62,8 +65,11 @@ def reload_debug_opts_from_env():
 
 
 async def _log_timeout(timeout, msg, *args, **kwargs):
-    await asyncio.sleep(timeout)
-    logger.warning(msg, *args, **kwargs)
+    start_time, rnd = time.time(), 1
+    while True:
+        await asyncio.sleep(timeout * rnd)
+        rnd += 1
+        logger.warning(msg + '(timeout for %.4f seconds).', *args, time.time() - start_time, **kwargs)
 
 
 @contextmanager

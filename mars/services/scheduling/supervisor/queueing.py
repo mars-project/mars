@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import heapq
 import logging
 from collections import defaultdict
@@ -21,7 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import dataslots, extensible
+from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -74,7 +75,11 @@ class SubtaskQueueingActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
-                self._band_slot_nums = bands
+                # confirm ready bands indeed changed
+                if bands != self._band_slot_nums:
+                    self._band_slot_nums = copy.deepcopy(bands)
+                    if self._band_queues:
+                        await self.balance_queued_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -105,7 +110,7 @@ class SubtaskQueueingActor(mo.Actor):
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_manager_ref(self):
         from .manager import SubtaskManagerActor
         return await mo.actor_ref(
@@ -163,6 +168,7 @@ class SubtaskQueueingActor(mo.Actor):
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
+                        await asyncio.sleep(0)
                         self.remove_queued_subtasks([item.subtask.subtask_id])
                 else:
                     logger.debug('No slots available')
@@ -171,9 +177,9 @@ class SubtaskQueueingActor(mo.Actor):
                 heapq.heappush(task_queue, submit_items[stid])
 
         if submit_aio_tasks:
-            await asyncio.gather(*submit_aio_tasks)
+            yield asyncio.gather(*submit_aio_tasks)
 
-    @extensible
+    @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
         if subtask_id not in self._stid_to_bands:
             return
@@ -186,3 +192,23 @@ class SubtaskQueueingActor(mo.Actor):
         for stid in subtask_ids:
             self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
+
+    async def balance_queued_subtasks(self):
+        # record length of band queues
+        band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
+        move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+        items = []
+        # rewrite band queues according to feedbacks from assigner
+        for band, move in move_queued_subtasks.items():
+            task_queue = self._band_queues[band]
+            assert move + len(task_queue) >= 0
+            for _ in range(abs(move)):
+                if move < 0:
+                    # TODO: pop item of low priority
+                    item = heapq.heappop(task_queue)
+                    self._stid_to_bands[item.subtask.subtask_id].remove(band)
+                    items.append(item)
+                elif move > 0:
+                    item = items.pop()
+                    self._stid_to_bands[item.subtask.subtask_id].append(band)
+                    heapq.heappush(task_queue, item)

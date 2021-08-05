@@ -16,7 +16,6 @@ import pytest
 
 from mars.deploy.oscar.session import new_session, get_default_session
 from mars.learn.contrib.tsfresh import MarsDistributor
-from mars.tests import setup
 
 try:
     import tsfresh
@@ -27,15 +26,13 @@ try:
 except ImportError:
     tsfresh = None
 
-setup = setup
-
 
 @pytest.mark.skipif(tsfresh is None, reason='tsfresh not installed')
 def test_distributed_ts_fresh(setup):
     robot_execution_failures.download_robot_execution_failures()
     df, y = robot_execution_failures.load_robot_execution_failures()
     default_session = get_default_session()
-    sync_session = new_session(default_session.address)
+    sync_session = new_session(default_session.address, default=False)
     dist = MarsDistributor(session=sync_session)
 
     df = df.iloc[:200].copy()

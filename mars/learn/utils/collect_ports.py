@@ -89,6 +89,7 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
+        assert ctx.band[0] == op.expect_worker
         socket_type = op.socket_type or socket.SOCK_STREAM
         port_num = get_next_port(socket_type, occupy=False)
         ctx[op.outputs[0].key] = np.array([port_num], dtype=int)

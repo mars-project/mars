@@ -14,14 +14,16 @@
 
 import os
 import json
+from typing import Any, BinaryIO, Dict, List, Optional, TextIO, Union
 
 import numpy as np
 
 from .... import opcodes as OperandDef
 from ....core import recursive_tile
 from ....core.context import get_context
-from ....remote.run_script import RunScript
+from ....remote.run_script import RunScript, _extract_inputs
 from ....serialization.serializables import BytesField, Int32Field, DictField, StringField
+from ....typing import SessionType, TileableType
 from ....utils import to_binary
 from ...utils import collect_ports
 from ..utils import pick_workers
@@ -41,7 +43,7 @@ class RunTensorFlow(RunScript):
 
     def __init__(self, n_workers=None, n_ps=None, tf_config=None, port=None,
                  tf_task_type=None, tf_task_index=None, gpu=None, **kw):
-        super().__init__(mode='spawn', _n_workers=n_workers, _n_ps=n_ps,
+        super().__init__(_n_workers=n_workers, _n_ps=n_ps,
                          _tf_config=tf_config, _port=port, _tf_task_type=tf_task_type,
                          _tf_task_index=tf_task_index, _gpu=gpu, **kw)
 
@@ -72,9 +74,6 @@ class RunTensorFlow(RunScript):
     @property
     def tf_task_index(self):
         return self._tf_task_index
-
-    def __call__(self):
-        return self.new_tileable(None)
 
     @classmethod
     def tile(cls, op):
@@ -137,22 +136,46 @@ class RunTensorFlow(RunScript):
             ctx[op.outputs[0].key] = {}
 
 
-def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None,
-                          retry_when_fail=False, session=None, run_kwargs=None, port=None):
+def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
+                          n_workers: int,
+                          n_ps: int = 0,
+                          data: Dict[str, TileableType] = None,
+                          gpu: Optional[bool] = None,
+                          command_argv: List[str] = None,
+                          retry_when_fail: bool = False,
+                          session: SessionType = None,
+                          run_kwargs: Dict[str, Any] = None,
+                          port: int = None):
     """
     Run TensorFlow script in Mars cluster.
 
-    :param script: script to run
-    :type script: str or file-like object
-    :param n_workers: number of TensorFlow workers
-    :param n_ps: number of TensorFlow ps, optional
-    :param gpu: run TensorFlow script on GPU
-    :param command_argv: extra command args for script
-    :param retry_when_fail: bool, default False. If True, retry when function failed.
-    :param session: Mars session, if not provided, will use default one
-    :param run_kwargs: extra kwargs for session.run
-    :param port: port of TensorFlow worker or ps, will automatically increase for the same worker
-    :return: return {'status': 'ok'} if succeeded, or error raised
+    Parameters
+    ----------
+    script: str or file-like object
+        Script to run
+    n_workers : int
+        Number of TensorFlow workers.
+    n_ps : int
+        Number of TensorFlow PS workers.
+    data : dict
+        Variable name to data.
+    gpu : bool
+        Run PyTorch script on GPU
+    command_argv : list
+        Extra command args for script
+    retry_when_fail : bool
+        If True, retry when function failed.
+    session
+        Mars session, if not provided, will use default one.
+    run_kwargs : dict
+        Extra kwargs for `session.run`.
+    port : int
+        Port of TensorFlow worker or ps, will automatically increase for the same worker
+
+    Returns
+    -------
+    status
+        return {'status': 'ok'} if succeeded, or error raised
     """
     if int(n_workers) <= 0:
         raise ValueError('n_workers should be at least 1')
@@ -164,7 +187,9 @@ def run_tensorflow_script(script, n_workers, n_ps=0, gpu=None, command_argv=None
         with open(os.path.abspath(script), 'rb') as f:
             code = f.read()
 
-    op = RunTensorFlow(code=to_binary(code), n_workers=int(n_workers), n_ps=int(n_ps),
+    inputs = _extract_inputs(data)
+    op = RunTensorFlow(data=data, code=to_binary(code),
+                       n_workers=int(n_workers), n_ps=int(n_ps),
                        retry_when_fail=retry_when_fail, gpu=gpu,
                        port=port, command_args=command_argv)
-    return op().execute(session=session, **(run_kwargs or {})).fetch(session=session)
+    return op(inputs).execute(session=session, **(run_kwargs or {}))

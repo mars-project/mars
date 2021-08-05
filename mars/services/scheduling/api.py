@@ -18,7 +18,6 @@ from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ...utils import extensible
 from ..subtask import Subtask
 
 APIType = TypeVar('APIType', bound='SchedulingAPI')
@@ -109,10 +108,10 @@ class SchedulingAPI(ABC):
             list of priorities of subtasks
         """
         if priorities is None:
-            priorities = [(subtask.priority,) for subtask in subtasks]
+            priorities = [subtask.priority or tuple() for subtask in subtasks]
         await self._manager_ref.add_subtasks(subtasks, priorities)
 
-    @extensible
+    @mo.extensible
     async def update_subtask_priority(self,
                                       subtask_id: str,
                                       priority: Tuple):
@@ -181,6 +180,7 @@ class MockSchedulingAPI(SchedulingAPI):
         from .worker import SubtaskExecutionActor, \
             WorkerSlotManagerActor, WorkerQuotaManagerActor
         await mo.create_actor(SubtaskExecutionActor,
+                              subtask_max_retries=0,
                               uid=SubtaskExecutionActor.default_uid(),
                               address=address)
         await mo.create_actor(WorkerSlotManagerActor,

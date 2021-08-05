@@ -15,7 +15,6 @@
 import pytest
 
 from mars.tests.core import require_ray
-from mars.tests.conftest import *  # noqa
 from .....utils import lazy_import
 from ..pool import RayMainPool, RayMainActorPool, create_actor_pool
 from ..utils import process_placement_to_address

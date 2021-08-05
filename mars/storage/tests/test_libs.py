@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import io
+import os
 import sys
 import tempfile
 import pkgutil
@@ -35,7 +36,6 @@ from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
 from mars.storage.ray import RayStorage
 from mars.tests.core import require_ray, require_cudf, require_cupy
-from mars.tests.conftest import *  # noqa
 
 try:
     import vineyard
@@ -194,9 +194,31 @@ async def test_reader_and_writer(ray_start_regular, storage_context):
             await writer.write(buf)
 
     async with await storage.open_reader(writer.object_id) as reader:
-        t2 = await AioDeserializer(reader).run()
+        r = await AioDeserializer(reader).run()
 
-    np.testing.assert_array_equal(t, t2)
+    np.testing.assert_array_equal(t, r)
+
+    # test writer and reader with seek offset
+    t = np.random.random(10)
+    buffers = await AioSerializer(t).run()
+    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
+    async with await storage.open_writer(size=20 + size) as writer:
+        await writer.write(b' ' * 10)
+        for buf in buffers:
+            await writer.write(buf)
+        await writer.write(b' ' * 10)
+
+    async with await storage.open_reader(writer.object_id) as reader:
+        with pytest.raises((OSError, ValueError)):
+            await reader.seek(-1)
+
+        assert 5 == await reader.seek(5)
+        assert 10 == await reader.seek(5, os.SEEK_CUR)
+        assert 10 == await reader.seek(-10 - size, os.SEEK_END)
+        assert 10 == await reader.tell()
+        r = await AioDeserializer(reader).run()
+
+    np.testing.assert_array_equal(t, r)
 
 
 @pytest.mark.asyncio

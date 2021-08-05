@@ -33,7 +33,6 @@ except ImportError:
     from unittest import mock
 _mock = mock
 
-from ..config import option_context
 from ..core.operand import OperandStage
 from ..utils import lazy_import
 
@@ -43,20 +42,6 @@ cudf = lazy_import('cudf', globals=globals())
 ray = lazy_import('ray', globals=globals())
 
 logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(scope='module')
-def setup():
-    from ..deploy.oscar.tests.session import new_test_session
-
-    sess = new_test_session(address='test://127.0.0.1',
-                            init_local=True,
-                            default=True)
-    with option_context({'show_progress': False}):
-        try:
-            yield sess
-        finally:
-            sess.stop_server()
 
 
 def flaky(o=None, *args, **kwargs):

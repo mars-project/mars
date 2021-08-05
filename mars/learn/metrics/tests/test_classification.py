@@ -14,20 +14,13 @@
 
 import numpy as np
 import pytest
-try:
-    import sklearn
-    from sklearn.metrics import accuracy_score as sklearn_accuracy_score
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.metrics import accuracy_score as sklearn_accuracy_score
 
 import mars.tensor as mt
 from mars.learn.metrics import accuracy_score
 from mars.learn.metrics._classification import _check_targets
 from mars.lib.sparse import SparseNDArray
-from mars.tests import setup
 
-
-setup = setup
 
 IND = 'multilabel-indicator'
 MC = 'multiclass'
@@ -115,7 +108,6 @@ def test__check_targets(setup, type1, y1, type2, y2):
             _check_targets(y1[:-1], y2).execute()
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_accuracy_score(setup):
     y_pred = [0, 2, 1, 3]
     y_true = [0, 1, 2, 3]

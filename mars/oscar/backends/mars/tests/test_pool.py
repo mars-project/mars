@@ -36,7 +36,7 @@ from mars.oscar.backends.message import new_message_id, \
 from mars.oscar.backends.pool import create_actor_pool
 from mars.oscar.backends.router import Router
 from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
-from mars.tests.core import mock, flaky
+from mars.tests.core import mock
 from mars.utils import get_next_port
 
 
@@ -84,13 +84,17 @@ def _add_pool_conf(config: ActorPoolConfig, process_index: int, label: str,
                              external_address, env=env)
 
 
+def _raise_if_error(message):
+    if message.message_type == MessageType.error:
+        raise message.error.with_traceback(message.traceback)
+
+
 @pytest.fixture(autouse=True)
 def clear_routers():
     yield
     Router.set_instance(None)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @mock.patch('mars.oscar.backends.mars.pool.SubActorPool.notify_main_pool_to_destroy')
 async def test_sub_actor_pool(notify_main_pool):
@@ -108,120 +112,123 @@ async def test_sub_actor_pool(notify_main_pool):
     })
     await pool.start()
 
-    create_actor_message = CreateActorMessage(
-        new_message_id(),
-        TestActor, b'test', tuple(), dict(),
-        AddressSpecified(pool.external_address))
-    message = await pool.create_actor(create_actor_message)
-    assert message.message_type == MessageType.result
-    actor_ref = message.result
-    assert actor_ref.address == pool.external_address
-    assert actor_ref.uid == b'test'
+    try:
+        create_actor_message = CreateActorMessage(
+            new_message_id(),
+            TestActor, b'test', tuple(), dict(),
+            AddressSpecified(pool.external_address))
+        message = await pool.create_actor(create_actor_message)
+        assert message.message_type == MessageType.result
+        actor_ref = message.result
+        assert actor_ref.address == pool.external_address
+        assert actor_ref.uid == b'test'
 
-    has_actor_message = HasActorMessage(
-        new_message_id(), actor_ref)
-    assert (await pool.has_actor(has_actor_message)).result is True
+        has_actor_message = HasActorMessage(
+            new_message_id(), actor_ref)
+        assert (await pool.has_actor(has_actor_message)).result is True
 
-    actor_ref_message = ActorRefMessage(
-        new_message_id(), actor_ref)
-    assert (await pool.actor_ref(actor_ref_message)).result == actor_ref
+        actor_ref_message = ActorRefMessage(
+            new_message_id(), actor_ref)
+        assert (await pool.actor_ref(actor_ref_message)).result == actor_ref
 
-    tell_message = TellMessage(
-        new_message_id(), actor_ref, ('add', 0, (1,), dict()))
-    message = await pool.tell(tell_message)
-    assert message.result is None
-
-    send_message = SendMessage(
-        new_message_id(), actor_ref, ('add', 0, (3,), dict()))
-    message = await pool.send(send_message)
-    assert message.result == 4
-
-    # test error message
-    # type mismatch
-    send_message = SendMessage(
-        new_message_id(), actor_ref, ('add', 0, ('3',), dict()))
-    result = await pool.send(send_message)
-    assert result.message_type == MessageType.error
-    assert isinstance(result.error, TypeError)
-
-    send_message = SendMessage(
-        new_message_id(), create_actor_ref(actor_ref.address, 'non_exist'),
-        ('add', 0, (3,), dict()))
-    result = await pool.send(send_message)
-    assert isinstance(result.error, ActorNotExist)
-
-    # test send message and cancel it
-    send_message = SendMessage(
-        new_message_id(), actor_ref, ('sleep', 0, (20,), dict()))
-    result_task = asyncio.create_task(pool.send(send_message))
-    await asyncio.sleep(0)
-    start = time.time()
-    cancel_message = CancelMessage(
-        new_message_id(), actor_ref.address, send_message.message_id)
-    cancel_task = asyncio.create_task(pool.cancel(cancel_message))
-    result = await asyncio.wait_for(cancel_task, 3)
-    assert result.message_type == MessageType.result
-    assert result.result is True
-    result = await result_task
-    # test time
-    assert time.time() - start < 3
-    assert result.message_type == MessageType.result
-    assert result.result == 5
-
-    # test processing message on background
-    async with await pool.router.get_client(pool.external_address) as client:
-        send_message = SendMessage(
-            new_message_id(), actor_ref, ('add', 0, (5,), dict()))
-        await client.send(send_message)
-        result = await client.recv()
-        assert result.result == 9
+        tell_message = TellMessage(
+            new_message_id(), actor_ref, ('add', 0, (1,), dict()))
+        message = await pool.tell(tell_message)
+        assert message.result is None
 
         send_message = SendMessage(
-            new_message_id(), actor_ref, ('add', 0, ('5',), dict()))
-        await client.send(send_message)
-        result = await client.recv()
+            new_message_id(), actor_ref, ('add', 0, (3,), dict()))
+        message = await pool.send(send_message)
+        assert message.result == 4
+
+        # test error message
+        # type mismatch
+        send_message = SendMessage(
+            new_message_id(), actor_ref, ('add', 0, ('3',), dict()))
+        result = await pool.send(send_message)
+        assert result.message_type == MessageType.error
         assert isinstance(result.error, TypeError)
 
-    destroy_actor_message = DestroyActorMessage(
-        new_message_id(), actor_ref)
-    message = await pool.destroy_actor(destroy_actor_message)
-    assert message.result == actor_ref.uid
+        send_message = SendMessage(
+            new_message_id(), create_actor_ref(actor_ref.address, 'non_exist'),
+            ('add', 0, (3,), dict()))
+        result = await pool.send(send_message)
+        assert isinstance(result.error, ActorNotExist)
 
-    # send destroy failed
-    message = await pool.destroy_actor(destroy_actor_message)
-    assert isinstance(message.error, ActorNotExist)
+        # test send message and cancel it
+        send_message = SendMessage(
+            new_message_id(), actor_ref, ('sleep', 0, (20,), dict()))
+        result_task = asyncio.create_task(pool.send(send_message))
+        await asyncio.sleep(0)
+        start = time.time()
+        cancel_message = CancelMessage(
+            new_message_id(), actor_ref.address, send_message.message_id)
+        cancel_task = asyncio.create_task(pool.cancel(cancel_message))
+        result = await asyncio.wait_for(cancel_task, 3)
+        assert result.message_type == MessageType.result
+        assert result.result is True
+        result = await result_task
+        # test time
+        assert time.time() - start < 3
+        assert result.message_type == MessageType.result
+        assert result.result == 5
 
-    message = await pool.has_actor(has_actor_message)
-    assert not message.result
+        # test processing message on background
+        async with await pool.router.get_client(pool.external_address) as client:
+            send_message = SendMessage(
+                new_message_id(), actor_ref, ('add', 0, (5,), dict()))
+            await client.send(send_message)
+            result = await client.recv()
+            _raise_if_error(result)
+            assert result.result == 9
 
-    # test sync config
-    _add_pool_conf(config, 1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
-    sync_config_message = ControlMessage(
-        new_message_id(), '', ControlMessageType.sync_config, config)
-    message = await pool.handle_control_command(sync_config_message)
-    assert message.result is True
+            send_message = SendMessage(
+                new_message_id(), actor_ref, ('add', 0, ('5',), dict()))
+            await client.send(send_message)
+            result = await client.recv()
+            assert isinstance(result.error, TypeError)
 
-    # test get config
-    get_config_message = ControlMessage(
-        new_message_id(), '', ControlMessageType.get_config, None)
-    message = await pool.handle_control_command(get_config_message)
-    config2 = message.result
-    assert config.as_dict() == config2.as_dict()
+        destroy_actor_message = DestroyActorMessage(
+            new_message_id(), actor_ref)
+        message = await pool.destroy_actor(destroy_actor_message)
+        assert message.result == actor_ref.uid
 
-    assert pool.router._mapping == Router.get_instance()._mapping
-    assert pool.router._curr_external_addresses == \
-           Router.get_instance()._curr_external_addresses
+        # send destroy failed
+        message = await pool.destroy_actor(destroy_actor_message)
+        assert isinstance(message.error, ActorNotExist)
 
-    stop_message = ControlMessage(
-        new_message_id(), '', ControlMessageType.stop, None)
-    message = await pool.handle_control_command(stop_message)
-    assert message.result is True
+        message = await pool.has_actor(has_actor_message)
+        assert not message.result
 
-    await pool.join(.05)
-    assert pool.stopped
+        # test sync config
+        _add_pool_conf(config, 1, 'sub', 'unixsocket:///1', f'127.0.0.1:{get_next_port()}')
+        sync_config_message = ControlMessage(
+            new_message_id(), '', ControlMessageType.sync_config, config)
+        message = await pool.handle_control_command(sync_config_message)
+        assert message.result is True
+
+        # test get config
+        get_config_message = ControlMessage(
+            new_message_id(), '', ControlMessageType.get_config, None)
+        message = await pool.handle_control_command(get_config_message)
+        config2 = message.result
+        assert config.as_dict() == config2.as_dict()
+
+        assert pool.router._mapping == Router.get_instance()._mapping
+        assert pool.router._curr_external_addresses == \
+               Router.get_instance()._curr_external_addresses
+
+        stop_message = ControlMessage(
+            new_message_id(), '', ControlMessageType.stop, None)
+        message = await pool.handle_control_command(stop_message)
+        assert message.result is True
+
+        await pool.join(.05)
+        assert pool.stopped
+    finally:
+        await pool.stop()
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_main_actor_pool():
     config = ActorPoolConfig()
@@ -329,6 +336,7 @@ async def test_main_actor_pool():
                 new_message_id(), actor_ref2)
             await client.send(destroy_actor_message)
             result = await client.recv()
+            _raise_if_error(result)
             assert result.result == actor_ref2.uid
 
         # test sync config
@@ -349,7 +357,6 @@ async def test_main_actor_pool():
     assert pool.stopped
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_create_actor_pool():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -413,13 +420,13 @@ async def test_create_actor_pool():
         await ctx.destroy_actor(actor_ref2)
         assert (await ctx.has_actor(actor_ref2)) is False
 
+    assert pool.stopped
     # after pool shutdown, global router must has been cleaned
     global_router = Router.get_instance()
     assert len(global_router._curr_external_addresses) == 0
     assert len(global_router._mapping) == 0
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_errors():
     with pytest.raises(ValueError):
@@ -438,7 +445,6 @@ async def test_errors():
                                     auto_recover='illegal')
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_server_closed():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -478,7 +484,6 @@ async def test_server_closed():
         await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @pytest.mark.skipif(sys.platform.startswith('win'), reason='skip under Windows')
 @pytest.mark.parametrize(
@@ -534,7 +539,6 @@ async def test_auto_recover(auto_recover):
                 await ctx.has_actor(actor_ref)
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_two_pools():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -553,7 +557,7 @@ async def test_two_pools():
         else:
             return addr.startswith('unixsocket://')
 
-    async with pool1, pool2:
+    try:
         actor_ref1 = await ctx.create_actor(
             TestActor, address=pool1.external_address,
             allocate_strategy=MainPool())
@@ -587,9 +591,11 @@ async def test_two_pools():
             Router.get_instance().get_internal_address(actor_ref4.address))
 
         assert await actor_ref2.add_other(actor_ref4, 3) == 13
+    finally:
+        await pool1.stop()
+        await pool2.stop()
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 async def test_parallel_allocate_idle_label():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
@@ -602,18 +608,18 @@ async def test_parallel_allocate_idle_label():
         def get_pid(self):
             return os.getpid()
 
-    ctx = get_context()
-    strategy = IdleLabel('my_label', 'tests')
-    tasks = [
-        ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
-        ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
-    ]
-    refs = await asyncio.gather(*tasks)
-    # outputs identical process ids, while the result should be different
-    assert len({await ref.get_pid() for ref in refs}) == 2
+    async with pool:
+        ctx = get_context()
+        strategy = IdleLabel('my_label', 'tests')
+        tasks = [
+            ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
+            ctx.create_actor(_Actor, allocate_strategy=strategy, address=pool.external_address),
+        ]
+        refs = await asyncio.gather(*tasks)
+        # outputs identical process ids, while the result should be different
+        assert len({await ref.get_pid() for ref in refs}) == 2
 
 
-@flaky(platform='win', max_runs=3)
 @pytest.mark.asyncio
 @pytest.mark.parametrize('logging_conf', [
     {'file': os.path.join(os.path.dirname(os.path.abspath(__file__)),
