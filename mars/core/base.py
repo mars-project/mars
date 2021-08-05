@@ -122,3 +122,7 @@ class BaseSerializer(SerializableSerializer):
 
 
 BaseSerializer.register(Base)
+
+
+class MarsError(Exception):
+    pass

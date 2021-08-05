@@ -46,7 +46,7 @@ def update_chunk_dense(
 
 cdef void _update_chunk_dense(
         floating *X,                          # IN
-        # expecting C alinged 2D array. XXX: Can be
+        # expecting C aligned 2D array. XXX: Can be
         # replaced by const memoryview when cython min
         # version is >= 0.3
         floating[::1] sample_weight,          # IN

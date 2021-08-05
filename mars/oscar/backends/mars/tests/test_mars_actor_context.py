@@ -25,7 +25,6 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import RandomSubPool
 from mars.oscar.debug import set_debug_options, DebugOptions
-from mars.utils import extensible
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ class DummyActor(mo.Actor):
             raise ValueError('value < 0')
         self.value = value
 
-    @extensible
+    @mo.extensible
     async def add(self, value):
         if not isinstance(value, int):
             raise TypeError('add number must be int')
@@ -50,7 +49,7 @@ class DummyActor(mo.Actor):
         self.value += sum(v[0] for v in args_list)
         return self.value
 
-    @extensible
+    @mo.extensible
     async def add_ret(self, value):
         return self.value + value
 

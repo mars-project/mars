@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -83,9 +83,9 @@ msgstr ""
 
 #: ../../source/getting_started/tensor.rst:72
 msgid ""
-"If multiple tensors need to be executed together, "
-":class:`mars.tensor.ExecutableTuple` could be used."
-msgstr "使用 :class:`mars.tensor.ExecutableTuple` 来执行多个 tensor。"
+"If multiple tensors need to be executed together, ``mars.execute()`` "
+"could be used."
+msgstr "使用 ``mars.execute()`` 来执行多个 tensor。"
 
 #: ../../source/getting_started/tensor.rst:88
 msgid "Tensors can be saved to external files, for instance, HDF5."

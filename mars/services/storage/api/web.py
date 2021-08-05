@@ -14,9 +14,10 @@
 
 from typing import Any, List
 
+from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage import StorageLevel
-from ....utils import serialize_serializable, deserialize_serializable, extensible
+from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import DataInfo
 from .core import AbstractStorageAPI
@@ -82,7 +83,7 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
         self._session_id = session_id
         self._address = address.rstrip('/')
 
-    @extensible
+    @mo.extensible
     async def get(self,
                   data_key: str,
                   conditions: List = None,

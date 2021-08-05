@@ -37,7 +37,6 @@ import warnings
 import zlib
 from abc import ABC
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
 import numpy as np
@@ -343,6 +342,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
+    from .dataframe.core import IndexValue
+
     if dt is None:
         return 0
 
@@ -360,7 +361,8 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
         size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
-            if hasattr(index_value_value, 'dtype'):
+            if hasattr(index_value_value, 'dtype') \
+                    and not isinstance(index_value_value, IndexValue.RangeIndex):
                 size += calc_data_size(index_value_value, shape=shape)
         except AttributeError:
             pass
@@ -1093,141 +1095,6 @@ def replace_objects(nested: Union[List, Dict],
         return type(nested)((k, v) for k, v in zip(nested.keys(), new_vals))
     else:
         return type(nested)(new_vals)
-
-
-@dataclass
-class _DelayedArgument:
-    args: Tuple
-    kwargs: Dict
-
-
-class _ExtensibleCallable:
-    func: Callable
-    batch_func: Optional[Callable]
-    is_async: bool
-
-    def __call__(self, *args, **kwargs):
-        if self.is_async:
-            return self._async_call(*args, **kwargs)
-        else:
-            return self._sync_call(*args, **kwargs)
-
-    async def _async_call(self, *args, **kwargs):
-        try:
-            return await self.func(*args, **kwargs)
-        except NotImplementedError:
-            if self.batch_func:
-                ret = await self.batch_func([args], [kwargs])
-                return None if ret is None else ret[0]
-            raise
-
-    def _sync_call(self, *args, **kwargs):
-        try:
-            return self.func(*args, **kwargs)
-        except NotImplementedError:
-            if self.batch_func:
-                return self.batch_func([args], [kwargs])[0]
-            raise
-
-
-class _ExtensibleWrapper(_ExtensibleCallable):
-    def __init__(self,
-                 func: Callable,
-                 batch_func: Callable = None,
-                 is_async: bool = False):
-        self.func = func
-        self.batch_func = batch_func
-        self.is_async = is_async
-
-    @staticmethod
-    def delay(*args, **kwargs):
-        return _DelayedArgument(args=args, kwargs=kwargs)
-
-    @staticmethod
-    def _gen_args_kwargs_list(delays):
-        args_list = list()
-        kwargs_list = list()
-        for delay in delays:
-            args_list.append(delay.args)
-            kwargs_list.append(delay.kwargs)
-        return args_list, kwargs_list
-
-    async def _async_batch(self, *delays):
-        if self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
-            return await self.batch_func(args_list, kwargs_list)
-        else:
-            # this function has no batch implementation
-            # call it separately
-            tasks = [asyncio.create_task(self.func(*d.args, **d.kwargs))
-                     for d in delays]
-            try:
-                return await asyncio.gather(*tasks)
-            except asyncio.CancelledError:
-                _ = [task.cancel() for task in tasks]
-                return await asyncio.gather(*tasks)
-
-    def _sync_batch(self, *delays):
-        if self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
-            return self.batch_func(args_list, kwargs_list)
-        else:
-            # this function has no batch implementation
-            # call it separately
-            return [self.func(*d.args, **d.kwargs) for d in delays]
-
-    def batch(self, *delays):
-        if self.is_async:
-            return self._async_batch(*delays)
-        else:
-            return self._sync_batch(*delays)
-
-
-class _ExtensibleAccessor(_ExtensibleCallable):
-    func: Callable
-    batch_func: Optional[Callable]
-
-    def __init__(self, func: Callable):
-        self.func = func
-        self.batch_func = None
-        self.is_async = asyncio.iscoroutinefunction(self.func)
-
-    def batch(self, func: Callable):
-        self.batch_func = func
-        return self
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            # calling from class
-            return self.func
-
-        func = self.func.__get__(instance, owner)
-        batch_func = self.batch_func.__get__(instance, owner) \
-            if self.batch_func is not None else None
-
-        return _ExtensibleWrapper(func, batch_func=batch_func,
-                                  is_async=self.is_async)
-
-
-def extensible(func: Callable):
-    """
-    `extensible` means this func could be functionality extended,
-    especially for batch operations.
-
-    Consider remote function calls, each function may have operations
-    like opening file, closing file, batching them can help to reduce the cost,
-    especially for remote function calls.
-
-    Parameters
-    ----------
-    func : callable
-        Function
-
-    Returns
-    -------
-    func
-    """
-    return _ExtensibleAccessor(func)
 
 
 # from https://github.com/ericvsmith/dataclasses/blob/master/dataclass_tools.py

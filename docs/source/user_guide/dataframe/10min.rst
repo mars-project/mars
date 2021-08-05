@@ -14,8 +14,15 @@ Customarily, we import as follows:
 
 .. ipython:: python
 
+   import mars
    import mars.tensor as mt
    import mars.dataframe as md
+
+Now create a new default session.
+
+.. ipython:: python
+
+    mars.new_session()
 
 Object creation
 ---------------

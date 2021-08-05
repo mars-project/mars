@@ -16,7 +16,6 @@ from collections import defaultdict
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
-from ....utils import extensible
 from ...meta.api import MetaAPI
 from ...storage.api import StorageAPI
 from ..errors import TileableNotTracked
@@ -47,7 +46,7 @@ class LifecycleTrackerActor(mo.Actor):
     def gen_uid(session_id):
         return f'{session_id}_lifecycle_tracker'
 
-    @extensible
+    @mo.extensible
     def track(self, tileable_key: str, chunk_keys: List[str]):
         if tileable_key not in self._tileable_key_to_chunk_keys:
             self._tileable_key_to_chunk_keys[tileable_key] = []
