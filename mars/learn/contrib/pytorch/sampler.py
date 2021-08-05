@@ -105,7 +105,7 @@ class RandomSampler(Sampler):
         return self.num_samples
 
 @require_not_none(torch)
-class SubsetRandomSampler(Sampler[int]):
+class SubsetRandomSampler(Sampler):
     r"""Note: recommend to use torch original API RandomSampler. 
     Samples elements randomly from a given list of indices, without replacement.
 
@@ -124,101 +124,3 @@ class SubsetRandomSampler(Sampler[int]):
 
     def __len__(self) -> int:
         return len(self.indices)
-
-
-class WeightedRandomSampler(Sampler[int]):
-    r"""Samples elements from ``[0,..,len(weights)-1]`` with given probabilities (weights).
-
-    Args:
-        weights (sequence)   : a sequence of weights, not necessary summing up to one
-        num_samples (int): number of samples to draw
-        replacement (bool): if ``True``, samples are drawn with replacement.
-            If not, they are drawn without replacement, which means that when a
-            sample index is drawn for a row, it cannot be drawn again for that row.
-        generator (Generator): Generator used in sampling.
-
-    Example:
-        >>> list(WeightedRandomSampler([0.1, 0.9, 0.4, 0.7, 3.0, 0.6], 5, replacement=True))
-        [4, 4, 1, 4, 5]
-        >>> list(WeightedRandomSampler([0.9, 0.4, 0.05, 0.2, 0.3, 0.1], 5, replacement=False))
-        [0, 1, 4, 3, 2]
-    """
-    weights: Tensor
-    num_samples: int
-    replacement: bool
-
-    def __init__(self, weights: Sequence[float], num_samples: int,
-                 replacement: bool = True, generator=None) -> None:
-        if not isinstance(weights, Sequence):
-            raise ValueError("num_samples should be a Sequence value like List, "
-                             "torch.Tensor, but got num_samples={}".format(num_samples))
-        if not isinstance(num_samples, int) or isinstance(num_samples, bool) or \
-                num_samples <= 0:
-            raise ValueError("num_samples should be a positive integer "
-                             "value, but got num_samples={}".format(num_samples))
-        if not isinstance(replacement, bool):
-            raise ValueError("replacement should be a boolean value, but got "
-                             "replacement={}".format(replacement))
-        self.weights = torch.as_tensor(weights, dtype=torch.double)
-        self.num_samples = num_samples
-        self.replacement = replacement
-        self.generator = generator
-
-    def __iter__(self) -> Iterator[int]:
-        rand_tensor = torch.multinomial(self.weights, self.num_samples, self.replacement, generator=self.generator)
-        return iter(rand_tensor.tolist())
-
-    def __len__(self) -> int:
-        return self.num_samples
-
-
-class BatchSampler(Sampler[List[int]]):
-    r"""Wraps another sampler to yield a mini-batch of indices.
-
-    Args:
-        sampler (Sampler or Iterable): Base sampler. Can be any iterable object
-        batch_size (int): Size of mini-batch.
-        drop_last (bool): If ``True``, the sampler will drop the last batch if
-            its size would be less than ``batch_size``
-
-    Example:
-        >>> list(BatchSampler(SequentialSampler(range(10)), batch_size=3, drop_last=False))
-        [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]]
-        >>> list(BatchSampler(SequentialSampler(range(10)), batch_size=3, drop_last=True))
-        [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
-    """
-
-    def __init__(self, sampler: Sampler[int], batch_size: int, drop_last: bool) -> None:
-        # Since collections.abc.Iterable does not check for `__getitem__`, which
-        # is one way for an object to be an iterable, we don't do an `isinstance`
-        # check here.
-        if not isinstance(batch_size, int) or isinstance(batch_size, bool) or \
-                batch_size <= 0:
-            raise ValueError("batch_size should be a positive integer value, "
-                             "but got batch_size={}".format(batch_size))
-        if not isinstance(drop_last, bool):
-            raise ValueError("drop_last should be a boolean value, but got "
-                             "drop_last={}".format(drop_last))
-        self.sampler = sampler
-        self.batch_size = batch_size
-        self.drop_last = drop_last
-
-    def __iter__(self) -> Iterator[List[int]]:
-        batch = []
-        for idx in self.sampler:
-            batch.append(idx)
-            if len(batch) == self.batch_size:
-                yield batch
-                batch = []
-        if len(batch) > 0 and not self.drop_last:
-            yield batch
-
-    def __len__(self) -> int:
-        # Can only be called if self.sampler has __len__ implemented
-        # We cannot enforce this condition, so we turn off typechecking for the
-        # implementation below.
-        # Somewhat related: see NOTE [ Lack of Default `__len__` in Python Abstract Base Classes ]
-        if self.drop_last:
-            return len(self.sampler) // self.batch_size  # type: ignore[arg-type]
-        else:
-            return (len(self.sampler) + self.batch_size - 1) // self.batch_size  # type: ignore[arg-type]
