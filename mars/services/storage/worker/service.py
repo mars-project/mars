@@ -24,11 +24,10 @@ async def start(config: dict, address: str):
     config
         storage service config.
         {
-            "storage":
-                {
-                    "backends": ["plasma"],
-                    "<storage backend name>"： "<setup params>",
-                }
+            "storage": {
+                "backends": ["plasma"],
+                "<storage backend name>"： "<setup params>",
+            }
         }
     address
         address of actor pool

@@ -43,6 +43,17 @@ operand graph.  We choose the worker of descendant operands given the location
 of input chunks. When there are multiple workers providing minimal network
 transfer, a worker satisfying resource requirements are selected.
 
+Configuration
+-------------
+
+.. code-block:: yaml
+
+    scheduling:
+        mem_quota_size: "80%",
+        mem_hard_limit: "95%",
+        enable_kill_slot: true,
+        subtask_max_retries": 1
+
 APIs
 ----
 
