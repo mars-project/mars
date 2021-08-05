@@ -16,12 +16,13 @@
 
 import join from 'lodash/join';
 import React from 'react';
-import Table from "@material-ui/core/Table";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import TableCell from "@material-ui/core/TableCell";
-import TableBody from "@material-ui/core/TableBody";
-import {OptionalElement} from "../Utils";
+import Table from '@material-ui/core/Table';
+import TableHead from '@material-ui/core/TableHead';
+import TableRow from '@material-ui/core/TableRow';
+import TableCell from '@material-ui/core/TableCell';
+import TableBody from '@material-ui/core/TableBody';
+import PropTypes from 'prop-types';
+import { OptionalElement } from '../Utils';
 
 export default class NodeEnvTab extends React.Component {
     constructor(props) {
@@ -32,14 +33,14 @@ export default class NodeEnvTab extends React.Component {
     }
 
     componentDidMount() {
-        fetch('api/cluster/nodes?nodes=' + this.props.endpoint
-              + '&env=1&exclude_statuses=-1')
-            .then(res => res.json())
+        fetch(`api/cluster/nodes?nodes=${this.props.endpoint
+        }&env=1&exclude_statuses=-1`)
+            .then((res) => res.json())
             .then((res) => {
-                let state = res['nodes'][this.props.endpoint].env;
-                state['loaded'] = true;
+                const state = res.nodes[this.props.endpoint].env;
+                state.loaded = true;
                 this.setState(state);
-            })
+            });
     }
 
     render() {
@@ -52,8 +53,8 @@ export default class NodeEnvTab extends React.Component {
             <Table>
                 <TableHead>
                     <TableRow>
-                        <TableCell style={{fontWeight: 'bolder'}}>Item</TableCell>
-                        <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
+                        <TableCell style={{ fontWeight: 'bolder' }}>Item</TableCell>
+                        <TableCell style={{ fontWeight: 'bolder' }}>Value</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -61,52 +62,56 @@ export default class NodeEnvTab extends React.Component {
                         <TableCell>Endpoint</TableCell>
                         <TableCell>{this.props.endpoint}</TableCell>
                     </TableRow>
-                    <OptionalElement condition={this.state["k8s_pod_name"]}>
+                    <OptionalElement condition={this.state.k8s_pod_name}>
                         <TableRow>
                             <TableCell>Kubernetes Pod</TableCell>
-                            <TableCell>{this.state["k8s_pod_name"]}</TableCell>
+                            <TableCell>{this.state.k8s_pod_name}</TableCell>
                         </TableRow>
                     </OptionalElement>
-                    <OptionalElement condition={this.state["yarn_container_id"]}>
+                    <OptionalElement condition={this.state.yarn_container_id}>
                         <TableRow>
                             <TableCell>Yarn Container ID</TableCell>
-                            <TableCell>{this.state["yarn_container_id"]}</TableCell>
+                            <TableCell>{this.state.yarn_container_id}</TableCell>
                         </TableRow>
                     </OptionalElement>
                     <TableRow>
                         <TableCell>Platform</TableCell>
-                        <TableCell>{this.state["platform"]}</TableCell>
+                        <TableCell>{this.state.platform}</TableCell>
                     </TableRow>
-                    <OptionalElement condition={this.state["cuda_info"]}>
+                    <OptionalElement condition={this.state.cuda_info}>
                         <TableRow>
                             <TableCell>CUDA</TableCell>
-                            <TableCell>{this.state["cuda_info"]}</TableCell>
+                            <TableCell>{this.state.cuda_info}</TableCell>
                         </TableRow>
                     </OptionalElement>
                     <TableRow>
                         <TableCell>Git Branch</TableCell>
-                        <TableCell>{this.state["git_info"]["hash"] + " " + this.state["git_info"]["ref"]}</TableCell>
+                        <TableCell>{`${this.state.git_info.hash} ${this.state.git_info.ref}`}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Command</TableCell>
-                        <TableCell>{join(this.state["command_line"], " ")}</TableCell>
+                        <TableCell>{join(this.state.command_line, ' ')}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Python Version</TableCell>
-                        <TableCell>{this.state["python_version"]}</TableCell>
+                        <TableCell>{this.state.python_version}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell>Package Versions</TableCell>
                         <TableCell>
-                            {Object.keys(this.state['package_versions']).map((key) => (
-                                <div key={"package_" + key + "@" + this.props.endpoint}>
-                                    {key + ": " + this.state['package_versions'][key]}
+                            {Object.keys(this.state.package_versions).map((key) => (
+                                <div key={`package_${key}@${this.props.endpoint}`}>
+                                    {`${key}: ${this.state.package_versions[key]}`}
                                 </div>
                             ))}
                         </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
-        )
+        );
     }
 }
+
+NodeEnvTab.propTypes = {
+    endpoint: PropTypes.string,
+};
