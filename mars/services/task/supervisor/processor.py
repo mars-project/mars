@@ -163,7 +163,7 @@ class TaskProcessor:
                     # reducer
                     data_keys = chunk.op.get_dependent_data_keys()
                     incref_chunk_keys.extend(data_keys)
-                    # main key incref as well, to ensure existence of mata
+                    # main key incref as well, to ensure existence of meta
                     incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])

@@ -9,4 +9,4 @@ jobs:
       - uses: styfle/cancel-workflow-action@0.8.0
         with:
           access_token: ${{ github.token }}
-          workflow_id: core-ci.yml,os-compat-ci.yml,platform-ci.yml
+          workflow_id: core-ci.yml,os-compat-ci.yml,platform-ci.yml,checks.yml

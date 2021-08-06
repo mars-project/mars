@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { Link } from "react-router-dom";
+import { Link } from 'react-router-dom';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
@@ -25,49 +25,49 @@ import SupervisedUserCircleIcon from '@material-ui/icons/SupervisedUserCircle';
 import MemoryIcon from '@material-ui/icons/Memory';
 import AssignmentReturnedIcon from '@material-ui/icons/AssignmentReturned';
 import DescriptionIcon from '@material-ui/icons/Description';
-import GitHub from "@material-ui/icons/GitHub";
+import GitHub from '@material-ui/icons/GitHub';
 
 export default function LeftMenu() {
-  return (
-      <List>
-        <div>
-          <ListItem button component={Link} to="/">
-            <ListItemIcon>
-              <DashboardIcon/>
-            </ListItemIcon>
-            <ListItemText primary="Dashboard"/>
-          </ListItem>
-          <ListItem button component={Link} to="/supervisor">
-            <ListItemIcon>
-              <SupervisedUserCircleIcon/>
-            </ListItemIcon>
-            <ListItemText primary="Supervisors"/>
-          </ListItem>
-          <ListItem button component={Link} to="/worker">
-            <ListItemIcon>
-              <MemoryIcon/>
-            </ListItemIcon>
-            <ListItemText primary="Workers"/>
-          </ListItem>
-          <ListItem button component="a" href="/#/session">
-            <ListItemIcon>
-              <AssignmentReturnedIcon/>
-            </ListItemIcon>
-            <ListItemText primary="Sessions"/>
-          </ListItem>
-          <ListItem button component="a" href="https://docs.pymars.org" target="_blank">
-            <ListItemIcon>
-              <DescriptionIcon/>
-            </ListItemIcon>
-            <ListItemText primary="Documentation"/>
-          </ListItem>
-          <ListItem button component="a" href="https://github.com/mars-project/mars" target="_blank">
-            <ListItemIcon>
-              <GitHub/>
-            </ListItemIcon>
-            <ListItemText primary="Repository"/>
-          </ListItem>
-        </div>
-      </List>
-  )
+    return (
+        <List>
+            <div>
+                <ListItem button component={Link} to="/">
+                    <ListItemIcon>
+                        <DashboardIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Dashboard" />
+                </ListItem>
+                <ListItem button component={Link} to="/supervisor">
+                    <ListItemIcon>
+                        <SupervisedUserCircleIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Supervisors" />
+                </ListItem>
+                <ListItem button component={Link} to="/worker">
+                    <ListItemIcon>
+                        <MemoryIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Workers" />
+                </ListItem>
+                <ListItem button component="a" href="/#/session">
+                    <ListItemIcon>
+                        <AssignmentReturnedIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Sessions" />
+                </ListItem>
+                <ListItem button component="a" href="https://docs.pymars.org" target="_blank">
+                    <ListItemIcon>
+                        <DescriptionIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Documentation" />
+                </ListItem>
+                <ListItem button component="a" href="https://github.com/mars-project/mars" target="_blank">
+                    <ListItemIcon>
+                        <GitHub />
+                    </ListItemIcon>
+                    <ListItemText primary="Repository" />
+                </ListItem>
+            </div>
+        </List>
+    );
 }
