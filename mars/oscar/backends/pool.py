@@ -425,7 +425,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             if actor_id in self._actors:
                 raise ActorAlreadyExist(f'Actor {actor_id} already exist, '
                                         f'cannot create')
-            print('create actor:', message.actor_id, message.actor_cls, message.args, message.kwargs)
+
             actor = message.actor_cls(*message.args, **message.kwargs)
             actor.uid = actor_id
             actor.address = address = self.external_address
@@ -573,7 +573,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
             create_server_tasks.append(task)
         await asyncio.gather(*create_server_tasks)
         kw['servers'] = [f.result() for f in create_server_tasks]
-        print('create pool:', cls.__name__, internal_address, external_addresses)
+
         # create pool
         pool = cls(**kw)
         return pool
@@ -869,15 +869,13 @@ class MainActorPoolBase(ActorPoolBase):
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             elif message.control_message_type == ControlMessageType.wait_pool_recovered:
-                print('receive wait_pool_recovered')
-                # check the aliveness of sub pool in case monitor task haven't found it.
+                # check the aliveness of sub pool first, in case monitor task haven't found it.
                 if not await self.is_sub_pool_alive(self.sub_processes[message.address]):
                     if self._auto_recover and message.address not in self._recover_events:
                         self._recover_events[message.address] = asyncio.Event()
 
                 event = self._recover_events.get(message.address, None)
                 if event is not None:
-                    print('wait recover event')
                     await event.wait()
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
@@ -1033,7 +1031,6 @@ class MainActorPoolBase(ActorPoolBase):
                 for address in self.sub_processes:
                     process = self.sub_processes[address]
                     if not await self.is_sub_pool_alive(process):  # pragma: no cover
-                        print(f'found the death of {process}!')
                         if self._on_process_down is not None:
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)

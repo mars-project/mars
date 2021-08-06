@@ -63,7 +63,6 @@ class RayActorDriver(BaseActorDriver):
                 try:
                     if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
                         # must clean up first, or coverage info lost
-                        print('address:', address, ray.get_actor(address))
                         ray.get(ray.get_actor(address).cleanup.remote())
                     ray.kill(ray.get_actor(address))
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except

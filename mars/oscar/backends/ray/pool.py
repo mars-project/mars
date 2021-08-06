@@ -85,7 +85,6 @@ class RayMainActorPool(MainActorPoolBase):
 
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
-        print('try to recover:', address, process)
         process_index = self._config.get_process_index(address)
         await process.start.remote(self._config, process_index)
 
@@ -94,7 +93,6 @@ class RayMainActorPool(MainActorPoolBase):
             for _, message in self._allocated_actors[address].values():
                 create_actor_message: CreateActorMessage = message
                 await self.call(address, create_actor_message)
-        print('recover done!')
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover

@@ -211,7 +211,6 @@ class MainActorPool(MainActorPoolBase):
             for _, message in self._allocated_actors[address].values():
                 create_actor_message: CreateActorMessage = message
                 await self.call(address, create_actor_message)
-        print('recover done!')
 
 
 @_register_message_handler

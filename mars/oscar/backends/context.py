@@ -175,8 +175,8 @@ class MarsActorContext(BaseActorContext):
                 protocol=DEFAULT_PROTOCOL)
             main_address = self._process_result_message(
                 await self._call(address, control_message))
+
         # if address is main pool, it is never recovered
-        print('wait ready:', address, main_address)
         if address == main_address:
             return
 
@@ -186,6 +186,5 @@ class MarsActorContext(BaseActorContext):
             None,
             protocol=DEFAULT_PROTOCOL
         )
-        result = self._process_result_message(
+        self._process_result_message(
             await self._call(main_address, control_message))
-        print('wait ok:', result)
