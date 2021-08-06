@@ -124,6 +124,7 @@ class RayClientChannel(RayChannelBase):
             return deserialize(*result)
         except ray.exceptions.RayActorError:
             if not self._closed.is_set():
+                # raise a EOFError as the SocketChannel does
                 raise EOFError('Server may be closed')
         except (RuntimeError, ServerClosed) as e:  # pragma: no cover
             if not self._closed.is_set():

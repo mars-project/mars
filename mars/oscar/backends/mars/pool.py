@@ -23,6 +23,7 @@ from typing import List
 
 from ....utils import get_next_port
 from ..config import ActorPoolConfig
+from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
 
 
@@ -197,6 +198,20 @@ class MainActorPool(MainActorPoolBase):
 
     async def is_sub_pool_alive(self, process: multiprocessing.Process):
         return process.is_alive()
+
+    async def recover_sub_pool(self, address: str):
+        process_index = self._config.get_process_index(address)
+        # process dead, restart it
+        # remember always use spawn to recover sub pool
+        self.sub_processes[address] = await self.__class__.start_sub_pool(
+            self._config, process_index, 'spawn')
+
+        if self._auto_recover == 'actor':
+            # need to recover all created actors
+            for _, message in self._allocated_actors[address].values():
+                create_actor_message: CreateActorMessage = message
+                await self.call(address, create_actor_message)
+        print('recover done!')
 
 
 @_register_message_handler

@@ -64,16 +64,14 @@ class SlotContext:
         self._slot_manager_ref = slot_manager_ref
         self._slot_id = None
         self._enable_kill_slot = enable_kill_slot
-        self._slot_address = None
         self._should_kill_slot = False
 
     @property
     def slot_id(self):
         return self._slot_id
 
-    @property
-    def slot_address(self):
-        return self._slot_address
+    async def get_slot_address(self):
+        return await self._slot_manager_ref.get_slot_address(self.slot_id)
 
     def kill_slot_when_exit(self):
         if self._enable_kill_slot:  # pragma: no branch
@@ -82,7 +80,6 @@ class SlotContext:
     async def __aenter__(self):
         self._slot_id = await self._slot_manager_ref.acquire_free_slot(
                 (self._subtask.session_id, self._subtask.subtask_id))
-        self._slot_address = await self._slot_manager_ref.get_slot_address(self.slot_id)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -365,7 +362,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     print('caught excepthion:', type(ex), ex)
                     # if subtask_info.num_retries < subtask_info.max_retries:
                     #     ctx.kill_slot_when_exit()
-                    await mo.wait_actor_pool_recovered(ctx.slot_address, self.address)
+                    sub_pool_address = await ctx.get_slot_address()
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                     raise ex
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
