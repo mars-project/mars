@@ -20,7 +20,7 @@ from mars import opcodes
 from mars.config import options, option_context
 from mars.core import OutputType, tile
 from mars.core.operand import OperandStage
-from mars.dataframe import eval as mars_eval, cut
+from mars.dataframe import eval as mars_eval, cut, to_numeric
 from mars.dataframe.base import to_gpu, to_cpu, astype
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
@@ -699,6 +699,28 @@ def test_cut():
     assert isinstance(r, TENSOR_TYPE)
     e = pd.cut([0, 1, 1, 2], bins=4, labels=False)
     assert r.dtype == e.dtype
+
+
+def test_to_numeric():
+    raw = pd.DataFrame({"a":[1.0, 2, 3, -3]})
+    df = from_pandas_df(raw, chunk_size=2)
+
+    with pytest.raises(ValueError):
+        _ = to_numeric(df)
+
+    with pytest.raises(ValueError):
+        _ = to_numeric([['1.0', 1]])
+
+    with pytest.raises(ValueError):
+        _ = to_numeric([])
+
+    s = from_pandas_series(pd.Series(['1.0', '2.0', 1, -2]), chunk_size=2)
+    r = tile(to_numeric(s))
+    assert len(r.chunks) == 2
+    assert isinstance(r, SERIES_TYPE)
+
+    r = tile(to_numeric(['1.0', '2.0', 1, -2]))
+    assert isinstance(r, TENSOR_TYPE)
 
 
 def test_astype():
