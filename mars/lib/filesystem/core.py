@@ -54,7 +54,7 @@ def get_fs(path: path_type,
         raise ValueError(f'Unknown file system type: {scheme}, '
                          f'available include: {", ".join(_filesystems)}')
 
-    if scheme == 'file':
+    if scheme == 'file' or scheme == 'oss':
         # local file system use an singleton.
         return file_system_type.get_instance()
     else:
