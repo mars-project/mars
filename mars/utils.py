@@ -394,11 +394,11 @@ def build_fetch_chunk(chunk: ChunkType,
             source_mappers.append(get_chunk_mapper_id(pinp))
         op = chunk_op.get_fetch_op_cls(chunk)(
             source_keys=source_keys, source_idxes=source_idxes,
-            source_mappers=source_mappers)
+            source_mappers=source_mappers, gpu=chunk.op.gpu)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
-        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse)
+        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
@@ -465,15 +465,15 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     -------
     Data
     """
+    from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
     from .lib.groupby_wrapper import GroupByWrapper
-    from .lib.sparse import SparseNDArray
-    from .tensor.array_utils import get_array_module
+    from .tensor.array_utils import get_array_module, is_array
 
     chunk_results = sorted(chunk_results, key=operator.itemgetter(0))
     v = chunk_results[0][1]
     if len(chunk_results) == 1 and not (chunk_results[0][0]):
         return v
-    if isinstance(v, (np.ndarray, SparseNDArray)):
+    if is_array(v):
         xp = get_array_module(v)
         ndim = v.ndim
         for i in range(ndim - 1):
@@ -486,15 +486,18 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
             return to_concat[0]
         concat_result = xp.concatenate(to_concat)
         return concat_result
-    elif isinstance(v, pd.DataFrame):
+    elif is_dataframe(v):
+        xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(pd.concat([c[1] for c in cs], axis='columns'))
-        return pd.concat(concats, axis='index')
-    elif isinstance(v, pd.Series):
-        return pd.concat([c[1] for c in chunk_results])
-    elif isinstance(v, pd.Index):
-        df = pd.concat([pd.DataFrame(index=r[1])
+            concats.append(xdf.concat([c[1] for c in cs], axis='columns'))
+        return xdf.concat(concats, axis='index')
+    elif is_series(v):
+        xdf = get_xdf(v)
+        return xdf.concat([c[1] for c in chunk_results])
+    elif is_index(v):
+        xdf = get_xdf(v)
+        df = xdf.concat([xdf.DataFrame(index=r[1])
                         for r in chunk_results])
         return df.index
     elif isinstance(v, pd.Categorical):
@@ -568,10 +571,18 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
     """ sort DataFrame on client according to `should_be_monotonic` attribute """
     if hasattr(df, 'index_value'):
         if getattr(df.index_value, 'should_be_monotonic', False):
-            result.sort_index(inplace=True)
+            try:
+                result.sort_index(inplace=True)
+            except TypeError:  # pragma: no cover
+                # cudf doesn't support inplace
+                result = result.sort_index()
         if hasattr(df, 'columns_value'):
             if getattr(df.columns_value, 'should_be_monotonic', False):
-                result.sort_index(axis=1, inplace=True)
+                try:
+                    result.sort_index(axis=1, inplace=True)
+                except TypeError:  # pragma: no cover
+                    # cudf doesn't support inplace
+                    result = result.sort_index(axis=1)
     return result
 
 
@@ -1228,3 +1239,24 @@ def ensure_own_data(data: np.ndarray) -> np.ndarray:
         return data.copy()
     else:
         return data
+
+
+def get_chunk_key_to_data_keys(chunk_graph):
+    from .core.operand import FetchShuffle, MapReduceOperand, OperandStage
+
+    chunk_key_to_data_keys = dict()
+    for chunk in chunk_graph:
+        if chunk.key in chunk_key_to_data_keys:
+            continue
+        if not isinstance(chunk.op, FetchShuffle):
+            chunk_key_to_data_keys[chunk.key] = [chunk.key]
+        else:
+            keys = []
+            for succ in chunk_graph.iter_successors(chunk):
+                if isinstance(succ.op, MapReduceOperand) and \
+                        succ.op.stage == OperandStage.reduce:
+                    for key in succ.op.get_dependent_data_keys():
+                        if key not in keys:
+                            keys.append(key)
+            chunk_key_to_data_keys[chunk.key] = keys
+    return chunk_key_to_data_keys

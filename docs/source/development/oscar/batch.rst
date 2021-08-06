@@ -26,6 +26,7 @@ group requests by certain keys and resent them to different handlers in
 batches. Oscar supports creating a batch version of the method:
 
 .. code-block:: python
+
     class ExampleActor(mo.Actor):
         @mo.extensible
         async def batch_method(self, a, b=None):

@@ -75,6 +75,8 @@ class Fusion:
                 continue
             if len(v.op.outputs) != 1:  # pragma: no cover
                 continue
+            if v.op.gpu != self._graph.successors(v)[0].op.gpu:
+                continue
             if isinstance(v.op, (VirtualOperand, Fetch)):  # pragma: no cover
                 # cannot fuse virtual operand or fetch
                 continue

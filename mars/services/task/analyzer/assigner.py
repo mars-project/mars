@@ -52,6 +52,14 @@ class AbstractGraphAssigner(ABC):
             From node to band.
         """
 
+    def get_device_band_slots(self) -> Dict[BandType, int]:
+        if self._start_ops and all(op.gpu for op in self._start_ops):  # pragma: no cover
+            band_prefix = 'gpu'
+        else:
+            band_prefix = 'numa'
+        return {band: slots for band, slots in self._band_slots.items()
+                if band[1].startswith(band_prefix)}
+
 
 class GraphAssigner(AbstractGraphAssigner):
     def __init__(self,
@@ -82,7 +90,8 @@ class GraphAssigner(AbstractGraphAssigner):
             Slot to limination of number of initial operands.
         """
         actual_count: int = initial_count - sum(occupied.values())
-        band_slots = sorted(self._band_slots.items(), key=itemgetter(1), reverse=True)
+        band_slots = sorted(self.get_device_band_slots().items(),
+                            key=itemgetter(1), reverse=True)
         bands: List[BandType] = [it[0] for it in band_slots]
         slots = np.asarray([it[1] for it in band_slots], dtype=np.float32)
 
@@ -169,7 +178,7 @@ class GraphAssigner(AbstractGraphAssigner):
 
         # calculate expected descendant count (spread range) of
         # every band and subtract assigned number from it
-        average_spread_range = len(graph) * 1.0 / len(self._band_slots)
+        average_spread_range = len(graph) * 1.0 / len(self.get_device_band_slots())
         spread_ranges = defaultdict(lambda: average_spread_range)
         # assign from other chunks to be assigned
         sorted_candidates = [v for v in chunk_to_assign]
