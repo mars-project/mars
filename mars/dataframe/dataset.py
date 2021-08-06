@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 from ..utils import lazy_import
-from typing import Iterable, List, Optional
+from typing import Iterable, List
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
@@ -25,17 +25,13 @@ ml_dataset = lazy_import('ray.util.data')
 class RayObjectPiece:
     def __init__(self,
                  addr,
-                 obj_ref,
-                 row_ids: Optional[List[int]]):
+                 obj_ref):
         """Represents a single entity holding the object ref."""
-        self.row_ids = row_ids
         self.addr = addr
         self.obj_ref = obj_ref
 
     def read(self, shuffle: bool) -> pd.DataFrame:
         df: pd.DataFrame = ray.get(self.obj_ref)
-        if self.row_ids:
-            df = df.loc[self.row_ids]
 
         if shuffle:
             df = df.sample(frac=1.0)
@@ -56,6 +52,7 @@ class RecordBatch:
         self.shuffle = shuffle
         self.shuffle_seed = shuffle_seed
 
+    @property
     def prefix(self) -> str:
         return self._prefix
 
@@ -111,5 +108,5 @@ class RayMLDataset:
             df.execute()
         # it's ensured that df has been executed
         chunk_addr_refs = df.fetch(only_refs=True)
-        record_pieces = [RayObjectPiece(addr, obj_ref, None) for addr, obj_ref in chunk_addr_refs]
+        record_pieces = [RayObjectPiece(addr, obj_ref) for addr, obj_ref in chunk_addr_refs]
         return _create_ml_dataset("from_mars", record_pieces, num_shards, shuffle, shuffle_seed)
