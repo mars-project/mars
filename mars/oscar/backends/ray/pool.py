@@ -98,18 +98,9 @@ class RayMainActorPool(MainActorPoolBase):
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
-            # must shutdown gracefully, or coverage info lost
-            process.exit_actor.remote()
-            wait_time, waited_time = 10, 0
-            while await self.is_sub_pool_alive(process):  # pragma: no cover
-                if waited_time > wait_time:
-                    logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
-                    await self._kill_actor_forcibly(process)
-                    return
-                await asyncio.sleep(0.1)
-                wait_time += 0.1
-        else:
-            await self._kill_actor_forcibly(process)
+            # must clean up first, or coverage info lost
+            await process.cleanup.remote()
+        await self._kill_actor_forcibly(process)
 
     async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
         ray.kill(process, no_restart=False)
@@ -198,10 +189,13 @@ class RayPoolBase(ABC):
         else:
             return attr
 
-    def exit_actor(self):
-        """Exiting current process gracefully."""
-        logger.info('Exiting %s of process %s now', self, os.getpid())
-        ray.actor.exit_actor()
+    def cleanup(self):
+        logger.info('Cleaning up %s of process %s now', self, os.getpid())
+        try:
+            from pytest_cov.embed import cleanup
+            cleanup()
+        except ImportError: # pragma: no cover
+            pass
 
 
 class RayMainPool(RayPoolBase):
