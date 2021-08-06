@@ -20,6 +20,7 @@ import {
     Route,
     useParams,
 } from "react-router-dom";
+import PropTypes from 'prop-types';
 import Dashboard from "./Dashboard";
 import NodeListPage from "./node_info/NodeListPage";
 import SupervisorDetailPage from "./node_info/SupervisorDetailPage";
@@ -39,6 +40,11 @@ function NodePageWrapper(props) {
         <ComponentTag endpoint={endpoint} nodeRole={nodeRole} {...other} />
     );
 }
+
+NodePageWrapper.propTypes = {
+    nodeRole: PropTypes.string,
+    component: PropTypes.elementType,
+};
 
 function TaskPageWrapper(props) {
     let {session_id} = useParams();
