@@ -1,3 +1,8 @@
 "@inherits": '@default'
+third_party_modules:
+  supervisor:
+    - mars.services.tests.fault_injection_patch
+  worker:
+    - mars.services.tests.fault_injection_patch
 subtask:
   subtask_processor_cls: mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor

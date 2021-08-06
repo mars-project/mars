@@ -32,12 +32,6 @@ from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
 from ...subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
-from ...tests.fault_injection_manager import (
-    ExtraConfigKey,
-    FaultPosition,
-    handle_fault,
-    AbstractFaultInjectionManager,
-)
 from ..supervisor import GlobalSlotManagerActor
 from .workerslot import BandSlotManagerActor
 from .quota import QuotaActor
@@ -132,9 +126,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
     def __init__(self, subtask_max_retries: int = DEFAULT_SUBTASK_MAX_RETRIES,
                  enable_kill_slot: bool = True):
         self._cluster_api = None
-        self._session_api = None
         self._global_slot_ref = None
-        self._fault_injection_manager_ref = None
         self._subtask_max_retries = subtask_max_retries
         self._enable_kill_slot = enable_kill_slot
 
@@ -151,23 +143,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
     async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
         return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_fault_injection_manager_ref(self, supervisor_address: str, session_id: str, name: str) \
-            -> Union[mo.ActorRef, AbstractFaultInjectionManager]:
-        session_api = await self._get_session_api(supervisor_address)
-        return await session_api.get_remote_object(session_id, name)
-
     @staticmethod
     @alru_cache(cache_exceptions=False)
     async def _get_task_api(supervisor_address: str, session_id: str):
         from ...task import TaskAPI
         return await TaskAPI.create(session_id, supervisor_address)
-
-    @staticmethod
-    @alru_cache(cache_exceptions=False)
-    async def _get_session_api(supervisor_address: str):
-        from ...session import SessionAPI
-        return await SessionAPI.create(supervisor_address)
 
     async def _get_global_slot_ref(self):
         if self._global_slot_ref is not None:
@@ -288,17 +268,6 @@ class SubtaskExecutionActor(mo.StatelessActor):
                                             task_id=subtask.task_id,
                                             status=SubtaskStatus.pending)
         batch_quota_req = quota_ref = slot_manager_ref = None
-
-        # fault injection
-        if subtask.extra_config:
-            fault_injection_manager_name = subtask.extra_config.get(
-                ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME)
-            if fault_injection_manager_name is not None:
-                fault_injection_manager = await self._get_fault_injection_manager_ref(
-                    subtask_info.supervisor_address, subtask.session_id, fault_injection_manager_name)
-                fault = await fault_injection_manager.get_fault(
-                    FaultPosition.ON_RUN_SUBTASK, {'subtask': subtask})
-                handle_fault(fault)
 
         try:
             quota_ref = await self._get_band_quota_ref(band_name)
