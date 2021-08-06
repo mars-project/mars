@@ -1,6 +1,7 @@
-import React from "react";
+import React from 'react';
+import PropTypes from 'prop-types';
 import { Grid, Paper } from '@material-ui/core';
-import Title from "../Title";
+import Title from '../Title';
 
 class TileableDetail extends React.Component {
     constructor(props) {
@@ -36,8 +37,15 @@ class TileableDetail extends React.Component {
                     </Grid>
                 </Paper>
             </Grid>
-        )
+        );
     }
 }
+
+TileableDetail.propTypes = {
+    selectedTileable: PropTypes.shape({
+        tileable_id: PropTypes.string,
+        tileable_name: PropTypes.string,
+    }),
+};
 
 export default TileableDetail;

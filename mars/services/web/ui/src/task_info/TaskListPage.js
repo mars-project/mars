@@ -15,18 +15,18 @@
  */
 
 import React from 'react';
-import Grid from "@material-ui/core/Grid";
-import Paper from "@material-ui/core/Paper";
-import Table from "@material-ui/core/Table";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import TableCell from "@material-ui/core/TableCell";
-import TableBody from "@material-ui/core/TableBody";
+import Grid from '@material-ui/core/Grid';
+import Paper from '@material-ui/core/Paper';
+import Table from '@material-ui/core/Table';
+import TableHead from '@material-ui/core/TableHead';
+import TableRow from '@material-ui/core/TableRow';
+import TableCell from '@material-ui/core/TableCell';
+import TableBody from '@material-ui/core/TableBody';
 import PropTypes from 'prop-types';
-import Title from "../Title";
-import {useStyles} from "../Style";
-import {formatTime, getTaskStatusText} from "../Utils";
-import { Link } from "react-router-dom";
+import Title from '../Title';
+import {useStyles} from '../Style';
+import {formatTime, getTaskStatusText} from '../Utils';
+import { Link } from 'react-router-dom';
 
 class TaskList extends React.Component {
     constructor(props) {

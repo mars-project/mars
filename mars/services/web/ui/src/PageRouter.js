@@ -19,16 +19,16 @@ import {
     Switch,
     Route,
     useParams,
-} from "react-router-dom";
+} from 'react-router-dom';
 import PropTypes from 'prop-types';
-import Dashboard from "./Dashboard";
-import NodeListPage from "./node_info/NodeListPage";
-import SupervisorDetailPage from "./node_info/SupervisorDetailPage";
-import WorkerDetailPage from "./node_info/WorkerDetailPage";
-import SessionListPage from "./SessionListPage";
-import TaskListPage from "./task_info/TaskListPage";
+import Dashboard from './Dashboard';
+import NodeListPage from './node_info/NodeListPage';
+import SupervisorDetailPage from './node_info/SupervisorDetailPage';
+import WorkerDetailPage from './node_info/WorkerDetailPage';
+import SessionListPage from './SessionListPage';
+import TaskListPage from './task_info/TaskListPage';
 const TaskTileableChart = lazy(() => {
-    return import("./task_visualization/TaskTileableChart");
+    return import('./task_visualization/TaskTileableChart');
 });
 
 function NodePageWrapper(props) {
