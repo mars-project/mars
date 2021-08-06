@@ -116,7 +116,7 @@ class SubtaskManagerActor(mo.Actor):
             subtask_info.band_futures[band] = task
 
     async def _await_subtask_result(self, subtask: Subtask, band: BandType):
-        """ To capture the run_subtask error, e.g. exception, process crash. """
+        """To capture the run_subtask error, e.g. exception, process crash."""
         async with redirect_subtask_errors(self, [subtask]):
             execution_ref = await self._get_execution_ref(band)
             await execution_ref.run_subtask(
