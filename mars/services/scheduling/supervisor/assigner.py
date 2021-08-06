@@ -89,7 +89,7 @@ class AssignerActor(mo.Actor):
         inp_keys = set()
         selected_bands = dict()
         for subtask in subtasks:
-            is_gpu = any(c.op.gpu for c in subtask.chunk_graph.result_chunks)
+            is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             if subtask.expect_bands:
                 selected_bands[subtask.subtask_id] = subtask.expect_bands
                 continue
@@ -112,7 +112,7 @@ class AssignerActor(mo.Actor):
         inp_metas = dict(zip(inp_keys, metas))
         assigns = []
         for subtask in subtasks:
-            is_gpu = any(c.op.gpu for c in subtask.chunk_graph.result_chunks)
+            is_gpu = any(c.op.gpu for c in subtask.chunk_graph)
             band_prefix = 'numa' if not is_gpu else 'gpu'
             filtered_bands = self._get_device_bands(is_gpu)
 

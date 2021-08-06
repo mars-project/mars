@@ -22,8 +22,10 @@ import pytest
 import mars.oscar as mo
 from mars.serialization import AioDeserializer, AioSerializer
 from mars.services import start_services, stop_services, NodeRole
+from mars.services.cluster import MockClusterAPI
 from mars.services.storage import StorageAPI
 from mars.storage import StorageLevel
+from mars.tests.core import require_cudf, require_cupy
 
 _is_windows = sys.platform.lower().startswith('win')
 
@@ -35,7 +37,7 @@ async def actor_pools():
             if sys.platform != 'win32' else None
         pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
                                           subprocess_start_method=start_method,
-                                          labels=['main', 'sub', 'io'])
+                                          labels=['main', 'numa-0', 'io'])
         await pool.start()
         return pool
 
@@ -85,6 +87,8 @@ async def test_storage_service(actor_pools):
     sliced_value = await api2.get('data1', conditions=[slice(None, None), slice(0, 4)])
     np.testing.assert_array_equal(value1[:, :4], sliced_value)
 
+    await api.unpin('data1')
+
     value2 = pd.DataFrame(value1)
     await api2.put('data2', value2)
 
@@ -109,3 +113,69 @@ async def test_storage_service(actor_pools):
 
     await stop_services(NodeRole.WORKER, address=worker_pool.external_address,
                         config=config)
+
+
+@pytest.fixture
+async def actor_pools_with_gpu():
+    async def start_pool():
+        start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+            if sys.platform != 'win32' else None
+        pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
+                                          subprocess_start_method=start_method,
+                                          labels=['main', 'numa-0', 'gpu-0', 'io'])
+        await pool.start()
+        return pool
+
+    worker_pool = await start_pool()
+    yield worker_pool
+    await worker_pool.stop()
+
+
+@require_cupy
+@require_cudf
+@pytest.mark.asyncio
+async def test_storage_service_with_cuda(actor_pools_with_gpu):
+    import cudf
+    import cupy
+
+    worker_pool = actor_pools_with_gpu
+
+    if sys.platform == 'darwin':
+        plasma_dir = '/tmp'
+    else:
+        plasma_dir = '/dev/shm'
+    plasma_setup_params = dict(
+        store_memory=10 * 1024 * 1024,
+        plasma_directory=plasma_dir,
+        check_dir_size=False)
+
+    config = {
+        "services": ["storage"],
+        "storage": {
+            "backends": ["plasma" if not _is_windows else "shared_memory", 'cuda'],
+            "plasma": plasma_setup_params,
+            "cuda": dict()
+        }
+    }
+
+    await MockClusterAPI.create(worker_pool.external_address,
+                                band_to_slots={'numa-0': 1, 'gpu-0': 1},
+                                use_gpu=True)
+    await start_services(
+        NodeRole.WORKER, config, address=worker_pool.external_address)
+
+    storage_api = await StorageAPI.create(
+        'mock_session',  worker_pool.external_address, band_name='gpu-0')
+    data1 = cupy.asarray(np.random.rand(10, 10))
+    await storage_api.put('mock_cupy_key', data1, level=StorageLevel.GPU)
+    get_data1 = await storage_api.get('mock_cupy_key')
+    assert isinstance(get_data1, cupy.ndarray)
+    cupy.testing.assert_array_equal(data1, get_data1)
+
+    data2 = cudf.DataFrame(pd.DataFrame({'col1': np.arange(10),
+                                         'col2': [f'str{i}' for i in range(10)],
+                                         'col3': np.random.rand(10)},))
+    await storage_api.put('mock_cudf_key', data2, level=StorageLevel.GPU)
+    get_data2 = await storage_api.get('mock_cudf_key')
+    assert isinstance(get_data2, cudf.DataFrame)
+    cudf.testing.assert_frame_equal(data2, get_data2)
