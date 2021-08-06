@@ -18,8 +18,11 @@ from typing import Any
 
 import numpy as np
 
+from ..utils import lazy_import
 from .core import pickle, serialize, deserialize
 
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
 
 DEFAULT_SERIALIZATION_VERSION = 0
 BUFFER_SIZES_NAME = 'buf_sizes'
@@ -36,10 +39,10 @@ class AioSerializer:
         headers, buffers = serialize(self._obj)
 
         def _is_cuda_buffer(buf):  # pragma: no cover
-            try:
+            if cupy is not None and cudf is not None:
                 from cudf.core import Buffer as CPBuffer
                 from cupy import ndarray as cp_ndarray
-            except ImportError:
+            else:
                 CPBuffer = cp_ndarray = None
 
             if CPBuffer is not None and isinstance(buf, CPBuffer):

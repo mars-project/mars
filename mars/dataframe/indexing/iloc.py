@@ -358,7 +358,7 @@ class DataFrameIlocGetItem(DataFrameOperand, HeadTailOptimizedOperandMixin):
         r = df.iloc[indexes]
         if isinstance(r, pd.Series) and r.dtype != chunk.dtype:
             r = r.astype(chunk.dtype)
-        if is_cudf(r):
+        if is_cudf(r):  # pragma: no cover
             r = r.copy()
         ctx[chunk.key] = r
 

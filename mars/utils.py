@@ -582,7 +582,7 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
                     result.sort_index(axis=1, inplace=True)
                 except TypeError:  # pragma: no cover
                     # cudf doesn't support inplace
-                    result = result.sort_index(axis=1, inplace=True)
+                    result = result.sort_index(axis=1)
     return result
 
 

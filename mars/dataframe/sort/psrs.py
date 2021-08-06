@@ -544,7 +544,7 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
-            if is_cudf(values):
+            if is_cudf(values):  # pragma: no cover
                 values = values.copy()
             ctx[out.key, (i,)] = values
 

@@ -17,6 +17,7 @@ import logging
 from typing import Dict, Union, Any, List
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, AnyField, ListField
 from ...storage import StorageLevel
@@ -70,6 +71,7 @@ class SenderManagerActor(mo.StatelessActor):
                 self.address, StorageHandlerActor.gen_uid('numa-0'))
 
     @staticmethod
+    @alru_cache
     async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
             address=address, uid=ReceiverManagerActor.gen_uid(band_name))

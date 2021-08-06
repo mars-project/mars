@@ -21,12 +21,15 @@ from ... import oscar as mo
 from ...storage import StorageLevel, get_storage_backend
 from ...storage.core import StorageFileObject
 from ...typing import BandType
-from ...utils import calc_data_size
+from ...utils import calc_data_size, lazy_import
 from ..cluster import ClusterAPI, StorageInfo
 from ..meta import MetaAPI
 from .core import StorageQuotaActor, DataManagerActor, DataInfo, \
     build_data_info, WrappedStorageFileObject
 from .errors import DataNotExist, NoDataToSpill
+
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +139,6 @@ class StorageHandlerActor(mo.StatelessActor):
         if self.highest_level != StorageLevel.GPU:
             return self.highest_level
         else:  # pragma: no cover
-            try:
-                import cudf, cupy
-            except ImportError:
-                cudf = cupy = None
             if cudf is not None and isinstance(obj, (cudf.DataFrame, cudf.Series, cudf.Index)):
                 return StorageLevel.GPU
             elif cupy is not None and isinstance(obj, cupy.ndarray):

@@ -50,7 +50,7 @@ def hash_dataframe_on(df, on, size, level=None):
         idx = df.index
         if level is not None:
             idx = idx.to_frame(False)[level]
-        if cudf and isinstance(idx, cudf.Index):
+        if cudf and isinstance(idx, cudf.Index):  # pragma: no cover
             idx = idx.to_pandas()
         hashed_label = pd.util.hash_pandas_object(idx, categorize=False)
     elif callable(on):

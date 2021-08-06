@@ -53,10 +53,10 @@ class AbstractGraphAssigner(ABC):
         """
 
     def get_device_band_slots(self) -> Dict[BandType, int]:
-        if self._start_ops and all(op.gpu for op in self._start_ops):
+        if self._start_ops and all(op.gpu for op in self._start_ops):  # pragma: no cover
             band_prefix = 'gpu'
         else:
-            band_prefix = 'numa-0'
+            band_prefix = 'numa'
         return {band: slots for band, slots in self._band_slots.items()
                 if band[1].startswith(band_prefix)}
 

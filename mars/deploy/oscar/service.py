@@ -78,7 +78,8 @@ async def start_worker(address: str,
     if config['cluster'].get('resource') is None:
         config['cluster']['resource'] = band_to_slots
     if any(band_name.startswith('gpu-') for band_name in band_to_slots):  # pragma: no cover
-        config['storage']['backends'].append('cuda')
+        if 'cuda' not in config['storage']['backends']:
+            config['storage']['backends'].append('cuda')
     await start_services(NodeRole.WORKER, config, modules=modules,
                          address=address, mark_ready=mark_ready)
 

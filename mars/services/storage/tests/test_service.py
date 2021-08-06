@@ -87,6 +87,8 @@ async def test_storage_service(actor_pools):
     sliced_value = await api2.get('data1', conditions=[slice(None, None), slice(0, 4)])
     np.testing.assert_array_equal(value1[:, :4], sliced_value)
 
+    await api.unpin('data1')
+
     value2 = pd.DataFrame(value1)
     await api2.put('data2', value2)
 
@@ -118,10 +120,9 @@ async def actor_pools_with_gpu():
     async def start_pool():
         start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
             if sys.platform != 'win32' else None
-        pool = await mo.create_actor_pool('127.0.0.1', n_process=4,
+        pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
                                           subprocess_start_method=start_method,
-                                          labels=['main', 'numa-0', 'gpu-0',
-                                                  'gpu-1', 'io'])
+                                          labels=['main', 'numa-0', 'gpu-0', 'io'])
         await pool.start()
         return pool
 
@@ -158,7 +159,7 @@ async def test_storage_service_with_cuda(actor_pools_with_gpu):
     }
 
     await MockClusterAPI.create(worker_pool.external_address,
-                                band_to_slots={'numa-0': 1, 'gpu-0': 1, 'gpu-1': 1},
+                                band_to_slots={'numa-0': 1, 'gpu-0': 1},
                                 use_gpu=True)
     await start_services(
         NodeRole.WORKER, config, address=worker_pool.external_address)
