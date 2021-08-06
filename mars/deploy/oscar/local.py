@@ -121,7 +121,7 @@ class LocalCluster:
         self._web = web
         self._bands_to_slot = bands_to_slot = []
         worker_cpus = self._n_cpu // n_worker
-        if len(devices_list) == 0:
+        if sum(len(devices) for devices in devices_list) == 0:
             assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
                                     f"for {n_worker}, try to decrease workers."
         for _, devices in zip(range(n_worker), devices_list):
