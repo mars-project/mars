@@ -11,7 +11,7 @@ class TileableDetail extends React.Component {
 
     render() {
         if (this.props === undefined) {
-            return <div></div>
+            return <div></div>;
         }
 
         return (

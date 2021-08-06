@@ -35,8 +35,8 @@ class TaskTileableChart extends React.Component {
 
     componentDidMount() {
         this.g =  new dagGraphLib.Graph().setGraph({});
-        this.fetchGraphDetail()
-    };
+        this.fetchGraphDetail();
+    }
 
     componentDidUpdate(prevProps, prevStates) {
         if (prevStates.tileables !== this.state.tileables && prevStates.dependencies !== this.state.dependencies) {
