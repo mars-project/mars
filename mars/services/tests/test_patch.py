@@ -35,9 +35,16 @@ class B(A):
     def test_method(self):
         return super().test_method() + ['B']
 
+    def test_method2(self):
+        return super().test_method() + ['BB']
+
     @classmethod
     def test_classmethod(cls):
         return super().test_classmethod() + ['B']
+
+    @classmethod
+    def test_classmethod2(cls):
+        return super().test_classmethod() + ['BB']
 
 
 class C(B):
@@ -67,20 +74,20 @@ def test_patch_super():
             self.value += ['D']
 
         def test_method(self):
-            return super().test_method() + ['D']
+            return super().test_method() + super().test_method2() + ['D']
 
         @classmethod
         def test_classmethod(cls):
-            return super().test_classmethod() + ['D']
+            return super().test_classmethod() + super().test_classmethod2() + ['D']
 
     b = B()
-    assert B.test_classmethod() == ['A', 'B', 'D']
-    assert b.test_method() == ['A', 'B', 'D']
+    assert B.test_classmethod() == ['A', 'B', 'A', 'BB', 'D']
+    assert b.test_method() == ['A', 'B', 'A', 'BB', 'D']
     assert b.value == ['A', 'B', 'D']
 
     c = C()
-    assert C.test_classmethod() == ['A', 'B', 'D', 'C']
-    assert c.test_method() == ['A', 'B', 'D', 'C']
+    assert C.test_classmethod() == ['A', 'B', 'A', 'BB', 'D', 'C']
+    assert c.test_method() == ['A', 'B', 'A', 'BB', 'D', 'C']
     assert c.value == ['A', 'B', 'D', 'C']
 
     @patch_cls(Dummy)
