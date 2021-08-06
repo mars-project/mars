@@ -570,7 +570,7 @@ def test_read_csv_use_arrow_dtype(setup):
 
 
 @require_cudf
-def test_read_csvgpu_execution(setup):
+def test_read_csv_gpu_execution(setup_gpu):
     with tempfile.TemporaryDirectory() as tempdir:
         file_path = os.path.join(tempdir, 'test.csv')
 

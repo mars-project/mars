@@ -45,7 +45,7 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         bands = (await meta_api.get_chunk_meta(object_id, ['bands'])).get('bands')
         if not bands:
             raise KeyError
-        return await StorageAPI.create(session_id, bands[0][0])
+        return await StorageAPI.create(session_id, bands[0][0], bands[0][1])
 
     @web_api('(?P<data_key>[^/]+)', method='get')
     async def get_data(self, session_id: str, data_key: str):
@@ -79,9 +79,13 @@ web_handlers = {
 
 
 class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(self,
+                 session_id: str,
+                 address: str,
+                 band_name: str):
         self._session_id = session_id
         self._address = address.rstrip('/')
+        self._band_name = band_name
 
     @mo.extensible
     async def get(self,

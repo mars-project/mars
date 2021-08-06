@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import io
 import os
 import sys
 import tempfile
@@ -27,7 +26,7 @@ import scipy.sparse as sps
 
 from mars.lib.filesystem import LocalFileSystem
 from mars.lib.sparse import SparseNDArray, SparseMatrix
-from mars.serialization import serialize, deserialize, AioSerializer, AioDeserializer
+from mars.serialization import AioSerializer, AioDeserializer
 from mars.storage.base import StorageLevel
 from mars.storage.cuda import CudaStorage
 from mars.storage.filesystem import FileSystemStorage
@@ -281,8 +280,6 @@ async def test_cuda_backend():
     info1 = await storage.object_info(put_info1.object_id)
     assert info1.size == put_info1.size
 
-    await storage.delete(put_info1.object_id)
-
     data2 = cudf.DataFrame(pd.DataFrame({'col1': np.arange(10),
                                          'col2': [f'str{i}' for i in range(10)],
                                          'col3': np.random.rand(10)},))
@@ -296,30 +293,17 @@ async def test_cuda_backend():
     await CudaStorage.teardown(**teardown_params)
 
     # test writer and reader
-    t = np.random.random(10)
-    buffers = await AioSerializer(t).run()
-    size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
-    async with await storage.open_writer(size=size) as writer:
-        for buf in buffers:
-            await writer.write(buf)
+    read_chunk = 100
+    writer = await storage.open_writer(put_info1.size)
+    async with await storage.open_reader(put_info1.object_id) as reader:
+        while True:
+            content = await reader.read(read_chunk)
+            if content:
+                await writer.write(content)
+            else:
+                break
+    writer._file._write_close()
+    write_data = await storage.get(writer._file._object_id)
+    cupy.testing.assert_array_equal(write_data, get_data1)
 
-    async with await storage.open_reader(writer.object_id) as reader:
-        content = await reader.read()
-        b = content.to_host_array().tobytes()
-        t2 = await AioDeserializer(io.BytesIO(b)).run()
-    np.testing.assert_array_equal(t, t2)
-
-    # write cupy array
-    t = cupy.random.random((10,))
-    headers, buffers = serialize(t)
-    async with await storage.open_writer(size=len(b)) as writer:
-        for buffer in buffers:
-            await writer.write(buffer.data)
-
-    async with await storage.open_reader(writer.object_id) as reader:
-        b2 = await reader.read()
-        t2 = deserialize(headers, [b2])
-
-    cupy.testing.assert_array_equal(t, t2)
-
-    await CudaStorage.teardown(**teardown_params)
+    await storage.delete(put_info1.object_id)
