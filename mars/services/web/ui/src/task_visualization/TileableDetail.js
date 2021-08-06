@@ -25,8 +25,8 @@ class TileableDetail extends React.Component {
                                 ?
                                 <div>
                                     <br/>
-                                    <div>Tileable ID: {this.props.selectedTileable.tileable_id}</div><br/>
-                                    <div>Tileable Name: {this.props.selectedTileable.tileable_name}</div><br/>
+                                    <div>Tileable ID: <br/>{this.props.selectedTileable.tileable_id}</div><br/>
+                                    <div>Tileable Name: <br/>{this.props.selectedTileable.tileable_name}</div><br/>
                                 </div>
                                 :
                                 <div>

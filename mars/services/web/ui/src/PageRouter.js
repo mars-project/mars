@@ -29,9 +29,6 @@ import TaskListPage from "./task_info/TaskListPage";
 const TaskTileableChart = lazy(() => {
     return import("./task_visualization/TaskTileableChart");
 });
-const TaskDetailList = lazy(() => {
-    return import("./task_visualization/TaskDetailList");
-});
 
 function NodePageWrapper(props) {
     let {endpoint} = useParams();
@@ -61,11 +58,10 @@ export default function PageRouter() {
             <Route exact path="/worker/:endpoint"
                    render={() => (<NodePageWrapper component={WorkerDetailPage} nodeRole={"worker"} />)} />
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
-            <Suspense fallback={<div>Loading...</div>}>
-                <Route exact path="/tasks" component={TaskDetailList} />
-                <Route exact path="/tasks/:session_id/:task_id/graph" component={TaskTileableChart} />
-            </Suspense>
             <Route exact path="/" component={Dashboard} />
+            <Suspense fallback={<div>Loading...</div>}>
+                <Route exact path="/session/:session_id/task/:task_id" component={TaskTileableChart} />
+            </Suspense>
         </Switch>
     )
 }

@@ -480,11 +480,11 @@ class TaskProcessorActor(mo.Actor):
 
             for node_successor in graph.iter_successors(node):
                 edge_list.append({
-                    "from_tileable_id": node_successor.key,
-                    "from_tileable_name": str(node_successor.op),
+                    "from_tileable_id": node.key,
+                    "from_tileable_name": node_name,
 
-                    "to_tileable_id": node.key,
-                    "to_tileable_name": node_name,
+                    "to_tileable_id": node_successor.key,
+                    "to_tileable_name": str(node_successor.op),
 
                     "linkType": 0,
                 })

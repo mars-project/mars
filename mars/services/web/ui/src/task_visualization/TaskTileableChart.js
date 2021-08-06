@@ -44,7 +44,9 @@ class TaskTileableChart extends React.Component {
             this.g = new dagGraphLib.Graph().setGraph({});
             this.state.tileables.forEach((tileable) => {
                 var value = { tileable };
-                value.label = tileable.tileable_name;
+
+                let nameEndIndex = tileable.tileable_name.indexOf("key") - 1;
+                value.label = tileable.tileable_name.substring(0, nameEndIndex);
                 value.rx = value.ry = 5;
                 this.g.setNode(tileable.tileable_id, value);
 
@@ -114,7 +116,7 @@ class TaskTileableChart extends React.Component {
         return (
             <Grid container spacing={3} >
                  <Grid item xs={12}>
-                    <Title>Graph</Title>
+                    <Title>Task</Title>
                 </Grid>
                 <Grid item xs={12} md={6}>
                     <Paper>

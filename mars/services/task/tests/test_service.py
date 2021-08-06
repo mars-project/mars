@@ -284,11 +284,11 @@ async def test_get_tileables(start_test_service):
 
         for node_successor in graph.iter_successors(node):
             graph_dependencies.append({
-                "from_tileable_id": node_successor.key,
-                "from_tileable_name": str(node_successor.op),
+                "from_tileable_id": node.key,
+                "from_tileable_name": str(node.op),
 
-                "to_tileable_id": node.key,
-                "to_tileable_name": str(node.op),
+                "to_tileable_id": node_successor.key,
+                "to_tileable_name": str(node_successor.op),
 
                 "linkType": 0,
             })
