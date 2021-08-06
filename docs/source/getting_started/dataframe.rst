@@ -117,14 +117,13 @@ called.  An alternative is ``.to_pandas()``.
     the entire DataFrame on the server side and return it back to client,
     which is extremely inefficient and may cause OutOfMemory error.
 
-If multiple DataFrames need to be executed together,
-:class:`mars.dataframe.ExecutableTuple` could be used.
+If multiple DataFrames need to be executed together, ``mars.execute()`` could be used.
 
 .. code-block:: python
 
+   >>> import mars
    >>> df = md.DataFrame(mt.random.rand(3, 3))
-
-   >>> md.ExecutableTuple([df, df.sum()]).execute()
+   >>> mars.execute(df, df.sum())
    (          0         1         2
     0  0.604443  0.743964  0.281236
     1  0.778034  0.634661  0.237829

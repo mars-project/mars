@@ -176,7 +176,7 @@ async def test_execute_tensor(actor_pool):
     quota_ref = await mo.actor_ref(QuotaActor.gen_uid('numa-0'),
                                    address=pool.external_address)
     [quota] = await quota_ref.get_batch_quota_reqs()
-    assert quota[(subtask.subtask_id, subtask.subtask_id)] == data1.nbytes
+    assert quota[(subtask.session_id, subtask.subtask_id)] == data1.nbytes
 
     # check if metas are correct
     result_meta = await meta_api.get_chunk_meta(result_chunk.key)
@@ -203,7 +203,8 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     ref_to_delay = None
     if cancel_phase == 'prepare':
         ref_to_delay = await mo.actor_ref(
-            StorageHandlerActor.default_uid(), address=pool.external_address)
+            StorageHandlerActor.gen_uid('numa-0'),
+            address=pool.external_address)
     elif cancel_phase == 'quota':
         ref_to_delay = await mo.actor_ref(
             QuotaActor.gen_uid('numa-0'), address=pool.external_address)

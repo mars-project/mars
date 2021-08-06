@@ -38,7 +38,7 @@ async def actor_pools():
             if sys.platform != 'win32' else None
 
         pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                          labels=['main', 'sub', 'io'],
+                                          labels=['main', 'numa-0', 'io'],
                                           subprocess_start_method=start_method)
         await pool.start()
         return pool
@@ -88,9 +88,9 @@ async def test_simple_transfer(create_actors):
     data1 = np.random.rand(100, 100)
     data2 = pd.DataFrame(np.random.randint(0, 100, (500, 10)))
 
-    storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
+    storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.gen_uid('numa-0'),
                                           address=worker_address_1)
-    storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
+    storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.gen_uid('numa-0'),
                                           address=worker_address_2)
 
     await storage_handler1.put(session_id, 'data_key1', data1, StorageLevel.MEMORY)
@@ -98,7 +98,7 @@ async def test_simple_transfer(create_actors):
     await storage_handler2.put(session_id, 'data_key3', data2, StorageLevel.MEMORY)
 
     sender_actor = await mo.actor_ref(address=worker_address_1,
-                                      uid=SenderManagerActor.default_uid())
+                                      uid=SenderManagerActor.gen_uid('numa-0'))
 
     # send data to worker2 from worker1
     await sender_actor.send_batch_data(session_id, ['data_key1'],
@@ -117,7 +117,7 @@ async def test_simple_transfer(create_actors):
 
     # send data to worker1 from worker2
     sender_actor = await mo.actor_ref(address=worker_address_2,
-                                      uid=SenderManagerActor.default_uid())
+                                      uid=SenderManagerActor.gen_uid('numa-0'))
     await sender_actor.send_batch_data(session_id, ['data_key3'], worker_address_1,
                                        StorageLevel.MEMORY)
     get_data3 = await storage_handler1.get(session_id, 'data_key3')
@@ -133,7 +133,7 @@ class MockReceiverManagerActor(ReceiverManagerActor):
 
 class MockSenderManagerActor(SenderManagerActor):
     @staticmethod
-    async def get_receiver_ref(address: str):
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
             address=address, uid=MockReceiverManagerActor.default_uid())
 
@@ -151,7 +151,7 @@ class MockReceiverManagerActor2(ReceiverManagerActor):
 
 class MockSenderManagerActor2(SenderManagerActor):
     @staticmethod
-    async def get_receiver_ref(address: str):
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
             address=address, uid=MockReceiverManagerActor2.default_uid())
 
@@ -163,30 +163,27 @@ class MockSenderManagerActor2(SenderManagerActor):
 async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     worker_address_1, worker_address_2 = create_actors
 
-    strategy = IdleLabel('io', 'mock_sender')
     quota_refs = {StorageLevel.MEMORY: await mo.actor_ref(
         StorageQuotaActor, StorageLevel.MEMORY, 5 * 1024 * 1024,
-        address=worker_address_2, uid=StorageQuotaActor.gen_uid(StorageLevel.MEMORY))}
-
-    await mo.create_actor(
-        mock_sender, uid=mock_sender.default_uid(),
-        address=worker_address_1, allocate_strategy=strategy)
-    await mo.create_actor(
-        mock_receiver, quota_refs, uid=mock_receiver.default_uid(),
-        address=worker_address_2, allocate_strategy=strategy)
-
-    data1 = np.random.rand(10, 10)
+        address=worker_address_2, uid=StorageQuotaActor.gen_uid('numa-0', StorageLevel.MEMORY))}
     storage_handler1 = await mo.actor_ref(
-        uid=StorageHandlerActor.default_uid(),
+        uid=StorageHandlerActor.gen_uid('numa-0'),
         address=worker_address_1)
     storage_handler2 = await mo.actor_ref(
-        uid=StorageHandlerActor.default_uid(),
+        uid=StorageHandlerActor.gen_uid('numa-0'),
         address=worker_address_2)
+
+    sender_actor = await mo.create_actor(
+        mock_sender, uid=mock_sender.default_uid(),
+        address=worker_address_1, allocate_strategy=IdleLabel('io', 'mock_sender'))
+    await mo.create_actor(
+        mock_receiver, quota_refs, uid=mock_receiver.default_uid(),
+        address=worker_address_2, allocate_strategy=IdleLabel('io', 'mock_receiver'))
+
+    data1 = np.random.rand(10, 10)
     await storage_handler1.put('mock', 'data_key1',
                                data1, StorageLevel.MEMORY)
 
-    sender_actor = await mo.actor_ref(address=worker_address_1,
-                                      uid=mock_sender.default_uid())
     used_before = (await quota_refs[StorageLevel.MEMORY].get_quota())[1]
 
     send_task = asyncio.create_task(sender_actor.send_batch_data(

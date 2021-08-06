@@ -32,8 +32,8 @@ const TaskTileableChart = lazy(() => {
 });
 
 function NodePageWrapper(props) {
-    let {endpoint} = useParams();
-    const {nodeRole, component, ...other} = props;
+    const { endpoint } = useParams();
+    const { nodeRole, component, ...other } = props;
     const ComponentTag = component;
 
     return (
@@ -46,28 +46,34 @@ NodePageWrapper.propTypes = {
     component: PropTypes.elementType,
 };
 
-function TaskPageWrapper(props) {
-    let {session_id} = useParams();
+function TaskPageWrapper() {
+    const { session_id } = useParams();
     return (
         <TaskListPage sessionId={session_id} />
-    )
+    );
 }
 
 export default function PageRouter() {
     return (
         <Switch>
-            <Route exact path="/supervisor" render={() => (<NodeListPage nodeRole={"supervisor"}/>)} />
-            <Route exact path="/worker" render={() => (<NodeListPage nodeRole={"worker"}/>)} />
-            <Route exact path="/session" render={() => (<SessionListPage/>)} />
-            <Route exact path="/supervisor/:endpoint"
-                   render={() => (<NodePageWrapper component={SupervisorDetailPage} nodeRole={"supervisor"} />)} />
-            <Route exact path="/worker/:endpoint"
-                   render={() => (<NodePageWrapper component={WorkerDetailPage} nodeRole={"worker"} />)} />
+            <Route exact path="/supervisor" render={() => (<NodeListPage nodeRole="supervisor" />)} />
+            <Route exact path="/worker" render={() => (<NodeListPage nodeRole="worker" />)} />
+            <Route exact path="/session" render={() => (<SessionListPage />)} />
+            <Route
+                exact
+                path="/supervisor/:endpoint"
+                render={() => (<NodePageWrapper component={SupervisorDetailPage} nodeRole="supervisor" />)}
+            />
+            <Route
+                exact
+                path="/worker/:endpoint"
+                render={() => (<NodePageWrapper component={WorkerDetailPage} nodeRole="worker" />)}
+            />
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
             <Route exact path="/" component={Dashboard} />
             <Suspense fallback={<div>Loading...</div>}>
                 <Route exact path="/session/:session_id/task/:task_id" component={TaskTileableChart} />
             </Suspense>
         </Switch>
-    )
+    );
 }

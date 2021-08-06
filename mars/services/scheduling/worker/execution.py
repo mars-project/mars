@@ -23,11 +23,11 @@ from typing import Dict, Optional, Union
 
 from .... import oscar as mo
 from ....core.graph import DAG
-from ....core.operand import Fetch
+from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
 from ....oscar.errors import MarsError
 from ....storage import StorageLevel
-from ....utils import dataslots
+from ....utils import dataslots, get_chunk_key_to_data_keys
 from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
@@ -160,29 +160,45 @@ class SubtaskExecutionActor(mo.StatelessActor):
             self._global_slot_ref = None
         return self._global_slot_ref
 
-    async def _prepare_input_data(self, subtask: Subtask):
+    async def _prepare_input_data(self, subtask: Subtask, band_name: str):
         queries = []
-        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
+        storage_api = await StorageAPI.create(
+            subtask.session_id, address=self.address, band_name=band_name)
         pure_dep_keys = set()
+        chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask.chunk_graph)
         for n in subtask.chunk_graph:
             pure_dep_keys.update(
                 inp.key for inp, pure_dep in zip(n.inputs, n.op.pure_depends) if pure_dep)
-        for n in subtask.chunk_graph:
-            if not isinstance(n.op, Fetch) or n.key in pure_dep_keys:
-                continue
-            queries.append(storage_api.fetch.delay(n.key))
+        for chunk in subtask.chunk_graph:
+            if chunk.op.gpu:  # pragma: no cover
+                to_fetch_band = band_name
+            else:
+                to_fetch_band = 'numa-0'
+            if isinstance(chunk.op, Fetch):
+                queries.append(storage_api.fetch.delay(chunk.key, band_name=to_fetch_band))
+            elif isinstance(chunk.op, FetchShuffle):
+                for key in chunk_key_to_data_keys[chunk.key]:
+                    queries.append(storage_api.fetch.delay(
+                        key, band_name=to_fetch_band, error='ignore'))
         if queries:
             await storage_api.fetch.batch(*queries)
 
-    async def _collect_input_sizes(self, subtask: Subtask, supervisor_address: str):
-        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
-        meta_api = await MetaAPI.create(subtask.session_id, address=supervisor_address)
-
+    async def _collect_input_sizes(self,
+                                   subtask: Subtask,
+                                   supervisor_address: str,
+                                   band_name: str):
         graph = subtask.chunk_graph
         sizes = dict()
 
         fetch_keys = list(
             set(n.key for n in graph.iter_indep() if isinstance(n.op, Fetch)))
+        if not fetch_keys:
+            return sizes
+
+        storage_api = await StorageAPI.create(subtask.session_id,
+                                              address=self.address, band_name=band_name)
+        meta_api = await MetaAPI.create(subtask.session_id, address=supervisor_address)
+
         fetch_metas = await meta_api.get_chunk_meta.batch(
             *(meta_api.get_chunk_meta.delay(k, fields=['memory_size', 'store_size'])
               for k in fetch_keys))
@@ -193,9 +209,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
         for key, meta, infos in zip(fetch_keys, fetch_metas, data_infos):
             level = functools.reduce(operator.or_, (info.level for info in infos))
             if level & StorageLevel.MEMORY:
-                sizes[key] = (meta['memory_size'], meta['memory_size'] - meta['store_size'])
+                mem_cost = max(0, meta['memory_size'] - meta['store_size'])
             else:
-                sizes[key] = (meta['memory_size'], meta['memory_size'])
+                mem_cost = meta['memory_size']
+            sizes[key] = (mem_cost, mem_cost)
 
         return sizes
 
@@ -224,6 +241,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         succ_ref_count = {k: op_key_graph.count_successors(k) for k in op_key_graph}
 
         visited_op_keys = set()
+        total_memory_cost = 0
         max_memory_cost = 0
         while key_stack:
             key = key_stack.pop()
@@ -231,8 +249,16 @@ class SubtaskExecutionActor(mo.StatelessActor):
 
             if not isinstance(op, Fetch):
                 op.estimate_size(size_context, op)
-            max_memory_cost = max(
-                sum(ms for _, ms in size_context.values()), max_memory_cost)
+
+            calc_cost = sum(
+                size_context[out.key][1] for out in op.outputs)
+            total_memory_cost += calc_cost
+            max_memory_cost = max(total_memory_cost, max_memory_cost)
+
+            result_cost = sum(
+                size_context[out.key][0] for out in op.outputs)
+            total_memory_cost += result_cost - calc_cost
+
             visited_op_keys.add(op.key)
 
             for succ_op_key in op_key_graph.iter_successors(key):
@@ -242,18 +268,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
             for pred_op_key in op_key_graph.iter_predecessors(key):
                 succ_ref_count[pred_op_key] -= 1
                 if succ_ref_count[pred_op_key] == 0:
-                    size_context.pop(pred_op_key, None)
-        return sum(t[0] for t in size_context.values()), \
-            sum(t[1] for t in size_context.values())
-
-    @classmethod
-    def _build_quota_request(cls, subtask_id: str, calc_size: int, input_sizes: Dict):
-        batch_req = dict()
-        for input_key, (_input_store_size, input_calc_size) in input_sizes.items():
-            if input_calc_size > 0:
-                batch_req[(subtask_id, input_key)] = input_calc_size
-        batch_req[(subtask_id, subtask_id)] = calc_size
-        return batch_req
+                    pop_result_cost = sum(size_context.pop(out.key, (0, 0))[0]
+                                          for out in key_to_ops[pred_op_key][0].outputs)
+                    total_memory_cost -= pop_result_cost
+        return sum(t[1] for t in size_context.values()), max_memory_cost
 
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
@@ -268,16 +286,16 @@ class SubtaskExecutionActor(mo.StatelessActor):
             quota_ref = await self._get_band_quota_ref(band_name)
             slot_manager_ref = await self._get_slot_manager_ref(band_name)
 
-            await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask)
+            await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask, band_name)
 
-            input_sizes = await self._collect_input_sizes(subtask, subtask_info.supervisor_address)
+            input_sizes = await self._collect_input_sizes(
+                subtask, subtask_info.supervisor_address, band_name)
             _store_size, calc_size = await asyncio.to_thread(
                 self._estimate_sizes, subtask, input_sizes)
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
 
-            batch_quota_req = self._build_quota_request(
-                subtask.subtask_id, calc_size, input_sizes)
+            batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
 
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req)

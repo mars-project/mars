@@ -29,7 +29,6 @@ from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
 
-
 _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
 _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
 
@@ -322,10 +321,10 @@ class TileableOperandMixin:
             if out.key in ctx:
                 continue
             if out.key in chunk_sizes:
-                store_size = chunk_sizes[out.key]
+                result_size = chunk_sizes[out.key]
             else:
-                store_size = max(exec_size // len(outputs),
-                                 total_out_size // max(len(chunk_sizes), 1))
+                result_size = max(exec_size // len(outputs),
+                                  total_out_size // max(len(chunk_sizes), 1))
             try:
                 if getattr(out, 'dtype', None) is not None and out.is_sparse():
                     max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
@@ -334,8 +333,8 @@ class TileableOperandMixin:
             except TypeError:  # pragma: no cover
                 max_sparse_size = np.nan
             if not np.isnan(max_sparse_size):
-                store_size = min(store_size, max_sparse_size)
-            ctx[out.key] = (store_size, exec_size * memory_scale // len(outputs))
+                result_size = min(result_size, max_sparse_size)
+            ctx[out.key] = (result_size, exec_size * memory_scale // len(outputs))
 
     @classmethod
     def concat_tileable_chunks(cls, tileable):

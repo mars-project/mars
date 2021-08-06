@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from functools import lru_cache
 from types import TracebackType
 from typing import Any, Type, Tuple, Dict, List
-
-import numpy as np
 
 from ...lib.tblib import pickling_support
 from ...serialization.core import Serializer, pickle, buffered
@@ -359,4 +358,4 @@ def _get_slots(message_cls: Type[_MessageBase]):
 
 
 def new_message_id():
-    return np.random.bytes(32)
+    return os.urandom(32)

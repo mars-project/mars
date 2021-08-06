@@ -31,7 +31,9 @@ except ImportError:  # pragma: no cover
 from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes
+from ..utils import tokenize, sbytes, lazy_import
+
+cudf = lazy_import('cudf', globals=globals(), rename='cudf')
 
 
 def hash_index(index, size):
@@ -48,6 +50,8 @@ def hash_dataframe_on(df, on, size, level=None):
         idx = df.index
         if level is not None:
             idx = idx.to_frame(False)[level]
+        if cudf and isinstance(idx, cudf.Index):  # pragma: no cover
+            idx = idx.to_pandas()
         hashed_label = pd.util.hash_pandas_object(idx, categorize=False)
     elif callable(on):
         # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
@@ -292,6 +296,10 @@ def parse_index(index_value, *args, store_data=False, key=None):
             _max_val_close=True,
             _key=key or tokenize(*args),
         ))
+    if hasattr(index_value, 'to_pandas'):  # pragma: no cover
+        # convert cudf.Index to pandas
+        index_value = index_value.to_pandas()
+
     if isinstance(index_value, pd.RangeIndex):
         return IndexValue(_index_value=_serialize_range_index(index_value))
     elif isinstance(index_value, pd.MultiIndex):
@@ -1116,3 +1124,38 @@ def make_dtypes(dtypes):
         else:
             dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
+
+
+def is_dataframe(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.DataFrame):
+            return True
+    return isinstance(x, pd.DataFrame)
+
+
+def is_series(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.Series):
+            return True
+    return isinstance(x, pd.Series)
+
+
+def is_index(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.Index):
+            return True
+    return isinstance(x, pd.Index)
+
+
+def get_xdf(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return cudf
+    return pd
+
+
+def is_cudf(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return True
+    return False

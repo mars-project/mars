@@ -38,7 +38,7 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 @require_cudf
-def test_to_gpu_execution(setup):
+def test_to_gpu_execution(setup_gpu):
     pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
     df = from_pandas_df(pdf, chunk_size=(13, 21))
     cdf = to_gpu(df)
@@ -57,7 +57,7 @@ def test_to_gpu_execution(setup):
 
 
 @require_cudf
-def test_to_cpu_execution(setup):
+def test_to_cpu_execution(setup_gpu):
     pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
     df = from_pandas_df(pdf, chunk_size=(13, 21))
     cdf = to_gpu(df)

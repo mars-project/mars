@@ -14,13 +14,13 @@
 
 import asyncio
 import logging
-from typing import Union, Any, List
+from typing import Dict, Union, Any, List
 
 from ... import oscar as mo
+from ...lib.aio import alru_cache
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, AnyField, ListField
 from ...storage import StorageLevel
-from ...utils import extensible
 from .core import DataManagerActor
 from .handler import StorageHandlerActor
 
@@ -52,19 +52,29 @@ class TransferMessage(Serializable):
 
 class SenderManagerActor(mo.StatelessActor):
     def __init__(self,
-                 transfer_block_size: int = None):
+                 band_name: str = 'numa-0',
+                 transfer_block_size: int = None,
+                 storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None):
+        self._band_name = band_name
+        self._storage_handler = storage_handler_ref
         self._transfer_block_size = transfer_block_size or DEFAULT_TRANSFER_BLOCK_SIZE
+
+    @classmethod
+    def gen_uid(cls, band_name: str):
+        return f'sender_manager_{band_name}'
 
     async def __post_create__(self):
         self._data_manager_ref: Union[mo.ActorRef, DataManagerActor] = \
             await mo.actor_ref(self.address, DataManagerActor.default_uid())
-        self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
+        if self._storage_handler is None:  # for test
+            self._storage_handler = await mo.actor_ref(
+                self.address, StorageHandlerActor.gen_uid('numa-0'))
 
     @staticmethod
-    async def get_receiver_ref(address: str):
+    @alru_cache
+    async def get_receiver_ref(address: str, band_name: str):
         return await mo.actor_ref(
-            address=address, uid=ReceiverManagerActor.default_uid())
+            address=address, uid=ReceiverManagerActor.gen_uid(band_name))
 
     async def _send_data(self,
                          receiver_ref: Union[mo.ActorRef],
@@ -122,20 +132,23 @@ class SenderManagerActor(mo.StatelessActor):
                     break
         await sender.flush()
 
-    @extensible
+    @mo.extensible
     async def send_batch_data(self,
                               session_id: str,
                               data_keys: List[str],
                               address: str,
                               level: StorageLevel,
+                              band_name: str = 'numa-0',
                               block_size: int = None,
                               error: str = 'raise'):
         logger.debug('Begin to send data (%s, %s) to %s', session_id, data_keys, address)
         block_size = block_size or self._transfer_block_size
-        receiver_ref: Union[ReceiverManagerActor, mo.ActorRef] = await self.get_receiver_ref(address)
+        receiver_ref: Union[ReceiverManagerActor, mo.ActorRef] = \
+            await self.get_receiver_ref(address, band_name)
         get_infos = []
         for data_key in data_keys:
-            get_infos.append(self._data_manager_ref.get_data_info.delay(session_id, data_key, error))
+            get_infos.append(self._data_manager_ref.get_data_info.delay(
+                session_id, data_key, self._band_name, error))
         infos = await self._data_manager_ref.get_data_info.batch(*get_infos)
         filtered = [(data_info, data_key) for data_info, data_key in
                     zip(infos, data_keys) if data_info is not None]
@@ -144,6 +157,8 @@ class SenderManagerActor(mo.StatelessActor):
         else:  # pragma: no cover
             infos, data_keys = [], []
         data_sizes = [info.store_size for info in infos]
+        if level is None:
+            level = infos[0].level
         await receiver_ref.open_writers(session_id, data_keys, data_sizes, level)
 
         await self._send_data(receiver_ref, session_id, data_keys, level, block_size)
@@ -151,13 +166,21 @@ class SenderManagerActor(mo.StatelessActor):
 
 
 class ReceiverManagerActor(mo.Actor):
-    def __init__(self, quota_refs):
+    def __init__(self,
+                 quota_refs: Dict,
+                 storage_handler_ref: Union[mo.ActorRef, StorageHandlerActor] = None):
         self._key_to_writer_info = dict()
         self._quota_refs = quota_refs
+        self._storage_handler = storage_handler_ref
 
     async def __post_create__(self):
-        self._storage_handler: Union[mo.ActorRef, StorageHandlerActor] = \
-            await mo.actor_ref(self.address, StorageHandlerActor.default_uid())
+        if self._storage_handler is None: # for test
+            self._storage_handler = await mo.actor_ref(
+                self.address, StorageHandlerActor.gen_uid('numa-0'))
+
+    @classmethod
+    def gen_uid(cls, band_name: str):
+        return f'sender_receiver_{band_name}'
 
     async def create_writers(self,
                              session_id: str,

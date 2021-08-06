@@ -172,12 +172,16 @@ class BuildWeb(Command):
             return
 
         replacements = {'npm': npm_path}
+        cmd_errored = False
         for cmd in cls._commands:
             cmd = [replacements.get(c, c) for c in cmd]
             proc_result = subprocess.run(cmd, cwd=web_src_path)
             if proc_result.returncode != 0:
-                raise SystemError(f'Failed when running `{" ".join(cmd)}`')
-        assert os.path.exists(cls._web_dest_path)
+                warnings.warn(f'Failed when running `{" ".join(cmd)}`')
+                cmd_errored = True
+                break
+        if not cmd_errored:
+            assert os.path.exists(cls._web_dest_path)
 
 
 CustomInstall.register_pre_command('build_web')

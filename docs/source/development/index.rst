@@ -6,4 +6,6 @@ Development
    :maxdepth: 2
 
    contributing
-   distributed/index
+   overview
+   oscar/index
+   services/index
