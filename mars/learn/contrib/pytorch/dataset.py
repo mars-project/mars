@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from mars.core.entity.tileables import Tileable
 import numpy as np
+import pandas as pd
 try:
     import torch
     from torch.utils.data import Dataset
@@ -22,8 +24,7 @@ except ImportError:
 
 from ....core.context import get_context
 from ....tensor.core import TENSOR_TYPE
-from ....tensor.indexing.core import process_index
-from ....dataframe.indexing.iloc import process_iloc_indexes
+from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....utils import require_not_none
 
 
@@ -32,38 +33,24 @@ class MarsDataset(Dataset):
     def __init__(self, *tileables):
 
         self._context = get_context() 
-
-        self.tileables = tileables
-        self._datas = None
-        self._offset = 0
-
-    def prefetch(self, indices):
-        self._datas = self._get_data(indices)
-        self._offset = 0
-
-    @staticmethod
-    def _process_index(t, index):
-        if isinstance(t, TENSOR_TYPE):
-            return process_index(t.ndim, index)
-        else:
-            return process_iloc_indexes(t, index)
-
-    def _get_data(self, item):
-
-        return tuple(t[item].fetch() for t in self.tileables)
+        self._tileables = tileables
 
     def __len__(self):
-        return self.tileables[0].shape[0]
+        return self._tileables[0].shape[0]
 
     def __getitem__(self, item):
-        if self._datas is not None:
-            ret = []
-            for data in self._datas:
-                if isinstance(data, np.ndarray):
-                    ret.append(data[self._offset])
-                else:
-                    ret.append(data.iloc[self._offset])
-            self._offset += 1
-            return ret
-        else:
-            return self._get_data(item)
+        return tuple(self.get_data(t, item) for t in self._tileables)
+
+    def get_data(self, t, index):
+        if isinstance(t, TENSOR_TYPE):
+            return t[index].execute().fetch()
+        elif isinstance(t, np.ndarray):
+            return t[index]
+        elif isinstance(t, DATAFRAME_TYPE):
+            return t.iloc[index].execute().fetch().values
+        elif isinstance(t, SERIES_TYPE):
+            return t[index].execute().fetch()
+        elif isinstance(t, pd.DataFrame):
+            return t.iloc[index].values
+        elif isinstance(t, pd.Series):
+            return t[index]
