@@ -30,7 +30,7 @@ from ....utils import require_not_none
 @require_not_none(torch)
 class MarsDataset(Dataset):
     r"""MarsDataset that inherit from torch.utils.data.Dataset.
-    It converts from Mars basic datatype such as Tensor, 
+    It converts from Mars basic datatype such as Tensor,
     DataFrame, Series. Additionally, it's constructor can receive
     np.ndarray, pd.DataFrame, pd.Series type.
     """
@@ -42,8 +42,8 @@ class MarsDataset(Dataset):
     def __len__(self):
         return self._tileables[0].shape[0]
 
-    def __getitem__(self, item):
-        return tuple(self.get_data(t, item) for t in self._tileables)
+    def __getitem__(self, index):
+        return tuple(self.get_data(t, index) for t in self._tileables)
 
     @staticmethod
     def get_data(self, t, index):
