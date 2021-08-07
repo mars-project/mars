@@ -45,6 +45,7 @@ class MarsDataset(Dataset):
     def __getitem__(self, item):
         return tuple(self.get_data(t, item) for t in self._tileables)
 
+    @staticmethod
     def get_data(self, t, index):
         if isinstance(t, TENSOR_TYPE):
             return t[index].execute().fetch()

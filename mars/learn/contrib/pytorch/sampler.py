@@ -26,8 +26,7 @@ from ....utils import require_not_none
 
 @require_not_none(torch)
 class SequentialSampler(Sampler):
-    r"""" 
-    Samples elements sequentially, always in the same order.
+    r""""Samples elements sequentially, always in the same order.
 
     Args:
         data_source (Dataset): dataset to sample from
