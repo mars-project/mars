@@ -13,5 +13,16 @@
 # limitations under the License.
 
 # noinspection PyUnresolvedReferences
-from .converter import convert_dask_collection
-from .scheduler import mars_scheduler
+
+
+def raise_dask_required_error():
+    raise ImportError('you need to have dask installed for this to work')
+
+
+try:
+    import dask
+except ImportError:
+    convert_dask_collection = mars_scheduler = raise_dask_required_error
+else:
+    from .converter import convert_dask_collection
+    from .scheduler import mars_scheduler
