@@ -508,6 +508,3 @@ msgstr ""
 msgid "Examples"
 msgstr ""
 
-#~ msgid "Sort RangeIndex if csv doesn't contain index columns."
-#~ msgstr ""
-

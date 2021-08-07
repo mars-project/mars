@@ -44,7 +44,7 @@ from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.web import OscarWebAPI
 from ...tensor.utils import slice_split
-from ...typing import ClientType
+from ...typing import ClientType, BandType
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
     register_asyncio_task_timeout_detector, classproperty, \
     copy_tileables, build_fetch
@@ -107,8 +107,9 @@ class ExecutionInfo:
         return self._future_local.aio_future.__await__()
 
 
-warning_msg = """No session found, local session \
-will be created in the background, \
+warning_msg = """
+No session found, local session \
+will be created in background, \
 it may take a while before execution. \
 If you want to new a local session by yourself, \
 run code below:
@@ -116,7 +117,7 @@ run code below:
 ```
 import mars
 
-mars.new_session(default=True)
+mars.new_session()
 ```
 """
 
@@ -783,12 +784,12 @@ class _IsolatedSession(AbstractAsyncSession):
         return sort_dataframe_result(tileable, result)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_storage_api(self, address: str):
+    async def _get_storage_api(self, band: BandType):
         if urlparse(self.address).scheme == 'http':
             from mars.services.storage.api import WebStorageAPI
-            storage_api = WebStorageAPI(self._session_id, self.address)
+            storage_api = WebStorageAPI(self._session_id, self.address, band[1])
         else:
-            storage_api = await StorageAPI.create(self._session_id, address)
+            storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
         return storage_api
 
     async def fetch(self, *tileables, **kwargs) -> list:
@@ -826,16 +827,16 @@ class _IsolatedSession(AbstractAsyncSession):
                 fetch_infos_list.append(fetch_infos)
             chunk_metas = \
                 await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
-            chunk_to_addr = {chunk: meta['bands'][0][0]
-                             for chunk, meta in zip(chunks, chunk_metas)}
+            chunk_to_band = {chunk: meta['bands'][0]
+                            for chunk, meta in zip(chunks, chunk_metas)}
 
             storage_api_to_gets = defaultdict(list)
             storage_api_to_fetch_infos = defaultdict(list)
             for fetch_info in itertools.chain(*fetch_infos_list):
                 conditions = fetch_info.indexes
                 chunk = fetch_info.chunk
-                addr = chunk_to_addr[chunk]
-                storage_api = await self._get_storage_api(addr)
+                band = chunk_to_band[chunk]
+                storage_api = await self._get_storage_api(band)
                 storage_api_to_gets[storage_api].append(
                     storage_api.get.delay(chunk.key, conditions=conditions))
                 storage_api_to_fetch_infos[storage_api].append(fetch_info)
@@ -1354,6 +1355,8 @@ def execute(tileable: TileableType,
             new_session_kwargs: dict = None,
             show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
+    if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
     if session is None:
         session = get_default_or_create(
             **(new_session_kwargs or dict()))
@@ -1393,6 +1396,8 @@ def fetch(tileable: TileableType,
 def fetch_log(*tileables: TileableType,
               session: SyncSession = None,
               **kwargs):
+    if len(tileables) == 1 and isinstance(tileables[0], (list, tuple)):
+        tileables = tileables[0]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
@@ -1442,7 +1447,7 @@ async def _new_session(address: str,
 def new_session(address: str = None,
                 session_id: str = None,
                 backend: str = 'oscar',
-                default: bool = False,
+                default: bool = True,
                 **kwargs) -> AbstractSession:
     ensure_isolation_created(kwargs)
 
@@ -1481,7 +1486,7 @@ def get_default_or_create(**kwargs):
             # no session attached, try to create one
             warnings.warn(warning_msg)
             session = new_session(
-                '127.0.0.1', default=True, init_local=True, **kwargs)
+                '127.0.0.1', init_local=True, **kwargs)
             session.as_default()
     if isinstance(session, _IsolatedSession):
         session = SyncSession.from_isolated_session(session)

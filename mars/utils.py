@@ -37,7 +37,6 @@ import warnings
 import zlib
 from abc import ABC
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
 import numpy as np
@@ -343,6 +342,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
+    from .dataframe.core import IndexValue
+
     if dt is None:
         return 0
 
@@ -360,7 +361,8 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
         size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
-            if hasattr(index_value_value, 'dtype'):
+            if hasattr(index_value_value, 'dtype') \
+                    and not isinstance(index_value_value, IndexValue.RangeIndex):
                 size += calc_data_size(index_value_value, shape=shape)
         except AttributeError:
             pass
@@ -392,11 +394,11 @@ def build_fetch_chunk(chunk: ChunkType,
             source_mappers.append(get_chunk_mapper_id(pinp))
         op = chunk_op.get_fetch_op_cls(chunk)(
             source_keys=source_keys, source_idxes=source_idxes,
-            source_mappers=source_mappers)
+            source_mappers=source_mappers, gpu=chunk.op.gpu)
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
-        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse)
+        op = chunk_op.get_fetch_op_cls(chunk)(sparse=chunk.op.sparse, gpu=chunk.op.gpu)
     return op.new_chunk(None, kws=[params], _key=chunk.key, _id=chunk.id, **kwargs)
 
 
@@ -463,15 +465,15 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
     -------
     Data
     """
+    from .dataframe.utils import is_dataframe, is_index, is_series, get_xdf
     from .lib.groupby_wrapper import GroupByWrapper
-    from .lib.sparse import SparseNDArray
-    from .tensor.array_utils import get_array_module
+    from .tensor.array_utils import get_array_module, is_array
 
     chunk_results = sorted(chunk_results, key=operator.itemgetter(0))
     v = chunk_results[0][1]
     if len(chunk_results) == 1 and not (chunk_results[0][0]):
         return v
-    if isinstance(v, (np.ndarray, SparseNDArray)):
+    if is_array(v):
         xp = get_array_module(v)
         ndim = v.ndim
         for i in range(ndim - 1):
@@ -484,15 +486,18 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
             return to_concat[0]
         concat_result = xp.concatenate(to_concat)
         return concat_result
-    elif isinstance(v, pd.DataFrame):
+    elif is_dataframe(v):
+        xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(pd.concat([c[1] for c in cs], axis='columns'))
-        return pd.concat(concats, axis='index')
-    elif isinstance(v, pd.Series):
-        return pd.concat([c[1] for c in chunk_results])
-    elif isinstance(v, pd.Index):
-        df = pd.concat([pd.DataFrame(index=r[1])
+            concats.append(xdf.concat([c[1] for c in cs], axis='columns'))
+        return xdf.concat(concats, axis='index')
+    elif is_series(v):
+        xdf = get_xdf(v)
+        return xdf.concat([c[1] for c in chunk_results])
+    elif is_index(v):
+        xdf = get_xdf(v)
+        df = xdf.concat([xdf.DataFrame(index=r[1])
                         for r in chunk_results])
         return df.index
     elif isinstance(v, pd.Categorical):
@@ -566,10 +571,18 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
     """ sort DataFrame on client according to `should_be_monotonic` attribute """
     if hasattr(df, 'index_value'):
         if getattr(df.index_value, 'should_be_monotonic', False):
-            result.sort_index(inplace=True)
+            try:
+                result.sort_index(inplace=True)
+            except TypeError:  # pragma: no cover
+                # cudf doesn't support inplace
+                result = result.sort_index()
         if hasattr(df, 'columns_value'):
             if getattr(df.columns_value, 'should_be_monotonic', False):
-                result.sort_index(axis=1, inplace=True)
+                try:
+                    result.sort_index(axis=1, inplace=True)
+                except TypeError:  # pragma: no cover
+                    # cudf doesn't support inplace
+                    result = result.sort_index(axis=1)
     return result
 
 
@@ -1095,141 +1108,6 @@ def replace_objects(nested: Union[List, Dict],
         return type(nested)(new_vals)
 
 
-@dataclass
-class _DelayedArgument:
-    args: Tuple
-    kwargs: Dict
-
-
-class _ExtensibleCallable:
-    func: Callable
-    batch_func: Optional[Callable]
-    is_async: bool
-
-    def __call__(self, *args, **kwargs):
-        if self.is_async:
-            return self._async_call(*args, **kwargs)
-        else:
-            return self._sync_call(*args, **kwargs)
-
-    async def _async_call(self, *args, **kwargs):
-        try:
-            return await self.func(*args, **kwargs)
-        except NotImplementedError:
-            if self.batch_func:
-                ret = await self.batch_func([args], [kwargs])
-                return None if ret is None else ret[0]
-            raise
-
-    def _sync_call(self, *args, **kwargs):
-        try:
-            return self.func(*args, **kwargs)
-        except NotImplementedError:
-            if self.batch_func:
-                return self.batch_func([args], [kwargs])[0]
-            raise
-
-
-class _ExtensibleWrapper(_ExtensibleCallable):
-    def __init__(self,
-                 func: Callable,
-                 batch_func: Callable = None,
-                 is_async: bool = False):
-        self.func = func
-        self.batch_func = batch_func
-        self.is_async = is_async
-
-    @staticmethod
-    def delay(*args, **kwargs):
-        return _DelayedArgument(args=args, kwargs=kwargs)
-
-    @staticmethod
-    def _gen_args_kwargs_list(delays):
-        args_list = list()
-        kwargs_list = list()
-        for delay in delays:
-            args_list.append(delay.args)
-            kwargs_list.append(delay.kwargs)
-        return args_list, kwargs_list
-
-    async def _async_batch(self, *delays):
-        if self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
-            return await self.batch_func(args_list, kwargs_list)
-        else:
-            # this function has no batch implementation
-            # call it separately
-            tasks = [asyncio.create_task(self.func(*d.args, **d.kwargs))
-                     for d in delays]
-            try:
-                return await asyncio.gather(*tasks)
-            except asyncio.CancelledError:
-                _ = [task.cancel() for task in tasks]
-                return await asyncio.gather(*tasks)
-
-    def _sync_batch(self, *delays):
-        if self.batch_func:
-            args_list, kwargs_list = self._gen_args_kwargs_list(delays)
-            return self.batch_func(args_list, kwargs_list)
-        else:
-            # this function has no batch implementation
-            # call it separately
-            return [self.func(*d.args, **d.kwargs) for d in delays]
-
-    def batch(self, *delays):
-        if self.is_async:
-            return self._async_batch(*delays)
-        else:
-            return self._sync_batch(*delays)
-
-
-class _ExtensibleAccessor(_ExtensibleCallable):
-    func: Callable
-    batch_func: Optional[Callable]
-
-    def __init__(self, func: Callable):
-        self.func = func
-        self.batch_func = None
-        self.is_async = asyncio.iscoroutinefunction(self.func)
-
-    def batch(self, func: Callable):
-        self.batch_func = func
-        return self
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            # calling from class
-            return self.func
-
-        func = self.func.__get__(instance, owner)
-        batch_func = self.batch_func.__get__(instance, owner) \
-            if self.batch_func is not None else None
-
-        return _ExtensibleWrapper(func, batch_func=batch_func,
-                                  is_async=self.is_async)
-
-
-def extensible(func: Callable):
-    """
-    `extensible` means this func could be functionality extended,
-    especially for batch operations.
-
-    Consider remote function calls, each function may have operations
-    like opening file, closing file, batching them can help to reduce the cost,
-    especially for remote function calls.
-
-    Parameters
-    ----------
-    func : callable
-        Function
-
-    Returns
-    -------
-    func
-    """
-    return _ExtensibleAccessor(func)
-
-
 # from https://github.com/ericvsmith/dataclasses/blob/master/dataclass_tools.py
 # released under Apache License 2.0
 def dataslots(cls):
@@ -1361,3 +1239,24 @@ def ensure_own_data(data: np.ndarray) -> np.ndarray:
         return data.copy()
     else:
         return data
+
+
+def get_chunk_key_to_data_keys(chunk_graph):
+    from .core.operand import FetchShuffle, MapReduceOperand, OperandStage
+
+    chunk_key_to_data_keys = dict()
+    for chunk in chunk_graph:
+        if chunk.key in chunk_key_to_data_keys:
+            continue
+        if not isinstance(chunk.op, FetchShuffle):
+            chunk_key_to_data_keys[chunk.key] = [chunk.key]
+        else:
+            keys = []
+            for succ in chunk_graph.iter_successors(chunk):
+                if isinstance(succ.op, MapReduceOperand) and \
+                        succ.op.stage == OperandStage.reduce:
+                    for key in succ.op.get_dependent_data_keys():
+                        if key not in keys:
+                            keys.append(key)
+            chunk_key_to_data_keys[chunk.key] = keys
+    return chunk_key_to_data_keys

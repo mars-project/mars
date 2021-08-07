@@ -42,7 +42,7 @@ async def actor_pool():
             if sys.platform != 'win32' else None
 
         pool = await mo.create_actor_pool('127.0.0.1', n_process=2,
-                                          labels=['main', 'sub', 'io'],
+                                          labels=['main', 'numa-0', 'io'],
                                           subprocess_start_method=start_method)
         await pool.start()
         return pool
@@ -90,18 +90,18 @@ async def create_actors(actor_pool):
 @pytest.mark.asyncio
 async def test_spill(create_actors):
     worker_address, _, _ = create_actors
-    storage_handler = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
-                                         address=worker_address)
+    storage_handler = await mo.actor_ref(
+        uid=StorageHandlerActor.gen_uid('numa-0'), address=worker_address)
 
     storage_manager = await mo.actor_ref(uid=StorageManagerActor.default_uid(),
                                          address=worker_address)
 
-    init_params = await storage_manager.get_client_params()
+    init_params = (await storage_manager.get_client_params())['numa-0']
     plasma_init_params = init_params['plasma']
     plasma_handler = PlasmaStorage(**plasma_init_params)
     memory_quota = await mo.actor_ref(
         StorageQuotaActor, StorageLevel.MEMORY, MEMORY_SIZE,
-        address=worker_address, uid=StorageQuotaActor.gen_uid(StorageLevel.MEMORY))
+        address=worker_address, uid=StorageQuotaActor.gen_uid('numa-0', StorageLevel.MEMORY))
 
     # fill to trigger spill
     session_id = 'mock_session'
@@ -137,7 +137,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
                   obj: object,
                   level: StorageLevel):
         size = calc_data_size(obj)
-        await self._request_quota_with_spill(level, size)
+        await self.request_quota_with_spill(level, size)
         # sleep to trigger `NoDataToSpill`
         await asyncio.sleep(0.5)
         object_info = await self._clients[level].put(obj)
@@ -168,10 +168,10 @@ async def create_actors_with_delay(actor_pool):
 @pytest.mark.asyncio
 async def test_spill_event(create_actors_with_delay):
     worker_address, sub_pool_address1, sub_pool_address2 = create_actors_with_delay
-    storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
-                                          address=sub_pool_address1)
-    storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.default_uid(),
-                                          address=sub_pool_address2)
+    storage_handler1 = await mo.actor_ref(
+        uid=StorageHandlerActor.gen_uid('numa-0'), address=sub_pool_address1)
+    storage_handler2 = await mo.actor_ref(
+        uid=StorageHandlerActor.gen_uid('numa-0'), address=sub_pool_address2)
     # total store size is 65536, single data size is around 40000
     # we put two data simultaneously
     data = np.random.randint(0, 10000, (5000,))

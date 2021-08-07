@@ -26,7 +26,7 @@ from ....core import ChunkGraph, TileableGraph
 from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy, OperandStage
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
-from ....utils import build_fetch, extensible
+from ....utils import build_fetch
 from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
@@ -163,7 +163,7 @@ class TaskProcessor:
                     # reducer
                     data_keys = chunk.op.get_dependent_data_keys()
                     incref_chunk_keys.extend(data_keys)
-                    # main key incref as well, to ensure existence of mata
+                    # main key incref as well, to ensure existence of meta
                     incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
@@ -199,7 +199,7 @@ class TaskProcessor:
                 [c.key for c in stage_processor.chunk_graph.results])
         return decref_chunk_keys
 
-    @extensible
+    @mo.extensible
     @_record_error
     async def decref_stage(self, stage_processor: "TaskStageProcessor"):
         decref_chunk_keys = self._get_decref_stage_chunk_keys(stage_processor)
@@ -228,7 +228,9 @@ class TaskProcessor:
         return chunk_graph
 
     async def _get_available_band_slots(self) -> Dict[BandType, int]:
-        return await self._cluster_api.get_all_bands()
+        async for bands in self._cluster_api.watch_all_bands():
+            if bands:
+                return bands
 
     def _init_chunk_graph_iter(self, tileable_graph: TileableGraph):
         if self._chunk_graph_iter is None:
@@ -462,6 +464,39 @@ class TaskProcessorActor(mo.Actor):
             tiled = processor.get_tiled(result_tileable)
             result.append(build_fetch(tiled))
         return result
+
+    def get_tileable_graph_as_dict(self):
+        processor = list(self._task_id_to_processor.values())[-1]
+        graph = processor.tileable_graph
+
+        node_list = []
+        edge_list = []
+
+        for node in graph.iter_nodes():
+            node_name = str(node.op)
+
+            node_list.append({
+                "tileable_id": node.key,
+                "tileable_name": node_name
+            })
+
+            for node_successor in graph.iter_successors(node):
+                edge_list.append({
+                    "from_tileable_id": node_successor.key,
+                    "from_tileable_name": str(node_successor.op),
+
+                    "to_tileable_id": node.key,
+                    "to_tileable_name": node_name,
+
+                    "linkType": 0,
+                })
+
+        graph_dict = {
+            "tileables": node_list,
+            "dependencies": edge_list
+            }
+
+        return graph_dict
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

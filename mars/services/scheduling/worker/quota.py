@@ -265,11 +265,14 @@ class MemQuotaActor(QuotaActor):
     Actor handling worker memory quota
     """
     def __init__(self, band: BandType, quota_size: int, hard_limit: int = None,
-                 refresh_time: Union[int, float] = None):
+                 refresh_time: Union[int, float] = None,
+                 enable_kill_slot: bool = True):
         super().__init__(band, quota_size)
         self._hard_limit = hard_limit
         self._last_memory_available = 0
         self._refresh_time = refresh_time or 1
+
+        self._enable_kill_slot = enable_kill_slot
 
         self._stat_refresh_task = None
         self._slot_manager_ref = None
@@ -312,13 +315,16 @@ class MemQuotaActor(QuotaActor):
             logger.warning('%s met hard memory limitation: request %d, available %d, hard limit %d',
                            self.uid, delta, available_size, self._hard_limit)
 
-            if self._slot_manager_ref is not None:  # pragma: no branch
+            if self._enable_kill_slot and self._slot_manager_ref is not None:
                 logger.info('Restarting free slots to obtain more memory')
                 await self._slot_manager_ref.restart_free_slots()
             return False
         return await super()._has_space(delta)
 
-    def _log_allocate(self, msg: str, *args, **kwargs):
+    def _log_allocate(self, msg: str, *args, **kwargs):  # pragma: no cover
+        if logger.getEffectiveLevel() > logging.DEBUG:
+            return
+
         if self._hard_limit is None:
             return super()._log_allocate(msg, *args, **kwargs)
 

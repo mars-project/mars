@@ -14,9 +14,10 @@
 
 from typing import Any, List
 
+from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage import StorageLevel
-from ....utils import serialize_serializable, deserialize_serializable, extensible
+from ....utils import serialize_serializable, deserialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import DataInfo
 from .core import AbstractStorageAPI
@@ -44,7 +45,7 @@ class StorageWebAPIHandler(MarsServiceWebAPIHandler):
         bands = (await meta_api.get_chunk_meta(object_id, ['bands'])).get('bands')
         if not bands:
             raise KeyError
-        return await StorageAPI.create(session_id, bands[0][0])
+        return await StorageAPI.create(session_id, bands[0][0], bands[0][1])
 
     @web_api('(?P<data_key>[^/]+)', method='get')
     async def get_data(self, session_id: str, data_key: str):
@@ -78,11 +79,15 @@ web_handlers = {
 
 
 class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
-    def __init__(self, session_id: str, address: str):
+    def __init__(self,
+                 session_id: str,
+                 address: str,
+                 band_name: str):
         self._session_id = session_id
         self._address = address.rstrip('/')
+        self._band_name = band_name
 
-    @extensible
+    @mo.extensible
     async def get(self,
                   data_key: str,
                   conditions: List = None,

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,5 +19,164 @@ msgstr ""
 
 #: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:2
 msgid "mars.learn.contrib.lightgbm.LGBMRanker"
+msgstr ""
+
+#: mars.learn.contrib.lightgbm.LGBMRanker.__init__:1 of
+msgid "Initialize self.  See help(type(self)) for accurate signature."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:13
+msgid "Methods"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`__init__ <mars.learn.contrib.lightgbm.LGBMRanker.__init__>`\\ "
+"\\(\\*args\\, \\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid "Initialize self."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`fit <mars.learn.contrib.lightgbm.LGBMRanker.fit>`\\ \\(X\\, y\\[\\,"
+" sample\\_weight\\, init\\_score\\, ...\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid "Build a gradient boosting model from the training set (X, y)."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`get_params <mars.learn.contrib.lightgbm.LGBMRanker.get_params>`\\ "
+"\\(\\[deep\\]\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid "Get parameters for this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`load_model <mars.learn.contrib.lightgbm.LGBMRanker.load_model>`\\ "
+"\\(model\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`predict <mars.learn.contrib.lightgbm.LGBMRanker.predict>`\\ \\(X\\,"
+" \\*\\*kw\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid "Return the predicted value for each sample."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`predict_proba "
+"<mars.learn.contrib.lightgbm.LGBMRanker.predict_proba>`\\ \\(X\\, "
+"\\*\\*kwargs\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ""
+":obj:`set_params <mars.learn.contrib.lightgbm.LGBMRanker.set_params>`\\ "
+"\\(\\*\\*params\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid "Set the parameters of this estimator."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:28:<autosummary>:1
+msgid ":obj:`to_local <mars.learn.contrib.lightgbm.LGBMRanker.to_local>`\\ \\(\\)"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:30
+msgid "Attributes"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+":obj:`best_iteration_ "
+"<mars.learn.contrib.lightgbm.LGBMRanker.best_iteration_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+"The best iteration of fitted model if ``early_stopping_rounds`` has been "
+"specified."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ":obj:`best_score_ <mars.learn.contrib.lightgbm.LGBMRanker.best_score_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The best score of fitted model."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ":obj:`booster_ <mars.learn.contrib.lightgbm.LGBMRanker.booster_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The underlying Booster of this model."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+":obj:`evals_result_ "
+"<mars.learn.contrib.lightgbm.LGBMRanker.evals_result_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The evaluation results if ``early_stopping_rounds`` has been specified."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+":obj:`feature_importances_ "
+"<mars.learn.contrib.lightgbm.LGBMRanker.feature_importances_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The feature importances (the higher, the more important)."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+":obj:`feature_name_ "
+"<mars.learn.contrib.lightgbm.LGBMRanker.feature_name_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The names of features."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ":obj:`n_features_ <mars.learn.contrib.lightgbm.LGBMRanker.n_features_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The number of features of fitted model."
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ""
+":obj:`n_features_in_ "
+"<mars.learn.contrib.lightgbm.LGBMRanker.n_features_in_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid ":obj:`objective_ <mars.learn.contrib.lightgbm.LGBMRanker.objective_>`\\"
+msgstr ""
+
+#: ../../source/reference/learn/generated/mars.learn.contrib.lightgbm.LGBMRanker.rst:41:<autosummary>:1
+msgid "The concrete objective used while fitting this model."
 msgstr ""
 

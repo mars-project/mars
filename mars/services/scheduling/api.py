@@ -18,7 +18,6 @@ from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
-from ...utils import extensible
 from ..subtask import Subtask
 
 APIType = TypeVar('APIType', bound='SchedulingAPI')
@@ -112,7 +111,7 @@ class SchedulingAPI(ABC):
             priorities = [subtask.priority or tuple() for subtask in subtasks]
         await self._manager_ref.add_subtasks(subtasks, priorities)
 
-    @extensible
+    @mo.extensible
     async def update_subtask_priority(self,
                                       subtask_id: str,
                                       priority: Tuple):

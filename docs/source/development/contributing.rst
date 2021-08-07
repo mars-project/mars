@@ -32,7 +32,6 @@ inside it:
     cd mars
     conda create -n mars-dev --file conda-spec.txt python=3.7
     source activate mars-dev
-    conda install -c conda-forge pyarrow tiledb-py
     pip install -e ".[dev]"
 
 Change ``3.7`` into the version of Python you want to install, and ``mars-dev``
@@ -75,6 +74,16 @@ the root of Mars project:
 
     python setup.py build_ext -i
 
+Rebuilding Frontend Code
+````````````````````````
+Mars uses `React <https://reactjs.org>`_ to build its frontend. You need to
+install `nodejs <https://nodejs.org>`_ to build it from source. After all
+dependencies installed, simply use command below to build your frontend code:
+
+.. code-block:: bash
+
+    python setup.py build_web
+
 Running Tests
 -------------
 It is recommended to use ``pytest`` to run Mars tests. A simple command below
@@ -102,6 +111,16 @@ To obtain coverage data about Cython files, you can run
 before running the pytest command mentioned above. After report is generated,
 it it recommended to remove all generated C files and binaries and rebuild
 without ``CYTHON_TRACE``, as this option will reduce the performance of Mars.
+
+Check Code Styles
+-----------------
+Before proposing changes to Mars, you need to make sure your code style meets
+our requirements. Mars uses `flake8 <https://flake8.pycqa.org>`_ to check
+Python code style.  Simply run command below to check your code style:
+
+.. code-block:: bash
+
+    flake8 mars
 
 Building Documentations
 -----------------------

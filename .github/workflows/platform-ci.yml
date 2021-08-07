@@ -56,12 +56,12 @@ jobs:
             pip install pandas\<1.3
           fi
 
-          pip install -e ".[dev,distributed]"
+          pip install -e ".[dev,extra]"
 
           if [[ $UNAME == "windows" ]]; then
-            pip install virtualenv flaky flake8
+            pip install virtualenv flaky
           else
-            pip install virtualenv flaky flake8 ray
+            pip install virtualenv flaky ray
             if [ -n "$WITH_KUBERNETES" ]; then
               ./.github/workflows/install-minikube.sh
               pip install kubernetes

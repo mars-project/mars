@@ -16,18 +16,13 @@ from itertools import product
 
 import numpy as np
 import pytest
-try:
-    import scipy as sp
-    import sklearn
-    from sklearn import datasets
-    from sklearn.utils._testing import assert_array_almost_equal, \
-        assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
-except ImportError:
-    sklearn = None
+import scipy as sp
+from sklearn import datasets
+from sklearn.utils._testing import assert_array_almost_equal, \
+    assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
 import mars.tensor as mt
-if sklearn:
-    from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
+from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
 
 
 iris = mt.tensor(datasets.load_iris().data)
@@ -35,7 +30,6 @@ iris = mt.tensor(datasets.load_iris().data)
 solver_list = ['full', 'randomized', 'auto']
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca(setup):
     X = iris
 
@@ -64,7 +58,6 @@ def test_pca(setup):
     np.testing.assert_allclose(pca.explained_variance_ratio_.sum().to_numpy(), 1.0, 3)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_randomized_solver(setup):
     # PCA on dense arrays
     X = iris
@@ -102,7 +95,6 @@ def test_pca_randomized_solver(setup):
                          svd_solver='randomized', random_state=0).svd_solver
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_whitening(setup):
     # Check that PCA output has unit-variance
     rng = np.random.RandomState(0)
@@ -151,7 +143,6 @@ def test_whitening(setup):
         # we always center, so no test for non-centering.
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_explained_variance(setup):
     # Check that PCA output has unit-variance
     rng = np.random.RandomState(0)
@@ -196,7 +187,6 @@ def test_explained_variance(setup):
                               rpca.explained_variance_ratio_.to_numpy(), 5)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_singular_values(setup):
     # Check that the PCA output has the correct singular values
 
@@ -249,7 +239,6 @@ def test_singular_values(setup):
     assert_array_almost_equal(rpca.singular_values_.fetch(), [3.142, 2.718, 1.0], 14)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_check_projection(setup):
     # Test that the projection of data is correct
     rng = np.random.RandomState(0)
@@ -265,7 +254,6 @@ def test_pca_check_projection(setup):
         assert_almost_equal(mt.abs(Yt[0][0]).to_numpy(), 1., 1)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_inverse(setup):
     # Test that the projection of data can be inverted
     rng = np.random.RandomState(0)
@@ -290,7 +278,6 @@ def test_pca_inverse(setup):
         assert_almost_equal(X.to_numpy(), Y_inverse.to_numpy(), decimal=3)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_validation(setup):
     for solver in solver_list:
         # Ensures that solver-specific extreme inputs for the n_components
@@ -322,7 +309,6 @@ def test_pca_validation(setup):
                              PCA(n_components, svd_solver=solver).fit, data)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_n_components_none(setup):
     for solver in solver_list:
         # Ensures that n_components == None is handled correctly
@@ -334,7 +320,6 @@ def test_n_components_none(setup):
             assert pca.n_components_ == min(data.shape)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_randomized_pca_check_projection(setup):
     # Test that the projection by randomized PCA on dense data is correct
     rng = np.random.RandomState(0)
@@ -350,7 +335,6 @@ def test_randomized_pca_check_projection(setup):
     assert_almost_equal(mt.abs(Yt[0][0]).to_numpy(), 1., 1)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_randomized_pca_check_list(setup):
     # Test that the projection by randomized PCA on list data is correct
     X = mt.tensor([[1.0, 0.0], [0.0, 1.0]])
@@ -361,7 +345,6 @@ def test_randomized_pca_check_list(setup):
     assert_almost_equal(X_transformed.std().to_numpy(), 0.71, 2)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_randomized_pca_inverse(setup):
     # Test that randomized PCA is inversible on dense data
     rng = np.random.RandomState(0)
@@ -386,7 +369,6 @@ def test_randomized_pca_inverse(setup):
     assert relative_max_delta.to_numpy() < 1e-5
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_n_components_mle(setup):
     # Ensure that n_components == 'mle' doesn't raise error for auto/full
     # svd_solver and raises error for arpack/randomized svd_solver
@@ -407,7 +389,6 @@ def test_n_components_mle(setup):
     assert n_components_dict['auto'] == n_components_dict['full']
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_dim(setup):
     # Check automated dimensionality setting
     rng = np.random.RandomState(0)
@@ -419,7 +400,6 @@ def test_pca_dim(setup):
     assert pca.n_components_ == 1
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_infer_dim_1(setup):
     # TODO: explain what this is testing
     # Or at least use explicit variable names...
@@ -434,7 +414,6 @@ def test_infer_dim_1(setup):
     assert ll[1] > ll.max() - .01 * n
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_infer_dim_2(setup):
     # TODO: explain what this is testing
     # Or at least use explicit variable names...
@@ -449,7 +428,6 @@ def test_infer_dim_2(setup):
     assert _infer_dimension(spect, n) > 1
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_infer_dim_3(setup):
     n, p = 100, 5
     rng = np.random.RandomState(0)
@@ -463,7 +441,6 @@ def test_infer_dim_3(setup):
     assert _infer_dimension(spect, n) > 2
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_infer_dim_by_explained_variance(setup):
     X = iris
     pca = PCA(n_components=0.95, svd_solver='full')
@@ -484,7 +461,6 @@ def test_infer_dim_by_explained_variance(setup):
     assert pca.n_components_ == 2
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_score(setup):
     # Test that probabilistic PCA scoring yields a reasonable score
     n, p = 1000, 3
@@ -498,7 +474,6 @@ def test_pca_score(setup):
         np.testing.assert_almost_equal((ll1 / h).to_numpy(), 1, 0)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_score2(setup):
     # Test that probabilistic PCA correctly separated different datasets
     n, p = 100, 3
@@ -518,7 +493,6 @@ def test_pca_score2(setup):
         assert ll1.fetch() > ll2.fetch()
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_score3(setup):
     # Check that probabilistic PCA selects the right model
     n, p = 200, 3
@@ -536,7 +510,6 @@ def test_pca_score3(setup):
     assert ll.argmax().to_numpy() == 1
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_score_with_different_solvers(setup):
     digits = datasets.load_digits()
     X_digits = mt.tensor(digits.data)
@@ -560,7 +533,6 @@ def test_pca_score_with_different_solvers(setup):
                         decimal=3)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_zero_noise_variance_edge_cases(setup):
     # ensure that noise_variance_ is 0 in edge cases
     # when n_components == min(n_samples, n_features)
@@ -581,7 +553,6 @@ def test_pca_zero_noise_variance_edge_cases(setup):
         assert pca.noise_variance_ == 0
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_svd_solver_auto(setup):
     rng = np.random.RandomState(0)
     X = mt.tensor(rng.uniform(size=(1000, 50)))
@@ -616,7 +587,6 @@ def test_svd_solver_auto(setup):
     assert_array_almost_equal(pca.components_.to_numpy(), pca_test.components_.to_numpy())
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_sparse_input(setup):
     for svd_solver in solver_list:
         X = np.random.RandomState(0).rand(5, 4)
@@ -628,7 +598,6 @@ def test_pca_sparse_input(setup):
         assert_raises(TypeError, pca.fit, X)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_bad_solver(setup):
     X = mt.tensor(np.random.RandomState(0).rand(5, 4))
     pca = PCA(n_components=3, svd_solver='bad_argument')
@@ -636,7 +605,6 @@ def test_pca_bad_solver(setup):
         pca.fit(X)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_dtype_preservation(setup):
     for svd_solver in solver_list:
         _check_pca_float_dtype_preservation(svd_solver)
@@ -684,7 +652,6 @@ def _check_pca_int_dtype_upcast_to_double(svd_solver):
                               decimal=5)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_pca_deterministic_output(setup):
     rng = np.random.RandomState(0)
     X = mt.tensor(rng.rand(10, 10))

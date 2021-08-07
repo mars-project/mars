@@ -18,8 +18,7 @@ import pytest
 
 from mars.learn.contrib.pytorch import run_pytorch_script
 from mars.utils import lazy_import
-import mars.dataframe as md
-# from mars.remote as mr
+
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
@@ -31,16 +30,4 @@ def test_distributed_run_py_torch_script(setup_cluster):
                         'pytorch_sample.py')
     assert run_pytorch_script(
         path, n_workers=2, command_argv=['multiple'],
-        port=9945, session=sess).fetch()['status'] == 'ok'
-
-@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_input(setup_cluster):
-    sess = setup_cluster
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        'my_script.py')
-
-    s = md.Series([1, 2, 3])
-
-    assert run_pytorch_script(
-        path, data = {"my_series": s.execute()}, n_workers=2, command_argv=['multiple'],
         port=9945, session=sess).fetch()['status'] == 'ok'

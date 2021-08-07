@@ -8,5 +8,6 @@ Boolean operations
    :toctree: generated/
    :nosignatures:
 
+   mars.tensor.in1d
    mars.tensor.isin
    mars.tensor.union1d

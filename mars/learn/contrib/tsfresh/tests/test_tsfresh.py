@@ -32,7 +32,7 @@ def test_distributed_ts_fresh(setup):
     robot_execution_failures.download_robot_execution_failures()
     df, y = robot_execution_failures.load_robot_execution_failures()
     default_session = get_default_session()
-    sync_session = new_session(default_session.address)
+    sync_session = new_session(default_session.address, default=False)
     dist = MarsDistributor(session=sync_session)
 
     df = df.iloc[:200].copy()

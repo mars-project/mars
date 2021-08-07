@@ -25,7 +25,6 @@ from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.scheduling.supervisor import AssignerActor, \
     SubtaskManagerActor, SubtaskQueueingActor, GlobalSlotManagerActor
 from mars.services.subtask import Subtask
-from mars.utils import extensible
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
@@ -102,7 +101,7 @@ class MockSubtaskManagerActor(mo.Actor):
     def __init__(self):
         self._subtask_ids, self._bands = [], []
 
-    @extensible
+    @mo.extensible
     def submit_subtask_to_band(self, subtask_id: str, band: Tuple):
         self._subtask_ids.append(subtask_id)
         self._bands.append(band)

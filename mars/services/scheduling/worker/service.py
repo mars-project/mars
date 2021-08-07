@@ -29,6 +29,14 @@ async def start(config: Dict, address: str):
     ----------
     config : dict
         service config.
+        {
+            "scheduling": {
+                "mem_quota_size": "80%",
+                "mem_hard_limit": "95%",
+                "enable_kill_slot": true,
+                "subtask_max_retries": 1
+            }
+        }
     address : str
         Actor pool address.
     """
@@ -40,6 +48,7 @@ async def start(config: Dict, address: str):
         scheduling_config.get('mem_quota_size', '80%'), total_mem)
     mem_hard_limit = calc_size_by_str(
         scheduling_config.get('mem_hard_limit', '95%'), total_mem)
+    enable_kill_slot = scheduling_config.get('enable_kill_slot', True)
     subtask_max_retries = scheduling_config.get('subtask_max_retries', DEFAULT_SUBTASK_MAX_RETRIES)
 
     await mo.create_actor(WorkerSlotManagerActor,
@@ -47,11 +56,13 @@ async def start(config: Dict, address: str):
                           address=address)
     await mo.create_actor(WorkerQuotaManagerActor,
                           default_config=dict(quota_size=mem_quota_size,
-                                              hard_limit=mem_hard_limit),
+                                              hard_limit=mem_hard_limit,
+                                              enable_kill_slot=enable_kill_slot),
                           uid=WorkerQuotaManagerActor.default_uid(),
                           address=address)
     await mo.create_actor(SubtaskExecutionActor,
                           subtask_max_retries=subtask_max_retries,
+                          enable_kill_slot=enable_kill_slot,
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
 

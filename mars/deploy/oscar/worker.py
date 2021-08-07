@@ -27,13 +27,17 @@ class WorkerCommandRunner(OscarCommandRunner):
     def __init__(self):
         super().__init__()
         self.band_to_slot = dict()
+        self.cuda_devices = []
         self.n_io_process = 1
 
     def config_args(self, parser):
         super().config_args(parser)
         parser.add_argument('--n-cpu', help='num of CPU to use', default='auto')
-        parser.add_argument('--n-gpu', help='num of GPU to use', default='auto')
         parser.add_argument('--n-io-process', help='num of IO processes', default='1')
+        parser.add_argument('--cuda-devices',
+                            help='CUDA device to use, if not specified, will use '
+                                 'all available devices',
+                            default='auto')
 
     def parse_args(self, parser, argv, environ=None):
         environ = environ or os.environ
@@ -48,11 +52,21 @@ class WorkerCommandRunner(OscarCommandRunner):
         self.n_io_process = int(args.n_io_process)
 
         n_cpu = cpu_count() if args.n_cpu == 'auto' else args.n_cpu
-        n_gpu = cuda_count() if args.n_gpu == 'auto' else args.n_gpu
+
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:  # pragma: no cover
+            args.cuda_devices = os.environ['CUDA_VISIBLE_DEVICES'].strip()
+
+        if args.cuda_devices == 'auto':
+            self.cuda_devices = list(range(cuda_count()))
+        elif args.cuda_devices.strip() == '':  # pragma: no cover
+            # allow using CPU only
+            self.cuda_devices = []
+        else:  # pragma: no cover
+            self.cuda_devices = [int(i) for i in args.cuda_devices.split(',')]
 
         self.band_to_slot = band_to_slot = dict()
         band_to_slot['numa-0'] = n_cpu
-        for i in range(n_gpu):  # pragma: no cover
+        for i in self.cuda_devices:  # pragma: no cover
             band_to_slot[f'gpu-{i}'] = 1
 
         storage_config = self.config['storage'] = self.config.get('storage', {})
@@ -75,6 +89,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             self.args.endpoint, self.band_to_slot, ports=self.ports,
             n_io_process=self.n_io_process, modules=list(self.args.load_modules),
             logging_conf=self.logging_conf,
+            cuda_devices=self.cuda_devices,
             subprocess_start_method='forkserver' if os.name != 'nt' else 'spawn'
         )
 

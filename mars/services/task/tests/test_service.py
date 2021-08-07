@@ -28,6 +28,7 @@ from mars.services.storage import MockStorageAPI
 from mars.services.web import WebActor
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus, WebTaskAPI
+from mars.services.task.errors import TaskNotExist
 from mars.utils import Timer
 
 
@@ -240,3 +241,76 @@ async def test_task_progress(start_test_service):
     await asyncio.sleep(1)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 1.0
+
+
+@pytest.mark.asyncio
+async def test_get_tileables(start_test_service):
+    _sv_pool_address, task_api, storage_api = start_test_service
+
+    def f1():
+        return np.arange(5)
+
+    def f2():
+        return np.arange(5, 10)
+
+    def f3(f1r, f2r):
+        return np.concatenate([f1r, f2r]).sum()
+
+    r1 = mr.spawn(f1)
+    r2 = mr.spawn(f2)
+    r3 = mr.spawn(f3, args=(r1, r2))
+
+    graph = TileableGraph([r3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    with pytest.raises(TaskNotExist):
+        await task_api.get_tileable_graph_dict_by_task_id("qffw2")
+
+    tileable_detail = await task_api.get_tileable_graph_dict_by_task_id(task_id)
+
+    num_tileable = len(tileable_detail.get("tileables"))
+    num_dependencies = len(tileable_detail.get("dependencies"))
+    assert  num_tileable > 0
+    assert  num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+
+    assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
+
+    graph_nodes = []
+    graph_dependencies = []
+    for node in graph.iter_nodes():
+        graph_nodes.append(node.key)
+
+        for node_successor in graph.iter_successors(node):
+            graph_dependencies.append({
+                "from_tileable_id": node_successor.key,
+                "from_tileable_name": str(node_successor.op),
+
+                "to_tileable_id": node.key,
+                "to_tileable_name": str(node.op),
+
+                "linkType": 0,
+            })
+
+    for tileable in tileable_detail.get("tileables"):
+        graph_nodes.remove(tileable.get("tileable_id"))
+
+    assert len(graph_nodes) == 0
+
+    for i in range(num_dependencies):
+        dependency = tileable_detail.get("dependencies")[i]
+        assert graph_dependencies[i].get("from_tileable_id") == \
+               dependency.get("from_tileable_id")
+
+        assert graph_dependencies[i].get("from_tileable_name") == \
+               dependency.get("from_tileable_name")
+
+        assert graph_dependencies[i].get("to_tileable_id") == \
+               dependency.get("to_tileable_id")
+
+        assert graph_dependencies[i].get("to_tileable_name") == \
+               dependency.get("to_tileable_name")
+
+        assert graph_dependencies[i].get("linkType") == \
+               dependency.get("linkType")

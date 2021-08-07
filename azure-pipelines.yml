@@ -69,8 +69,8 @@ jobs:
         else
           pip install numpy scipy cython
         fi
-        pip install -e ".[dev,distributed]"
-        pip install virtualenv flaky flake8
+        pip install -e ".[dev,extra]"
+        pip install virtualenv flaky
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then

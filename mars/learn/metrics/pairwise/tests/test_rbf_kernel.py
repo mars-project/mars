@@ -13,18 +13,11 @@
 # limitations under the License.
 
 import numpy as np
-import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics.pairwise import rbf_kernel as sklearn_rbf_kernel
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.metrics.pairwise import rbf_kernel as sklearn_rbf_kernel
 
 from mars.learn.metrics.pairwise import rbf_kernel
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_rbf_kernel(setup):
     rs = np.random.RandomState(0)
     raw_X = rs.rand(10, 4)

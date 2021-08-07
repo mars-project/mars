@@ -14,7 +14,7 @@
 
 from .run_script import run_pytorch_script
 from .dataset import MarsDataset
-from .sampler import MarsSequentialSampler, MarsRandomSampler
+from .sampler import SequentialSampler, RandomSampler, SubsetRandomSampler
 
 
 def register_op():

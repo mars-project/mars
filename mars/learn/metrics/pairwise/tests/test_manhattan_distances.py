@@ -15,18 +15,12 @@
 import numpy as np
 import scipy.sparse as sps
 import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics.pairwise import manhattan_distances as sk_manhattan_distances
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.metrics.pairwise import manhattan_distances as sk_manhattan_distances
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import manhattan_distances
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_manhattan_distances():
     x = mt.random.randint(10, size=(10, 3), density=0.4)
     y = mt.random.randint(10, size=(11, 3), density=0.5)
@@ -62,7 +56,6 @@ x4 = mt.tensor(raw_sparse_x, chunk_size=11)
 y4 = mt.tensor(raw_sparse_y, chunk_size=12)
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('x, y, is_sparse',
                          [(x1, y1, False),
                           (x2, y2, False),

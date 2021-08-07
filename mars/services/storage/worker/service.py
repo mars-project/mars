@@ -24,11 +24,10 @@ async def start(config: dict, address: str):
     config
         storage service config.
         {
-            "storage":
-                {
-                    "backends": ["plasma"],
-                    "<storage backend name>"： "<setup params>",
-                }
+            "storage": {
+                "backends": ["plasma"],
+                "<storage backend name>"： "<setup params>",
+            }
         }
     address
         address of actor pool
@@ -37,7 +36,7 @@ async def start(config: dict, address: str):
     backends = storage_configs.get('backends')
     options = storage_configs.get('default_config', dict())
     transfer_block_size = options.get('transfer_block_size', None)
-    backend_config = {backend: storage_configs.get(backend)
+    backend_config = {backend: storage_configs.get(backend, dict())
                       for backend in backends}
 
     await mo.create_actor(StorageManagerActor,
