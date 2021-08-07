@@ -12,27 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.learn.contrib.xgboost import train
 import pytest
-import os
 
 import mars.tensor as mt
 import mars.dataframe as md
-import numpy as np
-import pandas as pd
-from mars.session import new_session
 from mars.utils import lazy_import
 from mars.learn.contrib.pytorch import MarsDataset, RandomSampler, SequentialSampler, SubsetRandomSampler
-from mars.learn.contrib.pytorch import run_pytorch_script
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_MarsDataset(setup_cluster):
-    import torch
     from torch.utils.data import Dataset
     import numpy as np
+    import pandas as pd
 
     # Mars tensor
     data = mt.random.rand(1000, 32, dtype='f4')
@@ -42,6 +36,7 @@ def test_MarsDataset(setup_cluster):
     labels_verify = labels[0].execute().fetch()
 
     train_dataset = MarsDataset(data, labels)
+    assert isinstance(train_dataset, Dataset)
     assert (train_dataset[0][0] == data_verify).all()
     assert (train_dataset[0][1] == labels_verify).all()
     assert len(train_dataset) == 1000
@@ -82,7 +77,6 @@ def test_MarsDataset(setup_cluster):
     assert (train_dataset[0][0] == data_verify).all()
     assert train_dataset[0][1] == label_verify
     assert len(train_dataset) == 1000
-
 
     # pandas dataframe
     data = pd.DataFrame(np.random.rand(1000, 32))
@@ -143,7 +137,6 @@ def test_SequentialSampler(setup_cluster):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-    
 
 
 def test_RandomSampler(setup_cluster):
@@ -205,7 +198,6 @@ def test_RandomSampler(setup_cluster):
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_SubsetRandomSampler(setup_cluster):
-    import torch
     import numpy as np
 
     data = mt.random.rand(1000, 32, dtype='f4')

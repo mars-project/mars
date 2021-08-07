@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import math
-from typing import Generator, Iterator, Sized, Sequence, List
+from typing import Iterator, Sized, Sequence
 
 try:
     import torch
-    from torch import Tensor
     from torch.utils.data import Sampler
-except ImportError:  
+except ImportError:
     torch = None
     Sampler = object
 
@@ -28,7 +26,7 @@ from ....utils import require_not_none
 
 @require_not_none(torch)
 class SequentialSampler(Sampler):
-    r""""Note: recommend to use torch original API SequentialSampler. 
+    r"""" 
     Samples elements sequentially, always in the same order.
 
     Args:
@@ -45,9 +43,10 @@ class SequentialSampler(Sampler):
     def __len__(self) -> int:
         return len(self.data_source)
 
+
 @require_not_none(torch)
 class RandomSampler(Sampler):
-    r""""Note: recommend to use torch original API RandomSampler. 
+    r""""
     Samples elements randomly. If without replacement, then sample from a shuffled dataset.
     If with replacement, then user can specify :attr:`num_samples` to draw.
 
@@ -68,15 +67,15 @@ class RandomSampler(Sampler):
         self._num_samples = num_samples
         self.generator = generator
 
-        if not isinstance(self.replacement, bool):  
+        if not isinstance(self.replacement, bool):
             raise ValueError("replacement should be a boolean value, but got "
                              f"replacement={self.replacement}")
 
-        if self._num_samples is not None and not replacement:  
+        if self._num_samples is not None and not replacement:
             raise ValueError("With replacement=False, num_samples should not be specified, "
                              "since a random permute will be performed.")
 
-        if not isinstance(self.num_samples, int) or self.num_samples <= 0:  
+        if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError("num_samples should be a positive integer "
                              f"value, but got num_samples={self.num_samples}")
 
@@ -94,7 +93,7 @@ class RandomSampler(Sampler):
             generator.manual_seed(int(torch.empty((), dtype=torch.int64).random_().item()))
         else:
             generator = self.generator
-        if self.replacement:  
+        if self.replacement:
             for _ in range(self.num_samples // 32):
                 yield from torch.randint(high=n, size=(32,), dtype=torch.int64, generator=generator).tolist()
             yield from torch.randint(high=n, size=(self.num_samples % 32,), dtype=torch.int64, generator=generator).tolist()
@@ -104,9 +103,10 @@ class RandomSampler(Sampler):
     def __len__(self) -> int:
         return self.num_samples
 
+
 @require_not_none(torch)
 class SubsetRandomSampler(Sampler):
-    r"""Note: recommend to use torch original API RandomSampler. 
+    r"""
     Samples elements randomly from a given list of indices, without replacement.
 
     Args:

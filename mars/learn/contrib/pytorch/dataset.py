@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.core.entity.tileables import Tileable
 import numpy as np
 import pandas as pd
 try:
     import torch
     from torch.utils.data import Dataset
-except ImportError:  
+except ImportError:
     torch = None
     Dataset = object
 
@@ -30,9 +29,14 @@ from ....utils import require_not_none
 
 @require_not_none(torch)
 class MarsDataset(Dataset):
+    r"""MarsDataset that inherit from torch.utils.data.Dataset.
+    It converts from Mars basic datatype such as Tensor, 
+    DataFrame, Series. Additionally, it's constructor can receive
+    np.ndarray, pd.DataFrame, pd.Series type.
+    """
     def __init__(self, *tileables):
 
-        self._context = get_context() 
+        self._context = get_context()
         self._tileables = tileables
 
     def __len__(self):
