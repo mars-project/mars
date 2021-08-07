@@ -12,7 +12,7 @@ jobs:
         python-version: [3.6, 3.7, 3.8, 3.9, 3.8-cython]
         include:
           - { os: ubuntu-latest, python-version: 3.8-cython, no-common-tests: 1,
-              no-deploy: 1, with-cython: 1, with-flake8: 1 }
+              no-deploy: 1, with-cython: 1 }
 
     steps:
     - name: Check out code
@@ -52,8 +52,8 @@ jobs:
 
         pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
-        pip install -e ".[dev,distributed]"
-        pip install virtualenv flaky flake8
+        pip install -e ".[dev,extra]"
+        pip install virtualenv flaky
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
@@ -75,26 +75,9 @@ jobs:
             pip install torch torchvision
             pip install statsmodels tsfresh
           fi
-          virtualenv testenv && source testenv/bin/activate
-          pip install -e . && pip install pytest pytest-timeout
-          if [ -z "$DEFAULT_VENV" ]; then
-            deactivate
-          else
-            source $DEFAULT_VENV/bin/activate
-          fi
         fi
         retry ./.github/workflows/download-etcd.sh
         conda list -n test
-
-    - name: Lint with flake8
-      shell: bash
-      if: success() && matrix.with-flake8 == 1
-      run: |
-        source ./ci/reload-env.sh
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 mars --count --select=E9,E111,E225,E302,E303,E901,E999,F7,F63,F82,F401,F811,F821,F822,F823,F841,W291,W292,W391,W605 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 mars --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Test with pytest
       env:

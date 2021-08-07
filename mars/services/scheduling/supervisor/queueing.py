@@ -22,7 +22,7 @@ from typing import DefaultDict, Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
-from ....utils import dataslots, extensible
+from ....utils import dataslots
 from ...subtask import Subtask
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors
@@ -110,7 +110,7 @@ class SubtaskQueueingActor(mo.Actor):
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
-    @alru_cache
+    @alru_cache(cache_exceptions=False)
     async def _get_manager_ref(self):
         from .manager import SubtaskManagerActor
         return await mo.actor_ref(
@@ -168,6 +168,7 @@ class SubtaskQueueingActor(mo.Actor):
                         logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
                         submit_aio_tasks.append(asyncio.create_task(
                             manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
+                        await asyncio.sleep(0)
                         self.remove_queued_subtasks([item.subtask.subtask_id])
                 else:
                     logger.debug('No slots available')
@@ -176,9 +177,9 @@ class SubtaskQueueingActor(mo.Actor):
                 heapq.heappush(task_queue, submit_items[stid])
 
         if submit_aio_tasks:
-            await asyncio.gather(*submit_aio_tasks)
+            yield asyncio.gather(*submit_aio_tasks)
 
-    @extensible
+    @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
         if subtask_id not in self._stid_to_bands:
             return

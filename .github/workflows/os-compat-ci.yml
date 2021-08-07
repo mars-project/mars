@@ -39,22 +39,8 @@ jobs:
 
         pip install git+https://github.com/mars-project/pytest-asyncio.git
         pip install numpy scipy cython
-        pip install -e ".[dev,distributed]"
-
-        if [[ $UNAME == "windows" ]]; then
-          pip install virtualenv flaky flake8
-        else
-          pip install virtualenv flaky flake8
-          if [ -z "$NO_COMMON_TESTS" ]; then
-            virtualenv testenv && source testenv/bin/activate
-            pip install -e . && pip install pytest pytest-timeout
-            if [ -z "$DEFAULT_VENV" ]; then
-              deactivate
-            else
-              source $DEFAULT_VENV/bin/activate
-            fi
-          fi
-        fi
+        pip install -e ".[dev,extra]"
+        pip install virtualenv flaky
         conda list -n test
 
     - name: Test with pytest

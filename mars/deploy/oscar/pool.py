@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from itertools import count
+import os
 from typing import Dict, List
 
 from ... import oscar as mo
+from ...resource import cuda_count
 
 try:
     from IPython import get_ipython
@@ -44,17 +45,27 @@ async def create_worker_actor_pool(
         n_io_process: int = 1,
         modules: List[str] = None,
         ports: List[int] = None,
+        cuda_devices: List[int] = None,
         subprocess_start_method: str = None,
         **kwargs):
     # TODO: support NUMA when ready
     n_process = sum(slot for slot in band_to_slots.values())
     envs = []
     labels = ['main']
-    i_gpu = count()
+
+    if cuda_devices is None:  # pragma: no cover
+        env_devices = os.environ.get('CUDA_VISIBLE_DEVICES')
+        if not env_devices:
+            cuda_devices = list(range(cuda_count()))
+        else:
+            cuda_devices = [int(i) for i in env_devices.split(',')]
+
+    i_gpu = iter(sorted(cuda_devices))
     for band, slot in band_to_slots.items():
         if band.startswith('gpu'):  # pragma: no cover
-            envs.append({'CUDA_VISIBLE_DEVICES': str(next(i_gpu))})
-            labels.append(band)
+            idx = str(next(i_gpu))
+            envs.append({'CUDA_VISIBLE_DEVICES': idx})
+            labels.append(f'gpu-{idx}')
         else:
             assert band.startswith('numa')
             envs.extend([dict() for _ in range(slot)])

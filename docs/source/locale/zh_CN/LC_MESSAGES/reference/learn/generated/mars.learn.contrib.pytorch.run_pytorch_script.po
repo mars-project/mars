@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 16:57+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,32 +30,40 @@ msgid "Parameters"
 msgstr ""
 
 #: mars.learn.contrib.pytorch.run_pytorch_script:3 of
-msgid "script to run"
+msgid "Script to run"
 msgstr ""
 
 #: mars.learn.contrib.pytorch.run_pytorch_script:5 of
-msgid "number of PyTorch workers"
-msgstr ""
-
-#: mars.learn.contrib.pytorch.run_pytorch_script:6 of
-msgid "run PyTorch script on GPU"
+msgid "Number of PyTorch workers"
 msgstr ""
 
 #: mars.learn.contrib.pytorch.run_pytorch_script:7 of
-msgid "extra command args for script"
-msgstr ""
-
-#: mars.learn.contrib.pytorch.run_pytorch_script:8 of
-msgid "Mars session, if not provided, will use default one"
+msgid "Variable name to data."
 msgstr ""
 
 #: mars.learn.contrib.pytorch.run_pytorch_script:9 of
-msgid "extra kwargs for session.run"
+msgid "Run PyTorch script on GPU"
 msgstr ""
 
-#: mars.learn.contrib.pytorch.run_pytorch_script:10 of
+#: mars.learn.contrib.pytorch.run_pytorch_script:11 of
+msgid "Extra command args for script"
+msgstr ""
+
+#: mars.learn.contrib.pytorch.run_pytorch_script:13 of
+msgid "If True, retry when function failed."
+msgstr ""
+
+#: mars.learn.contrib.pytorch.run_pytorch_script:15 of
+msgid "Mars session, if not provided, will use default one."
+msgstr ""
+
+#: mars.learn.contrib.pytorch.run_pytorch_script:16 of
+msgid "Extra kwargs for `session.run`."
+msgstr ""
+
+#: mars.learn.contrib.pytorch.run_pytorch_script:18 of
 msgid ""
-"port of PyTorch worker or ps, will automatically increase for the same "
+"Port of PyTorch worker or ps, will automatically increase for the same "
 "worker"
 msgstr ""
 
@@ -63,7 +71,11 @@ msgstr ""
 msgid "Returns"
 msgstr ""
 
-#: mars.learn.contrib.pytorch.run_pytorch_script:11 of
+#: mars.learn.contrib.pytorch.run_pytorch_script:21 of
 msgid "return {'status': 'ok'} if succeeded, or error raised"
+msgstr ""
+
+#: mars.learn.contrib.pytorch.run_pytorch_script of
+msgid "Return type"
 msgstr ""
 

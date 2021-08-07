@@ -177,6 +177,11 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         return new_op.new_tileables(op.inputs, kws=[params])
 
     @classmethod
+    def estimate_size(cls, ctx: dict, op: "DataFrameSetitem"):
+        result_size = ctx[op.target.key][0]
+        ctx[op.outputs[0].key] = (result_size, result_size)
+
+    @classmethod
     def execute(cls, ctx, op):
         target = ctx[op.target.key].copy()
         value = ctx[op.value.key] if not np.isscalar(op.value) else op.value

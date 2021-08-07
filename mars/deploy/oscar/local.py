@@ -17,7 +17,9 @@ import atexit
 import logging
 import sys
 from concurrent.futures import Future as SyncFuture
-from typing import Dict, Union
+from typing import Dict, List, Union
+
+import numpy as np
 
 from ... import oscar as mo
 from ...lib.aio import get_isolation, stop_isolation
@@ -41,7 +43,7 @@ async def new_cluster_in_isolation(
         address: str = '0.0.0.0',
         n_worker: int = 1,
         n_cpu: Union[int, str] = 'auto',
-        n_gpu: Union[int, str] = 'auto',
+        cuda_devices: Union[List[int], str] = 'auto',
         subprocess_start_method: str = None,
         backend: str = None,
         config: Union[str, Dict] = None,
@@ -50,7 +52,7 @@ async def new_cluster_in_isolation(
     if subprocess_start_method is None:
         subprocess_start_method = \
             'spawn' if sys.platform == 'win32' else 'forkserver'
-    cluster = LocalCluster(address, n_worker, n_cpu, n_gpu,
+    cluster = LocalCluster(address, n_worker, n_cpu, cuda_devices,
                            subprocess_start_method, config, web)
     await cluster.start()
     return await LocalClient.create(cluster, backend, timeout)
@@ -59,14 +61,14 @@ async def new_cluster_in_isolation(
 async def new_cluster(address: str = '0.0.0.0',
                       n_worker: int = 1,
                       n_cpu: Union[int, str] = 'auto',
-                      n_gpu: Union[int, str] = 'auto',
+                      cuda_devices: Union[List[int], str] = 'auto',
                       subprocess_start_method: str = None,
                       config: Union[str, Dict] = None,
                       web: bool = True,
                       loop: asyncio.AbstractEventLoop = None,
                       use_uvloop: Union[bool, str] = 'auto') -> ClientType:
     coro = new_cluster_in_isolation(
-        address, n_worker=n_worker, n_cpu=n_cpu, n_gpu=n_gpu,
+        address, n_worker=n_worker, n_cpu=n_cpu, cuda_devices=cuda_devices,
         subprocess_start_method=subprocess_start_method,
         config=config, web=web)
     isolation = ensure_isolation_created(
@@ -89,7 +91,7 @@ class LocalCluster:
                  address: str = '0.0.0.0',
                  n_worker: int = 1,
                  n_cpu: Union[int, str] = 'auto',
-                 n_gpu: Union[int, str] = 'auto',
+                 cuda_devices: Union[List[int], List[List[int]], str] = 'auto',
                  subprocess_start_method: str = None,
                  config: Union[str, Dict] = None,
                  web: Union[bool, str] = 'auto',
@@ -101,17 +103,33 @@ class LocalCluster:
         self._subprocess_start_method = subprocess_start_method
         self._config = config
         self._n_cpu = cpu_count() if n_cpu == 'auto' else n_cpu
-        self._n_gpu = cuda_count() if n_gpu == 'auto' else n_gpu
+        if cuda_devices == 'auto':
+            total = cuda_count()
+            all_devices = np.arange(total)
+            devices_list = [list(arr) for arr
+                            in np.array_split(all_devices, n_worker)]
+
+        else:  # pragma: no cover
+            if isinstance(cuda_devices[0], int):
+                assert n_worker == 1
+                devices_list = [cuda_devices]
+            else:
+                assert len(cuda_devices) == n_worker
+                devices_list = cuda_devices
+
         self._n_worker = n_worker
         self._web = web
-
-        self._band_to_slot = band_to_slot = dict()
+        self._bands_to_slot = bands_to_slot = []
         worker_cpus = self._n_cpu // n_worker
-        assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
-                                f"for {n_worker}, try to decrease workers."
-        band_to_slot['numa-0'] = worker_cpus
-        for i in range(self._n_gpu):  # pragma: no cover
-            band_to_slot[f'gpu-{i}'] = 1
+        if sum(len(devices) for devices in devices_list) == 0:
+            assert worker_cpus > 0, f"{self._n_cpu} cpus are not enough " \
+                                    f"for {n_worker}, try to decrease workers."
+        for _, devices in zip(range(n_worker), devices_list):
+            worker_band_to_slot = dict()
+            worker_band_to_slot['numa-0'] = worker_cpus
+            for i in devices:  # pragma: no cover
+                worker_band_to_slot[f'gpu-{i}'] = 1
+            bands_to_slot.append(worker_band_to_slot)
         self._supervisor_pool = None
         self._worker_pools = []
 
@@ -155,9 +173,9 @@ class LocalCluster:
     async def _start_worker_pools(self):
         worker_modules = get_third_party_modules_from_config(
                 self._config, NodeRole.WORKER)
-        for _ in range(self._n_worker):
+        for band_to_slot in self._bands_to_slot:
             worker_pool = await create_worker_actor_pool(
-                self._address, self._band_to_slot, modules=worker_modules,
+                self._address, band_to_slot, modules=worker_modules,
                 subprocess_start_method=self._subprocess_start_method)
             self._worker_pools.append(worker_pool)
 
@@ -165,11 +183,12 @@ class LocalCluster:
         self._web = await start_supervisor(
             self.supervisor_address, config=self._config,
             web=self._web)
-        for worker_pool in self._worker_pools:
+        for worker_pool, band_to_slot in zip(
+                self._worker_pools, self._bands_to_slot):
             await start_worker(
                 worker_pool.external_address,
                 self.supervisor_address,
-                self._band_to_slot,
+                band_to_slot,
                 config=self._config)
 
     async def stop(self):

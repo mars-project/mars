@@ -37,7 +37,7 @@ from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
 
-    
+
 def test_nearest_neighbors(setup):
     rs = np.random.RandomState(0)
     raw_X = rs.rand(10, 5)
@@ -396,7 +396,7 @@ def test_proxima_nearest_neighbors_execution(setup):
 
 @require_cupy
 @pytest.mark.skipif(cupy is None or faiss is None, reason='either cupy or faiss not installed')
-def test_gpu_faiss_nearest_neighbors_execution():
+def test_gpu_faiss_nearest_neighbors_execution(setup_gpu):
     rs = np.random.RandomState(0)
 
     raw_X = rs.rand(10, 5)

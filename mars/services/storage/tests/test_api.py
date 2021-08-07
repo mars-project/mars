@@ -79,7 +79,7 @@ storage_configs.append({'shared_memory': dict()})
 async def test_storage_mock_api(ray_start_regular, storage_configs):
     start_method = 'fork' if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', 2,
-                                      labels=['main', 'sub', 'io'],
+                                      labels=['main', 'numa-0', 'io'],
                                       subprocess_start_method=start_method)
     async with pool:
         session_id = 'mock_session_id'
@@ -97,7 +97,6 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
         value2 = pd.DataFrame({'col1': [str(i) for i in range(10)],
                                'col2': np.random.randint(0, 100, (10,))})
         await storage_api.put('data2', value2)
-        await storage_api.fetch('data2')
         get_value2 = await storage_api.get('data2')
         pd.testing.assert_frame_equal(value2, get_value2)
 
@@ -108,9 +107,6 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
         assert infos[0].store_size > 0
 
         await storage_api.delete('data2')
-
-        await storage_api.fetch('data1')
-
         buffers = await AioSerializer(value2).run()
         size = sum(getattr(buf, 'nbytes', len(buf)) for buf in buffers)
         # test open_reader and open_writer
@@ -158,7 +154,7 @@ async def test_web_storage_api():
         await mo.create_actor(WebActor, web_config, address=pool.external_address)
 
         web_storage_api = WebStorageAPI(
-            session_id, f'http://127.0.0.1:{web_config["port"]}')
+            session_id, f'http://127.0.0.1:{web_config["port"]}', 'numa-0')
 
         value = np.random.rand(10, 10)
         t = mt.random.rand(10, 10)

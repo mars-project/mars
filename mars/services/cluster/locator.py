@@ -18,7 +18,6 @@ from typing import List, Optional
 
 from ... import oscar as mo
 from ...lib.uhashring import HashRing
-from ...utils import extensible
 from .backends import AbstractClusterBackend, get_cluster_backend
 from .core import NodeRole, WatchNotifier
 
@@ -77,7 +76,7 @@ class SupervisorLocatorActor(mo.Actor):
         else:
             return await self._get_supervisors_from_backend(filter_ready=filter_ready)
 
-    @extensible
+    @mo.extensible
     def get_supervisor(self, key: str, size=1):
         if self._supervisors is None:  # pragma: no cover
             return None

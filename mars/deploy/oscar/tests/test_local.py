@@ -173,10 +173,15 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
+def _my_func():
+    print('output from function')
+
+
 async def _run_web_session_test(web_address):
     session_id = str(uuid.uuid4())
     session = await AsyncSession.init(web_address, session_id)
     session.as_default()
+
     raw = np.random.RandomState(0).rand(10, 10)
     a = mt.tensor(raw, chunk_size=5)
     b = a + 1
@@ -188,6 +193,20 @@ async def _run_web_session_test(web_address):
     assert info.progress() == 1
     np.testing.assert_equal(raw + 1, await session.fetch(b))
     del a, b
+
+    r = mr.spawn(_my_func)
+    info = await session.execute(r)
+    await info
+    assert info.result() is None
+    assert info.exception() is None
+    assert info.progress() == 1
+    assert 'output from function' in str(r.fetch_log(session=session))
+    assert 'output from function' in str(r.fetch_log(session=session,
+                                                     offsets='0k',
+                                                     sizes=[1000]))
+    assert 'output from function' in str(r.fetch_log(session=session,
+                                                     offsets={r.op.key: '0k'},
+                                                     sizes=[1000]))
 
     AsyncSession.reset_default()
     await session.destroy()
@@ -209,8 +228,7 @@ async def test_web_session(create_cluster):
 
 
 def test_sync_execute():
-    session = new_session(n_cpu=2, default=True,
-                          web=False, use_uvloop=False)
+    session = new_session(n_cpu=2, web=False, use_uvloop=False)
 
     # web not started
     assert session._session.client.web_address is None
@@ -274,7 +292,7 @@ def test_no_default_session():
 
 @pytest.fixture
 def setup_session():
-    session = new_session(n_cpu=2, default=True, use_uvloop=False)
+    session = new_session(n_cpu=2, use_uvloop=False)
     assert session.get_web_endpoint() is not None
 
     with session:
@@ -401,22 +419,18 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
 
     config['third_party_modules'] = set()
     with pytest.raises(TypeError, match='set'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
     with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
-        new_session(n_cpu=2, default=True,
-                    web=False, config=config)
+        new_session(n_cpu=2, web=False, config=config)
 
     config['third_party_modules'] = ['mars.deploy.oscar.tests.modules.replace_op']
-    session = new_session(n_cpu=2, default=True,
-                          web=False, config=config)
+    session = new_session(n_cpu=2, web=False, config=config)
     # web not started
     assert session._session.client.web_address is None
 
@@ -432,8 +446,8 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     session.stop_server()
     assert get_default_session() is None
 
-    session = new_session(n_cpu=2, default=True,
-                          web=False, config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
+    session = new_session(n_cpu=2, web=False,
+                          config=CONFIG_THIRD_PARTY_MODULES_TEST_FILE)
     # web not started
     assert session._session.client.web_address is None
 

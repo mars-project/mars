@@ -14,142 +14,142 @@
 
 import numpy as np
 import pytest
-try:
-    import scipy
-    import scipy.sparse as sps
-    import scipy.special as spspecial
-
-    from mars.tensor import special as mt_special
-except ImportError:
-    scipy = None
+import scipy.sparse as sps
+import scipy.special as spspecial
 
 from mars.tensor import tensor
+from mars.tensor import special as mt_special
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
-def test_unary_execution(setup):
-    funcs = [
-        'gamma',
-        'gammaln',
-        'loggamma',
-        'gammasgn',
-        'psi',
-        'rgamma',
-        'digamma',
-        'erf',
-        'entr',
-    ]
+@pytest.mark.parametrize('func', [
+    'gamma',
+    'gammaln',
+    'loggamma',
+    'gammasgn',
+    'psi',
+    'rgamma',
+    'digamma',
+    'erf',
+    'entr',
+])
+def test_unary_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
 
-    for func in funcs:
-        sp_func = getattr(spspecial, func)
-        mt_func = getattr(mt_special, func)
+    raw = np.random.rand(10, 8, 6)
+    a = tensor(raw, chunk_size=3)
 
-        raw = np.random.rand(10, 8, 6)
-        a = tensor(raw, chunk_size=3)
+    r = mt_func(a)
 
-        r = mt_func(a)
+    result = r.execute().fetch()
+    expected = sp_func(raw)
 
-        result = r.execute().fetch()
-        expected = sp_func(raw)
+    np.testing.assert_array_equal(result, expected)
 
-        np.testing.assert_array_equal(result, expected)
+    # test sparse
+    raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
+    a = tensor(raw, chunk_size=3)
 
-        # test sparse
-        raw = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan]))
-        a = tensor(raw, chunk_size=3)
+    r = mt_func(a)
 
-        r = mt_func(a)
+    result = r.execute().fetch()
 
-        result = r.execute().fetch()
+    data = sp_func(raw.data)
+    expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
 
-        data = sp_func(raw.data)
-        expected = sps.csr_matrix((data, raw.indices, raw.indptr), raw.shape)
-
-        np.testing.assert_array_equal(result.toarray(), expected.toarray())
+    np.testing.assert_array_equal(result.toarray(), expected.toarray())
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
-def test_binary_execution(setup):
-    funcs = [
-        'gammainc',
-        'gammaincinv',
-        'gammaincc',
-        'gammainccinv',
-        'beta',
-        'betaln',
-        'polygamma',
-        'poch',
-        'rel_entr',
-        'kl_div',
-        'xlogy',
-    ]
+@pytest.mark.parametrize('func', [
+    'gammainc',
+    'gammaincinv',
+    'gammaincc',
+    'gammainccinv',
+    'beta',
+    'betaln',
+    'polygamma',
+    'poch',
+    'rel_entr',
+    'kl_div',
+    'xlogy',
+    'jv',
+    'jve',
+    'yn',
+    'yv',
+    'yve',
+    'kn',
+    'kv',
+    'kve',
+    'iv',
+    'ive',
+    'hankel1',
+    'hankel1e',
+    'hankel2',
+    'hankel2e',
+])
+def test_binary_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
 
-    for func in funcs:
-        sp_func = getattr(spspecial, func)
-        mt_func = getattr(mt_special, func)
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
 
-        raw1 = np.random.rand(4, 3, 2)
-        raw2 = np.random.rand(4, 3, 2)
-        a = tensor(raw1, chunk_size=3)
-        b = tensor(raw2, chunk_size=3)
+    r = mt_func(a, b)
 
-        r = mt_func(a, b)
+    result = r.execute().fetch()
+    expected = sp_func(raw1, raw2)
 
-        result = r.execute().fetch()
-        expected = sp_func(raw1, raw2)
+    np.testing.assert_array_equal(result, expected)
 
-        np.testing.assert_array_equal(result, expected)
+    # test sparse
+    raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
+    a = tensor(raw1, chunk_size=3)
+    raw2 = np.random.rand(4, 3)
+    b = tensor(raw2, chunk_size=3)
 
-        # test sparse
-        raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
-        a = tensor(raw1, chunk_size=3)
-        raw2 = np.random.rand(4, 3)
-        b = tensor(raw2, chunk_size=3)
+    r = mt_func(a, b)
 
-        r = mt_func(a, b)
+    result = r.execute().fetch()
 
-        result = r.execute().fetch()
-
-        expected = sp_func(raw1.toarray(), raw2)
-        np.testing.assert_array_equal(result.toarray(), expected)
+    expected = sp_func(raw1.toarray(), raw2)
+    np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.skipif(scipy is None, reason='scipy not installed')
-def test_triple_execution(setup):
-    funcs = [
-        'betainc',
-        'betaincinv',
-    ]
+@pytest.mark.parametrize('func', [
+    'betainc',
+    'betaincinv',
+])
+def test_triple_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
 
-    for func in funcs:
-        sp_func = getattr(spspecial, func)
-        mt_func = getattr(mt_special, func)
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
 
-        raw1 = np.random.rand(4, 3, 2)
-        raw2 = np.random.rand(4, 3, 2)
-        raw3 = np.random.rand(4, 3, 2)
-        a = tensor(raw1, chunk_size=3)
-        b = tensor(raw2, chunk_size=3)
-        c = tensor(raw3, chunk_size=3)
+    r = mt_func(a, b, c)
 
-        r = mt_func(a, b, c)
+    result = r.execute().fetch()
+    expected = sp_func(raw1, raw2, raw3)
 
-        result = r.execute().fetch()
-        expected = sp_func(raw1, raw2, raw3)
+    np.testing.assert_array_equal(result, expected)
 
-        np.testing.assert_array_equal(result, expected)
+    # test sparse
+    raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
+    a = tensor(raw1, chunk_size=3)
+    raw2 = np.random.rand(4, 3)
+    b = tensor(raw2, chunk_size=3)
+    raw3 = np.random.rand(4, 3)
+    c = tensor(raw3, chunk_size=3)
 
-        # test sparse
-        raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
-        a = tensor(raw1, chunk_size=3)
-        raw2 = np.random.rand(4, 3)
-        b = tensor(raw2, chunk_size=3)
-        raw3 = np.random.rand(4, 3)
-        c = tensor(raw3, chunk_size=3)
+    r = mt_func(a, b, c)
 
-        r = mt_func(a, b, c)
+    result = r.execute().fetch()
 
-        result = r.execute().fetch()
-
-        expected = sp_func(raw1.toarray(), raw2, raw3)
-        np.testing.assert_array_equal(result.toarray(), expected)
+    expected = sp_func(raw1.toarray(), raw2, raw3)
+    np.testing.assert_array_equal(result.toarray(), expected)

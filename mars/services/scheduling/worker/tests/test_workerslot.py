@@ -27,14 +27,14 @@ from mars.oscar.backends.allocate_strategy import IdleLabel
 from mars.services.scheduling.supervisor import GlobalSlotManagerActor
 from mars.services.scheduling.worker import BandSlotManagerActor, \
     BandSlotControlActor
-from mars.utils import get_next_port, extensible
+from mars.utils import get_next_port
 
 
 class MockGlobalSlotManagerActor(mo.Actor):
     def __init__(self):
         self._result = None
 
-    @extensible
+    @mo.extensible
     def update_subtask_slots(self, band: Tuple, session_id: str, subtask_id: str, slots: int):
         self._result = (band, session_id, subtask_id, slots)
 

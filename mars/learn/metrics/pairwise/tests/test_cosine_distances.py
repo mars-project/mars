@@ -15,12 +15,7 @@
 import numpy as np
 import scipy.sparse as sps
 import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics.pairwise import cosine_distances as sk_cosine_distances
-except ImportError:
-    sklearn = None
+from sklearn.metrics.pairwise import cosine_distances as sk_cosine_distances
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import cosine_distances
@@ -38,7 +33,6 @@ raw_x_ys = [
 ]
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('raw_x, raw_y', raw_x_ys)
 @pytest.mark.parametrize('chunk_size', [25, 6])
 def test_cosine_distances_execution(setup, raw_x, raw_y, chunk_size):
