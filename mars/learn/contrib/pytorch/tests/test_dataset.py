@@ -171,7 +171,7 @@ def test_RandomSampler(setup_cluster):
     assert len(train_sampler) == 1000
     assert train_sampler.num_samples == 1000
 
-    # test __iter__ 
+    # test __iter__
     g_cpu = torch.Generator()
     g_cpu.manual_seed(2147483647)
 
@@ -192,7 +192,6 @@ def test_RandomSampler(setup_cluster):
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
-
 
     # torch train
     model = torch.nn.Sequential(
