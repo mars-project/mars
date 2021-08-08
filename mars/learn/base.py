@@ -175,4 +175,4 @@ class MultiOutputMixin:
     """Mixin to mark estimators that support multioutput."""
 
     def _more_tags(self):
-        return {"multioutput": True}
+        return {'multioutput': True}

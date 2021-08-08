@@ -18,12 +18,10 @@ import numbers
 
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
-from sklearn.utils.sparsefuncs import mean_variance_axis, inplace_column_scale
+from sklearn.utils.sparsefuncs import mean_variance_axis
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.preprocessing import normalize as f_normalize
 from sklearn.utils.fixes import delayed
 
-# import numpy as np
 from numpy.linalg import LinAlgError
 from joblib import Parallel
 import scipy.sparse as sp
@@ -34,6 +32,8 @@ from scipy import linalg
 
 from ..base import BaseEstimator, RegressorMixin, MultiOutputMixin
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
+from ..utils.sparsefuncs import inplace_column_scale
+from ..preprocessing import normalize as f_normalize
 import mars.tensor as mt
 from mars.tensor.datasource import tensor as astensor
 
