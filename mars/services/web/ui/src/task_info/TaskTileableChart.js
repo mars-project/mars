@@ -1,3 +1,19 @@
+/*
+ * Copyright 1999-2021 Alibaba Group Holding Ltd.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import React from 'react';
 import PropTypes from 'prop-types';
 import { withRouter } from 'react-router-dom';
@@ -19,7 +35,7 @@ class TaskTileableChart extends React.Component {
     }
 
     fetchGraphDetail() {
-        const { session_id, task_id } = this.props.match.params;
+        const { session_id, task_id } = this.props;
 
         fetch('api/session/' + session_id + '/task/' + task_id + '/tileable_graph?action=get_tileable_graph_as_json')
             .then(res => res.json())
@@ -115,27 +131,40 @@ class TaskTileableChart extends React.Component {
 
     render() {
         return (
-            <Grid container spacing={3} >
-                <Grid item xs={12}>
-                    <Title>Task</Title>
-                </Grid>
+            <React.Fragment>
                 <Grid item xs={12} md={6}>
                     <Paper>
                         <Grid item xs={12}>
                             <svg
                                 id="svg-canvas"
-                                style={{ margin: 30, width: '90%', height: 700 }}
+                                style={{ margin: 30, width: '90%', height: '100%' }}
                             />
                         </Grid>
                     </Paper>
                 </Grid>
-                <TileableDetail selectedTileable={this.state.selectedTileable} />
-            </Grid>
+                <TileableDetail tileable={this.state.selectedTileable} />
+            </React.Fragment>
         );
     }
 }
 
 TaskTileableChart.propTypes = {
+    session_id: PropTypes.string.isRequired,
+    task_id: PropTypes.string.isRequired,
+};
+
+function TaskTileableDetail(props) {
+    return (
+        <Grid container spacing={3} >
+            <Grid item xs={12}>
+                <Title>Task</Title>
+            </Grid>
+            <TaskTileableChart session_id={props.match.params.session_id} task_id={props.match.params.task_id} />
+        </Grid>
+    );
+}
+
+TaskTileableDetail.propTypes = {
     match: PropTypes.shape({
         params: PropTypes.shape({
             session_id: PropTypes.string.isRequired,
@@ -144,4 +173,4 @@ TaskTileableChart.propTypes = {
     }),
 };
 
-export default withRouter(TaskTileableChart);
+export default withRouter(TaskTileableDetail);

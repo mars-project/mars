@@ -28,7 +28,7 @@ import WorkerDetailPage from './node_info/WorkerDetailPage';
 import SessionListPage from './SessionListPage';
 import TaskListPage from './task_info/TaskListPage';
 const TaskTileableChart = lazy(() => {
-    return import('./task_visualization/TaskTileableChart');
+    return import('./task_info/TaskTileableChart');
 });
 
 function NodePageWrapper(props) {
