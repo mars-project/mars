@@ -61,8 +61,6 @@ def test_MarsDataset(setup_cluster):
     data_verify = data.iloc[0].execute().fetch().values
     labels_verify = labels.iloc[0].execute().fetch().values
 
-    print(f"train_dataset[0][1]: {train_dataset[0][1]}")
-    print(labels_verify)
     train_dataset = MarsDataset(data, labels)
     assert (train_dataset[0][0] == data_verify).all()
     assert (train_dataset[0][1] == labels_verify).all()
@@ -100,6 +98,7 @@ def test_MarsDataset(setup_cluster):
     assert len(train_dataset) == 1000
 
 
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_SequentialSampler(setup_cluster):
     import torch
 
@@ -139,6 +138,7 @@ def test_SequentialSampler(setup_cluster):
             optimizer.step()
 
 
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_RandomSampler(setup_cluster):
     import torch
 
@@ -149,6 +149,7 @@ def test_RandomSampler(setup_cluster):
 
     train_dataset = MarsDataset(data, labels)
 
+    # test __init__()
     with pytest.raises(ValueError) as e:
         train_sampler = RandomSampler(train_dataset, replacement=1)
     exec_msg = e.value.args[0]
@@ -166,15 +167,34 @@ def test_RandomSampler(setup_cluster):
 
     train_sampler = RandomSampler(train_dataset)
 
+    # test __len__ num_samples()
     assert len(train_sampler) == 1000
     assert train_sampler.num_samples == 1000
 
-    train_sampler = RandomSampler(train_dataset, replacement=True)
+    # test __iter__ 
+    g_cpu = torch.Generator()
+    g_cpu.manual_seed(2147483647)
 
+    train_sampler = RandomSampler(train_dataset, generator=g_cpu)
+    assert len(train_sampler) == 1000
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                 batch_size=32,
                                                 sampler=train_sampler)
+    for _, (batch_data, batch_labels) in enumerate(train_loader):
+        assert len(batch_data[0]) == 32
+        assert len(batch_labels[0]) == 10
 
+    train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=900)
+    assert len(train_sampler) == 900
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=32,
+                                                sampler=train_sampler)
+    for _, (batch_data, batch_labels) in enumerate(train_loader):
+        assert len(batch_data[0]) == 32
+        assert len(batch_labels[0]) == 10
+
+
+    # torch train
     model = torch.nn.Sequential(
         torch.nn.Linear(32, 64),
         torch.nn.ReLU(),
@@ -199,6 +219,7 @@ def test_RandomSampler(setup_cluster):
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_SubsetRandomSampler(setup_cluster):
     import numpy as np
+    import torch
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
@@ -210,3 +231,9 @@ def test_SubsetRandomSampler(setup_cluster):
                     np.random.choice(range(len(train_dataset)), len(train_dataset)))
 
     assert len(train_sampler) == 1000
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=32,
+                                                sampler=train_sampler)
+    for _, (batch_data, batch_labels) in enumerate(train_loader):
+        assert len(batch_data[0]) == 32
+        assert len(batch_labels[0]) == 10

@@ -46,7 +46,7 @@ class MarsDataset(Dataset):
         return tuple(self.get_data(t, index) for t in self._tileables)
 
     @staticmethod
-    def get_data(self, t, index):
+    def get_data(t, index):
         if isinstance(t, TENSOR_TYPE):
             return t[index].execute().fetch()
         elif isinstance(t, np.ndarray):
