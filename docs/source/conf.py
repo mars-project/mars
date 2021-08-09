@@ -196,7 +196,6 @@ gettext_compact = False     # optional.
 
 
 import sphinx
-from sphinx.util import rpartition
 from sphinx.ext.autodoc import MethodDocumenter, Documenter, AttributeDocumenter
 
 
@@ -250,8 +249,8 @@ class AccessorLevelDocumenter(Documenter):
             # HACK: this is added in comparison to ClassLevelDocumenter
             # mod_cls still exists of class.accessor, so an extra
             # rpartition is needed
-            modname, accessor = rpartition(mod_cls, ".")
-            modname, cls = rpartition(modname, ".")
+            modname, _, accessor = mod_cls.rpartition(".")
+            modname, _, cls = modname.rpartition(".")
             if cls:
                 parents = [cls, accessor]
             else:

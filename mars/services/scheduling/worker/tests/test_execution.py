@@ -203,7 +203,8 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     ref_to_delay = None
     if cancel_phase == 'prepare':
         ref_to_delay = await mo.actor_ref(
-            StorageHandlerActor.default_uid(), address=pool.external_address)
+            StorageHandlerActor.gen_uid('numa-0'),
+            address=pool.external_address)
     elif cancel_phase == 'quota':
         ref_to_delay = await mo.actor_ref(
             QuotaActor.gen_uid('numa-0'), address=pool.external_address)

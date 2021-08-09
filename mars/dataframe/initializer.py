@@ -18,8 +18,9 @@ import pandas as pd
 from ..core import ENTITY_TYPE
 from ..serialization.serializables import SerializableMeta
 from ..tensor import tensor as astensor, stack
+from ..tensor.array_utils import is_cupy
 from ..tensor.core import TENSOR_TYPE
-from ..utils import ceildiv
+from ..utils import ceildiv, lazy_import
 from .core import DATAFRAME_TYPE, SERIES_TYPE, INDEX_TYPE, DataFrame as _Frame, \
     Series as _Series, Index as _Index
 from .datasource.dataframe import from_pandas as from_pandas_df
@@ -28,6 +29,9 @@ from .datasource.index import from_pandas as from_pandas_index, \
     from_tileable as from_tileable_index
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor, \
     dataframe_from_1d_tileables
+from .utils import is_index, is_cudf
+
+cudf = lazy_import('cudf', globals=globals())
 
 
 class InitializerMeta(SerializableMeta):
@@ -77,7 +81,12 @@ class DataFrame(_Frame, metaclass=InitializerMeta):
                                            columns=columns, gpu=gpu, sparse=sparse)
             need_repart = num_partitions is not None
         else:
-            pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
+            if is_cudf(data) or is_cupy(data):  # pragma: no cover
+                pdf = cudf.DataFrame(data, index=index, columns=columns, dtype=dtype)
+                if copy:
+                    pdf = pdf.copy()
+            else:
+                pdf = pd.DataFrame(data, index=index, columns=columns, dtype=dtype, copy=copy)
             if num_partitions is not None:
                 chunk_size = ceildiv(len(pdf), num_partitions)
             df = from_pandas_df(pdf, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
@@ -114,7 +123,12 @@ class Series(_Series, metaclass=InitializerMeta):
                 series = data
             need_repart = num_partitions is not None
         else:
-            pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
+            if is_cudf(data) or is_cupy(data):  # pragma: no cover
+                pd_series = cudf.Series(data, index=index, dtype=dtype, name=name)
+                if copy:
+                    pd_series = pd_series.copy()
+            else:
+                pd_series = pd.Series(data, index=index, dtype=dtype, name=name, copy=copy)
             if num_partitions is not None:
                 chunk_size = ceildiv(len(pd_series), num_partitions)
             series = from_pandas_series(pd_series, chunk_size=chunk_size, gpu=gpu, sparse=sparse)
@@ -146,10 +160,14 @@ class Index(_Index, metaclass=InitializerMeta):
                 index = from_tileable_index(data, dtype=dtype, name=name, names=names)
                 need_repart = num_partitions is not None
             else:
-                if not isinstance(data, pd.Index):
+                if not is_index(data):
                     name = name if name is not None else getattr(data, 'name', None)
-                    pd_index = pd.Index(data=data, dtype=dtype, copy=copy, name=name,
-                                        tupleize_cols=tupleize_cols)
+                    xdf = cudf if is_cudf(data) or is_cupy(data) else pd
+                    try:
+                        pd_index = xdf.Index(data=data, dtype=dtype, copy=copy, name=name,
+                                             tupleize_cols=tupleize_cols)
+                    except TypeError:  # pragma: no cover
+                        pd_index = xdf.Index(data=data, dtype=dtype, copy=copy, name=name)
                 else:
                     pd_index = data
 

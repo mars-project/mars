@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -24,9 +24,9 @@ msgstr "会话"
 #: ../../source/getting_started/session.rst:6
 msgid ""
 "Sessions can be used for local execution, connecting to a :ref:`local "
-"cluster <local_cluster>` or an existing :ref:`Mars cluster <deploy>`."
+"cluster <local>` or an existing :ref:`Mars cluster <deploy>`."
 msgstr ""
-"会话可以用来本地执行，连接到 :ref:`本地集群 <local_cluster>`，以及连接到"
+"会话可以用来本地执行，连接到 :ref:`本地 <local_cluster>`，以及连接到"
 "已经创建的 :ref:`Mars 集群 <deploy>`。"
 
 #: ../../source/getting_started/session.rst:9
@@ -36,19 +36,22 @@ msgid ""
 msgstr "如果没有显式创建会话，Mars 会默认创建一个本地执行的会话。"
 
 #: ../../source/getting_started/session.rst:25
+msgid "``new_session`` can be used to create new default sessions."
+msgstr "``new_session`` 可以用来创建新的默认会话。"
+
+#: ../../source/getting_started/session.rst:41
 msgid ""
-"``new_session`` can be used to create new sessions. After created, "
-"sessions can be specified as an argument for both ``execute`` and "
-"``fetch``."
+"Sessions can be specified explicitly as an argument for both ``execute`` "
+"and ``fetch``."
 msgstr ""
 "用 ``new_session`` 来创建新的会话，``execute`` 和 ``fetch`` 方法可以指定"
 "会话。"
 
-#: ../../source/getting_started/session.rst:43
+#: ../../source/getting_started/session.rst:58
 msgid ""
-"Call ``.as_default()`` on a session will set the session as default, "
-"``.execute()`` and ``.fetch()`` will be constraint to the default "
-"session."
+"Call ``.as_default()`` explicitly on a session will set the session as "
+"default, ``.execute()`` and ``.fetch()`` will be constraint to the "
+"default session."
 msgstr ""
 "调用会话的 ``.as_default()`` 方法会把这个会话设为默认，``.execute()`` 和 "
 "``.fetch()`` 就默认会使用这个会话。"
@@ -61,16 +64,15 @@ msgstr ""
 "每个会话是隔离的，试图通过 ``.fetch()`` 读取别的会话中执行过的 Mars 对象"
 "会导致失败。"
 
-#: ../../source/getting_started/session.rst:113
+#: ../../source/getting_started/session.rst:146
 msgid ""
 "If ``session`` argument is not passed to ``new_session``, a local session"
-" will be created. The local session will leverage :ref:`threaded "
-"scheduler <threaded>` for execution."
+" will be created."
 msgstr ""
 "如果 ``new_session`` 没有参数，会创建本地会话。本地会话会利用 :ref:`"
 "多线程调度器 <threaded>` 执行。"
 
-#: ../../source/getting_started/session.rst:117
+#: ../../source/getting_started/session.rst:149
 msgid ""
 "For distributed, the URL of Web UI could be passed to ``new_session`` to "
 "connect to an existing cluster."

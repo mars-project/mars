@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-06-16 18:05+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -84,22 +84,22 @@ msgid ""
 "server side and return it back to client, which is extremely inefficient "
 "and may cause OutOfMemory error."
 msgstr ""
-"应当优先考虑使用 ``.execute()`` 而不是 ``.to_pandas()``，因为当 DataFrame "
-"很大的时候，``.execute()`` 只会获取前几行和后几行数据来展示。而 ``.to_pandas"
-"()`` 会在服务端生成完整的 DataFrame，然后返回到客户端，这非常低效，而且很"
-"有可能导致内存溢出。"
+"应当优先考虑使用 ``.execute()`` 而不是 ``.to_pandas()``，因为当 DataFrame"
+" 很大的时候，``.execute()`` 只会获取前几行和后几行数据来展示。而 ``.to_"
+"pandas()`` 会在服务端生成完整的 DataFrame，然后返回到客户端，这非常低效，"
+"而且很有可能导致内存溢出。"
 
 #: ../../source/getting_started/dataframe.rst:120
 msgid ""
-"If multiple DataFrames need to be executed together, "
-":class:`mars.dataframe.ExecutableTuple` could be used."
-msgstr "使用 :class:`mars.dataframe.ExecutableTuple` 来执行多个 DataFrame。"
+"If multiple DataFrames need to be executed together, ``mars.execute()`` "
+"could be used."
+msgstr "使用 ``mars.execute()`` 来执行多个 DataFrame。"
 
-#: ../../source/getting_started/dataframe.rst:137
+#: ../../source/getting_started/dataframe.rst:136
 msgid "DataFrame can be saved to CSV etc."
 msgstr "DataFrame 能被保存到 CSV 文件。"
 
-#: ../../source/getting_started/dataframe.rst:146
+#: ../../source/getting_started/dataframe.rst:145
 msgid "Refer to :ref:`api.dataframe.io` for more information."
 msgstr "参考 :ref:`api.dataframe.io` 获取更多信息。"
 

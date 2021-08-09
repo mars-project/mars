@@ -186,9 +186,3 @@ msgstr ""
 msgid "Examples"
 msgstr ""
 
-#~ msgid ""
-#~ "If specified, returns an iterator where"
-#~ " `chunksize` is the number of rows"
-#~ " to include in each chunk."
-#~ msgstr ""
-
