@@ -24,7 +24,7 @@ from numpy.testing import assert_array_equal
 from numpy.testing import assert_almost_equal
 from numpy.testing import assert_allclose
 from sklearn.utils import check_random_state
-from sklearn.utils.fixes import parse_version
+# from sklearn.utils.fixes import parse_version
 
 from mars.learn.linear_model import LinearRegression
 from mars.learn.linear_model._base import _preprocess_data
