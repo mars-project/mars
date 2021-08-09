@@ -11,10 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import pytest
 
 from mars.contrib.dask import convert_dask_collection, mars_scheduler
 
+try:
+    import dask
+except ImportError:
+    dask = None
 
+
+def require_dask_installed(func):
+    return pytest.mark.skipif(dask is None, reason='dask not installed')(func)
+
+
+@require_dask_installed
 def test_delayed():
     from dask import delayed
     import numpy as np
@@ -39,6 +50,7 @@ def test_delayed():
     assert dask_res == convert_dask_collection(pi).execute().fetch()
 
 
+@require_dask_installed
 def test_partitioned_dataframe():
     import numpy as np
     import pandas as pd
@@ -58,6 +70,7 @@ def test_partitioned_dataframe():
     assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch(), check_index_type=False)
 
 
+@require_dask_installed
 def test_unpartitioned_dataframe():
     from dask import dataframe as dd
     from pandas._testing import assert_frame_equal
@@ -75,6 +88,7 @@ def test_unpartitioned_dataframe():
     assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch())
 
 
+@require_dask_installed
 def test_array():
     import dask.array as da
     from numpy.core.numeric import array_equal
@@ -88,6 +102,7 @@ def test_array():
     assert array_equal(dask_res, convert_dask_collection(z).execute().fetch())
 
 
+@require_dask_installed
 def test_bag():
     import dask
 
