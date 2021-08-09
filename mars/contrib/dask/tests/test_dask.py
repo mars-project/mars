@@ -13,12 +13,21 @@
 # limitations under the License.
 import pytest
 
+from mars import new_session, stop_server
 from mars.contrib.dask import convert_dask_collection, mars_scheduler
 
 try:
     import dask
 except ImportError:
     dask = None
+
+
+def setup_function():
+    new_session()
+
+
+def teardown_function():
+    stop_server()
 
 
 def require_dask_installed(func):
