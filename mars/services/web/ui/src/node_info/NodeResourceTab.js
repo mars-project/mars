@@ -64,12 +64,10 @@ export default class NodeResourceTab extends React.Component {
                 band_rows.push([(<TableCell key={`${band}-cpu-item`}>CPU</TableCell>), (
                     <TableCell key={`${band}-cpu-value`}>
                         <div>
-              Usage:
-                            {(band_res.cpu_total - band_res.cpu_avail).toFixed(2)}
+              Usage: {(band_res.cpu_total - band_res.cpu_avail).toFixed(2)}
                         </div>
                         <div>
-              Total:
-                            {band_res.cpu_total.toFixed(2)}
+              Total: {band_res.cpu_total.toFixed(2)}
                         </div>
                     </TableCell>
                 )]);
@@ -78,12 +76,10 @@ export default class NodeResourceTab extends React.Component {
                 band_rows.push([(<TableCell key={`${band}-memory-item`}>Memory</TableCell>), (
                     <TableCell key={`${band}-memory-value`}>
                         <div>
-              Usage:
-                            {toReadableSize(band_res.memory_total - band_res.memory_avail)}
+              Usage: {toReadableSize(band_res.memory_total - band_res.memory_avail)}
                         </div>
                         <div>
-              Total:
-                            {toReadableSize(band_res.memory_total)}
+              Total: {toReadableSize(band_res.memory_total)}
                         </div>
                     </TableCell>
                 )]);
@@ -121,12 +117,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-size-key`}>Size</TableCell>
                         <TableCell key={`${path}-size-value`}>
                             <div>
-                Usage:
-                                {toReadableSize(part_desc.size_used)}
+                Usage: {toReadableSize(part_desc.size_used)}
                             </div>
                             <div>
-                Total:
-                                {toReadableSize(part_desc.size_total)}
+                Total: {toReadableSize(part_desc.size_total)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -138,12 +132,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-inode-key`}>INode</TableCell>
                         <TableCell key={`${path}-inode-value`}>
                             <div>
-                Usage:
-                                {toReadableSize(part_desc.inode_used)}
+                Usage: {toReadableSize(part_desc.inode_used)}
                             </div>
                             <div>
-                Total:
-                                {toReadableSize(part_desc.inode_total)}
+                Total: {toReadableSize(part_desc.inode_total)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -155,12 +147,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-io-key`}>IO</TableCell>
                         <TableCell key={`${path}-io-value`}>
                             <div>
-                Reads:
-                                {toReadableSize(part_desc.reads)}
+                Reads: {toReadableSize(part_desc.reads)}
                             </div>
                             <div>
-                Writes:
-                                {toReadableSize(part_desc.writes)}
+                Writes: {toReadableSize(part_desc.writes)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -214,12 +204,10 @@ export default class NodeResourceTab extends React.Component {
                             <TableCell>Disk</TableCell>
                             <TableCell>
                                 <div>
-                  Reads:
-                                    {this.state.detail.disk.reads}
+                  Reads: {this.state.detail.disk.reads}
                                 </div>
                                 <div>
-                  Writes:
-                                    {this.state.detail.disk.writes}
+                  Writes: {this.state.detail.disk.writes}
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -227,12 +215,10 @@ export default class NodeResourceTab extends React.Component {
                             <TableCell>Network</TableCell>
                             <TableCell>
                                 <div>
-                  Receives:
-                                    {this.state.detail.network.receives}
+                  Receives: {this.state.detail.network.receives}
                                 </div>
                                 <div>
-                  Sends:
-                                    {this.state.detail.network.sends}
+                  Sends: {this.state.detail.network.sends}
                                 </div>
                             </TableCell>
                         </TableRow>

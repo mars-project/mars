@@ -83,6 +83,22 @@ def sort_dataframe_inplace(df, *axis):
     return df
 
 
+@functools.lru_cache(1)
+def _get_range_index_type():
+    if cudf is not None:
+        return pd.RangeIndex, cudf.RangeIndex
+    else:
+        return pd.RangeIndex
+
+
+@functools.lru_cache(1)
+def _get_multi_index_type():
+    if cudf is not None:
+        return pd.MultiIndex, cudf.MultiIndex
+    else:
+        return pd.MultiIndex
+
+
 def _get_range_index_start(pd_range_index):
     try:
         return pd_range_index.start
@@ -101,7 +117,11 @@ def _get_range_index_step(pd_range_index):
     try:
         return pd_range_index.step
     except AttributeError:  # pragma: no cover
+        pass
+    try:  # pragma: no cover
         return pd_range_index._step
+    except AttributeError:  # pragma: no cover
+        return 1  # cudf does not support step arg
 
 
 def is_pd_range_empty(pd_range_index):
@@ -300,9 +320,9 @@ def parse_index(index_value, *args, store_data=False, key=None):
         # convert cudf.Index to pandas
         index_value = index_value.to_pandas()
 
-    if isinstance(index_value, pd.RangeIndex):
+    if isinstance(index_value, _get_range_index_type()):
         return IndexValue(_index_value=_serialize_range_index(index_value))
-    elif isinstance(index_value, pd.MultiIndex):
+    elif isinstance(index_value, _get_multi_index_type()):
         return IndexValue(_index_value=_serialize_multi_index(index_value))
     else:
         return IndexValue(_index_value=_serialize_index(index_value))
@@ -985,7 +1005,8 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
         tail = iloc(df_or_series)[-index_size:]
         head_data, tail_data = \
             ExecutableTuple([head, tail]).fetch(session=session)
-        return pd.concat([head_data, tail_data], axis='index')
+        xdf = cudf if head.op.is_gpu() else pd
+        return xdf.concat([head_data, tail_data], axis='index')
 
 
 class ReprSeries(pd.Series):
