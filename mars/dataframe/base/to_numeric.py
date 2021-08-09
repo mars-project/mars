@@ -23,19 +23,11 @@ from ...core import ENTITY_TYPE, OutputType
 
 class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
 
-    _errors = StringField("errors")
-    _downcast = StringField("downcast")
+    errors = StringField("errors")
+    downcast = StringField("downcast")
 
     def __init__(self, errors="raise", downcast=None,**kw):
-        super().__init__(_errors=errors, _downcast=downcast,**kw)
-
-    @property
-    def errors(self):
-        return self._errors
-
-    @property
-    def downcast(self):
-        return self._downcast
+        super().__init__(errors=errors, downcast=downcast,**kw)
 
     def __call__(self, arg):
         if isinstance(arg, pd.Series):
