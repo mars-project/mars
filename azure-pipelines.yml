@@ -9,7 +9,7 @@ pr:
 
 jobs:
 - job: Job
-  timeoutInMinutes: 150
+  timeoutInMinutes: 120
   cancelTimeoutInMinutes: 2
   pool:
     vmImage: 'ubuntu-latest'
