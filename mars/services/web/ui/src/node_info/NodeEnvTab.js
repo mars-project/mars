@@ -81,7 +81,17 @@ export default class NodeEnvTab extends React.Component {
                     <OptionalElement condition={this.state.cuda_info}>
                         <TableRow>
                             <TableCell>CUDA</TableCell>
-                            <TableCell>{this.state.cuda_info}</TableCell>
+                            <TableCell>
+                                <div key='cuda'>
+                                    CUDA Version: {this.state.cuda_info.cuda}
+                                </div>
+                                <div key='driver'>
+                                    Driver Version: {this.state.cuda_info.driver}
+                                </div>
+                                <div key='products'>
+                                    Devices: {join(this.state.cuda_info.products, ',')}
+                                </div>
+                            </TableCell>
                         </TableRow>
                     </OptionalElement>
                     <TableRow>

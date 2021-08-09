@@ -14,6 +14,7 @@
 
 import importlib
 import os
+import pkgutil
 import pickle
 import types
 import uuid
@@ -40,6 +41,9 @@ try:
     from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
 except ImportError:
     SASelectable, SATypeEngine = None, None
+
+cdef bint _has_cupy = pkgutil.find_loader('cupy')
+cdef bint _has_cudf = pkgutil.find_loader('cudf')
 
 
 cpdef str to_str(s, encoding='utf-8'):
@@ -311,6 +315,18 @@ def tokenize_pickled_with_cache(ob):
     return pickle.dumps(ob)
 
 
+def tokenize_cupy(ob):
+    from .serialization import serialize
+    header, _buffers = serialize(ob)
+    return iterative_tokenize([header, ob.data.ptr])
+
+
+def tokenize_cudf(ob):
+    from .serialization import serialize
+    header, buffers = serialize(ob)
+    return iterative_tokenize([header] + [(buf.ptr, buf.size) for buf in buffers])
+
+
 cdef Tokenizer tokenize_handler = Tokenizer()
 
 base_types = (int, float, str, unicode, bytes, complex,
@@ -342,6 +358,12 @@ tokenize_handler.register(pd.arrays.TimedeltaArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.PeriodArray, tokenize_pandas_time_arrays)
 tokenize_handler.register(pd.arrays.IntervalArray, tokenize_pandas_interval_arrays)
 tokenize_handler.register(pd.api.extensions.ExtensionDtype, tokenize_pd_extension_dtype)
+if _has_cupy:
+    tokenize_handler.register('cupy.ndarray', tokenize_cupy)
+if _has_cudf:
+    tokenize_handler.register('cudf.DataFrame', tokenize_cudf)
+    tokenize_handler.register('cudf.Series', tokenize_cudf)
+    tokenize_handler.register('cudf.Index', tokenize_cudf)
 
 if PDTick is not None:
     tokenize_handler.register(PDTick, tokenize_pandas_tick)
