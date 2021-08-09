@@ -27,8 +27,8 @@ import SupervisorDetailPage from './node_info/SupervisorDetailPage';
 import WorkerDetailPage from './node_info/WorkerDetailPage';
 import SessionListPage from './SessionListPage';
 import TaskListPage from './task_info/TaskListPage';
-const TaskTileableChart = lazy(() => {
-    return import('./task_info/TaskTileableChart');
+const TaskDetail = lazy(() => {
+    return import('./task_info/TaskDetail');
 });
 
 function NodePageWrapper(props) {
@@ -72,7 +72,7 @@ export default function PageRouter() {
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
             <Route exact path="/" component={Dashboard} />
             <Suspense fallback={<div>Loading...</div>}>
-                <Route exact path="/session/:session_id/task/:task_id" component={TaskTileableChart} />
+                <Route exact path="/session/:session_id/task/:task_id" component={TaskDetail} />
             </Suspense>
         </Switch>
     );

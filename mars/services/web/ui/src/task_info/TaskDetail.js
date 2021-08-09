@@ -153,7 +153,7 @@ TaskTileableChart.propTypes = {
     task_id: PropTypes.string.isRequired,
 };
 
-function TaskTileableDetail(props) {
+function TaskDetail(props) {
     return (
         <Grid container spacing={3} >
             <Grid item xs={12}>
@@ -164,7 +164,7 @@ function TaskTileableDetail(props) {
     );
 }
 
-TaskTileableDetail.propTypes = {
+TaskDetail.propTypes = {
     match: PropTypes.shape({
         params: PropTypes.shape({
             session_id: PropTypes.string.isRequired,
@@ -173,4 +173,4 @@ TaskTileableDetail.propTypes = {
     }),
 };
 
-export default withRouter(TaskTileableDetail);
+export default withRouter(TaskDetail);
