@@ -101,7 +101,7 @@ class RegressorMixin:
         from .metrics import r2_score
 
         y_pred = self.predict(X)
-        return r2_score(y, y_pred, sample_weight=sample_weight)
+        return r2_score(y, y_pred, sample_weight=sample_weight).to_numpy()
 
     def _more_tags(self):  # noqa: R0201  # pylint: disable=no-self-use
         return {'requires_y': True}

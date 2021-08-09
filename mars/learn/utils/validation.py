@@ -32,7 +32,7 @@ from ...tensor import Tensor
 from .checks import check_non_negative_then_return_value, \
     assert_all_finite, AssertAllFinite
 
-FLOAT_DTYPES = (np.float64, np.float32, np.float16)
+FLOAT_DTYPES = (mt.float64, mt.float32, mt.float16)
 
 # ---------------------------------------------------------
 # Original implementation is in `sklearn.utils.validation`.

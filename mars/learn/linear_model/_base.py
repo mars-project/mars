@@ -15,7 +15,6 @@
 from abc import ABCMeta, abstractmethod
 import numbers
 
-
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
 from sklearn.utils.sparsefuncs import mean_variance_axis
@@ -105,7 +104,8 @@ def _preprocess_data(
 
         else:
             X_offset = mt.average(X, axis=0, weights=sample_weight)
-            X -= X_offset
+            # X -= X_offset
+            X = X - X_offset
             if normalize:
                 X, X_scale = f_normalize(X, axis=0, copy=False,
                                          return_norm=True)
@@ -121,6 +121,8 @@ def _preprocess_data(
         else:
             y_offset = mt.zeros(y.shape[1], dtype=X.dtype)
 
+    # X = astensor(X).execute()
+    # y = astensor(y).execute()
     return X, y, X_offset, y_offset, X_scale
 
 
@@ -196,6 +198,7 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
         """Set the intercept_"""
         if self.fit_intercept:
             self.coef_ = self.coef_ / X_scale
+            self.coef_.execute()
             self.intercept_ = (
                 y_offset - mt.dot(X_offset, self.coef_.T)
             ).to_numpy()
@@ -361,6 +364,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                     delayed(optimize.nnls)(
                         X, y[:, j]) for j in range(y.shape[1]))
                 self.coef_, self._residues = map(mt.vstack, zip(*outs))
+                self.coef_.execute()
         elif sp.issparse(X):
             X_offset_scale = X_offset / X_scale
 
@@ -384,11 +388,24 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                     delayed(sparse_lsqr)(X_centered, y[:, j].ravel())
                     for j in range(y.shape[1]))
                 self.coef_ = mt.vstack([out[0] for out in outs])
+                self.coef_.execute()
                 self._residues = mt.vstack([out[3] for out in outs])
         else:
             try:
-                self.coef_ = mt.dot(mt.linalg.inv(mt.dot(mt.transpose(X), X)),
-                                    mt.dot(mt.transpose(X), y))
+                # self.coef_ = mt.dot(
+                #     mt.linalg.inv(mt.dot(mt.transpose(X), X)),
+                #     mt.dot(mt.transpose(X), y)
+                # )
+                # self.coef_ = self.coef_.T
+                # self.coef_.execute()
+
+                self.coef_ = mt.linalg.inv(((X.T @ X)) @ (X.T @ y)).T
+                self.coef_.execute()
+
+                # from numpy.linalg import inv
+                # X = X.to_numpy()
+                # y = y.to_numpy()
+                # self.coef_ = inv(((X.T @ X)) @ (X.T @ y)).T
             except LinAlgError:
                 self.coef_, self._residues, self.rank_, self.singular_ = \
                     linalg.lstsq(X, y)
@@ -396,5 +413,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
 
         if y.ndim == 1:
             self.coef_ = mt.ravel(self.coef_)
+            self.coef_.execute()
         self._set_intercept(X_offset, y_offset, X_scale)
         return self
