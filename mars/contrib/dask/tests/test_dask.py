@@ -103,4 +103,4 @@ def test_bag():
     assert dask_res == result.compute(scheduler=mars_scheduler)
     assert dask_res == list(
         convert_dask_collection(result).execute().fetch()
-    )  # TODO: dask-bag computation will return weired tuple, which we don't know why
+    )  # TODO: dask-bag computation will return weird tuple, which we don't know why
