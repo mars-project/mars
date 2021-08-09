@@ -869,6 +869,11 @@ class MainActorPoolBase(ActorPoolBase):
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             elif message.control_message_type == ControlMessageType.wait_pool_recovered:
+                # check the aliveness of sub pool first, in case monitor task haven't found it.
+                if not await self.is_sub_pool_alive(self.sub_processes[message.address]):
+                    if self._auto_recover and message.address not in self._recover_events:
+                        self._recover_events[message.address] = asyncio.Event()
+
                 event = self._recover_events.get(message.address, None)
                 if event is not None:
                     await event.wait()
@@ -1019,19 +1024,6 @@ class MainActorPoolBase(ActorPoolBase):
             # process down, when not auto_recover
             # or only recover process, remove all created actors
             self._allocated_actors[address] = dict()
-
-    async def recover_sub_pool(self, address: str):
-        process_index = self._config.get_process_index(address)
-        # process dead, restart it
-        # remember always use spawn to recover sub pool
-        self.sub_processes[address] = await self.__class__.start_sub_pool(
-            self._config, process_index, 'spawn')
-
-        if self._auto_recover == 'actor':
-            # need to recover all created actors
-            for _, message in self._allocated_actors[address].values():
-                create_actor_message: CreateActorMessage = message
-                await self.call(address, create_actor_message)
 
     async def monitor_sub_pools(self):
         try:
