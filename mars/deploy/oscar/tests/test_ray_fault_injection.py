@@ -20,9 +20,10 @@ from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.tests import test_fault_injection
 from mars.oscar.errors import ServerClosed
 from mars.services.tests.fault_injection_manager import (
-    FaultType,
     FaultInjectionError,
-    FaultInjectionUnhandledError
+    FaultInjectionUnhandledError,
+    FaultPosition,
+    FaultType,
 )
 from mars.tests.core import require_ray
 from mars.utils import lazy_import
@@ -31,8 +32,11 @@ ray = lazy_import('ray')
 
 RAY_CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_with_ray_config.yml')
-FAULT_INJECTION_CONFIG = {"subtask": {
-    "subtask_processor_cls": "mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor"}}
+FAULT_INJECTION_CONFIG = {
+    "third_party_modules": ["mars.services.tests.fault_injection_patch"],
+    "subtask": {
+        "subtask_processor_cls": "mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor"}
+}
 SUBTASK_RERUN_CONFIG = {"scheduling": {"subtask_max_retries": 2}}
 
 
@@ -53,12 +57,14 @@ async def fault_cluster(request):
 
 @require_ray
 @pytest.mark.parametrize('fault_and_exception',
-                         [[FaultType.Exception,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.UnhandledException,
+                          [FaultType.UnhandledException, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionUnhandledError, match='Fault Injection Unhandled')],
-                          [FaultType.ProcessExit,
-                           pytest.raises(ServerClosed)]])
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, fault_and_exception):
     await test_fault_injection.test_fault_inject_subtask_processor(fault_cluster, fault_and_exception)
@@ -69,9 +75,9 @@ async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, 
                          [{'config': SUBTASK_RERUN_CONFIG}],
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.ProcessExit, 1,
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
@@ -92,9 +98,9 @@ async def test_rerun_subtask_unhandled(ray_start_regular, fault_cluster):
                          [{'config': SUBTASK_RERUN_CONFIG}],
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.ProcessExit, 1,
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
 async def test_retryable(ray_start_regular, fault_cluster, fault_config):
