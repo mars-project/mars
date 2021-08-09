@@ -659,12 +659,14 @@ def test_setitem(setup):
     data = pd.DataFrame(np.random.rand(10, 5), columns=['c' + str(i) for i in range(5)],
                         index=['i' + str(i) for i in range(10)])
     data2 = np.random.rand(10)
+    data3 = np.random.rand(10, 2)
     df = md.DataFrame(data, chunk_size=3)
 
     df['c3'] = df['c3'] + 1
     df['c10'] = 10
     df[4] = mt.tensor(data2, chunk_size=4)
     df['d1'] = df['c4'].mean()
+    df['e1'] = data2 * 2
 
     result = df.execute().fetch()
     expected = data.copy()
@@ -672,6 +674,29 @@ def test_setitem(setup):
     expected['c10'] = 10
     expected[4] = data2
     expected['d1'] = data['c4'].mean()
+    expected['e1'] = data2 * 2
+    pd.testing.assert_frame_equal(result, expected)
+
+    # test set multiple cols with scalar
+    df = md.DataFrame(data, chunk_size=3)
+    df[['c0', 'c2']] = 1
+    df[['c1', 'c10']] = df['c4'].mean()
+    df[['c11', 'c12']] = mt.tensor(data3, chunk_size=4)
+
+    result = df.execute().fetch()
+    expected = data.copy()
+    expected[['c0', 'c2']] = 1
+    expected[['c1', 'c10']] = expected['c4'].mean()
+    expected[['c11', 'c12']] = data3
+    pd.testing.assert_frame_equal(result, expected)
+
+    # test set multiple rows
+    df = md.DataFrame(data, chunk_size=3)
+    df[['c1', 'c4', 'c10']] = df[['c2', 'c3', 'c4']] * 2
+
+    result = df.execute().fetch()
+    expected = data.copy()
+    expected[['c1', 'c4', 'c10']] = expected[['c2', 'c3', 'c4']] * 2
     pd.testing.assert_frame_equal(result, expected)
 
     # test setitem into empty DataFrame

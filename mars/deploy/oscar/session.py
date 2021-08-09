@@ -1343,6 +1343,9 @@ async def _execute(*tileables: Tuple[TileableType],
             if cancelled.is_set():
                 execution_info.remove_done_callback(_attach_session)
                 execution_info.cancel()
+            else:
+                # set cancelled to avoid wait task leak
+                cancelled.set()
             await execution_info
     else:
         return execution_info
