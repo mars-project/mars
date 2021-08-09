@@ -70,6 +70,9 @@ class SlotContext:
     def slot_id(self):
         return self._slot_id
 
+    async def get_slot_address(self):
+        return await self._slot_manager_ref.get_slot_address(self.slot_id)
+
     def kill_slot_when_exit(self):
         if self._enable_kill_slot:  # pragma: no branch
             self._should_kill_slot = True
@@ -368,9 +371,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     finally:
                         raise ex
                 except (OSError, MarsError) as ex:
-                    # TODO(fyrestone): Handle slot exception correctly.
-                    if subtask_info.num_retries < subtask_info.max_retries:
-                        ctx.kill_slot_when_exit()
+                    sub_pool_address = await ctx.get_slot_address()
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                     raise ex
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
