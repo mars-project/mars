@@ -18,13 +18,13 @@ from mars import oscar as mo
 from mars.lib.aio import alru_cache
 from mars.services.scheduling.worker.execution import SubtaskExecutionActor
 from mars.services.subtask import Subtask
-from mars.tests.core import patch_cls, patch_super as super
 from mars.services.tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
     FaultPosition,
     handle_fault,
 )
+from mars.tests.core import patch_cls, patch_super as super
 
 
 @patch_cls(SubtaskExecutionActor)
