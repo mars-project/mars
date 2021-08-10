@@ -357,6 +357,7 @@ class StorageManagerActor(mo.StatelessActor):
         await self._create_storage_handler_actors()
         # create actor for transfer
         await self._create_transfer_actors()
+        await self.upload_disk_info()
         # create task for uploading storage usages
         self._upload_task = self.ref().upload_storage_info.tell_delay(delay=1)
 
@@ -463,7 +464,8 @@ class StorageManagerActor(mo.StatelessActor):
                     address=self.address, allocate_strategy=sender_strategy)
 
                 await mo.create_actor(ReceiverManagerActor,
-                                      self._quotas, handler_ref,
+                                      self._quotas[default_band_name],
+                                      handler_ref,
                                       address=self.address,
                                       uid=ReceiverManagerActor.gen_uid(default_band_name),
                                       allocate_strategy=receiver_strategy)
@@ -508,6 +510,9 @@ class StorageManagerActor(mo.StatelessActor):
             for band, level_to_quota in self._quotas.items():
                 for level, quota_ref in level_to_quota.items():
                     total, used = await quota_ref.get_quota()
+                    used = int(used)
+                    if total is not None:
+                        total = int(total)
                     storage_info = StorageInfo(storage_level=level,
                                                total_size=total,
                                                used_size=used)
