@@ -206,3 +206,30 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     await send_task
     get_data = await storage_handler2.get('mock', 'data_key1')
     np.testing.assert_array_equal(data1, get_data)
+
+
+@pytest.mark.asyncio
+async def test_transfer_same_tasks(create_actors):
+    worker_address_1, worker_address_2 = create_actors
+
+    session_id = 'mock_session'
+    data1 = np.random.rand(100, 100)
+    storage_handler1 = await mo.actor_ref(uid=StorageHandlerActor.gen_uid('numa-0'),
+                                          address=worker_address_1)
+    storage_handler2 = await mo.actor_ref(uid=StorageHandlerActor.gen_uid('numa-0'),
+                                          address=worker_address_2)
+
+    await storage_handler1.put(session_id, 'data_key1', data1, StorageLevel.MEMORY)
+    sender_actor = await mo.actor_ref(address=worker_address_1,
+                                      uid=SenderManagerActor.gen_uid('numa-0'))
+
+    # send data to worker2 from worker1
+    task1 = asyncio.create_task(
+        sender_actor.send_batch_data(session_id, ['data_key1'], worker_address_2,
+                                     StorageLevel.MEMORY, block_size=1000))
+    task2 = asyncio.create_task(
+        sender_actor.send_batch_data(session_id, ['data_key1'], worker_address_2,
+                                     StorageLevel.MEMORY, block_size=1000))
+    await asyncio.gather(task1, task2)
+    get_data1 = await storage_handler2.get(session_id, 'data_key1')
+    np.testing.assert_array_equal(data1, get_data1)
