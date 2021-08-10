@@ -29,7 +29,7 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
     show_counts = BoolField('show_counts')
     null_counts = BoolField('null_counts')
 
-    def __init__(self,verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None, **kw):
+    def __init__(self, verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None, **kw):
         super().__init__(verbose=verbose,
                          buf=buf,
                          max_cols=max_cols,
@@ -50,11 +50,12 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
             test_df = pd.Series([''])
             index_value = parse_index(test_df.index)
 
-            chunks = chunk_op.new_chunk([in_chunk], shape=(1,),
-                                         output_type = op.output_types[0],
-                                         dtype=op.outputs[0].dtype,
-                                         index=in_chunk.index,
-                                         index_value=index_value)
+            chunks = chunk_op.new_chunk([in_chunk],
+                                        shape=(1,),
+                                        output_type=op.output_types[0],
+                                        dtype=op.outputs[0].dtype,
+                                        index=in_chunk.index,
+                                        index_value=index_value)
             info_chunks.append(chunks)
         return info_chunks
 
@@ -68,17 +69,18 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
 
         # stage 2: merge data
         chunk_op = DataFrameMergeInfoData(output_types=[OutputType.series], output_type=OutputType.series)
-        chk = chunk_op.new_chunk(info_chunks, shape=(1,),
-                                         output_type = op.output_types[0],
-                                         dtype=op.outputs[0].dtype,
-                                         index=(0,),
-                                         index_value=out.index_value)
-        #stage 3: print info data
+        chk = chunk_op.new_chunk(info_chunks,
+                                 shape=(1,),
+                                 output_type=op.output_types[0],
+                                 dtype=op.outputs[0].dtype,
+                                 index=(0,),
+                                 index_value=out.index_value)
+        # stage 3: print info data
         print_chunk_op = DataFrameInfoPrinter(buf=op.buf,
-                                          verbose=op.verbose,
-                                          max_cols=op.max_cols,
-                                          show_counts=op.show_counts,
-                                          null_counts=op.null_counts)
+                                              verbose=op.verbose,
+                                              max_cols=op.max_cols,
+                                              show_counts=op.show_counts,
+                                              null_counts=op.null_counts)
         print_chunks = [print_chunk_op.new_chunk([chk],
                                                  shape=(1,),
                                                  index=(0,),
@@ -88,11 +90,11 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy()
         return new_op.new_seriess(op.inputs,
-                               shape=out.shape,
-                               chunks=print_chunks,
-                               nsplits=((1,),),
-                               index_value=out.index_value,
-                               dtype=out.dtype, name=out.name)
+                                  shape=out.shape,
+                                  chunks=print_chunks,
+                                  nsplits=((1,),),
+                                  index_value=out.index_value,
+                                  dtype=out.dtype, name=out.name)
 
     @classmethod
     def tile(cls, op):
@@ -107,10 +109,10 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
                                              name=op.outputs[0].name)]
 
             print_chunk_op = DataFrameInfoPrinter(buf=op.buf,
-                                              verbose=op.verbose,
-                                              max_cols=op.max_cols,
-                                              show_counts=op.show_counts,
-                                              null_counts=op.null_counts)
+                                                  verbose=op.verbose,
+                                                  max_cols=op.max_cols,
+                                                  show_counts=op.show_counts,
+                                                  null_counts=op.null_counts)
 
             print_chunks = [print_chunk_op.new_chunk(out_chunks,
                                                      shape=(1,),
@@ -143,6 +145,7 @@ class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
         index_value = parse_index(test_df.index)
         return self.new_series([df], shape=test_df.shape, dtype=test_df.dtype, index_value=index_value)
 
+
 class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
 
     buf = AnyField('buf')
@@ -158,7 +161,8 @@ class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
                          show_counts=show_counts,
                          null_counts=null_counts,
                          **kw)
-        self.output_types=[OutputType.series]
+
+        self.output_types = [OutputType.series]
 
     @classmethod
     def get_total_cols(cls, df_info):
@@ -172,8 +176,8 @@ class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
         total_columns = len(columns_info)
         first_column = columns_info[0].split()[1]
         last_column = columns_info[-1].split()[1]
-        summary_columns_info = [f'Columns: {total_columns} entries, {first_column} to {last_column}']
-        summary_info = "\n".join(splited_info[:2] + summary_columns_info + splited_info[-2:]) + "\n"
+        summary_info = [f'Columns: {total_columns} entries, {first_column} to {last_column}']
+        summary_info = "\n".join(splited_info[:2] + summary_info + splited_info[-2:]) + "\n"
         return summary_info
 
     @classmethod
@@ -181,7 +185,7 @@ class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
         splited_info = df_info.strip().split("\n")
         splited_info[3] = ' #   Column  Dtype'
         splited_info[4] = '---  ------  -----'
-        for idx,col_info in enumerate(splited_info[5:-2]):
+        for idx, col_info in enumerate(splited_info[5:-2]):
             index, col_name, _, _, dtype = col_info.strip().split()
             splited_info[idx + 5] = f' {index}   {col_name}       {dtype}'
         return "\n".join(splited_info) + "\n"
@@ -190,16 +194,16 @@ class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
     def execute(cls, ctx, op):
         df_info = ctx[op.inputs[0].key][0]
         total_columns = cls.get_total_cols(df_info)
-        if (op.verbose != None and not op.verbose) or (op.max_cols != None and total_columns > op.max_cols):
+        if (op.verbose is not None and not op.verbose) or (op.max_cols is not None and total_columns > op.max_cols):
             df_info = cls.convert_to_summary(df_info)
-        elif (op.show_counts != None and not op.show_counts) or (op.null_counts != None and not op.null_counts):
+        elif (op.show_counts is not None and not op.show_counts) or (op.null_counts is not None and not op.null_counts):
             df_info = cls.not_show_counts(df_info)
-        if op.buf == None:
+        if op.buf is None:
             print(df_info)
         else:
             op.buf.write(df_info)
-        # TODO do not return any value after using dataframe.info()
         ctx[op.outputs[0].key] = pd.Series([''])
+
 
 class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
 
@@ -218,8 +222,8 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
             raw_columns.extend(input[5:-2])
         splited_columns = [s.split() for s in raw_columns]
         column_names = list(set([s[1] for s in splited_columns]))
-        column_to_counts = dict(zip(column_names,[0] * len(column_names)))
-        column_to_dtype = dict(zip(column_names,[0] * len(column_names)))
+        column_to_counts = dict(zip(column_names, [0] * len(column_names)))
+        column_to_dtype = dict(zip(column_names, [0] * len(column_names)))
         index_column = []
         for one_col in splited_columns:
             column_to_counts[one_col[1]] += eval(one_col[2])
@@ -293,7 +297,7 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = pd.Series(result)
 
 
-def info(arg,verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None):
+def info(arg, verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None):
 
     op = DataFrameInfo(verbose=verbose,
                        buf=buf,
@@ -301,4 +305,4 @@ def info(arg,verbose=None, buf=None, max_cols=None, memory_usage=None, show_coun
                        memory_usage=memory_usage,
                        show_counts=show_counts,
                        null_counts=null_counts)
-    return op(arg)
+    op(arg).execute()
