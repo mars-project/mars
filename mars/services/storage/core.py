@@ -359,7 +359,7 @@ class StorageManagerActor(mo.StatelessActor):
         await self._create_transfer_actors()
         await self.upload_disk_info()
         # create task for uploading storage usages
-        self._upload_task = self.ref().upload_storage_info.tell_delay(delay=1)
+        self._upload_task = asyncio.create_task(self.upload_storage_info())
 
     async def __pre_destroy__(self):
         if self._upload_task:
@@ -506,29 +506,29 @@ class StorageManagerActor(mo.StatelessActor):
         from ..cluster import StorageInfo
 
         if self._cluster_api is not None:
-            upload_tasks = []
-            for band, level_to_quota in self._quotas.items():
-                for level, quota_ref in level_to_quota.items():
-                    total, used = await quota_ref.get_quota()
-                    used = int(used)
-                    if total is not None:
-                        total = int(total)
-                    storage_info = StorageInfo(storage_level=level,
-                                               total_size=total,
-                                               used_size=used)
-                    upload_tasks.append(
-                        self._cluster_api.set_band_storage_info.delay(band, storage_info))
-            await self._cluster_api.set_band_storage_info.batch(*upload_tasks)
-            self._upload_task = self.ref().upload_storage_info.tell_delay(delay=1)
+            while True:
+                upload_tasks = []
+                for band, level_to_quota in self._quotas.items():
+                    for level, quota_ref in level_to_quota.items():
+                        total, used = await quota_ref.get_quota()
+                        used = int(used)
+                        if total is not None:
+                            total = int(total)
+                        storage_info = StorageInfo(storage_level=level,
+                                                   total_size=total,
+                                                   used_size=used)
+                        upload_tasks.append(
+                            self._cluster_api.set_band_storage_info.delay(band, storage_info))
+                await self._cluster_api.set_band_storage_info.batch(*upload_tasks)
+                await asyncio.sleep(0.5)
 
     async def upload_disk_info(self):
         from ..cluster import DiskInfo
 
         disk_infos = []
-        if self._cluster_api is not None:
-            if 'disk' in self._init_params:
-                params = self._init_params['disk']
-                size = params['size']
-                for path in params['root_dirs']:
-                    disk_infos.append(DiskInfo(path=path, size=size))
-                await self._cluster_api.set_node_disk_info(disk_infos)
+        if self._cluster_api is not None and 'disk' in self._init_params:
+            params = self._init_params['disk']
+            size = params['size']
+            for path in params['root_dirs']:
+                disk_infos.append(DiskInfo(path=path, size=size))
+            await self._cluster_api.set_node_disk_info(disk_infos)
