@@ -213,6 +213,7 @@ class ReceiverManagerActor(mo.Actor):
     async def do_write(self, message: TransferMessage):
         # close may be a high cost operation, use create_task
         close_tasks = []
+        finished_keys = []
         for data, data_key, is_eof in zip(message.data,
                                           message.data_keys,
                                           message.eof_marks):
@@ -222,7 +223,10 @@ class ReceiverManagerActor(mo.Actor):
                 await writer.write(data)
             if is_eof:
                 close_tasks.append(asyncio.create_task(writer.close()))
+                finished_keys.append(data_key)
         await asyncio.gather(*close_tasks)
+        for data_key in finished_keys:
+            self._key_to_writer_info.pop((message.session_id, data_key))
 
     async def receive_part_data(self, message: TransferMessage):
         try:
