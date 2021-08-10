@@ -20,10 +20,10 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...config import options
 from ...core import OutputType
-from ...serialization.serializables import IndexField, DataTypeField, KeyField, BoolField
+from ...serialization.serializables import IndexField, DataTypeField, BoolField
 from ...tensor.utils import get_chunk_slices
 from ..operands import DataFrameOperand, DataFrameOperandMixin
-from ..utils import parse_index, decide_series_chunk_size
+from ..utils import parse_index, decide_series_chunk_size, is_cudf
 
 
 class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
@@ -33,70 +33,51 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.INDEX_DATA_SOURCE
 
-    _input = KeyField('input')
-    _data = IndexField('data')
-    _dtype = DataTypeField('dtype')
-    _store_data = BoolField('store_data')
+    data = IndexField('data')
+    dtype = DataTypeField('dtype')
+    store_data = BoolField('store_data')
 
-    def __init__(self, input=None, data=None, dtype=None, gpu=None,  # pylint: disable=redefined-builtin
-                 store_data=None, sparse=None, **kw):
-        super().__init__(_input=input, _data=data, _dtype=dtype, _gpu=gpu, _sparse=sparse,
-                         _store_data=store_data, _output_types=[OutputType.index], **kw)
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def store_data(self):
-        return self._store_data
-
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        if inputs is not None and len(inputs) > 0:
-            self._input = self._inputs[0]
+    def __init__(self, data=None, dtype=None, gpu=None, store_data=None, **kw):
+        if dtype is None and data is not None:
+            dtype = data.dtype
+        if gpu is None and is_cudf(data):  # pragma: no cover
+            gpu = True
+        super().__init__(data=data, dtype=dtype, gpu=gpu, store_data=store_data,
+                         _output_types=[OutputType.index], **kw)
 
     def __call__(self, shape=None, chunk_size=None, inp=None, name=None,
                  names=None):
         if inp is None:
             # create from pandas Index
-            name = name if name is not None else self._data.name
-            names = names if names is not None else self._data.names
-            return self.new_index(None, shape=shape, dtype=self._dtype,
-                                  index_value=parse_index(self._data, store_data=self.store_data),
+            name = name if name is not None else self.data.name
+            names = names if names is not None else self.data.names
+            return self.new_index(None, shape=shape, dtype=self.dtype,
+                                  index_value=parse_index(self.data, store_data=self.store_data),
                                   name=name, names=names, raw_chunk_size=chunk_size)
         elif hasattr(inp, 'index_value'):
             # get index from Mars DataFrame, Series or Index
             name = name if name is not None else inp.index_value.name
             names = names if names is not None else [name]
             if inp.index_value.has_value():
-                self._data = data = inp.index_value.to_pandas()
+                self.data = data = inp.index_value.to_pandas()
                 return self.new_index(None, shape=(inp.shape[0],), dtype=data.dtype,
                                       index_value=parse_index(data, store_data=self.store_data),
                                       name=name, names=names, raw_chunk_size=chunk_size)
             else:
-                if self._dtype is None:
-                    self._dtype = inp.index_value.to_pandas().dtype
+                if self.dtype is None:
+                    self.dtype = inp.index_value.to_pandas().dtype
                 return self.new_index([inp], shape=(inp.shape[0],),
-                                      dtype=self._dtype, index_value=inp.index_value,
+                                      dtype=self.dtype, index_value=inp.index_value,
                                       name=name, names=names)
         else:
             if inp.ndim != 1:
                 raise ValueError('Index data must be 1-dimensional')
             # get index from tensor
-            dtype = inp.dtype if self._dtype is None else self._dtype
+            dtype = inp.dtype if self.dtype is None else self.dtype
             pd_index = pd.Index([], dtype=dtype)
-            if self._dtype is None:
-                self._dtype = pd_index.dtype
-            return self.new_index([inp], shape=inp.shape, dtype=self._dtype,
+            if self.dtype is None:
+                self.dtype = pd_index.dtype
+            return self.new_index([inp], shape=inp.shape, dtype=self.dtype,
                                   index_value=parse_index(pd_index, inp, store_data=self.store_data),
                                   name=name, names=names)
 
@@ -115,7 +96,10 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
                                             itertools.product(*chunk_size)):
             chunk_op = op.copy().reset_key()
             slc = get_chunk_slices(chunk_size, chunk_index)
-            chunk_op._data = chunk_data = raw_index[slc]
+            if is_cudf(raw_index):  # pragma: no cover
+                chunk_op.data = chunk_data = raw_index[slc[0]]
+            else:
+                chunk_op.data = chunk_data = raw_index[slc]
             out_chunk = chunk_op.new_chunk(
                 None, shape=chunk_shape, dtype=index.dtype, index=chunk_index,
                 name=index.name, index_value=parse_index(chunk_data, store_data=op.store_data))
@@ -128,7 +112,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_from_dataframe(cls, op):
-        inp = op.input
+        inp = op.inputs[0]
         out = op.outputs[0]
 
         out_chunks = []
@@ -165,7 +149,7 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _tile_from_tensor(cls, op):
-        inp = op.input
+        inp = op.inputs[0]
         out = op.outputs[0]
         out_chunks = []
         for c in inp.chunks:
@@ -185,10 +169,10 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.input is None:
+        if not op.inputs:
             # from pandas
             return cls._tile_from_pandas(op)
-        elif hasattr(op.input, 'index_value'):
+        elif hasattr(op.inputs[0], 'index_value'):
             # from DataFrame or Series
             return cls._tile_from_dataframe(op)
         else:
@@ -197,12 +181,12 @@ class IndexDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op):
-        if op.input is None:
+        if not op.inputs:
             # from pandas
             ctx[op.outputs[0].key] = op.data
         else:
             out = op.outputs[0]
-            inp = ctx[op.input.key]
+            inp = ctx[op.inputs[0].key]
             dtype = out.dtype if out.dtype != np.object else None
             if hasattr(inp, 'index'):
                 # DataFrame, Series

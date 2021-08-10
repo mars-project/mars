@@ -418,7 +418,7 @@ def test_groupby_agg_str_cat(setup):
 
 
 @require_cudf
-def test_gpu_groupby_agg(setup):
+def test_gpu_groupby_agg(setup_gpu):
     rs = np.random.RandomState(0)
     df1 = pd.DataFrame({'a': rs.choice([2, 3, 4], size=(100,)),
                         'b': rs.choice([2, 3, 4], size=(100,))})

@@ -78,9 +78,9 @@ def test_check_array(setup):
     Xs = [X_C, X_F, X_int, X_float]
     dtypes = [mt.int32, mt.int, mt.float, mt.float32, None, mt.bool, object]
     orders = ['C', 'F', None]
-    copys = [True, False]
+    copy_flags = [True, False]
 
-    for X, dtype, order, copy in product(Xs, dtypes, orders, copys):
+    for X, dtype, order, copy in product(Xs, dtypes, orders, copy_flags):
         X_checked = check_array(X, dtype=dtype, order=order, copy=copy,
                                 force_all_finite=False)
         if dtype is not None:

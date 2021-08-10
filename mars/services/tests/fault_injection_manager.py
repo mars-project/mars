@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import enum
+import os
 import uuid
 from abc import ABC, abstractmethod
 
@@ -22,6 +23,11 @@ from mars.services.session import SessionAPI
 
 class ExtraConfigKey:
     FAULT_INJECTION_MANAGER_NAME = 'fault_injection_manager_name'
+
+
+class FaultPosition(enum.Enum):
+    ON_EXECUTE_OPERAND = 0
+    ON_RUN_SUBTASK = 1
 
 
 class FaultType(enum.Enum):
@@ -39,6 +45,17 @@ class FaultInjectionUnhandledError(Exception):
     pass
 
 
+def handle_fault(fault):
+    if fault == FaultType.Exception:
+        raise FaultInjectionError("Fault Injection")
+    elif fault == FaultType.UnhandledException:
+        raise FaultInjectionUnhandledError("Fault Injection Unhandled")
+    elif fault == FaultType.ProcessExit:
+        # used to simulate process crash, no cleanup.
+        os._exit(-1)
+    assert fault == FaultType.NoFault, f"Got unexpected fault: {fault}"
+
+
 class AbstractFaultInjectionManager(ABC):
     """
     The abstract base of fault injection manager for test.
@@ -46,11 +63,19 @@ class AbstractFaultInjectionManager(ABC):
     name = str(uuid.uuid4())
 
     @abstractmethod
-    def on_execute_operand(self) -> FaultType:
+    def get_fault(self, pos: FaultPosition, ctx=None) -> FaultType:
         """
-        Be called when executing operand on worker.
+        Get fault at position.
+
+        Parameters
+        ----------
+        pos
+            The fault position.
+        ctx
+            The fault context.
 
         Returns
+        -------
             The fault type.
         """
         pass

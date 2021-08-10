@@ -111,8 +111,9 @@ class RayMLDataset:
         # chunk_addr_refs may be a nested list with duplicated (addr, ref) tuple
         record_pieces = []
 
-        def flatten(object):
-            for item in object:
+        def flatten(items):
+            """Flatten chunk_addr_refs."""
+            for item in items:
                 if isinstance(item, list):
                     yield from flatten(item)
                 elif isinstance(item, tuple):
