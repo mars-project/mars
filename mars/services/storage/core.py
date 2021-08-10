@@ -292,7 +292,7 @@ class DataManagerActor(mo.StatelessActor):
         return self._spill_strategy[level, band_name].get_spill_keys(size)
 
 
-class StorageManagerActor(mo.Actor):
+class StorageManagerActor(mo.StatelessActor):
     """
     Storage manager actor, created only on main process, mainly to setup storage backends
     and create all the necessary actors for storage service.
@@ -358,7 +358,7 @@ class StorageManagerActor(mo.Actor):
         # create actor for transfer
         await self._create_transfer_actors()
         # create task for uploading storage usages
-        await self.upload_storage_info()
+        self._upload_task = self.ref().upload_storage_info.tell_delay(delay=1)
 
     async def __pre_destroy__(self):
         if self._upload_task:
@@ -515,3 +515,15 @@ class StorageManagerActor(mo.Actor):
                         self._cluster_api.set_band_storage_info.delay(band, storage_info))
             await self._cluster_api.set_band_storage_info.batch(*upload_tasks)
             self._upload_task = self.ref().upload_storage_info.tell_delay(delay=1)
+
+    async def upload_disk_info(self):
+        from ..cluster import DiskInfo
+
+        disk_infos = []
+        if self._cluster_api is not None:
+            if 'disk' in self._init_params:
+                params = self._init_params['disk']
+                size = params['size']
+                for path in params['root_dirs']:
+                    disk_infos.append(DiskInfo(path=path, size=size))
+                await self._cluster_api.set_node_disk_info(disk_infos)

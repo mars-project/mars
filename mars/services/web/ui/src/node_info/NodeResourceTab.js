@@ -292,14 +292,15 @@ export default class NodeResourceTab extends React.Component {
                     </Table>
                 </React.Fragment>
                 }
-                <OptionalElement condition={Object.keys(this.state.detail.storage).length}>
+                {Object.keys(this.state.detail.storage).length &&
+                <React.Fragment>
                     <Title component="h3">Storage</Title>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Band</TableCell>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Level</TableCell>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Value</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Level</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -310,17 +311,18 @@ export default class NodeResourceTab extends React.Component {
                                         <TableCell>{level}</TableCell>
                                         <TableCell>
                                             <div>
-                          Used:{toReadableSize(this.state.detail.storage[band][level].size_used)}
+                                                Used:{toReadableSize(this.state.detail.storage[band][level].size_used)}
                                             </div>
                                             <div>
-                          Total:{toReadableSize(this.state.detail.storage[band][level].size_total)}
+                                                Total:{toReadableSize(this.state.detail.storage[band][level].size_total)}
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ))))}
                         </TableBody>
                     </Table>
-                </OptionalElement>
+                </React.Fragment>
+                }
             </div>
         );
     }

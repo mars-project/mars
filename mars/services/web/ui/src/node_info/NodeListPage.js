@@ -27,7 +27,7 @@ import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 import Title from '../Title';
 import { useStyles } from '../Style';
-import { formatTime, toReadableSize, getNodeStatusText, OptionalElement } from '../Utils';
+import { formatTime, toReadableSize, getNodeStatusText } from '../Utils';
 
 
 class NodeList extends React.Component {
@@ -117,9 +117,9 @@ class NodeList extends React.Component {
                         <TableCell style={{fontWeight: 'bolder'}}>Status</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>CPU</TableCell>
                         <TableCell style={{fontWeight: 'bolder'}}>Memory</TableCell>
-                        <OptionalElement condition={this.nodeRole === 'worker'}>
-                            <TableCell style={{fontWeight: 'bolder'}}>Shared Memory</TableCell>
-                        </OptionalElement>
+                        {this.nodeRole === 'worker' &&
+                        <TableCell style={{fontWeight: 'bolder'}}>Shared Memory</TableCell>
+                        }
                         <TableCell style={{fontWeight: 'bolder'}}>Update Time</TableCell>
                     </TableRow>
                 </TableHead>
