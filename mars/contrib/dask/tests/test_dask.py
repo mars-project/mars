@@ -21,6 +21,11 @@ try:
 except ImportError:
     dask = None
 
+try:
+    import mimesis
+except ImportError:
+    mimesis = None
+
 
 def setup_function():
     new_session()
@@ -32,6 +37,10 @@ def teardown_function():
 
 def require_dask_installed(func):
     return pytest.mark.skipif(dask is None, reason='dask not installed')(func)
+
+
+def require_mimesis_installed(func):
+    return pytest.mark.skipif(mimesis is None, reason='mimesis not installed')(func)
 
 
 @require_dask_installed
@@ -112,6 +121,7 @@ def test_array():
 
 
 @require_dask_installed
+@require_mimesis_installed
 def test_bag():
     import dask
 
