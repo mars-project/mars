@@ -27,8 +27,8 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
     errors = StringField("errors")
     downcast = StringField("downcast")
 
-    def __init__(self, errors="raise", downcast=None,**kw):
-        super().__init__(errors=errors, downcast=downcast,**kw)
+    def __init__(self, errors="raise", downcast=None, **kw):
+        super().__init__(errors=errors, downcast=downcast, **kw)
 
     def __call__(self, arg):
         if isinstance(arg, pd.Series):
