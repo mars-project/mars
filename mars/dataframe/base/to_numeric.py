@@ -21,6 +21,7 @@ from ..core import SERIES_TYPE
 from ...tensor.core import TENSOR_TYPE, TensorOrder
 from ...core import ENTITY_TYPE, OutputType
 
+
 class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
 
     errors = StringField("errors")
@@ -91,6 +92,7 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
         errors_ = op.errors
         downcast_ = op.downcast
         ctx[op.outputs[0].key] = pd.to_numeric(input_data, errors=errors_, downcast=downcast_)
+
 
 def to_numeric(arg, errors="raise", downcast=None):
     """
