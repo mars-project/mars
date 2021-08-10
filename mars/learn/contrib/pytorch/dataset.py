@@ -39,6 +39,17 @@ class MarsDataset(Dataset):
         self._context = get_context()
         self._tileables = tileables
 
+        self._check_and_execute()
+        
+    def _check_and_execute(self):
+        for t in self._tileables:
+            if isinstance(t, TENSOR_TYPE):
+                t.execute()
+            elif isinstance(t, DATAFRAME_TYPE):
+                t.execute()
+            elif isinstance(t, SERIES_TYPE):
+                t.execute()
+
     def __len__(self):
         return self._tileables[0].shape[0]
 
@@ -48,14 +59,14 @@ class MarsDataset(Dataset):
     @staticmethod
     def get_data(t, index):
         if isinstance(t, TENSOR_TYPE):
-            return t[index].execute().fetch()
+            return t[index].fetch()
         elif isinstance(t, np.ndarray):
             return t[index]
         elif isinstance(t, DATAFRAME_TYPE):
-            return t.iloc[index].execute().fetch().values
+            return t.iloc[index:index+1].fetch().values[0]
         elif isinstance(t, SERIES_TYPE):
-            return t[index].execute().fetch()
+            return t.iloc[index].fetch()
         elif isinstance(t, pd.DataFrame):
             return t.iloc[index].values
         elif isinstance(t, pd.Series):
-            return t[index]
+            return t.iloc[index]

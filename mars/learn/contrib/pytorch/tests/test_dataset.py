@@ -13,17 +13,19 @@
 # limitations under the License.
 
 import pytest
+import os
 
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.utils import lazy_import
-from mars.learn.contrib.pytorch import MarsDataset, RandomSampler, SequentialSampler, SubsetRandomSampler
+from mars.learn.contrib.pytorch import MarsDataset, \
+        RandomSampler, SequentialSampler, SubsetRandomSampler, run_pytorch_script
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_MarsDataset(setup_cluster):
+def test_MarsDataset(setup):
     from torch.utils.data import Dataset
     import numpy as np
     import pandas as pd
@@ -32,69 +34,70 @@ def test_MarsDataset(setup_cluster):
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
 
-    data_verify = data[0].execute().fetch()
-    labels_verify = labels[0].execute().fetch()
+    data_verify = data[1].execute().fetch()
+    labels_verify = labels[1].execute().fetch()
 
     train_dataset = MarsDataset(data, labels)
+    
     assert isinstance(train_dataset, Dataset)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert (train_dataset[0][1] == labels_verify).all()
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
     assert len(train_dataset) == 1000
 
     # np ndarray
     data = np.random.rand(1000, 32)
     labels = np.random.randint(0, 2, (1000, 10))
 
-    data_verify = data[0]
+    data_verify = data[1]
     labels.dtype = "float32"
-    labels_verify = labels[0]
+    labels_verify = labels[1]
 
     train_dataset = MarsDataset(data, labels)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert (train_dataset[0][1] == labels_verify).all()
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
     assert len(train_dataset) == 1000
 
     # Mars dataframe
     data = md.DataFrame(data)
     labels = md.DataFrame(labels)
 
-    data_verify = data.iloc[0].execute().fetch().values
-    labels_verify = labels.iloc[0].execute().fetch().values
+    data_verify = data.iloc[1].execute().fetch().values
+    labels_verify = labels.iloc[1].execute().fetch().values
 
     train_dataset = MarsDataset(data, labels)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert (train_dataset[0][1] == labels_verify).all()
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
     assert len(train_dataset) == 1000
 
     # Mars Series
-    label = labels[0]
+    label = labels[1]
 
-    label_verify = label[0].execute().fetch()
-
+    label_verify = label[1].execute().fetch()
+    
     train_dataset = MarsDataset(data, label)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert train_dataset[0][1] == label_verify
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    assert train_dataset[1][1] == label_verify
     assert len(train_dataset) == 1000
 
     # pandas dataframe
     data = pd.DataFrame(np.random.rand(1000, 32))
     labels = pd.DataFrame(np.random.randint(0, 2, (1000, 10)), dtype="float32")
 
-    data_verify = data.iloc[0].values
-    labels_verify = labels.iloc[0].values
-
+    data_verify = data.iloc[1].values
+    labels_verify = labels.iloc[1].values
+    
     train_dataset = MarsDataset(data, labels)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert (train_dataset[0][1] == labels_verify).all()
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
     assert len(train_dataset) == 1000
 
     # pands series
-    label = labels[0]
-    label_verify = label[0]
+    label = labels[1]
+    label_verify = label[1]
 
     train_dataset = MarsDataset(data, label)
-    assert (train_dataset[0][0] == data_verify).all()
-    assert train_dataset[0][1] == label_verify
+    np.testing.assert_array_equal(train_dataset[1][0], data_verify)
+    assert train_dataset[1][1] == label_verify
     assert len(train_dataset) == 1000
 
 
@@ -104,8 +107,6 @@ def test_SequentialSampler(setup_cluster):
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
-    data.execute()
-    labels.execute()
 
     train_dataset = MarsDataset(data, labels)
     assert len(train_dataset) == 1000
@@ -144,8 +145,6 @@ def test_RandomSampler(setup_cluster):
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
-    data.execute().fetch()
-    labels.execute().fetch()
 
     train_dataset = MarsDataset(data, labels)
 
@@ -236,3 +235,20 @@ def test_SubsetRandomSampler(setup_cluster):
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
+
+
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
+def test_MarsDataset_script(setup_cluster):
+    sess = setup_cluster
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'pytorch_dataset.py')
+
+    data = mt.random.rand(1000, 32, dtype='f4')
+    labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
+    
+    data.execute()
+    labels.execute()
+
+    assert run_pytorch_script(
+        path, n_workers=2, command_argv=['multiple'],
+        port=9945, session=sess, data={'data': data, 'labels': labels}).fetch()['status'] == 'ok'
