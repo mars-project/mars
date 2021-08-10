@@ -26,6 +26,7 @@ import { useStyles } from '../Style';
 import NodeEnvTab from './NodeEnvTab';
 import NodeResourceTab from './NodeResourceTab';
 
+
 export default function SupervisorDetailPage(props) {
     const classes = useStyles();
     const [value, setValue] = React.useState(0);

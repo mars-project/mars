@@ -70,10 +70,3 @@ export function getNodeStatusText(statusCode) {
     };
     return mapping[statusCode];
 }
-
-export function OptionalElement(props) {
-    if (props.condition) {
-        return props.children;
-    }
-    return null;
-}
