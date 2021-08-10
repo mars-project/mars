@@ -17,7 +17,7 @@
 import weakref
 from collections.abc import Iterable
 from io import StringIO
-from typing import Union, Dict, Any
+from typing import Tuple, List, Union, Dict, Any
 
 import numpy as np
 import pandas as pd
@@ -526,6 +526,8 @@ class _BatchedFetcher:
         else:
             batches = list(self._iter(batch_size=batch_size,
                                       session=session, **kw))
+            if isinstance(batches[0], (Tuple, List)):
+                return batches
             return pd.concat(batches) if len(batches) > 1 else batches[0]
 
 
