@@ -526,9 +526,9 @@ class StorageManagerActor(mo.StatelessActor):
         from ..cluster import DiskInfo
 
         disk_infos = []
-        if self._cluster_api is not None and 'disk' in self._init_params:
-            params = self._init_params['disk']
+        if self._cluster_api is not None and 'disk' in self._init_params['numa-0']:
+            params = self._init_params['numa-0']['disk']
             size = params['size']
             for path in params['root_dirs']:
-                disk_infos.append(DiskInfo(path=path, size=size))
+                disk_infos.append(DiskInfo(path=path, limit_size=size))
             await self._cluster_api.set_node_disk_info(disk_infos)
