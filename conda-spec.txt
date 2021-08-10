@@ -16,4 +16,3 @@ numexpr
 scikit-learn
 psutil
 bokeh
-jinja2

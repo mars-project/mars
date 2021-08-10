@@ -20,50 +20,52 @@ import mars.oscar as mo
 from mars.core import ChunkGraph
 from mars.services.cluster import ClusterAPI
 from mars.services.cluster.core import NodeRole, NodeStatus
-from mars.services.cluster.locator import SupervisorLocatorActor
 from mars.services.cluster.uploader import NodeInfoUploaderActor
+from mars.services.cluster.supervisor.locator import SupervisorPeerLocatorActor
 from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
 from mars.services.meta import MockMetaAPI
 from mars.services.session import MockSessionAPI
 from mars.services.scheduling.supervisor import AssignerActor
+from mars.services.scheduling.errors import NoMatchingSlots
 from mars.services.subtask import Subtask
 from mars.tensor.fetch import TensorFetch
 from mars.tensor.arithmetic import TensorTreeAdd
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):
-    def __init__(self, timeout=None, check_interval=None):
+    def __init__(self, timeout=None, check_interval=None, with_gpu=False):
         super().__init__(timeout=timeout, check_interval=check_interval)
-        self.ready_nodes = {('address0', 'numa-0'): 2,
+        self.ready_bands = {('address0', 'numa-0'): 2,
                             ('address1', 'numa-0'): 2,
                             ('address2', 'numa-0'): 2,
                             ('address3', 'numa-0'): 2}
+        if with_gpu:
+            self.ready_bands[('address0', 'gpu-0')] = 1
+        self.all_bands = self.ready_bands.copy()
 
     async def update_node_info(self, address, role, env=None,
                                resource=None, detail=None, status=None):
         if 'address' in address and status == NodeStatus.STOPPING:
-            del self.ready_nodes[(address, 'numa-0')]
+            del self.ready_bands[(address, 'numa-0')]
         await super().update_node_info(address, role, env,
                                        resource, detail, status)
 
     def get_all_bands(self, role=None, statuses=None):
         if statuses == {NodeStatus.READY}:
-            return self.ready_nodes
+            return self.ready_bands
         else:
-            return {('address0', 'numa-0'): 2,
-                    ('address1', 'numa-0'): 2,
-                    ('address2', 'numa-0'): 2,
-                    ('address3', 'numa-0'): 2}
+            return self.all_bands
 
 
 class FakeClusterAPI(ClusterAPI):
     @classmethod
     async def create(cls, address: str, **kw):
         dones, _ = await asyncio.wait([
-            mo.create_actor(SupervisorLocatorActor, 'fixed', address,
-                            uid=SupervisorLocatorActor.default_uid(),
+            mo.create_actor(SupervisorPeerLocatorActor, 'fixed', address,
+                            uid=SupervisorPeerLocatorActor.default_uid(),
                             address=address),
             mo.create_actor(MockNodeInfoCollectorActor,
+                            with_gpu=kw.get('with_gpu', False),
                             uid=NodeInfoCollectorActor.default_uid(),
                             address=address),
             mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
@@ -86,12 +88,14 @@ class FakeClusterAPI(ClusterAPI):
 
 
 @pytest.fixture
-async def actor_pool():
+async def actor_pool(request):
     pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    with_gpu = request.param
 
     async with pool:
         session_id = 'test_session'
-        cluster_api = await FakeClusterAPI.create(pool.external_address)
+        cluster_api = await FakeClusterAPI.create(
+            pool.external_address, with_gpu=with_gpu)
         await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         assigner_ref = await mo.create_actor(
@@ -104,7 +108,8 @@ async def actor_pool():
 
 
 @pytest.mark.asyncio
-async def test_assigner(actor_pool):
+@pytest.mark.parametrize('actor_pool', [False], indirect=True)
+async def test_assign_cpu_tasks(actor_pool):
     pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
 
     input1 = TensorFetch(key='a', source_key='a', dtype=np.dtype(int)).new_chunk([])
@@ -150,8 +155,42 @@ async def test_assigner(actor_pool):
     [result] = await assigner_ref.assign_subtasks([subtask])
     assert result in (('address0', 'numa-0'), ('address2', 'numa-0'))
 
+    result_chunk.op.gpu = True
+    subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
+    with pytest.raises(NoMatchingSlots) as err:
+        await assigner_ref.assign_subtasks([subtask])
+    assert 'gpu' in str(err.value)
+
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('actor_pool', [True], indirect=True)
+async def test_assign_gpu_tasks(actor_pool):
+    pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
+
+    input1 = TensorFetch(key='a', source_key='a', dtype=np.dtype(int)).new_chunk([])
+    input2 = TensorFetch(key='b', source_key='b', dtype=np.dtype(int)).new_chunk([])
+    result_chunk = TensorTreeAdd(args=[input1, input2], gpu=True) \
+        .new_chunk([input1, input2])
+
+    chunk_graph = ChunkGraph([result_chunk])
+    chunk_graph.add_node(input1)
+    chunk_graph.add_node(input2)
+    chunk_graph.add_node(result_chunk)
+    chunk_graph.add_edge(input1, result_chunk)
+    chunk_graph.add_edge(input2, result_chunk)
+
+    await meta_api.set_chunk_meta(input1, memory_size=200, store_size=200,
+                                  bands=[('address0', 'numa-0')])
+    await meta_api.set_chunk_meta(input2, memory_size=200, store_size=200,
+                                  bands=[('address0', 'numa-0')])
+
+    subtask = Subtask('test_task', session_id, chunk_graph=chunk_graph)
+    [result] = await assigner_ref.assign_subtasks([subtask])
+    assert result[1].startswith('gpu')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('actor_pool', [False], indirect=True)
 async def test_reassign_subtasks(actor_pool):
     pool, session_id, assigner_ref, cluster_api, meta_api = actor_pool
 

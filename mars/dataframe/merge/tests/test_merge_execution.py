@@ -19,10 +19,6 @@ from mars.dataframe.datasource.dataframe import from_pandas
 from mars.dataframe.datasource.series import from_pandas as series_from_pandas
 from mars.dataframe.merge import concat
 from mars.dataframe.utils import sort_dataframe_inplace
-from mars.tests import setup
-
-
-setup = setup
 
 
 def test_merge(setup):

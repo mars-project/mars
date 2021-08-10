@@ -18,10 +18,6 @@ import pytest
 from mars.core import tile
 from mars.tensor.datasource import tensor
 from mars.tensor.spatial import distance
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(distance.pdist is None, reason='scipy not installed')

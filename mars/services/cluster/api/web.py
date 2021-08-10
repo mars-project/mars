@@ -16,8 +16,9 @@ import json
 from typing import Dict, List, Optional, Set
 
 from ....lib.aio import alru_cache
+from ....typing import BandType
 from ....utils import serialize_serializable, deserialize_serializable
-from ...core import NodeRole, BandType
+from ...core import NodeRole
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
 from ..core import watch_method, NodeStatus
 from .core import AbstractClusterAPI
@@ -164,8 +165,10 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
         else:
             return self._convert_node_dict(result['nodes'])
 
-    async def get_supervisors(self) -> List[str]:
-        res = await self._get_nodes_info(role=NodeRole.SUPERVISOR)
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
+        statuses = {NodeStatus.READY} if filter_ready \
+            else {NodeStatus.STARTING, NodeStatus.READY}
+        res = await self._get_nodes_info(role=NodeRole.SUPERVISOR, statuses=statuses)
         return list(res.keys())
 
     @watch_method

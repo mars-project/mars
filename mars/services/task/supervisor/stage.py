@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import logging
 import time
 from typing import Dict, List
 
@@ -20,12 +21,14 @@ from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
 from ....optimization.logical import OptimizationRecords
+from ....typing import BandType
 from ....utils import get_params_fields
-from ...core import BandType
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
 from ...meta import MetaAPI
 from ..core import Task, TaskResult, TaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 class TaskStageProcessor:
@@ -75,7 +78,7 @@ class TaskStageProcessor:
             return
         self._submitted_subtask_ids.update(subtask.subtask_id for subtask in subtasks)
         return await self._scheduling_api.add_subtasks(
-            subtasks, [(subtask.priority,) for subtask in subtasks])
+            subtasks, [subtask.priority for subtask in subtasks])
 
     async def _update_chunks_meta(self, chunk_graph: ChunkGraph):
         get_meta = []
@@ -121,6 +124,9 @@ class TaskStageProcessor:
                     end_time=time.time(), status=TaskStatus.terminated,
                     error=result.error, traceback=result.traceback)
                 if not all_done and error_or_cancelled:
+                    if result.status == SubtaskStatus.errored:
+                        logger.exception('Subtask %s errored', subtask.subtask_id,
+                                         exc_info=(type(result.error), result.error, result.traceback))
                     # if error or cancel, cancel all submitted subtasks
                     await self._scheduling_api.cancel_subtasks(
                         list(self._submitted_subtask_ids))

@@ -30,9 +30,6 @@ from mars.core import TileableGraphBuilder, TileableGraph, ChunkGraphBuilder
 from mars.config import options
 from mars.learn.cluster import KMeans, k_means
 from mars.learn.cluster._kmeans import _init_centroids
-from mars.tests import setup
-
-setup = setup
 
 
 @pytest.mark.skipif(KMeans is None, reason='scikit-learn not installed')

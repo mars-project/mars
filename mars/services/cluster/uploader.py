@@ -20,7 +20,7 @@ from typing import Dict, List
 from ... import oscar as mo
 from ...lib.aio import alru_cache
 from ...storage import StorageLevel
-from ..core import BandType
+from ...typing import BandType
 from .core import NodeInfo, NodeStatus, WorkerSlotInfo, QuotaInfo, \
     DiskInfo, StorageInfo
 from .gather import gather_node_env, gather_node_resource, \
@@ -71,6 +71,9 @@ class NodeInfoUploaderActor(mo.Actor):
             SupervisorLocatorActor.default_uid(), address=self.address)
         supervisor_addr = await locator_ref.get_supervisor(
             NodeInfoCollectorActor.default_uid())
+        if supervisor_addr is None:
+            raise ValueError
+
         return await mo.actor_ref(
             NodeInfoCollectorActor.default_uid(), address=supervisor_addr)
 
@@ -89,15 +92,19 @@ class NodeInfoUploaderActor(mo.Actor):
     async def upload_node_info(self, call_next: bool = True, status: NodeStatus = None):
         try:
             if not self._info.env:
-                self._info.env = gather_node_env()
-            self._info.detail.update(gather_node_details(
+                self._info.env = await asyncio.to_thread(gather_node_env)
+            self._info.detail.update(await asyncio.to_thread(
+                gather_node_details,
                 disk_infos=self._disk_infos,
                 band_storage_infos=self._band_storage_infos,
                 band_slot_infos=self._band_slot_infos,
                 band_quota_infos=self._band_quota_infos
             ))
-            for band, res in gather_node_resource(
-                    self._band_to_slots, use_gpu=self._use_gpu).items():
+
+            band_resources = await asyncio.to_thread(
+                gather_node_resource, self._band_to_slots, use_gpu=self._use_gpu)
+
+            for band, res in band_resources.items():
                 try:
                     res_dict = self._info.resource[band]
                 except KeyError:
@@ -105,14 +112,19 @@ class NodeInfoUploaderActor(mo.Actor):
                 res_dict.update(res)
 
             if self._upload_enabled:
-                node_info_ref = await self._get_node_info_ref()
-                await node_info_ref.update_node_info(
-                    address=self.address, role=self._info.role,
-                    env=self._info.env if not self._env_uploaded else None,
-                    resource=self._info.resource, detail=self._info.detail,
-                    status=status
-                )
-                self._env_uploaded = True
+                try:
+                    node_info_ref = await self._get_node_info_ref()
+                    if not self._env_uploaded:
+                        status = status or NodeStatus.READY
+                    await node_info_ref.update_node_info(
+                        address=self.address, role=self._info.role,
+                        env=self._info.env if not self._env_uploaded else None,
+                        resource=self._info.resource, detail=self._info.detail,
+                        status=status
+                    )
+                    self._env_uploaded = True
+                except ValueError:
+                    pass
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
             logger.exception(f'Failed to upload node info')
             raise

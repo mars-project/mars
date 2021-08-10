@@ -27,11 +27,7 @@ from mars.tensor.datasource import ones, tensor, zeros
 from mars.tensor.arithmetic import add, cos, truediv, frexp, \
     modf, clip, isclose, arctan2, tree_add, tree_multiply
 from mars.tests.core import require_cupy
-from mars.tests import setup
 from mars.utils import ignore_warning
-
-
-setup = setup
 
 
 def _nan_equal(a, b):

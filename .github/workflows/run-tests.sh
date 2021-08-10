@@ -4,10 +4,14 @@ if [ -n "$WITH_CYTHON" ]; then
   mkdir -p build
   export POOL_START_METHOD=forkserver
 
-  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --forked mars/tests mars/core/graph
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/tests mars/core/graph
+  python .github/workflows/remove_tracer_errors.py
+  coverage combine
   mv .coverage build/.coverage.non-oscar.file
 
-  retry -n 20 -g INTERNALERROR pytest $PYTEST_CONFIG --forked mars/oscar
+  coverage run --rcfile=setup.cfg -m pytest $PYTEST_CONFIG_WITHOUT_COV mars/oscar
+  python .github/workflows/remove_tracer_errors.py
+  coverage combine
   mv .coverage build/.coverage.oscar_ctx.file
 
   coverage combine build/ && coverage report
@@ -21,13 +25,4 @@ if [ -z "$NO_COMMON_TESTS" ]; then
     --ignore mars/learn --ignore mars/remote mars
   mv .coverage build/.coverage.main.file
   coverage combine build/ && coverage report
-
-  export DEFAULT_VENV=$VIRTUAL_ENV
-  source testenv/bin/activate
-  pytest --timeout=1500 mars/tests/test_session.py mars/lib/filesystem/tests/test_filesystem.py
-  if [ -z "$DEFAULT_VENV" ]; then
-    deactivate
-  else
-    source $DEFAULT_VENV/bin/activate
-  fi
 fi

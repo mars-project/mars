@@ -18,13 +18,13 @@ from typing import Any, List, Type, TypeVar, Union
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....storage.base import StorageLevel, StorageFileObject
-from ....utils import extensible
 from ...cluster import StorageInfo
 from ..core import StorageManagerActor, DataManagerActor, \
     DataInfo, WrappedStorageFileObject
 from ..handler import StorageHandlerActor
 from .core import AbstractStorageAPI
 
+_is_windows = sys.platform.lower().startswith('win')
 APIType = TypeVar('APIType', bound='StorageAPI')
 
 
@@ -72,7 +72,7 @@ class StorageAPI(AbstractStorageAPI):
         await api._init()
         return api
 
-    @extensible
+    @mo.extensible
     async def get(self,
                   data_key: str,
                   conditions: List = None,
@@ -90,7 +90,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.get.batch(*gets)
 
-    @extensible
+    @mo.extensible
     async def put(self, data_key: str,
                   obj: object,
                   level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
@@ -110,7 +110,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.put.batch(*puts)
 
-    @extensible
+    @mo.extensible
     async def get_infos(self, data_key: str) -> List[DataInfo]:
         """
         Get data information items for specific data key
@@ -128,7 +128,7 @@ class StorageAPI(AbstractStorageAPI):
             self._session_id, data_key
         )
 
-    @extensible
+    @mo.extensible
     async def delete(self, data_key: str, error: str = 'raise'):
         """
         Delete object.
@@ -153,7 +153,7 @@ class StorageAPI(AbstractStorageAPI):
             )
         return await self._storage_handler_ref.delete.batch(*deletes)
 
-    @extensible
+    @mo.extensible
     async def fetch(self,
                     data_key: str,
                     level: StorageLevel = StorageLevel.MEMORY,
@@ -176,11 +176,25 @@ class StorageAPI(AbstractStorageAPI):
         error: str
             raise or ignore
         """
-        await self._storage_handler_ref.fetch(
-            self._session_id, data_key, level,
+        await self._storage_handler_ref.fetch_batch(
+            self._session_id, [data_key], level,
             dest_address, band_name, error)
 
-    @extensible
+    @fetch.batch
+    async def batch_fetch(self, args_list, kwargs_list):
+        extracted_args = []
+        data_keys = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            data_key, level, band_name, dest_address, error = \
+                self.fetch.bind(*args, **kwargs)
+            if extracted_args:
+                assert extracted_args == (level, band_name, dest_address, error)
+            extracted_args = (level, band_name, dest_address, error)
+            data_keys.append(data_key)
+        await self._storage_handler_ref.fetch_batch(
+            self._session_id, data_keys, *extracted_args)
+
+    @mo.extensible
     async def unpin(self, data_key: str,
                     error: str = 'raise'):
         """
@@ -195,6 +209,17 @@ class StorageAPI(AbstractStorageAPI):
         """
         await self._storage_handler_ref.unpin(self._session_id,
                                               data_key, error)
+
+    @unpin.batch
+    async def batch_unpin(self, args_list, kwargs_list):
+        unpins = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            data_key, error = self.unpin.bind(*args, **kwargs)
+            unpins.append(
+                self._storage_handler_ref.unpin.delay(
+                    self._session_id, data_key, error)
+            )
+        return await self._storage_handler_ref.unpin.batch(*unpins)
 
     async def open_reader(self, data_key: str) -> StorageFileObject:
         """
@@ -286,9 +311,12 @@ class MockStorageAPI(StorageAPI):
                 store_memory=10 * 1024 * 1024,
                 plasma_directory=plasma_dir,
                 check_dir_size=False)
-            storage_configs = {
-                "plasma": plasma_setup_params,
-            }
+            if _is_windows:
+                storage_configs = {"shared_memory": {}}
+            else:
+                storage_configs = {
+                    "plasma": plasma_setup_params,
+                }
 
         storage_handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         await mo.create_actor(StorageManagerActor,

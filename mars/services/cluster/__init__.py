@@ -14,5 +14,6 @@
 
 from .api import AbstractClusterAPI, ClusterAPI, MockClusterAPI, \
     WebClusterAPI
+from .backends import AbstractClusterBackend
 from .core import NodeInfo, NodeRole  # noqa: F401
 from .core import QuotaInfo, WorkerSlotInfo, DiskInfo, StorageInfo

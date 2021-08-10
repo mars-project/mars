@@ -301,7 +301,7 @@ class AbstractActorPool(ABC):
         with _ErrorProcessor(message.message_id,
                              message.protocol) as processor:
             with debug_async_timeout('process_message_timeout',
-                                     'Process message %s of channel %s', message, channel):
+                                     'Process message %s of channel %s timeout.', message, channel):
                 with self._run_coro(message.message_id, handler(self, message)) as future:
                     processor.result = await future
         try:
@@ -931,6 +931,8 @@ class MainActorPoolBase(ActorPoolBase):
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
+        # turn off auto recover to avoid errors
+        self._auto_recover = False
         self._stopped.set()
         if self._monitor_task and not self._monitor_task.done():
             await self._monitor_task

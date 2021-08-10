@@ -1,29 +1,45 @@
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import asyncio
 import inspect
 import os
+import sys
 
 import pytest
 
+from .....tests.core import require_ray
 from .....utils import lazy_import
 from ....errors import ServerClosed
 from ...communication.base import ChannelType
 from ..communication import ChannelID, Channel, RayServer, RayClient
-from mars.tests.conftest import *  # noqa
-from mars.tests.core import require_ray
 
 ray = lazy_import('ray')
+_is_windows: bool = sys.platform.startswith('win')
 
 
 class ServerActor:
 
     def __new__(cls, *args, **kwargs):
-        try:
-            if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
-                # register coverage hooks on SIGTERM
-                from pytest_cov.embed import cleanup_on_sigterm
-                cleanup_on_sigterm()
-        except ImportError:  # pragma: no cover
-            pass
+        if not _is_windows:
+            try:
+                if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+                    # register coverage hooks on SIGTERM
+                    from pytest_cov.embed import cleanup_on_sigterm
+                    cleanup_on_sigterm()
+            except ImportError:  # pragma: no cover
+                pass
         return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, address):

@@ -27,6 +27,10 @@ from mars.services.storage.handler import StorageHandlerActor
 from mars.storage import StorageLevel, PlasmaStorage
 from mars.utils import calc_data_size
 
+# todo enable this test module when spill support added
+#  on storage quotas
+if sys.platform.lower().startswith('win'):
+    pytestmark = pytest.mark.skip
 
 MEMORY_SIZE = 100 * 1024
 
@@ -133,7 +137,7 @@ class DelayPutStorageHandler(StorageHandlerActor):
                   obj: object,
                   level: StorageLevel):
         size = calc_data_size(obj)
-        await self._request_quota_with_spill(level, size)
+        await self.request_quota_with_spill(level, size)
         # sleep to trigger `NoDataToSpill`
         await asyncio.sleep(0.5)
         object_info = await self._clients[level].put(obj)

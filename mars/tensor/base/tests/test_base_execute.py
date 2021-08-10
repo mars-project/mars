@@ -28,11 +28,7 @@ from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcas
     isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
     trapz, shape, to_gpu, to_cpu, swapaxes
 from mars.tensor.datasource import tensor, ones, zeros, arange
-from mars.tests import setup
 from mars.tests.core import require_cupy
-
-
-setup = setup
 
 
 def test_rechunk_execution(setup):
@@ -1852,3 +1848,17 @@ def test_delete_execution(setup):
     r9 = mt.delete(a, 9, axis=1)
     result = r9.execute().fetch()
     np.testing.assert_array_equal(np.delete(raw, 9, axis=1), result)
+
+
+@pytest.mark.parametrize('chunk_size', [3, 5])
+@pytest.mark.parametrize('invert', [True, False])
+def test_in1d_execute(setup, chunk_size, invert):
+    rs = np.random.RandomState(0)
+    raw1 = rs.randint(10, size=10)
+    ar1 = mt.tensor(raw1, chunk_size=5)
+    raw2 = np.arange(5)
+    ar2 = mt.tensor(raw2, chunk_size=chunk_size)
+    ar = mt.in1d(ar1, ar2, invert=invert)
+    result = ar.execute().fetch()
+    expected = np.in1d(raw1, raw2, invert=invert)
+    np.testing.assert_array_equal(result, expected)

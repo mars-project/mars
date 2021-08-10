@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import TypeVar
+from typing import Tuple, TypeVar
 
 OperandType = TypeVar('OperandType')
 TileableType = TypeVar('TileableType')
@@ -22,3 +22,5 @@ SessionType = TypeVar('SessionType')
 
 ClusterType = TypeVar('ClusterType')
 ClientType = TypeVar('ClientType')
+
+BandType = Tuple[str, str]  # (band address, resource_type)

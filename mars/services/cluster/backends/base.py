@@ -15,18 +15,21 @@
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Dict, List, Optional, Type
 
+from ..core import NodeRole
+
 
 class AbstractClusterBackend(ABC):
     name = None
 
     @classmethod
     @abstractmethod
-    async def create(cls, lookup_address: Optional[str],
+    async def create(cls, node_role: NodeRole, lookup_address: Optional[str],
                      pool_address: str) -> "AbstractClusterBackend":
         """
 
         Parameters
         ----------
+        node_role
         lookup_address
         pool_address
 
@@ -47,25 +50,19 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    async def get_supervisors(self) -> List[str]:
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
         """
         Get list of supervisors
+
+        Parameters
+        ----------
+        filter_ready : bool
+            True if return ready nodes only, or return starting and ready nodes
 
         Returns
         -------
         out : List[str]
             List of supervisors
-        """
-
-    @abstractmethod
-    async def get_expected_supervisors(self) -> List[str]:
-        """
-        Get list of all supervisors expected to create
-
-        Returns
-        -------
-        out : List[str]
-            List of expected supervisors
         """
 
     @abstractmethod

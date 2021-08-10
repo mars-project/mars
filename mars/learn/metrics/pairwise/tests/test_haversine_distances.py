@@ -14,22 +14,12 @@
 
 import numpy as np
 import pytest
-try:
-    import sklearn
-
-    from sklearn.metrics.pairwise import haversine_distances as sk_haversine_distances
-except ImportError:  # pragma: no cover
-    sklearn = None
+from sklearn.metrics.pairwise import haversine_distances as sk_haversine_distances
 
 from mars import tensor as mt
 from mars.learn.metrics.pairwise import haversine_distances
-from mars.tests import setup
 
 
-setup = setup
-
-
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 def test_haversine_distances_op():
     # shape[1] != 2
     with pytest.raises(ValueError):
@@ -56,7 +46,6 @@ x2 = mt.tensor(raw_x, chunk_size=(11, 1))
 y2 = mt.tensor(raw_y, chunk_size=(17, 1))
 
 
-@pytest.mark.skipif(sklearn is None, reason='scikit-learn not installed')
 @pytest.mark.parametrize('x, y', [(x1, y1), (x2, y2)])
 @pytest.mark.parametrize('use_sklearn', [True, False])
 def test_haversine_distances_execution(setup, x, y, use_sklearn):

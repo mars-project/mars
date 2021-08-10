@@ -107,7 +107,7 @@ class FIFOStrategy(SpillStrategy):
         return spill_sizes, spill_keys
 
 
-class SpillManagerActor(mo.Actor):
+class SpillManagerActor(mo.StatelessActor):
     """
     The actor to handle the race condition when NoDataToSpill happens.
     There are two situations when spill raises `NoDataToSpill`,
@@ -126,6 +126,9 @@ class SpillManagerActor(mo.Actor):
     def gen_uid(cls, level: StorageLevel):
         return f'spill_manager_{level}'
 
+    def has_spill_task(self):
+        return self._event is not None
+
     def notify_spillable_space(self, spillable_size: int, quota_left: int):
         event = self._event
         if event is None:
@@ -142,10 +145,10 @@ class SpillManagerActor(mo.Actor):
         async with self._lock:
             self._event = event = asyncio.Event()
             event.size = size
-            yield self._event.wait()
+            await self._event.wait()
             size = self._event.size
             self._event = None
-            raise mo.Return(size)
+            return size
 
 
 async def spill(request_size: int,

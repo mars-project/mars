@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import Dict, List, Union
 
 from ..core import SessionInfo
 
@@ -71,4 +71,30 @@ class AbstractSessionAPI(ABC):
         -------
         last_idle_time: str
             The last idle time if the session(s) is idle else None.
+        """
+
+    @abstractmethod
+    async def fetch_tileable_op_logs(self,
+                                     session_id: str,
+                                     tileable_op_key: str,
+                                     chunk_op_key_to_offsets: Dict[str, List[int]],
+                                     chunk_op_key_to_sizes: Dict[str, List[int]]) -> Dict:
+        """
+        Fetch tileable op's logs
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        tileable_op_key : str
+            Tileable op key.
+        chunk_op_key_to_offsets : str or int or list of int
+            Fetch offsets.
+        chunk_op_key_to_sizes : str or int or list of int
+            Fetch sizes.
+
+        Returns
+        -------
+        logs : dict
+            chunk op key to result.
         """

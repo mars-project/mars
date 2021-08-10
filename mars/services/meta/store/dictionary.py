@@ -16,8 +16,9 @@ from collections import defaultdict
 from dataclasses import asdict
 from typing import Dict, List, Set
 
-from ....utils import implements, extensible
-from ...core import BandType
+from .... import oscar as mo
+from ....utils import implements
+from ....typing import BandType
 from ..core import _CommonMeta, _ChunkMeta
 from .base import AbstractMetaStore, register_meta_store
 
@@ -49,7 +50,7 @@ class DictMetaStore(AbstractMetaStore):
                 self._band_chunks[band].add(object_id)
 
     @implements(AbstractMetaStore.set_meta)
-    @extensible
+    @mo.extensible
     async def set_meta(self,
                        object_id: str,
                        meta: _CommonMeta):
@@ -78,7 +79,7 @@ class DictMetaStore(AbstractMetaStore):
                 return
 
     @implements(AbstractMetaStore.get_meta)
-    @extensible
+    @mo.extensible
     async def get_meta(self,
                        object_id: str,
                        fields: List[str] = None,
@@ -103,7 +104,7 @@ class DictMetaStore(AbstractMetaStore):
         del self._store[object_id]
 
     @implements(AbstractMetaStore.del_meta)
-    @extensible
+    @mo.extensible
     async def del_meta(self,
                        object_id: str):
         self._del_meta(object_id)

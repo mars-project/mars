@@ -16,7 +16,6 @@ import asyncio
 import logging
 import sys
 from collections import defaultdict
-from itertools import chain
 from typing import Any, Dict, List, Optional, Type
 
 from .... import oscar as mo
@@ -25,8 +24,8 @@ from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
     MapReduceOperand, VirtualOperand, OperandStage, execute
 from ....optimization.physical import optimize
+from ....typing import BandType
 from ...context import ThreadedServiceContext
-from ...core import BandType
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
 from ...session import SessionAPI
@@ -237,7 +236,7 @@ class SubtaskProcessor:
                          if not isinstance(c.op, VirtualOperand)]
 
         # store data into storage
-        data_key_to_puts = defaultdict(list)
+        puts = []
         stored_keys = []
         for result_chunk in result_chunks:
             data_key = result_chunk.key
@@ -250,7 +249,7 @@ class SubtaskProcessor:
                     result_chunk.params = result_chunk.get_params_from_data(result_data)
 
                 put = self._storage_api.put.delay(data_key, result_data)
-                data_key_to_puts[data_key].append(put)
+                puts.append(put)
             else:
                 assert isinstance(result_chunk.op, MapReduceOperand)
                 keys = [store_key for store_key in self._datastore
@@ -259,24 +258,20 @@ class SubtaskProcessor:
                     stored_keys.append(key)
                     result_data = self._datastore[key]
                     put = self._storage_api.put.delay(key, result_data)
-                    data_key_to_puts[data_key].append(put)
+                    puts.append(put)
         logger.debug('Start putting data keys: %s, '
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
-        puts = list(chain(*data_key_to_puts.values()))
-        data_key_to_store_size = defaultdict(lambda: 0)
-        data_key_to_memory_size = defaultdict(lambda: 0)
-        data_key_to_object_id = defaultdict(list)
+        data_key_to_store_size = dict()
+        data_key_to_memory_size = dict()
+        data_key_to_object_id = dict()
         if puts:
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
                 store_infos = await put_infos
-                store_infos_iter = iter(store_infos)
-                for data_key, puts in data_key_to_puts.items():
-                    for _ in puts:
-                        store_info = next(store_infos_iter)
-                        data_key_to_store_size[data_key] += store_info.store_size
-                        data_key_to_memory_size[data_key] += store_info.memory_size
-                        data_key_to_object_id[data_key].append(store_info.object_id)
+                for store_key, store_info in zip(stored_keys, store_infos):
+                    data_key_to_store_size[store_key] = store_info.store_size
+                    data_key_to_memory_size[store_key] = store_info.memory_size
+                    data_key_to_object_id[store_key] = store_info.object_id
                 logger.debug('Finish putting data keys: %s, '
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
@@ -299,18 +294,31 @@ class SubtaskProcessor:
                           data_key_to_store_size: Dict,
                           data_key_to_memory_size: Dict,
                           data_key_to_object_id: Dict):
+        key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
         set_chunk_metas = []
-        memory_sizes = []
-        for result_chunk in chunk_graph.result_chunks:
-            store_size = data_key_to_store_size[result_chunk.key]
-            memory_size = data_key_to_memory_size[result_chunk.key]
-            object_refs = data_key_to_object_id[result_chunk.key]
-            memory_sizes.append(memory_size)
+        result_data_size = 0
+        for chunk_key in stored_keys:
+            if isinstance(chunk_key, tuple):
+                result_chunk = key_to_result_chunk[chunk_key[0]]
+            else:
+                result_chunk = key_to_result_chunk[chunk_key]
+            store_size = data_key_to_store_size[chunk_key]
+            memory_size = data_key_to_memory_size[chunk_key]
+            result_data_size += memory_size
+            object_ref = data_key_to_object_id[result_chunk.key]
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,
-                    store_size=store_size, bands=[self._band], object_refs=object_refs))
+                    store_size=store_size, bands=[self._band],
+                    chunk_key=chunk_key, object_ref=object_ref))
+        for chunk in chunk_graph.result_chunks:
+            if chunk.key not in data_key_to_store_size:
+                # mapper, set meta, so that storage can make sure
+                # this operand is executed, some sub key is absent
+                # due to it's empty actually
+                set_chunk_metas.append(self._meta_api.set_chunk_meta.delay(
+                    chunk, memory_size=0, store_size=0, bands=[self._band]))
         logger.debug('Start storing chunk metas for data keys: %s, '
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
         if set_chunk_metas:
@@ -336,7 +344,7 @@ class SubtaskProcessor:
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
                 raise
         # set result data size
-        self.result.data_size = sum(memory_sizes)
+        self.result.data_size = result_data_size
 
     async def done(self):
         if self.result.status == SubtaskStatus.running:
@@ -452,7 +460,7 @@ class SubtaskProcessorActor(mo.Actor):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
             session_id, self._supervisor_address,
-            self.address, loop)
+            self.address, loop, band=self._band)
         await context.init()
         set_context(context)
 

@@ -20,8 +20,8 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....typing import BandType
 from ....utils import dataslots
-from ...core import BandType
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
 from ...task import TaskAPI
 from ..utils import redirect_subtask_errors

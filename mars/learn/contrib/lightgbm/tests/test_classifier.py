@@ -21,7 +21,6 @@ import pytest
 
 import mars.tensor as mt
 import mars.dataframe as md
-from mars.tests import setup
 
 try:
     import lightgbm
@@ -29,8 +28,6 @@ try:
 except ImportError:
     lightgbm = LGBMClassifier = None
 
-
-setup = setup
 
 n_rows = 1000
 n_columns = 10

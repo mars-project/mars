@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 from ...core import ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
     ReferenceField, Int32Field, Int64Field, Float64Field, \
-    BoolField, AnyField, DictField, ListField, FieldTypes
-from ..core import BandType
+    BoolField, AnyField, DictField, ListField, TupleField, FieldTypes
+from ...typing import BandType
 
 
 class SubtaskStatus(Enum):
@@ -44,7 +44,7 @@ class Subtask(Serializable):
     chunk_graph: ChunkGraph = ReferenceField('chunk_graph', ChunkGraph)
     expect_bands: List[BandType] = ListField('expect_bands', FieldTypes.tuple)
     virtual: bool = BoolField('virtual')
-    priority: int = Int32Field('priority')
+    priority: Tuple[int, int] = TupleField('priority', FieldTypes.int32)
     rerun_time: int = Int32Field('rerun_time')
     extra_config: dict = DictField('extra_config')
 
@@ -55,7 +55,7 @@ class Subtask(Serializable):
                  chunk_graph: ChunkGraph = None,
                  subtask_name: str = None,
                  expect_bands: List[BandType] = None,
-                 priority: int = None,
+                 priority: Tuple[int, int] = None,
                  virtual: bool = False,
                  rerun_time: int = 0,
                  extra_config: dict = None):

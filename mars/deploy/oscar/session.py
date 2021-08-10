@@ -107,8 +107,9 @@ class ExecutionInfo:
         return self._future_local.aio_future.__await__()
 
 
-warning_msg = """No session found, local session \
-will be created in the background, \
+warning_msg = """
+No session found, local session \
+will be created in background, \
 it may take a while before execution. \
 If you want to new a local session by yourself, \
 run code below:
@@ -116,7 +117,7 @@ run code below:
 ```
 import mars
 
-mars.new_session(default=True)
+mars.new_session()
 ```
 """
 
@@ -1278,11 +1279,15 @@ class SyncSession(AbstractSyncSession):
         asyncio.run_coroutine_threadsafe(coro, self._loop).result()
         self.reset_default()
 
-    def stop_server(self):
-        coro = self._isolated_session.stop_server()
-        asyncio.run_coroutine_threadsafe(coro, self._loop).result()
-        self.reset_default()
-        stop_isolation()
+    def stop_server(self, isolation=True):
+        try:
+            coro = self._isolated_session.stop_server()
+            future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+            future.result(timeout=5)
+        finally:
+            self.reset_default()
+            if isolation:
+                stop_isolation()
 
     def close(self):
         self.destroy()
@@ -1350,6 +1355,8 @@ def execute(tileable: TileableType,
             new_session_kwargs: dict = None,
             show_progress: Union[bool, str] = None,
             progress_update_interval=1, **kwargs):
+    if isinstance(tileable, (tuple, list)) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
     if session is None:
         session = get_default_or_create(
             **(new_session_kwargs or dict()))
@@ -1389,6 +1396,8 @@ def fetch(tileable: TileableType,
 def fetch_log(*tileables: TileableType,
               session: SyncSession = None,
               **kwargs):
+    if len(tileables) == 1 and isinstance(tileables[0], (list, tuple)):
+        tileables = tileables[0]
     if session is None:
         session = get_default_session()
         if session is None:  # pragma: no cover
@@ -1438,7 +1447,7 @@ async def _new_session(address: str,
 def new_session(address: str = None,
                 session_id: str = None,
                 backend: str = 'oscar',
-                default: bool = False,
+                default: bool = True,
                 **kwargs) -> AbstractSession:
     ensure_isolation_created(kwargs)
 
@@ -1477,7 +1486,7 @@ def get_default_or_create(**kwargs):
             # no session attached, try to create one
             warnings.warn(warning_msg)
             session = new_session(
-                '127.0.0.1', default=True, init_local=True, **kwargs)
+                '127.0.0.1', init_local=True, **kwargs)
             session.as_default()
     if isinstance(session, _IsolatedSession):
         session = SyncSession.from_isolated_session(session)

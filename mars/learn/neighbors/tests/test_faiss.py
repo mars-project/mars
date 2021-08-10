@@ -25,10 +25,6 @@ from mars.learn.neighbors._faiss import build_faiss_index, _load_index, \
     faiss_query, _gen_index_string_and_sample_count
 from mars.learn.neighbors import NearestNeighbors
 from mars.session import execute, fetch
-from mars.tests import setup
-
-
-setup = setup
 
 
 @pytest.mark.skipif(faiss is None, reason='faiss not installed')

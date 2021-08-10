@@ -21,8 +21,8 @@ import numpy as np
 
 from ....core import ChunkGraph, ChunkData
 from ....core.operand import Operand
+from ....typing import BandType
 from ....utils import implements
-from ...core import BandType
 
 
 class AbstractGraphAssigner(ABC):
@@ -39,9 +39,12 @@ class AbstractGraphAssigner(ABC):
         self._band_slots = band_slots
 
     @abstractmethod
-    def assign(self) -> Dict[ChunkData, BandType]:
+    def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[ChunkData, BandType]:
         """
         Assign start nodes to bands.
+
+        cur_assigns : dict
+            op already assigned.
 
         Returns
         -------
@@ -140,10 +143,12 @@ class GraphAssigner(AbstractGraphAssigner):
         initial_sizes[band] -= assigned
 
     @implements(AbstractGraphAssigner.assign)
-    def assign(self) -> Dict[ChunkData, BandType]:
+    def assign(self, cur_assigns: Dict[str, str] = None) -> Dict[ChunkData, BandType]:
         graph = self._chunk_graph
         assign_result = dict()
-        cur_assigns = dict()
+        cur_assigns = cur_assigns or dict()
+        # assigned by expect worker
+        initial_assigned_op_keys = set(cur_assigns)
 
         op_key_to_chunks = defaultdict(list)
         for chunk in graph:
@@ -151,8 +156,11 @@ class GraphAssigner(AbstractGraphAssigner):
 
         op_keys = set(self._op_keys)
         chunk_to_assign = [op_key_to_chunks[op_key][0]
-                           for op_key in op_keys]
+                           for op_key in op_keys
+                           if op_key not in cur_assigns]
         assigned_counts = defaultdict(lambda: 0)
+        for band in cur_assigns.values():
+            assigned_counts[band] += 1
 
         # calculate the number of chunks to be assigned to each band
         # given number of bands and existing assignments
@@ -173,7 +181,8 @@ class GraphAssigner(AbstractGraphAssigner):
             self._assign_by_dfs(cur, band, band_quotas, spread_ranges,
                                 op_keys, cur_assigns)
 
-        key_to_assign = {n.op.key for n in chunk_to_assign}
+        key_to_assign = \
+            {n.op.key for n in chunk_to_assign} | initial_assigned_op_keys
         for op_key, band in cur_assigns.items():
             if op_key in key_to_assign:
                 for chunk in op_key_to_chunks[op_key]:

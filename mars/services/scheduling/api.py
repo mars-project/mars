@@ -31,7 +31,6 @@ class SchedulingAPI(ABC):
         self._session_id = session_id
         self._address = address
 
-        self._global_slot_ref = None
         self._manager_ref = manager_ref
         self._queueing_ref = queueing_ref
 
@@ -118,10 +117,10 @@ class SchedulingAPI(ABC):
             list of priorities of subtasks
         """
         if priorities is None:
-            priorities = [(subtask.priority,) for subtask in subtasks]
+            priorities = [subtask.priority or tuple() for subtask in subtasks]
         await self._manager_ref.add_subtasks(subtasks, priorities)
 
-    @extensible
+    @mo.extensible
     async def update_subtask_priority(self,
                                       subtask_id: str,
                                       priority: Tuple):
@@ -174,7 +173,7 @@ class SchedulingAPI(ABC):
             whether to schedule succeeding subtasks
         """
         await self._manager_ref.finish_subtasks(subtask_ids, schedule_next)
-    
+
 
 class MockSchedulingAPI(SchedulingAPI):
     @classmethod
@@ -190,6 +189,7 @@ class MockSchedulingAPI(SchedulingAPI):
         from .worker import SubtaskExecutionActor, \
             WorkerSlotManagerActor, WorkerQuotaManagerActor
         await mo.create_actor(SubtaskExecutionActor,
+                              subtask_max_retries=0,
                               uid=SubtaskExecutionActor.default_uid(),
                               address=address)
         await mo.create_actor(WorkerSlotManagerActor,

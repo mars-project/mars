@@ -78,8 +78,9 @@ class Fusion:
             if isinstance(v.op, (VirtualOperand, Fetch)):  # pragma: no cover
                 # cannot fuse virtual operand or fetch
                 continue
-            if v.op.expect_worker is not None:  # pragma: no cover
-                # don't fuse operand that has explicit worker assignment
+            if v.op.scheduling_hint is not None and \
+                    not v.op.scheduling_hint.can_be_fused():  # pragma: no cover
+                # don't fuse operand that cannot be fused
                 continue
             selected = [v]
             # add successors

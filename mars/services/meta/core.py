@@ -26,8 +26,8 @@ from ...dataframe.core import DtypesValue, IndexValue, \
     DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE, \
     CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from ...tensor.core import TensorOrder, TENSOR_TYPE, TENSOR_CHUNK_TYPE
+from ...typing import BandType
 from ...utils import dataslots
-from ..core import BandType
 
 PandasDtypeType = Union[np.dtype, pd.api.extensions.ExtensionDtype]
 
