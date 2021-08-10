@@ -29,6 +29,7 @@ import Title from '../Title';
 import { useStyles } from '../Style';
 import { formatTime, toReadableSize, getNodeStatusText } from '../Utils';
 
+
 class NodeList extends React.Component {
     constructor(props) {
         super(props);

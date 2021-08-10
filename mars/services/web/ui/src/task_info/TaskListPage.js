@@ -24,8 +24,10 @@ import TableCell from '@material-ui/core/TableCell';
 import TableBody from '@material-ui/core/TableBody';
 import PropTypes from 'prop-types';
 import Title from '../Title';
-import { useStyles } from '../Style';
-import { formatTime, getTaskStatusText } from '../Utils';
+import {useStyles} from '../Style';
+import {formatTime, getTaskStatusText} from '../Utils';
+import { Link } from 'react-router-dom';
+
 
 class TaskList extends React.Component {
     constructor(props) {
@@ -81,7 +83,11 @@ class TaskList extends React.Component {
                 <TableBody>
                     {this.state.tasks.map((task) => (
                         <TableRow key={`task_row_${task.task_id}`}>
-                            <TableCell>{task.task_id}</TableCell>
+                            <TableCell>
+                                <Link to={`/session/${this.props.sessionId}/task/${task.task_id}`}>
+                                    {task.task_id}
+                                </Link>
+                            </TableCell>
                             <TableCell>{formatTime(task.start_time)}</TableCell>
                             <TableCell>{task.end_time ? formatTime(task.end_time) : 'N/A'}</TableCell>
                             <TableCell>{`${Math.floor(task.progress * 100).toString()}%`}</TableCell>
@@ -104,8 +110,7 @@ export default function TaskListPage(props) {
         <Grid container spacing={3}>
             <Grid item xs={12}>
                 <Title>
-          Session
-                    {props.sessionId}
+                    Session {props.sessionId}
                 </Title>
             </Grid>
             <Grid item xs={12}>
