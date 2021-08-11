@@ -238,7 +238,7 @@ def _count_paths_outside_method(m, n, g, h):  # pragma: no cover
         if not np.isfinite(Bj):
             raise FloatingPointError()
         for i in range(j):
-            bin = np.round(special.binom(xj[j] - xj[i] + j - i, j-i))
+            bin = np.round(special.binom(xj[j] - xj[i] + j - i, j-i))  # pylint: disable=redefined-builtin
             Bj -= bin * B[i]
         B[j] = Bj
         if not np.isfinite(Bj):
@@ -284,7 +284,7 @@ def _attempt_exact_2kssamp(n1, n2, g, d, alternative):  # pragma: no cover
                 prob = np.prod((n1 - jrange) / (n1 + jrange + 1.0))
             else:
                 num_paths = _count_paths_outside_method(n1, n2, g, h)
-                bin = special.binom(n1 + n2, n1)
+                bin = special.binom(n1 + n2, n1)  # pylint: disable=redefined-builtin
                 if not np.isfinite(bin) or not np.isfinite(num_paths) or num_paths > bin:
                     saw_fp_error = True
                 else:
