@@ -22,10 +22,12 @@ from scipy.stats import (
     entropy as sp_entropy,
     power_divergence as sp_power_divergence,
     chisquare as sp_chisquare,
+    ks_2samp as sp_ks_2samp,
     ttest_rel as sp_ttest_rel,
     ttest_ind as sp_ttest_ind,
     ttest_ind_from_stats as sp_ttest_ind_from_stats,
     ttest_1samp as sp_ttest_1samp,
+    norm as sp_norm
 )
 
 from mars.lib.version import parse as parse_version
@@ -33,6 +35,7 @@ from mars.tensor import tensor
 from mars.tensor.stats import (
     entropy, power_divergence, chisquare,
     ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
+    ks_2samp
 )
 
 
@@ -192,3 +195,19 @@ def test_t_test_execution(setup):
                 expected = sp_func(fa_raw, fb_raw)
             np.testing.assert_almost_equal(expected[0], result[0])
             np.testing.assert_almost_equal(expected[1], result[1])
+
+
+@pytest.mark.parametrize('chunk_size', [5, 15])
+def test_ks_2samp(setup, chunk_size):
+    n1 = 10
+    n2 = 15
+    rs = np.random.RandomState(0)
+    rvs1 = sp_norm.rvs(size=n1, loc=0., scale=1, random_state=rs)
+    rvs2 = sp_norm.rvs(size=n2, loc=0.5, scale=1.5, random_state=rs)
+
+    d1 = tensor(rvs1, chunk_size=chunk_size)
+    d2 = tensor(rvs2, chunk_size=chunk_size)
+
+    result = ks_2samp(d1, d2).execute().fetch()
+    expected = sp_ks_2samp(rvs1, rvs2)
+    assert result == expected
