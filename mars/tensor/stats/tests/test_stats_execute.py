@@ -211,3 +211,12 @@ def test_ks_2samp(setup, chunk_size):
     result = ks_2samp(d1, d2).execute().fetch()
     expected = sp_ks_2samp(rvs1, rvs2)
     assert result == expected
+
+    with pytest.raises(ValueError):
+        ks_2samp(d1, d2, alternative='unknown')
+
+    with pytest.raises(ValueError):
+        ks_2samp(d1, d2, mode='unknown')
+
+    with pytest.raises(ValueError):
+        ks_2samp(d1, [])
