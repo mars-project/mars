@@ -461,7 +461,7 @@ def test_searchsorted():
 
     assert t1.nsplits == ()
     assert len(t1.chunks) == 1
-    assert t1.chunks[0].op.stage == OperandStage.reduce
+    assert t1.chunks[0].op.stage == OperandStage.agg
 
     with pytest.raises(ValueError):
         searchsorted(np.random.randint(10, size=(14, 14)), 1)

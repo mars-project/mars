@@ -62,6 +62,7 @@ Statistical tests
    :nosignatures:
 
    mars.tensor.stats.chisquare
+   mars.tensor.stats.ks_2samp
    mars.tensor.stats.power_divergence
    mars.tensor.stats.ttest_1samp
    mars.tensor.stats.ttest_ind
