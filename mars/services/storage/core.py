@@ -292,7 +292,7 @@ class DataManagerActor(mo.StatelessActor):
         return self._spill_strategy[level, band_name].get_spill_keys(size)
 
 
-class StorageManagerActor(mo.Actor):
+class StorageManagerActor(mo.StatelessActor):
     """
     Storage manager actor, created only on main process, mainly to setup storage backends
     and create all the necessary actors for storage service.
@@ -308,6 +308,8 @@ class StorageManagerActor(mo.Actor):
         self._handler_cls = kwargs.pop('storage_handler_cls', StorageHandlerActor)
         self._storage_configs = storage_configs
         self._all_bands = None
+        self._cluster_api = None
+        self._upload_task = None
 
         # params to init and teardown
         self._init_params = defaultdict(dict)
@@ -324,7 +326,7 @@ class StorageManagerActor(mo.Actor):
         from .handler import StorageHandlerActor
 
         try:
-            cluster_api = await ClusterAPI.create(self.address)
+            self._cluster_api = cluster_api = await ClusterAPI.create(self.address)
             band_to_slots = await cluster_api.get_bands()
             self._all_bands = [band[1] for band in band_to_slots]
         except mo.ActorNotExist:
@@ -355,8 +357,13 @@ class StorageManagerActor(mo.Actor):
         await self._create_storage_handler_actors()
         # create actor for transfer
         await self._create_transfer_actors()
+        await self.upload_disk_info()
+        # create task for uploading storage usages
+        self._upload_task = asyncio.create_task(self.upload_storage_info())
 
     async def __pre_destroy__(self):
+        if self._upload_task:
+            self._upload_task.cancel()
         for _, params in self._teardown_params:
             for backend, teardown_params in params.items():
                 backend_cls = get_storage_backend(backend)
@@ -457,7 +464,8 @@ class StorageManagerActor(mo.Actor):
                     address=self.address, allocate_strategy=sender_strategy)
 
                 await mo.create_actor(ReceiverManagerActor,
-                                      self._quotas, handler_ref,
+                                      self._quotas[default_band_name],
+                                      handler_ref,
                                       address=self.address,
                                       uid=ReceiverManagerActor.gen_uid(default_band_name),
                                       allocate_strategy=receiver_strategy)
@@ -493,3 +501,34 @@ class StorageManagerActor(mo.Actor):
 
     def get_client_params(self):
         return self._init_params
+
+    async def upload_storage_info(self):
+        from ..cluster import StorageInfo
+
+        if self._cluster_api is not None:
+            while True:
+                upload_tasks = []
+                for band, level_to_quota in self._quotas.items():
+                    for level, quota_ref in level_to_quota.items():
+                        total, used = await quota_ref.get_quota()
+                        used = int(used)
+                        if total is not None:
+                            total = int(total)
+                        storage_info = StorageInfo(storage_level=level,
+                                                   total_size=total,
+                                                   used_size=used)
+                        upload_tasks.append(
+                            self._cluster_api.set_band_storage_info.delay(band, storage_info))
+                await self._cluster_api.set_band_storage_info.batch(*upload_tasks)
+                await asyncio.sleep(0.5)
+
+    async def upload_disk_info(self):
+        from ..cluster import DiskInfo
+
+        disk_infos = []
+        if self._cluster_api is not None and 'disk' in self._init_params['numa-0']:
+            params = self._init_params['numa-0']['disk']
+            size = params['size']
+            for path in params['root_dirs']:
+                disk_infos.append(DiskInfo(path=path, limit_size=size))
+            await self._cluster_api.set_node_disk_info(disk_infos)
