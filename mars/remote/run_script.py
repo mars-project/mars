@@ -114,7 +114,8 @@ class RunScript(MergeDictOperand):
     @classmethod
     def _build_locals(cls, ctx: Union[Context, dict], op: "RunScript"):
         sess = ctx.get_current_session().as_default()
-        local = {'session': sess}
+        local = {'session': sess,
+                 '__name__': '__main__'}
         if op.data is not None:
             local.update(op.data)
         return local
