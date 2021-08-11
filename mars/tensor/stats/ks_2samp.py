@@ -84,12 +84,12 @@ def _compute_prob_inside_method(m, n, g, h):  # pragma: no cover
     # This is an integer calculation, but the entries are essentially
     # binomial coefficients, hence grow quickly.
     # Scaling after each column is computed avoids dividing by a
-    # large binomial coefficent at the end, but is not sufficient to avoid
-    # the large dyanamic range which appears during the calculation.
+    # large binomial coefficient at the end, but is not sufficient to avoid
+    # the large dynamic range which appears during the calculation.
     # Instead we rescale based on the magnitude of the right most term in
     # the column and keep track of an exponent separately and apply
     # it at the end of the calculation.  Similarly when multiplying by
-    # the binomial coefficint
+    # the binomial coefficient
     dtype = np.float64
     A = np.zeros(lenA, dtype=dtype)
     # Initialize the first column
@@ -348,6 +348,111 @@ def ks_2samp(data1: Union[np.ndarray, list, TileableType],
              data2: Union[np.ndarray, list, TileableType],
              alternative: str = 'two-sided',
              mode: str = 'auto'):
+    """
+    Compute the Kolmogorov-Smirnov statistic on 2 samples.
+
+    This is a two-sided test for the null hypothesis that 2 independent samples
+    are drawn from the same continuous distribution.  The alternative hypothesis
+    can be either 'two-sided' (default), 'less' or 'greater'.
+
+    Parameters
+    ----------
+    data1, data2 : array_like, 1-Dimensional
+        Two arrays of sample observations assumed to be drawn from a continuous
+        distribution, sample sizes can be different.
+    alternative : {'two-sided', 'less', 'greater'}, optional
+        Defines the alternative hypothesis.
+        The following options are available (default is 'two-sided'):
+
+          * 'two-sided'
+          * 'less': one-sided, see explanation in Notes
+          * 'greater': one-sided, see explanation in Notes
+    mode : {'auto', 'exact', 'asymp'}, optional
+        Defines the method used for calculating the p-value.
+        The following options are available (default is 'auto'):
+
+          * 'auto' : use 'exact' for small size arrays, 'asymp' for large
+          * 'exact' : use exact distribution of test statistic
+          * 'asymp' : use asymptotic distribution of test statistic
+
+    Returns
+    -------
+    statistic : float
+        KS statistic.
+    pvalue : float
+        Two-tailed p-value.
+
+    See Also
+    --------
+    kstest, ks_1samp, epps_singleton_2samp, anderson_ksamp
+
+    Notes
+    -----
+    This tests whether 2 samples are drawn from the same distribution. Note
+    that, like in the case of the one-sample KS test, the distribution is
+    assumed to be continuous.
+
+    In the one-sided test, the alternative is that the empirical
+    cumulative distribution function F(x) of the data1 variable is "less"
+    or "greater" than the empirical cumulative distribution function G(x)
+    of the data2 variable, ``F(x)<=G(x)``, resp. ``F(x)>=G(x)``.
+
+    If the KS statistic is small or the p-value is high, then we cannot
+    reject the hypothesis that the distributions of the two samples
+    are the same.
+
+    If the mode is 'auto', the computation is exact if the sample sizes are
+    less than 10000.  For larger sizes, the computation uses the
+    Kolmogorov-Smirnov distributions to compute an approximate value.
+
+    The 'two-sided' 'exact' computation computes the complementary probability
+    and then subtracts from 1.  As such, the minimum probability it can return
+    is about 1e-16.  While the algorithm itself is exact, numerical
+    errors may accumulate for large sample sizes.   It is most suited to
+    situations in which one of the sample sizes is only a few thousand.
+
+    We generally follow Hodges' treatment of Drion/Gnedenko/Korolyuk [1]_.
+
+    References
+    ----------
+    .. [1] Hodges, J.L. Jr.,  "The Significance Probability of the Smirnov
+           Two-Sample Test," Arkiv fiur Matematik, 3, No. 43 (1958), 469-86.
+
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from scipy import stats
+    >>> import mars.tensor as mt
+    >>> from mars.tensor.stats import ks_2samp
+    >>> np.random.seed(12345678)  #fix random seed to get the same result
+    >>> n1 = 200  # size of first sample
+    >>> n2 = 300  # size of second sample
+
+    For a different distribution, we can reject the null hypothesis since the
+    pvalue is below 1%:
+
+    >>> rvs1 = stats.norm.rvs(size=n1, loc=0., scale=1)
+    >>> rvs2 = stats.norm.rvs(size=n2, loc=0.5, scale=1.5)
+    >>> ks_2samp(rvs1, rvs2).execute()
+    KstestResult(statistic=0.20833333333333337, pvalue=5.1292795978041816e-05)
+
+    For a slightly different distribution, we cannot reject the null hypothesis
+    at a 10% or lower alpha since the p-value at 0.144 is higher than 10%
+
+    >>> rvs3 = stats.norm.rvs(size=n2, loc=0.01, scale=1.0)
+    >>> ks_2samp(rvs1, rvs3).execute()
+    KstestResult(statistic=0.10333333333333333, pvalue=0.14691437867433788)
+
+    For an identical distribution, we cannot reject the null hypothesis since
+    the p-value is high, 41%:
+
+    >>> rvs4 = stats.norm.rvs(size=n2, loc=0.0, scale=1.0)
+    >>> ks_2samp(rvs1, rvs4).execute()
+    KstestResult(statistic=0.07999999999999996, pvalue=0.4115432028915931)
+
+    """
+
     if mode not in ['auto', 'exact', 'asymp']:
         raise ValueError(f'Invalid value for mode: {mode}')
     alternative = {'t': 'two-sided', 'g': 'greater', 'l': 'less'}.get(
