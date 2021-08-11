@@ -187,7 +187,7 @@ class ReceiverManagerActor(mo.StatelessActor):
         self._lock = asyncio.Lock()
 
     async def __post_create__(self):
-        if self._storage_handler is None: # for test
+        if self._storage_handler is None:  # for test
             self._storage_handler = await mo.actor_ref(
                 self.address, StorageHandlerActor.gen_uid('numa-0'))
 
@@ -261,27 +261,35 @@ class ReceiverManagerActor(mo.StatelessActor):
         await asyncio.gather(*close_tasks)
         for data_key in finished_keys:
             self._key_to_writer_info.pop((session_id, data_key))
+            self._writing_keys[(message.session_id, data_key)].is_success = True
             self._writing_keys[(session_id, data_key)].set()
             self._decref_writing_key(session_id, data_key)
 
     async def receive_part_data(self, message: TransferMessage):
+        write_task = asyncio.create_task(self.do_write(message))
         try:
-            await self.do_write(message)
+            await asyncio.shield(write_task)
         except asyncio.CancelledError:
+            session_id = message.session_id
             for data_key in message.data_keys:
                 if (message.session_id, data_key) in self._key_to_writer_info:
-                    writer, data_size, level = self._key_to_writer_info[
-                        (message.session_id, data_key)]
-                    await self._quota_refs[level].release_quota(data_size)
-                    await self._storage_handler.delete(
-                        message.session_id, data_key, error='ignore')
-                    await writer.clean_up()
-                    self._key_to_writer_info.pop((
-                        message.session_id, data_key))
+                    if self._writing_refs[(message.session_id, data_key)] == 1:
+                        writer, data_size, level = self._key_to_writer_info[
+                            (message.session_id, data_key)]
+                        await self._quota_refs[level].release_quota(data_size)
+                        await self._storage_handler.delete(
+                            message.session_id, data_key, error='ignore')
+                        await writer.clean_up()
+                        self._writing_keys[(message.session_id, data_key)].is_success = False
+                        self._writing_keys[(message.session_id, data_key)].set()
+                        self._key_to_writer_info.pop((
+                            message.session_id, data_key))
+                        self._decref_writing_key(session_id, data_key)
+                        write_task.cancel()
             raise
 
     async def wait_transfer_done(self, session_id, data_keys):
         await asyncio.gather(*[self._writing_keys[(session_id, key)].wait()
                                for key in data_keys])
-        [self._decref_writing_key(session_id, data_key)
-         for data_key in data_keys]
+        for data_key in data_keys:
+            self._decref_writing_key(session_id, data_key)

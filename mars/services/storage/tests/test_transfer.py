@@ -183,6 +183,9 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     data1 = np.random.rand(10, 10)
     await storage_handler1.put('mock', 'data_key1',
                                data1, StorageLevel.MEMORY)
+    data2 = pd.DataFrame(np.random.rand(100, 100))
+    await storage_handler1.put('mock', 'data_key2',
+                               data2, StorageLevel.MEMORY)
 
     used_before = (await quota_refs[StorageLevel.MEMORY].get_quota())[1]
 
@@ -206,6 +209,20 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     await send_task
     get_data = await storage_handler2.get('mock', 'data_key1')
     np.testing.assert_array_equal(data1, get_data)
+
+    # cancel when fetch the same data Simultaneously
+    if mock_sender is MockSenderManagerActor:
+        send_task1 = asyncio.create_task(sender_actor.send_batch_data(
+            'mock', ['data_key2'], worker_address_2, StorageLevel.MEMORY))
+        send_task2 = asyncio.create_task(sender_actor.send_batch_data(
+            'mock', ['data_key2'], worker_address_2, StorageLevel.MEMORY))
+        await asyncio.sleep(0.5)
+        send_task1.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await send_task1
+        await send_task2
+        get_data2 = await storage_handler2.get('mock', 'data_key2')
+        pd.testing.assert_frame_equal(get_data2, data2)
 
 
 @pytest.mark.asyncio
