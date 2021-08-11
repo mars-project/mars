@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -80,7 +82,8 @@ class LifecycleTrackerActor(mo.Actor):
 
     async def decref_chunks(self, chunk_keys: List[str]):
         to_remove_chunk_keys = self._get_remove_chunk_keys(chunk_keys)
-        return self._remove_chunks(to_remove_chunk_keys)
+        # make _remove_chunks release actor lock so that multiple `decref_chunks` can run concurrently.
+        yield self._remove_chunks(to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
         if not to_remove_chunk_keys:
@@ -117,8 +120,8 @@ class LifecycleTrackerActor(mo.Actor):
                 storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
                 storage_api_to_deletes[storage_api].append(
                     storage_api.delete.delay(key, error='ignore'))
-        for storage_api, deletes in storage_api_to_deletes.items():
-            await storage_api.delete.batch(*deletes)
+        await asyncio.gather(*[storage_api.delete.batch(*deletes)
+                               for storage_api, deletes in storage_api_to_deletes.items()])
 
         # delete meta
         delete_metas = []
