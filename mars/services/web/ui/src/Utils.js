@@ -18,6 +18,9 @@ export function toReadableSize(size, trunc) {
     let res_size = size;
     let size_unit = '';
 
+    if (size === null) {
+        return 'NA';
+    }
     if (size >= 1024 && size < 1024 ** 2) {
         res_size = size / 1024.0;
         size_unit = 'K';

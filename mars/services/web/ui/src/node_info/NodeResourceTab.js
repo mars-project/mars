@@ -292,6 +292,37 @@ export default class NodeResourceTab extends React.Component {
                     </Table>
                 </React.Fragment>
                 }
+                {Object.keys(this.state.detail.storage).length &&
+                <React.Fragment>
+                    <Title component="h3">Storage</Title>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Level</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {Object.keys(this.state.detail.storage).map((band) => (
+                                Object.keys(this.state.detail.storage[band]).map((level) => (
+                                    <TableRow key={`${band}-storage`}>
+                                        <TableCell>{band}</TableCell>
+                                        <TableCell>{level}</TableCell>
+                                        <TableCell>
+                                            <div>
+                                                Used:{toReadableSize(this.state.detail.storage[band][level].size_used)}
+                                            </div>
+                                            <div>
+                                                Total:{toReadableSize(this.state.detail.storage[band][level].size_total)}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))))}
+                        </TableBody>
+                    </Table>
+                </React.Fragment>
+                }
             </div>
         );
     }

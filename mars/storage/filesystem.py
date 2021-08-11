@@ -139,3 +139,14 @@ class FileSystemStorage(StorageBackend):
     async def open_reader(self, object_id) -> StorageFileObject:
         file = await self._fs.open(object_id, 'rb')
         return StorageFileObject(file, file.name)
+
+
+@register_storage_backend
+class DiskStorage(FileSystemStorage):
+    name = 'disk'
+
+    @classmethod
+    @implements(StorageBackend.setup)
+    async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        kwargs['level'] = StorageLevel.DISK
+        return await super().setup(**kwargs)
