@@ -146,7 +146,7 @@ class MockReceiverManagerActor2(ReceiverManagerActor):
                              data_sizes,
                              level):
         await asyncio.sleep(3)
-        await super().create_writers(session_id, data_keys, data_sizes, level)
+        return await super().create_writers(session_id, data_keys, data_sizes, level)
 
 
 class MockSenderManagerActor2(SenderManagerActor):
