@@ -99,8 +99,8 @@ async def actor_pools():
     )
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle", "task",
-                     "scheduling", "subtask"],
+        "services": ["cluster", "session", "meta", "lifecycle",
+                     "scheduling", "subtask", "task"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,

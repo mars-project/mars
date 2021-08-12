@@ -41,15 +41,15 @@ async def start_supervisor(address: str,
     if web:
         # try to append web to services
         config['services'].append('web')
+    if modules:
+        config['modules'] = modules
     try:
-        await start_services(NodeRole.SUPERVISOR, config,
-                             modules=modules, address=address)
+        await start_services(NodeRole.SUPERVISOR, config, address=address)
     except ImportError:
         if web == 'auto':
             config['services'] = [service for service in config['services']
                                   if service != 'web']
-            await start_services(NodeRole.SUPERVISOR, config,
-                                 modules=modules, address=address)
+            await start_services(NodeRole.SUPERVISOR, config, address=address)
             return False
         else:  # pragma: no cover
             raise
@@ -80,8 +80,10 @@ async def start_worker(address: str,
     if any(band_name.startswith('gpu-') for band_name in band_to_slots):  # pragma: no cover
         if 'cuda' not in config['storage']['backends']:
             config['storage']['backends'].append('cuda')
-    await start_services(NodeRole.WORKER, config, modules=modules,
-                         address=address, mark_ready=mark_ready)
+    if modules:
+        config['modules'] = modules
+    await start_services(NodeRole.WORKER, config, address=address,
+                         mark_ready=mark_ready)
 
 
 async def stop_worker(address: str,

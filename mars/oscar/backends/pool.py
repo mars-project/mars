@@ -444,7 +444,7 @@ class ActorPoolBase(AbstractActorPool, metaclass=ABCMeta):
     async def has_actor(self,
                         message: HasActorMessage) -> ResultMessage:
         result = ResultMessage(message.message_id,
-                               message.actor_ref.uid in self._actors,
+                               to_binary(message.actor_ref.uid) in self._actors,
                                protocol=message.protocol)
         return result
 
@@ -730,7 +730,7 @@ class MainActorPoolBase(ActorPoolBase):
         actor_ref = message.actor_ref
         # lookup allocated
         for address, item in self._allocated_actors.items():
-            ref = create_actor_ref(address, actor_ref.uid)
+            ref = create_actor_ref(address, to_binary(actor_ref.uid))
             if ref in item:
                 return ResultMessage(
                     message.message_id, True,
