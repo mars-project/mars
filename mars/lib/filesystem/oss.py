@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import shutil
-from typing import List, Dict, Union, Tuple, Iterator, BinaryIO, TextIO
-
+from typing import List, Dict, Tuple, Iterator
 from urllib import parse
-import oss2
-from ...utils import implements, stringify_path
-from .base import FileSystem, path_type
+
+from ._oss_lib import common as oc
 from ._oss_lib.glob import glob
-from ._oss_lib.handle import OSSIOBase
-from mars.lib.filesystem._oss_lib import common as oc
+from ._oss_lib.handle import OSSIOBase, dict_to_url
+from ._oss_lib.import_err_handler import ImportErrorHandler
+from .base import FileSystem, path_type
+from ...utils import implements
+
+try:
+	import oss2
+except ImportError:
+	oss2 = ImportErrorHandler('oss2')
 
 _oss_time_out = 10
 
@@ -118,3 +121,18 @@ class OSSFileSystem(FileSystem):
 	@property
 	def pathsep(self) -> str:
 		raise NotImplementedError
+
+
+def convert_oss_path(path: path_type, access_key_id, access_key_secret, end_point):
+	"""
+	Used to register the access_key_id, access_key_secret and endpoint of OSS.
+	The access_key_id and endpoint are put into the url with url-safe-base64 encoding.
+	"""
+	if isinstance(path, (list, tuple)):
+		path = path[0]
+	param_dict = {'access_key_id': access_key_id, 'end_point': end_point}
+	id_endpoint = dict_to_url(param_dict)
+	password = access_key_secret
+	parse_result = parse.urlparse(path)
+	new_path = f'{parse_result.scheme}://{id_endpoint}:{password}@{parse_result.netloc}{parse_result.path}'
+	return new_path

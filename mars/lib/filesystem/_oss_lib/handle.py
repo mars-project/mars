@@ -1,8 +1,25 @@
-from _pyio import IOBase
-from _thread import allocate_lock as Lock
-import io
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from io import IOBase
+
 from .common import *
-import oss2
+
+try:
+	import oss2
+except ImportError:
+	oss2 = ImportErrorHandler('oss2')
 
 
 class OSSIOBase(IOBase):
@@ -11,8 +28,6 @@ class OSSIOBase(IOBase):
 		self._bucket_name, self._key_name, self._access_key_id, self._access_key_secret, self._end_point = parse_osspath(self._path)
 		self._bucket = self._get_bucket()
 		self._current_pos = 0
-		self._stream = None
-		self._read_lock = Lock()
 		self._size = None
 		self._buffer = b""
 		self._buffer_size = 1 * 1024
@@ -122,3 +137,7 @@ class OSSIOBase(IOBase):
 	
 	def writable(self):
 		return False
+
+	def close(self):
+		# closed by oss
+		pass
