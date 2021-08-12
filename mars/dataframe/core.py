@@ -1630,6 +1630,10 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         return sorted(result + [k for k in self.dtypes.index if isinstance(k, str) and k.isidentifier()])
 
     @property
+    def T(self):
+        return self.transpose()
+
+    @property
     def ndim(self):
         """
         Return an int representing the number of axes / array dimensions.
