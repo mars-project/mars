@@ -628,7 +628,7 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     Examples
     --------
     >>> import mars.dataframe as md
-    >>> from mars.lib.filesystem._oss_lib.common import convert_oss_path
+    >>> from mars.lib.filesystem.oss import convert_oss_path
     >>> md.read_csv('data.csv')  # doctest: +SKIP
     >>> # read from HDFS
     >>> md.read_csv('hdfs://localhost:8020/test.csv')  # doctest: +SKIP
