@@ -701,6 +701,19 @@ def test_cut():
     assert r.dtype == e.dtype
 
 
+def test_transpose():
+    s = pd.DataFrame({"a": [1, 2, 3], "b": ['5', '-6', '7'], "c": [1, 2, 3]})
+    df = from_pandas_df(s, chunk_size=2)
+
+    r = tile(df.transpose())
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
+
+    r = tile(df.T)
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
+
+
 def test_astype():
     s = from_pandas_series(pd.Series([1, 2, 1, 2], name='a'), chunk_size=2)
     with pytest.raises(KeyError):

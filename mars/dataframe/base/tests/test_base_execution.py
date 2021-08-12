@@ -858,6 +858,30 @@ def test_cut_execution(setup):
         cut(s3, 3).execute()
 
 
+def test_transpose(setup):
+    raw = pd.DataFrame({"a": ['1', '2', '3'], "b": ['5', '-6', '7'], "c": ['1', '2', '3']})
+
+    # test 1 chunk
+    df = from_pandas_df(raw)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # test multi chunks
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # test 1 chunk
+    df = from_pandas_df(raw)
+    result = df.T.execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # test multi chunks
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.T.execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+
 def test_q_cut_execution(setup):
     rs = np.random.RandomState(0)
     raw = rs.random(15) * 1000
