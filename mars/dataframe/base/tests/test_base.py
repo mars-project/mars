@@ -701,6 +701,21 @@ def test_cut():
     assert r.dtype == e.dtype
 
 
+def test_info():
+    raw = pd.Series([1, 2, 3])
+    series = from_pandas_series(raw)
+
+    with pytest.raises(AttributeError):
+        _ = series.info()
+
+    raw = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 3, 4, 5]})
+    df = from_pandas_df(raw, chunk_size=2)
+    op = DataFrameInfo()
+    r = tile(op(df))
+    assert len(r.chunks) == 1
+    assert isinstance(r, SERIES_TYPE)
+
+
 def test_astype():
     s = from_pandas_series(pd.Series([1, 2, 1, 2], name='a'), chunk_size=2)
     with pytest.raises(KeyError):

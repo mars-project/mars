@@ -15,6 +15,7 @@ import pandas as pd
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ...serialization.serializables import StringField, BoolField, Int64Field, KeyField, AnyField
 from ...core import OutputType
+from ..core import SERIES_TYPE
 from ..utils import parse_index
 import io
 
@@ -298,6 +299,8 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
 
 
 def info(arg, verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None):
+    if isinstance(arg, SERIES_TYPE):
+        raise AttributeError("'Series' object has no attribute 'info'")
 
     op = DataFrameInfo(verbose=verbose,
                        buf=buf,
