@@ -859,7 +859,7 @@ def test_cut_execution(setup):
         cut(s3, 3).execute()
 
 
-def test_info_execute(setup):
+def test_info_execution(setup):
     raw = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 3, 4, 5]})
     df = from_pandas_df(raw)
 
