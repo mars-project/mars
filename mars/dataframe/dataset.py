@@ -108,18 +108,8 @@ class RayMLDataset:
             df.execute()
         # it's ensured that df has been executed
         chunk_addr_refs = df.fetch(only_refs=True)
-        # chunk_addr_refs may be a nested list with duplicated (addr, ref) tuple
         record_pieces = []
-
-        def flatten(items):
-            """Flatten chunk_addr_refs."""
-            for item in items:
-                if isinstance(item, list):
-                    yield from flatten(item)
-                elif isinstance(item, tuple):
-                    yield item
-                else:
-                    raise KeyError
-        for addr, obj_ref in list(set(flatten(chunk_addr_refs))):
+        # chunk_addr_refs is fetched directly rather than in batches
+        for addr, obj_ref in chunk_addr_refs:
             record_pieces.append(RayObjectPiece(addr, obj_ref))
         return _create_ml_dataset("from_mars", record_pieces, num_shards, shuffle, shuffle_seed)

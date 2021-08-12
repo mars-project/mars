@@ -17,7 +17,7 @@
 import weakref
 from collections.abc import Iterable
 from io import StringIO
-from typing import Tuple, List, Union, Dict, Any
+from typing import Union, Dict, Any
 
 import numpy as np
 import pandas as pd
@@ -519,15 +519,14 @@ class _BatchedFetcher:
         from .indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         batch_size = kw.pop('batch_size', 1000)
-        if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)):
+        only_refs = kw.get('only_refs', False)
+        if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)) or only_refs:
             # see GH#1871
             # already iloc, do not trigger batch fetch
             return self._fetch(session=session, **kw)
         else:
             batches = list(self._iter(batch_size=batch_size,
                                       session=session, **kw))
-            if isinstance(batches[0], (Tuple, List)):
-                return batches
             return pd.concat(batches) if len(batches) > 1 else batches[0]
 
 
