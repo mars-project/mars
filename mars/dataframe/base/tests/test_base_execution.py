@@ -858,7 +858,7 @@ def test_cut_execution(setup):
         cut(s3, 3).execute()
 
 
-def test_transpose(setup):
+def test_transpose_execution(setup):
     raw = pd.DataFrame({"a": ['1', '2', '3'], "b": ['5', '-6', '7'], "c": ['1', '2', '3']})
 
     # test 1 chunk
