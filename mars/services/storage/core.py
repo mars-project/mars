@@ -428,6 +428,7 @@ class StorageManagerActor(mo.StatelessActor):
                     if band_name.startswith('gpu-'):  # pragma: no cover
                         await mo.create_actor(
                             SenderManagerActor, band_name,
+                            data_manager_ref=self._data_manager,
                             storage_handler_ref=handler_ref,
                             uid=SenderManagerActor.gen_uid(band_name),
                             address=self.address, allocate_strategy=sender_strategy)
@@ -459,7 +460,9 @@ class StorageManagerActor(mo.StatelessActor):
                                                     address=self.address,
                                                     allocate_strategy=handler_strategy)
                 await mo.create_actor(
-                    SenderManagerActor, storage_handler_ref=handler_ref,
+                    SenderManagerActor,
+                    data_manager_ref=self._data_manager,
+                    storage_handler_ref=handler_ref,
                     uid=SenderManagerActor.gen_uid(default_band_name),
                     address=self.address, allocate_strategy=sender_strategy)
 

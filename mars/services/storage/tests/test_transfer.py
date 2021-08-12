@@ -226,7 +226,7 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
 
 
 @pytest.mark.asyncio
-async def test_transfer_same_tasks(create_actors):
+async def test_transfer_same_data(create_actors):
     worker_address_1, worker_address_2 = create_actors
 
     session_id = 'mock_session'
