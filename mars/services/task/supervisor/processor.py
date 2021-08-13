@@ -254,8 +254,8 @@ class TaskProcessor:
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        subtask_graph = await asyncio.to_thread(self._preprocessor.analyze,
-                                                chunk_graph, available_bands)
+        subtask_graph = await asyncio.to_thread(
+            self._preprocessor.analyze, chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), self._get_chunk_optimization_records(),
