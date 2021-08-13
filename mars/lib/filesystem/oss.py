@@ -123,7 +123,7 @@ class OSSFileSystem(FileSystem):
 		raise NotImplementedError
 
 
-def convert_oss_path(path: path_type, access_key_id, access_key_secret, end_point):
+def build_oss_path(path: path_type, access_key_id, access_key_secret, end_point):
 	"""
 	Used to register the access_key_id, access_key_secret and endpoint of OSS.
 	The access_key_id and endpoint are put into the url with url-safe-base64 encoding.

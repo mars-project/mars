@@ -627,12 +627,12 @@ def read_csv(path, names=None, sep=',', index_col=None, compression=None, header
     Examples
     --------
     >>> import mars.dataframe as md
-    >>> from mars.lib.filesystem.oss import convert_oss_path
+    >>> from mars.lib.filesystem.oss import build_oss_path
     >>> md.read_csv('data.csv')  # doctest: +SKIP
     >>> # read from HDFS
     >>> md.read_csv('hdfs://localhost:8020/test.csv')  # doctest: +SKIP
     >>> # read from OSS
-    >>> auth_path = convert_oss_path(file_path, access_key_id, access_key_secret, end_point)
+    >>> auth_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
     >>> md.read_csv(auth_path)
     """
     # infer dtypes and columns

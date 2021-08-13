@@ -19,7 +19,7 @@ import mock
 
 import mars.dataframe as md
 from mars.lib.filesystem import oss
-from mars.lib.filesystem.oss import convert_oss_path
+from mars.lib.filesystem.oss import build_oss_path
 
 
 class oss_obj_info:
@@ -90,8 +90,8 @@ def test_oss_filesystem(fake_obj_iter, fake_oss_bucket):
 	
 	file_path = f"oss://bucket/file.csv"
 	dir_path = f"oss://bucket/dir/"
-	fake_file_path = convert_oss_path(file_path, access_key_id, access_key_secret, end_point)
-	fake_dir_path = convert_oss_path(dir_path, access_key_id, access_key_secret, end_point)
+	fake_file_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
+	fake_dir_path = build_oss_path(dir_path, access_key_id, access_key_secret, end_point)
 	
 	fs = oss.OSSFileSystem.get_instance()
 	

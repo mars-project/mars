@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import mars.dataframe as md
-from mars.lib.filesystem.oss import convert_oss_path
+from mars.lib.filesystem.oss import build_oss_path
 from mars.session import new_session
 
 
@@ -26,7 +26,7 @@ def main():
     end_point = 'your_endpoint'
     file_path = f"oss://bucket/test.csv"
     
-    auth_path = convert_oss_path(file_path, access_key_id, access_key_secret, end_point)
+    auth_path = build_oss_path(file_path, access_key_id, access_key_secret, end_point)
     df = md.read_csv(auth_path).execute()
     print(df.shape)
     
