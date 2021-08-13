@@ -23,7 +23,8 @@ import pytest
 import mars.oscar as mo
 from mars.oscar.backends.allocate_strategy import IdleLabel
 from mars.services.storage.errors import DataNotExist
-from mars.services.storage.core import StorageManagerActor, StorageQuotaActor
+from mars.services.storage.core import DataManagerActor, StorageManagerActor,\
+    StorageQuotaActor
 from mars.services.storage.handler import StorageHandlerActor
 from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
 from mars.storage import StorageLevel
@@ -166,6 +167,8 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
     quota_refs = {StorageLevel.MEMORY: await mo.actor_ref(
         StorageQuotaActor, StorageLevel.MEMORY, 5 * 1024 * 1024,
         address=worker_address_2, uid=StorageQuotaActor.gen_uid('numa-0', StorageLevel.MEMORY))}
+    data_manager_ref = await mo.actor_ref(uid=DataManagerActor.default_uid(),
+                                          address=worker_address_1)
     storage_handler1 = await mo.actor_ref(
         uid=StorageHandlerActor.gen_uid('numa-0'),
         address=worker_address_1)
@@ -174,7 +177,8 @@ async def test_cancel_transfer(create_actors, mock_sender, mock_receiver):
         address=worker_address_2)
 
     sender_actor = await mo.create_actor(
-        mock_sender, uid=mock_sender.default_uid(),
+        mock_sender, data_manager_ref=data_manager_ref,
+        uid=mock_sender.default_uid(),
         address=worker_address_1, allocate_strategy=IdleLabel('io', 'mock_sender'))
     await mo.create_actor(
         mock_receiver, quota_refs, uid=mock_receiver.default_uid(),

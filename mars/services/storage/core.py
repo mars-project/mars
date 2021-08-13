@@ -144,7 +144,7 @@ class InternalDataInfo:
     object_info: ObjectInfo
 
 
-class DataManagerActor(mo.StatelessActor):
+class DataManagerActor(mo.Actor):
     _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
 
     def __init__(self, bands: List):
@@ -264,6 +264,7 @@ class DataManagerActor(mo.StatelessActor):
         info = self.get_data_info(session_id, data_key, band_name)
         self._spill_strategy[info.level, info.band].pin_data((session_id, data_key))
 
+    @mo.extensible
     def unpin(self,
               session_id: str,
               data_keys: List[str],
