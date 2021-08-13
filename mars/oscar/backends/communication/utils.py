@@ -65,26 +65,29 @@ async def read_buffers(header: Dict,
     else:
         CPBuffer = CPUnownedMemory = CPMemoryPointer = None
 
-    serializer = header.get('serializer')
-    if serializer == 'cudf' or serializer == 'cupy':  # pragma: no cover
-        # construct a empty cuda buffer and copy from host
-        lengths = header.get('lengths')
-        buffers = []
-        for length in lengths:
-            cuda_buffer = CPBuffer.empty(length)
-            cupy_memory = CPUnownedMemory(cuda_buffer.ptr, length, cuda_buffer)
-            offset = 0
-            chunk_size = CUDA_CHUNK_SIZE
-            while offset < length:
-                read_size = chunk_size if (offset + chunk_size) < length else length - offset
-                content = await reader.readexactly(read_size)
-                source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
-                cupy_pointer = CPMemoryPointer(cupy_memory, offset)
-                cupy_pointer.copy_from(source_mem, len(content))
-                offset += read_size
-            buffers.append(cuda_buffer)
-        return buffers
-    else:
-        buffer_sizes = header.pop(BUFFER_SIZES_NAME)
-        buffers = [await reader.readexactly(size) for size in buffer_sizes]
-        return buffers
+    # construct a empty cuda buffer and copy from host
+    is_cuda_buffers = header.get('is_cuda_buffers')
+    buffer_sizes = header.pop(BUFFER_SIZES_NAME)
+
+    buffers = []
+    for is_cuda_buffer, buf_size in zip(is_cuda_buffers, buffer_sizes):
+        if is_cuda_buffer:  # pragma: no cover
+            if buf_size == 0:
+                content = await reader.readexactly(buf_size)
+                buffers.append(content)
+            else:
+                cuda_buffer = CPBuffer.empty(buf_size)
+                cupy_memory = CPUnownedMemory(cuda_buffer.ptr, buf_size, cuda_buffer)
+                offset = 0
+                chunk_size = CUDA_CHUNK_SIZE
+                while offset < buf_size:
+                    read_size = chunk_size if (offset + chunk_size) < buf_size else buf_size - offset
+                    content = await reader.readexactly(read_size)
+                    source_mem = np.frombuffer(content, dtype='uint8').ctypes.data_as(ctypes.c_void_p)
+                    cupy_pointer = CPMemoryPointer(cupy_memory, offset)
+                    cupy_pointer.copy_from(source_mem, len(content))
+                    offset += read_size
+                buffers.append(cuda_buffer)
+        else:
+            buffers.append(await reader.readexactly(buf_size))
+    return buffers

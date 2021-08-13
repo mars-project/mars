@@ -107,14 +107,14 @@ class LifecycleTrackerActor(mo.Actor):
         all_bands = [meta['bands'] for meta in metas]
         key_to_addresses = dict()
         for to_remove_chunk_key, bands in zip(to_remove_chunk_keys, all_bands):
-            key_to_addresses[to_remove_chunk_key] = [band[0] for band in bands]
+            key_to_addresses[to_remove_chunk_key] = bands
 
         # remove data via storage API
         storage_api_to_deletes = defaultdict(list)
-        for key, addresses in key_to_addresses.items():
-            for addr in addresses:
+        for key, bands in key_to_addresses.items():
+            for band in bands:
                 # storage API is cached for same arguments
-                storage_api = await StorageAPI.create(self._session_id, addr)
+                storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
                 storage_api_to_deletes[storage_api].append(
                     storage_api.delete.delay(key, error='ignore'))
         for storage_api, deletes in storage_api_to_deletes.items():

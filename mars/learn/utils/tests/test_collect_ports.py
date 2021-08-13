@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.deploy.oscar.tests.session import new_test_session
 from mars.learn.utils.collect_ports import collect_ports
 
 
-def test_collect_ports():
-    session = new_test_session(address='test://127.0.0.1',
-                               init_local=True,
-                               n_worker=2)
+def test_collect_ports(setup_cluster):
+    session = setup_cluster
     workers = [pool.external_address for pool
                in session._session.client._cluster._worker_pools]
     # make sure assert works inside execution of collect ports

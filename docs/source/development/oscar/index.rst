@@ -10,4 +10,5 @@ for entire distributed layer.
    :maxdepth: 2
 
    usage
+   batch
    internals

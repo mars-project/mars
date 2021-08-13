@@ -111,11 +111,16 @@ class SubtaskManagerActor(mo.Actor):
 
     async def submit_subtask_to_band(self, subtask_id: str, band: BandType):
         async with redirect_subtask_errors(self, self._get_subtasks_by_ids([subtask_id])):
-            execution_ref = await self._get_execution_ref(band)
             subtask_info = self._subtask_infos[subtask_id]
-            task = asyncio.create_task(execution_ref.run_subtask(
-                subtask_info.subtask, band[1], self.address))
+            task = asyncio.create_task(self._await_subtask_result(subtask_info.subtask, band))
             subtask_info.band_futures[band] = task
+
+    async def _await_subtask_result(self, subtask: Subtask, band: BandType):
+        """To capture the run_subtask error, e.g. exception, process crash."""
+        async with redirect_subtask_errors(self, [subtask]):
+            execution_ref = await self._get_execution_ref(band)
+            await execution_ref.run_subtask(
+                subtask, band[1], self.address)
 
     async def cancel_subtasks(self, subtask_ids: List[str],
                               kill_timeout: Union[float, int] = 5):

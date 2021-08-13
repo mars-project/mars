@@ -65,13 +65,12 @@ jobs:
         source ./ci/rewrite-cov-config.sh
 
         if [[ "$(mars.test.module)" == "learn" ]]; then
-          pip install numpy\<1.20.0 scipy cython
+          pip install numpy\<1.20.0 scipy cython oss2
         else
-          pip install numpy scipy cython
+          pip install numpy scipy cython oss2
         fi
         pip install -e ".[dev,extra]"
-        pip install virtualenv flaky flake8
-        pip install oss2
+        pip install virtualenv flaky
 
         if [ -z "$NO_COMMON_TESTS" ]; then
           if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then

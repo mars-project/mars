@@ -196,7 +196,6 @@ cdef class ClientActorContext(BaseActorContext):
         return context.send(actor_ref, message, wait_response=wait_response)
 
     def wait_actor_pool_recovered(self, str address, str main_address = None):
-        main_address = main_address or address
         context = self._get_backend_context(address)
         return context.wait_actor_pool_recovered(address, main_address)
 

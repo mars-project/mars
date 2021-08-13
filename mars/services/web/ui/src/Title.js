@@ -19,14 +19,20 @@ import PropTypes from 'prop-types';
 import Typography from '@material-ui/core/Typography';
 
 export default function Title(props) {
-  return (
-    <Typography component={props.component === undefined ? "h2" : props.component} variant="h6"
-                color="primary" style={{fontWeight: "bolder"}} gutterBottom>
-      {props.children}
-    </Typography>
-  );
+    return (
+        <Typography
+            component={props.component === undefined ? 'h2' : props.component}
+            variant="h6"
+            color="primary"
+            style={{ fontWeight: 'bolder' }}
+            gutterBottom
+        >
+            {props.children}
+        </Typography>
+    );
 }
 
 Title.propTypes = {
-  children: PropTypes.node,
+    component: PropTypes.elementType,
+    children: PropTypes.node,
 };
