@@ -547,7 +547,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_result.status = SubtaskStatus.errored
                     subtask_result.error = err
                     subtask_result.traceback = tb
-            yield stage_processor.set_subtask_result(subtask_result)
+            await stage_processor.set_subtask_result(subtask_result)
 
     def is_done(self) -> bool:
         for processor in self._task_id_to_processor.values():

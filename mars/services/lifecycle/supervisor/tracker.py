@@ -160,7 +160,7 @@ class LifecycleTrackerActor(mo.Actor):
             self._tileable_ref_counts[tileable_key] -= 1
 
             decref_chunk_keys.extend(self._tileable_key_to_chunk_keys[tileable_key])
-        return await self.decref_chunks(decref_chunk_keys)
+        yield self.decref_chunks(decref_chunk_keys)
 
     def get_tileable_ref_counts(self, tileable_keys: List[str]) -> List[int]:
         return [self._tileable_ref_counts[tileable_key]
