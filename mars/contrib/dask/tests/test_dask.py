@@ -138,3 +138,9 @@ def test_bag():
     assert dask_res == list(
         convert_dask_collection(result).execute().fetch()
     )  # TODO: dask-bag computation will return weird tuple, which we don't know why
+
+
+@require_dask_installed
+def test_dask_errors():
+    with pytest.raises(TypeError):
+        convert_dask_collection({"foo": 0, "bar": 1})
