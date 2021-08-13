@@ -173,3 +173,10 @@ async def test_auto_recover(ray_start_regular, auto_recover):
     else:
         with pytest.raises((ServerClosed, ConnectionError)):
             await ctx.has_actor(actor_ref)
+
+    if 'COV_CORE_SOURCE' in os.environ:
+        for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(2)]:
+            # must save the local reference until this is fixed:
+            # https://github.com/ray-project/ray/issues/7815
+            ray_actor = ray.get_actor(addr)
+            ray.get(ray_actor.cleanup.remote())
