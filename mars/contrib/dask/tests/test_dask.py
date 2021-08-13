@@ -15,16 +15,10 @@ import pytest
 
 from mars import new_session, stop_server
 from mars.contrib.dask import convert_dask_collection, mars_scheduler
+from mars.utils import lazy_import
 
-try:
-    import dask
-except ImportError:
-    dask = None
-
-try:
-    import mimesis
-except ImportError:
-    mimesis = None
+dask_installed = lazy_import('dask', globals=globals()) is not None
+mimesis_installed = lazy_import('mimesis', globals=globals()) is not None
 
 
 def setup_function():
@@ -35,15 +29,7 @@ def teardown_function():
     stop_server()
 
 
-def require_dask_installed(func):
-    return pytest.mark.skipif(dask is None, reason='dask not installed')(func)
-
-
-def require_mimesis_installed(func):
-    return pytest.mark.skipif(mimesis is None, reason='mimesis not installed')(func)
-
-
-@require_dask_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_delayed():
     from dask import delayed
     import numpy as np
@@ -68,7 +54,7 @@ def test_delayed():
     assert dask_res == convert_dask_collection(pi).execute().fetch()
 
 
-@require_dask_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_partitioned_dataframe():
     import numpy as np
     import pandas as pd
@@ -88,7 +74,7 @@ def test_partitioned_dataframe():
     assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch(), check_index_type=False)
 
 
-@require_dask_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_unpartitioned_dataframe():
     from dask import dataframe as dd
     from pandas._testing import assert_frame_equal
@@ -106,7 +92,7 @@ def test_unpartitioned_dataframe():
     assert_frame_equal(dask_res, convert_dask_collection(df).execute().fetch())
 
 
-@require_dask_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_array():
     import dask.array as da
     from numpy.core.numeric import array_equal
@@ -120,8 +106,8 @@ def test_array():
     assert array_equal(dask_res, convert_dask_collection(z).execute().fetch())
 
 
-@require_dask_installed
-@require_mimesis_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
+@pytest.mark.skipif(not mimesis_installed, reason='mimesis not installed')
 def test_bag():
     import dask
 
@@ -140,7 +126,7 @@ def test_bag():
     )  # TODO: dask-bag computation will return weird tuple, which we don't know why
 
 
-@require_dask_installed
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_dask_errors():
     with pytest.raises(TypeError):
         convert_dask_collection({"foo": 0, "bar": 1})
