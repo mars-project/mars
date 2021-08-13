@@ -39,7 +39,7 @@ def inplace_csr_column_scale(X, scale):
         Array of precomputed feature-wise values to use for scaling.
     """
     assert scale.shape[0] == X.shape[1]
-    X.data *= scale.take(X.indices, mode='clip')
+    X.data = X.data * scale.take(X.indices, mode='clip')
 
 
 def inplace_csr_row_scale(X, scale):
@@ -57,7 +57,7 @@ def inplace_csr_row_scale(X, scale):
         Array of precomputed sample-wise values to use for scaling.
     """
     assert scale.shape[0] == X.shape[0]
-    X.data *= mt.repeat(scale, mt.diff(X.indptr))
+    X.data = X.data * mt.repeat(scale, mt.diff(X.indptr))
 
 
 def inplace_column_scale(X, scale):
