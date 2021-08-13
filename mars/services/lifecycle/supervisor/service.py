@@ -14,26 +14,23 @@
 
 from .... import oscar as mo
 from ...core import AbstractService
-from .custom_log import CustomLogActor
+from .tracker import LifecycleTrackerActor
 
 
-class SessionWorkerService(AbstractService):
-    """
-    Session service on worker.
-
-    Service Configuration
-    ---------------------
-    {
-        "session" : {
-        }
-    }
-    """
+class LifecycleSupervisorService(AbstractService):
     async def start(self):
-        session_config = self._config.get('session', dict())
-        custom_log_dir = session_config.get('custom_log_dir')
-        await mo.create_actor(CustomLogActor, custom_log_dir,
-                              address=self._address, uid=CustomLogActor.default_uid())
+        pass
 
     async def stop(self):
+        pass
+
+    async def create_session(self, session_id: str):
+        await mo.create_actor(
+            LifecycleTrackerActor, session_id, address=self._address,
+            uid=LifecycleTrackerActor.gen_uid(session_id))
+
+    async def destroy_session(self, session_id: str):
         await mo.destroy_actor(mo.create_actor_ref(
-            uid=CustomLogActor.default_uid(), address=self._address))
+            uid=LifecycleTrackerActor.gen_uid(session_id),
+            address=self._address)
+        )

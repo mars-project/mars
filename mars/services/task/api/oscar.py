@@ -54,48 +54,6 @@ class TaskAPI(AbstractTaskAPI):
             address, TaskManagerActor.gen_uid(session_id))
         return TaskAPI(session_id, task_manager_ref)
 
-    @classmethod
-    async def create_session(cls,
-                             session_id: str,
-                             address: str) -> "TaskAPI":
-        """
-        Creating a new task API for the session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        task_api
-            Task API
-        """
-        task_manager_ref = await mo.create_actor(
-            TaskManagerActor, session_id, address=address,
-            uid=TaskManagerActor.gen_uid(session_id))
-        return TaskAPI(session_id, task_manager_ref)
-
-    @classmethod
-    async def destroy_session(cls,
-                              session_id: str,
-                              address: str):
-        """
-        Destroy a session
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address
-        """
-        task_manager_ref = await mo.actor_ref(
-            address, TaskManagerActor.gen_uid(session_id))
-        return await mo.destroy_actor(task_manager_ref)
-
     async def get_task_results(self, progress: bool = False) -> List[TaskResult]:
         return await self._task_manager_ref.get_task_results(progress)
 

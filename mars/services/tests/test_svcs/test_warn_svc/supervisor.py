@@ -12,4 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .service import ClusterWorkerService
+from mars.services.core import AbstractService
+
+
+class AbsDeriveService(AbstractService):
+    pass
