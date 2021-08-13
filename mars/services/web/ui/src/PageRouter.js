@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import {
     Switch,
     Route,
@@ -27,6 +27,9 @@ import SupervisorDetailPage from './node_info/SupervisorDetailPage';
 import WorkerDetailPage from './node_info/WorkerDetailPage';
 import SessionListPage from './SessionListPage';
 import TaskListPage from './task_info/TaskListPage';
+const TaskDetail = lazy(() => {
+    return import('./task_info/TaskDetail');
+});
 
 function NodePageWrapper(props) {
     const { endpoint } = useParams();
@@ -68,6 +71,9 @@ export default function PageRouter() {
             />
             <Route exact path="/session/:session_id/task" render={() => (<TaskPageWrapper />)} />
             <Route exact path="/" component={Dashboard} />
+            <Suspense fallback={<div>Loading...</div>}>
+                <Route exact path="/session/:session_id/task/:task_id" component={TaskDetail} />
+            </Suspense>
         </Switch>
     );
 }

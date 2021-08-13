@@ -216,7 +216,6 @@ def test_parse_args():
         'store_memory': '20M',
         'plasma_directory': '/dev/shm',
     }
-    assert app.config['storage']['filesystem'] == {
+    assert app.config['storage']['disk'] == {
             'root_dirs': '/tmp',
-            'level': 'DISK',
     }
