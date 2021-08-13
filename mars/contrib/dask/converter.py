@@ -33,7 +33,7 @@ def convert_dask_collection(dc):
         Mars Object.
     """
     if not is_dask_collection(dc):
-        raise ValueError(f"'{type(dc).__name__}' object is not a valid dask collection")
+        raise TypeError(f"'{type(dc).__name__}' object is not a valid dask collection")
 
     dc.__dask_graph__().validate()
     dsk = optimize(dc)[0].__dask_graph__()
