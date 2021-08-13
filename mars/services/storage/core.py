@@ -144,7 +144,7 @@ class InternalDataInfo:
     object_info: ObjectInfo
 
 
-class DataManagerActor(mo.StatelessActor):
+class DataManagerActor(mo.Actor):
     _data_key_to_info: Dict[tuple, List[InternalDataInfo]]
 
     def __init__(self, bands: List):
@@ -264,6 +264,7 @@ class DataManagerActor(mo.StatelessActor):
         info = self.get_data_info(session_id, data_key, band_name)
         self._spill_strategy[info.level, info.band].pin_data((session_id, data_key))
 
+    @mo.extensible
     def unpin(self,
               session_id: str,
               data_keys: List[str],
@@ -428,6 +429,7 @@ class StorageManagerActor(mo.StatelessActor):
                     if band_name.startswith('gpu-'):  # pragma: no cover
                         await mo.create_actor(
                             SenderManagerActor, band_name,
+                            data_manager_ref=self._data_manager,
                             storage_handler_ref=handler_ref,
                             uid=SenderManagerActor.gen_uid(band_name),
                             address=self.address, allocate_strategy=sender_strategy)
@@ -459,7 +461,9 @@ class StorageManagerActor(mo.StatelessActor):
                                                     address=self.address,
                                                     allocate_strategy=handler_strategy)
                 await mo.create_actor(
-                    SenderManagerActor, storage_handler_ref=handler_ref,
+                    SenderManagerActor,
+                    data_manager_ref=self._data_manager,
+                    storage_handler_ref=handler_ref,
                     uid=SenderManagerActor.gen_uid(default_band_name),
                     address=self.address, allocate_strategy=sender_strategy)
 
