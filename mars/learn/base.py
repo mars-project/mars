@@ -101,7 +101,7 @@ class RegressorMixin:
         from .metrics import r2_score
 
         y_pred = self.predict(X)
-        return r2_score(y, y_pred, sample_weight=sample_weight).to_numpy()
+        return r2_score(y, y_pred, sample_weight=sample_weight)
 
     def _more_tags(self):  # noqa: R0201  # pylint: disable=no-self-use
         return {'requires_y': True}
@@ -169,10 +169,3 @@ class BaseEstimator(SklearnBaseEstimator):
             self._check_n_features(X, reset=reset)
 
         return out
-
-
-class MultiOutputMixin:
-    """Mixin to mark estimators that support multioutput."""
-
-    def _more_tags(self):
-        return {'multioutput': True}

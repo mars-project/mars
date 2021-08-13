@@ -15,14 +15,14 @@
 import numpy as np
 import warnings
 
-from sklearn.utils.validation import _deprecate_positional_args
 from sklearn.exceptions import UndefinedMetricWarning
+from sklearn.utils.validation import _deprecate_positional_args
 
+from ... import tensor as mt
 from ..utils.validation import (_num_samples,
                                 check_consistent_length,
                                 column_or_1d,
                                 check_array)
-import mars.tensor as mt
 
 
 def _check_reg_targets(y_true, y_pred, multioutput, dtype="numeric"):
@@ -136,9 +136,6 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
             Scores of all outputs are averaged, weighted by the variances
             of each individual output.
 
-        .. versionchanged:: 0.19
-            Default value of multioutput is 'uniform_average'.
-
     Returns
     -------
     z : float or ndarray of floats
@@ -162,27 +159,28 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
 
     Examples
     --------
-    >>> from sklearn.metrics import r2_score
+    >>> from mars.metrics import r2_score
     >>> y_true = [3, -0.5, 2, 7]
     >>> y_pred = [2.5, 0.0, 2, 8]
-    >>> r2_score(y_true, y_pred)
-    0.948...
+    >>> r2_score(y_true, y_pred).execute()
+    0.9486...
     >>> y_true = [[0.5, 1], [-1, 1], [7, -6]]
     >>> y_pred = [[0, 2], [-1, 2], [8, -5]]
-    >>> r2_score(y_true, y_pred,
-    ...          multioutput='variance_weighted')
-    0.938...
+    >>> r2_score(y_true,
+                 y_pred,
+                 multioutput='variance_weighted').execute()
+    0.9382...
     >>> y_true = [1, 2, 3]
     >>> y_pred = [1, 2, 3]
-    >>> r2_score(y_true, y_pred)
+    >>> r2_score(y_true, y_pred).execute()
     1.0
     >>> y_true = [1, 2, 3]
     >>> y_pred = [2, 2, 2]
-    >>> r2_score(y_true, y_pred)
+    >>> r2_score(y_true, y_pred).execute()
     0.0
     >>> y_true = [1, 2, 3]
     >>> y_pred = [3, 2, 1]
-    >>> r2_score(y_true, y_pred)
+    >>> r2_score(y_true, y_pred).execute()
     -3.0
     """
     y_type, y_true, y_pred, multioutput = _check_reg_targets(
@@ -224,8 +222,8 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
         elif multioutput == 'variance_weighted':
             avg_weights = denominator
             # avoid fail on constant y or one-element arrays
-            if not mt.any(nonzero_denominator):
-                if not mt.any(nonzero_numerator):
+            if mt.any(nonzero_denominator) is False:
+                if mt.any(nonzero_numerator) is False:
                     return 1.0
                 else:
                     return 0.0

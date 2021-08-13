@@ -12,28 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-
-import numpy as np
-from scipy import sparse
-from scipy import linalg
 import re
 
-from numpy.testing import assert_array_almost_equal
-from numpy.testing import assert_array_equal
-from numpy.testing import assert_almost_equal
-from numpy.testing import assert_allclose
+import numpy as np
+import pytest
+from numpy.testing import (assert_array_almost_equal,
+                           assert_array_equal,
+                           assert_almost_equal,
+                           assert_allclose)
+from scipy import sparse
+from scipy import linalg
+from sklearn.datasets import (make_sparse_uncorrelated,
+                              make_regression,
+                              load_iris)
+from sklearn.linear_model import LinearRegression as sklearn_LR
+from sklearn.linear_model._base import make_dataset
 from sklearn.utils import check_random_state
-# from sklearn.utils.fixes import parse_version
 
 from mars.learn.linear_model import LinearRegression
-from mars.learn.linear_model._base import _preprocess_data
-from mars.learn.linear_model._base import _rescale_data
-
-from sklearn.linear_model._base import make_dataset
-from sklearn.datasets import make_sparse_uncorrelated
-from sklearn.datasets import make_regression
-from sklearn.datasets import load_iris
+from mars.learn.linear_model._base import (_preprocess_data,
+                                           _rescale_data)
 
 rng = np.random.RandomState(0)
 rtol = 1e-6
@@ -84,7 +82,7 @@ def test_linear_regression_sample_weights(setup):
             inter1 = reg.intercept_
 
             assert reg.coef_.shape == (X.shape[1], )  # sanity checks
-            assert reg.score(X, y) > 0.5
+            assert reg.score(X, y).to_numpy() > 0.5
 
             # Closed form of the weighted least square
             # theta = (X^T W X)^(-1) * X^T W y
@@ -231,51 +229,54 @@ def test_linear_regression_sparse_multiple_outcome(setup, random_state=0):
     assert_array_almost_equal(np.vstack((y_pred, y_pred)).T, Y_pred, decimal=3)
 
 
-def test_linear_regression_positive(setup):
-    # Test nonnegative LinearRegression on a simple dataset.
-    X = [[1], [2]]
-    y = [1, 2]
+# # When optimize.nnls is implemented, one can utilize this test case
+# def test_linear_regression_positive(setup):
+#     # Test nonnegative LinearRegression on a simple dataset.
+#     X = [[1], [2]]
+#     y = [1, 2]
 
-    reg = LinearRegression(positive=True)
-    reg.fit(X, y)
+#     reg = LinearRegression(positive=True)
+#     reg.fit(X, y)
 
-    assert_array_almost_equal(reg.coef_, [1])
-    assert_array_almost_equal(reg.intercept_, [0])
-    assert_array_almost_equal(reg.predict(X), [1, 2])
+#     assert_array_almost_equal(reg.coef_, [1])
+#     assert_array_almost_equal(reg.intercept_, [0])
+#     assert_array_almost_equal(reg.predict(X), [1, 2])
 
-    # test it also for degenerate input
-    X = [[1]]
-    y = [0]
+#     # test it also for degenerate input
+#     X = [[1]]
+#     y = [0]
 
-    reg = LinearRegression(positive=True)
-    reg.fit(X, y)
-    assert_allclose(reg.coef_, [0])
-    assert_allclose(reg.intercept_, [0])
-    assert_allclose(reg.predict(X), [0])
+#     reg = LinearRegression(positive=True)
+#     reg.fit(X, y)
+#     assert_allclose(reg.coef_, [0])
+#     assert_allclose(reg.intercept_, [0])
+#     assert_allclose(reg.predict(X), [0])
 
 
-def test_linear_regression_positive_multiple_outcome(setup, random_state=0):
-    # Test multiple-outcome nonnegative linear regressions
-    random_state = check_random_state(random_state)
-    X, y = make_sparse_uncorrelated(random_state=random_state)
-    Y = np.vstack((y, y)).T
-    n_features = X.shape[1]
+# # When optimize.nnls is implemented, one can utilize this test case
+# def test_linear_regression_positive_multiple_outcome(setup, random_state=0):
+#     # Test multiple-outcome nonnegative linear regressions
+#     random_state = check_random_state(random_state)
+#     X, y = make_sparse_uncorrelated(random_state=random_state)
+#     Y = np.vstack((y, y)).T
+#     n_features = X.shape[1]
 
-    ols = LinearRegression(positive=True)
-    ols.fit(X, Y)
-    assert ols.coef_.shape == (2, n_features)
-    assert np.all(ols.coef_.to_numpy() >= 0.)
-    Y_pred = ols.predict(X)
-    ols.fit(X, y.ravel())
-    y_pred = ols.predict(X)
-    assert_allclose(np.vstack((y_pred, y_pred)).T, Y_pred)
+#     ols = LinearRegression(positive=True)
+#     ols.fit(X, Y)
+#     assert ols.coef_.shape == (2, n_features)
+#     assert np.all(ols.coef_.to_numpy() >= 0.)
+#     Y_pred = ols.predict(X)
+#     ols.fit(X, y.ravel())
+#     y_pred = ols.predict(X)
+#     assert_allclose(np.vstack((y_pred, y_pred)).T, Y_pred)
 
 
 def test_linear_regression_positive_vs_nonpositive(setup):
     # Test differences with LinearRegression when positive=False.
     X, y = make_sparse_uncorrelated(random_state=0)
 
-    reg = LinearRegression(positive=True)
+    # reg = LinearRegression(positive=True)
+    reg = sklearn_LR(positive=True)
     reg.fit(X, y)
     regn = LinearRegression(positive=False)
     regn.fit(X, y)
@@ -291,7 +292,8 @@ def test_linear_regression_positive_vs_nonpositive_when_positive(setup):
     X = rng.rand(n_samples, n_features)
     y = X[:, 0] + 2 * X[:, 1] + 3 * X[:, 2] + 1.5 * X[:, 3]
 
-    reg = LinearRegression(positive=True)
+    # reg = LinearRegression(positive=True)
+    reg = sklearn_LR(positive=True)
     reg.fit(X, y)
     regn = LinearRegression(positive=False)
     regn.fit(X, y)
@@ -299,6 +301,7 @@ def test_linear_regression_positive_vs_nonpositive_when_positive(setup):
     assert np.mean(((reg.coef_ - regn.coef_)**2).to_numpy()) < 1e-6
 
 
+# # Failed: DID NOT WARN.
 # # No such warning "pandas.DataFrame with sparse columns found."
 # def test_linear_regression_pd_sparse_dataframe_warning():
 #     pd = pytest.importorskip('pandas')
@@ -423,7 +426,7 @@ def test_preprocess_data_weighted(setup):
     assert_array_almost_equal(Xt, (X - expected_X_mean) / expected_X_norm)
     assert_array_almost_equal(yt, y - expected_y_mean)
 
-# # 'SparseMatrix' object has no attribute 'A'
+# # AttributeError: 'SparseMatrix' object has no attribute 'A'
 # def test_sparse_preprocess_data_with_return_mean():
 #     n_samples = 200
 #     n_features = 2
@@ -624,3 +627,14 @@ def test_fused_types_make_dataset(setup):
     assert_array_equal(xi_data_64, xicsr_data_64)
     assert_array_equal(yi_32, yicsr_32)
     assert_array_equal(yi_64, yicsr_64)
+
+
+def test_raise_notimplemented_when_positive(setup):
+    error_msg = (re.escape('Does not support positive coefficients!'))
+
+    X = [[1], [2]]
+    y = [1, 2]
+
+    reg = LinearRegression(positive=True)
+    with pytest.raises(NotImplementedError, match=error_msg):
+        reg.fit(X, y)

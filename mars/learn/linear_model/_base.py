@@ -12,29 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABCMeta, abstractmethod
 import numbers
+from abc import ABCMeta, abstractmethod
 
+import scipy.sparse as sp
+from numpy.linalg import LinAlgError
+from scipy import linalg
+from scipy.sparse.linalg import lsqr
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
+from sklearn.base import MultiOutputMixin
 from sklearn.utils.sparsefuncs import mean_variance_axis
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.utils.fixes import delayed
 
-from numpy.linalg import LinAlgError
-from joblib import Parallel
-import scipy.sparse as sp
-from scipy import sparse
-from scipy import optimize
-from scipy.sparse.linalg import lsqr as sparse_lsqr
-from scipy import linalg
-
-from ..base import BaseEstimator, RegressorMixin, MultiOutputMixin
+from ... import remote as mr
+from ... import tensor as mt
+from ..base import BaseEstimator, RegressorMixin
+from ..preprocessing import normalize as f_normalize
+from ...tensor.datasource import tensor as astensor
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
 from ..utils.sparsefuncs import inplace_column_scale
-from ..preprocessing import normalize as f_normalize
-import mars.tensor as mt
-from mars.tensor.datasource import tensor as astensor
 
 
 def _preprocess_data(
@@ -104,7 +101,6 @@ def _preprocess_data(
 
         else:
             X_offset = mt.average(X, axis=0, weights=sample_weight)
-            # X -= X_offset
             X = X - X_offset
             if normalize:
                 X, X_scale = f_normalize(X, axis=0, copy=False,
@@ -121,14 +117,7 @@ def _preprocess_data(
         else:
             y_offset = mt.zeros(y.shape[1], dtype=X.dtype)
 
-    # X = astensor(X).execute()
-    # y = astensor(y).execute()
     return X, y, X_offset, y_offset, X_scale
-
-
-# TODO: _rescale_data should be factored into _preprocess_data.
-# Currently, the fact that sag implements its own way to deal with
-# sample_weight makes the refactoring tricky.
 
 
 def _rescale_data(X, y, sample_weight):
@@ -150,7 +139,7 @@ def _rescale_data(X, y, sample_weight):
             sample_weight,
             dtype=sample_weight.dtype)
     sample_weight = mt.sqrt(sample_weight)
-    sw_matrix = sparse.dia_matrix(
+    sw_matrix = sp.dia_matrix(
         (sample_weight, 0),
         shape=(n_samples, n_samples))
     X = safe_sparse_dot(sw_matrix, X)
@@ -232,25 +221,12 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         :class:`~sklearn.preprocessing.StandardScaler` before calling ``fit``
         on an estimator with ``normalize=False``.
 
-        .. deprecated:: 1.0
-           `normalize` was deprecated in version 1.0 and will be
-           removed in 1.2.
-
     copy_X : bool, default=True
         If True, X will be copied; else, it may be overwritten.
-
-    n_jobs : int, default=None
-        The number of jobs to use for the computation. This will only provide
-        speedup for n_targets > 1 and sufficient large problems.
-        ``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
-        ``-1`` means using all processors. See :term:`Glossary <n_jobs>`
-        for more details.
 
     positive : bool, default=False
         When set to ``True``, forces the coefficients to be positive. This
         option is only supported for dense arrays.
-
-        .. versionadded:: 0.24
 
     Attributes
     ----------
@@ -273,8 +249,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
     n_features_in_ : int
         Number of features seen during :term:`fit`.
 
-        .. versionadded:: 0.24
-
     See Also
     --------
     Ridge : Ridge regression addresses some of the
@@ -285,16 +259,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
     ElasticNet : Elastic-Net is a linear regression
         model trained with both l1 and l2 -norm regularization of the
         coefficients.
-
-    Notes
-    -----
-    From the implementation point of view, this is just plain Ordinary
-    Least Squares (scipy.linalg.lstsq) or Non Negative Least Squares
-    (scipy.optimize.nnls) wrapped as a predictor object.
-
-    Examples
-    --------
-    TBD
     """
     @_deprecate_positional_args
     def __init__(
@@ -303,13 +267,11 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         fit_intercept=True,
         normalize="deprecated",
         copy_X=True,
-        n_jobs=None,
         positive=False,
     ):
         self.fit_intercept = fit_intercept
         self.normalize = normalize
         self.copy_X = copy_X
-        self.n_jobs = n_jobs
         self.positive = positive
 
     def fit(self, X, y, sample_weight=None):
@@ -335,8 +297,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         self : object
             Fitted Estimator.
         """
-        n_jobs_ = self.n_jobs
-
         accept_sparse = False if self.positive else ['csr', 'csc', 'coo']
 
         X, y = self._validate_data(X, y, accept_sparse=accept_sparse,
@@ -356,15 +316,19 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
             X, y = _rescale_data(X, y, sample_weight)
 
         if self.positive:
-            if y.ndim < 2:
-                self.coef_, self._residues = optimize.nnls(X, y)
-            else:
-                # scipy.optimize.nnls cannot handle y with shape (M, K)
-                outs = Parallel(n_jobs=n_jobs_)(
-                    delayed(optimize.nnls)(
-                        X, y[:, j]) for j in range(y.shape[1]))
-                self.coef_, self._residues = map(mt.vstack, zip(*outs))
-                self.coef_.execute()
+            # # When optimize.nnls is implemented, one can directly
+            # # utilize the following code.
+            # if y.ndim < 2:
+            #     self.coef_, self._residues = optimize.nnls(X, y)
+            # else:
+            #     # scipy.optimize.nnls cannot handle y with shape (M, K)
+            #     outs = Parallel(n_jobs=n_jobs_)(
+            #         delayed(optimize.nnls)(
+            #             X, y[:, j]) for j in range(y.shape[1]))
+            #     self.coef_, self._residues = map(mt.vstack, zip(*outs))
+            #     self.coef_.execute()
+            raise NotImplementedError(
+                "Does not support positive coefficients!")
         elif sp.issparse(X):
             X_offset_scale = X_offset / X_scale
 
@@ -374,24 +338,24 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
             def rmatvec(b):
                 return X.T.dot(b) - X_offset_scale * mt.sum(b)
 
-            X_centered = sparse.linalg.LinearOperator(shape=X.shape,
-                                                      matvec=matvec,
-                                                      rmatvec=rmatvec)
+            X_centered = sp.linalg.LinearOperator(shape=X.shape,
+                                                  matvec=matvec,
+                                                  rmatvec=rmatvec)
 
             if y.ndim < 2:
-                out = sparse_lsqr(X_centered, y)
+                out = lsqr(X_centered, y)
                 self.coef_ = out[0]
                 self._residues = out[3]
             else:
-                # sparse_lstsq cannot handle y with shape (M, K)
-                outs = Parallel(n_jobs=n_jobs_)(
-                    delayed(sparse_lsqr)(X_centered, y[:, j].ravel())
-                    for j in range(y.shape[1]))
+                outs = []
+                for j in range(y.shape[1]):
+                    outs.append(mr.remote(lsqr(X_centered, y[:, j].ravel())))
                 self.coef_ = mt.vstack([out[0] for out in outs])
                 self.coef_.execute()
                 self._residues = mt.vstack([out[3] for out in outs])
         else:
             try:
+                # # Don't know why the following does not work
                 # self.coef_ = mt.dot(
                 #     mt.linalg.inv(mt.dot(mt.transpose(X), X)),
                 #     mt.dot(mt.transpose(X), y)
@@ -402,10 +366,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 self.coef_ = mt.linalg.inv(((X.T @ X)) @ (X.T @ y)).T
                 self.coef_.execute()
 
-                # from numpy.linalg import inv
-                # X = X.to_numpy()
-                # y = y.to_numpy()
-                # self.coef_ = inv(((X.T @ X)) @ (X.T @ y)).T
             except LinAlgError:
                 self.coef_, self._residues, self.rank_, self.singular_ = \
                     linalg.lstsq(X, y)

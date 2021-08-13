@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import scipy.sparse as sp
-
-import mars.tensor as mt
+from ... import tensor as mt
+from ...lib import sparse as sp
 
 
 def _raise_typeerror(X):

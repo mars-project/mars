@@ -333,9 +333,6 @@ def normalize(X, norm='l2', axis=1, copy=True, return_norm=False):
         raise ValueError(f"'{norm}' is not a supported norm")
     if axis not in (0, 1):
         raise ValueError(f"'{axis}' is not a supported axis")
-
-    # op = TensorNormalize(norm=norm, axis=axis, return_norm=return_norm,
-    #                      dtype=np.dtype(np.float64))
     op = TensorNormalize(norm=norm, axis=axis, return_norm=return_norm,
                          dtype=X.dtype)
     return op(X, copy=copy)
