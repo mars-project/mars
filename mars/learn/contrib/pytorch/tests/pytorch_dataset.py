@@ -27,17 +27,21 @@ def get_model():
     )
 
 
-def main():
+def main(feature_data, labels):
     import torch.nn as nn
     import torch.distributed as dist
     import torch.optim as optim
     import torch.utils.data
     from mars.learn.contrib.pytorch import MarsDataset
 
-    data = data
+    dist.init_process_group(backend='gloo')
+    torch.manual_seed(42)
+
+    data = feature_data
     labels = labels
 
     train_dataset = MarsDataset(data, labels)
+    assert len(train_dataset) == 1000
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                batch_size=32,
@@ -57,9 +61,13 @@ def main():
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+    
+    print("Done!")
 
 
 if __name__ == "__main__":
     assert len(sys.argv) == 2
     assert sys.argv[1] == 'multiple'
-    main()
+    feature_data = feature_data
+    labels = labels
+    main(feature_data, labels)
