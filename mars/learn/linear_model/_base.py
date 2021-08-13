@@ -289,9 +289,6 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         sample_weight : array-like of shape (n_samples,), default=None
             Individual weights for each sample.
 
-            .. versionadded:: 0.17
-               parameter *sample_weight* support to LinearRegression.
-
         Returns
         -------
         self : object
