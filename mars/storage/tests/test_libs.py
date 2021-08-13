@@ -29,7 +29,7 @@ from mars.lib.sparse import SparseNDArray, SparseMatrix
 from mars.serialization import AioSerializer, AioDeserializer
 from mars.storage.base import StorageLevel
 from mars.storage.cuda import CudaStorage
-from mars.storage.filesystem import FileSystemStorage
+from mars.storage.filesystem import DiskStorage
 from mars.storage.plasma import PlasmaStorage
 from mars.storage.shared_memory import SharedMemoryStorage
 from mars.storage.vineyard import VineyardStorage
@@ -65,11 +65,10 @@ if ray is not None:
 async def storage_context(ray_start_regular, request):
     if request.param == 'filesystem':
         tempdir = tempfile.mkdtemp()
-        params, teardown_params = await FileSystemStorage.setup(
+        params, teardown_params = await DiskStorage.setup(
             fs=LocalFileSystem(),
-            root_dirs=[tempdir],
-            level=StorageLevel.DISK)
-        storage = FileSystemStorage(**params)
+            root_dirs=[tempdir])
+        storage = DiskStorage(**params)
         assert storage.level == StorageLevel.DISK
 
         yield storage
