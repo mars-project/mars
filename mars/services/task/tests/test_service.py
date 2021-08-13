@@ -63,8 +63,8 @@ async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "lifecycle", "meta", "lifecycle", "scheduling",
-                     "task", "subtask"],
+        "services": ["cluster", "session", "meta", "lifecycle",
+                     "scheduling", "subtask", "task"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,

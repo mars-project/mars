@@ -12,36 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
-
 from .... import oscar as mo
+from ...core import AbstractService
 from .manager import SubtaskManagerActor
 
 
-async def start(config: Dict, address: str):
+class SubtaskWorkerService(AbstractService):
     """
-    Start task service on worker.
+    Subtask service on worker.
 
-    Parameters
-    ----------
-    config
-        Service config.
-        {
-            "subtask" : {
+    Service Configuration
+    ---------------------
+    {
+        "subtask" : {
 
-            }
         }
-    address : str
-        Actor pool address.
+    }
     """
-    subtask_config = config.get('subtask', dict())
-    subtask_processor_cls = subtask_config.get('subtask_processor_cls')
-    await mo.create_actor(SubtaskManagerActor,
-                          subtask_processor_cls=subtask_processor_cls,
-                          address=address,
-                          uid=SubtaskManagerActor.default_uid())
+    async def start(self):
+        subtask_config = self._config.get('subtask', dict())
+        subtask_processor_cls = subtask_config.get('subtask_processor_cls')
+        await mo.create_actor(SubtaskManagerActor,
+                              subtask_processor_cls=subtask_processor_cls,
+                              address=self._address,
+                              uid=SubtaskManagerActor.default_uid())
 
-
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=SubtaskManagerActor.default_uid(), address=address))
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=SubtaskManagerActor.default_uid(), address=self._address))
