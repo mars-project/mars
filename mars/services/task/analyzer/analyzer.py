@@ -182,7 +182,8 @@ class GraphAnalyzer:
                     # the last chunk
                     result_chunks.append(copied_fuse_chunk)
             fuse_to_copied[fuse_chunk] = copied_fuse_chunk
-        self._chunk_to_copied[chunk] = fuse_to_copied[chunk.chunk]
+        self._chunk_to_copied[chunk.chunk] = self._chunk_to_copied[chunk] = \
+            fuse_to_copied[chunk.chunk]
         return subtask_chunk_graph
 
     def _gen_subtask(self,

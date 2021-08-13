@@ -1129,9 +1129,11 @@ class ProgressBar:
         self.progress_bar.__exit__(*_)
 
     def update(self, progress: float):
+        progress = min(progress, 100)
         last_progress = self.last_progress
         if self.progress_bar:
-            self.progress_bar.update(progress - last_progress)
+            incr = max(progress - last_progress, 0)
+            self.progress_bar.update(incr)
         self.last_progress = max(last_progress, progress)
 
 

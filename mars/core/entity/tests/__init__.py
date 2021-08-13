@@ -11,9 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from .entropy import entropy
-from .chisquare import chisquare
-from .power_divergence import power_divergence
-from .ttest import ttest_1samp, ttest_ind, ttest_ind_from_stats, ttest_rel
-from .ks_2samp import ks_2samp
