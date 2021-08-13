@@ -12,62 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
-
 from .... import oscar as mo
 from ....utils import calc_size_by_str
+from ...core import AbstractService
 from .workerslot import WorkerSlotManagerActor
 from .quota import WorkerQuotaManagerActor
 from .execution import SubtaskExecutionActor
 
 
-async def start(config: Dict, address: str):
+class SchedulingWorkerService(AbstractService):
     """
-    Start scheduling service on worker.
+    Scheduling service on worker.
 
-    Parameters
-    ----------
-    config : dict
-        service config.
-        {
-            "scheduling": {
-                "mem_quota_size": "80%",
-                "mem_hard_limit": "95%",
-                "enable_kill_slot": true,
-            }
+    Service Configuration
+    ---------------------
+    {
+        "scheduling": {
+            "mem_quota_size": "80%",
+            "mem_hard_limit": "95%",
+            "enable_kill_slot": true,
         }
-    address : str
-        Actor pool address.
+    }
     """
-    from .... import resource as mars_resource
-    scheduling_config = config.get('scheduling', {})
+    async def start(self):
+        from .... import resource as mars_resource
+        scheduling_config = self._config.get('scheduling', {})
+        address = self._address
 
-    total_mem = mars_resource.virtual_memory().total
-    mem_quota_size = calc_size_by_str(
-        scheduling_config.get('mem_quota_size', '80%'), total_mem)
-    mem_hard_limit = calc_size_by_str(
-        scheduling_config.get('mem_hard_limit', '95%'), total_mem)
-    enable_kill_slot = scheduling_config.get('enable_kill_slot', True)
+        total_mem = mars_resource.virtual_memory().total
+        mem_quota_size = calc_size_by_str(
+            scheduling_config.get('mem_quota_size', '80%'), total_mem)
+        mem_hard_limit = calc_size_by_str(
+            scheduling_config.get('mem_hard_limit', '95%'), total_mem)
+        enable_kill_slot = scheduling_config.get('enable_kill_slot', True)
 
-    await mo.create_actor(WorkerSlotManagerActor,
-                          uid=WorkerSlotManagerActor.default_uid(),
-                          address=address)
-    await mo.create_actor(WorkerQuotaManagerActor,
-                          default_config=dict(quota_size=mem_quota_size,
-                                              hard_limit=mem_hard_limit,
-                                              enable_kill_slot=enable_kill_slot),
-                          uid=WorkerQuotaManagerActor.default_uid(),
-                          address=address)
-    await mo.create_actor(SubtaskExecutionActor,
-                          enable_kill_slot=enable_kill_slot,
+        await mo.create_actor(WorkerSlotManagerActor,
+                              uid=WorkerSlotManagerActor.default_uid(),
+                              address=address)
+        await mo.create_actor(WorkerQuotaManagerActor,
+                              default_config=dict(quota_size=mem_quota_size,
+                                                  hard_limit=mem_hard_limit,
+                                                  enable_kill_slot=enable_kill_slot),
+                              uid=WorkerQuotaManagerActor.default_uid(),
+                              address=address)
+        await mo.create_actor(SubtaskExecutionActor,
+                              enable_kill_slot=enable_kill_slot,
                           uid=SubtaskExecutionActor.default_uid(),
                           address=address)
 
+    async def stop(self):
+        address = self._address
 
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=SubtaskExecutionActor.default_uid(), address=address))
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=WorkerQuotaManagerActor.default_uid(), address=address))
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=WorkerSlotManagerActor.default_uid(), address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=SubtaskExecutionActor.default_uid(), address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=WorkerQuotaManagerActor.default_uid(), address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=WorkerSlotManagerActor.default_uid(), address=address))
