@@ -157,7 +157,8 @@ def test_RandomSampler(setup_cluster):
     with pytest.raises(ValueError) as e:
         train_sampler = RandomSampler(train_dataset, num_samples=900)
     exec_msg = e.value.args[0]
-    assert exec_msg == "With replacement=False, num_samples should not be specified, since a random permute will be performed."
+    assert exec_msg == "With replacement=False, num_samples should not " + \
+                        "be specified, since a random permute will be performed."
 
     with pytest.raises(ValueError) as e:
         train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=-1)
@@ -250,5 +251,5 @@ def test_MarsDataset_script(setup_cluster):
     labels.execute()
 
     assert run_pytorch_script(
-        path, n_workers=2, command_argv=['multiple'],
-        port=9945, session=sess, data={'data': data, 'labels': labels}).fetch()['status'] == 'ok'
+        path, n_workers=2, data={'feature_data': data, 'labels': labels},
+        command_argv=['multiple'], port=9945, session=sess).fetch()['status'] == 'ok'
