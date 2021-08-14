@@ -13,7 +13,6 @@
 # limitations under the License.
 import pytest
 
-from mars import new_session, stop_server
 from mars.contrib.dask import convert_dask_collection, mars_scheduler
 from mars.utils import lazy_import
 
@@ -21,16 +20,8 @@ dask_installed = lazy_import('dask', globals=globals()) is not None
 mimesis_installed = lazy_import('mimesis', globals=globals()) is not None
 
 
-def setup_function():
-    new_session()
-
-
-def teardown_function():
-    stop_server()
-
-
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
-def test_delayed():
+def test_delayed(setup_cluster):
     from dask import delayed
     import numpy as np
 
@@ -55,7 +46,7 @@ def test_delayed():
 
 
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
-def test_partitioned_dataframe():
+def test_partitioned_dataframe(setup_cluster):
     import numpy as np
     import pandas as pd
     from dask import dataframe as dd
@@ -75,7 +66,7 @@ def test_partitioned_dataframe():
 
 
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
-def test_unpartitioned_dataframe():
+def test_unpartitioned_dataframe(setup_cluster):
     from dask import dataframe as dd
     from pandas._testing import assert_frame_equal
     import pandas as pd
@@ -93,7 +84,7 @@ def test_unpartitioned_dataframe():
 
 
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
-def test_array():
+def test_array(setup_cluster):
     import dask.array as da
     from numpy.core.numeric import array_equal
 
@@ -108,7 +99,7 @@ def test_array():
 
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
 @pytest.mark.skipif(not mimesis_installed, reason='mimesis not installed')
-def test_bag():
+def test_bag(setup_cluster):
     import dask
 
     b = dask.datasets.make_people()  # Make records of people
