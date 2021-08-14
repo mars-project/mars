@@ -28,6 +28,7 @@ from ....utils import lazy_import
 from ..config import ActorPoolConfig
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
 from ..router import Router
+from ... import ServerClosed
 from .communication import ChannelID, RayServer, RayChannelException
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
 
@@ -166,6 +167,8 @@ class RayPoolBase(ABC):
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         """Method for communication based on ray actors"""
         try:
+            if self._ray_server is None:
+                raise ServerClosed(f'Remote server {channel_id.dest_address} closed')
             return await self._ray_server.__on_ray_recv__(channel_id, message)
         except Exception:   # pragma: no cover
             return RayChannelException(*sys.exc_info())

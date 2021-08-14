@@ -11,15 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
+import os
 
 import pytest
 
+import mars.oscar as mo
+from mars.oscar.errors import ServerClosed
+from mars.oscar.backends.allocate_strategy import ProcessIndex, MainPool
+from mars.oscar.backends.ray.pool import RayMainPool, RayMainActorPool, create_actor_pool, PoolStatus
+from mars.oscar.backends.ray.utils import process_placement_to_address
+from mars.oscar.context import get_context
 from mars.tests.core import require_ray
-from .....utils import lazy_import
-from ..pool import RayMainPool, RayMainActorPool, create_actor_pool
-from ..utils import process_placement_to_address
+from mars.utils import lazy_import
 
 ray = lazy_import('ray')
+
+
+class TestActor(mo.Actor):
+    async def kill(self, address, uid):
+        actor_ref = await mo.actor_ref(address, uid)
+        task = asyncio.create_task(actor_ref.crash())
+        return await task
+
+    async def crash(self):
+        os._exit(0)
 
 
 @require_ray
@@ -71,3 +87,96 @@ async def test_shutdown_sub_pool(ray_start_regular):
     with pytest.raises(ray.exceptions.RayActorError):
         await sub_pool_handle1.health_check.remote()
         await sub_pool_handle2.health_check.remote()
+
+
+@require_ray
+@pytest.mark.asyncio
+async def test_server_closed(ray_start_regular):
+    pg_name, n_process = 'ray_cluster', 1
+    pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
+    ray.get(pg.ready())
+    address = process_placement_to_address(pg_name, 0, process_index=0)
+    # start the actor pool
+    actor_handle = await mo.create_actor_pool(address, n_process=n_process)
+    await actor_handle.actor_pool.remote('start')
+
+    ctx = get_context()
+    actor_main = await ctx.create_actor(
+        TestActor, address=address, uid='Test-main',
+        allocate_strategy=ProcessIndex(0))
+
+    actor_sub = await ctx.create_actor(
+        TestActor, address=address, uid='Test-sub',
+        allocate_strategy=ProcessIndex(1))
+
+    # test calling from ray driver to ray actor
+    task = asyncio.create_task(actor_sub.crash())
+
+    with pytest.raises(ServerClosed):
+        # process already died,
+        # ServerClosed will be raised
+        await task
+
+    # wait for recover of sub pool
+    await ctx.wait_actor_pool_recovered(actor_sub.address, address)
+
+    # test calling from ray actor to ray actor
+    task = asyncio.create_task(actor_main.kill(actor_sub.address, 'Test-sub'))
+
+    with pytest.raises(ServerClosed):
+        await task
+
+
+@require_ray
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'auto_recover',
+    [False, True, 'actor', 'process']
+)
+async def test_auto_recover(ray_start_regular, auto_recover):
+    pg_name, n_process = 'ray_cluster', 1
+    pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
+    assert pg.wait(timeout_seconds=20)
+    address = process_placement_to_address(pg_name, 0, process_index=0)
+    actor_handle = await mo.create_actor_pool(address, n_process=n_process, auto_recover=auto_recover)
+    await actor_handle.actor_pool.remote('start')
+
+    ctx = get_context()
+
+    # wait for recover of main pool always returned immediately
+    await ctx.wait_actor_pool_recovered(address, address)
+
+    # create actor on main
+    actor_ref = await ctx.create_actor(
+        TestActor, address=address,
+        allocate_strategy=MainPool())
+
+    with pytest.raises(ValueError):
+        # cannot kill actors on main pool
+        await mo.kill_actor(actor_ref)
+
+    # create actor
+    actor_ref = await ctx.create_actor(
+        TestActor, address=address,
+        allocate_strategy=ProcessIndex(1))
+    # kill_actor will cause kill corresponding process
+    await ctx.kill_actor(actor_ref)
+
+    if auto_recover:
+        await ctx.wait_actor_pool_recovered(actor_ref.address, address)
+        sub_pool_address = process_placement_to_address(pg_name, 0, process_index=1)
+        sub_pool_handle = ray.get_actor(sub_pool_address)
+        assert await sub_pool_handle.actor_pool.remote('health_check') == PoolStatus.HEALTHY
+
+        expect_has_actor = True if auto_recover in ['actor', True] else False
+        assert await ctx.has_actor(actor_ref) is expect_has_actor
+    else:
+        with pytest.raises((ServerClosed, ConnectionError)):
+            await ctx.has_actor(actor_ref)
+
+    if 'COV_CORE_SOURCE' in os.environ:
+        for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(2)]:
+            # must save the local reference until this is fixed:
+            # https://github.com/ray-project/ray/issues/7815
+            ray_actor = ray.get_actor(addr)
+            ray.get(ray_actor.cleanup.remote())

@@ -864,11 +864,12 @@ class MainActorPoolBase(ActorPoolBase):
                     self.sub_processes[message.address],
                     timeout=timeout,
                     force=force)
-                if self._auto_recover:
-                    self._recover_events[message.address] = asyncio.Event()
                 processor.result = ResultMessage(message.message_id, True,
                                                  protocol=message.protocol)
             elif message.control_message_type == ControlMessageType.wait_pool_recovered:
+                if self._auto_recover and message.address not in self._recover_events:
+                    self._recover_events[message.address] = asyncio.Event()
+
                 event = self._recover_events.get(message.address, None)
                 if event is not None:
                     await event.wait()
@@ -1014,6 +1015,10 @@ class MainActorPoolBase(ActorPoolBase):
         bool
         """
 
+    @abstractmethod
+    def recover_sub_pool(self, address):
+        """Recover a sub actor pool"""
+
     def process_sub_pool_lost(self, address: str):
         if self._auto_recover in (False, 'process'):
             # process down, when not auto_recover
@@ -1038,18 +1043,18 @@ class MainActorPoolBase(ActorPoolBase):
             while not self._stopped.is_set():
                 for address in self.sub_processes:
                     process = self.sub_processes[address]
+                    recover_events_discovered = (address in self._recover_events)
                     if not await self.is_sub_pool_alive(process):  # pragma: no cover
                         if self._on_process_down is not None:
                             self._on_process_down(self, address)
                         self.process_sub_pool_lost(address)
                         if self._auto_recover:
-                            if address not in self._recover_events:
-                                self._recover_events[address] = asyncio.Event()
                             await self.recover_sub_pool(address)
                             if self._on_process_recover is not None:
                                 self._on_process_recover(self, address)
-                            event = self._recover_events.pop(address)
-                            event.set()
+                    if recover_events_discovered:
+                        event = self._recover_events.pop(address)
+                        event.set()
 
                 # check every half second
                 await asyncio.sleep(.5)
