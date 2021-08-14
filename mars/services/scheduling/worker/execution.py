@@ -23,11 +23,11 @@ from typing import Dict, Optional, Union
 
 from .... import oscar as mo
 from ....core.graph import DAG
-from ....core.operand import Fetch
+from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
 from ....oscar.errors import MarsError
 from ....storage import StorageLevel
-from ....utils import dataslots
+from ....utils import dataslots, get_chunk_key_to_data_keys
 from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
@@ -69,6 +69,9 @@ class SlotContext:
     @property
     def slot_id(self):
         return self._slot_id
+
+    async def get_slot_address(self):
+        return await self._slot_manager_ref.get_slot_address(self.slot_id)
 
     def kill_slot_when_exit(self):
         if self._enable_kill_slot:  # pragma: no branch
@@ -160,21 +163,33 @@ class SubtaskExecutionActor(mo.StatelessActor):
             self._global_slot_ref = None
         return self._global_slot_ref
 
-    async def _prepare_input_data(self, subtask: Subtask):
+    async def _prepare_input_data(self, subtask: Subtask, band_name: str):
         queries = []
-        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
+        storage_api = await StorageAPI.create(
+            subtask.session_id, address=self.address, band_name=band_name)
         pure_dep_keys = set()
+        chunk_key_to_data_keys = get_chunk_key_to_data_keys(subtask.chunk_graph)
         for n in subtask.chunk_graph:
             pure_dep_keys.update(
                 inp.key for inp, pure_dep in zip(n.inputs, n.op.pure_depends) if pure_dep)
-        for n in subtask.chunk_graph:
-            if not isinstance(n.op, Fetch) or n.key in pure_dep_keys:
-                continue
-            queries.append(storage_api.fetch.delay(n.key))
+        for chunk in subtask.chunk_graph:
+            if chunk.op.gpu:  # pragma: no cover
+                to_fetch_band = band_name
+            else:
+                to_fetch_band = 'numa-0'
+            if isinstance(chunk.op, Fetch):
+                queries.append(storage_api.fetch.delay(chunk.key, band_name=to_fetch_band))
+            elif isinstance(chunk.op, FetchShuffle):
+                for key in chunk_key_to_data_keys[chunk.key]:
+                    queries.append(storage_api.fetch.delay(
+                        key, band_name=to_fetch_band, error='ignore'))
         if queries:
             await storage_api.fetch.batch(*queries)
 
-    async def _collect_input_sizes(self, subtask: Subtask, supervisor_address: str):
+    async def _collect_input_sizes(self,
+                                   subtask: Subtask,
+                                   supervisor_address: str,
+                                   band_name: str):
         graph = subtask.chunk_graph
         sizes = dict()
 
@@ -183,7 +198,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
         if not fetch_keys:
             return sizes
 
-        storage_api = await StorageAPI.create(subtask.session_id, address=self.address)
+        storage_api = await StorageAPI.create(subtask.session_id,
+                                              address=self.address, band_name=band_name)
         meta_api = await MetaAPI.create(subtask.session_id, address=supervisor_address)
 
         fetch_metas = await meta_api.get_chunk_meta.batch(
@@ -273,9 +289,10 @@ class SubtaskExecutionActor(mo.StatelessActor):
             quota_ref = await self._get_band_quota_ref(band_name)
             slot_manager_ref = await self._get_slot_manager_ref(band_name)
 
-            await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask)
+            await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask, band_name)
 
-            input_sizes = await self._collect_input_sizes(subtask, subtask_info.supervisor_address)
+            input_sizes = await self._collect_input_sizes(
+                subtask, subtask_info.supervisor_address, band_name)
             _store_size, calc_size = await asyncio.to_thread(
                 self._estimate_sizes, subtask, input_sizes)
             if subtask_info.cancelling:
@@ -354,9 +371,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     finally:
                         raise ex
                 except (OSError, MarsError) as ex:
-                    # TODO(fyrestone): Handle slot exception correctly.
-                    if subtask_info.num_retries < subtask_info.max_retries:
-                        ctx.kill_slot_when_exit()
+                    sub_pool_address = await ctx.get_slot_address()
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                     raise ex
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)

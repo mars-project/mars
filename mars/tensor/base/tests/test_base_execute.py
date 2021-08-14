@@ -919,6 +919,18 @@ def test_searchsorted_execution(setup):
     expected = np.searchsorted(raw3, 20, sorter=order)
     np.testing.assert_array_equal(res, expected)
 
+    # all data same
+    raw4 = np.ones(8)
+    arr = tensor(raw4, chunk_size=2)
+
+    for val in (0, 1, 2):
+        for side in ('left', 'right'):
+            t15 = searchsorted(arr, val, side=side)
+
+            res = t15.execute().fetch()
+            expected = np.searchsorted(raw4, val, side=side)
+            np.testing.assert_array_equal(res, expected)
+
 
 def test_unique_execution(setup):
     rs = np.random.RandomState(0)
@@ -1050,7 +1062,7 @@ def test_unique_execution(setup):
 
 
 @require_cupy
-def test_to_gpu_execution(setup):
+def test_to_gpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3)
 
@@ -1061,7 +1073,7 @@ def test_to_gpu_execution(setup):
 
 
 @require_cupy
-def test_to_cpu_execution(setup):
+def test_to_cpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3, gpu=True)
 

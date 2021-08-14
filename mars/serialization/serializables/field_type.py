@@ -20,6 +20,11 @@ from typing import Tuple, Type
 import numpy as np
 import pandas as pd
 
+from ...utils import lazy_import
+
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
+
 
 class PrimitiveType(Enum):
     bool = 1
@@ -165,7 +170,10 @@ class NDArrayType(SingletonFieldType):
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return np.ndarray,
+        if cupy is None:
+            return np.ndarray,
+        else:
+            return np.ndarray, cupy.ndarray
 
 
 class DtypeType(SingletonFieldType):
@@ -226,7 +234,10 @@ class IndexType(SingletonFieldType):
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return pd.Index,
+        if cudf is None:
+            return pd.Index,
+        else:
+            return pd.Index, cudf.Index
 
 
 class SeriesType(SingletonFieldType):
@@ -238,7 +249,10 @@ class SeriesType(SingletonFieldType):
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return pd.Series,
+        if cudf is None:
+            return pd.Series,
+        else:
+            return pd.Series, cudf.Series
 
 
 class DataFrameType(SingletonFieldType):
@@ -250,7 +264,10 @@ class DataFrameType(SingletonFieldType):
 
     @property
     def valid_types(self) -> Tuple[Type, ...]:
-        return pd.DataFrame,
+        if cudf is None:
+            return pd.DataFrame,
+        else:
+            return pd.DataFrame, cudf.DataFrame
 
 
 class FunctionType(SingletonFieldType):

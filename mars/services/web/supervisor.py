@@ -24,6 +24,7 @@ from tornado import web
 
 from ... import oscar as mo
 from ...utils import get_next_port
+from ..core import AbstractService
 
 logger = logging.getLogger(__name__)
 
@@ -121,36 +122,32 @@ class WebActor(mo.Actor):
         return web_address
 
 
-async def start(config: dict, address: str = None):
+class WebSupervisorService(AbstractService):
     """
-    Start web service on supervisor.
+    Web service on supervisor.
 
-    Parameters
-    ----------
-    config
-        service config.
-        {
-            "web": {
-                "host": "<web host>",
-                "port": "<web port>",
-                "bokeh_apps": [
-                    <bokeh applications>,
-                ],
-                "web_handlers": [
-                    <web_handlers>,
-                ],
-                "extra_discovery_modules": [
-                    "path.to.modules",
-                ]
-            }
+    Service Configuration
+    ---------------------
+    {
+        "web": {
+            "host": "<web host>",
+            "port": "<web port>",
+            "bokeh_apps": [
+                <bokeh applications>,
+            ],
+            "web_handlers": [
+                <web_handlers>,
+            ],
+            "extra_discovery_modules": [
+                "path.to.modules",
+            ]
         }
-    address : str
-        Actor pool address.
+    }
     """
-    await mo.create_actor(WebActor, config=config.get('web', {}),
-                          uid=WebActor.default_uid(), address=address)
+    async def start(self):
+        await mo.create_actor(WebActor, config=self._config.get('web', {}),
+                              uid=WebActor.default_uid(), address=self._address)
 
-
-async def stop(config: dict, address: str = None):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=WebActor.default_uid(), address=address))
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=WebActor.default_uid(), address=self._address))

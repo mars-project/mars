@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import mars.oscar as mo
+from mars.services.core import AbstractService
 
 
 class SvcActor1(mo.Actor):
@@ -24,14 +25,32 @@ class SvcActor1(mo.Actor):
         return self._arg
 
 
-async def start(config: dict, address: str):
-    svc_config = config['test_svc1']
-    await mo.create_actor(
-        SvcActor1, uid=svc_config['uid'], arg=svc_config['arg1'],
-        address=address)
+class SvcSessionActor1(mo.Actor):
+    @classmethod
+    def gen_uid(cls, session_id: str):
+        return f'{session_id}_svc_session_actor1'
 
 
-async def stop(config: dict, address: str):
-    svc_config = config['test_svc1']
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=svc_config['uid'], address=address))
+class TestService1(AbstractService):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def start(self):
+        svc_config = self._config['test_svc1']
+        await mo.create_actor(
+            SvcActor1, uid=svc_config['uid'], arg=svc_config['arg1'],
+            address=self._address)
+
+    async def stop(self):
+        svc_config = self._config['test_svc1']
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=svc_config['uid'], address=self._address))
+
+    async def create_session(self, session_id: str):
+        await mo.create_actor(
+            SvcSessionActor1, uid=SvcSessionActor1.gen_uid(session_id),
+            address=self._address)
+
+    async def destroy_session(self, session_id: str):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=SvcSessionActor1.gen_uid(session_id), address=self._address))

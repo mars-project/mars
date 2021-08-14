@@ -123,8 +123,8 @@ class SpillManagerActor(mo.StatelessActor):
         self._lock = asyncio.Lock()
 
     @classmethod
-    def gen_uid(cls, level: StorageLevel):
-        return f'spill_manager_{level}'
+    def gen_uid(cls, band_name: str, level: StorageLevel):
+        return f'spill_manager_{band_name}_{level}'
 
     def has_spill_task(self):
         return self._event is not None
@@ -153,6 +153,7 @@ class SpillManagerActor(mo.StatelessActor):
 
 async def spill(request_size: int,
                 level: StorageLevel,
+                band_name: str,
                 data_manager: Union[mo.ActorRef, DataManagerActor],
                 storage_handler: Union[mo.ActorRef, StorageHandlerActor],
                 block_size=None,
@@ -163,7 +164,7 @@ async def spill(request_size: int,
     block_size = block_size or DEFAULT_SPILL_BLOCK_SIZE
     spill_level = level.spill_level()
     spill_sizes, spill_keys = await data_manager.get_spill_keys(
-        level, request_size)
+        level, band_name, request_size)
     logger.debug('Decide to spill %s bytes, '
                  'data keys are %s', sum(spill_sizes), spill_keys)
 
@@ -179,6 +180,12 @@ async def spill(request_size: int,
                         break
                     else:
                         await writer.write(block_data)
-        await storage_handler.delete_object(
-            session_id, key, size, reader.object_id, level)
+        try:
+            await storage_handler.delete_object(
+                session_id, key, size, reader.object_id, level)
+        except KeyError:  # pragma: no cover
+            # workaround for the case that the object
+            # has been deleted during spill
+            logger.debug('Data %s %s is deleted during spill', session_id, key)
+            await storage_handler.delete(session_id, key, error='ignore')
     logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)

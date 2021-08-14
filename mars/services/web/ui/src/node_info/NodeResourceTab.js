@@ -22,7 +22,7 @@ import TableCell from '@material-ui/core/TableCell';
 import TableBody from '@material-ui/core/TableBody';
 import PropTypes from 'prop-types';
 import Title from '../Title';
-import { OptionalElement, toReadableSize } from '../Utils';
+import { toReadableSize } from '../Utils';
 
 export default class NodeResourceTab extends React.Component {
     constructor(props) {
@@ -64,12 +64,10 @@ export default class NodeResourceTab extends React.Component {
                 band_rows.push([(<TableCell key={`${band}-cpu-item`}>CPU</TableCell>), (
                     <TableCell key={`${band}-cpu-value`}>
                         <div>
-              Usage:
-                            {(band_res.cpu_total - band_res.cpu_avail).toFixed(2)}
+              Usage: {(band_res.cpu_total - band_res.cpu_avail).toFixed(2)}
                         </div>
                         <div>
-              Total:
-                            {band_res.cpu_total.toFixed(2)}
+              Total: {band_res.cpu_total.toFixed(2)}
                         </div>
                     </TableCell>
                 )]);
@@ -78,12 +76,10 @@ export default class NodeResourceTab extends React.Component {
                 band_rows.push([(<TableCell key={`${band}-memory-item`}>Memory</TableCell>), (
                     <TableCell key={`${band}-memory-value`}>
                         <div>
-              Usage:
-                            {toReadableSize(band_res.memory_total - band_res.memory_avail)}
+              Usage: {toReadableSize(band_res.memory_total - band_res.memory_avail)}
                         </div>
                         <div>
-              Total:
-                            {toReadableSize(band_res.memory_total)}
+              Total: {toReadableSize(band_res.memory_total)}
                         </div>
                     </TableCell>
                 )]);
@@ -121,12 +117,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-size-key`}>Size</TableCell>
                         <TableCell key={`${path}-size-value`}>
                             <div>
-                Usage:
-                                {toReadableSize(part_desc.size_used)}
+                Usage: {toReadableSize(part_desc.size_used)}
                             </div>
                             <div>
-                Total:
-                                {toReadableSize(part_desc.size_total)}
+                Total: {toReadableSize(part_desc.size_total)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -138,12 +132,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-inode-key`}>INode</TableCell>
                         <TableCell key={`${path}-inode-value`}>
                             <div>
-                Usage:
-                                {toReadableSize(part_desc.inode_used)}
+                Usage: {toReadableSize(part_desc.inode_used)}
                             </div>
                             <div>
-                Total:
-                                {toReadableSize(part_desc.inode_total)}
+                Total: {toReadableSize(part_desc.inode_total)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -155,12 +147,10 @@ export default class NodeResourceTab extends React.Component {
                         <TableCell key={`${path}-io-key`}>IO</TableCell>
                         <TableCell key={`${path}-io-value`}>
                             <div>
-                Reads:
-                                {toReadableSize(part_desc.reads)}
+                Reads: {toReadableSize(part_desc.reads)}
                             </div>
                             <div>
-                Writes:
-                                {toReadableSize(part_desc.writes)}
+                Writes: {toReadableSize(part_desc.writes)}
                             </div>
                         </TableCell>
                     </TableRow>
@@ -204,22 +194,20 @@ export default class NodeResourceTab extends React.Component {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        <OptionalElement condition={this.state.detail.iowait}>
+                        {this.state.detail.iowait &&
                             <TableRow>
                                 <TableCell>IO Wait</TableCell>
                                 <TableCell>{this.state.detail.iowait}</TableCell>
                             </TableRow>
-                        </OptionalElement>
+                        }
                         <TableRow>
                             <TableCell>Disk</TableCell>
                             <TableCell>
                                 <div>
-                  Reads:
-                                    {this.state.detail.disk.reads}
+                  Reads: {this.state.detail.disk.reads}
                                 </div>
                                 <div>
-                  Writes:
-                                    {this.state.detail.disk.writes}
+                  Writes: {this.state.detail.disk.writes}
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -227,38 +215,39 @@ export default class NodeResourceTab extends React.Component {
                             <TableCell>Network</TableCell>
                             <TableCell>
                                 <div>
-                  Receives:
-                                    {this.state.detail.network.receives}
+                  Receives: {this.state.detail.network.receives}
                                 </div>
                                 <div>
-                  Sends:
-                                    {this.state.detail.network.sends}
+                  Sends: {this.state.detail.network.sends}
                                 </div>
                             </TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
-                <OptionalElement condition={this.state.detail.disk.partitions}>
+                {this.state.detail.disk.partitions &&
+                <React.Fragment>
                     <Title component="h3">Disks</Title>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Item</TableCell>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Value</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Item</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {this.generateDiskRows()}
                         </TableBody>
                     </Table>
-                </OptionalElement>
-                <OptionalElement condition={Object.keys(this.state.detail.quota).length}>
+                </React.Fragment>
+                }
+                {Object.keys(this.state.detail.quota).length &&
+                <React.Fragment>
                     <Title component="h3">Quota</Title>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Band</TableCell>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Value</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -267,27 +256,29 @@ export default class NodeResourceTab extends React.Component {
                                     <TableCell>{band}</TableCell>
                                     <TableCell>
                                         <div>
-                      Total:{toReadableSize(this.state.detail.quota[band].quota_size)}
+                                            Total: {toReadableSize(this.state.detail.quota[band].quota_size)}
                                         </div>
                                         <div>
-                      Allocated:{toReadableSize(this.state.detail.quota[band].allocated_size)}
+                                            Allocated: {toReadableSize(this.state.detail.quota[band].allocated_size)}
                                         </div>
                                         <div>
-                      Hold:{toReadableSize(this.state.detail.quota[band].hold_size)}
+                                            Hold: {toReadableSize(this.state.detail.quota[band].hold_size)}
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
-                </OptionalElement>
-                <OptionalElement condition={Object.keys(this.state.detail.slot).length}>
+                </React.Fragment>
+                }
+                {Object.keys(this.state.detail.slot).length &&
+                <React.Fragment>
                     <Title component="h3">Slot</Title>
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Band</TableCell>
-                                <TableCell style={{ fontWeight: 'bolder' }}>Slots</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Slots</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -299,7 +290,39 @@ export default class NodeResourceTab extends React.Component {
                             ))}
                         </TableBody>
                     </Table>
-                </OptionalElement>
+                </React.Fragment>
+                }
+                {Object.keys(this.state.detail.storage).length &&
+                <React.Fragment>
+                    <Title component="h3">Storage</Title>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell style={{fontWeight: 'bolder'}}>Band</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Level</TableCell>
+                                <TableCell style={{fontWeight: 'bolder'}}>Value</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {Object.keys(this.state.detail.storage).map((band) => (
+                                Object.keys(this.state.detail.storage[band]).map((level) => (
+                                    <TableRow key={`${band}-storage`}>
+                                        <TableCell>{band}</TableCell>
+                                        <TableCell>{level}</TableCell>
+                                        <TableCell>
+                                            <div>
+                                                Used:{toReadableSize(this.state.detail.storage[band][level].size_used)}
+                                            </div>
+                                            <div>
+                                                Total:{toReadableSize(this.state.detail.storage[band][level].size_total)}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))))}
+                        </TableBody>
+                    </Table>
+                </React.Fragment>
+                }
             </div>
         );
     }

@@ -4,9 +4,9 @@ services:
   - storage
   - meta
   - lifecycle
-  - task
   - scheduling
   - subtask
+  - task
 cluster:
   backend: fixed
   node_timeout: 120

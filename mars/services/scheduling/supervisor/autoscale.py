@@ -20,11 +20,11 @@ import time
 from abc import ABC, abstractmethod
 from typing import List, Set, Dict, Optional, Any
 
+from .... import oscar as mo
+from ....typing import BandType
 from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
-from ...core import BandType
-from .... import oscar as mo
-from mars.services.cluster.core import NodeRole, NodeStatus
+from ...cluster.core import NodeRole, NodeStatus
 
 logger = logging.getLogger(__name__)
 

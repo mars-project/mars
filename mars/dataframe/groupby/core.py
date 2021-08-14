@@ -23,12 +23,16 @@ from ...core import ENTITY_TYPE, Entity, OutputType
 from ...core.operand import OperandStage, MapReduceOperand
 from ...lib.groupby_wrapper import wrapped_groupby
 from ...serialization.serializables import BoolField, Int32Field, AnyField
+from ...utils import lazy_import
 from ..align import align_dataframe_series, align_series_series
 from ..initializer import Series as asseries
 from ..core import SERIES_TYPE, SERIES_CHUNK_TYPE
 from ..utils import build_concatenated_rows_frame, hash_dataframe_on, \
-    build_df, build_series, parse_index
+    build_df, build_series, parse_index, is_cudf
 from ..operands import DataFrameOperandMixin, DataFrameShuffleProxy
+
+
+cudf = lazy_import('cudf', globals=globals())
 
 
 class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
@@ -302,6 +306,8 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             result = src.iloc[f]
             if src.index.names:
                 result.index.names = src.index.names
+            if is_cudf(result):  # pragma: no cover
+                result = result.copy()
             return result
 
         for index_idx, index_filter in enumerate(filters):
@@ -330,6 +336,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
 
     @classmethod
     def execute_reduce(cls, ctx, op: "DataFrameGroupByOperand"):
+        xdf = cudf if op.gpu else pd
         chunk = op.outputs[0]
         input_idx_to_df = dict(op.iter_mapper_data_with_index(ctx))
         row_idxes = sorted(input_idx_to_df.keys())
@@ -347,7 +354,7 @@ class DataFrameGroupByOperand(MapReduceOperand, DataFrameOperandMixin):
             part_len = len(res[0])
             part_len -= 1 if not deliver_by else 2
             for n in range(part_len):
-                r.append(pd.concat([it[n] for it in res], axis=0))
+                r.append(xdf.concat([it[n] for it in res], axis=0))
             r = tuple(r)
 
             if deliver_by:

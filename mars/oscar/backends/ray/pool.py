@@ -23,13 +23,14 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List, Optional
 
-from ....serialization.ray import register_ray_serializers
-from ....utils import lazy_import
-from ..config import ActorPoolConfig
-from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
-from ..router import Router
 from .communication import ChannelID, RayServer, RayChannelException
 from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
+from ..config import ActorPoolConfig
+from ..message import CreateActorMessage
+from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
+from ..router import Router
+from ....serialization.ray import register_ray_serializers
+from ....utils import lazy_import
 
 ray = lazy_import('ray')
 logger = logging.getLogger(__name__)
@@ -77,27 +78,30 @@ class RayMainActorPool(MainActorPoolBase):
         actor_handle = ray.remote(RaySubPool).options(
             num_cpus=num_cpus, name=external_address,
             max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
+            max_restarts=-1,  # Auto restarts by ray
             placement_group=pg, placement_group_bundle_index=bundle_index).remote()
         await actor_handle.start.remote(actor_pool_config, process_index)
         return actor_handle
 
+    async def recover_sub_pool(self, address: str):
+        process = self.sub_processes[address]
+        process_index = self._config.get_process_index(address)
+        await process.start.remote(self._config, process_index)
+
+        if self._auto_recover == 'actor':
+            # need to recover all created actors
+            for _, message in self._allocated_actors[address].values():
+                create_actor_message: CreateActorMessage = message
+                await self.call(address, create_actor_message)
+
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
-            # must shutdown gracefully, or coverage info lost
-            process.exit_actor.remote()
-            wait_time, waited_time = 10, 0
-            while await self.is_sub_pool_alive(process):  # pragma: no cover
-                if waited_time > wait_time:
-                    logger.info('''Can't stop %s in %s, kill sub_pool forcibly''', process, wait_time)
-                    await self._kill_actor_forcibly(process)
-                    return
-                await asyncio.sleep(0.1)
-                wait_time += 0.1
-        else:
-            await self._kill_actor_forcibly(process)
+            # must clean up first, or coverage info lost
+            await process.cleanup.remote()
+        await self._kill_actor_forcibly(process)
 
     async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
-        ray.kill(process)
+        ray.kill(process, no_restart=False)
         wait_time, waited_time = 30, 0
         while await self.is_sub_pool_alive(process):  # pragma: no cover
             if waited_time > wait_time:
@@ -107,11 +111,17 @@ class RayMainActorPool(MainActorPoolBase):
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
-            await process.health_check.remote()
+            # try to call the method of sup pool, if success, it's alive.
+            await process.actor_pool.remote('health_check')
             return True
         except Exception:
             logger.info("Detected RaySubPool %s died", process)
             return False
+
+
+class PoolStatus(Enum):
+    HEALTHY = 0
+    UNHEALTHY = 1
 
 
 @_register_message_handler
@@ -126,10 +136,8 @@ class RaySubActorPool(SubActorPoolBase):
         finally:
             self._stopped.set()
 
-
-class PoolStatus(Enum):
-    HEALTHY = 0
-    UNHEALTHY = 1
+    def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
+        return PoolStatus.HEALTHY
 
 
 class RayPoolBase(ABC):
@@ -167,11 +175,8 @@ class RayPoolBase(ABC):
         """Method for communication based on ray actors"""
         try:
             return await self._ray_server.__on_ray_recv__(channel_id, message)
-        except Exception:   # pragma: no cover
+        except Exception:  # pragma: no cover
             return RayChannelException(*sys.exc_info())
-
-    def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
-        return PoolStatus.HEALTHY
 
     async def actor_pool(self, attribute, *args, **kwargs):
         attr = getattr(self._actor_pool, attribute)
@@ -182,10 +187,13 @@ class RayPoolBase(ABC):
         else:
             return attr
 
-    def exit_actor(self):
-        """Exiting current process gracefully."""
-        logger.info('Exiting %s of process %s now', self, os.getpid())
-        ray.actor.exit_actor()
+    def cleanup(self):
+        logger.info('Cleaning up %s of process %s now', self, os.getpid())
+        try:
+            from pytest_cov.embed import cleanup
+            cleanup()
+        except ImportError:  # pragma: no cover
+            pass
 
 
 class RayMainPool(RayPoolBase):

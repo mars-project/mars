@@ -14,7 +14,6 @@
 
 import asyncio
 import logging
-import time
 from typing import List, Dict, Optional, Set, Type, TypeVar
 
 from .... import oscar as mo
@@ -219,6 +218,7 @@ class ClusterAPI(AbstractClusterAPI):
     async def set_node_disk_info(self, disk_info: List[DiskInfo]):
         await self._uploader_ref.set_node_disk_info(disk_info)
 
+    @mo.extensible
     async def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
         await self._uploader_ref.set_band_storage_info(band_name, storage_info)
 

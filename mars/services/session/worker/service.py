@@ -12,34 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Dict
-
 from .... import oscar as mo
+from ...core import AbstractService
 from .custom_log import CustomLogActor
 
 
-async def start(config: Dict, address: str):
+class SessionWorkerService(AbstractService):
     """
-    Start session service on worker.
+    Session service on worker.
 
-    Parameters
-    ----------
-    config : dict
-        service config.
-        {
-            "session" : {
-            }
+    Service Configuration
+    ---------------------
+    {
+        "session" : {
         }
-    address : str
-        Actor pool address.
+    }
     """
-    session_config = config.get('session', dict())
-    custom_log_dir = session_config.get('custom_log_dir')
-    await mo.create_actor(CustomLogActor, custom_log_dir,
-                          address=address, uid=CustomLogActor.default_uid())
+    async def start(self):
+        session_config = self._config.get('session', dict())
+        custom_log_dir = session_config.get('custom_log_dir')
+        await mo.create_actor(CustomLogActor, custom_log_dir,
+                              address=self._address, uid=CustomLogActor.default_uid())
 
-
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=CustomLogActor.default_uid(), address=address))
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=CustomLogActor.default_uid(), address=self._address))

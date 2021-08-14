@@ -42,10 +42,25 @@ except ImportError:  # pragma: no cover
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.lib.sparse import SparseNDArray
-from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, full, full_like, \
-    arange, empty, empty_like, diag, diagflat, eye, linspace, meshgrid, indices, \
-    triu, tril, from_dataframe, fromtiledb, fromhdf5, fromzarr
+from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, \
+    full, full_like, arange, empty, empty_like, diag, diagflat, eye, \
+    linspace, meshgrid, indices, triu, tril, from_dataframe, fromtiledb, \
+    fromhdf5, fromzarr
 from mars.tensor.lib import nd_grid
+from mars.tests.core import require_cupy
+from mars.utils import lazy_import
+
+cupy = lazy_import('cupy', globals=globals())
+
+
+@require_cupy
+def test_array_gpu_execution(setup_gpu):
+    raw = cupy.random.rand(20, 30)
+    t = tensor(raw, dtype='f8', chunk_size=10)
+
+    res = t.execute().fetch()
+    expected = raw.astype('f8')
+    cupy.testing.assert_array_equal(res, expected)
 
 
 def test_create_sparse_execution(setup):

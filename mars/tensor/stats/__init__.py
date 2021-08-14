@@ -16,3 +16,4 @@ from .entropy import entropy
 from .chisquare import chisquare
 from .power_divergence import power_divergence
 from .ttest import ttest_1samp, ttest_ind, ttest_ind_from_stats, ttest_rel
+from .ks_2samp import ks_2samp

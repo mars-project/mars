@@ -18,6 +18,7 @@ import mars.oscar as mo
 from mars.services import start_services, NodeRole
 from mars.services.session.api import SessionAPI
 from mars.services.meta.api import MetaAPI
+from mars.services.meta.supervisor import MetaSupervisorService
 
 
 @pytest.mark.asyncio
@@ -43,10 +44,12 @@ async def test_meta_service():
         await session_api.create_session(session_id)
         # get session store
         meta_api = await MetaAPI.create(session_id, pool.external_address)
+
         # destroy session
-        await MetaAPI.destroy_session(session_id, pool.external_address)
+        service = MetaSupervisorService({}, pool.external_address)
+        await service.destroy_session(session_id)
         with pytest.raises(mo.ActorNotExist):
-            await MetaAPI.destroy_session(session_id, pool.external_address)
+            await service.destroy_session(session_id)
 
         # test alru_cache
         assert await MetaAPI.create(session_id, pool.external_address) is meta_api
