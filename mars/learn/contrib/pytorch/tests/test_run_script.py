@@ -24,8 +24,8 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_distributed_run_py_torch_script(setup):
-    sess = setup
+def test_distributed_run_py_torch_script(setup_cluster):
+    sess = setup_cluster
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         'pytorch_sample.py')
     assert run_pytorch_script(
