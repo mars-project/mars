@@ -131,6 +131,9 @@ class BandSlotManagerActor(mo.Actor):
         self._slot_to_session_stid[slot_id] = session_stid
         raise mo.Return(slot_id)
 
+    async def get_slot_address(self, slot_id: int):
+        return self._slot_control_refs[slot_id].address
+
     def release_free_slot(self, slot_id: int, pid: Optional[int] = None):
         if pid is not None:
             self._slot_to_proc[slot_id] = proc = psutil.Process(pid)

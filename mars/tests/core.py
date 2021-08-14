@@ -14,9 +14,11 @@
 # limitations under the License.
 
 import functools
-import os
+import inspect
 import logging
+import os
 import sys
+import types
 from typing import Dict
 
 import numpy as np
@@ -68,6 +70,47 @@ def patch_method(method, *args, **kwargs):
                           *args, **kwargs)
     else:
         return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
+
+
+def patch_cls(target_cls):
+    def _wrapper(cls):
+        class Super(cls.__bases__[0]):
+            pass
+
+        cls.__patch_super__ = Super
+
+        target = target_cls.__module__ + '.' + target_cls.__qualname__
+        for name, obj in cls.__dict__.items():
+            if name.startswith('__') and name != '__init__':
+                continue
+            p = mock.patch(target + '.' + name, obj, create=True)
+            original, local = p.get_original()
+            setattr(cls.__patch_super__, name, original)
+            p.start()
+
+        return cls
+
+    return _wrapper
+
+
+def patch_super():
+    back = inspect.currentframe().f_back
+    if not back or '__class__' not in back.f_locals:
+        raise RuntimeError('Calling super() in the incorrect context.')
+
+    patch_super_cls = back.f_locals['__class__'].__patch_super__
+    patch_self = back.f_locals.get('self')
+
+    class _SuperAccessor:
+        def __getattribute__(self, item):
+            func = getattr(patch_super_cls, item)
+            if func == mock.DEFAULT:
+                raise AttributeError(f"super object has no attribute '{item}'")
+            if patch_self:
+                return types.MethodType(func, patch_self)
+            return func
+
+    return _SuperAccessor()
 
 
 def print_entrance(func):

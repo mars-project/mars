@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -127,6 +128,7 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
 async def test_web_storage_api():
     from mars.services.storage.api.web import StorageWebAPIHandler
 
+    tempdir = tempfile.mkdtemp()
     start_method = 'fork' if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', 1,
                                       subprocess_start_method=start_method)
@@ -143,7 +145,8 @@ async def test_web_storage_api():
         await MockStorageAPI.create(
             address=pool.external_address,
             session_id=session_id,
-            storage_configs={'shared_memory': dict()})
+            storage_configs={'shared_memory': dict(),
+                             'disk': dict(root_dirs=[tempdir])})
 
         web_config = {
             'port': get_next_port(),

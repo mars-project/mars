@@ -92,17 +92,15 @@ class Tiler:
               visited: Set[EntityType]):
         try:
             need_process = next(tile_handler)
-            if need_process is None:
-                chunks = []
-            else:
-                chunks = []
+            chunks = []
+            if need_process is not None:
                 for t in need_process:
                     if isinstance(t, CHUNK_TYPE):
                         chunks.append(self._get_data(t))
                     elif isinstance(t, TILEABLE_TYPE):
                         to_update_tileables.append(self._get_data(t))
             # not finished yet
-            self._add_nodes(chunk_graph, chunks, visited)
+            self._add_nodes(chunk_graph, chunks.copy(), visited)
             next_tileable_handlers.append((tileable, tile_handler))
             # add intermediate chunks into result chunks
             # to prevent them being pruned

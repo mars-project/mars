@@ -60,14 +60,14 @@ async def test_shutdown_sub_pool(ray_start_regular):
     address = process_placement_to_address(pg_name, 0, process_index=0)
     actor_handle = ray.remote(RayMainPool).options(
         name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote()
-    await actor_handle.start.remote(address, n_process)
+    await actor_handle.start.remote(address, n_process, auto_recover=False)
     sub_pool_address1 = process_placement_to_address(pg_name, 0, process_index=1)
     sub_pool_handle1 = ray.get_actor(sub_pool_address1)
     sub_pool_address2 = process_placement_to_address(pg_name, 0, process_index=2)
     sub_pool_handle2 = ray.get_actor(sub_pool_address2)
     await actor_handle.actor_pool.remote('stop_sub_pool', sub_pool_address1, sub_pool_handle1, force=True)
     await actor_handle.actor_pool.remote('stop_sub_pool', sub_pool_address2, sub_pool_handle2, force=False)
-    import ray.exceptions
-    with pytest.raises(ray.exceptions.RayActorError):
-        await sub_pool_handle1.health_check.remote()
-        await sub_pool_handle2.health_check.remote()
+    with pytest.raises(AttributeError, match='NoneType'):
+        await sub_pool_handle1.actor_pool.remote('health_check')
+    with pytest.raises(AttributeError, match='NoneType'):
+        await sub_pool_handle2.actor_pool.remote('health_check')
