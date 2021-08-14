@@ -40,7 +40,7 @@ class MarsDataset(Dataset):
         self._tileables = tileables
 
         self._check_and_execute()
-        
+
     def _check_and_execute(self):
         for t in self._tileables:
             if isinstance(t, TENSOR_TYPE):
