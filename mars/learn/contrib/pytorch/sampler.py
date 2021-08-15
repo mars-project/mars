@@ -15,8 +15,6 @@
 from typing import Iterator, Optional, Sized, Sequence
 import math
 
-from _pytest.python_api import raises
-
 try:
     import torch
     from torch.utils.data import Sampler, Dataset
@@ -175,7 +173,7 @@ class DistributedSampler(Sampler):
         ...         sampler.set_epoch(epoch)
         ...     train(loader)
     """
-    def __init__(self, dataset: Dataset, num_replicas: Optional[int] = None, 
+    def __init__(self, dataset: Dataset, num_replicas: Optional[int] = None,
                  rank: Optional[int] = None, shuffle: bool = True,
                  seed: int = 0, drop_last: bool = False) -> None:
         import torch.distributed as dist
@@ -220,7 +218,7 @@ class DistributedSampler(Sampler):
             g = torch.Generator()
             g.manual_seed(self.seed + self.epoch)
             indices = torch.randperm(len(self.dataset), generator=g).tolist()
-        else:  
+        else:
             indices = list(range(len(self.dataset)))
 
         if not self.drop_last:
