@@ -17,7 +17,7 @@ import pandas as pd
 try:
     import torch
     from torch.utils.data import Dataset
-except ImportError:
+except ImportError: # pragma: no cover
     torch = None
     Dataset = object
 

@@ -173,13 +173,13 @@ Mars object (mars.tensor, mars.dataframe, mars.series) to torch.util.data.Datase
 
 .. code-block:: python
 
-    from mars.learn.contrib.pytorch import MarsDataset
+    from mars.learn.contrib.pytorch import MarsDataset, RandomSampler
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
 
     train_dataset = MarsDataset(data, labels)
-    train_sampler = torch.utils.data.RandomSampler(train_dataset)
+    train_sampler = RandomSampler(train_dataset)
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                 batch_size=32,
                                                 sampler=train_sampler)
@@ -193,8 +193,8 @@ via mars, then pass data to script.
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
 
     run_pytorch_script(
-        "torch_script", n_workers=2, data={'feature_data': data, 'labels': labels},
-        command_argv=['multiple'], port=9945, session=sess)
+        "torch_script", n_workers=2, data={'feature_data': data, 'labels': labels}, 
+        port=9945, session=sess)
 
 ``torch_script.py``
 
@@ -215,24 +215,24 @@ via mars, then pass data to script.
         )
 
 
-    def train(feature_data, labels):
+    def main(feature_data, labels):
         import torch.nn as nn
         import torch.distributed as dist
         import torch.optim as optim
         import torch.utils.data
-        from mars.learn.contrib.pytorch import MarsDataset
+        from mars.learn.contrib.pytorch import MarsDataset, DistributedSampler
 
         dist.init_process_group(backend='gloo')
         torch.manual_seed(42)
 
         data = feature_data
         labels = labels
-
+        
         train_dataset = MarsDataset(data, labels)
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        train_sampler = DistributedSampler(train_dataset, shuffle=True)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                 batch_size=32,
-                                                shuffle=False,
+                                                shuffle=(train_sampler is None),
                                                 sampler=train_sampler)
 
         model = nn.parallel.DistributedDataParallel(get_model())
@@ -240,21 +240,35 @@ via mars, then pass data to script.
                             lr=0.01, momentum=0.5)
         criterion = nn.BCELoss()
 
-        for _ in range(2):
-            # 2 epochs
+        for i in range(10):
+            # 10 epochs
+            train_sampler.set_epoch(i)
+            running_loss = 0.0
             for _, (batch_data, batch_labels) in enumerate(train_loader):
                 outputs = model(batch_data)
                 loss = criterion(outputs.squeeze(), batch_labels)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                running_loss += loss.item()
+            print(f"running_loss is {loss.item()}")
         
         print("Done!")
 
 
     if __name__ == "__main__":
-        assert len(sys.argv) == 2
-        assert sys.argv[1] == 'multiple'
         feature_data = feature_data
         labels = labels
-        train(feature_data, labels)
+        main(feature_data, labels)
+
+result:
+
+.. code-block:: bash
+
+    running_loss is 1.258694052696228
+    running_loss is 1.1778228282928467
+    running_loss is 1.1677325963974
+    Done!
+    running_loss is 1.195948600769043
+    Done!
+

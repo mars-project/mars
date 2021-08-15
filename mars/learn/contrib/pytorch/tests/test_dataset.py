@@ -18,8 +18,8 @@ import os
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.utils import lazy_import
-from mars.learn.contrib.pytorch import MarsDataset, \
-        RandomSampler, SequentialSampler, SubsetRandomSampler, run_pytorch_script
+from mars.learn.contrib.pytorch import MarsDataset, RandomSampler, SequentialSampler, \
+                        SubsetRandomSampler, DistributedSampler, run_pytorch_script
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 
@@ -239,6 +239,42 @@ def test_SubsetRandomSampler(setup_cluster):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
+def test_DistributedSampler(setup_cluster):
+    import torch
+
+    data = mt.random.rand(1001, 32, dtype='f4')
+    labels = mt.random.randint(0, 2, (1001, 10), dtype='f4')
+
+    train_dataset = MarsDataset(data, labels)
+
+    with pytest.raises(ValueError) as e:
+        train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=-1)
+    exec_msg = e.value.args[0]
+    assert exec_msg == "Invalid rank -1, rank should be in the interval [0, 1]"
+    
+    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0, 
+                                       drop_last=True, shuffle=True)
+    assert len(train_sampler) == 500
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=32,
+                                                sampler=train_sampler)
+    for _, (batch_data, batch_labels) in enumerate(train_loader):
+        assert len(batch_data[0]) == 32
+        assert len(batch_labels[0]) == 10
+
+    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0, 
+                                       drop_last=False, shuffle=False)
+    train_sampler.set_epoch(10)
+    assert len(train_sampler) == 501
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
+                                                batch_size=32,
+                                                sampler=train_sampler)
+    for _, (batch_data, batch_labels) in enumerate(train_loader):
+        assert len(batch_data[0]) == 32
+        assert len(batch_labels[0]) == 10
+
+
+@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_MarsDataset_script(setup_cluster):
     sess = setup_cluster
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -246,7 +282,7 @@ def test_MarsDataset_script(setup_cluster):
 
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
-    
+
     data.execute()
     labels.execute()
 
