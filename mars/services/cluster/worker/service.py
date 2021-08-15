@@ -13,57 +13,57 @@
 # limitations under the License.
 
 from .... import oscar as mo
-from ...core import NodeRole
+from ...core import NodeRole, AbstractService
 from ..uploader import NodeInfoUploaderActor
 from .locator import WorkerSupervisorLocatorActor
 
 
-async def start(config: dict, address: str):
+class ClusterWorkerService(AbstractService):
     """
-    Start cluster service on worker.
+    Cluster service on worker.
 
-    Parameters
-    ----------
-    config
-        service config.
-        {
-            "disk_dirs": ["List of disk directories"],
-            "cluster": {
-                "backend": "<cluster backend name>",
-                "lookup_address": "<address of master>",
-                "node_check_interval": check interval seconds for nodes,
-                "resource": {
-                    "numa-0": 8,
-                    "gpu-0": 1
-                }
+    Service Configuration
+    ---------------------
+    {
+        "disk_dirs": ["List of disk directories"],
+        "cluster": {
+            "backend": "<cluster backend name>",
+            "lookup_address": "<address of master>",
+            "node_check_interval": check interval seconds for nodes,
+            "resource": {
+                "numa-0": 8,
+                "gpu-0": 1
             }
         }
-    address
-        address of actor pool
+    }
     """
-    svc_config = config['cluster']
-    backend = svc_config.get('backend', 'fixed')
-    lookup_address = svc_config.get('lookup_address',
-                                    address if backend == 'fixed' else None)
-    await mo.create_actor(
-        WorkerSupervisorLocatorActor,
-        backend_name=backend,
-        lookup_address=lookup_address,
-        uid=WorkerSupervisorLocatorActor.default_uid(),
-        address=address)
-    await mo.create_actor(
-        NodeInfoUploaderActor,
-        role=NodeRole.WORKER,
-        interval=svc_config.get('node_check_interval'),
-        band_to_slots=svc_config.get('resource'),
-        uid=NodeInfoUploaderActor.default_uid(),
-        address=address)
+    async def start(self):
+        svc_config = self._config['cluster']
+        address = self._address
 
+        backend = svc_config.get('backend', 'fixed')
+        lookup_address = svc_config.get('lookup_address',
+                                        address if backend == 'fixed' else None)
+        await mo.create_actor(
+            WorkerSupervisorLocatorActor,
+            backend_name=backend,
+            lookup_address=lookup_address,
+            uid=WorkerSupervisorLocatorActor.default_uid(),
+            address=address)
+        await mo.create_actor(
+            NodeInfoUploaderActor,
+            role=NodeRole.WORKER,
+            interval=svc_config.get('node_check_interval'),
+            band_to_slots=svc_config.get('resource'),
+            uid=NodeInfoUploaderActor.default_uid(),
+            address=address)
 
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=NodeInfoUploaderActor.default_uid(), address=address
-    ))
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=WorkerSupervisorLocatorActor.default_uid(), address=address
-    ))
+    async def stop(self):
+        address = self._address
+
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=NodeInfoUploaderActor.default_uid(), address=address
+        ))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=WorkerSupervisorLocatorActor.default_uid(), address=address
+        ))

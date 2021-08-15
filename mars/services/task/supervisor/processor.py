@@ -254,8 +254,8 @@ class TaskProcessor:
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        subtask_graph = self._preprocessor.analyze(
-            chunk_graph, available_bands)
+        subtask_graph = await asyncio.to_thread(
+            self._preprocessor.analyze, chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), self._get_chunk_optimization_records(),
@@ -482,11 +482,11 @@ class TaskProcessorActor(mo.Actor):
 
             for node_successor in graph.iter_successors(node):
                 edge_list.append({
-                    "from_tileable_id": node_successor.key,
-                    "from_tileable_name": str(node_successor.op),
+                    "from_tileable_id": node.key,
+                    "from_tileable_name": node_name,
 
-                    "to_tileable_id": node.key,
-                    "to_tileable_name": node_name,
+                    "to_tileable_id": node_successor.key,
+                    "to_tileable_name": str(node_successor.op),
 
                     "linkType": 0,
                 })

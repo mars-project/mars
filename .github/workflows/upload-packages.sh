@@ -40,7 +40,7 @@ else
     cp *.whl dist/
 
     if [[ "$UNAME" == "darwin" ]]; then
-      pip install delocate
+      pip install delocate==0.8.2
       delocate-wheel dist/*.whl
       delocate-addplat --rm-orig -x 10_9 -x 10_10 dist/*.whl
     fi

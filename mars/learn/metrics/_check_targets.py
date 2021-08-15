@@ -107,8 +107,8 @@ class CheckTargets(LearnOperand, LearnOperandMixin):
         yield chunks
 
         ctx = get_context()
-        type_true, type_pred = ctx.get_chunks_result(
-            [c.key for c in chunks])
+        type_true, type_pred = [d.item() if hasattr(d, 'item') else d
+                                for d in ctx.get_chunks_result([c.key for c in chunks])]
 
         y_type = {type_true, type_pred}
         if y_type == {"binary", "multiclass"}:

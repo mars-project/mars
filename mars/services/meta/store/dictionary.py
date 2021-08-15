@@ -102,10 +102,21 @@ class DictMetaStore(AbstractMetaStore):
         for args, kwargs in zip(args_list, kwargs_list):
             self._del_meta(*args, **kwargs)
 
-    @implements(AbstractMetaStore.add_chunk_bands)
-    async def add_chunk_bands(self,
-                              object_id: str,
-                              bands: List[BandType]):
+    def _add_chunk_bands(self,
+                         object_id: str,
+                         bands: List[BandType]):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) | set(bands))
+
+    @implements(AbstractMetaStore.add_chunk_bands)
+    @mo.extensible
+    async def add_chunk_bands(self,
+                              object_id: str,
+                              bands: List[BandType]):
+        self._add_chunk_bands(object_id, bands)
+
+    @add_chunk_bands.batch
+    async def batch_add_chunk_bands(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._add_chunk_bands(*args, **kwargs)

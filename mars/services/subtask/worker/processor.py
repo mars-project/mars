@@ -22,9 +22,10 @@ from .... import oscar as mo
 from ....core import ChunkGraph, OperandType, enter_mode
 from ....core.context import get_context, set_context
 from ....core.operand import Fetch, FetchShuffle, \
-    MapReduceOperand, VirtualOperand, OperandStage, execute
+    MapReduceOperand, VirtualOperand, execute
 from ....optimization.physical import optimize
 from ....typing import BandType
+from ....utils import get_chunk_key_to_data_keys
 from ...context import ThreadedServiceContext
 from ...meta.api import MetaAPI
 from ...storage import StorageAPI
@@ -91,40 +92,20 @@ class SubtaskProcessor:
     def subtask_id(self):
         return self.subtask.subtask_id
 
-    def _gen_chunk_key_to_data_keys(self):
-        for chunk in self._chunk_graph:
-            if chunk.key in self._chunk_key_to_data_keys:
-                continue
-            if not isinstance(chunk.op, FetchShuffle):
-                self._chunk_key_to_data_keys[chunk.key] = [chunk.key]
-            else:
-                keys = []
-                for succ in self._chunk_graph.iter_successors(chunk):
-                    if isinstance(succ.op, MapReduceOperand) and \
-                            succ.op.stage == OperandStage.reduce:
-                        for key in succ.op.get_dependent_data_keys():
-                            if key not in keys:
-                                keys.append(key)
-                self._chunk_key_to_data_keys[chunk.key] = keys
-
     async def _load_input_data(self):
         keys = []
         gets = []
-        fetches = []
         for chunk in self._chunk_graph.iter_indep():
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
-                fetches.append(self._storage_api.fetch.delay(chunk.key))
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
-                    fetches.append(self._storage_api.fetch.delay(key, error='ignore'))
         if keys:
             logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
-            await self._storage_api.fetch.batch(*fetches)
             inputs = await self._storage_api.get.batch(*gets)
             self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.debug('Finish getting input data keys: %s, '
@@ -354,7 +335,7 @@ class SubtaskProcessor:
         unpinned = False
         try:
             chunk_graph = optimize(self._chunk_graph, self._engines)
-            self._gen_chunk_key_to_data_keys()
+            self._chunk_key_to_data_keys = get_chunk_key_to_data_keys(chunk_graph)
             report_progress = asyncio.create_task(
                 self.report_progress_periodically())
 
@@ -445,7 +426,7 @@ class SubtaskProcessorActor(mo.Actor):
     async def __post_create__(self):
         coros = [
             SessionAPI.create(self._supervisor_address),
-            StorageAPI.create(self._session_id, self.address),
+            StorageAPI.create(self._session_id, self.address, self._band[1]),
             MetaAPI.create(self._session_id, self._supervisor_address)]
         coros = [asyncio.ensure_future(coro) for coro in coros]
         await asyncio.gather(*coros)

@@ -29,6 +29,7 @@ import Title from '../Title';
 import { useStyles } from '../Style';
 import { formatTime, toReadableSize, getNodeStatusText } from '../Utils';
 
+
 class NodeList extends React.Component {
     constructor(props) {
         super(props);
@@ -37,7 +38,7 @@ class NodeList extends React.Component {
 
     refreshInfo() {
         const roleId = (this.nodeRole === 'supervisor' ? 0 : 1);
-        fetch(`api/cluster/nodes?role=${roleId}&resource=1&exclude_statuses=-1`)
+        fetch(`api/cluster/nodes?role=${roleId}&resource=1&detail=1&exclude_statuses=-1`)
             .then((res) => res.json())
             .then((res) => {
                 const { state } = this;
@@ -88,28 +89,45 @@ class NodeList extends React.Component {
             return `${reprFun(total - avail)} / ${reprFun(total)}`;
         };
 
+        const getSharedMemoryInfo = (nodeDetail) => {
+            const memoryInfo = nodeDetail['numa-0']['memory'];
+            return`${toReadableSize(memoryInfo['size_used'])} / ${toReadableSize(memoryInfo['size_total'])}`;
+        };
+
+        const generateCells = (endpoint) => {
+            const rows = [];
+            rows.push(<TableCell><Link to={`/${this.nodeRole}/${endpoint}`}>{endpoint}</Link></TableCell>);
+            rows.push(<TableCell>{getNodeStatusText(roleData[endpoint].status)}</TableCell>);
+            rows.push(<TableCell>{calcNodeStatGroup(roleData[endpoint], 'cpu', (v) => v.toFixed(2))}</TableCell>);
+            rows.push(<TableCell>{calcNodeStatGroup(roleData[endpoint], 'memory', toReadableSize)}</TableCell>);
+            if (this.nodeRole === 'worker') {
+                rows.push(<TableCell>{getSharedMemoryInfo(roleData[endpoint].detail.storage)}</TableCell>);
+            }
+            rows.push(<TableCell>{formatTime(roleData[endpoint].update_time)}</TableCell>);
+            return rows;
+        };
+
         const roleData = this.state[this.nodeRole];
 
         return (
             <Table size="small">
                 <TableHead>
                     <TableRow>
-                        <TableCell style={{ fontWeight: 'bolder' }}>Endpoint</TableCell>
-                        <TableCell style={{ fontWeight: 'bolder' }}>Status</TableCell>
-                        <TableCell style={{ fontWeight: 'bolder' }}>CPU</TableCell>
-                        <TableCell style={{ fontWeight: 'bolder' }}>Memory</TableCell>
-                        <TableCell style={{ fontWeight: 'bolder' }}>Update Time</TableCell>
+                        <TableCell style={{fontWeight: 'bolder'}}>Endpoint</TableCell>
+                        <TableCell style={{fontWeight: 'bolder'}}>Status</TableCell>
+                        <TableCell style={{fontWeight: 'bolder'}}>CPU</TableCell>
+                        <TableCell style={{fontWeight: 'bolder'}}>Memory</TableCell>
+                        {this.nodeRole === 'worker' &&
+                        <TableCell style={{fontWeight: 'bolder'}}>Shared Memory</TableCell>
+                        }
+                        <TableCell style={{fontWeight: 'bolder'}}>Update Time</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {
                         Object.keys(roleData).map((endpoint) => (
                             <TableRow key={`nodeList_${this.nodeRole}_${endpoint}`}>
-                                <TableCell><Link to={`/${this.nodeRole}/${endpoint}`}>{endpoint}</Link></TableCell>
-                                <TableCell>{getNodeStatusText(roleData[endpoint].status)}</TableCell>
-                                <TableCell>{calcNodeStatGroup(roleData[endpoint], 'cpu', (v) => v.toFixed(2))}</TableCell>
-                                <TableCell>{calcNodeStatGroup(roleData[endpoint], 'memory', toReadableSize)}</TableCell>
-                                <TableCell>{formatTime(roleData[endpoint].update_time)}</TableCell>
+                                {generateCells(endpoint)}
                             </TableRow>
                         ))
                     }

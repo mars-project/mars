@@ -34,13 +34,15 @@ class StorageAPI(AbstractStorageAPI):
 
     def __init__(self,
                  address: str,
-                 session_id: str):
+                 session_id: str,
+                 band_name: str):
         self._address = address
         self._session_id = session_id
+        self._band_name = band_name
 
     async def _init(self):
         self._storage_handler_ref = await mo.actor_ref(
-            self._address, StorageHandlerActor.default_uid())
+            self._address, StorageHandlerActor.gen_uid(self._band_name))
         self._data_manager_ref = await mo.actor_ref(
             self._address, DataManagerActor.default_uid())
 
@@ -49,6 +51,7 @@ class StorageAPI(AbstractStorageAPI):
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str,
+                     band_name: str = 'numa-0',
                      **kwargs) -> APIType:
         """
         Create storage API.
@@ -61,6 +64,9 @@ class StorageAPI(AbstractStorageAPI):
         address: str
             worker address
 
+        band_name: str
+            name of band, default as 'numa-0'
+
         Returns
         -------
         storage_api
@@ -68,7 +74,7 @@ class StorageAPI(AbstractStorageAPI):
         """
         if kwargs:  # pragma: no cover
             raise TypeError(f'Got unexpected arguments: {",".join(kwargs)}')
-        api = StorageAPI(address, session_id)
+        api = StorageAPI(address, session_id, band_name)
         await api._init()
         return api
 
@@ -93,7 +99,7 @@ class StorageAPI(AbstractStorageAPI):
     @mo.extensible
     async def put(self, data_key: str,
                   obj: object,
-                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+                  level: StorageLevel = None) -> DataInfo:
         return await self._storage_handler_ref.put(
             self._session_id, data_key, obj, level
         )
@@ -102,8 +108,6 @@ class StorageAPI(AbstractStorageAPI):
     async def batch_put(self, args_list, kwargs_list):
         puts = []
         for args, kwargs in zip(args_list, kwargs_list):
-            if kwargs.get('level', None) is None:
-                kwargs['level'] = StorageLevel.MEMORY
             puts.append(
                 self._storage_handler_ref.put.delay(
                     self._session_id, *args, **kwargs)
@@ -125,8 +129,7 @@ class StorageAPI(AbstractStorageAPI):
             List of information for specified key
         """
         return await self._data_manager_ref.get_data_infos(
-            self._session_id, data_key
-        )
+            self._session_id, data_key, self._band_name)
 
     @mo.extensible
     async def delete(self, data_key: str, error: str = 'raise'):
@@ -156,9 +159,9 @@ class StorageAPI(AbstractStorageAPI):
     @mo.extensible
     async def fetch(self,
                     data_key: str,
-                    level: StorageLevel = StorageLevel.MEMORY,
+                    level: StorageLevel = None,
                     band_name: str = None,
-                    dest_address: str = None,
+                    remote_address: str = None,
                     error: str = 'raise'):
         """
         Fetch object from remote worker or load object from disk.
@@ -171,14 +174,14 @@ class StorageAPI(AbstractStorageAPI):
             the storage level to put into, MEMORY as default
         band_name: BandType
             put data on specific band
-        dest_address:
-            destination address for data
+        remote_address:
+            remote address that stores the data
         error: str
             raise or ignore
         """
         await self._storage_handler_ref.fetch_batch(
             self._session_id, [data_key], level,
-            dest_address, band_name, error)
+            remote_address, band_name, error)
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):

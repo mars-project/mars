@@ -35,7 +35,7 @@ _is_windows: bool = sys.platform.startswith('win')
 
 
 class SocketChannel(Channel):
-    __slots__ = 'reader', 'writer', '_channel_type', '_lock'
+    __slots__ = 'reader', 'writer', '_channel_type', '_send_lock', '_recv_lock'
 
     name = 'socket'
 
@@ -53,7 +53,8 @@ class SocketChannel(Channel):
         self.writer = writer
         self._channel_type = channel_type
 
-        self._lock = asyncio.Lock()
+        self._send_lock = asyncio.Lock()
+        self._recv_lock = asyncio.Lock()
 
     @property
     @implements(Channel.type)
@@ -69,7 +70,7 @@ class SocketChannel(Channel):
 
         # write buffers
         write_buffers(self.writer, buffers)
-        async with self._lock:
+        async with self._send_lock:
             # add lock, or when parallel send,
             # assertion error may be raised
             await self.writer.drain()
@@ -77,8 +78,9 @@ class SocketChannel(Channel):
     @implements(Channel.recv)
     async def recv(self):
         deserializer = AioDeserializer(self.reader)
-        header = await deserializer.get_header()
-        buffers = await read_buffers(header, self.reader)
+        async with self._recv_lock:
+            header = await deserializer.get_header()
+            buffers = await read_buffers(header, self.reader)
         return deserialize(header, buffers)
 
     @implements(Channel.close)

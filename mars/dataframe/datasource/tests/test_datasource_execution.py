@@ -30,6 +30,10 @@ try:
     import fastparquet
 except ImportError:  # pragma: no cover
     fastparquet = None
+try:
+    import sqlalchemy
+except ImportError:  # pragma: no cover
+    sqlalchemy = None
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -570,7 +574,7 @@ def test_read_csv_use_arrow_dtype(setup):
 
 
 @require_cudf
-def test_read_csvgpu_execution(setup):
+def test_read_csv_gpu_execution(setup_gpu):
     with tempfile.TemporaryDirectory() as tempdir:
         file_path = os.path.join(tempdir, 'test.csv')
 
@@ -623,6 +627,7 @@ def test_read_csv_without_index(setup):
         pd.testing.assert_frame_equal(result.reset_index(drop=True), expected)
 
 
+@pytest.mark.skipif(sqlalchemy is None, reason='sqlalchemy not installed')
 def test_read_sql_execution(setup):
     import sqlalchemy as sa
 

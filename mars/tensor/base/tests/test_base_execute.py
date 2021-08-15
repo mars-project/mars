@@ -919,6 +919,18 @@ def test_searchsorted_execution(setup):
     expected = np.searchsorted(raw3, 20, sorter=order)
     np.testing.assert_array_equal(res, expected)
 
+    # all data same
+    raw4 = np.ones(8)
+    arr = tensor(raw4, chunk_size=2)
+
+    for val in (0, 1, 2):
+        for side in ('left', 'right'):
+            t15 = searchsorted(arr, val, side=side)
+
+            res = t15.execute().fetch()
+            expected = np.searchsorted(raw4, val, side=side)
+            np.testing.assert_array_equal(res, expected)
+
 
 def test_unique_execution(setup):
     rs = np.random.RandomState(0)
@@ -1050,7 +1062,7 @@ def test_unique_execution(setup):
 
 
 @require_cupy
-def test_to_gpu_execution(setup):
+def test_to_gpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3)
 
@@ -1061,7 +1073,7 @@ def test_to_gpu_execution(setup):
 
 
 @require_cupy
-def test_to_cpu_execution(setup):
+def test_to_cpu_execution(setup_gpu):
     raw = np.random.rand(10, 10)
     x = tensor(raw, chunk_size=3, gpu=True)
 
@@ -1848,3 +1860,17 @@ def test_delete_execution(setup):
     r9 = mt.delete(a, 9, axis=1)
     result = r9.execute().fetch()
     np.testing.assert_array_equal(np.delete(raw, 9, axis=1), result)
+
+
+@pytest.mark.parametrize('chunk_size', [3, 5])
+@pytest.mark.parametrize('invert', [True, False])
+def test_in1d_execute(setup, chunk_size, invert):
+    rs = np.random.RandomState(0)
+    raw1 = rs.randint(10, size=10)
+    ar1 = mt.tensor(raw1, chunk_size=5)
+    raw2 = np.arange(5)
+    ar2 = mt.tensor(raw2, chunk_size=chunk_size)
+    ar = mt.in1d(ar1, ar2, invert=invert)
+    result = ar.execute().fetch()
+    expected = np.in1d(raw1, raw2, invert=invert)
+    np.testing.assert_array_equal(result, expected)
