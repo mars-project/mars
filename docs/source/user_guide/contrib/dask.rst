@@ -4,7 +4,7 @@
 Dask on Mars
 ============
 
-Dask-on-Mars provides a simple way to excute the entire Dask ecosystem on top of Mars.
+Dask-on-Mars provides a simple way to execute the entire Dask ecosystem on top of Mars.
 
 `Dask <https://dask.org/>`__ is a flexible library for parallel computing in Python, geared towards 
 scaling analytics and scientific computing workloads. It provides `big data collections

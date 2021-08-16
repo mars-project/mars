@@ -23,7 +23,7 @@ msgstr "Dask on Mars"
 
 #: ../../source/user_guide/contrib/dask.rst:7
 msgid ""
-"Dask-on-Mars provides a simple way to excute the entire Dask ecosystem on"
+"Dask-on-Mars provides a simple way to execute the entire Dask ecosystem on"
 " top of Mars."
 msgstr "Dask-on-Mars 使得用户能通过简单的 API 调用，在 Mars 中运行大部分 Dask 任务"
 
