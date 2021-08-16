@@ -182,6 +182,7 @@ class RayCluster:
             if self._supervisor_pool is not None:
                 await stop_supervisor(self.supervisor_address, self._config)
                 await self._supervisor_pool.actor_pool.remote('stop')
+            AbstractSession.reset_default()
             RayActorDriver.stop_cluster()
             self._stopped = True
 
@@ -218,5 +219,4 @@ class RayClient:
         await self.stop()
 
     async def stop(self):
-        await self._session.destroy()
         await self._cluster.stop()
