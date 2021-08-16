@@ -173,11 +173,10 @@ class DistributedSampler(Sampler):
         ...         sampler.set_epoch(epoch)
         ...     train(loader)
     """
-    def __init__(self, dataset: Dataset, num_replicas: Optional[int] = None,
+    def __init__(self, dataset, num_replicas: Optional[int] = None,
                  rank: Optional[int] = None, shuffle: bool = True,
                  seed: int = 0, drop_last: bool = False) -> None:
         import torch.distributed as dist
-
 
         if num_replicas is None:  # pragma: no cover
             if not dist.is_available():
@@ -207,7 +206,7 @@ class DistributedSampler(Sampler):
                 (len(self.dataset) - self.num_replicas) / self.num_replicas
             )
         else:
-            self.num_samples = math.ceil(len(self.dataset)/ self.num_replicas)
+            self.num_samples = math.ceil(len(self.dataset) / self.num_replicas)
         self.total_size = self.num_samples * self.num_replicas
         self.shuffle = shuffle
         self.seed = seed

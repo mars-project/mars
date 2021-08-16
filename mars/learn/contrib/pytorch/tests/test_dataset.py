@@ -252,7 +252,7 @@ def test_DistributedSampler(setup_cluster):
     exec_msg = e.value.args[0]
     assert exec_msg == "Invalid rank -1, rank should be in the interval [0, 1]"
     
-    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0, 
+    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0,
                                        drop_last=True, shuffle=True)
     assert len(train_sampler) == 500
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -262,7 +262,7 @@ def test_DistributedSampler(setup_cluster):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
 
-    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0, 
+    train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0,
                                        drop_last=False, shuffle=False)
     train_sampler.set_epoch(10)
     assert len(train_sampler) == 501
