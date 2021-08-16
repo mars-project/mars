@@ -287,7 +287,7 @@ class SubtaskProcessor:
             store_size = data_key_to_store_size[chunk_key]
             memory_size = data_key_to_memory_size[chunk_key]
             result_data_size += memory_size
-            object_ref = data_key_to_object_id[result_chunk.key]
+            object_ref = data_key_to_object_id[chunk_key]
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,

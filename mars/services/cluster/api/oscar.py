@@ -33,7 +33,6 @@ class ClusterAPI(AbstractClusterAPI):
         self._address = address
         self._locator_ref = None
         self._uploader_ref = None
-        self._node_info_ref = None
 
     async def _init(self):
         from ..locator import SupervisorLocatorActor
@@ -224,21 +223,22 @@ class ClusterAPI(AbstractClusterAPI):
 
     async def request_worker_node(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        cluster_backend = await self._get_cluster_backend()
-        address = await cluster_backend.request_worker_node(worker_cpu, worker_mem, timeout)
+        node_allocator_ref = await self._get_node_allocator_ref()
+        address = await node_allocator_ref.request_worker_node(worker_cpu, worker_mem, timeout)
         return address
 
     async def release_worker_node(self, address: str):
-        cluster_backend = await self._get_cluster_backend()
-        await cluster_backend.release_worker_node(address)
-        await self._node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
+        node_allocator_ref = await self._get_node_allocator_ref()
+        await node_allocator_ref.release_worker_node(address)
+        node_info_ref = await self._get_node_info_ref()
+        await node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
 
     @alru_cache(cache_exceptions=False)
-    async def _get_cluster_backend(self):
-        from ..backends import get_cluster_backend
-        backend_cls = get_cluster_backend(await self._locator_ref.get_backend_name())
-        return await backend_cls.create(
-            await self._locator_ref.get_lookup_address(),  self._locator_ref.address)
+    async def _get_node_allocator_ref(self):
+        from ..supervisor.node_info import NodeAllocatorActor
+        [node_allocator_ref] = await self.get_supervisor_refs(
+            [NodeAllocatorActor.default_uid()])
+        return node_allocator_ref
 
 
 class MockClusterAPI(ClusterAPI):

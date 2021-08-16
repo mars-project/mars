@@ -245,7 +245,7 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
         assert await autoscaler_ref.get_dynamic_worker_nums() > 0
 
 
-@pytest.mark.timeout(timeout=60)
+@pytest.mark.timeout(timeout=120)
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio

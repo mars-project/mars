@@ -176,21 +176,21 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
         self._task = asyncio.create_task(self._run())
 
     async def _run(self):
-        if self._autoscaler.get_dynamic_worker_nums() < self._min_workers:
-            logger.info(f'Start to request %s initial workers.', self._min_workers)
-            initial_worker_addresses = await asyncio.gather(*[
-                self._autoscaler.request_worker_node() for _ in range(
-                    self._min_workers - self._autoscaler.get_dynamic_worker_nums())])
-            logger.info(f'Finished requesting %s initial workers %s',
-                        len(initial_worker_addresses), initial_worker_addresses)
-        while True:
-            await asyncio.sleep(self._scheduler_check_interval)
-            try:
+        try:
+            if self._autoscaler.get_dynamic_worker_nums() < self._min_workers:
+                logger.info(f'Start to request %s initial workers.', self._min_workers)
+                initial_worker_addresses = await asyncio.gather(*[
+                    self._autoscaler.request_worker_node() for _ in range(
+                        self._min_workers - self._autoscaler.get_dynamic_worker_nums())])
+                logger.info(f'Finished requesting %s initial workers %s',
+                            len(initial_worker_addresses), initial_worker_addresses)
+            while True:
+                await asyncio.sleep(self._scheduler_check_interval)
                 await self._run_round()
-            except Exception as e:  # pragma: no cover
-                logger.exception('Exception occurred when try to auto scale')
-                self._task.cancel()
-                raise e
+        except Exception as e:  # pragma: no cover
+            logger.exception('Exception occurred when try to auto scale')
+            self._task.cancel()
+            raise e
 
     async def _run_round(self):
         queueing_refs = list(self._autoscaler.queueing_refs.values())

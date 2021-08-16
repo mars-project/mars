@@ -39,7 +39,7 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
+    async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         """
         Watch changes of supervisors
 

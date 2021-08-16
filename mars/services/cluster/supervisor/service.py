@@ -16,7 +16,7 @@ from .... import oscar as mo
 from ...core import NodeRole, AbstractService
 from ..uploader import NodeInfoUploaderActor
 from .locator import SupervisorPeerLocatorActor
-from .node_info import NodeInfoCollectorActor
+from .node_info import NodeInfoCollectorActor, NodeAllocatorActor
 
 
 class ClusterSupervisorService(AbstractService):
@@ -59,6 +59,12 @@ class ClusterSupervisorService(AbstractService):
             interval=svc_config.get('node_check_interval'),
             uid=NodeInfoUploaderActor.default_uid(),
             address=address)
+        await mo.create_actor(
+            NodeAllocatorActor,
+            backend_name=backend,
+            lookup_address=lookup_address,
+            uid=NodeAllocatorActor.default_uid(),
+            address=address)
 
     async def stop(self):
         address = self._address
@@ -71,4 +77,7 @@ class ClusterSupervisorService(AbstractService):
             address=address))
         await mo.destroy_actor(mo.create_actor_ref(
             uid=NodeInfoUploaderActor.default_uid(),
+            address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=NodeAllocatorActor.default_uid(),
             address=address))

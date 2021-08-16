@@ -17,7 +17,7 @@ import itertools
 import logging
 import os
 import time
-from typing import Union, Dict, List
+from typing import Union, Dict, List, AsyncGenerator
 
 from ... import oscar as mo
 from ...oscar.backends.ray.driver import RayActorDriver
@@ -26,8 +26,7 @@ from ...oscar.backends.ray.utils import (
     node_placement_to_address,
     process_address_to_placement
 )
-from ...services.cluster.backends.base import register_cluster_backend
-from ...services.cluster.backends.fixed import FixedClusterBackend
+from ...services.cluster.backends.base import register_cluster_backend, AbstractClusterBackend
 from ...services import NodeRole
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
@@ -53,15 +52,15 @@ def _load_config(filename=None):
 
 
 @register_cluster_backend
-class RayClusterBackend(FixedClusterBackend):
+class RayClusterBackend(AbstractClusterBackend):
     name = 'ray'
 
     def __init__(self, lookup_address: str, cluster_state_ref):
-        super().__init__(lookup_address)
+        self._supervisors = [n.strip() for n in lookup_address.split(',')]
         self._cluster_state_ref = cluster_state_ref
 
     @classmethod
-    async def create(cls, lookup_address: str, pool_address: str):
+    async def create(cls, node_role: NodeRole, lookup_address: str, pool_address: str):
         try:
             ref = await mo.create_actor(
                 ClusterStateActor, uid=ClusterStateActor.default_uid(),
@@ -70,6 +69,12 @@ class RayClusterBackend(FixedClusterBackend):
             ref = await mo.actor_ref(ClusterStateActor.default_uid(),
                                      address=lookup_address)
         return cls(lookup_address, ref)
+
+    async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
+        yield self._supervisors
+
+    async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
+        return self._supervisors
 
     async def new_worker(self, worker_address):
         return await self._cluster_state_ref.new_worker(worker_address)
@@ -166,7 +171,10 @@ async def new_cluster(cluster_name: str,
         return await RayClient.create(cluster)
     except Exception as ex:
         # cleanup the cluster if failed.
-        await cluster.stop()
+        try:
+            await cluster.stop()
+        except Exception as stop_ex:
+            raise stop_ex from ex
         raise ex
 
 
@@ -246,7 +254,8 @@ class RayCluster:
             self.supervisor_address, n_process=supervisor_sub_pool_num,
             main_pool_cpus=0, sub_pool_cpus=0, modules=supervisor_modules)
         logger.info('Create supervisor on node %s succeeds.', self.supervisor_address)
-        self._cluster_backend = await RayClusterBackend.create(self.supervisor_address, self.supervisor_address)
+        self._cluster_backend = await RayClusterBackend.create(
+            NodeRole.WORKER, self.supervisor_address, self.supervisor_address)
         await self._cluster_backend.get_cluster_state_ref().set_config(
             self._worker_cpu, self._worker_mem, self._config)
         # start service
