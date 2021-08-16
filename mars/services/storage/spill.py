@@ -180,6 +180,12 @@ async def spill(request_size: int,
                         break
                     else:
                         await writer.write(block_data)
-        await storage_handler.delete_object(
-            session_id, key, size, reader.object_id, level)
+        try:
+            await storage_handler.delete_object(
+                session_id, key, size, reader.object_id, level)
+        except KeyError:  # pragma: no cover
+            # workaround for the case that the object
+            # has been deleted during spill
+            logger.debug('Data %s %s is deleted during spill', session_id, key)
+            await storage_handler.delete(session_id, key, error='ignore')
     logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)
