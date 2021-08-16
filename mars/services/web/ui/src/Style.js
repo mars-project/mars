@@ -64,6 +64,7 @@ export const useStyles = makeStyles((theme) => ({
         position: 'relative',
         whiteSpace: 'nowrap',
         width: drawerWidth,
+        overflowX: 'hidden',
         transition: theme.transitions.create('width', {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
@@ -79,6 +80,17 @@ export const useStyles = makeStyles((theme) => ({
         [theme.breakpoints.up('sm')]: {
             width: theme.spacing(9),
         },
+    },
+    leftMenu: {
+        height: '100%',
+    },
+    leftMenuBottomItem: {
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+    nestedListItem: {
+        paddingLeft: theme.spacing(4),
     },
     appBarSpacer: theme.mixins.toolbar,
     content: {

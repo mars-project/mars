@@ -147,7 +147,7 @@ export default class TaskTileableGraph extends React.Component {
         return (
             <svg
                 id="svg-canvas"
-                style={{ margin: 30, width: '90%', height: '100%' }}
+                style={{ margin: 30, width: '90%' }}
             />
         );
     }
