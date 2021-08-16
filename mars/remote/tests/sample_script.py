@@ -14,3 +14,10 @@
 
 import os
 assert os.environ['WORLD_SIZE'] == '2'
+
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()

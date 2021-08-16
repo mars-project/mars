@@ -17,7 +17,7 @@ import math
 
 try:
     import torch
-    from torch.utils.data import Sampler, Dataset
+    from torch.utils.data import Sampler
 except ImportError: # pragma: no cover
     torch = None
     Sampler = object
