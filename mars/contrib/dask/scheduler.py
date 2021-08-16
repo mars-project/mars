@@ -22,8 +22,10 @@ from ...remote import spawn
 
 def mars_scheduler(dsk: dict, keys: List[List[str]]):
     """
-    A Dask-Mars scheduler. This scheduler is intended to be compatible
-        with existing dask user interface, no callbacks are implemented.
+    A Dask-Mars scheduler
+
+    This scheduler is intended to be compatible with existing
+    dask user interface, no callbacks are implemented.
 
     Parameters
     ----------
