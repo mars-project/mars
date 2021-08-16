@@ -15,7 +15,8 @@
 import math
 import warnings
 from math import gcd
-from typing import Union
+from collections import namedtuple
+from typing import Callable, Tuple, Union
 
 import numpy as np
 from scipy import special
@@ -24,9 +25,9 @@ from scipy.stats import distributions
 from ... import tensor as mt
 from ...core import ExecutableTuple
 from ...typing import TileableType
-from .core import KstestResult
 
 
+KstestResult = namedtuple('KstestResult', ('statistic', 'pvalue'))
 Ks_2sampResult = KstestResult
 
 
@@ -300,7 +301,7 @@ def _attempt_exact_2kssamp(n1, n2, g, d, alternative):  # pragma: no cover
     return True, d, prob
 
 
-def _calc_prob(d, n1, n2, alternative, mode):  # pragma: no cover
+def _calc_prob_2samp(d, n1, n2, alternative, mode):  # pragma: no cover
     MAX_AUTO_N = 10000  # 'auto' will attempt to be exact if n1,n2 <= MAX_AUTO_N
 
     g = gcd(n1, n2)
@@ -327,7 +328,7 @@ def _calc_prob(d, n1, n2, alternative, mode):  # pragma: no cover
                               f"Switching to mode={mode}.", RuntimeWarning)
 
     if mode == 'asymp':
-        # The product n1*n2 is large.  Use Smirnov's asymptoptic formula.
+        # The product n1*n2 is large.  Use Smirnov's asymptotic formula.
         # Ensure float to avoid overflow in multiplication
         # sorted because the one-sided formula is not symmetric in n1, n2
         m, n = sorted([float(n1), float(n2)], reverse=True)
@@ -342,6 +343,188 @@ def _calc_prob(d, n1, n2, alternative, mode):  # pragma: no cover
             prob = np.exp(expt)
 
     return np.clip(prob, 0, 1)
+
+
+def _compute_dplus(cdfvals, n):
+    """Computes D+ as used in the Kolmogorov-Smirnov test.
+    Parameters
+    ----------
+    cdfvals: array_like
+      Sorted array of CDF values between 0 and 1
+    Returns
+    -------
+      Maximum distance of the CDF values below Uniform(0, 1)
+    """
+    return (mt.arange(1.0, n + 1) / n - cdfvals).max()
+
+
+def _compute_dminus(cdfvals, n):
+    """Computes D- as used in the Kolmogorov-Smirnov test.
+    Parameters
+    ----------
+    cdfvals: array_like
+      Sorted array of CDF values between 0 and 1
+    Returns
+    -------
+      Maximum distance of the CDF values above Uniform(0, 1)
+    """
+    return (cdfvals - mt.arange(0.0, n) / n).max()
+
+
+def ks_1samp(x: Union[np.ndarray, list, TileableType],
+             cdf: Callable,
+             args: Tuple = (),
+             alternative: str = 'two-sided',
+             mode: str = 'auto'):
+    """
+    Performs the one-sample Kolmogorov-Smirnov test for goodness of fit.
+
+    This test compares the underlying distribution F(x) of a sample
+    against a given continuous distribution G(x). See Notes for a description
+    of the available null and alternative hypotheses.
+
+    Parameters
+    ----------
+    x : array_like
+        a 1-D array of observations of iid random variables.
+    cdf : callable
+        callable used to calculate the cdf.
+    args : tuple, sequence, optional
+        Distribution parameters, used with `cdf`.
+    alternative : {'two-sided', 'less', 'greater'}, optional
+        Defines the null and alternative hypotheses. Default is 'two-sided'.
+        Please see explanations in the Notes below.
+    mode : {'auto', 'exact', 'approx', 'asymp'}, optional
+        Defines the distribution used for calculating the p-value.
+        The following options are available (default is 'auto'):
+
+          * 'auto' : selects one of the other options.
+          * 'exact' : uses the exact distribution of test statistic.
+          * 'approx' : approximates the two-sided probability with twice
+            the one-sided probability
+          * 'asymp': uses asymptotic distribution of test statistic
+
+    Returns
+    -------
+    statistic : float
+        KS test statistic, either D, D+ or D- (depending on the value
+        of 'alternative')
+    pvalue :  float
+        One-tailed or two-tailed p-value.
+
+    See Also
+    --------
+    ks_2samp, kstest
+
+    Notes
+    -----
+    There are three options for the null and corresponding alternative
+    hypothesis that can be selected using the `alternative` parameter.
+
+    - `two-sided`: The null hypothesis is that the two distributions are
+      identical, F(x)=G(x) for all x; the alternative is that they are not
+      identical.
+
+    - `less`: The null hypothesis is that F(x) >= G(x) for all x; the
+      alternative is that F(x) < G(x) for at least one x.
+
+    - `greater`: The null hypothesis is that F(x) <= G(x) for all x; the
+      alternative is that F(x) > G(x) for at least one x.
+
+    Note that the alternative hypotheses describe the *CDFs* of the
+    underlying distributions, not the observed values. For example,
+    suppose x1 ~ F and x2 ~ G. If F(x) > G(x) for all x, the values in
+    x1 tend to be less than those in x2.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from scipy import stats
+    >>> import mars.tensor as mt
+    >>> from mars.tensor.stats import ks_1samp
+
+    >>> np.random.seed(12345678)  #fix random seed to get the same result
+    >>> x = mt.linspace(-15, 15, 9, chunk_size=5)
+    >>> ks_1samp(x, stats.norm.cdf).execute()
+    (0.44435602715924361, 0.038850142705171065)
+
+    >>> ks_1samp(stats.norm.rvs(size=100), stats.norm.cdf).execute()
+    KstestResult(statistic=0.165471391799..., pvalue=0.007331283245...)
+
+    *Test against one-sided alternative hypothesis*
+
+    Shift distribution to larger values, so that `` CDF(x) < norm.cdf(x)``:
+
+    >>> x = stats.norm.rvs(loc=0.2, size=100)
+    >>> ks_1samp(x, stats.norm.cdf, alternative='less').execute()
+    KstestResult(statistic=0.235488541678..., pvalue=1.158315030683...)
+
+    Reject null hypothesis in favor of alternative hypothesis: less
+
+    >>> ks_1samp(x, stats.norm.cdf, alternative='greater').execute()
+    KstestResult(statistic=0.010167165616..., pvalue=0.972494973653...)
+
+    Reject null hypothesis in favor of alternative hypothesis: greater
+
+    >>> ks_1samp(x, stats.norm.cdf).execute()
+    KstestResult(statistic=0.235488541678..., pvalue=2.316630061366...)
+
+    Don't reject null hypothesis in favor of alternative hypothesis: two-sided
+
+    *Testing t distributed random variables against normal distribution*
+
+    With 100 degrees of freedom the t distribution looks close to the normal
+    distribution, and the K-S test does not reject the hypothesis that the
+    sample came from the normal distribution:
+
+    >>> ks_1samp(stats.t.rvs(100, size=100), stats.norm.cdf).execute()
+    KstestResult(statistic=0.077844250253..., pvalue=0.553155412513...)
+
+    With 3 degrees of freedom the t distribution looks sufficiently different
+    from the normal distribution, that we can reject the hypothesis that the
+    sample came from the normal distribution at the 10% level:
+
+    >>> ks_1samp(stats.t.rvs(3, size=100), stats.norm.cdf).execute()
+    KstestResult(statistic=0.118967105356..., pvalue=0.108627114578...)
+    """
+    alternative = {'t': 'two-sided', 'g': 'greater', 'l': 'less'}.get(
+       alternative.lower()[0], alternative)
+    if alternative not in ['two-sided', 'greater', 'less']:
+        raise ValueError("Unexpected alternative %s" % alternative)
+
+    x = mt.asarray(x)
+    N = x.shape[0]
+    x = mt.sort(x)
+    cdfvals = x.map_chunk(cdf, args=args, elementwise=True)
+
+    if alternative == 'greater':
+        Dplus = _compute_dplus(cdfvals, N)
+        return ExecutableTuple(KstestResult(
+            Dplus, Dplus.map_chunk(distributions.ksone.sf, args=(N,))))
+
+    if alternative == 'less':
+        Dminus = _compute_dminus(cdfvals, N)
+        return ExecutableTuple(KstestResult(
+            Dminus, Dminus.map_chunk(distributions.ksone.sf, args=(N,))))
+
+    # alternative == 'two-sided':
+    Dplus = _compute_dplus(cdfvals, N)
+    Dminus = _compute_dminus(cdfvals, N)
+    D = mt.max([Dplus, Dminus])
+    if mode == 'auto':  # Always select exact
+        mode = 'exact'
+    if mode == 'exact':
+        prob = D.map_chunk(distributions.kstwo.sf, args=(N,),
+                           elementwise=True)
+    elif mode == 'asymp':
+        prob = (D * np.sqrt(N)).map_chunk(distributions.kstwobign.sf,
+                                          elementwise=True)
+    else:
+        # mode == 'approx'
+        prob = 2 * D.map_chunk(distributions.ksone.sf, args=(N,),
+                               elementwise=True)
+    prob = mt.clip(prob, 0, 1)
+    return ExecutableTuple(KstestResult(D, prob))
 
 
 def ks_2samp(data1: Union[np.ndarray, list, TileableType],
@@ -477,7 +660,7 @@ def ks_2samp(data1: Union[np.ndarray, list, TileableType],
     maxS = mt.max(cddiffs)
     alt2Dvalue = {'less': minS, 'greater': maxS, 'two-sided': mt.maximum(minS, maxS)}
     d = alt2Dvalue[alternative]
-    prob = d.map_chunk(_calc_prob, args=(n1, n2, alternative, mode),
+    prob = d.map_chunk(_calc_prob_2samp, args=(n1, n2, alternative, mode),
                        elementwise=True, dtype=d.dtype)
 
     return ExecutableTuple(Ks_2sampResult(d, prob))
