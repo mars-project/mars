@@ -257,18 +257,8 @@ class TaskProcessor:
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        if not available_bands:
-            available_bands = await self._get_available_band_slots()
-            logger.warning(f'There is no bands available, waiting until bands available. '
-                           f'Please ensure autoscale is enabled')
-            while not available_bands:
-                # Use watch all bands may miss notification if watch bands after bands changed.
-                await asyncio.sleep(0.1)
-                available_bands = await self._get_available_band_slots()
-
         subtask_graph = await asyncio.to_thread(
-            self._preprocessor.analyze,
-                                                chunk_graph, available_bands)
+            self._preprocessor.analyze, chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), self._get_chunk_optimization_records(),
