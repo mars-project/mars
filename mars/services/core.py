@@ -44,6 +44,10 @@ class AbstractService(abc.ABC):
             inst = cls._instances[type_addr]
         return inst
 
+    @classmethod
+    def clear(cls):
+        cls._instances = dict()
+
     @abc.abstractmethod
     async def start(self):
         raise NotImplementedError
@@ -177,6 +181,8 @@ async def stop_services(node_role: NodeRole,
                         address: str = None):
     for instances in _iter_service_instances(node_role, config, address, reverse=True):
         await asyncio.gather(*[inst.stop() for inst in instances])
+
+    AbstractService.clear()
 
 
 async def create_service_session(node_role: NodeRole,
