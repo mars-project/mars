@@ -67,4 +67,4 @@ class WebMetaAPI(AbstractMetaAPI, MarsWebAPIClientMixin):
         if fields:
             params['fields'] = ','.join(fields)
         res = await self._request_url('GET', req_addr, params=params)
-        return deserialize_serializable(await res.read())
+        return deserialize_serializable(res.body)
