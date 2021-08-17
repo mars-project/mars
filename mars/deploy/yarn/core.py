@@ -145,11 +145,11 @@ class YarnClusterBackend(AbstractClusterBackend):
         while True:
             yield await self._watch_ref.wait_nodes(NodeRole.SUPERVISOR)
 
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         raise NotImplementedError
 
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         raise NotImplementedError
 
 

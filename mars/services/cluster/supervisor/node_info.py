@@ -179,9 +179,9 @@ class NodeAllocatorActor(mo.Actor):
         backend_cls = get_cluster_backend(self._backend_name)
         self._backend = await backend_cls.create(NodeRole.WORKER, self._lookup_address, self.address)
 
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int,
+    async def request_worker(self, worker_cpu: int, worker_mem: int,
                                   timeout: int = None) -> str:
-        return await self._backend.request_worker_node(worker_cpu, worker_mem, timeout=timeout)
+        return await self._backend.request_worker(worker_cpu, worker_mem, timeout=timeout)
 
-    async def release_worker_node(self, address: str):
-        return await self._backend.release_worker_node(address)
+    async def release_worker(self, address: str):
+        return await self._backend.release_worker(address)

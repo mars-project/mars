@@ -17,7 +17,7 @@ import itertools
 import logging
 import os
 import time
-from typing import Union, Dict, List, AsyncGenerator
+from typing import Union, Dict, List, Optional, AsyncGenerator
 
 from ... import oscar as mo
 from ...oscar.backends.ray.driver import RayActorDriver
@@ -79,12 +79,12 @@ class RayClusterBackend(AbstractClusterBackend):
     async def new_worker(self, worker_address):
         return await self._cluster_state_ref.new_worker(worker_address)
 
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        return await self._cluster_state_ref.request_worker_node(worker_cpu, worker_mem, timeout)
+        return await self._cluster_state_ref.request_worker(worker_cpu, worker_mem, timeout)
 
-    async def release_worker_node(self, address: str):
-        return await self._cluster_state_ref.release_worker_node(address)
+    async def release_worker(self, address: str):
+        return await self._cluster_state_ref.release_worker(address)
 
     def get_cluster_state_ref(self):
         return self._cluster_state_ref
@@ -107,7 +107,10 @@ class ClusterStateActor(mo.Actor):
         self._band_to_slot = {'numa-0': self._worker_cpu}
         self._worker_modules = get_third_party_modules_from_config(self._config, NodeRole.WORKER)
 
-    async def request_worker_node(self, worker_cpu: int, worker_mem: int, timeout: int = None) -> str:
+    async def request_worker(self,
+                             worker_cpu: int = None,
+                             worker_mem: int = None,
+                             timeout: int = None) -> Optional[str]:
         worker_cpu = worker_cpu or self._worker_cpu
         bundle = {
             'CPU': worker_cpu,
@@ -122,13 +125,17 @@ class ClusterStateActor(mo.Actor):
         create_pg_timeout = timeout or 10
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:
-            raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
-        logger.info('Creating placement group succeeds in %.4f seconds', time.time() - start_time)
+            logger.warning('Request worker failed, '
+                           'can not create placement group %s in %s seconds.',
+                           pg.bundle_specs, create_pg_timeout)
+            ray.util.remove_placement_group(pg)
+            return None
+        logger.info('Creating placement group took %.4f seconds', time.time() - start_time)
         worker_address = process_placement_to_address(pg_name, 0, 0)
         worker_pool = await self.new_worker(worker_address, band_to_slot=band_to_slot)
         logger.info('Request worker %s succeeds in %.4f seconds',
                     worker_address, time.time() - start_time)
-        self._dynamic_created_workers[worker_address] = worker_pool
+        self._dynamic_created_workers[worker_address] = (worker_pool, pg)
         self._worker_count += 1
         return worker_address
 
@@ -138,7 +145,7 @@ class ClusterStateActor(mo.Actor):
         band_to_slot = band_to_slot or self._band_to_slot
         worker_pool = await create_worker_actor_pool(
             worker_address, self._band_to_slot, modules=self._worker_modules)
-        logger.info('Create worker %s succeeds in %.4f seconds.',
+        logger.info('Create worker process %s succeeds in %.4f seconds.',
                     worker_address, time.time() - start_time)
         start_time = time.time()
         await start_worker(worker_address, self.address, band_to_slot, config=self._config)
@@ -146,11 +153,12 @@ class ClusterStateActor(mo.Actor):
                     worker_address, time.time() - start_time)
         return worker_pool
 
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         await stop_worker(address, self._config)
-        pool = self._dynamic_created_workers.pop(address)
+        pool, pg = self._dynamic_created_workers.pop(address)
         await pool.actor_pool.remote('stop')
         ray.kill(pool)
+        ray.util.remove_placement_group(pg)
 
 
 async def new_cluster(cluster_name: str,

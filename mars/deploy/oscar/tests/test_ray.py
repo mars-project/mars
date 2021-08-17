@@ -214,6 +214,26 @@ async def test_load_third_party_modules_from_config(ray_large_cluster,
         assert len(get_output_filenames()) == 7
 
 
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 3, 'num_cpus': 1}], indirect=True)
+@require_ray
+@pytest.mark.asyncio
+async def test_request_worker(ray_large_cluster):
+    worker_cpu, worker_mem = 1, 100 * 1024 ** 2
+    client = await new_cluster('test_cluster', worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem)
+    async with client:
+        cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
+        workers = []
+        # Note that supervisor took one node
+        for _ in range(2):
+            worker = await cluster_state_ref.request_worker(timeout=5)
+            assert worker
+            workers.append(worker)
+        assert not await cluster_state_ref.request_worker(timeout=5)
+        for worker in workers:
+            await cluster_state_ref.release_worker(worker)
+        assert await cluster_state_ref.request_worker(timeout=5)
+    
+
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 10}], indirect=True)
 @pytest.mark.parametrize('init_workers', [0, 1])
 @require_ray
@@ -266,7 +286,7 @@ async def test_auto_scale_in(ray_large_cluster):
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
         new_worker_nums = 3
-        await asyncio.gather(*[autoscaler_ref.request_worker_node() for _ in range(new_worker_nums)])
+        await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(new_worker_nums)])
         series_size = 100
         assert md.Series(list(range(series_size)), chunk_size=20).sum().execute().fetch() == \
                pd.Series(list(range(series_size))).sum()

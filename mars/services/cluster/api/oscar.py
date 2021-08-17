@@ -221,15 +221,15 @@ class ClusterAPI(AbstractClusterAPI):
     async def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
         await self._uploader_ref.set_band_storage_info(band_name, storage_info)
 
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         node_allocator_ref = await self._get_node_allocator_ref()
-        address = await node_allocator_ref.request_worker_node(worker_cpu, worker_mem, timeout)
+        address = await node_allocator_ref.request_worker(worker_cpu, worker_mem, timeout)
         return address
 
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         node_allocator_ref = await self._get_node_allocator_ref()
-        await node_allocator_ref.release_worker_node(address)
+        await node_allocator_ref.release_worker(address)
         node_info_ref = await self._get_node_info_ref()
         await node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
 

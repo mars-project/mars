@@ -66,7 +66,7 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         """
         Create a new worker
@@ -77,7 +77,7 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         """
         Return a worker
         """

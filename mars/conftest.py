@@ -50,6 +50,7 @@ def ray_start_regular(request):
 def ray_large_cluster(request):
     param = getattr(request, "param", {})
     num_nodes = param.get('num_nodes', 3)
+    num_cpus = param.get('num_cpus', 10)
     try:
         from ray.cluster_utils import Cluster
     except ModuleNotFoundError:
@@ -57,7 +58,7 @@ def ray_large_cluster(request):
     cluster = Cluster()
     remote_nodes = []
     for i in range(num_nodes):
-        remote_nodes.append(cluster.add_node(num_cpus=10))
+        remote_nodes.append(cluster.add_node(num_cpus=num_cpus))
         if len(remote_nodes) == 1:
             ray.init(address=cluster.address)
     register_ray_serializers()

@@ -164,11 +164,11 @@ class K8SClusterBackend(AbstractClusterBackend):
         except asyncio.CancelledError:
             pass
 
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         raise NotImplementedError
 
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         raise NotImplementedError
 
 

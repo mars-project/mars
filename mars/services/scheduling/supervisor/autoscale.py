@@ -64,16 +64,16 @@ class AutoscalerActor(mo.Actor):
     async def unregister_session(self, session_id: str):
         self.queueing_refs.pop(session_id, None)
 
-    async def request_worker_node(
+    async def request_worker(
             self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
         start_time = time.time()
-        worker_address = await self._cluster_api.request_worker_node(worker_cpu, worker_mem, timeout)
+        worker_address = await self._cluster_api.request_worker(worker_cpu, worker_mem, timeout)
         self._dynamic_workers.add(worker_address)
         logger.info("Requested new workers %s in %.4f seconds, current dynamic worker nums is %s",
                     worker_address, time.time() - start_time, self.get_dynamic_worker_nums())
         return worker_address
 
-    async def release_worker_node(self, address: str):
+    async def release_worker(self, address: str):
         """
         Release a worker node.
         Parameters
@@ -93,7 +93,7 @@ class AutoscalerActor(mo.Actor):
             while not await self.global_slot_ref.is_band_idle(band):
                 await asyncio.sleep(0.1)
         await self.migrate_data_of_bands(bands)
-        await self._cluster_api.release_worker_node(address)
+        await self._cluster_api.release_worker(address)
         self._dynamic_workers.remove(address)
         logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
 
@@ -181,7 +181,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             if self._autoscaler.get_dynamic_worker_nums() < self._min_workers:
                 logger.info(f'Start to request %s initial workers.', self._min_workers)
                 initial_worker_addresses = await asyncio.gather(*[
-                    self._autoscaler.request_worker_node() for _ in range(
+                    self._autoscaler.request_worker() for _ in range(
                         self._min_workers - self._autoscaler.get_dynamic_worker_nums())])
                 logger.info(f'Finished requesting %s initial workers %s',
                             len(initial_worker_addresses), initial_worker_addresses)
@@ -203,7 +203,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
     async def _scale_out(self, queueing_refs):
         logger.info("Try to scale out, current dynamic workers %s", self._autoscaler.get_dynamic_worker_nums())
         start_time = time.time()
-        await self._autoscaler.request_worker_node()
+        await self._autoscaler.request_worker()
         await asyncio.sleep(self._scheduler_backlog_timeout)
         rnd = 1
         while any([await queueing_ref.all_bands_busy() for queueing_ref in queueing_refs]):
@@ -211,7 +211,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             if self._autoscaler.get_dynamic_worker_nums() + worker_num > self._max_workers:
                 worker_num = self._max_workers - self._autoscaler.get_dynamic_worker_nums()
             await asyncio.gather(
-                *[self._autoscaler.request_worker_node() for _ in range(worker_num)])
+                *[self._autoscaler.request_worker() for _ in range(worker_num)])
             rnd += 1
             await asyncio.sleep(self._sustained_scheduler_backlog_timeout)
         logger.info("Scale out finished in %s round, took %s seconds, current dynamic workers %s",
@@ -241,7 +241,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             # Release workers one by one to ensure others workers which the current is moving data to
             # is not being releasing.
             for worker_address in worker_addresses:
-                await self._autoscaler.release_worker_node(worker_address)
+                await self._autoscaler.release_worker(worker_address)
             logger.info('Finished offline workers %s in %.4f seconds', worker_addresses, time.time() - start_time)
 
     async def stop(self):

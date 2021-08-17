@@ -11,5 +11,5 @@ storage:
   backends: [ray]
 scheduling:
   autoscale:
-    enabled: true
+    enabled: false
     scheduler_backlog_timeout: 10
