@@ -127,13 +127,13 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
     async def get_sessions(self) -> List[SessionInfo]:
         addr = f'{self._address}/api/session'
         res = await self._request_url('GET', addr)
-        res_obj = json.loads((await res.read()).decode())
+        res_obj = json.loads(res.body.decode())
         return [SessionInfo(**kw) for kw in res_obj['sessions']]
 
     async def create_session(self, session_id: str) -> str:
         addr = f'{self._address}/api/session/{session_id}'
         res = await self._request_url(path=addr, method='PUT', data=b'')
-        return (await res.read()).decode()
+        return res.body.decode()
 
     async def delete_session(self, session_id: str):
         addr = f'{self._address}/api/session/{session_id}'
@@ -143,14 +143,14 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         addr = f'{self._address}/api/session/{session_id}'
         params = dict(action='check_exist')
         res = await self._request_url('GET', addr, params=params)
-        return bool(int(await res.read()))
+        return bool(int(res.body.decode()))
 
     async def get_last_idle_time(self, session_id: Union[str, None] = None) -> Union[float, None]:
         session_id = session_id or ''
         addr = f'{self._address}/api/session/{session_id}'
         params = dict(action='get_last_idle_time')
         res = await self._request_url('GET', addr, params=params)
-        content = await res.read()
+        content = res.body.decode()
         return float(content) if content else None
 
     async def fetch_tileable_op_logs(self,
@@ -162,5 +162,4 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         params = dict(offsets=_encode_size(chunk_op_key_to_offsets),
                       sizes=_encode_size(chunk_op_key_to_sizes))
         res = await self._request_url('GET', addr, params=params)
-        content = await res.read()
-        return json.loads(content)
+        return json.loads(res.body.decode())
