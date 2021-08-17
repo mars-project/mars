@@ -69,7 +69,7 @@ class StorageHandlerActor(mo.StatelessActor):
         for backend, init_params in self._storage_init_params.items():
             logger.debug('Start storage %s with params %s', backend, init_params)
             storage_cls = get_storage_backend(backend)
-            client = storage_cls(address=self.address, **init_params)
+            client = storage_cls(**init_params)
             for level in StorageLevel.__members__.values():
                 if client.level & level:
                     clients[level] = client

@@ -161,6 +161,7 @@ class PlasmaStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         loop = asyncio.get_running_loop()
+        kwargs.pop('address', None)
         store_memory = kwargs.pop('store_memory')
         plasma_directory = kwargs.pop('plasma_directory', None)
         check_dir_size = kwargs.pop('check_dir_size', True)

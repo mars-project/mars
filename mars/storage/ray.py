@@ -102,6 +102,17 @@ class RayFileObject(BufferWrappedFileObject):
         pass
 
 
+_support_specify_owner = None
+
+
+def support_specify_owner():
+    global _support_specify_owner
+    if _support_specify_owner is None:
+        sig = inspect.signature(ray.put)
+        _support_specify_owner = '_owner' in sig.parameters
+    return _support_specify_owner
+
+
 @register_storage_backend
 class RayStorage(StorageBackend):
     name = 'ray'
@@ -109,19 +120,12 @@ class RayStorage(StorageBackend):
     def __init__(self, *args, **kwargs):
         self._address = kwargs['address']
         self._ray_supervisor_actor = None
-        self._support_specify_owner = False
-        sig = inspect.signature(ray.put)
-        if '_owner' in sig.parameters:
-            self._support_specify_owner = True
-        else:
-            logger.warning('Current installed ray version does not support specify owner, '
-                           'autoscale may not work.')
 
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         _register_sparse_matrix_serializer()
-        return dict(), dict()
+        return kwargs, dict()
 
     @staticmethod
     @implements(StorageBackend.teardown)
@@ -144,7 +148,7 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        if self._support_specify_owner:
+        if support_specify_owner():
             ray_supervisor_actor = await self._get_ray_supervisor_actor()
             object_id = ray.put(obj, _owner=ray_supervisor_actor)
         else:

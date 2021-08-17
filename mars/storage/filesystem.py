@@ -43,6 +43,7 @@ class FileSystemStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
+        kwargs.pop('address', None)
         root_dirs = kwargs.pop('root_dirs')
         level = kwargs.pop('level')
         size = kwargs.pop('size', None)

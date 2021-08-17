@@ -60,7 +60,7 @@ class RayClusterBackend(AbstractClusterBackend):
         self._cluster_state_ref = cluster_state_ref
 
     @classmethod
-    async def create(cls, node_role: NodeRole, lookup_address: str, pool_address: str):
+    async def create(cls, node_role: NodeRole, lookup_address: str, pool_address: str) -> 'RayClusterBackend':
         try:
             ref = await mo.create_actor(
                 ClusterStateActor, uid=ClusterStateActor.default_uid(),
@@ -192,6 +192,11 @@ class RayCluster:
         # load config file to dict.
         if not config or isinstance(config, str):
             config = _load_config(config)
+        from mars.storage.ray import support_specify_owner
+        if not support_specify_owner():
+            logger.warning('Current installed ray version does not support specify owner, '
+                           'autoscale may not work.')
+            # config['scheduling']['autoscale']['enabled'] = False
         self._cluster_name = cluster_name
         self._supervisor_mem = supervisor_mem
         self._worker_num = worker_num

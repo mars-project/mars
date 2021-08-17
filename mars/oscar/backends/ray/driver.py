@@ -40,7 +40,7 @@ class RayActorDriver(BaseActorDriver):
         create_pg_timeout = 10
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
         if not done:
-            raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
+            raise Exception(f'''Can't create placement group {pg} in {create_pg_timeout} seconds''')
         cluster_info = {
             'address_to_resources': address_to_resources,
             'pg_name': pg_name,

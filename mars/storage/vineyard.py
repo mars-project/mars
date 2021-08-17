@@ -117,6 +117,7 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         loop = asyncio.get_running_loop()
+        kwargs.pop('address', None)
         etcd_endpoints = kwargs.pop('etcd_endpoints', None)
         vineyard_size = kwargs.pop('vineyard_size', '1Gi')
         vineyard_socket = kwargs.pop('vineyard_socket', None)

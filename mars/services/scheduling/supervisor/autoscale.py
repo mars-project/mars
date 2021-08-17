@@ -52,8 +52,9 @@ class AutoscalerActor(mo.Actor):
             GlobalSlotManagerActor.default_uid(), address=self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
         self._strategy = await strategy_cls.create(self._autoscale_conf, self)
-        logger.info(f'Auto scale strategy %s started', self._strategy)
-        await self._strategy.start()
+        if self._enabled:
+            logger.info(f'Auto scale strategy %s started', self._strategy)
+            await self._strategy.start()
 
     async def register_session(self, session_id: str, address: str):
         from .queueing import SubtaskQueueingActor
