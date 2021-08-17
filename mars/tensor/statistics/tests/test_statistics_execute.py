@@ -24,8 +24,8 @@ from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
 from mars.tensor.base import sort
 from mars.tensor.merge import stack
 from mars.tensor.reduction import all as tall
-    
-    
+
+
 def test_average_execution(setup):
     data = arange(1, 5, chunk_size=1)
     t = average(data)

@@ -510,7 +510,7 @@ def ks_1samp(x: Union[np.ndarray, list, TileableType],
     # alternative == 'two-sided':
     Dplus = _compute_dplus(cdfvals, N)
     Dminus = _compute_dminus(cdfvals, N)
-    D = mt.max([Dplus, Dminus])
+    D = mt.stack([Dplus, Dminus]).max()
     if mode == 'auto':  # Always select exact
         mode = 'exact'
     if mode == 'exact':

@@ -126,8 +126,8 @@ def test_groupby_params():
     params.pop('index', None)
     grouped.params = params
     grouped.refresh_params()
-    
-    
+
+
 def test_dataframe_dir():
     df = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=list('ABC')))
     dir_result = set(dir(df))

@@ -21,7 +21,7 @@ from mars.tensor.datasource import tensor
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
 
-    
+
 def test_fft_execution(setup):
     raw = np.random.rand(10, 20, 30)
     t = tensor(raw, chunk_size=(8, 8, 30))
