@@ -14,6 +14,7 @@
 
 
 import asyncio
+import logging
 from functools import partial
 from typing import Callable, Dict, List, Iterable, Set, Tuple
 
@@ -28,6 +29,8 @@ from ....typing import BandType
 from ...subtask import SubtaskGraph
 from ..analyzer import GraphAnalyzer
 from ..core import Task
+
+logger = logging.getLogger(__name__)
 
 
 class CancellableTiler(Tiler):
@@ -147,9 +150,12 @@ class TaskPreprocessor:
     def analyze(self,
                 chunk_graph: ChunkGraph,
                 available_bands: Dict[BandType, int]) -> SubtaskGraph:
+        logger.info('Start to gen subtask graph.')
         task = self._task
         analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
-        return analyzer.gen_subtask_graph()
+        graph = analyzer.gen_subtask_graph()
+        logger.info('Generated subtask graph of %s subtasks.', len(graph))
+        return graph
 
     def _get_done(self):
         return self._done.is_set()
