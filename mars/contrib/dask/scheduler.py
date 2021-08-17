@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple
-
 from dask.core import istask, ishashable
 
+from typing import List, Tuple
 from .utils import reduce
 from ...remote import spawn
 
@@ -39,8 +38,11 @@ def mars_scheduler(dsk: dict, keys: List[List[str]]):
     Object
         Computed values corresponding to the provided keys.
     """
-
-    return [[reduce(mars_dask_get(dsk, keys)).execute().fetch()]]
+    res = reduce(mars_dask_get(dsk, keys)).execute().fetch()
+    if not isinstance(res, List):
+        return [[res]]
+    else:
+        return res
 
 
 def mars_dask_get(dsk: dict, keys: List[List]):

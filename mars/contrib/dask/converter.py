@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from dask import is_dask_collection, optimize
+from dask.bag import Bag
 
 from .scheduler import mars_dask_get
 from .utils import reduce
+from ...remote import spawn
 
 
 def convert_dask_collection(dc):
@@ -46,5 +48,8 @@ def convert_dask_collection(dc):
     else:
         raise ValueError(
             f"Dask collection object seems be broken, with unexpected key type:'{type(first_key).__name__}'")
-
-    return reduce(mars_dask_get(dsk, [key]))
+    res = reduce(mars_dask_get(dsk, [key]))
+    if isinstance(dc, Bag):
+        return spawn(lambda x: list(x[0][0]), args=(res,))
+    else:
+        return res

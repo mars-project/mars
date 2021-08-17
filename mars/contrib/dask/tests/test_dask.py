@@ -112,12 +112,24 @@ def test_bag(setup_cluster):
 
     dask_res = result.compute()
     assert dask_res == result.compute(scheduler=mars_scheduler)
-    assert dask_res == list(
-        convert_dask_collection(result).execute().fetch()
-    )  # TODO: dask-bag computation will return weird tuple, which we don't know why
+    assert dask_res == convert_dask_collection(result).execute().fetch()
 
 
 @pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_dask_errors():
     with pytest.raises(TypeError):
         convert_dask_collection({"foo": 0, "bar": 1})
+
+
+def test_multiple_objects(setup_cluster):
+    import dask
+
+    def inc(x: int):
+        return x + 1
+
+    test_list = [dask.delayed(inc)(i) for i in range(10)]
+    test_tuple = tuple(dask.delayed(inc)(i) for i in range(10))
+    test_dict = {str(i): dask.delayed(inc)(i) for i in range(10)}
+
+    for test_obj in (test_list, test_tuple, test_dict):
+        assert dask.compute(test_obj) == dask.compute(test_obj, scheduler=mars_scheduler)
