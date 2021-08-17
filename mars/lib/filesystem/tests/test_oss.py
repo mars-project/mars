@@ -15,7 +15,7 @@
 import time
 from io import BytesIO
 
-import mock
+from mars.tests.core import mock
 
 import mars.dataframe as md
 from mars.lib.filesystem import oss
