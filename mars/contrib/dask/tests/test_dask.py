@@ -121,6 +121,7 @@ def test_dask_errors():
         convert_dask_collection({"foo": 0, "bar": 1})
 
 
+@pytest.mark.skipif(not dask_installed, reason='dask not installed')
 def test_multiple_objects(setup_cluster):
     import dask
 
