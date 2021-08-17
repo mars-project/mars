@@ -73,7 +73,6 @@ def _find_service_entries(node_role: NodeRole,
     svc_entries_list = []
 
     web_handlers = {}
-    bokeh_apps = {}
     for svc_names in services:
         if isinstance(svc_names, str):
             svc_names = [svc_names]
@@ -107,7 +106,6 @@ def _find_service_entries(node_role: NodeRole,
                         web_mod = importlib.import_module(
                             mod_name + '.' + svc_name + '.api.web')
                         web_handlers.update(getattr(web_mod, 'web_handlers', {}))
-                        bokeh_apps.update(getattr(web_mod, 'bokeh_apps', {}))
                     except ImportError:
                         pass
                 except ImportError:
@@ -116,7 +114,7 @@ def _find_service_entries(node_role: NodeRole,
                 raise ImportError(f'Cannot discover {node_role} for service {svc_name}')
         svc_entries_list.append(svc_entries)
 
-    return svc_entries_list, web_handlers, bokeh_apps
+    return svc_entries_list, web_handlers
 
 
 def _normalize_modules(modules: _ModulesType):
@@ -139,7 +137,7 @@ def _iter_service_instances(node_role: NodeRole,
     if reverse:
         service_names = service_names[::-1]
 
-    svc_entries_list, _, _ = _find_service_entries(
+    svc_entries_list, _ = _find_service_entries(
         node_role, service_names, modules)
     for entries in svc_entries_list:
         yield [svc_entry.get_instance(address, config) for svc_entry in entries]
@@ -153,7 +151,7 @@ async def start_services(node_role: NodeRole, config: Dict,
     # discover services
     service_names = config['services']
 
-    svc_entries_list, web_handlers, bokeh_apps = _find_service_entries(
+    svc_entries_list, web_handlers = _find_service_entries(
         node_role, service_names, modules)
 
     if 'web' in service_names:
@@ -163,7 +161,6 @@ async def start_services(node_role: NodeRole, config: Dict,
             web_config = config['web'] = dict()
 
         web_config['web_handlers'] = web_handlers
-        web_config['bokeh_apps'] = bokeh_apps
 
     for entries in svc_entries_list:
         instances = [svc_entry.get_instance(address, config) for svc_entry in entries]

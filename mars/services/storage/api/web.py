@@ -101,7 +101,7 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
             path=path, method='POST',
             headers={'Content-Type': 'application/octet-stream'},
             data=body)
-        return deserialize_serializable(await res.read())
+        return deserialize_serializable(res.body)
 
     async def put(self, data_key: str,
                   obj: object,
@@ -112,4 +112,4 @@ class WebStorageAPI(AbstractStorageAPI, MarsWebAPIClientMixin):
             path=path, method='PUT', params=params,
             headers={'Content-Type': 'application/octet-stream'},
             data=serialize_serializable(obj))
-        return deserialize_serializable(await res.read())
+        return deserialize_serializable(res.body)
