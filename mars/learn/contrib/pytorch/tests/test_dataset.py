@@ -25,7 +25,7 @@ torch_installed = lazy_import('torch', globals=globals()) is not None
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_MarsDataset(setup):
+def test_mars_dataset(setup):
     from torch.utils.data import Dataset
     import numpy as np
     import pandas as pd
@@ -102,7 +102,7 @@ def test_MarsDataset(setup):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_SequentialSampler(setup_cluster):
+def test_sequential_sampler(setup_cluster):
     import torch
 
     data = mt.random.rand(1000, 32, dtype='f4')
@@ -140,7 +140,7 @@ def test_SequentialSampler(setup_cluster):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_RandomSampler(setup_cluster):
+def test_random_sampler(setup_cluster):
     import torch
 
     data = mt.random.rand(1000, 32, dtype='f4')
@@ -216,7 +216,7 @@ def test_RandomSampler(setup_cluster):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_SubsetRandomSampler(setup_cluster):
+def test_subset_random_sampler(setup_cluster):
     import numpy as np
     import torch
 
@@ -239,7 +239,7 @@ def test_SubsetRandomSampler(setup_cluster):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_DistributedSampler(setup_cluster):
+def test_distributed_sampler(setup_cluster):
     import torch
 
     data = mt.random.rand(1001, 32, dtype='f4')
@@ -275,7 +275,7 @@ def test_DistributedSampler(setup_cluster):
 
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_MarsDataset_script(setup_cluster):
+def test_mars_dataset_script(setup_cluster):
     sess = setup_cluster
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         'pytorch_dataset.py')

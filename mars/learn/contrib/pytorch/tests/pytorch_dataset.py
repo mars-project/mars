@@ -73,6 +73,6 @@ def main(feature_data, labels):
 if __name__ == "__main__":
     assert len(sys.argv) == 2
     assert sys.argv[1] == 'multiple'
-    feature_data = feature_data
-    labels = labels
+    feature_data = globals()['feature_data']
+    labels = globals()['labels']
     main(feature_data, labels)
