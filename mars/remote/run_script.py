@@ -74,11 +74,7 @@ class RunScript(MergeDictOperand):
         return self.new_tileable(inputs)
 
     @classmethod
-    def tile(cls, op: "RunScript"):
-        if len(op.inputs) > 0:
-            # trigger inputs to execute
-            yield
-
+    def _get_chunk_data(cls, op: "RunScript"):
         new_data = None
         input_chunks = []
         inputs_iter = iter(op.inputs)
@@ -91,13 +87,22 @@ class RunScript(MergeDictOperand):
                     input_chunks.extend(v.chunks)
                 else:
                     new_data[k] = v
+        return new_data, input_chunks
+
+    @classmethod
+    def tile(cls, op: "RunScript"):
+        if len(op.inputs) > 0:
+            # trigger inputs to execute
+            yield
+
+        new_data, input_chunks = cls._get_chunk_data(op)
 
         out_chunks = []
         for i in range(op.world_size):
             chunk_op = op.copy().reset_key()
             chunk_op._data = new_data
             chunk_op._rank = i
-            out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
+            out_chunks.append(chunk_op.new_chunk(input_chunks, index=(i,)))
 
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, chunks=out_chunks,
