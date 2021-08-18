@@ -298,8 +298,8 @@ def test_split():
     assert splits[2].flags['F_CONTIGUOUS'] is True
     assert splits[0].flags['C_CONTIGUOUS'] is False
 
-    for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
-        splits = split(a, (3,5))
+    for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+        splits = split(a, (3, 5))
         assert len(splits) == 3
 
 

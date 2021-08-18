@@ -21,7 +21,7 @@ from mars import tensor as mt
 from mars.core import tile
 from mars.tensor.lib import nd_grid
 
-    
+
 def test_index_tricks():
     mgrid = nd_grid()
     g = mgrid[0:5, 0:5]

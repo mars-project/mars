@@ -27,8 +27,8 @@ from mars import tensor as mt
 from mars.dataframe.core import DATAFRAME_TYPE
 from mars.learn.model_selection import train_test_split
 from mars.lib.sparse import SparseNDArray
-    
-    
+
+
 def test_train_test_split_errors(setup):
     pytest.raises(ValueError, train_test_split)
 

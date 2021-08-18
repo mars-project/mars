@@ -44,8 +44,6 @@ def concat(objs: List):
         res = df_concat(objs)
     else:
         res = objs
-        while isinstance(res, List):
-            res = res[0]
     return res.compute() if is_dask_collection(res) else res
 
 
