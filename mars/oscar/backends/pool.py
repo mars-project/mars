@@ -1025,19 +1025,6 @@ class MainActorPoolBase(ActorPoolBase):
             # or only recover process, remove all created actors
             self._allocated_actors[address] = dict()
 
-    async def recover_sub_pool(self, address: str):
-        process_index = self._config.get_process_index(address)
-        # process dead, restart it
-        # remember always use spawn to recover sub pool
-        self.sub_processes[address] = await self.__class__.start_sub_pool(
-            self._config, process_index, 'spawn')
-
-        if self._auto_recover == 'actor':
-            # need to recover all created actors
-            for _, message in self._allocated_actors[address].values():
-                create_actor_message: CreateActorMessage = message
-                await self.call(address, create_actor_message)
-
     async def monitor_sub_pools(self):
         try:
             while not self._stopped.is_set():
