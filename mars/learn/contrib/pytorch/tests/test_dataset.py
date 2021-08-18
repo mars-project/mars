@@ -64,7 +64,8 @@ def test_mars_dataset(setup):
     data_verify = data.iloc[1].execute().fetch().values
     labels_verify = labels.iloc[1].execute().fetch().values
 
-    train_dataset = MarsDataset(data, labels)
+    train_dataset = MarsDataset(data, labels, fetch_kwargs={
+        'extra_config': {'check_series_name': False}})
     np.testing.assert_array_equal(train_dataset[1][0], data_verify)
     np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
     assert len(train_dataset) == 1000
@@ -74,7 +75,8 @@ def test_mars_dataset(setup):
 
     label_verify = label[1].execute().fetch()
 
-    train_dataset = MarsDataset(data, label)
+    train_dataset = MarsDataset(data, label, fetch_kwargs={
+        'extra_config': {'check_series_name': False}})
     np.testing.assert_array_equal(train_dataset[1][0], data_verify)
     assert train_dataset[1][1] == label_verify
     assert len(train_dataset) == 1000

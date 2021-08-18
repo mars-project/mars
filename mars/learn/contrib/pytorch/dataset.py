@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 import numpy as np
 import pandas as pd
 try:
@@ -34,10 +36,11 @@ class MarsDataset(Dataset):
     DataFrame, Series. Additionally, it's constructor can receive
     np.ndarray, pd.DataFrame, pd.Series type.
     """
-    def __init__(self, *tileables):
+    def __init__(self, *tileables, fetch_kwargs=None):
 
         self._context = get_context()
         self._tileables = tileables
+        self._fetch_kwargs = fetch_kwargs or dict()
 
         self._check_and_execute()
 
@@ -56,16 +59,19 @@ class MarsDataset(Dataset):
     def __getitem__(self, index):
         return tuple(self.get_data(t, index) for t in self._tileables)
 
-    @staticmethod
-    def get_data(t, index):
+    def get_data(self, t, index):
+        fetch_kwargs = dict()
+        if self._fetch_kwargs:
+            fetch_kwargs = copy.deepcopy(self._fetch_kwargs)
+
         if isinstance(t, TENSOR_TYPE):
-            return t[index].fetch()
+            return t[index].fetch(**fetch_kwargs)
         elif isinstance(t, np.ndarray):
             return t[index]
         elif isinstance(t, DATAFRAME_TYPE):
-            return t.iloc[index:index+1].fetch().values[0]
+            return t.iloc[index].fetch(**fetch_kwargs)
         elif isinstance(t, SERIES_TYPE):
-            return t.iloc[index].fetch()
+            return t.iloc[index].fetch(**fetch_kwargs)
         elif isinstance(t, pd.DataFrame):
             return t.iloc[index].values
         elif isinstance(t, pd.Series):
