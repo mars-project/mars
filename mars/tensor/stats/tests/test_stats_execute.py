@@ -199,7 +199,7 @@ def test_t_test_execution(setup):
 
 
 @pytest.mark.parametrize('chunk_size', [5, 15])
-@pytest.mark.parametrize('mode', ['auto', 'less', 'greater', 'asymp', 'approx'])
+@pytest.mark.parametrize('mode', ['auto', 'asymp', 'approx'])
 def test_ks_1samp(setup, chunk_size, mode):
     x = tensor(np.linspace(-15, 15, 9), chunk_size=5)
 
