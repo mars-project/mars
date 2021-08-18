@@ -18,6 +18,7 @@ import os
 def main():
     pass
 
+
 if __name__ == "__main__":
     assert os.environ['WORLD_SIZE'] == '2'
     main()

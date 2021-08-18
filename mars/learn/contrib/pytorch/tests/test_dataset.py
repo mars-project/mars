@@ -38,7 +38,7 @@ def test_mars_dataset(setup):
     labels_verify = labels[1].execute().fetch()
 
     train_dataset = MarsDataset(data, labels)
-    
+
     assert isinstance(train_dataset, Dataset)
     np.testing.assert_array_equal(train_dataset[1][0], data_verify)
     np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
@@ -73,7 +73,7 @@ def test_mars_dataset(setup):
     label = labels[1]
 
     label_verify = label[1].execute().fetch()
-    
+
     train_dataset = MarsDataset(data, label)
     np.testing.assert_array_equal(train_dataset[1][0], data_verify)
     assert train_dataset[1][1] == label_verify
@@ -85,7 +85,7 @@ def test_mars_dataset(setup):
 
     data_verify = data.iloc[1].values
     labels_verify = labels.iloc[1].values
-    
+
     train_dataset = MarsDataset(data, labels)
     np.testing.assert_array_equal(train_dataset[1][0], data_verify)
     np.testing.assert_array_equal(train_dataset[1][1], labels_verify)
@@ -251,7 +251,7 @@ def test_distributed_sampler(setup_cluster):
         train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=-1)
     exec_msg = e.value.args[0]
     assert exec_msg == "Invalid rank -1, rank should be in the interval [0, 1]"
-    
+
     train_sampler = DistributedSampler(train_dataset, num_replicas=2, rank=0,
                                        drop_last=True, shuffle=True)
     assert len(train_sampler) == 500

@@ -39,7 +39,7 @@ def main(feature_data, labels):
 
     data = feature_data
     labels = labels
-    
+
     train_dataset = MarsDataset(data, labels)
     assert len(train_dataset) == 1000
 
@@ -66,7 +66,7 @@ def main(feature_data, labels):
             optimizer.step()
             running_loss += loss.item()
         print(f"running_loss is {loss.item()}")
-    
+
     print("Done!")
 
 
