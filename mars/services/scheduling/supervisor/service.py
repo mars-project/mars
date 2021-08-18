@@ -30,9 +30,9 @@ class SchedulingSupervisorService(AbstractService):
             "submit_period": 1,
             "autoscale" : {
                 "enabled": false,
-                "scheduler_backlog_timeout": 10,
-                "sustained_scheduler_backlog_timeout": 10,
-                "worker_idle_timeout": 10,
+                "scheduler_backlog_timeout": 20,
+                "sustained_scheduler_backlog_timeout": 20,
+                "worker_idle_timeout": 40,
                 "min_workers": 1,
                 "max_workers": 100
             }

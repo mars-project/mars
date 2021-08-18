@@ -206,6 +206,25 @@ async def test_load_third_party_modules_from_config(ray_large_cluster,
         assert len(get_output_filenames()) == 7
 
 
+@require_ray
+def test_load_config():
+    default_config = _load_config()
+    assert default_config['scheduling']['autoscale']['enabled'] is False
+    default_config = _load_config({'scheduling': {'autoscale': {'enabled': True}}})
+    assert default_config['scheduling']['autoscale']['enabled'] is True
+    default_config = _load_config({
+        'scheduling.autoscale.enabled': True,
+        'scheduling.autoscale.scheduler_backlog_timeout': 1
+    })
+    assert default_config['scheduling']['autoscale']['enabled'] is True
+    assert default_config['scheduling']['autoscale']['scheduler_backlog_timeout'] is 1
+    with pytest.raises(ValueError):
+        _load_config({
+            'scheduling.autoscale.enabled': True,
+            'scheduling.autoscale': {}
+        })
+
+
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 3, 'num_cpus': 1}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
@@ -227,18 +246,18 @@ async def test_request_worker(ray_large_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_auto_scale_out(ray_large_cluster, init_workers: int):
-    config = _load_config()
-    config['scheduling']['autoscale']['enabled'] = True
-    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
-    config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
-    config['scheduling']['autoscale']['sustained_scheduler_backlog_timeout'] = 1
-    config['scheduling']['autoscale']['worker_idle_timeout'] = 10000000
-    config['scheduling']['autoscale']['max_workers'] = 9
     client = await new_cluster('test_cluster',
                                worker_num=init_workers,
                                worker_cpu=2,
                                worker_mem=100 * 1024 ** 2,
-                               config=config)
+                               config={
+                                   'scheduling.autoscale.enabled': True,
+                                   'scheduling.autoscale.scheduler_check_interval': 1,
+                                   'scheduling.autoscale.scheduler_backlog_timeout': 1,
+                                   'scheduling.autoscale.sustained_scheduler_backlog_timeout': 1,
+                                   'scheduling.autoscale.worker_idle_timeout': 10000000,
+                                   'scheduling.autoscale.max_workers': 9
+                               })
     async with client:
         def time_consuming(x):
             time.sleep(2)
@@ -289,18 +308,18 @@ async def test_auto_scale_in(ray_large_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_ownership_when_scale_in(ray_large_cluster):
-    config = _load_config()
-    config['scheduling']['autoscale']['enabled'] = True
-    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
-    config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
-    config['scheduling']['autoscale']['worker_idle_timeout'] = 5
-    config['scheduling']['autoscale']['max_workers'] = 4
-    config['scheduling']['autoscale']['min_workers'] = 1
     client = await new_cluster('test_cluster',
                                worker_num=0,
                                worker_cpu=2,
                                worker_mem=100 * 1024 ** 2,
-                               config=config)
+                               config={
+                                   'scheduling.autoscale.enabled': True,
+                                   'scheduling.autoscale.scheduler_check_interval': 1,
+                                   'scheduling.autoscale.scheduler_backlog_timeout': 1,
+                                   'scheduling.autoscale.worker_idle_timeout': 5,
+                                   'scheduling.autoscale.min_workers': 1,
+                                   'scheduling.autoscale.max_workers': 4
+                               })
     async with client:
         from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(

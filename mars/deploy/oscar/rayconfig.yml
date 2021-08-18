@@ -12,4 +12,5 @@ storage:
 scheduling:
   autoscale:
     enabled: false
-    scheduler_backlog_timeout: 10
+    scheduler_backlog_timeout: 20
+    worker_idle_timeout: 40

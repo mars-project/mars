@@ -29,6 +29,7 @@ from io import BytesIO
 from enum import Enum
 
 import numpy as np
+
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -154,6 +155,7 @@ def test_tokenize():
 
     def f(a, b):
         return np.add(a, b)
+
     assert utils.tokenize(f) == utils.tokenize(copy.deepcopy(f))
 
     partial_f = partial(f, 1, k=0)
@@ -396,3 +398,22 @@ def _run_task_timeout_detector(log_file_name):
         task.cancel()
 
     asyncio.run(main())
+
+
+def test_merge_dict():
+    from ..utils import merge_dict
+    assert merge_dict({}, {1: 2}) == {1: 2}
+    assert merge_dict({1: 2}, {}) == {1: 2}
+    assert merge_dict({'a': {1: 2}, 'b': {2: 3}, 'c': {1: {2: 3}}},
+                      {'a': {1: 3}, 'b': {2: 3}, 'c': {1: {2: 4}}}) ==\
+           {'a': {1: 3}, 'b': {2: 3}, 'c': {1: {2: 4}}}
+    with pytest.raises(ValueError):
+        merge_dict({'a': {1: 2}, 'b': {2: 3}}, {'a': {1: 3}}, overwrite=False)
+
+
+def test_flatten_dict_to_nested_dict():
+    from ..utils import flatten_dict_to_nested_dict
+    assert flatten_dict_to_nested_dict({}) == {}
+    with pytest.raises(ValueError):
+        flatten_dict_to_nested_dict({'a.b.c': 1, 'a.b': 2})
+    assert flatten_dict_to_nested_dict({'a.b.c': 1, 'a.b.d': 2}) == {'a': {'b': {'c': 1, 'd': 2}}}

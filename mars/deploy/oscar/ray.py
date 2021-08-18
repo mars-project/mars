@@ -28,6 +28,7 @@ from ...oscar.backends.ray.utils import (
 )
 from ...services.cluster.backends.base import register_cluster_backend, AbstractClusterBackend
 from ...services import NodeRole
+from ...utils import merge_dict, flatten_dict_to_nested_dict
 from ...utils import lazy_import
 from ..utils import load_service_config_file, get_third_party_modules_from_config
 from .service import start_supervisor, start_worker, stop_supervisor, stop_worker
@@ -43,12 +44,22 @@ DEFAULT_SUPERVISOR_STANDALONE = False
 DEFAULT_SUPERVISOR_SUB_POOL_NUM = 0
 
 
-def _load_config(filename=None):
+def _load_config(config: Union[str, Dict] = None):
     # use default config
-    if not filename:  # pragma: no cover
+    if isinstance(config, str):
+        filename = config
+    else:
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'rayconfig.yml')
-    return load_service_config_file(filename)
+    full_config = load_service_config_file(filename)
+    if config:
+        assert isinstance(config, Dict)
+        flatten_keys = set(k for k in config.keys() if isinstance(k, str) and '.' in k)
+        nested_flatten_config = flatten_dict_to_nested_dict({k: config[k] for k in flatten_keys})
+        nested_config = {k: config[k] for k in config.keys() if k not in flatten_keys}
+        config = merge_dict(nested_config, nested_flatten_config, overwrite=False)
+        merge_dict(full_config, config)
+    return full_config
 
 
 @register_cluster_backend
@@ -198,20 +209,13 @@ class RayCluster:
                  worker_cpu: int = 16,
                  worker_mem: int = 32 * 1024 ** 3,
                  config: Union[str, Dict] = None):
-        # load config file to dict.
-        if not config or isinstance(config, str):
-            config = _load_config(config)
-        from mars.storage.ray import support_specify_owner
-        if not support_specify_owner():
-            logger.warning('Current installed ray version does not support specify owner, '
-                           'autoscale may not work.')
-            # config['scheduling']['autoscale']['enabled'] = False
         self._cluster_name = cluster_name
         self._supervisor_mem = supervisor_mem
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
         self._worker_mem = worker_mem
-        self._config = config
+        # load config file to dict.
+        self._config = _load_config(config)
         self.supervisor_address = None
         # Hold actor handles to avoid being freed
         self._supervisor_pool = None
@@ -233,7 +237,15 @@ class RayCluster:
             .get('ray', {}) \
             .get('supervisor', {}) \
             .get('sub_pool_num', DEFAULT_SUPERVISOR_SUB_POOL_NUM)
+        from mars.storage.ray import support_specify_owner
+        if not support_specify_owner():
+            logger.warning('Current installed ray version does not support specify owner, '
+                           'autoscale may not work.')
+            # config['scheduling']['autoscale']['enabled'] = False
         self.supervisor_address = process_placement_to_address(self._cluster_name, 0, 0)
+        if 'cluster' not in self._config:
+            self._config['cluster'] = dict()
+        self._config['cluster']['lookup_address'] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {
             'CPU': 1,
             # 'memory': self._supervisor_mem

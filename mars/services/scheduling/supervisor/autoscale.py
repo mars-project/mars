@@ -160,10 +160,13 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
     def __init__(self, autoscale_conf: Dict[str, Any], autoscaler):
         self._autoscaler = autoscaler
         self._scheduler_check_interval = autoscale_conf.get('scheduler_check_interval', 1)
-        self._scheduler_backlog_timeout = autoscale_conf.get('scheduler_backlog_timeout', 10)
+        self._scheduler_backlog_timeout = autoscale_conf.get('scheduler_backlog_timeout', 20)
         self._sustained_scheduler_backlog_timeout = autoscale_conf.get(
             'sustained_scheduler_backlog_timeout', self._scheduler_backlog_timeout)
-        self._worker_idle_timeout = autoscale_conf.get('worker_idle_timeout', 10)
+        # Make worker_idle_timeout greater than scheduler_backlog_timeout to
+        # avoid cluster fluctuate back and forth。
+        self._worker_idle_timeout = autoscale_conf.get(
+            'worker_idle_timeout', 2 * self._scheduler_backlog_timeout)
         self._min_workers = autoscale_conf.get('min_workers', 1)
         assert self._min_workers >= 1, 'Mars need at least 1 worker.'
         self._max_workers = autoscale_conf.get('max_workers', 100)

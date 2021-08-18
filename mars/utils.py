@@ -36,6 +36,7 @@ import time
 import warnings
 import zlib
 from abc import ABC
+from collections import defaultdict
 from contextlib import contextmanager
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
@@ -1260,3 +1261,75 @@ def get_chunk_key_to_data_keys(chunk_graph):
                             keys.append(key)
             chunk_key_to_data_keys[chunk.key] = keys
     return chunk_key_to_data_keys
+
+
+def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):
+    """
+    Merges src dict into dest dict.
+
+    Parameters
+    ----------
+    dest: Dict
+        dest dict
+    src: Dict
+        source dict
+    path: List
+        merge path
+    overwrite: bool
+        Whether overwrite dest dict when where is a conflict
+    Returns
+    -------
+    Dict
+        Updated dest dict
+    """
+    if path is None:
+        path = []
+    for key in src:
+        if key in dest:
+            if isinstance(dest[key], Dict) and isinstance(src[key], Dict):
+                merge_dict(dest[key], src[key], path + [str(key)], overwrite=overwrite)
+            elif dest[key] == src[key]:
+                pass  # same leaf value
+            elif overwrite:
+                dest[key] = src[key]
+            else:
+                raise ValueError('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            dest[key] = src[key]
+    return dest
+
+
+def flatten_dict_to_nested_dict(flatten_dict: Dict, sep='.') -> Dict:
+    """
+    Return nested dict from flatten dict.
+
+    Parameters
+    ----------
+    flatten_dict: Dict
+    sep: str
+        flatten key separator
+
+    Returns
+    -------
+    Dict
+        Nested dict
+    """
+    assert all(isinstance(k, str) for k in flatten_dict.keys())
+    nested_dict = dict()
+    for k in flatten_dict.keys():
+        sub_keys = k.split(sep)
+        sub_nested_dict = nested_dict
+        for i in range(len(sub_keys)):
+            sub_key = sub_keys[i]
+            if i == len(sub_keys) - 1:
+                if sub_key in sub_nested_dict:
+                    raise ValueError(f'Key {k} conflict in sub key {sub_key}.')
+                sub_nested_dict[sub_key] = flatten_dict[k]
+            else:
+                if sub_key not in sub_nested_dict:
+                    new_sub_nested_dict = dict()
+                    sub_nested_dict[sub_key] = new_sub_nested_dict
+                    sub_nested_dict = new_sub_nested_dict
+                else:
+                    sub_nested_dict = sub_nested_dict[sub_key]
+    return nested_dict

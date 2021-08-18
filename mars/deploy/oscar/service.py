@@ -36,7 +36,7 @@ async def start_supervisor(address: str,
         config = load_config(config)
     lookup_address = lookup_address or address
     backend = config['cluster'].get('backend', 'fixed')
-    if (backend == 'fixed' or backend == 'ray') and config['cluster'].get('lookup_address') is None:
+    if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
     if web:
         # try to append web to services
@@ -73,7 +73,7 @@ async def start_worker(address: str,
     if not config or isinstance(config, str):
         config = load_config(config)
     backend = config['cluster'].get('backend', 'fixed')
-    if (backend == 'fixed' or backend == 'ray') and config['cluster'].get('lookup_address') is None:
+    if backend == 'fixed' and config['cluster'].get('lookup_address') is None:
         config['cluster']['lookup_address'] = lookup_address
     if config['cluster'].get('resource') is None:
         config['cluster']['resource'] = band_to_slots
