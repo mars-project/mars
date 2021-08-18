@@ -214,15 +214,11 @@ async def test_request_worker(ray_large_cluster):
     client = await new_cluster('test_cluster', worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem)
     async with client:
         cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
-        workers = []
         # Note that supervisor took one node
-        for _ in range(2):
-            worker = await cluster_state_ref.request_worker(timeout=5)
-            assert worker
-            workers.append(worker)
+        workers = await asyncio.gather(*[cluster_state_ref.request_worker(timeout=5) for _ in range(2)])
+        assert all(worker is not None for worker in workers)
         assert not await cluster_state_ref.request_worker(timeout=5)
-        for worker in workers:
-            await cluster_state_ref.release_worker(worker)
+        await asyncio.gather(*[cluster_state_ref.release_worker(worker) for worker in workers])
         assert await cluster_state_ref.request_worker(timeout=5)
     
 
@@ -232,7 +228,7 @@ async def test_request_worker(ray_large_cluster):
 @pytest.mark.asyncio
 async def test_auto_scale_out(ray_large_cluster, init_workers: int):
     config = _load_config()
-    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['enabled'] = True
     config['scheduling']['autoscale']['scheduler_check_interval'] = 1
     config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
     config['scheduling']['autoscale']['sustained_scheduler_backlog_timeout'] = 1
@@ -263,7 +259,7 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
 @pytest.mark.asyncio
 async def test_auto_scale_in(ray_large_cluster):
     config = _load_config()
-    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['enabled'] = True
     config['scheduling']['autoscale']['scheduler_check_interval'] = 1
     config['scheduling']['autoscale']['worker_idle_timeout'] = 1
     config['scheduling']['autoscale']['max_workers'] = 4
@@ -294,7 +290,7 @@ async def test_auto_scale_in(ray_large_cluster):
 @pytest.mark.asyncio
 async def test_ownership_when_scale_in(ray_large_cluster):
     config = _load_config()
-    config['scheduling']['autoscale']['enable'] = True
+    config['scheduling']['autoscale']['enabled'] = True
     config['scheduling']['autoscale']['scheduler_check_interval'] = 1
     config['scheduling']['autoscale']['scheduler_backlog_timeout'] = 1
     config['scheduling']['autoscale']['worker_idle_timeout'] = 5
@@ -313,13 +309,15 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         print(df.execute())
         assert await autoscaler_ref.get_dynamic_worker_nums() > 1
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
-            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            dynamic_workers = await autoscaler_ref.get_dynamic_workers()
+            print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
         groupby_sum_df = df.groupby('a').sum()
         print(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
-            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            dynamic_workers = await autoscaler_ref.get_dynamic_workers()
+            print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
         print(df.fetch())
         print(groupby_sum_df.fetch())

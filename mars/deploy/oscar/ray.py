@@ -123,14 +123,15 @@ class ClusterStateActor(mo.Actor):
         pg_name = f'{self._pg_name}_{next(self._pg_counter)}'
         pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
         create_pg_timeout = timeout or 10
-        done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
-        if not done:
+        try:
+            await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
+        except asyncio.TimeoutError:
             logger.warning('Request worker failed, '
                            'can not create placement group %s in %s seconds.',
                            pg.bundle_specs, create_pg_timeout)
             ray.util.remove_placement_group(pg)
             return None
-        logger.info('Creating placement group took %.4f seconds', time.time() - start_time)
+        logger.info('Creating placement group %s took %.4f seconds', pg.bundle_specs, time.time() - start_time)
         worker_address = process_placement_to_address(pg_name, 0, 0)
         worker_pool = await self.new_worker(worker_address, band_to_slot=band_to_slot)
         logger.info('Request worker %s succeeds in %.4f seconds',

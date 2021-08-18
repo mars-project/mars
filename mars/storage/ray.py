@@ -118,7 +118,7 @@ class RayStorage(StorageBackend):
     name = 'ray'
 
     def __init__(self, *args, **kwargs):
-        self._address = kwargs['address']
+        self._address = kwargs.get('address')
         self._ray_supervisor_actor = None
 
     @classmethod
@@ -157,7 +157,7 @@ class RayStorage(StorageBackend):
         return ObjectInfo(object_id=object_id)
 
     async def _get_ray_supervisor_actor(self):
-        if not self._ray_supervisor_actor:
+        if self._address and not self._ray_supervisor_actor:
             from mars.services.cluster import ClusterAPI
             cluster_api = await ClusterAPI.create(self._address)
             supervisor_address = (await cluster_api.get_supervisors())[0]
