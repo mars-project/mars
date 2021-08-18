@@ -1,6 +1,4 @@
 numpy
-aiohttp
-requests
 pyarrow
 cloudpickle
 cython
@@ -15,4 +13,4 @@ pandas
 numexpr
 scikit-learn
 psutil
-bokeh
+tornado

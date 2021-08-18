@@ -146,28 +146,20 @@ async def test_web_session(ray_large_cluster, create_cluster):
 
 
 @require_ray
+@pytest.mark.parametrize('config_exception',
+                         [[set(),
+                           pytest.raises(TypeError, match='set')],
+                          [{'supervisor': ['not_exists_for_supervisor']},
+                           pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor')],
+                          [{'worker': ['not_exists_for_worker']},
+                           pytest.raises(ModuleNotFoundError, match='not_exists_for_worker')]])
 @pytest.mark.asyncio
-async def test_load_third_party_modules(ray_large_cluster):
+async def test_load_third_party_modules(ray_large_cluster, config_exception):
+    third_party_modules_config, expected_exception = config_exception
     config = _load_config()
 
-    config['third_party_modules'] = set()
-    with pytest.raises(TypeError, match='set'):
-        await new_cluster('test_cluster',
-                          worker_num=2,
-                          worker_cpu=2,
-                          worker_mem=1 * 1024 ** 3,
-                          config=config)
-
-    config['third_party_modules'] = {'supervisor': ['not_exists_for_supervisor']}
-    with pytest.raises(ModuleNotFoundError, match='not_exists_for_supervisor'):
-        await new_cluster('test_cluster',
-                          worker_num=2,
-                          worker_cpu=2,
-                          worker_mem=1 * 1024 ** 3,
-                          config=config)
-
-    config['third_party_modules'] = {'worker': ['not_exists_for_worker']}
-    with pytest.raises(ModuleNotFoundError, match='not_exists_for_worker'):
+    config['third_party_modules'] = third_party_modules_config
+    with expected_exception:
         await new_cluster('test_cluster',
                           worker_num=2,
                           worker_cpu=2,

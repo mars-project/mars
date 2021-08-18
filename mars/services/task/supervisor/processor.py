@@ -540,7 +540,10 @@ class TaskProcessorActor(mo.Actor):
         stage_processor.subtask_temp_result[subtask] = subtask_result
         if subtask_result.status.is_done:
             try:
-                await self._decref_input_subtasks(subtask, stage_processor.subtask_graph)
+                # Since every worker will call supervisor to set subtask result,
+                # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
+                # other `set_subtask_result` calls.
+                yield self._decref_input_subtasks(subtask, stage_processor.subtask_graph)
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                 _, err, tb = sys.exc_info()
                 if subtask_result.status not in (SubtaskStatus.errored, SubtaskStatus.cancelled):
