@@ -15,22 +15,22 @@
 import base64
 import json
 import os
+import _pyio
 
-from .import_err_handler import ImportErrorHandler
-from ..base import path_type, stringify_path, FileEntry
+from ..base import path_type, stringify_path
+from ....utils import ImportErrorHandler
 
 try:
 	import oss2
 except ImportError:
 	oss2 = ImportErrorHandler('oss2')
-	
+
 # OSS api time out
 _oss_time_out = 10
 
 
-class OSSFileEntry(FileEntry):
+class OSSFileEntry:
 	def __init__(self, path, *, is_dir=None, is_file=None, stat=None, storage_options=None):
-		super().__init__(path, storage_options)
 		self._path = path
 		self._name = os.path.basename(path)
 		self._is_file = is_file
@@ -88,104 +88,104 @@ def parse_osspath(path: path_type):
 
 
 def oss_exists(path: path_type):
-    bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
-    oss_bucket = oss2.Bucket(
-	    auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-	    endpoint=end_point,
-        bucket_name=bucket,
-        connect_timeout=_oss_time_out)
-    return oss_bucket.object_exists(key) or oss_isdir(path)
+	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
+	oss_bucket = oss2.Bucket(
+		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
+		endpoint=end_point,
+		bucket_name=bucket,
+		connect_timeout=_oss_time_out)
+	return oss_bucket.object_exists(key) or oss_isdir(path)
 
 
 def oss_isdir(path: path_type):
-    """
+	"""
     OSS has no concept of directories, but we define
     a ossurl is dir, When there is at least one object
     at the ossurl that is the prefix(end with char "/"),
     it is considered as a directory.
     """
-    dirname = stringify_path(path)
-    if not dirname.endswith("/"):
-        dirname = dirname + "/"
-    bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
-    oss_bucket = oss2.Bucket(
-        auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-        endpoint=end_point,
-        bucket_name=bucket,
-        connect_timeout=_oss_time_out)
-    isdir = False
-    for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key, max_keys=2):
-        if obj.key == key:
-            continue
-        isdir = True
-        break
-    return isdir
+	dirname = stringify_path(path)
+	if not dirname.endswith("/"):
+		dirname = dirname + "/"
+	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
+	oss_bucket = oss2.Bucket(
+		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
+		endpoint=end_point,
+		bucket_name=bucket,
+		connect_timeout=_oss_time_out)
+	isdir = False
+	for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key, max_keys=2):
+		if obj.key == key:
+			continue
+		isdir = True
+		break
+	return isdir
 
 
 def oss_stat(path: path_type):
-    path = stringify_path(path)
-    bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
-    oss_bucket = oss2.Bucket(
-        auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-        endpoint=end_point,
-        bucket_name=bucket,
-        connect_timeout=_oss_time_out)
-    if oss_isdir(path):
-        stat = dict(name=path, size=0, modified_time=-1)
-        stat["type"] = "directory"
-    else:
-        meta = oss_bucket.get_object_meta(key)
-        stat = dict(name=path, size=int(meta.headers["Content-Length"]),
-                    modified_time=meta.headers["Last-Modified"])
-        stat["type"] = "file"
-    return stat
+	path = stringify_path(path)
+	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
+	oss_bucket = oss2.Bucket(
+		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
+		endpoint=end_point,
+		bucket_name=bucket,
+		connect_timeout=_oss_time_out)
+	if oss_isdir(path):
+		stat = dict(name=path, size=0, modified_time=-1)
+		stat["type"] = "directory"
+	else:
+		meta = oss_bucket.get_object_meta(key)
+		stat = dict(name=path, size=int(meta.headers["Content-Length"]),
+		            modified_time=meta.headers["Last-Modified"])
+		stat["type"] = "file"
+	return stat
 
 
 def oss_scandir(dirname: path_type):
-    dirname = stringify_path(dirname)
-    if not dirname.endswith("/"):
-        dirname = dirname + "/"
-    bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
-    oss_bucket = oss2.Bucket(
-        auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-        endpoint=end_point,
-        bucket_name=bucket,
-        connect_timeout=_oss_time_out)
-    dirname_set = set()
-    for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key):
-        rel_path = obj.key[len(key):]
-        try:
-            inside_dirname, inside_filename = rel_path.split("/", 1)
-        except ValueError:
-            inside_dirname = None
-            inside_filename = rel_path
-        if inside_dirname is not None:
-            if inside_dirname in dirname_set:
-                continue
-            dirname_set.add(inside_dirname)
-            yield OSSFileEntry(
-                os.path.join(dirname, inside_dirname),
-                is_dir=True,
-                is_file=False,
-                stat={
-                    "name": os.path.join(dirname, inside_dirname),
-                    "type": "directory",
-                    "size": 0,
-                    "modified_time": -1,
-                }
-            )
-        else:
-            yield OSSFileEntry(
-                os.path.join(dirname, inside_filename),
-                is_dir=False,
-                is_file=True,
-                stat={
-                    "name": os.path.join(dirname, inside_filename),
-                    "type": "file",
-                    "size": obj.size,
-                    "modified_time": obj.last_modified,
-                }
-            )
+	dirname = stringify_path(dirname)
+	if not dirname.endswith("/"):
+		dirname = dirname + "/"
+	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
+	oss_bucket = oss2.Bucket(
+		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
+		endpoint=end_point,
+		bucket_name=bucket,
+		connect_timeout=_oss_time_out)
+	dirname_set = set()
+	for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key):
+		rel_path = obj.key[len(key):]
+		try:
+			inside_dirname, inside_filename = rel_path.split("/", 1)
+		except ValueError:
+			inside_dirname = None
+			inside_filename = rel_path
+		if inside_dirname is not None:
+			if inside_dirname in dirname_set:
+				continue
+			dirname_set.add(inside_dirname)
+			yield OSSFileEntry(
+				os.path.join(dirname, inside_dirname),
+				is_dir=True,
+				is_file=False,
+				stat={
+					"name": os.path.join(dirname, inside_dirname),
+					"type": "directory",
+					"size": 0,
+					"modified_time": -1,
+				}
+			)
+		else:
+			yield OSSFileEntry(
+				os.path.join(dirname, inside_filename),
+				is_dir=False,
+				is_file=True,
+				stat={
+					"name": os.path.join(dirname, inside_filename),
+					"type": "file",
+					"size": obj.size,
+					"modified_time": obj.last_modified,
+				}
+			)
 
 
 def dict_to_url(param: dict):

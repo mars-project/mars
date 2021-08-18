@@ -18,9 +18,8 @@ from urllib import parse
 from ._oss_lib import common as oc
 from ._oss_lib.glob import glob
 from ._oss_lib.handle import OSSIOBase, dict_to_url
-from ._oss_lib.import_err_handler import ImportErrorHandler
 from .base import FileSystem, path_type
-from ...utils import implements
+from ...utils import implements, ImportErrorHandler
 
 try:
 	import oss2

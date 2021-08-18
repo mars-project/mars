@@ -22,12 +22,12 @@ from mars.lib.filesystem import oss
 from mars.lib.filesystem.oss import build_oss_path
 
 
-class oss_obj_info:
+class OSSObjInfo:
 	def __init__(self, name):
 		self.key = name
 
 
-class object_meta:
+class ObjectMeta:
 	def __init__(self, key, obj_dict):
 		self.headers = {}
 		# Use the current time as "Last-Modified" in the test.
@@ -35,7 +35,7 @@ class object_meta:
 		self.headers["Content-Length"] = len(obj_dict[key].encode('utf8'))
 
 
-class mock_object:
+class MockObject:
 	def __init__(self, obj_dict, key, byte_range):
 		self._stream = BytesIO(obj_dict[key].encode('utf8'))
 		self._byte_range = byte_range
@@ -49,21 +49,21 @@ class mock_object:
 			return self._stream.read(size)
 
 
-class side_effect_Bucket:
+class SideEffectBucket:
 	def __init__(self, *args, **kwargs):
 		self.obj_dict = {'file.csv': 'id1,id2,id3\n1,2,3\n', 'dir/file1.csv': '2', 'dir/file2.csv': '3'}
 	
 	def get_object_meta(self, key):
-		return object_meta(key, self.obj_dict)
+		return ObjectMeta(key, self.obj_dict)
 	
 	def object_exists(self, key):
 		return key in self.obj_dict.keys()
 	
 	def get_object(self, key, byte_range):
-		return mock_object(self.obj_dict, key, byte_range)
+		return MockObject(self.obj_dict, key, byte_range)
 
 
-class side_effect_ObjIter:
+class SideEffectObjIter:
 	def __init__(self, *args, **kwargs):
 		self.bucket = args[0]
 		self.prefix = kwargs['prefix']
@@ -71,11 +71,11 @@ class side_effect_ObjIter:
 	def __iter__(self):
 		for name, content in self.bucket.obj_dict.items():
 			if name.startswith(self.prefix):
-				yield oss_obj_info(name)
+				yield OSSObjInfo(name)
 
 
-@mock.patch('oss2.Bucket', side_effect=side_effect_Bucket)
-@mock.patch('oss2.ObjectIteratorV2', side_effect=side_effect_ObjIter)
+@mock.patch('oss2.Bucket', side_effect=SideEffectBucket)
+@mock.patch('oss2.ObjectIteratorV2', side_effect=SideEffectObjIter)
 def test_oss_filesystem(fake_obj_iter, fake_oss_bucket):
 	
 	from mars.deploy.oscar.tests.session import new_test_session
@@ -106,4 +106,3 @@ def test_oss_filesystem(fake_obj_iter, fake_oss_bucket):
 		assert f.readline() == b'1,2,3\n'
 	df = md.read_csv(fake_file_path).execute()
 	assert df.shape == (1, 3)
-
