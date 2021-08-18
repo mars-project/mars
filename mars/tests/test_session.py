@@ -53,7 +53,7 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
-    
+
 
 def test_session_async_execute(setup):
     raw_a = np.random.RandomState(0).rand(10, 20)
