@@ -70,7 +70,7 @@ class GlobalSlotManagerActor(mo.Actor):
                 if self._band_used_slots[band] + slots > total_slots:
                     break
                 self._band_stid_slots[band][(session_id, stid)] = slots
-                self._band_used_slots[band] += slots
+                self._update_slot_usage(band, slots)
                 idx += 1
         if idx == 0:
             logger.debug('No slots available, status: %r, request: %r',
@@ -117,4 +117,5 @@ class GlobalSlotManagerActor(mo.Actor):
         return idle_bands
 
     async def is_band_idle(self, band: BandType):
+        print(f"_band_used_slots {dict(self._band_used_slots)}")
         return self._band_idle_start_time.get(band, self._initial_idle_start_time) > 0

@@ -26,6 +26,9 @@ from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...cluster.core import NodeRole, NodeStatus
 
+import ray
+import logging
+logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -96,6 +99,7 @@ class AutoscalerActor(mo.Actor):
         await self._cluster_api.release_worker(address)
         self._dynamic_workers.remove(address)
         logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
+        logger.info(f'get_used_slots {await self.global_slot_ref.get_used_slots()}')
 
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
@@ -120,11 +124,12 @@ class AutoscalerActor(mo.Actor):
                     dest_band = await self._select_target_band(src_band, data_key)
                     # For ray backend, there will only be meta update rather than data transfer
                     await (await self._get_storage_api(session_id, dest_band[0])).fetch(
-                        data_key, band_name=src_band[1], dest_address=src_band[0])
+                        data_key, band_name=src_band[1], remote_address=src_band[0])
                     await (await self._get_storage_api(session_id, src_band[0])).delete(data_key)
                     chunk_bands = (await meta_api.get_chunk_meta(data_key, fields=['bands'])).get('bands')
                     chunk_bands.remove(src_band)
-                    chunk_bands.append(dest_band)
+                    if dest_band not in chunk_bands:
+                        chunk_bands.append(dest_band)
                     await meta_api.set_chunk_bands(data_key, chunk_bands)
 
     async def _select_target_band(self, band: BandType, data_key: str):

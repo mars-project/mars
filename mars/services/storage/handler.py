@@ -432,16 +432,16 @@ class StorageHandlerActor(mo.StatelessActor):
         if get_metas:
             metas = await meta_api.get_chunk_meta.batch(*get_metas)
         else:  # pragma: no cover
-            metas = [(address, band_name)] * len(missing_keys)
+            metas = [{'bands': [(address, band_name)]}] * len(missing_keys)
         for data_key, bands in zip(missing_keys, metas):
             if bands is not None:
                 remote_keys[bands['bands'][0]].add(data_key)
-
         transfer_tasks = []
         fetch_keys = []
         for band, keys in remote_keys.items():
             if StorageLevel.REMOTE in self._quota_refs:
                 # if storage support remote level, just fetch object id
+                logger.info(f"band=== {band}")
                 transfer_tasks.append(self._fetch_remote(
                     session_id, list(keys), band, error))
             else:
