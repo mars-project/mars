@@ -246,7 +246,7 @@ class MockClusterAPI(ClusterAPI):
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
         from ..supervisor.locator import SupervisorPeerLocatorActor
         from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_info import NodeInfoCollectorActor
+        from ..supervisor.node_info import NodeInfoCollectorActor, NodeAllocatorActor
 
         dones, _ = await asyncio.wait([
             mo.create_actor(SupervisorPeerLocatorActor, 'fixed', address,
@@ -254,6 +254,9 @@ class MockClusterAPI(ClusterAPI):
                             address=address),
             mo.create_actor(NodeInfoCollectorActor,
                             uid=NodeInfoCollectorActor.default_uid(),
+                            address=address),
+            mo.create_actor(NodeAllocatorActor, 'fixed', address,
+                            uid=NodeAllocatorActor.default_uid(),
                             address=address),
             mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
                             interval=kw.get('upload_interval'),
