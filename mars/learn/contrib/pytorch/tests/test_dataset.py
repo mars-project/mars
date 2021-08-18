@@ -283,9 +283,6 @@ def test_mars_dataset_script(setup_cluster):
     data = mt.random.rand(1000, 32, dtype='f4')
     labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
 
-    data.execute()
-    labels.execute()
-
     assert run_pytorch_script(
         path, n_workers=2, data={'feature_data': data, 'labels': labels},
         command_argv=['multiple'], port=9945, session=sess).fetch()['status'] == 'ok'
