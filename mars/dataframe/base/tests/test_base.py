@@ -701,7 +701,7 @@ def test_cut():
     e = pd.cut([0, 1, 1, 2], bins=4, labels=False)
     assert r.dtype == e.dtype
 
-    
+
 def test_info():
     raw = pd.Series([1, 2, 3])
     series = from_pandas_series(raw)
