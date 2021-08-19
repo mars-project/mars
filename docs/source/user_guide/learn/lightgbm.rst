@@ -1,4 +1,4 @@
-.. _lightgbm:
+.. _integrate_lightgbm:
 
 ***********************
 Integrate with LightGBM
