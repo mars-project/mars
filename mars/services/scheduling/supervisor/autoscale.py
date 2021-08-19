@@ -26,9 +26,6 @@ from ....lib.aio import alru_cache
 from ...cluster.api import ClusterAPI
 from ...cluster.core import NodeRole, NodeStatus
 
-import ray
-import logging
-logging.basicConfig(format=ray.ray_constants.LOGGER_FORMAT, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -72,34 +69,40 @@ class AutoscalerActor(mo.Actor):
         start_time = time.time()
         worker_address = await self._cluster_api.request_worker(worker_cpu, worker_mem, timeout)
         self._dynamic_workers.add(worker_address)
-        logger.info("Requested new workers %s in %.4f seconds, current dynamic worker nums is %s",
+        logger.info("Requested new worker %s in %.4f seconds, current dynamic worker nums is %s",
                     worker_address, time.time() - start_time, self.get_dynamic_worker_nums())
         return worker_address
 
-    async def release_worker(self, address: str):
+    async def release_workers(self, addresses: List[str]):
         """
-        Release a worker node.
+        Release a group of worker nodes.
         Parameters
         ----------
-        address : str
-            The address of the specified node.
+        addresses : List[str]
+            The addresses of the specified noded.
         """
-        bands = await self.get_worker_bands(address)
-        logger.info("Start to release worker %s which has bands %s.", address, bands)
-        start_time = time.time()
-        await self._cluster_api.set_node_status(
-            node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+        workers_bands = {address: await self.get_worker_bands(address) for address in addresses}
+        logger.info("Start to release workers %s which have bands %s.", addresses, workers_bands)
+        for address in addresses:
+            await self._cluster_api.set_node_status(
+                node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING)
         # Ensure global_slot_manager get latest bands timely, so that we can invoke `is_band_idle`
         # to ensure there won't be new tasks scheduled to the stopping worker.
         await self.global_slot_ref.refresh_bands()
-        for band in bands:
-            while not await self.global_slot_ref.is_band_idle(band):
-                await asyncio.sleep(0.1)
-        await self.migrate_data_of_bands(bands)
-        await self._cluster_api.release_worker(address)
-        self._dynamic_workers.remove(address)
-        logger.info("Release worker %s succeeds in %.4f seconds.", address, time.time() - start_time)
-        logger.info(f'get_used_slots {await self.global_slot_ref.get_used_slots()}')
+        excluded_bands = set(b for bands in workers_bands.values() for b in bands)
+
+        async def release_worker(address):
+            logger.info("Start to release worker %s.", address)
+            worker_bands = workers_bands[address]
+            for band in worker_bands:
+                while not await self.global_slot_ref.is_band_idle(band):
+                    await asyncio.sleep(0.1)
+            await self._migrate_data_of_bands(worker_bands, excluded_bands)
+            await self._cluster_api.release_worker(address)
+            self._dynamic_workers.remove(address)
+            logger.info("Released worker %s.", address)
+
+        await asyncio.gather(*[release_worker(address) for address in addresses])
 
     def get_dynamic_workers(self) -> Set[str]:
         return self._dynamic_workers
@@ -112,7 +115,7 @@ class AutoscalerActor(mo.Actor):
             [worker_address], resource=True, exclude_statuses=set()))[worker_address]
         return [(worker_address, resource_type) for resource_type in node_info['resource'].keys()]
 
-    async def migrate_data_of_bands(self, bands: List[BandType]):
+    async def _migrate_data_of_bands(self, bands: List[BandType], excluded_bands: Set[BandType]):
         """Move data from `bands` to other available bands"""
         session_ids = list(self.queueing_refs.keys())
         for session_id in session_ids:
@@ -121,10 +124,14 @@ class AutoscalerActor(mo.Actor):
             for src_band in bands:
                 band_data_keys = await meta_api.get_band_chunks(src_band)
                 for data_key in band_data_keys:
-                    dest_band = await self._select_target_band(src_band, data_key)
+                    dest_band = await self._select_target_band(src_band, data_key, excluded_bands)
                     # For ray backend, there will only be meta update rather than data transfer
-                    await (await self._get_storage_api(session_id, dest_band[0])).fetch(
-                        data_key, band_name=src_band[1], remote_address=src_band[0])
+                    try:
+                        await (await self._get_storage_api(session_id, dest_band[0])).fetch(
+                            data_key, band_name=src_band[1], remote_address=src_band[0])
+                    except Exception:
+                        logger.info('chunk meta %s', await meta_api.get_chunk_meta(data_key))
+                        raise
                     await (await self._get_storage_api(session_id, src_band[0])).delete(data_key)
                     chunk_bands = (await meta_api.get_chunk_meta(data_key, fields=['bands'])).get('bands')
                     chunk_bands.remove(src_band)
@@ -132,8 +139,15 @@ class AutoscalerActor(mo.Actor):
                         chunk_bands.append(dest_band)
                     await meta_api.set_chunk_bands(data_key, chunk_bands)
 
-    async def _select_target_band(self, band: BandType, data_key: str):
-        bands = list(b for b in (await self._cluster_api.get_all_bands()).keys() if b[1] == band[1] and b != band)
+    async def _select_target_band(self, band: BandType, data_key: str, excluded_bands: Set[BandType]):
+        all_bands = (await self._cluster_api.get_all_bands())
+        bands = list(b for b in all_bands.keys() if (b[1] == band[1]
+                     and b != band and b not in excluded_bands))
+        if not bands:
+            raise RuntimeError(f'No bands to migrate data to, '
+                               f'all available bands is {all_bands}, '
+                               f'current band is {band}, '
+                               f'excluded bands are {excluded_bands}.')
         # TODO select band based on remaining store space size of other bands
         return random.choice(bands)
 
@@ -248,8 +262,7 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
             logger.info("Try to offline idle workers %s with bands %s.", worker_addresses, idle_bands)
             # Release workers one by one to ensure others workers which the current is moving data to
             # is not being releasing.
-            for worker_address in worker_addresses:
-                await self._autoscaler.release_worker(worker_address)
+            await self._autoscaler.release_workers(worker_addresses)
             logger.info('Finished offline workers %s in %.4f seconds', worker_addresses, time.time() - start_time)
 
     async def stop(self):

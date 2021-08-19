@@ -52,8 +52,9 @@ def _load_config(config: Union[str, Dict] = None):
         d = os.path.dirname(os.path.abspath(__file__))
         filename = os.path.join(d, 'rayconfig.yml')
     full_config = load_service_config_file(filename)
-    if config:
-        assert isinstance(config, Dict)
+    if config and not isinstance(config, str):
+        if not isinstance(config, Dict):
+            raise ValueError(f'{config} is not a dict')
         flatten_keys = set(k for k in config.keys() if isinstance(k, str) and '.' in k)
         nested_flatten_config = flatten_dict_to_nested_dict({k: config[k] for k in flatten_keys})
         nested_config = {k: config[k] for k in config.keys() if k not in flatten_keys}
@@ -101,7 +102,7 @@ class RayClusterBackend(AbstractClusterBackend):
         return self._cluster_state_ref
 
 
-class ClusterStateActor(mo.Actor):
+class ClusterStateActor(mo.StatelessActor):
     def __init__(self):
         self._worker_cpu, self._worker_mem, self._config = None, None, None
         self._pg_name, self._band_to_slot, self._worker_modules = None, None, None
@@ -157,7 +158,7 @@ class ClusterStateActor(mo.Actor):
         band_to_slot = band_to_slot or self._band_to_slot
         worker_pool = await create_worker_actor_pool(
             worker_address, self._band_to_slot, modules=self._worker_modules)
-        logger.info('Create worker process %s succeeds in %.4f seconds.',
+        logger.info('Create worker node %s succeeds in %.4f seconds.',
                     worker_address, time.time() - start_time)
         start_time = time.time()
         await start_worker(worker_address, self.address, band_to_slot, config=self._config)

@@ -217,7 +217,7 @@ def test_load_config():
         'scheduling.autoscale.scheduler_backlog_timeout': 1
     })
     assert default_config['scheduling']['autoscale']['enabled'] is True
-    assert default_config['scheduling']['autoscale']['scheduler_backlog_timeout'] is 1
+    assert default_config['scheduling']['autoscale']['scheduler_backlog_timeout'] == 1
     with pytest.raises(ValueError):
         _load_config({
             'scheduling.autoscale.enabled': True,
@@ -239,7 +239,7 @@ async def test_request_worker(ray_large_cluster):
         assert not await cluster_state_ref.request_worker(timeout=5)
         await asyncio.gather(*[cluster_state_ref.release_worker(worker) for worker in workers])
         assert await cluster_state_ref.request_worker(timeout=5)
-    
+
 
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 10}], indirect=True)
 @pytest.mark.parametrize('init_workers', [0, 1])
@@ -298,12 +298,12 @@ async def test_auto_scale_in(ray_large_cluster):
         assert md.Series(list(range(series_size)), chunk_size=20).sum().execute().fetch() == \
                pd.Series(list(range(series_size))).sum()
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
-            print(f'Waiting workers {await autoscaler_ref.get_dynamic_workers()} to be released.')
+            dynamic_workers = await autoscaler_ref.get_dynamic_workers()
+            print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
 
 
-@pytest.mark.skip('Skip until ray.put support specify owner')
-@pytest.mark.timeout(timeout=60)
+@pytest.mark.timeout(timeout=120)
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4}], indirect=True)
 @require_ray
 @pytest.mark.asyncio
@@ -316,7 +316,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
                                    'scheduling.autoscale.enabled': True,
                                    'scheduling.autoscale.scheduler_check_interval': 1,
                                    'scheduling.autoscale.scheduler_backlog_timeout': 1,
-                                   'scheduling.autoscale.worker_idle_timeout': 5,
+                                   'scheduling.autoscale.worker_idle_timeout': 10,
                                    'scheduling.autoscale.min_workers': 1,
                                    'scheduling.autoscale.max_workers': 4
                                })
@@ -324,8 +324,10 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
-        df = md.DataFrame(mt.random.rand(50, 4, chunk_size=10), columns=list('abcd'))
+        await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(2)])
+        df = md.DataFrame(mt.random.rand(100, 4, chunk_size=2), columns=list('abcd'))
         print(df.execute())
+        pd_df = df.to_pandas()
         assert await autoscaler_ref.get_dynamic_worker_nums() > 1
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
@@ -338,5 +340,5 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
-        print(df.fetch())
-        print(groupby_sum_df.fetch())
+        assert len(df.to_pandas()) == len(pd_df)
+        assert len(pd_df.groupby('a').sum()) == len(pd_df.groupby('a').sum())

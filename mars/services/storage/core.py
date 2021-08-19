@@ -365,7 +365,7 @@ class StorageManagerActor(mo.StatelessActor):
     async def __pre_destroy__(self):
         if self._upload_task:
             self._upload_task.cancel()
-        for _, params in self._teardown_params:
+        for _, params in self._teardown_params.items():
             for backend, teardown_params in params.items():
                 backend_cls = get_storage_backend(backend)
                 await backend_cls.teardown(**teardown_params)

@@ -77,9 +77,28 @@ class SubtaskQueueingActor(mo.Actor):
             async for bands in self._cluster_api.watch_all_bands():
                 # confirm ready bands indeed changed
                 if bands != self._band_slot_nums:
+                    old_band_slot_nums = self._band_slot_nums
                     self._band_slot_nums = copy.deepcopy(bands)
                     if self._band_queues:
                         await self.balance_queued_subtasks()
+                        # Refresh global slot manager to get latest bands,
+                        # so that subtasks reassigned to the new bands can be
+                        # ensured to get submitted as least one subtask every band
+                        # successfully.
+                        await self._slots_ref.refresh_bands()
+                        all_bands = {*bands.keys(), *old_band_slot_nums.keys()}
+                        bands_delta = {}
+                        for b in all_bands:
+                            delta = bands.get(b, 0) - old_band_slot_nums.get(b, 0)
+                            if delta != 0:
+                                bands_delta[b] = delta
+                        # Submit tasks on new bands manually, otherwise some subtasks
+                        # will never got submitted. Note that we must ensure every new
+                        # band will get at least one subtask submitted successfully.
+                        # Later subtasks submit on the band will be triggered by the
+                        # success of previous subtasks on the same band.
+                        logger.info('Bands changed with delta %s, submit all bands.', bands_delta)
+                        await self.ref().submit_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -219,3 +238,5 @@ class SubtaskQueueingActor(mo.Actor):
                     item = items.pop()
                     self._stid_to_bands[item.subtask.subtask_id].append(band)
                     heapq.heappush(task_queue, item)
+            if len(task_queue) == 0:
+                self._band_queues.pop(band)

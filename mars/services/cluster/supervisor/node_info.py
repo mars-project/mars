@@ -169,7 +169,7 @@ class NodeInfoCollectorActor(mo.Actor):
         await self._role_to_notifier[role].notify()
 
 
-class NodeAllocatorActor(mo.Actor):
+class NodeAllocatorActor(mo.StatelessActor):
     def __init__(self, backend_name: str, lookup_address: str):
         self._backend_name = backend_name
         self._lookup_address = lookup_address
@@ -180,8 +180,8 @@ class NodeAllocatorActor(mo.Actor):
         self._backend = await backend_cls.create(NodeRole.WORKER, self._lookup_address, self.address)
 
     async def request_worker(self, worker_cpu: int, worker_mem: int,
-                                  timeout: int = None) -> str:
+                             timeout: int = None) -> str:
         return await self._backend.request_worker(worker_cpu, worker_mem, timeout=timeout)
 
     async def release_worker(self, address: str):
-        return await self._backend.release_worker(address)
+        await self._backend.release_worker(address)

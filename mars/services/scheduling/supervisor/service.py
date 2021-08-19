@@ -92,6 +92,11 @@ class SchedulingSupervisorService(AbstractService):
         from .queueing import SubtaskQueueingActor
         from .manager import SubtaskManagerActor
         from .assigner import AssignerActor
+        from .autoscale import AutoscalerActor
+
+        autoscaler_ref = await mo.actor_ref(
+            AutoscalerActor.default_uid(), address=self._address)
+        await autoscaler_ref.unregister_session(session_id)
 
         destroy_tasks = []
         for actor_cls in [SubtaskManagerActor, SubtaskQueueingActor, AssignerActor]:
@@ -99,8 +104,3 @@ class SchedulingSupervisorService(AbstractService):
                 actor_cls.gen_uid(session_id), address=self._address)
             destroy_tasks.append(asyncio.create_task(ref.destroy()))
         await asyncio.gather(*destroy_tasks)
-
-        from .autoscale import AutoscalerActor
-        autoscaler_ref = await mo.actor_ref(
-            AutoscalerActor.default_uid(), address=self._address)
-        await autoscaler_ref.unregister_session(session_id)

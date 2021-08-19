@@ -36,7 +36,6 @@ import time
 import warnings
 import zlib
 from abc import ABC
-from collections import defaultdict
 from contextlib import contextmanager
 from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
@@ -1316,11 +1315,13 @@ def flatten_dict_to_nested_dict(flatten_dict: Dict, sep='.') -> Dict:
     """
     assert all(isinstance(k, str) for k in flatten_dict.keys())
     nested_dict = dict()
-    for k in flatten_dict.keys():
+    # longest path first to avoid shorter path has a leaf key with value dict
+    # as sub dict by mistake.
+    keys = sorted(flatten_dict.keys(), key=lambda k: -len(k.split(sep)))
+    for k in keys:
         sub_keys = k.split(sep)
         sub_nested_dict = nested_dict
-        for i in range(len(sub_keys)):
-            sub_key = sub_keys[i]
+        for i, sub_key in enumerate(sub_keys):
             if i == len(sub_keys) - 1:
                 if sub_key in sub_nested_dict:
                     raise ValueError(f'Key {k} conflict in sub key {sub_key}.')

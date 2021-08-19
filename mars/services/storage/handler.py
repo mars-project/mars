@@ -441,7 +441,6 @@ class StorageHandlerActor(mo.StatelessActor):
         for band, keys in remote_keys.items():
             if StorageLevel.REMOTE in self._quota_refs:
                 # if storage support remote level, just fetch object id
-                logger.info(f"band=== {band}")
                 transfer_tasks.append(self._fetch_remote(
                     session_id, list(keys), band, error))
             else:

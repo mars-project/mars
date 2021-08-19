@@ -33,8 +33,7 @@ class GlobalSlotManagerActor(mo.Actor):
     def __init__(self):
         self._band_stid_slots = defaultdict(dict)
         self._band_used_slots = defaultdict(lambda: 0)
-        self._initial_idle_start_time = time.time()
-        self._band_idle_start_time = defaultdict(lambda: self._initial_idle_start_time)
+        self._band_idle_start_time = defaultdict(time.time)
         self._band_total_slots = dict()
 
         self._cluster_api = None
@@ -109,13 +108,12 @@ class GlobalSlotManagerActor(mo.Actor):
     async def get_idle_bands(self, idle_duration: int):
         """Return a band list which all bands has been idle for at least `idle_duration` seconds."""
         now = time.time()
-        idle_bands = [band for band, idle_start_time in self._band_idle_start_time.items()
-                      if idle_start_time > 0 and now >= idle_start_time + idle_duration]
-        idle_bands += [band for band in self._band_total_slots.keys()
-                       if band not in self._band_idle_start_time
-                       and now >= self._initial_idle_start_time + idle_duration]
+        idle_bands = []
+        for band in self._band_total_slots.keys():
+            idle_start_time = self._band_idle_start_time[band]
+            if idle_start_time > 0 and now >= idle_start_time + idle_duration:
+                idle_bands.append(band)
         return idle_bands
 
     async def is_band_idle(self, band: BandType):
-        print(f"_band_used_slots {dict(self._band_used_slots)}")
-        return self._band_idle_start_time.get(band, self._initial_idle_start_time) > 0
+        return self._band_idle_start_time[band] > 0
