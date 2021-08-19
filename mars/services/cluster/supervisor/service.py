@@ -13,62 +13,62 @@
 # limitations under the License.
 
 from .... import oscar as mo
-from ...core import NodeRole
+from ...core import NodeRole, AbstractService
 from ..uploader import NodeInfoUploaderActor
 from .locator import SupervisorPeerLocatorActor
 from .node_info import NodeInfoCollectorActor
 
 
-async def start(config: dict, address: str):
+class ClusterSupervisorService(AbstractService):
     """
-    Start cluster service on supervisor
+    Cluster service on supervisor
 
-    Parameters
-    ----------
-    config
-        service config.
-        {
-            "cluster": {
-                "backend": "<cluster backend name>",
-                "lookup_address": "<address of master>",
-                "node_timeout": timeout seconds of nodes,
-                "node_check_interval": check interval seconds for nodes
-            }
+    Service Configuration
+    ---------------------
+    {
+        "cluster": {
+            "backend": "<cluster backend name>",
+            "lookup_address": "<address of master>",
+            "node_timeout": timeout seconds of nodes,
+            "node_check_interval": check interval seconds for nodes
         }
-    address
-        address of actor pool
+    }
     """
-    svc_config = config['cluster']
-    backend = svc_config.get('backend', 'fixed')
-    lookup_address = svc_config.get('lookup_address',
-                                    address if backend == 'fixed' else None)
-    await mo.create_actor(
-        NodeInfoCollectorActor,
-        timeout=svc_config.get('node_timeout'),
-        check_interval=svc_config.get('node_check_interval'),
-        uid=NodeInfoCollectorActor.default_uid(),
-        address=address)
-    await mo.create_actor(
-        SupervisorPeerLocatorActor,
-        backend_name=backend,
-        lookup_address=lookup_address,
-        uid=SupervisorPeerLocatorActor.default_uid(),
-        address=address)
-    await mo.create_actor(
-        NodeInfoUploaderActor,
-        role=NodeRole.SUPERVISOR,
-        interval=svc_config.get('node_check_interval'),
-        uid=NodeInfoUploaderActor.default_uid(),
-        address=address)
+    async def start(self):
+        svc_config = self._config['cluster']
+        address = self._address
 
+        backend = svc_config.get('backend', 'fixed')
+        lookup_address = svc_config.get('lookup_address',
+                                        address if backend == 'fixed' else None)
+        await mo.create_actor(
+            NodeInfoCollectorActor,
+            timeout=svc_config.get('node_timeout'),
+            check_interval=svc_config.get('node_check_interval'),
+            uid=NodeInfoCollectorActor.default_uid(),
+            address=address)
+        await mo.create_actor(
+            SupervisorPeerLocatorActor,
+            backend_name=backend,
+            lookup_address=lookup_address,
+            uid=SupervisorPeerLocatorActor.default_uid(),
+            address=address)
+        await mo.create_actor(
+            NodeInfoUploaderActor,
+            role=NodeRole.SUPERVISOR,
+            interval=svc_config.get('node_check_interval'),
+            uid=NodeInfoUploaderActor.default_uid(),
+            address=address)
 
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=NodeInfoCollectorActor.default_uid(),
-        address=address))
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=SupervisorPeerLocatorActor.default_uid(),
-        address=address))
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=NodeInfoUploaderActor.default_uid(),
-        address=address))
+    async def stop(self):
+        address = self._address
+
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=NodeInfoCollectorActor.default_uid(),
+            address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=SupervisorPeerLocatorActor.default_uid(),
+            address=address))
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=NodeInfoUploaderActor.default_uid(),
+            address=address))

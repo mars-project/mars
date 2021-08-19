@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import numpy as np
 
 from ... import opcodes as OperandDef
@@ -22,7 +21,7 @@ from ...serialization.serializables import FieldTypes, NDArrayField, TupleField
 from ...utils import on_serialize_shape, on_deserialize_shape
 from ..core import TENSOR_TYPE, TensorOrder, TensorData, Tensor
 from ..utils import get_chunk_slices
-from ..array_utils import array_module
+from ..array_utils import array_module, is_array, is_cupy
 from .core import TensorNoInput
 from .scalar import scalar
 
@@ -34,23 +33,23 @@ class ArrayDataSource(TensorNoInput):
 
     _op_type_ = OperandDef.TENSOR_DATA_SOURCE
 
-    _data = NDArrayField('data')
+    data = NDArrayField('data')
 
-    def __init__(self, data=None, dtype=None, **kw):
+    def __init__(self, data=None, dtype=None, gpu=None, **kw):
         if dtype is not None:
             dtype = np.dtype(dtype)
         elif data is not None:
             dtype = np.dtype(data.dtype)
-        super().__init__(_data=data, dtype=dtype, **kw)
 
-    @property
-    def data(self):
-        return self._data
+        if gpu is None and is_cupy(data):  # pragma: no cover
+            gpu = True
+
+        super().__init__(data=data, dtype=dtype, gpu=gpu, **kw)
 
     def to_chunk_op(self, *args):
         _, idx, chunk_size = args
         chunk_op = self.copy().reset_key()
-        chunk_op._data = self.data[get_chunk_slices(chunk_size, idx)].astype(
+        chunk_op.data = self.data[get_chunk_slices(chunk_size, idx)].astype(
             chunk_op.dtype, order=self.outputs[0].order.value, copy=False)
 
         return chunk_op
@@ -67,56 +66,42 @@ class CSRMatrixDataSource(TensorNoInput):
 
     _op_type_ = OperandDef.SPARSE_MATRIX_DATA_SOURCE
 
-    _indices = NDArrayField('indices')
-    _indptr = NDArrayField('indptr')
-    _data = NDArrayField('data')
-    _shape = TupleField('shape', FieldTypes.int64,
-                        on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
+    indices = NDArrayField('indices')
+    indptr = NDArrayField('indptr')
+    data = NDArrayField('data')
+    shape = TupleField('shape', FieldTypes.int64,
+                       on_serialize=on_serialize_shape, on_deserialize=on_deserialize_shape)
 
-    def __init__(self, indices=None, indptr=None, data=None, shape=None, **kw):
-        super().__init__(_indices=indices, _indptr=indptr, _data=data, _shape=shape,
-                         sparse=True, **kw)
+    def __init__(self, data=None, **kw):
+        kw['sparse'] = True
+        if is_cupy(data):  # pragma: no cover
+            kw['gpu'] = True
+        super().__init__(data=data, **kw)
 
     def to_chunk_op(self, *args):
         _, idx, chunk_size = args
 
         xps = cps if self.gpu else sps
-        if len(self._shape) == 1:
-            shape = (1, self._shape[0])
+        if len(self.shape) == 1:
+            shape = (1, self.shape[0])
         else:
-            shape = self._shape
+            shape = self.shape
         data = xps.csr_matrix(
-            (self._data, self._indices, self._indptr), shape)
+            (self.data, self.indices, self.indptr), shape)
         chunk_data = data[get_chunk_slices(chunk_size, idx)]
 
         chunk_op = self.copy().reset_key()
-        chunk_op._data = chunk_data.data
-        chunk_op._indices = chunk_data.indices
-        chunk_op._indptr = chunk_data.indptr
+        chunk_op.data = chunk_data.data
+        chunk_op.indices = chunk_data.indices
+        chunk_op.indptr = chunk_data.indptr
         chunk_shape = chunk_data.shape[1:] \
-            if len(self._shape) == 1 else chunk_data.shape
-        chunk_op._shape = chunk_shape
+            if len(self.shape) == 1 else chunk_data.shape
+        chunk_op.shape = chunk_shape
 
         return chunk_op
 
-    @property
-    def indices(self):
-        return self._indices
-
-    @property
-    def indptr(self):
-        return self._indptr
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def shape(self):
-        return self._shape
-
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "CSRMatrixDataSource"):
         xps = cps if op.gpu else sps
         chunk_shape = (1, op.shape[0]) if op.outputs[0].ndim == 1 else op.shape
         ctx[op.outputs[0].key] = SparseNDArray(xps.csr_matrix(
@@ -174,7 +159,7 @@ def tensor(data=None, dtype=None, order='K', chunk_size=None, gpu=None,
             elif m is np:
                 gpu = False
 
-    if isinstance(data, np.ndarray):
+    if is_array(data):
         if data.ndim == 0:
             return scalar(data.item(), dtype=dtype)
         tensor_order = TensorOrder.C_ORDER \

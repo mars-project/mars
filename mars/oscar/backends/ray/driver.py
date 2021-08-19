@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from numbers import Number
 from typing import Dict
 
@@ -56,10 +57,13 @@ class RayActorDriver(BaseActorDriver):
         pg_name = cls._cluster_info['pg_name']
         pg = cls._cluster_info['pg_group']
         for index, bundle_spec in enumerate(pg.bundle_specs):
-            n_process = int(bundle_spec["CPU"])
+            n_process = int(bundle_spec["CPU"]) + 1
             for process_index in range(n_process):
                 address = process_placement_to_address(pg_name, index, process_index=process_index)
                 try:
+                    if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+                        # must clean up first, or coverage info lost
+                        ray.get(ray.get_actor(address).cleanup.remote())
                     ray.kill(ray.get_actor(address))
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import {makeStyles} from "@material-ui/core/styles";
+import { makeStyles } from '@material-ui/core/styles';
 
 const drawerWidth = 240;
 
@@ -64,6 +64,7 @@ export const useStyles = makeStyles((theme) => ({
         position: 'relative',
         whiteSpace: 'nowrap',
         width: drawerWidth,
+        overflowX: 'hidden',
         transition: theme.transitions.create('width', {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
@@ -80,6 +81,17 @@ export const useStyles = makeStyles((theme) => ({
             width: theme.spacing(9),
         },
     },
+    leftMenu: {
+        height: '100%',
+    },
+    leftMenuBottomItem: {
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+    },
+    nestedListItem: {
+        paddingLeft: theme.spacing(4),
+    },
     appBarSpacer: theme.mixins.toolbar,
     content: {
         flexGrow: 1,
@@ -95,8 +107,8 @@ export const useStyles = makeStyles((theme) => ({
         display: 'flex',
         overflow: 'auto',
         flexDirection: 'column',
-  },
-  fixedHeight: {
-    height: 240,
-  },
+    },
+    fixedHeight: {
+        height: 240,
+    },
 }));

@@ -72,4 +72,4 @@ class WebLifecycleAPI(AbstractLifecycleAPI, MarsWebAPIClientMixin):
         params = dict(action='get_all_chunk_ref_counts')
         path = f'{self._address}/api/session/{self._session_id}/lifecycle'
         res = await self._request_url('GET', path, params=params)
-        return deserialize_serializable(await res.read())
+        return deserialize_serializable(res.body)

@@ -62,6 +62,7 @@ from .rebalance import rebalance
 from .map_chunk import map_chunk, TensorMapChunk
 from .insert import insert
 from .delete import delete
+from .in1d import in1d
 
 
 def _install():

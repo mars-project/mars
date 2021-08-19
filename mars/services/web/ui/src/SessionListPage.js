@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-import React from "react";
-import {Link} from "react-router-dom";
-import Grid from "@material-ui/core/Grid";
-import Paper from "@material-ui/core/Paper";
-import Title from "./Title";
-import Table from "@material-ui/core/Table";
-import TableHead from "@material-ui/core/TableHead";
-import TableRow from "@material-ui/core/TableRow";
-import TableCell from "@material-ui/core/TableCell";
-import {useStyles} from "./Style";
-import TableBody from "@material-ui/core/TableBody";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import Grid from '@material-ui/core/Grid';
+import Paper from '@material-ui/core/Paper';
+import Table from '@material-ui/core/Table';
+import TableHead from '@material-ui/core/TableHead';
+import TableRow from '@material-ui/core/TableRow';
+import TableCell from '@material-ui/core/TableCell';
+import TableBody from '@material-ui/core/TableBody';
+import { useStyles } from './Style';
+import Title from './Title';
 
 class SessionList extends React.Component {
     constructor(props) {
@@ -34,15 +34,16 @@ class SessionList extends React.Component {
 
     refreshInfo() {
         fetch('api/session')
-            .then(res => res.json())
+            .then((res) => res.json())
             .then((res) => {
                 this.setState(res);
-            })
+            });
     }
 
     componentDidMount() {
-        if (this.interval !== undefined)
+        if (this.interval !== undefined) {
             clearInterval(this.interval);
+        }
         this.interval = setInterval(() => this.refreshInfo(), 5000);
         this.refreshInfo();
     }
@@ -52,7 +53,7 @@ class SessionList extends React.Component {
     }
 
     render() {
-        if (this.state === undefined || this.state["sessions"] === undefined) {
+        if (this.state === undefined || this.state.sessions === undefined) {
             return (
                 <div>Loading</div>
             );
@@ -62,20 +63,20 @@ class SessionList extends React.Component {
             <Table size="small">
                 <TableHead>
                     <TableRow>
-                        <TableCell style={{fontWeight: 'bolder'}}>Session ID</TableCell>
+                        <TableCell style={{ fontWeight: 'bolder' }}>Session ID</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
-                    {this.state["sessions"].map((session) => (
-                        <TableRow key={"session_row_" + session.session_id}>
+                    {this.state.sessions.map((session) => (
+                        <TableRow key={`session_row_${session.session_id}`}>
                             <TableCell>
-                                <Link to={"/session/" + session.session_id + "/task"}>{session.session_id}</Link>
+                                <Link to={`/session/${session.session_id}/task`}>{session.session_id}</Link>
                             </TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
             </Table>
-        )
+        );
     }
 }
 
@@ -88,11 +89,9 @@ export default function SessionListPage() {
             </Grid>
             <Grid item xs={12}>
                 <Paper className={classes.paper}>
-                    <React.Fragment>
-                        <SessionList />
-                    </React.Fragment>
+                    <SessionList />
                 </Paper>
             </Grid>
         </Grid>
-    )
+    );
 }
