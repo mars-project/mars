@@ -12,6 +12,6 @@ Dask on Mars provides a simple way to execute the entire Dask ecosystem on top o
 Further information on any specific method can be obtained in the :ref:`API reference <dask_api>`.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    dask
