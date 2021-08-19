@@ -155,12 +155,15 @@ cdef class ActorRefMethod:
             return self.ref.__tell__((last_method, CALL_METHOD_BATCH,
                                       (args_list, kwargs_list), {}))
 
-    def tell_delay(self, *args, delay=None, **kwargs):
+    def tell_delay(self, *args, delay=None, ignore_conn_fail=True, **kwargs):
         async def delay_fun():
             try:
                 await asyncio.sleep(delay)
                 await self.ref.__tell__((self.method_name, CALL_METHOD_DEFAULT, args, kwargs))
             except Exception as ex:
+                if ignore_conn_fail and isinstance(ex, ConnectionRefusedError):
+                    return
+
                 logger.error(f'Error {type(ex)} occurred when calling {self.method_name} '
                              f'on {self.ref.uid} at {self.ref.address} with tell_delay')
                 raise

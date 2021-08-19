@@ -17,11 +17,11 @@ import threading
 import pytest
 import numpy as np
 
-from ...task.api import TaskAPI
 import mars.oscar as mo
 import mars.remote as mr
 from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI, WebSessionAPI
+from mars.services.task.api import TaskAPI
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.utils import get_next_port
 
@@ -74,8 +74,8 @@ async def test_get_last_idle_time():
                                              subprocess_start_method='spawn')
     async with sv_pool, worker_pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle", "task",
-                         "scheduling", "subtask"],
+            "services": ["cluster", "session", "meta", "lifecycle",
+                         "scheduling", "subtask", "task"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
@@ -147,8 +147,8 @@ async def test_dmap():
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle", "task",
-                         "scheduling", "subtask"],
+            "services": ["cluster", "session", "meta", "lifecycle",
+                         "scheduling", "subtask", "task"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,

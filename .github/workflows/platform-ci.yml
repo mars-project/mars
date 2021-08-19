@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-vineyard]
+        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-vineyard, 3.8-dask]
         include:
           - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
@@ -19,6 +19,8 @@ jobs:
              no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
               no-deploy: 1, with-ray: "with ray" }
+          - { os: ubuntu-latest, python-version: 3.8-dask, no-common-tests: 1,
+              no-deploy: 1, run-dask: "run dask" }
 
     steps:
       - name: Check out code
@@ -40,6 +42,7 @@ jobs:
           WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
           WITH_RAY: ${{ matrix.with-ray }}
+          RUN_DASK: ${{ matrix.run-dask }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         shell: bash
         run: |
@@ -59,9 +62,9 @@ jobs:
           pip install -e ".[dev,extra]"
 
           if [[ $UNAME == "windows" ]]; then
-            pip install virtualenv flaky flake8
+            pip install virtualenv flaky
           else
-            pip install virtualenv flaky flake8 ray
+            pip install virtualenv flaky ray
             if [ -n "$WITH_KUBERNETES" ]; then
               ./.github/workflows/install-minikube.sh
               pip install kubernetes
@@ -88,6 +91,9 @@ jobs:
               # remove ray version after https://github.com/ray-project/ray/issues/16802 got fixed
               pip install ray[default]==1.3.0
             fi
+            if [ -n "$RUN_DASK" ]; then
+              pip install dask[complete] mimesis sklearn
+            fi
           fi
           conda list -n test
 
@@ -98,6 +104,7 @@ jobs:
           WITH_CYTHON: ${{ matrix.with-cython }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
           WITH_RAY: ${{ matrix.with-ray }}
+          RUN_DASK: ${{ matrix.run-dask }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
           NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
           CHANGE_MINIKUBE_NONE_USER: true
@@ -125,6 +132,10 @@ jobs:
           fi
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --timeout=120 -m ray
+            coverage report
+          fi
+          if [ -n "$RUN_DASK" ]; then
+            pytest $PYTEST_CONFIG mars/contrib/dask/tests/test_dask.py
             coverage report
           fi
           coverage xml

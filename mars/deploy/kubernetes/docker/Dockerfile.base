@@ -4,7 +4,6 @@ FROM ${BASE_CONTAINER}
 COPY retry.sh /srv/retry.sh
 
 RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
-    bokeh \
     cloudpickle \
     cython \
     mkl \
@@ -16,7 +15,6 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     scikit-learn \
     scipy \
     tornado \
-    aiohttp \
     lz4 \
   && /srv/retry.sh 3 /opt/conda/bin/conda install -c conda-forge \
     libiconv \

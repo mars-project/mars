@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Any, Dict
 
 from mars.core import OperandType
 from mars.services.subtask.worker.processor import SubtaskProcessor
-from mars.services.tests.fault_injection_manager import FaultType, \
-    ExtraConfigKey, FaultInjectionError, FaultInjectionUnhandledError
+from mars.services.tests.fault_injection_manager import (
+    ExtraConfigKey,
+    FaultPosition,
+    handle_fault,
+)
 from mars.tests.core import _check_args, ObjectCheckMixin
 
 
@@ -89,15 +91,7 @@ class FaultInjectionSubtaskProcessor(SubtaskProcessor):
     async def _async_execute_operand(self,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
-        fault = await self._fault_injection_manager.on_execute_operand()
-        if fault == FaultType.Exception:
-            raise FaultInjectionError("Fault Injection")
-        elif fault == FaultType.UnhandledException:
-            raise FaultInjectionUnhandledError("Fault Injection Unhandled")
-        elif fault == FaultType.ProcessExit:
-            # used to simulate process crash, no cleanup.
-            os._exit(-1)
-        assert fault == FaultType.NoFault, \
-            f"Got unexpected fault from on_execute_operand: {fault}"
-
+        fault = await self._fault_injection_manager.get_fault(
+            FaultPosition.ON_EXECUTE_OPERAND, {'subtask': self.subtask, 'operand': op})
+        handle_fault(fault)
         return await super()._async_execute_operand(ctx, op)

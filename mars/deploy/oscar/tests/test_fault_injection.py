@@ -22,11 +22,12 @@ from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.session import get_default_async_session
 from mars.oscar.errors import ServerClosed
 from mars.services.tests.fault_injection_manager import (
-    FaultType,
     AbstractFaultInjectionManager,
     ExtraConfigKey,
     FaultInjectionError,
-    FaultInjectionUnhandledError
+    FaultInjectionUnhandledError,
+    FaultPosition,
+    FaultType,
 )
 
 CONFIG_FILE = os.path.join(
@@ -55,9 +56,9 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
         def set_fault_count(self, count):
             self._fault_count = count
 
-        def on_execute_operand(self) -> FaultType:
-            if self._fault_count > 0:
-                self._fault_count -= 1
+        def get_fault(self, pos: FaultPosition, ctx=None) -> FaultType:
+            if self._fault_count.get(pos, 0) > 0:
+                self._fault_count[pos] -= 1
                 return fault_type
             return FaultType.NoFault
 
@@ -66,19 +67,21 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
 
 
 @pytest.mark.parametrize('fault_and_exception',
-                         [[FaultType.Exception,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.UnhandledException,
-                            pytest.raises(FaultInjectionUnhandledError, match='Fault Injection Unhandled')],
-                          [FaultType.ProcessExit,
-                           pytest.raises(ServerClosed)]])
+                          [FaultType.UnhandledException, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           pytest.raises(FaultInjectionUnhandledError, match='Fault Injection Unhandled')],
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
 @pytest.mark.asyncio
 async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception):
-    fault_type, first_run_raises = fault_and_exception
+    fault_type, fault_count, first_run_raises = fault_and_exception
     name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
-        fault_count=1,
+        fault_count=fault_count,
         fault_type=fault_type)
     extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
 
@@ -97,9 +100,9 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [{'config': RERUN_SUBTASK_CONFIG_FILE}],
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.ProcessExit, 1,
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
@@ -126,7 +129,7 @@ async def test_rerun_subtask(fault_cluster, fault_config):
 
     fault_injection_manager = await session.get_remote_object(
             fault_cluster.session.session_id, name)
-    await fault_injection_manager.set_fault_count(1)
+    await fault_injection_manager.set_fault_count({FaultPosition.ON_EXECUTE_OPERAND: 1})
 
     # the extra config overwrites the default config.
     extra_config['subtask_max_retries'] = 0
@@ -143,7 +146,7 @@ async def test_rerun_subtask_unhandled(fault_cluster):
     name = await create_fault_injection_manager(
         session_id=fault_cluster.session.session_id,
         address=fault_cluster.session.address,
-        fault_count=1,
+        fault_count={FaultPosition.ON_EXECUTE_OPERAND: 1},
         fault_type=FaultType.UnhandledException)
     extra_config = {ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME: name}
 
@@ -159,9 +162,9 @@ async def test_rerun_subtask_unhandled(fault_cluster):
                          [{'config': RERUN_SUBTASK_CONFIG_FILE}],
                          indirect=True)
 @pytest.mark.parametrize('fault_config',
-                         [[FaultType.Exception, 1,
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
-                          [FaultType.ProcessExit, 1,
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
 async def test_retryable(fault_cluster, fault_config):

@@ -12,41 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
-
 from .... import oscar as mo
-from .manager import TaskConfigurationActor
+from ...core import AbstractService
+from .manager import TaskConfigurationActor, TaskManagerActor
 
 
-async def start(config: Dict, address: str):
+class TaskSupervisorService(AbstractService):
     """
-    Start task service on supervisor.
+    Task service on supervisor.
 
-    Parameters
-    ----------
-    config
-        service config.
-        {
-            "task": {
-                "default_config": {
-                    "optimize_tileable_graph": True,
-                    "optimize_chunk_graph": True,
-                    "fuse_enabled": True
-                }
+    Service Configuration
+    ---------------------
+    {
+        "task": {
+            "default_config": {
+                "optimize_tileable_graph": True,
+                "optimize_chunk_graph": True,
+                "fuse_enabled": True
             }
         }
-    address : str
-        Actor pool address.
+    }
     """
-    task_config = config.get('task', dict())
-    options = task_config.get('default_config', dict())
-    task_preprocessor_cls = task_config.get('task_preprocessor_cls')
-    await mo.create_actor(TaskConfigurationActor, options,
-                          task_preprocessor_cls=task_preprocessor_cls,
-                          address=address,
-                          uid=TaskConfigurationActor.default_uid())
+    async def start(self):
+        task_config = self._config.get('task', dict())
+        options = task_config.get('default_config', dict())
+        task_preprocessor_cls = task_config.get('task_preprocessor_cls')
+        await mo.create_actor(TaskConfigurationActor, options,
+                              task_preprocessor_cls=task_preprocessor_cls,
+                              address=self._address,
+                              uid=TaskConfigurationActor.default_uid())
 
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=TaskConfigurationActor.default_uid(), address=self._address))
 
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=TaskConfigurationActor.default_uid(), address=address))
+    async def create_session(self, session_id: str):
+        await mo.create_actor(
+            TaskManagerActor, session_id, address=self._address,
+            uid=TaskManagerActor.gen_uid(session_id))
+
+    async def destroy_session(self, session_id: str):
+        task_manager_ref = await mo.actor_ref(
+            self._address, TaskManagerActor.gen_uid(session_id))
+        return await mo.destroy_actor(task_manager_ref)

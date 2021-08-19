@@ -23,7 +23,7 @@ from ...utils import lazy_import
 from ...serialization.serializables import Int32Field, ListField, StringField, BoolField
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..core import IndexValue, OutputType
-from ..utils import standardize_range_index, parse_index
+from ..utils import standardize_range_index, parse_index, is_cudf
 from ..operands import DataFrameOperandMixin, DataFrameOperand, \
     DataFrameShuffleProxy
 
@@ -544,6 +544,8 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
             values = a.iloc[poses[i]: poses[i + 1]]
+            if is_cudf(values):  # pragma: no cover
+                values = values.copy()
             ctx[out.key, (i,)] = values
 
     @classmethod

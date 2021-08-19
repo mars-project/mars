@@ -19,7 +19,7 @@ from ...config import options
 from ...core import OutputType
 from ...serialization.serializables import DataFrameField, SeriesField
 from ...tensor.utils import get_chunk_slices
-from ..utils import decide_dataframe_chunk_sizes, parse_index
+from ..utils import decide_dataframe_chunk_sizes, parse_index, is_cudf
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 
 
@@ -30,32 +30,26 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
 
     _op_type_ = OperandDef.DATAFRAME_DATA_SOURCE
 
-    _data = DataFrameField('data')
-    _dtypes = SeriesField('dtypes')
+    data = DataFrameField('data')
+    dtypes = SeriesField('dtypes')
 
-    def __init__(self, data=None, dtypes=None, gpu=None, sparse=None, **kw):
+    def __init__(self, data=None, dtypes=None, gpu=None, **kw):
         if dtypes is None and data is not None:
             dtypes = data.dtypes
-        super().__init__(_data=data, _dtypes=dtypes, _gpu=gpu, _sparse=sparse,
+        if gpu is None and is_cudf(data):  # pragma: no cover
+            gpu = True
+        super().__init__(data=data, dtypes=dtypes, gpu=gpu,
                          _output_types=[OutputType.dataframe], **kw)
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def dtypes(self):
-        return self._dtypes
 
     def __call__(self, shape, chunk_size=None):
         return self.new_dataframe(None, shape, dtypes=self.dtypes,
-                                  index_value=parse_index(self._data.index),
-                                  columns_value=parse_index(self._data.columns,
+                                  index_value=parse_index(self.data.index),
+                                  columns_value=parse_index(self.data.columns,
                                                             store_data=True),
                                   raw_chunk_size=chunk_size)
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameDataSource"):
         df = op.outputs[0]
         raw_df = op.data
 
@@ -75,8 +69,8 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
             if j_slc == slice(0, df.shape[1]):
                 # optimize full slice, it's way more faster
                 j_slc = slice(None)
-            chunk_op._data = raw_df.iloc[i_slc, j_slc]
-            chunk_op._dtypes = chunk_op._data.dtypes
+            chunk_op.data = raw_df.iloc[i_slc, j_slc]
+            chunk_op.dtypes = chunk_op.data.dtypes
             i, j = chunk_idx
             if i in index_values:
                 index_value = index_values[i]
@@ -90,7 +84,7 @@ class DataFrameDataSource(DataFrameOperand, DataFrameOperandMixin):
             out_chunk = chunk_op.new_chunk(None, shape=chunk_shape, index=chunk_idx,
                                            index_value=index_value,
                                            columns_value=column_value,
-                                           dtypes=chunk_op._data.dtypes)
+                                           dtypes=chunk_op.data.dtypes)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()

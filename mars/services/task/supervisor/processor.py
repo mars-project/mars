@@ -163,7 +163,7 @@ class TaskProcessor:
                     # reducer
                     data_keys = chunk.op.get_dependent_data_keys()
                     incref_chunk_keys.extend(data_keys)
-                    # main key incref as well, to ensure existence of mata
+                    # main key incref as well, to ensure existence of meta
                     incref_chunk_keys.extend([key[0] for key in data_keys])
         result_chunks = stage_processor.chunk_graph.result_chunks
         incref_chunk_keys.extend([c.key for c in result_chunks])
@@ -254,8 +254,8 @@ class TaskProcessor:
 
         # gen subtask graph
         available_bands = await self._get_available_band_slots()
-        subtask_graph = self._preprocessor.analyze(
-            chunk_graph, available_bands)
+        subtask_graph = await asyncio.to_thread(
+            self._preprocessor.analyze, chunk_graph, available_bands)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), self._get_chunk_optimization_records(),
@@ -482,11 +482,11 @@ class TaskProcessorActor(mo.Actor):
 
             for node_successor in graph.iter_successors(node):
                 edge_list.append({
-                    "from_tileable_id": node_successor.key,
-                    "from_tileable_name": str(node_successor.op),
+                    "from_tileable_id": node.key,
+                    "from_tileable_name": node_name,
 
-                    "to_tileable_id": node.key,
-                    "to_tileable_name": node_name,
+                    "to_tileable_id": node_successor.key,
+                    "to_tileable_name": str(node_successor.op),
 
                     "linkType": 0,
                 })
@@ -537,7 +537,10 @@ class TaskProcessorActor(mo.Actor):
         stage_processor.subtask_temp_result[subtask] = subtask_result
         if subtask_result.status.is_done:
             try:
-                await self._decref_input_subtasks(subtask, stage_processor.subtask_graph)
+                # Since every worker will call supervisor to set subtask result,
+                # we need to release actor lock to make `decref_chunks` parallel to avoid blocking
+                # other `set_subtask_result` calls.
+                yield self._decref_input_subtasks(subtask, stage_processor.subtask_graph)
             except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
                 _, err, tb = sys.exc_info()
                 if subtask_result.status not in (SubtaskStatus.errored, SubtaskStatus.cancelled):

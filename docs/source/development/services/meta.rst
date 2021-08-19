@@ -3,6 +3,15 @@
 Meta Service
 ============
 
+Configuration
+-------------
+
+.. code-block:: yaml
+
+    meta:
+        store: "<meta store name>"
+        # other config related to each store
+
 APIs
 ----
 

@@ -742,7 +742,7 @@ def test_tree_arithmetic_execution(setup):
 
 
 @require_cupy
-def test_cupy_execution(setup):
+def test_cupy_execution(setup_gpu):
     a_data = np.random.rand(10, 10)
     b_data = np.random.rand(10, 10)
 
