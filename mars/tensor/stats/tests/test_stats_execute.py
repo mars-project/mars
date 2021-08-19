@@ -199,22 +199,15 @@ def test_t_test_execution(setup):
 
 
 @pytest.mark.parametrize('chunk_size', [5, 15])
-@pytest.mark.parametrize('mode', ['auto', 'asymp', 'approx'])
-def test_ks_1samp(setup, chunk_size, mode):
+@pytest.mark.parametrize('mode, alternative', [
+    ('auto', 'greater'),
+    ('auto', 'less'),
+    ('auto', 'two-sided'),
+    ('asymp', 'two-sided'),
+    ('approx', 'two-sided'),
+])
+def test_ks_1samp(setup, chunk_size, mode, alternative):
     x = tensor(np.linspace(-15, 15, 9), chunk_size=5)
-
-    if mode == 'auto':
-        result = ks_1samp(x, sp_norm.cdf,
-                          alternative='greater').execute().fetch()
-        expected = sp_ks_1samp(x, sp_norm.cdf,
-                               alternative='greater')
-        assert result == expected
-
-        result = ks_1samp(x, sp_norm.cdf,
-                          alternative='less').execute().fetch()
-        expected = sp_ks_1samp(x, sp_norm.cdf,
-                               alternative='less')
-        assert result == expected
 
     result = ks_1samp(x, sp_norm.cdf, mode=mode).execute().fetch()
     expected = sp_ks_1samp(x, sp_norm.cdf, mode=mode)

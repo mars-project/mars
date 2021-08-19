@@ -14,16 +14,19 @@
 
 import asyncio
 import itertools
+import operator
 import sys
 import time
-from functools import wraps
+from collections import defaultdict
+from functools import reduce, wraps
 from typing import Callable, Coroutine, Dict, Iterator, \
     List, Optional, Set, Type, Union
 
 from .... import oscar as mo
 from ....config import Config
 from ....core import ChunkGraph, TileableGraph
-from ....core.operand import Fetch, MapReduceOperand, ShuffleProxy, OperandStage
+from ....core.operand import Fetch, FetchShuffle, MapReduceOperand, \
+    ShuffleProxy, OperandStage
 from ....optimization.logical import OptimizationRecords
 from ....typing import TileableType, BandType
 from ....utils import build_fetch
@@ -240,6 +243,40 @@ class TaskProcessor:
         if self._preprocessor.chunk_optimization_records_list:
             return self._preprocessor.chunk_optimization_records_list[-1]
 
+    def _get_tileable_to_subtasks(self, subtask_graph: SubtaskGraph) \
+            -> Dict[TileableType, List[Subtask]]:
+        tileable_to_chunks = defaultdict(set)
+        chunk_to_subtasks = dict()
+
+        tileable_graph = self._preprocessor.tileable_graph
+        tile_ctx = self._preprocessor.tile_context
+
+        for tileable in tileable_graph:
+            if tileable not in tile_ctx:
+                continue
+            for chunk in tile_ctx[tileable].chunks:
+                tileable_to_chunks[tileable].add(chunk.key)
+                # register chunk mapping for tiled terminals
+                chunk_to_subtasks[chunk.key] = set()
+
+        for subtask in subtask_graph:
+            for chunk in subtask.chunk_graph:
+                # for every non-fuse chunks (including fused),
+                # register subtasks if needed
+                if isinstance(chunk.op, (FetchShuffle, Fetch)) or \
+                        chunk.key not in chunk_to_subtasks:
+                    continue
+                chunk_to_subtasks[chunk.key].add(subtask)
+
+        tileable_to_subtasks = dict()
+        # collect subtasks for tileables
+        for tileable, chunk_keys in tileable_to_chunks.items():
+            tileable_to_subtasks[tileable] = list(reduce(
+                operator.or_,
+                [chunk_to_subtasks[chunk_key] for chunk_key in chunk_keys]
+            ))
+        return tileable_to_subtasks
+
     @_record_error
     async def get_next_stage_processor(self) \
             -> Optional[TaskStageProcessor]:
@@ -256,9 +293,12 @@ class TaskProcessor:
         available_bands = await self._get_available_band_slots()
         subtask_graph = await asyncio.to_thread(
             self._preprocessor.analyze, chunk_graph, available_bands)
+        tileable_to_subtasks = await asyncio.to_thread(
+            self._get_tileable_to_subtasks, subtask_graph)
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
-            list(available_bands), self._get_chunk_optimization_records(),
+            list(available_bands), tileable_to_subtasks,
+            self._get_chunk_optimization_records(),
             self._scheduling_api, self._meta_api)
         return stage_processor
 
@@ -447,7 +487,7 @@ class TaskProcessorActor(mo.Actor):
             progress = sum(result.progress for result
                            in stage_processor.subtask_results.values())
             progress += sum(result.progress for subtask_key, result
-                            in stage_processor.subtask_temp_result.items()
+                            in stage_processor.subtask_temp_results.items()
                             if subtask_key not in stage_processor.subtask_results)
             subtask_progress += progress / n_subtask
             n_stage += 1
@@ -467,36 +507,78 @@ class TaskProcessorActor(mo.Actor):
 
     def get_tileable_graph_as_dict(self):
         processor = list(self._task_id_to_processor.values())[-1]
-        graph = processor.tileable_graph
+        tileable_graph = processor.tileable_graph
 
         node_list = []
         edge_list = []
 
-        for node in graph.iter_nodes():
-            node_name = str(node.op)
+        for chunk in tileable_graph:
+            node_name = str(chunk.op)
 
             node_list.append({
-                "tileable_id": node.key,
-                "tileable_name": node_name
+                'tileableId': chunk.key,
+                'tileableName': node_name
             })
-
-            for node_successor in graph.iter_successors(node):
+            for inp, is_pure_dep in zip(chunk.inputs, chunk.op.pure_depends):
+                if inp not in tileable_graph:  # pragma: no cover
+                    continue
                 edge_list.append({
-                    "from_tileable_id": node.key,
-                    "from_tileable_name": node_name,
-
-                    "to_tileable_id": node_successor.key,
-                    "to_tileable_name": str(node_successor.op),
-
-                    "linkType": 0,
+                    'fromTileableId': inp.key,
+                    'toTileableId': chunk.key,
+                    'linkType': 1 if is_pure_dep else 0,
                 })
-
         graph_dict = {
-            "tileables": node_list,
-            "dependencies": edge_list
-            }
-
+            'tileables': node_list,
+            'dependencies': edge_list
+        }
         return graph_dict
+
+    def get_tileable_details(self):
+        tileable_to_subtasks = dict()
+        subtask_results = dict()
+        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
+
+        for processor in self._task_id_to_processor.values():
+            for stage in processor.stage_processors:
+                tileable_to_subtasks.update(stage.tileable_to_subtasks)
+
+                for subtask, result in stage.subtask_results.items():
+                    subtask_results[subtask.subtask_id] = result
+                for subtask, result in stage.subtask_temp_results.items():
+                    if subtask.subtask_id in subtask_results:
+                        continue
+                    subtask_results[subtask.subtask_id] = result
+
+        tileable_infos = dict()
+        for tileable, subtasks in tileable_to_subtasks.items():
+            results = [subtask_results.get(subtask.subtask_id, default_result)
+                       for subtask in subtasks]
+
+            # calc progress
+            if not results:  # pragma: no cover
+                progress = 1.0
+            else:
+                progress = 1.0 * sum(result.progress for result in results) / len(results)
+
+            # calc status
+            statuses = set(result.status for result in results)
+            if not results or statuses == {SubtaskStatus.succeeded}:
+                status = SubtaskStatus.succeeded
+            elif statuses == {SubtaskStatus.cancelled}:
+                status = SubtaskStatus.cancelled
+            elif statuses == {SubtaskStatus.pending}:
+                status = SubtaskStatus.pending
+            elif SubtaskStatus.errored in statuses:
+                status = SubtaskStatus.errored
+            else:
+                status = SubtaskStatus.running
+
+            tileable_infos[tileable.key] = {
+                'progress': progress,
+                'subtaskCount': len(results),
+                'status': status.value,
+            }
+        return tileable_infos
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
@@ -534,7 +616,7 @@ class TaskProcessorActor(mo.Actor):
             # set before
             return
 
-        stage_processor.subtask_temp_result[subtask] = subtask_result
+        stage_processor.subtask_temp_results[subtask] = subtask_result
         if subtask_result.status.is_done:
             try:
                 # Since every worker will call supervisor to set subtask result,
