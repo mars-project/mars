@@ -911,6 +911,7 @@ def test_info_execution(setup):
     md_info = md_buf.getvalue().split('\n')[1:]
     assert pd_info == md_info
 
+
 def test_to_numeric_execition(setup):
     rs = np.random.RandomState(0)
     s = pd.Series(rs.randint(5, size=100))
