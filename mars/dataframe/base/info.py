@@ -18,6 +18,7 @@ from ...core import OutputType
 from ..core import SERIES_TYPE
 from ..utils import parse_index
 import io
+import ast
 
 
 class DataFrameInfo(DataFrameOperand, DataFrameOperandMixin):
@@ -168,7 +169,7 @@ class DataFrameInfoPrinter(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def get_total_cols(cls, df_info):
         splited_info = df_info.strip().split("\n")
-        return eval(splited_info[2].split()[3])
+        return ast.literal_eval(splited_info[2].split()[3])
 
     @classmethod
     def convert_to_summary(cls, df_info):
@@ -219,31 +220,25 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
 
         first_row = "<class 'mars.dataframe.DataFrame'>\n"
         raw_columns = []
-        for input in inputs:
-            raw_columns.extend(input[5:-2])
+        for one_input in inputs:
+            raw_columns.extend(one_input[5:-2])
         splited_columns = [s.split() for s in raw_columns]
         column_names = list(set([s[1] for s in splited_columns]))
         column_to_counts = dict(zip(column_names, [0] * len(column_names)))
         column_to_dtype = dict(zip(column_names, [0] * len(column_names)))
         index_column = []
         for one_col in splited_columns:
-            column_to_counts[one_col[1]] += eval(one_col[2])
+            column_to_counts[one_col[1]] += ast.literal_eval(one_col[2])
             column_to_dtype[one_col[1]] = one_col[4]
             if one_col[1] not in index_column:
                 index_column.append(one_col[1])
 
-        total_entries = 0
-        test_col = column_names[0]
-        for input in inputs:
-            for one_col in input[5:-2]:
-                if one_col.split()[1] == test_col:
-                    total_entries += eval(input[1].split()[1])
-
+        total_entries = cls.get_total_entries(column_names, inputs)
         index_type = inputs[0][1].split(":")[0]
         index_to_index = dict()
-        for input in inputs:
-            first_index = input[1].split()[-3]
-            last_index = input[1].split()[-1]
+        for one_input in inputs:
+            first_index = one_input[1].split()[-3]
+            last_index = one_input[1].split()[-1]
             index_to_index[first_index] = last_index
         first_index = list(index_to_index.keys())[0]
         last_index = list(index_to_index.values())[-1]
@@ -266,19 +261,29 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
         dtypes_info = dtypes_info.strip(',')
         dtypes_info += '\n'
 
+        contain_object = '+' if 'object' in column_to_dtype.values() else ''
+        last_row = cls.get_last_row(inputs, contain_object)
+
+        result = first_row + second_row + third_row + fourth_row + fifth_row
+        for column_info in columns_info:
+            result += column_info
+        result += dtypes_info + last_row
+        ctx[op.outputs[0].key] = pd.Series(result)
+
+    @classmethod
+    def get_last_row(cls, inputs, contain_object):
         total_memory_usage = 0
-        for input in inputs:
-            memory_info = input[-1]
+        for one_input in inputs:
+            memory_info = one_input[-1]
             memory_usage = memory_info.split(":")[1]
             if "GB" in memory_usage:
-                total_memory_usage += eval(memory_usage[:-2].strip().strip("+")) * 1024 * 1024 * 1024
+                total_memory_usage += ast.literal_eval(memory_usage[:-2].strip().strip("+")) * 1024 * 1024 * 1024
             elif "MB" in memory_usage:
-                total_memory_usage += eval(memory_usage[:-2].strip().strip("+")) * 1024 * 1024
+                total_memory_usage += ast.literal_eval(memory_usage[:-2].strip().strip("+")) * 1024 * 1024
             elif "KB" in memory_usage:
-                total_memory_usage += eval(memory_usage[:-2].strip().strip("+")) * 1024
+                total_memory_usage += ast.literal_eval(memory_usage[:-2].strip().strip("+")) * 1024
             else:
-                total_memory_usage += eval(memory_usage[:-5].strip().strip("+"))
-        contain_object = '+' if 'object' in column_to_dtype.values() else ''
+                total_memory_usage += ast.literal_eval(memory_usage[:-5].strip().strip("+"))
         if total_memory_usage < 1024:
             last_row = f'memory usage: {total_memory_usage}{contain_object} bytes\n'
         elif total_memory_usage < 1024 * 1024:
@@ -290,12 +295,17 @@ class DataFrameMergeInfoData(DataFrameOperand, DataFrameOperandMixin):
         else:
             total_memory_usage = round(total_memory_usage / (1024 * 1024 * 1024), 1)
             last_row = f'memory usage: {total_memory_usage}{contain_object} GB\n'
+        return last_row
 
-        result = first_row + second_row + third_row + fourth_row + fifth_row
-        for column_info in columns_info:
-            result += column_info
-        result += dtypes_info + last_row
-        ctx[op.outputs[0].key] = pd.Series(result)
+    @classmethod
+    def get_total_entries(cls, column_names, inputs):
+        total_entries = 0
+        test_col = column_names[0]
+        for one_input in inputs:
+            for one_col in one_input[5:-2]:
+                if one_col.split()[1] == test_col:
+                    total_entries += ast.literal_eval(one_input[1].split()[1])
+        return total_entries
 
 
 def info(arg, verbose=None, buf=None, max_cols=None, memory_usage=None, show_counts=None, null_counts=None):
