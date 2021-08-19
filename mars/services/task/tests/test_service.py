@@ -63,8 +63,8 @@ async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "lifecycle", "meta", "lifecycle", "scheduling",
-                     "task", "subtask"],
+        "services": ["cluster", "session", "meta", "lifecycle",
+                     "scheduling", "subtask", "task"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -284,11 +284,11 @@ async def test_get_tileables(start_test_service):
 
         for node_successor in graph.iter_successors(node):
             graph_dependencies.append({
-                "from_tileable_id": node_successor.key,
-                "from_tileable_name": str(node_successor.op),
+                "from_tileable_id": node.key,
+                "from_tileable_name": str(node.op),
 
-                "to_tileable_id": node.key,
-                "to_tileable_name": str(node.op),
+                "to_tileable_id": node_successor.key,
+                "to_tileable_name": str(node_successor.op),
 
                 "linkType": 0,
             })

@@ -19,86 +19,11 @@ import pytest
 
 from mars.core import tile
 from mars.core.operand import OperandStage
-from mars.tensor.datasource import ones, tensor, arange, array, asarray, \
-    ascontiguousarray, asfortranarray
+from mars.tensor.datasource import ones, tensor, arange
 from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, topk, to_gpu, to_cpu
-
-
-def test_array():
-    a = tensor([0, 1, 2], chunk_size=2)
-
-    b = array(a)
-    assert a is not b
-
-    c = asarray(a)
-    assert a is c
-
-
-def test_ascontiguousarray():
-    # dtype different
-    raw_a = np.asfortranarray(np.random.rand(2, 4))
-    raw_b = np.ascontiguousarray(raw_a, dtype='f4')
-
-    a = tensor(raw_a, chunk_size=2)
-    b = ascontiguousarray(a, dtype='f4')
-
-    assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
-
-    assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
-
-    # no copy
-    raw_a = np.random.rand(2, 4)
-    raw_b = np.ascontiguousarray(raw_a)
-
-    a = tensor(raw_a, chunk_size=2)
-    b = ascontiguousarray(a)
-
-    assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
-
-    assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
-
-
-def test_asfortranarray():
-    # dtype different
-    raw_a = np.random.rand(2, 4)
-    raw_b = np.asfortranarray(raw_a, dtype='f4')
-
-    a = tensor(raw_a, chunk_size=2)
-    b = asfortranarray(a, dtype='f4')
-
-    assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
-
-    assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
-
-    # no copy
-    raw_a = np.asfortranarray(np.random.rand(2, 4))
-    raw_b = np.asfortranarray(raw_a)
-
-    a = tensor(raw_a, chunk_size=2)
-    b = asfortranarray(a)
-
-    assert a.dtype == raw_a.dtype
-    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
-    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
-
-    assert b.dtype == raw_b.dtype
-    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
-    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
 
 def test_dir():
@@ -373,8 +298,8 @@ def test_split():
     assert splits[2].flags['F_CONTIGUOUS'] is True
     assert splits[0].flags['C_CONTIGUOUS'] is False
 
-    for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
-        splits = split(a, (3,5))
+    for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+        splits = split(a, (3, 5))
         assert len(splits) == 3
 
 
@@ -459,7 +384,7 @@ def test_isin():
     mask, element = tile(mask, element)
 
     assert len(mask.chunks) == len(element.chunks)
-    assert len(mask.op.test_elements.chunks) == 1
+    assert len(mask.op.inputs[1].chunks) == 1
     assert mask.chunks[0].inputs[0] is element.chunks[0].data
 
     element = 2 * arange(4, chunk_size=1).reshape(2, 2)
@@ -468,13 +393,6 @@ def test_isin():
     mask = isin(element, test_elements, invert=True)
     assert mask.shape == (2, 2)
     assert mask.dtype == np.bool_
-
-    mask, element = tile(mask, element)
-
-    assert len(mask.chunks) == len(element.chunks)
-    assert len(mask.op.test_elements.chunks) == 1
-    assert mask.chunks[0].inputs[0] is element.chunks[0].data
-    assert mask.chunks[0].op.invert is True
 
 
 def test_create_view():
@@ -543,7 +461,7 @@ def test_searchsorted():
 
     assert t1.nsplits == ()
     assert len(t1.chunks) == 1
-    assert t1.chunks[0].op.stage == OperandStage.reduce
+    assert t1.chunks[0].op.stage == OperandStage.agg
 
     with pytest.raises(ValueError):
         searchsorted(np.random.randint(10, size=(14, 14)), 1)

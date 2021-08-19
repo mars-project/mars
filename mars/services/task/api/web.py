@@ -152,7 +152,7 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         params = {'progress': int(progress)}
         res = await self._request_url('GET', path, params=params)
         return [_json_deserial_task_result(d)
-                for d in json.loads((await res.read()).decode())['tasks']]
+                for d in json.loads(res.body.decode())['tasks']]
 
     async def submit_tileable_graph(self,
                                     graph: TileableGraph,
@@ -173,38 +173,38 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
             headers={'Content-Type': 'application/octet-stream'},
             data=body
         )
-        return (await res.read()).decode()
+        return res.body.decode()
 
     async def get_fetch_tileables(self, task_id: str) -> List[Tileable]:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}' \
                f'?action=fetch_tileables'
         res = await self._request_url('GET', path)
-        return deserialize_serializable(await res.read())
+        return deserialize_serializable(res.body)
 
     async def get_task_result(self, task_id: str) -> TaskResult:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         res = await self._request_url('GET', path)
-        return _json_deserial_task_result(json.loads((await res.read()).decode()))
+        return _json_deserial_task_result(json.loads(res.body.decode()))
 
     async def get_task_progress(self,
                                 task_id: str) -> float:
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         params = dict(action='progress')
         res = await self._request_url('GET', path, params=params)
-        return float(await res.read())
+        return float(res.body.decode())
 
     async def get_last_idle_time(self) -> Union[float, None]:
         path = f'{self._address}/api/session/{self._session_id}/task'
         params = dict(action='last_idle_time')
         res = await self._request_url('GET', path, params=params)
-        content = await res.read()
+        content = res.body.decode()
         return float(content) if content else None
 
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         params = {'action': 'wait', 'timeout': str(timeout or '')}
         res = await self._request_url('GET', path, params=params)
-        return _json_deserial_task_result(json.loads((await res.read()).decode()))
+        return _json_deserial_task_result(json.loads(res.body.decode()))
 
     async def cancel_task(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
@@ -214,5 +214,4 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileable_graph'
         params = dict(action='get_tileable_graph_as_json')
         res = await self._request_url(path=path, params=params, method='GET')
-        content = await res.read()
-        return json.loads(content.decode())
+        return json.loads(res.body.decode())

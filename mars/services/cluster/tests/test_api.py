@@ -22,7 +22,7 @@ from mars.services import NodeRole
 from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
 from mars.services.cluster.api.web import web_handlers
 from mars.services.cluster.core import NodeStatus
-from mars.services.web.supervisor import start as start_web
+from mars.services.web.supervisor import WebSupervisorService
 from mars.utils import get_next_port
 
 
@@ -92,7 +92,8 @@ async def test_web_api(actor_pool):
             'web_handlers': web_handlers,
         }
     }
-    await start_web(web_config, pool_addr)
+    web_service = WebSupervisorService(web_config, pool_addr)
+    await web_service.start()
 
     web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
     assert await web_api.get_supervisors() == [pool_addr]

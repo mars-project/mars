@@ -24,6 +24,24 @@ from ..utils import lazy_import
 cp = lazy_import('cupy', globals=globals(), rename='cp')
 
 
+def is_array(x):
+    if isinstance(x, np.ndarray):
+        return True
+    elif isinstance(x, (sparse.SparseMatrix, sparse.SparseVector)):
+        return True
+    elif cp:  # pragma: no cover
+        return isinstance(x, cp.ndarray)
+    else:
+        return False
+
+
+def is_cupy(x):
+    if cp and isinstance(x, cp.ndarray):  # pragma: no cover
+        return True
+    else:
+        return False
+
+
 def get_array_module(x, nosparse=False):
     if issparse(x):
         if nosparse:

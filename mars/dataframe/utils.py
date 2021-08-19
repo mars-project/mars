@@ -31,7 +31,9 @@ except ImportError:  # pragma: no cover
 from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes
+from ..utils import tokenize, sbytes, lazy_import
+
+cudf = lazy_import('cudf', globals=globals(), rename='cudf')
 
 
 def hash_index(index, size):
@@ -48,6 +50,8 @@ def hash_dataframe_on(df, on, size, level=None):
         idx = df.index
         if level is not None:
             idx = idx.to_frame(False)[level]
+        if cudf and isinstance(idx, cudf.Index):  # pragma: no cover
+            idx = idx.to_pandas()
         hashed_label = pd.util.hash_pandas_object(idx, categorize=False)
     elif callable(on):
         # todo optimization can be added, if ``on`` is a numpy ufunc or sth can be vectorized
@@ -79,6 +83,22 @@ def sort_dataframe_inplace(df, *axis):
     return df
 
 
+@functools.lru_cache(1)
+def _get_range_index_type():
+    if cudf is not None:
+        return pd.RangeIndex, cudf.RangeIndex
+    else:
+        return pd.RangeIndex
+
+
+@functools.lru_cache(1)
+def _get_multi_index_type():
+    if cudf is not None:
+        return pd.MultiIndex, cudf.MultiIndex
+    else:
+        return pd.MultiIndex
+
+
 def _get_range_index_start(pd_range_index):
     try:
         return pd_range_index.start
@@ -97,7 +117,11 @@ def _get_range_index_step(pd_range_index):
     try:
         return pd_range_index.step
     except AttributeError:  # pragma: no cover
+        pass
+    try:  # pragma: no cover
         return pd_range_index._step
+    except AttributeError:  # pragma: no cover
+        return 1  # cudf does not support step arg
 
 
 def is_pd_range_empty(pd_range_index):
@@ -292,9 +316,13 @@ def parse_index(index_value, *args, store_data=False, key=None):
             _max_val_close=True,
             _key=key or tokenize(*args),
         ))
-    if isinstance(index_value, pd.RangeIndex):
+    if hasattr(index_value, 'to_pandas'):  # pragma: no cover
+        # convert cudf.Index to pandas
+        index_value = index_value.to_pandas()
+
+    if isinstance(index_value, _get_range_index_type()):
         return IndexValue(_index_value=_serialize_range_index(index_value))
-    elif isinstance(index_value, pd.MultiIndex):
+    elif isinstance(index_value, _get_multi_index_type()):
         return IndexValue(_index_value=_serialize_multi_index(index_value))
     else:
         return IndexValue(_index_value=_serialize_index(index_value))
@@ -977,7 +1005,8 @@ def fetch_corner_data(df_or_series, session=None) -> pd.DataFrame:
         tail = iloc(df_or_series)[-index_size:]
         head_data, tail_data = \
             ExecutableTuple([head, tail]).fetch(session=session)
-        return pd.concat([head_data, tail_data], axis='index')
+        xdf = cudf if head.op.is_gpu() else pd
+        return xdf.concat([head_data, tail_data], axis='index')
 
 
 class ReprSeries(pd.Series):
@@ -1116,3 +1145,38 @@ def make_dtypes(dtypes):
         else:
             dtypes = pd.Series(dtypes)
     return dtypes.apply(make_dtype)
+
+
+def is_dataframe(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.DataFrame):
+            return True
+    return isinstance(x, pd.DataFrame)
+
+
+def is_series(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.Series):
+            return True
+    return isinstance(x, pd.Series)
+
+
+def is_index(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, cudf.Index):
+            return True
+    return isinstance(x, pd.Index)
+
+
+def get_xdf(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return cudf
+    return pd
+
+
+def is_cudf(x):
+    if cudf is not None:  # pragma: no cover
+        if isinstance(x, (cudf.DataFrame, cudf.Series, cudf.Index)):
+            return True
+    return False

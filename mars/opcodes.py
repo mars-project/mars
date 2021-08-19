@@ -386,13 +386,6 @@ DELETE = 740
 
 FUSE = 801
 
-# control
-ENTER = 901
-LEAVE = 902
-FIX_LATEST = 903
-IF_ELSE = 904
-NEXT_ITER = 905
-
 # table like input for tensor
 TABLE_COO = 1003
 # store tensor as coo format
@@ -533,6 +526,10 @@ TYPE_OF_TARGET = 3304
 ACCURACY_SCORE = 3305
 # port detection
 COLLECT_PORTS = 3306
+# unique labels
+UNIQUE_LABELS = 3307
+# PREPROCESSING
+LABEL_BINARIZE = 3308
 
 # Remote Functions and class
 REMOTE_FUNCATION = 5001

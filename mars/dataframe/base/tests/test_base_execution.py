@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 from mars.config import options, option_context
 from mars.dataframe import eval as mars_eval, cut, qcut
 from mars.dataframe.base import to_gpu, to_cpu
+from mars.dataframe.base.to_numeric import to_numeric
 from mars.dataframe.base.rebalance import DataFrameRebalance
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
 from mars.dataframe.datasource.series import from_pandas as from_pandas_series
@@ -38,7 +39,7 @@ cudf = lazy_import('cudf', globals=globals())
 
 
 @require_cudf
-def test_to_gpu_execution(setup):
+def test_to_gpu_execution(setup_gpu):
     pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
     df = from_pandas_df(pdf, chunk_size=(13, 21))
     cdf = to_gpu(df)
@@ -57,7 +58,7 @@ def test_to_gpu_execution(setup):
 
 
 @require_cudf
-def test_to_cpu_execution(setup):
+def test_to_cpu_execution(setup_gpu):
     pdf = pd.DataFrame(np.random.rand(20, 30), index=np.arange(20, 0, -1))
     df = from_pandas_df(pdf, chunk_size=(13, 21))
     cdf = to_gpu(df)
@@ -880,6 +881,48 @@ def test_transpose_execution(setup):
     df = from_pandas_df(raw, chunk_size=2)
     result = df.T.execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
+
+def test_to_numeric_execition(setup):
+    rs = np.random.RandomState(0)
+    s = pd.Series(rs.randint(5, size=100))
+    s[rs.randint(100)] = np.nan
+
+    # test 1 chunk
+    series = from_pandas_series(s)
+
+    r = to_numeric(series)
+    pd.testing.assert_series_equal(r.execute().fetch(),
+                                   pd.to_numeric(s))
+
+    # test multi chunks
+    series = from_pandas_series(s, chunk_size=20)
+
+    r = to_numeric(series)
+    pd.testing.assert_series_equal(r.execute().fetch(),
+                                   pd.to_numeric(s))
+
+    # test object dtype
+    s = pd.Series(['1.0', 2, -3, '2.0'])
+    series = from_pandas_series(s)
+
+    r = to_numeric(series)
+    pd.testing.assert_series_equal(r.execute().fetch(),
+                                   pd.to_numeric(s))
+
+    # test errors and downcast
+    s = pd.Series(['appple', 2, -3, '2.0'])
+    series = from_pandas_series(s)
+
+    r = to_numeric(series, errors='ignore', downcast='signed')
+    pd.testing.assert_series_equal(r.execute().fetch(),
+                                   pd.to_numeric(s, errors='ignore', downcast='signed'))
+
+    # test list data
+    l = ['1.0', 2, -3, '2.0']
+
+    r = to_numeric(l)
+    np.testing.assert_array_equal(r.execute().fetch(),
+                                   pd.to_numeric(l))
 
 
 def test_q_cut_execution(setup):

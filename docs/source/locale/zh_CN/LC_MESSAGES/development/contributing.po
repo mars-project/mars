@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-03 18:42+0800\n"
+"POT-Creation-Date: 2021-08-05 17:47+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/development/contributing.rst:4
 msgid "Contributing to Mars"
@@ -65,7 +65,6 @@ msgid "Install in Conda"
 msgstr "在 Conda 中安装"
 
 #: ../../source/development/contributing.rst:25
-#, fuzzy
 msgid ""
 "It is recommended to develop Mars with conda. When you want to install "
 "Mars for development, use the following steps to create an environment "
@@ -133,10 +132,25 @@ msgstr ""
 "命令将它们重新编译为二进制文件："
 
 #: ../../source/development/contributing.rst:78
+msgid "Rebuilding Frontend Code"
+msgstr "重新编译前端代码"
+
+#: ../../source/development/contributing.rst:79
+msgid ""
+"Mars uses `React <https://reactjs.org>`_ to build its frontend. You need "
+"to install `nodejs <https://nodejs.org>`_ to build it from source. After "
+"all dependencies installed, simply use command below to build your "
+"frontend code:"
+msgstr ""
+"Mars 使用 `React <https://reactjs.org>`_ 编写前端，你需要安装 `nodejs <"
+"https://nodejs.org>`_ 完成 Mars 前端代码的构建。安装完成所有依赖后，可以"
+"使用下面的代码进行构建："
+
+#: ../../source/development/contributing.rst:88
 msgid "Running Tests"
 msgstr "运行测试用例"
 
-#: ../../source/development/contributing.rst:79
+#: ../../source/development/contributing.rst:89
 msgid ""
 "It is recommended to use ``pytest`` to run Mars tests. A simple command "
 "below will run all the tests of Mars:"
@@ -144,15 +158,15 @@ msgstr ""
 "我们推荐使用 ``pytest`` 运行 Mars 测试用例。只需要一行命令即可运行 Mars "
 "的所有用例："
 
-#: ../../source/development/contributing.rst:86
+#: ../../source/development/contributing.rst:96
 msgid "If you want to generate a coverage report as well, you can run:"
 msgstr "如果你希望在运行的同时生成代码覆盖报告，可以运行："
 
-#: ../../source/development/contributing.rst:92
+#: ../../source/development/contributing.rst:102
 msgid "Coverage report will be put into the directory ``htmlcov``."
 msgstr "代码覆盖报告将会被放在 ``htmlcov`` 目录下。"
 
-#: ../../source/development/contributing.rst:94
+#: ../../source/development/contributing.rst:104
 msgid ""
 "The command above does not contain coverage data for Cython files by "
 "default. To obtain coverage data about Cython files, you can run"
@@ -160,7 +174,7 @@ msgstr ""
 "上面的命令默认不包含 Cython 文件的覆盖率。为获得 Cython 文件的覆盖数据，"
 "可以运行"
 
-#: ../../source/development/contributing.rst:101
+#: ../../source/development/contributing.rst:111
 msgid ""
 "before running the pytest command mentioned above. After report is "
 "generated, it it recommended to remove all generated C files and binaries"
@@ -171,11 +185,26 @@ msgstr ""
 "生成的 C 文件和二进制文件，此后重新使用不带 ``CYTHON_TRACE`` 环境变量的"
 "命令编译，因为该选项会降低 Mars 的性能。"
 
-#: ../../source/development/contributing.rst:106
+#: ../../source/development/contributing.rst:116
+msgid "Check Code Styles"
+msgstr "检查代码样式"
+
+#: ../../source/development/contributing.rst:117
+msgid ""
+"Before proposing changes to Mars, you need to make sure your code style "
+"meets our requirements. Mars uses `flake8 <https://flake8.pycqa.org>`_ to"
+" check Python code style.  Simply run command below to check your code "
+"style:"
+msgstr ""
+"在向 Mars 提交代码前，你需要保证你的代码样式符合 Mars 项目的要求。Mars "
+"使用 `flake8 <https://flake8.pycqa.org>`_ 检查代码样式。你可以使用下面的"
+"代码运行检查："
+
+#: ../../source/development/contributing.rst:126
 msgid "Building Documentations"
 msgstr "编译文档"
 
-#: ../../source/development/contributing.rst:107
+#: ../../source/development/contributing.rst:127
 msgid ""
 "Mars uses ``sphinx`` to build documents. You need to install necessary "
 "packages with the command below to install these dependencies and build "
@@ -184,11 +213,11 @@ msgstr ""
 "Mars 使用 ``sphinx`` 编译文档。在编译 HTML 格式的文档前，你需要使用下面的"
 "命令安装必要的依赖包"
 
-#: ../../source/development/contributing.rst:117
+#: ../../source/development/contributing.rst:137
 msgid "The built documents are in ``docs/build/html`` directory."
 msgstr "编译完成的 HTML 文档位于 ``docs/build/html`` 目录下。"
 
-#: ../../source/development/contributing.rst:119
+#: ../../source/development/contributing.rst:139
 msgid ""
 "When you want to create translations of Mars documents, you may append "
 "``-l <locale>`` after the ``I18NSPHINXLANGS`` variable in ``Makefile``. "
@@ -201,7 +230,7 @@ msgstr ""
 "命令为文档生成翻译文件（``*.po``），生成后的文件位于 ``docs/source/locale"
 "/<locale>/LC_MESSAGES`` 下："
 
-#: ../../source/development/contributing.rst:130
+#: ../../source/development/contributing.rst:150
 msgid ""
 "After that you can translate Mars documents into your language. Note that"
 " when you run ``make gettext`` again, translations will be broken into a "
@@ -212,11 +241,11 @@ msgstr ""
 "make gettext``，翻译后的文字将被转为固定宽度文字。对于中文译者，为达到该"
 "效果，需要安装 ``jieba`` 分词包。"
 
-#: ../../source/development/contributing.rst:135
+#: ../../source/development/contributing.rst:155
 msgid "When you finish translation, you can run"
 msgstr "在完成翻译后，你可以执行"
 
-#: ../../source/development/contributing.rst:143
+#: ../../source/development/contributing.rst:163
 msgid "to build the document in the language you just translated into."
 msgstr "以使用你刚才翻译的语言编译文档。"
 

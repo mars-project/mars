@@ -11,3 +11,4 @@ API reference
    dataframe/index
    learn/reference
    remote/reference
+   contrib/reference

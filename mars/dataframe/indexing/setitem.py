@@ -20,8 +20,8 @@ from ... import opcodes
 from ...core import OutputType, recursive_tile
 from ...serialization.serializables import KeyField, AnyField
 from ...tensor.core import TENSOR_TYPE
-from ..core import SERIES_TYPE, DataFrame
-from ..initializer import Series as asseries
+from ..core import DATAFRAME_TYPE, SERIES_TYPE, DataFrame
+from ..initializer import DataFrame as asframe, Series as asseries
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -74,9 +74,26 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(value, (pd.Series, SERIES_TYPE)):
                 value = asseries(value)
                 value_dtype = value.dtype
+            elif isinstance(value, (pd.DataFrame, DATAFRAME_TYPE)):
+                if len(self.indexes) != value.shape[1]:  # pragma: no cover
+                    raise ValueError('Columns must be same length as key')
+
+                value = asframe(value)
+                value_dtype = pd.Series(list(value.dtypes), index=self._indexes)
             elif is_list_like(value) or isinstance(value, TENSOR_TYPE):
-                value = asseries(value, index=target.index)
-                value_dtype = value.dtype
+                # convert to numpy to get actual dim and shape
+                if is_list_like(value):
+                    value = np.array(value)
+
+                if value.ndim == 1:
+                    value = asseries(value, index=target.index)
+                    value_dtype = value.dtype
+                else:
+                    if len(self.indexes) != value.shape[1]:  # pragma: no cover
+                        raise ValueError('Columns must be same length as key')
+
+                    value = asframe(value, index=target.index)
+                    value_dtype = pd.Series(list(value.dtypes), index=self._indexes)
             else:  # pragma: no cover
                 raise TypeError('Wrong value type, could be one of scalar, Series or tensor')
 
@@ -91,7 +108,18 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
 
         index_value = target.index_value
         dtypes = target.dtypes.copy(deep=True)
-        dtypes.loc[self._indexes] = value_dtype
+
+        try:
+            dtypes.loc[self._indexes] = value_dtype
+        except KeyError:
+            # when some index not exist, try update one by one
+            if isinstance(value_dtype, pd.Series):
+                for idx in self._indexes:
+                    dtypes.loc[idx] = value_dtype.loc[idx]
+            else:
+                for idx in self._indexes:
+                    dtypes.loc[idx] = value_dtype
+
         columns_value = parse_index(dtypes.index, store_data=True)
         ret = self.new_dataframe(inputs, shape=(target.shape[0], len(dtypes)),
                                  dtypes=dtypes, index_value=index_value,
@@ -99,15 +127,24 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         raw_target.data = ret.data
 
     @classmethod
-    def tile(cls, op):
+    def tile(cls, op: "DataFrameSetitem"):
         out = op.outputs[0]
         target = op.target
         value = op.value
-        col = op.indexes
+        indexes = op.indexes
         columns = target.columns_value.to_pandas()
         is_value_scalar = np.isscalar(value) or cls._is_scalar_tensor(value)
+        has_multiple_cols = getattr(out.dtypes[indexes], 'ndim', 0) > 0
+        target_index_to_value = dict()
+
+        if has_multiple_cols:
+            append_cols = [c for c in indexes if c not in columns]
+        else:
+            append_cols = [indexes] if indexes not in columns else []
 
         if not is_value_scalar:
+            rechunk_arg = {}
+
             # check if all chunk's index_value are identical
             target_chunk_index_values = [c.index_value for c in target.chunks
                                          if c.index[1] == 0]
@@ -120,55 +157,78 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
                         any(np.isnan(s) for s in value.nsplits[0]):  # pragma: no cover
                     yield
 
-                value = yield from recursive_tile(
-                    value.rechunk({0: target.nsplits[0]}))
+                rechunk_arg[0] = target.nsplits[0]
+
+            if isinstance(value, DATAFRAME_TYPE):
+                # rechunk in column dim given distribution of indexes in target chunks
+                col_nsplits = []
+                for head_chunk in target.cix[0, :]:
+                    new_indexes = [vc for vc in indexes if vc in head_chunk.dtypes]
+                    if new_indexes:
+                        target_index_to_value[head_chunk.index[1]] = len(col_nsplits)
+                        col_nsplits.append(len(new_indexes))
+
+                if not col_nsplits:
+                    # purely new chunks, just update last column of chunks
+                    target_index_to_value[target.chunk_shape[1] - 1] = 0
+                    col_nsplits = [len(append_cols)]
+                else:
+                    col_nsplits[-1] += len(append_cols)
+                rechunk_arg[1] = col_nsplits
+
+            if rechunk_arg:
+                value = yield from recursive_tile(value.rechunk(rechunk_arg))
 
         out_chunks = []
         nsplits = [list(ns) for ns in target.nsplits]
-        if col not in columns:
-            nsplits[1][-1] += 1
-            column_chunk_shape = target.chunk_shape[1]
-            # append to the last chunk on columns axis direction
-            for c in target.chunks:
-                if c.index[-1] != column_chunk_shape - 1:
-                    # not effected, just output
-                    out_chunks.append(c)
+
+        nsplits[1][-1] += len(append_cols)
+
+        column_chunk_shape = target.chunk_shape[1]
+        for c in target.chunks:
+            result_chunk = c
+
+            if has_multiple_cols:
+                new_indexes = [vc for vc in indexes if vc in c.dtypes]
+            else:
+                new_indexes = [indexes] if indexes in c.dtypes else []
+
+            if c.index[-1] == column_chunk_shape - 1:
+                new_indexes.extend(append_cols)
+
+            if new_indexes:
+                # update needed on current chunk
+                chunk_op = op.copy().reset_key()
+                chunk_op._indexes = new_indexes if has_multiple_cols else new_indexes[0]
+
+                if pd.api.types.is_scalar(value):
+                    chunk_inputs = [c]
+                elif is_value_scalar:
+                    chunk_inputs = [c, value.chunks[0]]
                 else:
-                    chunk_op = op.copy().reset_key()
-                    if pd.api.types.is_scalar(value):
-                        chunk_inputs = [c]
-                    elif is_value_scalar:
-                        chunk_inputs = [c, value.chunks[0]]
+                    # get proper chunk from value chunks
+                    if has_multiple_cols:
+                        value_chunk = value.cix[c.index[0], target_index_to_value[c.index[1]]]
                     else:
                         value_chunk = value.cix[c.index[0], ]
-                        chunk_inputs = [c, value_chunk]
 
-                    dtypes = c.dtypes.copy(deep=True)
-                    dtypes.loc[out.dtypes.index[-1]] = out.dtypes.iloc[-1]
-                    chunk = chunk_op.new_chunk(chunk_inputs,
-                                               shape=(c.shape[0], c.shape[1] + 1),
-                                               dtypes=dtypes,
-                                               index_value=c.index_value,
-                                               columns_value=parse_index(dtypes.index, store_data=True),
-                                               index=c.index)
-                    out_chunks.append(chunk)
-        else:
-            # replace exist column
-            for c in target.chunks:
-                if col in c.dtypes:
-                    chunk_inputs = [c]
-                    if not np.isscalar(value):
-                        chunk_inputs.append(value.cix[c.index[0], ])
-                    chunk_op = op.copy().reset_key()
-                    chunk = chunk_op.new_chunk(chunk_inputs,
-                                               shape=c.shape,
-                                               dtypes=c.dtypes,
-                                               index_value=c.index_value,
-                                               columns_value=c.columns_value,
-                                               index=c.index)
-                    out_chunks.append(chunk)
-                else:
-                    out_chunks.append(c)
+                    chunk_inputs = [c, value_chunk]
+
+                dtypes, shape, columns_value = c.dtypes, c.shape, c.columns_value
+
+                if append_cols and c.index[-1] == column_chunk_shape - 1:
+                    # some columns appended at the last column of chunks
+                    shape = (shape[0], shape[1] + len(append_cols))
+                    dtypes = pd.concat([dtypes, out.dtypes.iloc[-len(append_cols):]])
+                    columns_value = parse_index(dtypes.index, store_data=True)
+
+                result_chunk = chunk_op.new_chunk(chunk_inputs,
+                                                  shape=shape,
+                                                  dtypes=dtypes,
+                                                  index_value=c.index_value,
+                                                  columns_value=columns_value,
+                                                  index=c.index)
+            out_chunks.append(result_chunk)
 
         params = out.params
         params['nsplits'] = tuple(tuple(ns) for ns in nsplits)
@@ -182,7 +242,7 @@ class DataFrameSetitem(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = (result_size, result_size)
 
     @classmethod
-    def execute(cls, ctx, op):
+    def execute(cls, ctx, op: "DataFrameSetitem"):
         target = ctx[op.target.key].copy()
         value = ctx[op.value.key] if not np.isscalar(op.value) else op.value
         target[op.indexes] = value

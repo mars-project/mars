@@ -17,8 +17,13 @@ import pandas as pd
 
 import mars.dataframe as md
 import mars.tensor as mt
+from mars.tests.core import require_cudf, require_cupy
+from mars.utils import lazy_import
 
-    
+cupy = lazy_import('cupy', globals=globals())
+cudf = lazy_import('cudf', globals=globals())
+
+
 def test_dataframe_initializer(setup):
     # from tensor
     raw = np.random.rand(100, 10)
@@ -82,6 +87,22 @@ def test_dataframe_initializer(setup):
     assert isinstance(r, md.DataFrame)
 
 
+@require_cudf
+@require_cupy
+def test_dataframe_gpu_initializer(setup_gpu):
+    # from raw cudf initializer
+    raw = cudf.DataFrame(cupy.random.rand(100, 10), columns=list('ABCDEFGHIJ'))
+    r = md.DataFrame(raw, chunk_size=13)
+    result = r.execute().fetch()
+    pd.testing.assert_frame_equal(result.to_pandas(), raw.to_pandas())
+
+    raw = cupy.random.rand(100, 10)
+    r = md.DataFrame(raw, columns=list('ABCDEFGHIJ'), chunk_size=13)
+    result = r.execute().fetch()
+    expected = cudf.DataFrame(raw, columns=list('ABCDEFGHIJ'))
+    pd.testing.assert_frame_equal(result.to_pandas(), expected.to_pandas())
+
+
 def test_series_initializer(setup):
     # from tensor
     raw = np.random.rand(100)
@@ -121,6 +142,22 @@ def test_series_initializer(setup):
     assert isinstance(r, md.Series)
 
 
+@require_cudf
+@require_cupy
+def test_series_gpu_initializer(setup_gpu):
+    # from raw cudf initializer
+    raw = cudf.Series(cupy.random.rand(100), name='a')
+    r = md.Series(raw, chunk_size=13)
+    result = r.execute().fetch()
+    pd.testing.assert_series_equal(result.to_pandas(), raw.to_pandas())
+
+    raw = cupy.random.rand(100)
+    r = md.Series(raw, name='a', chunk_size=13)
+    result = r.execute().fetch()
+    expected = cudf.Series(raw, name='a')
+    pd.testing.assert_series_equal(result.to_pandas(), expected.to_pandas())
+
+
 def test_index_initializer(setup):
     # from tensor
     raw = np.arange(100)
@@ -150,3 +187,19 @@ def test_index_initializer(setup):
     r = md.Index(raw_idx, num_partitions=10)
     result = r.execute().fetch()
     pd.testing.assert_index_equal(result, pd.Index(raw_idx))
+
+
+@require_cudf
+@require_cupy
+def test_index_gpu_initializer(setup_gpu):
+    # from raw cudf initializer
+    raw = cudf.Index(cupy.random.rand(100), name='a')
+    r = md.Index(raw, chunk_size=13)
+    result = r.execute().fetch()
+    pd.testing.assert_index_equal(result.to_pandas(), raw.to_pandas())
+
+    raw = cupy.random.rand(100)
+    r = md.Index(raw, name='a', chunk_size=13)
+    result = r.execute().fetch()
+    expected = cudf.Index(raw, name='a')
+    pd.testing.assert_index_equal(result.to_pandas(), expected.to_pandas())

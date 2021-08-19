@@ -26,8 +26,10 @@ except (ImportError, OSError):  # pragma: no cover
 
 from mars import dataframe as md
 from mars.core import enter_mode, tile
-from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, triu, tril, ones_like
-from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, fromdense
+from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, \
+    triu, tril, ones_like
+from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, \
+    fromdense, asarray, ascontiguousarray, asfortranarray
 from mars.tensor.datasource.tri import TensorTriu, TensorTril
 from mars.tensor.datasource.zeros import TensorZeros
 from mars.tensor.datasource.from_dense import DenseToSparse
@@ -35,6 +37,80 @@ from mars.tensor.datasource.array import CSRMatrixDataSource
 from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
 from mars.tensor.core import Tensor, SparseTensor
 from mars.tensor.datasource.from_dataframe import from_dataframe
+
+
+def test_array():
+    a = tensor([0, 1, 2], chunk_size=2)
+
+    b = array(a)
+    assert a is not b
+
+    c = asarray(a)
+    assert a is c
+
+
+def test_ascontiguousarray():
+    # dtype different
+    raw_a = np.asfortranarray(np.random.rand(2, 4))
+    raw_b = np.ascontiguousarray(raw_a, dtype='f4')
+
+    a = tensor(raw_a, chunk_size=2)
+    b = ascontiguousarray(a, dtype='f4')
+
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+
+    # no copy
+    raw_a = np.random.rand(2, 4)
+    raw_b = np.ascontiguousarray(raw_a)
+
+    a = tensor(raw_a, chunk_size=2)
+    b = ascontiguousarray(a)
+
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+
+
+def test_asfortranarray():
+    # dtype different
+    raw_a = np.random.rand(2, 4)
+    raw_b = np.asfortranarray(raw_a, dtype='f4')
+
+    a = tensor(raw_a, chunk_size=2)
+    b = asfortranarray(a, dtype='f4')
+
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
+
+    # no copy
+    raw_a = np.asfortranarray(np.random.rand(2, 4))
+    raw_b = np.asfortranarray(raw_a)
+
+    a = tensor(raw_a, chunk_size=2)
+    b = asfortranarray(a)
+
+    assert a.dtype == raw_a.dtype
+    assert a.flags['C_CONTIGUOUS'] == raw_a.flags['C_CONTIGUOUS']
+    assert a.flags['F_CONTIGUOUS'] == raw_a.flags['F_CONTIGUOUS']
+
+    assert b.dtype == raw_b.dtype
+    assert b.flags['C_CONTIGUOUS'] == raw_b.flags['C_CONTIGUOUS']
+    assert b.flags['F_CONTIGUOUS'] == raw_b.flags['F_CONTIGUOUS']
 
 
 def test_ones():

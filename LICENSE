@@ -224,7 +224,6 @@ Apache Software Foundation License 2.0
 - dataclasses:0.8
 - vineyard:0.1.2
 - ray:1.4.0
-- aiohttp:3.7.0
 - uvloop:0.15.2
 
 
@@ -239,7 +238,6 @@ BSD 3-Clause
 - dask:0.17.1
 - python-lz4:2.1.0
 - sparse:0.5.0
-- bokeh:1.0.1
 - psutil:5.4.7
 - uhashring:1.1
 - skein:0.8.0

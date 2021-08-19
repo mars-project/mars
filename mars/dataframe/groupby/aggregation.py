@@ -36,7 +36,7 @@ from ..operands import DataFrameOperand, DataFrameOperandMixin, DataFrameShuffle
 from ..reduction.core import ReductionCompiler, ReductionSteps, ReductionPreStep, \
     ReductionAggStep, ReductionPostStep
 from ..reduction.aggregation import is_funcs_aggregate, normalize_reduction_funcs
-from ..utils import parse_index, build_concatenated_rows_frame
+from ..utils import parse_index, build_concatenated_rows_frame, is_cudf
 from .core import DataFrameGroupByOperand
 
 cp = lazy_import('cupy', globals=globals(), rename='cp')
@@ -84,7 +84,10 @@ def _patch_groupby_kurt():
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
         if not hasattr(DataFrameGroupBy, 'kurt'):  # pragma: no branch
             def _kurt_by_frame(a, *args, **kwargs):
-                return a.to_frame().kurt(*args, **kwargs).iloc[0]
+                data = a.to_frame().kurt(*args, **kwargs).iloc[0]
+                if is_cudf(data):  # pragma: no cover
+                    data = data.copy()
+                return data
 
             def _group_kurt(x, *args, **kwargs):
                 if kwargs.get('numeric_only') is not None:
@@ -802,6 +805,8 @@ class DataFrameGroupByAgg(DataFrameOperand, DataFrameOperandMixin):
             result = xdf.concat(aggs)
             if result.ndim == 2:
                 result = result.iloc[:, 0]
+                if is_cudf(result):  # pragma: no cover
+                    result = result.copy()
             result.name = out_chunk.name
 
         ctx[out_chunk.key] = result
