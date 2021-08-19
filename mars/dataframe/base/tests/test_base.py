@@ -22,6 +22,7 @@ from mars.core import OutputType, tile
 from mars.core.operand import OperandStage
 from mars.dataframe import eval as mars_eval, cut
 from mars.dataframe.base import to_gpu, to_cpu, astype
+from mars.dataframe.base.info import DataFrameInfo
 from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
