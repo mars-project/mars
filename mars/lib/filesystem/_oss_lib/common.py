@@ -15,7 +15,6 @@
 import base64
 import json
 import os
-import _pyio
 
 from ..base import path_type, stringify_path
 from ....utils import ImportErrorHandler
@@ -39,24 +38,21 @@ class OSSFileEntry:
 		self._storage_options = storage_options
 	
 	def is_dir(self):
-		if self._is_dir is not None:
-			return self._is_dir
-		self._is_dir = oss_isdir(self._path)
+		if self._is_dir is None:
+			self._is_dir = oss_isdir(self._path)
 		return self._is_dir
 	
 	def is_file(self):
-		if self._is_file is not None:
-			return self._is_file
-		if not self.is_dir() or not oss_exists(self._path):
-			self._is_file = False
-		else:
-			self._is_file = True
+		if self._is_file is None:
+			if self.is_dir() or not oss_exists(self._path):
+				self._is_file = False
+			else:
+				self._is_file = True
 		return self._is_file
 	
 	def stat(self):
-		if self._stat is not None:
-			return self._stat
-		self._stat = oss_stat(self._path)
+		if self._stat is None:
+			self._stat = oss_stat(self._path)
 		return self._stat
 	
 	@property
@@ -77,7 +73,7 @@ def parse_osspath(path: path_type):
 		                 f"in path: {str_path}")
 	bucket = parse_result.hostname
 	if not (parse_result.username and parse_result.password):
-		raise RuntimeError(r"Please use convert_oss_path to add OSS info")
+		raise RuntimeError(r"Please use build_oss_path to add OSS info")
 	param_dict = url_to_dict(parse_result.username)
 	access_key_id = param_dict['access_key_id']
 	access_key_secret = parse_result.password
@@ -87,13 +83,18 @@ def parse_osspath(path: path_type):
 	return bucket, key, access_key_id, access_key_secret, end_point
 
 
-def oss_exists(path: path_type):
-	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
+def _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point):
 	oss_bucket = oss2.Bucket(
 		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
 		endpoint=end_point,
 		bucket_name=bucket,
 		connect_timeout=_oss_time_out)
+	return oss_bucket
+
+
+def oss_exists(path: path_type):
+	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
+	oss_bucket = _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point)
 	return oss_bucket.object_exists(key) or oss_isdir(path)
 
 
@@ -108,11 +109,7 @@ def oss_isdir(path: path_type):
 	if not dirname.endswith("/"):
 		dirname = dirname + "/"
 	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
-	oss_bucket = oss2.Bucket(
-		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-		endpoint=end_point,
-		bucket_name=bucket,
-		connect_timeout=_oss_time_out)
+	oss_bucket = _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point)
 	isdir = False
 	for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key, max_keys=2):
 		if obj.key == key:
@@ -125,11 +122,7 @@ def oss_isdir(path: path_type):
 def oss_stat(path: path_type):
 	path = stringify_path(path)
 	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(path)
-	oss_bucket = oss2.Bucket(
-		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-		endpoint=end_point,
-		bucket_name=bucket,
-		connect_timeout=_oss_time_out)
+	oss_bucket = _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point)
 	if oss_isdir(path):
 		stat = dict(name=path, size=0, modified_time=-1)
 		stat["type"] = "directory"
@@ -146,11 +139,7 @@ def oss_scandir(dirname: path_type):
 	if not dirname.endswith("/"):
 		dirname = dirname + "/"
 	bucket, key, access_key_id, access_key_secret, end_point = parse_osspath(dirname)
-	oss_bucket = oss2.Bucket(
-		auth=oss2.Auth(access_key_id=access_key_id, access_key_secret=access_key_secret),
-		endpoint=end_point,
-		bucket_name=bucket,
-		connect_timeout=_oss_time_out)
+	oss_bucket = _get_oss_bucket(bucket, access_key_id, access_key_secret, end_point)
 	dirname_set = set()
 	for obj in oss2.ObjectIteratorV2(oss_bucket, prefix=key):
 		rel_path = obj.key[len(key):]

@@ -86,11 +86,13 @@ class OSSFileSystem(FileSystem):
 	
 	@implements(FileSystem.isdir)
 	def isdir(self, path: path_type) -> bool:
-		return oc.oss_isdir(path)
+		file_entry = oc.OSSFileEntry(path)
+		return file_entry.is_dir()
 	
 	@implements(FileSystem.isfile)
 	def isfile(self, path: path_type) -> bool:
-		return not oc.oss_isdir(path)
+		file_entry = oc.OSSFileEntry(path)
+		return file_entry.is_file()
 	
 	@implements(FileSystem._isfilestore)
 	def _isfilestore(self) -> bool:
@@ -98,7 +100,7 @@ class OSSFileSystem(FileSystem):
 	
 	@implements(FileSystem.exists)
 	def exists(self, path: path_type):
-		raise NotImplementedError
+		return oc.oss_exists(path)
 	
 	@implements(FileSystem.open)
 	def open(self,
@@ -116,16 +118,32 @@ class OSSFileSystem(FileSystem):
 	         path: path_type,
 	         recursive: bool = False) -> List[path_type]:
 		return glob(path, recursive=recursive)
-	
-	@property
-	def pathsep(self) -> str:
-		raise NotImplementedError
 
 
 def build_oss_path(path: path_type, access_key_id, access_key_secret, end_point):
 	"""
+	Returns a path with oss info.
 	Used to register the access_key_id, access_key_secret and endpoint of OSS.
 	The access_key_id and endpoint are put into the url with url-safe-base64 encoding.
+	
+	Parameters
+    ----------
+    path : path_type
+        The original oss url.
+        
+    access_key_id : str
+        The access key id of oss.
+        
+    access_key_secret : str
+        The access key secret of oss.
+        
+    end_point : str
+        The endpoint of oss.
+
+    Returns
+    -------
+    path_type
+        Path include the encoded access key id, end point and access key secret of oss.
 	"""
 	if isinstance(path, (list, tuple)):
 		path = path[0]

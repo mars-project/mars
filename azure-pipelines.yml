@@ -65,7 +65,7 @@ jobs:
         source ./ci/rewrite-cov-config.sh
 
         if [[ "$(mars.test.module)" == "learn" ]]; then
-          pip install numpy\<1.20.0 scipy cython oss2
+          pip install numpy\<1.20.0 scipy cython
         else
           pip install numpy scipy cython oss2
         fi
