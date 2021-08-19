@@ -13,12 +13,4 @@
 # limitations under the License.
 
 import os
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    assert os.environ['WORLD_SIZE'] == '2'
-    main()
+assert os.environ['WORLD_SIZE'] == '2'

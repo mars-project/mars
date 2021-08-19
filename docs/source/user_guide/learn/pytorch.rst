@@ -101,10 +101,8 @@ PyTorch.
         criterion = nn.BCELoss()
 
         for epoch in range(150):  # 150 epochs
-
-            for _, (batch_data, batch_labels) in enumerate(train_loader):
-                
-                running_loss = 0.0
+            running_loss = 0.0
+            for _, (batch_data, batch_labels) in enumerate(train_loader):    
                 outputs = model(batch_data)
                 loss = criterion(outputs.squeeze(), batch_labels)
                 optimizer.zero_grad()
@@ -130,11 +128,13 @@ The PyTorch script can be submitted via :meth:`run_pytorch_script` now.
 
     In [1]: from mars.learn.contrib.pytorch import run_pytorch_script
 
-    In [2]: run_pytorch_script("torch_demo.py", n_workers=1)
+    In [2]: run_pytorch_script("torch_demo.py", n_workers=2)
     task: <Task pending coro=<Event.wait() running at ./mars-dev/lib/python3.7/asyncio/locks.py:293> wait_for=<Future pending cb=[<TaskWakeupMethWrapper object at 0x7f04c5027cd0>()]>>
     ...
-    epoch 148, running_loss is 0.010707654990255833
-    epoch 149, running_loss is 0.010623889975249767
+    epoch 148, running_loss is 0.27749747782945633
+    epoch 148, running_loss is 0.29025389067828655
+    epoch 149, running_loss is 0.2736152168363333
+    epoch 149, running_loss is 0.2884620577096939
     Out[4]: Object <op=RunPyTorch, key=d5c40e502b77310ef359729692233d56>
 
 Distributed training or inference
@@ -160,15 +160,15 @@ and prediction shown above will be submitted to the cluster, or you can specify
    sess = mars.new_session('http://<web_ip>:<web_port>')
 
    # submitted to cluster by default
-   run_tensorflow_script('torch_demo.py', n_workers=2)
+   run_pytorch_script('torch_demo.py', n_workers=2)
 
    # Or, session could be specified as well
-   run_tensorflow_script('torch_demo.py', n_workers=2, session=sess)
+   run_pytorch_script('torch_demo.py', n_workers=2, session=sess)
 
 MarsDataset
 ------------
 
-In order to use Mars to process data, we implemented a MarsDataset that can convert 
+In order to use Mars to process data, we implemented a :class:`MarsDataset` that can convert 
 Mars object (mars.tensor, mars.dataframe, mars.series) to torch.util.data.Dataset.
 
 .. code-block:: python
@@ -189,38 +189,46 @@ via mars, then pass data to script.
 
 .. code-block:: python
 
-    data = mt.random.rand(1000, 32, dtype='f4')
-    labels = mt.random.randint(0, 2, (1000, 10), dtype='f4')
+    import mars.dataframe as md
+    from sklearn.preprocessing import LabelEncoder
+
+
+    df = md.read_csv('ionosphere.data', header=None)
+    feature_data = df.iloc[:, :-1].astype('float32')
+    feature_data.execute()
+    labels = df.iloc[:, -1]
+    labels = LabelEncoder().fit_transform(labels.execute().fetch())
+    label = label.astype('float32')
 
     run_pytorch_script(
-        "torch_script", n_workers=2, data={'feature_data': data, 'labels': labels}, 
+        "torch_script.py", n_workers=2, data={'feature_data': feature_data, 'labels': labels}, 
         port=9945, session=sess)
 
 ``torch_script.py``
 
 .. code-block:: python
 
-    import sys
+    from mars.learn.contrib.pytorch import DistributedSampler
+    from mars.learn.contrib.pytorch import MarsDataset
+    import torch
+    import torch.nn as nn
+    import torch.distributed as dist
+    import torch.optim as optim
+    import torch.utils.data
 
 
     def get_model():
-        import torch.nn as nn
         return nn.Sequential(
-            nn.Linear(32, 64),
+            nn.Linear(34, 10),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(10, 8),
             nn.ReLU(),
-            nn.Linear(64, 10),
-            nn.Softmax(),
+            nn.Linear(8, 1),
+            nn.Sigmoid(),
         )
 
 
-    def main(feature_data, labels):
-        import torch.nn as nn
-        import torch.distributed as dist
-        import torch.optim as optim
-        import torch.utils.data
-        from mars.learn.contrib.pytorch import MarsDataset, DistributedSampler
+    def train(feature_data, labels):
 
         dist.init_process_group(backend='gloo')
         torch.manual_seed(42)
@@ -229,20 +237,19 @@ via mars, then pass data to script.
         labels = labels
         
         train_dataset = MarsDataset(data, labels)
-        train_sampler = DistributedSampler(train_dataset, shuffle=True)
+        train_sampler = DistributedSampler(train_dataset)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
                                                 batch_size=32,
-                                                shuffle=(train_sampler is None),
+                                                shuffle=False,
                                                 sampler=train_sampler)
 
         model = nn.parallel.DistributedDataParallel(get_model())
-        optimizer = optim.SGD(model.parameters(),
-                            lr=0.01, momentum=0.5)
+        optimizer = optim.Adam(model.parameters(),
+                          lr=0.001)
         criterion = nn.BCELoss()
 
-        for i in range(10):
-            # 10 epochs
-            train_sampler.set_epoch(i)
+        for epoch in range(150):
+            # 150 epochs
             running_loss = 0.0
             for _, (batch_data, batch_labels) in enumerate(train_loader):
                 outputs = model(batch_data)
@@ -251,24 +258,22 @@ via mars, then pass data to script.
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
-            print(f"running_loss is {loss.item()}")
-        
-        print("Done!")
+            print(f"epoch {epoch}, running_loss is {running_loss}")
 
 
     if __name__ == "__main__":
         feature_data = feature_data
         labels = labels
-        main(feature_data, labels)
+        train(feature_data, labels)
 
 result:
 
-.. code-block:: bash
+.. code-block:: ipython
 
-    running_loss is 1.258694052696228
-    running_loss is 1.1778228282928467
-    running_loss is 1.1677325963974
-    Done!
-    running_loss is 1.195948600769043
-    Done!
-
+    epoch 147, running_loss is 0.29225416854023933
+    epoch 147, running_loss is 0.28132784366607666
+    epoch 148, running_loss is 0.27749747782945633
+    epoch 148, running_loss is 0.29025389067828655
+    epoch 149, running_loss is 0.2736152168363333
+    epoch 149, running_loss is 0.2884620577096939
+    Out[7]: Object <op=RunPyTorch, key=dc3c7ab3a54a7289af15e8be5b334cf0>

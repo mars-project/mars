@@ -102,6 +102,14 @@ def test_mars_dataset(setup):
     assert train_dataset[1][1] == label_verify
     assert len(train_dataset) == 1000
 
+    # test TypeError
+    label = tuple(range(1000))
+
+    with pytest.raises(TypeError) as e:
+        train_dataset = MarsDataset(data, label)
+    exec_msg = e.value.args[0]
+    assert exec_msg == "Unexpected dataset type: <class 'tuple'>"
+
 
 @pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
 def test_sequential_sampler(setup_cluster):

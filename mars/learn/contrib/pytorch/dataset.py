@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,9 @@ from ....tensor.core import TENSOR_TYPE
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....utils import require_not_none
 
+ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
+               np.ndarray, pd.DataFrame, pd.Series, List)
+
 
 @require_not_none(torch)
 class MarsDataset(Dataset):
@@ -41,22 +45,28 @@ class MarsDataset(Dataset):
         self._context = get_context()
         self._tileables = tileables
         self._fetch_kwargs = fetch_kwargs or dict()
+        self._executed = False
+        self._check_type()
 
-        self._check_and_execute()
-
-    def _check_and_execute(self):
+    def _check_type(self):
         for t in self._tileables:
-            if isinstance(t, TENSOR_TYPE):
-                t.execute()
-            elif isinstance(t, DATAFRAME_TYPE):
-                t.execute()
-            elif isinstance(t, SERIES_TYPE):
-                t.execute()
+            if not isinstance(t, ACCEPT_TYPE):
+                raise TypeError(f"Unexpected dataset type: {type(t)}")
+
+    def _execute(self):
+        import mars
+
+        execute_data = [t for t in self._tileables if isinstance(t, ACCEPT_TYPE[:3])]
+        if len(execute_data):
+            mars.execute(execute_data)
 
     def __len__(self):
         return self._tileables[0].shape[0]
 
     def __getitem__(self, index):
+        if not self._executed:
+            self._execute()
+            self._executed = True
         return tuple(self.get_data(t, index) for t in self._tileables)
 
     def get_data(self, t, index):
@@ -69,10 +79,12 @@ class MarsDataset(Dataset):
         elif isinstance(t, np.ndarray):
             return t[index]
         elif isinstance(t, DATAFRAME_TYPE):
-            return t.iloc[index].fetch(**fetch_kwargs)
+            return t.iloc[index].fetch(**fetch_kwargs).values
         elif isinstance(t, SERIES_TYPE):
             return t.iloc[index].fetch(**fetch_kwargs)
         elif isinstance(t, pd.DataFrame):
             return t.iloc[index].values
         elif isinstance(t, pd.Series):
             return t.iloc[index]
+        else:
+            return t[index]

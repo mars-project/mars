@@ -225,7 +225,7 @@ LightGBM Integration
 PyTorch Integration
 ======================
 
-.. automodule:: mars.learn.contrib.tensorflow
+.. automodule:: mars.learn.contrib.pytorch
    :no-members:
    :no-inherited-members:
 
@@ -236,8 +236,10 @@ PyTorch Integration
 
    contrib.pytorch.run_pytorch_script
    contrib.pytorch.MarsDataset
-   contrib.pytorch.MarsDistributedSampler
-   contrib.pytorch.MarsRandomSampler
+   contrib.pytorch.SequentialSampler
+   contrib.pytorch.RandomSampler
+   contrib.pytorch.SubsetRandomSampler
+   contrib.pytorch.DistributedSampler
 
 .. _statsmodels_ref:
 
