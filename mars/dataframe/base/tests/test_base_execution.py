@@ -882,6 +882,7 @@ def test_transpose_execution(setup):
     result = df.T.execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
 
+
 def test_to_numeric_execition(setup):
     rs = np.random.RandomState(0)
     s = pd.Series(rs.randint(5, size=100))

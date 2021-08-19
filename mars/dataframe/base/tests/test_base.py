@@ -713,6 +713,7 @@ def test_transpose():
     assert len(r.chunks) == 4
     assert isinstance(r, DATAFRAME_TYPE)
 
+
 def test_to_numeric():
     raw = pd.DataFrame({"a": [1.0, 2, 3, -3]})
     df = from_pandas_df(raw, chunk_size=2)
