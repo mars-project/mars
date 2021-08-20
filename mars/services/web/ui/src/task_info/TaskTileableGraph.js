@@ -152,10 +152,10 @@ export default class TaskTileableGraph extends React.Component {
             this.state.tileables.forEach((tileable) => {
                 const value = { tileable };
 
-                let nameEndIndex = tileable.tileable_name.indexOf('key') - 1;
-                value.label = tileable.tileable_name.substring(0, nameEndIndex);
+                let nameEndIndex = tileable.tileableName.indexOf('key') - 1;
+                value.label = tileable.tileableName.substring(0, nameEndIndex);
                 value.rx = value.ry = 5;
-                this.g.setNode(tileable.tileable_id, value);
+                this.g.setNode(tileable.tileableId, value);
 
                 const tileableDetail = this.state.tileableDetails[tileable.tileable_id];
 
@@ -194,14 +194,14 @@ export default class TaskTileableGraph extends React.Component {
                     cursor: pointer;
                     stroke: #333;
                     fill: url(#progress-` + tileable.tileable_id + `)`;
-                node.labelStyle = 'cursor: pointer';
+                 node.labelStyle = 'cursor: pointer';
             });
 
             this.state.dependencies.forEach((dependency) => {
                 // In future label may be named based on linkType?
                 this.g.setEdge(
-                    dependency.from_tileable_id,
-                    dependency.to_tileable_id,
+                    dependency.fromTileableId,
+                    dependency.toTileableId,
                     { label: '' }
                 );
             });
@@ -236,7 +236,7 @@ export default class TaskTileableGraph extends React.Component {
             const handleClick = (e, node) => {
                 if (this.props.onTileableClick) {
                     const selectedTileable = this.state.tileables.filter(
-                        (tileable) => tileable.tileable_id == node
+                        (tileable) => tileable.tileableId == node
                     )[0];
                     this.props.onTileableClick(e, selectedTileable);
                 }

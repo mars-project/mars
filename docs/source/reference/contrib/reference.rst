@@ -4,10 +4,9 @@
 Dask on Mars
 ============
 
-.. currentmodule:: mars.contrib.dask
-
 .. autosummary::
    :toctree: generated/
+   :nosignatures:
 
-   scheduler.mars_scheduler
-   converter.convert_dask_collection
+   mars.contrib.dask.mars_scheduler
+   mars.contrib.dask.convert_dask_collection

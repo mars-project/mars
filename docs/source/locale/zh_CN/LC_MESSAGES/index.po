@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-03 18:42+0800\n"
+"POT-Creation-Date: 2021-08-20 11:28+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -25,8 +25,9 @@ msgstr "Mars 文档"
 msgid ""
 "Mars is a tensor-based unified framework for large-scale data computation"
 " which scales numpy, pandas, scikit-learn and many other libraries."
-msgstr "Mars 是基于张量的，用于进行大规模数据计算的统一计算框架，"
-"它可以用来并行和分布式 numpy、pandas、scikit-learn 以及众多其他 Python 库。"
+msgstr ""
+"Mars 是基于张量的，用于进行大规模数据计算的统一计算框架，它可以用来并行和"
+"分布式 numpy、pandas、scikit-learn 以及众多其他 Python 库。"
 
 #: ../../source/index.rst:11
 msgid "Architecture Overview"
@@ -111,32 +112,50 @@ msgid "**Mars learn**"
 msgstr "**Mars learn**"
 
 #: ../../source/index.rst:117
-msgid ""
-"Mars learn has also integrated many libraries, including "
-":ref:`tensorflow`, :ref:`xgboost`, :ref:`lightgbm`, :ref:`joblib` and "
-":ref:`statsmodels`."
+msgid "Mars learn also integrates with many libraries:"
+msgstr "Mars learn 也集成了许多库："
+
+#: ../../source/index.rst:119
+msgid ":ref:`TensorFlow <integrate_tensorflow>`"
 msgstr ""
-"Mars learn 还集成了很多库，包括 "
-":ref:`tensorflow`, :ref:`xgboost`, :ref:`lightgbm`, :ref:`joblib` and "
-":ref:`statsmodels`."
+
+#: ../../source/index.rst:120
+msgid ":ref:`PyTorch <integrate_pytorch>`"
+msgstr ""
 
 #: ../../source/index.rst:121
-msgid "Mars remote"
+msgid ":ref:`XGBoost <integrate_xgboost>`"
+msgstr ""
+
+#: ../../source/index.rst:122
+msgid ":ref:`LightGBM <integrate_lightgbm>`"
 msgstr ""
 
 #: ../../source/index.rst:123
+msgid ":ref:`Joblib <integrate_joblib>`"
+msgstr ""
+
+#: ../../source/index.rst:124
+msgid ":ref:`Statsmodels <integrate_statsmodels>`"
+msgstr ""
+
+#: ../../source/index.rst:127
+msgid "Mars remote"
+msgstr ""
+
+#: ../../source/index.rst:129
 msgid ":doc:`documentation <getting_started/remote>`"
 msgstr ":doc:`文档 <getting_started/remote>`"
 
-#: ../../source/index.rst:125
+#: ../../source/index.rst:131
 msgid "Mars remote allows users to execute functions in parallel."
 msgstr "Mars remote 允许用户并行执行函数。"
 
-#: ../../source/index.rst:161
+#: ../../source/index.rst:167
 msgid "Easy to scale in and scale out"
 msgstr "适应各种数据规模"
 
-#: ../../source/index.rst:163
+#: ../../source/index.rst:169
 msgid ""
 "Mars can scale in to a single machine, and scale out to a cluster with "
 "hundreds of machines. Both the local and distributed version share the "
@@ -147,23 +166,23 @@ msgstr ""
 "两种环境下可使用相同的代码。因此，Mars 可以方便地从单台机器迁移到集群，以"
 "处理更多数据或者获得更好的性能。"
 
-#: ../../source/index.rst:168
+#: ../../source/index.rst:174
 msgid "Mars can run in a few ways:"
 msgstr "Mars 能以若干种方式运行："
 
-#: ../../source/index.rst:170
+#: ../../source/index.rst:176
 msgid ":ref:`Local scheduling <local>`"
 msgstr ":ref:`本地执行 <local>`"
 
-#: ../../source/index.rst:171
+#: ../../source/index.rst:177
 msgid ":ref:`Run on cluster <deploy>`"
 msgstr ":ref:`在集群中运行 <deploy>`"
 
-#: ../../source/index.rst:172
+#: ../../source/index.rst:178
 msgid ":ref:`Run on Kubernetes <k8s>`"
 msgstr ":ref:`在 Kubernetes 中部署 <k8s>`"
 
-#: ../../source/index.rst:173
+#: ../../source/index.rst:179
 msgid ":ref:`Run on Yarn <mars_yarn>`"
 msgstr ":ref:`在 Yarn 中部署 <k8s>`"
 
