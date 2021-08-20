@@ -1838,7 +1838,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         return self._data.itertuples(batch_size=batch_size, session=session,
                                      index=index, name=name)
     
-    def assign(self, **kwargs) -> DataFrame:
+    def assign(self, **kwargs):
         r"""
         Assign new columns to a DataFrame.
         Returns a new object with all original columns in addition to new ones.
