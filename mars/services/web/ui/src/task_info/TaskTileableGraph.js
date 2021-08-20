@@ -45,7 +45,6 @@ export default class TaskTileableGraph extends React.Component {
         }/tileable_detail`)
             .then(res => res.json())
             .then((res) => {
-                console.log('res', res, Object.keys(res).length)
                 this.setState({
                     tileableDetails: res,
                 })
@@ -55,7 +54,6 @@ export default class TaskTileableGraph extends React.Component {
         }/tileable_graph?action=get_tileable_graph_as_json`)
             .then(res => res.json())
             .then((res) => {
-                console.log('res', res, res.tileables.length);
                 this.setState({
                     tileables: res.tileables,
                     dependencies: res.dependencies,
