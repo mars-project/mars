@@ -41,8 +41,8 @@ def test_params():
     params.pop('index', None)
     r.params = params
     r.refresh_params()
-    
-    
+
+
 def test_remote_function(setup):
     session = setup
 

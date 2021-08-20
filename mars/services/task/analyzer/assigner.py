@@ -114,7 +114,7 @@ class GraphAssigner(AbstractGraphAssigner):
             pos = (pos + 1) % len(counts)
         return dict(zip(bands, counts))
 
-    def _assign_by_dfs(self,
+    def _assign_by_bfs(self,
                        start: ChunkData,
                        band: BandType,
                        initial_sizes: Dict[BandType, int],
@@ -122,7 +122,7 @@ class GraphAssigner(AbstractGraphAssigner):
                        key_to_assign: Set[str],
                        assigned_record: Dict[str, int]):
         """
-        Assign initial nodes using breath-first search givin initial sizes and
+        Assign initial nodes using breath-first search given initial sizes and
         limitations of spread range.
         """
         if initial_sizes[band] <= 0:
@@ -130,9 +130,8 @@ class GraphAssigner(AbstractGraphAssigner):
 
         graph = self._chunk_graph
         if self._undirected_chunk_graph is None:
-            undirected_chunk_graph = graph.build_undirected()
-        else:
-            undirected_chunk_graph = self._undirected_chunk_graph
+            self._undirected_chunk_graph = graph.build_undirected()
+        undirected_chunk_graph = self._undirected_chunk_graph
 
         assigned = 0
         spread_range = 0
@@ -187,7 +186,7 @@ class GraphAssigner(AbstractGraphAssigner):
             cur = sorted_candidates.pop()
             while cur.op.key in cur_assigns:
                 cur = sorted_candidates.pop()
-            self._assign_by_dfs(cur, band, band_quotas, spread_ranges,
+            self._assign_by_bfs(cur, band, band_quotas, spread_ranges,
                                 op_keys, cur_assigns)
 
         key_to_assign = \

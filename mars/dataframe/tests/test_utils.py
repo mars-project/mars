@@ -31,7 +31,7 @@ from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
     make_dtypes, build_concatenated_rows_frame, merge_index_value
 from mars.utils import Timer
 
-    
+
 def test_decide_dataframe_chunks():
     with option_context() as options:
         options.chunk_store_limit = 64
