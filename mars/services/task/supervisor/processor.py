@@ -527,9 +527,10 @@ class TaskProcessorActor(mo.Actor):
                     'toTileableId': chunk.key,
                     'linkType': 1 if is_pure_dep else 0,
                 })
+
         graph_dict = {
-            'tileables': node_list,
-            'dependencies': edge_list
+            'tileables': [i for n, i in enumerate(node_list) if i not in node_list[n + 1:]],
+            'dependencies': [i for n, i in enumerate(edge_list) if i not in edge_list[n + 1:]]
         }
         return graph_dict
 

@@ -41,25 +41,24 @@ export default class TaskTileableGraph extends React.Component {
     fetchGraphDetail() {
         const { sessionId, taskId } = this.props;
 
-        const tileableStatus = ['succeeded', 'running', 'cancelled', 'failed', 'pending'];
+        fetch(`api/session/${sessionId}/task/${taskId
+        }/tileable_detail`)
+            .then(res => res.json())
+            .then((res) => {
+                console.log('res', res, Object.keys(res).length)
+                this.setState({
+                    tileableDetails: res,
+                })
+            });
 
         fetch(`api/session/${sessionId}/task/${taskId
         }/tileable_graph?action=get_tileable_graph_as_json`)
             .then(res => res.json())
             .then((res) => {
-                console.log(res);
-                let newTileableDetails = {};
-                for (let i = 0; i < res.tileables.length; i++) {
-                    newTileableDetails[res.tileables[i].tileable_id] = {
-                        progress: Math.random(),
-                        status: tileableStatus[Math.floor(Math.random()*tileableStatus.length)],
-                    };
-                }
-
+                console.log('res', res, res.tileables.length);
                 this.setState({
                     tileables: res.tileables,
                     dependencies: res.dependencies,
-                    tileableDetails: newTileableDetails,
                 });
             });
     }
@@ -71,8 +70,13 @@ export default class TaskTileableGraph extends React.Component {
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
-        if (prevStates.tileables !== this.state.tileables
-                && prevStates.dependencies !== this.state.dependencies) {
+        if (Object.keys(this.state.tileableDetails).length !== this.state.tileables.length) {
+            return;
+        }
+
+        if ((prevStates.tileables !== this.state.tileables
+                && prevStates.dependencies !== this.state.dependencies)
+                || prevStates.tileableDetails !== this.state.tileableDetails) {
             d3Select('#svg-canvas').selectAll('*').remove();
 
             // Set up an SVG group so that we can translate the final graph.
@@ -157,24 +161,24 @@ export default class TaskTileableGraph extends React.Component {
                 value.rx = value.ry = 5;
                 this.g.setNode(tileable.tileableId, value);
 
-                const tileableDetail = this.state.tileableDetails[tileable.tileable_id];
+                const tileableDetail = this.state.tileableDetails[tileable.tileableId];
 
                 var nodeProgressGradient = inner.append('linearGradient')
-                    .attr('id', 'progress-' + tileable.tileable_id);
+                    .attr('id', 'progress-' + tileable.tileableId);
 
-                if (tileableDetail.status === 'pending') {
+                if (tileableDetail.status === 0) {
                     nodeProgressGradient.append('stop')
                     .attr('stop-color', '#ffffff')
                     .attr('offset', '0%');
-                } else if (tileableDetail.status === 'running') {
+                } else if (tileableDetail.status === 1) {
                     nodeProgressGradient.append('stop')
                     .attr('stop-color', '#f4b400')
                     .attr('offset', tileableDetail.progress * 100 + '%');
-                } else if (tileableDetail.status === 'succeeded') {
+                } else if (tileableDetail.status === 2) {
                     nodeProgressGradient.append('stop')
                     .attr('stop-color', '#00ff00')
                     .attr('offset', '100%');
-                } else if (tileableDetail.status === 'failed') {
+                } else if (tileableDetail.status === 3) {
                     nodeProgressGradient.append('stop')
                     .attr('stop-color', '#ff0000')
                     .attr('offset', tileableDetail.progress * 100 + '%');
@@ -189,21 +193,33 @@ export default class TaskTileableGraph extends React.Component {
                     .attr('offset', '0%');
 
                 // In future fill color based on progress
-                const node = this.g.node(tileable.tileable_id);
+                const node = this.g.node(tileable.tileableId);
                 node.style = `
                     cursor: pointer;
                     stroke: #333;
-                    fill: url(#progress-` + tileable.tileable_id + `)`;
+                    fill: url(#progress-` + tileable.tileableId + `)`;
                  node.labelStyle = 'cursor: pointer';
             });
 
             this.state.dependencies.forEach((dependency) => {
-                // In future label may be named based on linkType?
-                this.g.setEdge(
-                    dependency.fromTileableId,
-                    dependency.toTileableId,
-                    { label: '' }
-                );
+                if (dependency.linkType === 1) {
+                    this.g.setEdge(
+                        dependency.fromTileableId,
+                        dependency.toTileableId,
+                        {
+                            style: 'stroke: #333; fill: none; stroke-dasharray: 5, 5;'
+                        }
+                    );
+                } else {
+                    this.g.setEdge(
+                        dependency.fromTileableId,
+                        dependency.toTileableId,
+                        {
+                            style: 'stroke: #333; fill: none;'
+                        }
+                    );
+                }
+
             });
 
             let gInstance = this.g;
@@ -211,12 +227,6 @@ export default class TaskTileableGraph extends React.Component {
             gInstance.nodes().forEach(function (v) {
                 const node = gInstance.node(v);
                 node.rx = node.ry = 5;
-            });
-
-            //makes the lines smooth
-            gInstance.edges().forEach(function (e) {
-                const edge = gInstance.edge(e.v, e.w);
-                edge.style = 'stroke: #333; fill: none';
             });
 
             // Create the renderer
