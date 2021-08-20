@@ -1,4 +1,4 @@
-.. _xgboost:
+.. _integrate_xgboost:
 
 **********************
 Integrate with XGBoost
