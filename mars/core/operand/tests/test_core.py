@@ -14,6 +14,7 @@
 
 import pytest
 
+from mars.core import OutputType
 from mars.core.operand import Operand, TileableOperandMixin, \
     execute, estimate_size
 
@@ -60,3 +61,12 @@ def test_estimate_size():
     MyOperand2.unregister_size_estimator()
     with pytest.raises(KeyError):
         estimate_size(dict(), MyOperand2(_key='1'))
+
+
+def test_unknown_dtypes():
+    op = MyOperand(_output_types=[OutputType.dataframe])
+    df = op.new_tileable(None, dtypes=None)
+    op2 = MyOperand(_output_types=[OutputType.scalar])
+    with pytest.raises(ValueError) as exc_info:
+        op2.new_tileable([df])
+    assert 'executed first' in exc_info.value.args[0]
