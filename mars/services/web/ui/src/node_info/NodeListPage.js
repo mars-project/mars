@@ -94,18 +94,29 @@ class NodeList extends React.Component {
             return`${toReadableSize(memoryInfo['size_used'])} / ${toReadableSize(memoryInfo['size_total'])}`;
         };
 
-        const generateCells = (endpoint) => {
-            const rows = [];
-            rows.push(<TableCell><Link to={`/${this.nodeRole}/${endpoint}`}>{endpoint}</Link></TableCell>);
-            rows.push(<TableCell>{getNodeStatusText(roleData[endpoint].status)}</TableCell>);
-            rows.push(<TableCell>{calcNodeStatGroup(roleData[endpoint], 'cpu', (v) => v.toFixed(2))}</TableCell>);
-            rows.push(<TableCell>{calcNodeStatGroup(roleData[endpoint], 'memory', toReadableSize)}</TableCell>);
-            if (this.nodeRole === 'worker') {
-                rows.push(<TableCell>{getSharedMemoryInfo(roleData[endpoint].detail.storage)}</TableCell>);
-            }
-            rows.push(<TableCell>{formatTime(roleData[endpoint].update_time)}</TableCell>);
-            return rows;
-        };
+        const generateCells = (endpoint) => (
+            <React.Fragment>
+                <TableCell>
+                    <Link to={`/${this.nodeRole}/${endpoint}`}>{endpoint}</Link>
+                </TableCell>
+                <TableCell>
+                    {getNodeStatusText(roleData[endpoint].status)}
+                </TableCell>
+                <TableCell>
+                    {calcNodeStatGroup(roleData[endpoint], 'cpu', (v) => v.toFixed(2))}
+                </TableCell>
+                <TableCell>
+                    {calcNodeStatGroup(roleData[endpoint], 'memory', toReadableSize)}
+                </TableCell>
+                {
+                    this.nodeRole === 'worker' &&
+                    <TableCell>
+                        {getSharedMemoryInfo(roleData[endpoint].detail.storage)}
+                    </TableCell>
+                }
+                <TableCell>{formatTime(roleData[endpoint].update_time)}</TableCell>
+            </React.Fragment>
+        );
 
         const roleData = this.state[this.nodeRole];
 

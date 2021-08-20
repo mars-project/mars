@@ -1,4 +1,4 @@
-.. _statsmodels:
+.. _integrate_statsmodels:
 
 **************************
 Integrate with StatsModels

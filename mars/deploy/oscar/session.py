@@ -16,9 +16,10 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
+import random
+import string
 import threading
 import time
-import uuid
 import warnings
 from abc import ABC, ABCMeta, abstractmethod
 from collections import defaultdict
@@ -1433,13 +1434,18 @@ def ensure_isolation_created(kwargs):
         return new_isolation(loop=loop)
 
 
+def _new_session_id():
+    return ''.join(random.choice(string.ascii_letters + string.digits)
+                   for _ in range(24))
+
+
 async def _new_session(address: str,
                        session_id: str = None,
                        backend: str = 'oscar',
                        default: bool = False,
                        **kwargs) -> AbstractSession:
     if session_id is None:
-        session_id = str(uuid.uuid4())
+        session_id = _new_session_id()
 
     session = await AsyncSession.init(
         address, session_id=session_id,
@@ -1462,7 +1468,7 @@ def new_session(address: str = None,
             kwargs['init_local'] = True
 
     if session_id is None:
-        session_id = str(uuid.uuid4())
+        session_id = _new_session_id()
 
     session = SyncSession.init(
         address, session_id=session_id,

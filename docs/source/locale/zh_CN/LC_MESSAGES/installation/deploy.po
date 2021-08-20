@@ -15,7 +15,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/installation/deploy.rst:4
 msgid "Run on Clusters"
@@ -30,7 +30,6 @@ msgid "Mars can be deployed on a cluster. First, you need to run"
 msgstr "Mars 可在集群中部署。首先，你需要在集群中的每个节点运行"
 
 #: ../../source/installation/deploy.rst:15
-#, fuzzy
 msgid ""
 "on every node in the cluster. This will install dependencies needed for "
 "distributed execution on your cluster. After that, you may select a node "
@@ -38,17 +37,15 @@ msgid ""
 "workers."
 msgstr ""
 "这将会为你的集群安装所有需要的依赖。此后，你可以选择一台机器作为 "
-"Supervisor（它继承了 Web Service），将其他的机器作为 Worker。"
+"Supervisor（它集成了 Web Service），将其他的机器作为 Worker。"
 
 #: ../../source/installation/deploy.rst:19
-#, fuzzy
 msgid "The supervisor can be started with the following command:"
 msgstr "你可以使用下面的命令启动 Supervisor："
 
 #: ../../source/installation/deploy.rst:25
-#, fuzzy
 msgid "Web service will be started as well."
-msgstr "可以使用下面的命令启动 Web Service："
+msgstr "Web Service 也将随之启动。"
 
 #: ../../source/installation/deploy.rst:27
 msgid "Workers can be started with the following command:"
@@ -124,11 +121,12 @@ msgstr ""
 
 #: ../../source/installation/deploy.rst:69
 msgid ""
-"List of supervisor endpoints, separated by commas. Useful for workers and "
-"webs to spot supervisors, or when you want to run more than one supervisor"
+"List of supervisor endpoints, separated by commas. Useful for workers and"
+" webs to spot supervisors, or when you want to run more than one "
+"supervisor"
 msgstr ""
-"Supervisor Endpoint 列表，使用空格或逗号分隔。当为 Worker 指定 "
-"Supervisor，或者当需要为 Supervisor 指定其他 Supervisor 时需要使用此参数"
+"Supervisor Endpoint 列表，使用空格或逗号分隔。当为 Worker 指定 Supervisor"
+"，或者当需要为 Supervisor 指定其他 Supervisor 时需要使用此参数"
 
 #: ../../source/installation/deploy.rst:73
 msgid "``--log-level``"
@@ -210,11 +208,12 @@ msgstr "CUDA 设备的序号。如果未指定，将使用所有 GPU。"
 
 #: ../../source/installation/deploy.rst:108
 msgid ""
-"For instance, if you want to start a Mars cluster with two supervisors and "
-"two workers, you can run commands below (memory and CPU tunings are omitted):"
+"For instance, if you want to start a Mars cluster with two supervisors "
+"and two workers, you can run commands below (memory and CPU tunings are "
+"omitted):"
 msgstr ""
-"例如，如果你希望启动一个 Mars 集群，其中包含两个 Supervisor 和两个 Worker，"
-"你可以运行下面的命令（内存和 CPU 相关的细节已被忽略）。"
+"例如，如果你希望启动一个 Mars 集群，其中包含两个 Supervisor 和两个 Worker"
+"，你可以运行下面的命令（内存和 CPU 相关的细节已被忽略）。"
 
 #: ../../source/installation/deploy.rst:112
 msgid "On Supervisor 1 (192.168.1.10):"

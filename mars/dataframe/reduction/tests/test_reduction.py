@@ -498,7 +498,7 @@ def test_compile_function():
     assert len(result.post_funcs) == 2
     assert set(result.post_funcs[0].columns) == set('ab')
 
-    
+
 def test_custom_aggregation():
     class MockReduction1(CustomReduction):
         def agg(self, v1):

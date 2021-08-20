@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import namedtuple
+# noinspection PyUnresolvedReferences
 
 
-KstestResult = namedtuple('KstestResult', ('statistic', 'pvalue'))
+def raise_dask_required_error():
+    raise ImportError('you need to have dask installed for this to work')
+
+
+try:
+    import dask
+except ImportError:
+    convert_dask_collection = mars_scheduler = raise_dask_required_error
+else:
+    from .converter import convert_dask_collection
+    from .scheduler import mars_scheduler

@@ -14,8 +14,8 @@
 
 import warnings
 
-import aiohttp
 import pytest
+from tornado import httpclient
 
 import mars.oscar as mo
 from mars.services import NodeRole, start_services, stop_services, \
@@ -70,11 +70,9 @@ async def test_start_service(actor_pool_context):
     assert not await mo.has_actor(mo.create_actor_ref(
         uid=SvcSessionActor1.gen_uid(session_id), address=pool.external_address))
 
-    http_session = aiohttp.ClientSession()
-    resp = await http_session.get(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
-    content = await resp.read()
-    assert content.decode() == 'val1'
-    await http_session.close()
+    client = httpclient.AsyncHTTPClient()
+    resp = await client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
+    assert resp.body.decode() == 'val1'
 
     await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
     assert not await mo.has_actor(mo.create_actor_ref(
