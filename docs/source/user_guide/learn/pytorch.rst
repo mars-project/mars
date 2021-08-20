@@ -1,4 +1,4 @@
-.. _pytorch:
+.. _integrate_pytorch:
 
 *************************
 Integrate with PyTorch
@@ -169,7 +169,8 @@ MarsDataset
 ------------
 
 In order to use Mars to process data, we implemented a :class:`MarsDataset` that can convert 
-Mars object (mars.tensor, mars.dataframe, mars.series) to torch.util.data.Dataset.
+Mars object (:class:`mars.tensor.Tensor`, :class:`mars.dataframe.DataFrame`,
+:class:`mars.dataframe.Series`) to ``torch.util.data.Dataset``.
 
 .. code-block:: python
 
@@ -262,8 +263,8 @@ via mars, then pass data to script.
 
 
     if __name__ == "__main__":
-        feature_data = feature_data
-        labels = labels
+        feature_data = globals()['feature_data']
+        labels = globals()['labels']
         train(feature_data, labels)
 
 result:

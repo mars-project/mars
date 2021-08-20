@@ -24,10 +24,12 @@ except ImportError: # pragma: no cover
     torch = None
     Dataset = object
 
+from .... import execute
 from ....core.context import get_context
 from ....tensor.core import TENSOR_TYPE
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....utils import require_not_none
+
 
 ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
                np.ndarray, pd.DataFrame, pd.Series, List)
@@ -54,11 +56,10 @@ class MarsDataset(Dataset):
                 raise TypeError(f"Unexpected dataset type: {type(t)}")
 
     def _execute(self):
-        import mars
-
-        execute_data = [t for t in self._tileables if isinstance(t, ACCEPT_TYPE[:3])]
+        execute_data = [t for t in self._tileables
+                        if isinstance(t, ACCEPT_TYPE[:3])]
         if len(execute_data):
-            mars.execute(execute_data)
+            execute(execute_data)
 
     def __len__(self):
         return self._tileables[0].shape[0]
