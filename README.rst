@@ -138,6 +138,14 @@ Mars learn provides a familiar interface like scikit-learn.
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 
+Mars learn also integrates with many libraries:
+
+- `TensorFlow <https://docs.pymars.org/en/latest/user_guide/learn/tensorflow.html>`_
+- `PyTorch <https://docs.pymars.org/en/latest/user_guide/learn/pytorch.html>`_
+- `XGBoost <https://docs.pymars.org/en/latest/user_guide/learn/xgboost.html>`_
+- `LightGBM <https://docs.pymars.org/en/latest/user_guide/learn/lightgbm.html>`_
+- `Joblib <https://docs.pymars.org/en/latest/user_guide/learn/joblib.html>`_
+- `Statsmodels <https://docs.pymars.org/en/latest/user_guide/learn/statsmodels.html>`_
 
 Mars remote
 -----------
