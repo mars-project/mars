@@ -17,7 +17,7 @@
 import weakref
 from collections.abc import Iterable
 from io import StringIO
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -1904,10 +1904,16 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         Berkeley    25.0    77.0  298.15
         """
         
+        def apply_if_callable(maybe_callable, obj, **kwargs):
+            if callable(maybe_callable):
+                return maybe_callable(obj, **kwargs)
+
+            return maybe_callable
+        
         data = self.copy()
 
         for k, v in kwargs.items():
-            data[k] = pd.core.common.apply_if_callable(v, data)
+            data[k] = apply_if_callable(v, data)
         return data
 
 
