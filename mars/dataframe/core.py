@@ -1868,18 +1868,18 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
 
         Examples
         --------
-        >>> import mars.dataframe as md
-        >>> md = md.DataFrame({'temp_c': [17.0, 25.0]},
+        >>> import mars.dataframe as df
+        >>> df = df.DataFrame({'temp_c': [17.0, 25.0]},
         ...                   index=['Portland', 'Berkeley'])
-        >>> md.execute()
+        >>> df.execute()
                   temp_c
         Portland    17.0
         Berkeley    25.0
 
-        Where the value is a callable, evaluated on `md`:
+        Where the value is a callable, evaluated on `df`:
 
-        >>> md.assign(temp_f=lambda x: x.temp_c * 9 / 5 + 32)
-        >>> md.execute()
+        >>> df.assign(temp_f=lambda x: x.temp_c * 9 / 5 + 32)
+        >>> df.execute()
                   temp_c  temp_f
         Portland    17.0    62.6
         Berkeley    25.0    77.0
@@ -1887,8 +1887,8 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         Alternatively, the same behavior can be achieved by directly
         referencing an existing Series or sequence:
 
-        >>> md.assign(temp_f=df['temp_c'] * 9 / 5 + 32)
-        >>> md.execute()
+        >>> df.assign(temp_f=df['temp_c'] * 9 / 5 + 32)
+        >>> df.execute()
                   temp_c  temp_f
         Portland    17.0    62.6
         Berkeley    25.0    77.0
@@ -1896,9 +1896,9 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         You can create multiple columns within the same assign where one
         of the columns depends on another one defined within the same assign:
 
-        >>> md.assign(temp_f=lambda x: x['temp_c'] * 9 / 5 + 32,
+        >>> df.assign(temp_f=lambda x: x['temp_c'] * 9 / 5 + 32,
         ...           temp_k=lambda x: (x['temp_f'] +  459.67) * 5 / 9)
-        >>> md.execute()
+        >>> df.execute()
                   temp_c  temp_f  temp_k
         Portland    17.0    62.6  290.15
         Berkeley    25.0    77.0  298.15

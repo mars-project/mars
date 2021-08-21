@@ -199,7 +199,7 @@ def test_to_frame_or_series(setup):
     r = index.to_series(name='new_name')
     result = r.execute().fetch()
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
-   
+
 
 def test_assign():
     df = DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
@@ -225,7 +225,7 @@ def test_assign():
     result = df.assign(C=[4, 2.5, 2])
     result = result.execute().fetch()
     pd.testing.assert_frame_equal(result, expected_temp)
-    
+
     # original is unmodified
     original_temp = original.copy().execute().fetch()
     df_temp = df.copy().execute().fetch()
@@ -252,7 +252,7 @@ def test_assign():
     expected = expected.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
 
-    
+
 def test_assign_multiple():
     df = DataFrame([[1, 4], [2, 5], [3, 6]], columns=["A", "B"])
     result = df.assign(C=[7, 8, 9], D=df.A, E=lambda x: x.B)
@@ -264,7 +264,7 @@ def test_assign_multiple():
     expected = expected.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
 
-    
+
 def test_assign_order():
     df = DataFrame([[1, 2], [3, 4]], columns=["A", "B"])
     result = df.assign(D=df.A + df.B, C=df.A - df.B)
@@ -272,7 +272,7 @@ def test_assign_order():
     expected = DataFrame([[1, 2, 3, -1], [3, 4, 7, -1]], columns=list("ABDC"))
     expected = expected.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
-    
+
     result = df.assign(C=df.A - df.B, D=df.A + df.B)
     result = result.execute().fetch()
     expected = DataFrame([[1, 2, -1, 3], [3, 4, -1, 7]], columns=list("ABCD"))
