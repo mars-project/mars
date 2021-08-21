@@ -201,7 +201,7 @@ def test_to_frame_or_series(setup):
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
 
 
-def test_assign():
+def test_assign(setup):
     df = DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
     original = df.copy()
     result = df.assign(C=df.B / df.A)
@@ -253,7 +253,7 @@ def test_assign():
     pd.testing.assert_frame_equal(result, expected)
 
 
-def test_assign_multiple():
+def test_assign_multiple(setup):
     df = DataFrame([[1, 4], [2, 5], [3, 6]], columns=["A", "B"])
     result = df.assign(C=[7, 8, 9], D=df.A, E=lambda x: x.B)
     result["C"] = result["C"].astype('int64')
@@ -265,7 +265,7 @@ def test_assign_multiple():
     pd.testing.assert_frame_equal(result, expected)
 
 
-def test_assign_order():
+def test_assign_order(setup):
     df = DataFrame([[1, 2], [3, 4]], columns=["A", "B"])
     result = df.assign(D=df.A + df.B, C=df.A - df.B)
     result = result.execute().fetch()
@@ -280,7 +280,7 @@ def test_assign_order():
     pd.testing.assert_frame_equal(result, expected)
 
 
-def test_assign_dependent():
+def test_assign_dependent(setup):
     df = DataFrame({"A": [1, 2], "B": [3, 4]})
 
     result = df.assign(C=df.A, D=lambda x: x["A"] + x["C"])
