@@ -34,6 +34,10 @@ try:
     import sqlalchemy
 except ImportError:  # pragma: no cover
     sqlalchemy = None
+try:
+    import ray
+except ImportError:  # pragma: no cover
+    ray = None
 
 import mars.tensor as mt
 import mars.dataframe as md
@@ -909,3 +913,13 @@ def test_read_parquet_fast_parquet(setup):
         pd.testing.assert_frame_equal(result, test_df)
         # size_res = self.executor.execute_dataframe(df, mock=True)
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
+
+
+@pytest.mark.skipif(ray is None, reason='ray not installed')
+def test_read_obj_refs(setup):
+    df1 = pd.DataFrame({"one": [1, 2, 3], "two": ["a", "b", "c"]})
+    df2 = pd.DataFrame({"one": [4, 5, 6], "two": ["e", "f", "g"]})
+    df = pd.concat([df1, df2])
+    obj_refs = [ray.put(df1), ray.put(df2)]
+    mdf = md.read_obj_refs(obj_refs)
+    assert df.equals(mdf.execute().fetch())

@@ -27,6 +27,7 @@ from mars.utils import lazy_import
 
 ray = lazy_import('ray')
 ml_dataset = lazy_import('ray.util.data')
+ray_dataset = lazy_import('ray.data')
 xgboost_ray = lazy_import('xgboost_ray')
 sklearn = lazy_import('sklearn')
 sklearn_datasets = lazy_import('sklearn.datasets')

@@ -19,6 +19,10 @@ from typing import Iterable, List
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
 ml_dataset = lazy_import('ray.util.data')
+# Ray Datasets is available in early preview at ray.data with Ray 1.6+
+# (and ray.experimental.data in Ray 1.5)
+ray_dataset = lazy_import('ray.data')
+ray_exp_dataset = lazy_import('ray.experimental.data')
 
 
 class RayObjectPiece:
@@ -29,11 +33,9 @@ class RayObjectPiece:
         self.addr = addr
         self.obj_ref = obj_ref
 
-    def read(self, shuffle: bool) -> pd.DataFrame:
+    def read(self) -> pd.DataFrame:
         df: pd.DataFrame = ray.get(self.obj_ref)
 
-        if shuffle:
-            df = df.sample(frac=1.0)
         return df
 
 
@@ -41,15 +43,11 @@ class RecordBatch:
     def __init__(self,
                  shard_id: int,
                  prefix: str,
-                 record_pieces: List[RayObjectPiece],
-                 shuffle: bool,
-                 shuffle_seed: int):
+                 record_pieces: List[RayObjectPiece]):
         """Holding a list of RayObjectPieces."""
         self._shard_id = shard_id
         self._prefix = prefix
         self.record_pieces = record_pieces
-        self.shuffle = shuffle
-        self.shuffle_seed = shuffle_seed
 
     @property
     def prefix(self) -> str:
@@ -61,12 +59,8 @@ class RecordBatch:
 
     def __iter__(self) -> Iterable[pd.DataFrame]:
         """Returns the item_generator required from ParallelIteratorWorker."""
-        if self.shuffle:
-            np.random.seed(self.shuffle_seed)
-            np.random.shuffle(self.record_pieces)
-
         for piece in self.record_pieces:
-            yield piece.read(self.shuffle)
+            yield piece.read()
 
 
 def _create_ml_dataset(name: str,
@@ -115,3 +109,19 @@ def to_ray_mldataset(df,
     for addr, obj_ref in chunk_addr_refs:
         record_pieces.append(RayObjectPiece(addr, obj_ref))
     return _create_ml_dataset("from_mars", record_pieces, num_shards)
+
+
+def to_ray_dataset(df,
+                   num_shards: int = None):
+    df = _rechunk_if_needed(df, num_shards=num_shards)
+    refs = get_refs(df)
+    # Ray Datasets is available in early preview at ray.data with Ray 1.6+
+    # (and ray.experimental.data in Ray 1.5)
+    real_ray_dataset = ray_dataset or ray_exp_dataset
+    return real_ray_dataset.from_pandas(refs)
+
+
+def get_refs(df):
+    # during `fetch` procedure, it'll be checked that df has been executed
+    chunk_addr_refs = df.fetch(only_refs=True)
+    return [obj_ref for _, obj_ref in chunk_addr_refs]
