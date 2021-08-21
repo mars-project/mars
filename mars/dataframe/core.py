@@ -1868,8 +1868,8 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
 
         Examples
         --------
-        >>> import mars.dataframe as df
-        >>> df = df.DataFrame({'temp_c': [17.0, 25.0]},
+        >>> import mars.dataframe as md
+        >>> df = md.DataFrame({'temp_c': [17.0, 25.0]},
         ...                   index=['Portland', 'Berkeley'])
         >>> df.execute()
                   temp_c
