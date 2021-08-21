@@ -279,19 +279,7 @@ def test_assign_order():
     expected = expected.execute().fetch()
     pd.testing.assert_frame_equal(result, expected)
 
-    
-def test_assign_bad():
-    df = DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
 
-    # non-keyword argument
-    msg = r"assign\(\) takes 1 positional argument but 2 were given"
-    with pytest.raises(TypeError, match=msg):
-        df.assign(lambda x: x.A)
-    msg = "'DataFrame' object has no attribute 'C'"
-    with pytest.raises(AttributeError, match=msg):
-        df.assign(C=df.A, D=df.A + df.C)
-
-        
 def test_assign_dependent():
     df = DataFrame({"A": [1, 2], "B": [3, 4]})
 
