@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-from mars.dataframe.dataset import RayMLDataset
+import mars.dataframe.dataset as mds
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
@@ -64,7 +64,7 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_mldataset_related_classes(ray_large_cluster):
+async def test_dataset_related_classes(ray_large_cluster):
     from mars.dataframe.dataset import RecordBatch, RayObjectPiece
     # in order to pass checks
     value = np.random.rand(10, 10)
@@ -72,47 +72,30 @@ async def test_mldataset_related_classes(ray_large_cluster):
     if ray:
         obj_ref = ray.put(df)
         piece = RayObjectPiece(addr='address0', obj_ref=obj_ref)
-        data = piece.read(shuffle=False)
-        shuffle_data = piece.read(shuffle=True)
+        data = piece.read()
         pd.testing.assert_frame_equal(data, df)
-        assert not shuffle_data.equals(df)
 
         batch = RecordBatch(shard_id=0,
                             prefix='test_batch',
-                            record_pieces=[piece],
-                            shuffle=False,
-                            shuffle_seed=None
-                            )
+                            record_pieces=[piece])
         assert batch.shard_id == 0
         assert batch.prefix == 'test_batch'
         # only one data in batch
         data = list(batch.__iter__())[0]
         pd.testing.assert_frame_equal(data, df)
 
-        shuffle_batch = RecordBatch(shard_id=1,
-                                    prefix='shuffle_batch',
-                                    record_pieces=[piece],
-                                    shuffle=True,
-                                    shuffle_seed=0
-                                    )
-        assert shuffle_batch.shard_id == 1
-        assert shuffle_batch.prefix == 'shuffle_batch'
-        # only one data in batch
-        shuffle_data = list(shuffle_batch.__iter__())[0]
-        assert not shuffle_data.equals(df)
-
 
 @require_ray
 @pytest.mark.asyncio
-async def test_convert_to_mldataset(ray_large_cluster, create_cluster):
+async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
-        value = np.random.rand(10, 10)
+        value = np.random.rand(20, 10)
         df: md.DataFrame = md.DataFrame(value, chunk_size=5)
         df.execute()
 
-        ds = RayMLDataset.from_mars(df, num_shards=4, shuffle=True, shuffle_seed=0)
+        ds = mds.to_ray_mldataset(df, num_shards=5)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 
@@ -130,9 +113,10 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         train_x, train_y = sklearn_datasets.load_breast_cancer(return_X_y=True, as_frame=True)
         pd_df = pd.concat([train_x, train_y], axis=1)
         df: md.DataFrame = md.DataFrame(pd_df)
+        df.execute()
 
         num_shards = 4
-        ds = RayMLDataset.from_mars(df, num_shards=num_shards)
+        ds = mds.to_ray_mldataset(df, num_shards=num_shards)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 
