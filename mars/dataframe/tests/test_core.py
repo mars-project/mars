@@ -201,7 +201,7 @@ def test_to_frame_or_series(setup):
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
    
 
- def test_assign():
+def test_assign():
     df = DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
     original = df.copy()
     result = df.assign(C=df.B / df.A)
