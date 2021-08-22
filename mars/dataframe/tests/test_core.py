@@ -15,6 +15,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+import copy
+from contextlib import nullcontext
 
 from mars.core import tile
 from mars.dataframe import cut
@@ -320,3 +322,170 @@ def test_key_value(setup):
 
     result = idx.values.execute().fetch()
     np.testing.assert_array_equal(result, raw.values)
+
+
+# Test equals for Dataframe
+def test_dataframe_not_equal(setup):
+    df1 = DataFrame({"a": [1, 2], "b": ["s", "d"]})
+    df1 = df1.execute().fetch()
+    df2 = DataFrame({"a": ["s", "d"], "b": [1, 2]})
+    df2 = df2.execute().fetch()
+    result = df1.equals(df2)
+    result = result.execute().fetch()
+    assert result is False
+
+
+def test_equals_different_blocks(setup, using_array_manager):
+    df0 = DataFrame({"A": ["x", "y"], "B": [1, 2], "C": ["w", "z"]})
+    df0 = df0.execute().fetch()
+    df1 = df0.reset_index()[["A", "B", "C"]]
+    df1 = df1.execute().fetch()
+    if not using_array_manager:
+        # this assert verifies that the above operations have
+        # induced a block rearrangement
+        assert df0._mgr.blocks[0].dtype != df1._mgr.blocks[0].dtype
+
+    # do the real tests
+    pd._testing.assert_frame_equal(df0, df1)
+    assert df0.equals(df1)
+    assert df1.equals(df0)
+
+
+def test_equals(setup):
+    # Add object dtype column with nans
+    index = np.random.random(10)
+    df1 = DataFrame(np.random.random(10), index=index, columns=["floats"])
+    df1["text"] = "the sky is so blue. we could use more chocolate.".split()
+    df1["start"] = pd.date_range("2000-1-1", periods=10, freq="T")
+    df1["end"] = pd.date_range("2000-1-1", periods=10, freq="D")
+    df1["diff"] = df1["end"] - df1["start"]
+    df1["bool"] = np.arange(10) % 3 == 0
+    df1.loc[::2] = np.nan
+    df2 = df1.copy()
+    assert df1["text"].equals(df2["text"])
+    assert df1["start"].equals(df2["start"])
+    assert df1["end"].equals(df2["end"])
+    assert df1["diff"].equals(df2["diff"])
+    assert df1["bool"].equals(df2["bool"])
+    assert df1.equals(df2)
+    assert not df1.equals(object)
+
+    # different dtype
+    different = df1.copy()
+    different["floats"] = different["floats"].astype("float32")
+    assert not df1.equals(different)
+
+    # different index
+    different_index = -index
+    different = df2.set_index(different_index)
+    assert not df1.equals(different)
+
+    # different columns
+    different = df2.copy()
+    different.columns = df2.columns[::-1]
+    assert not df1.equals(different)
+
+    # DatetimeIndex
+    index = pd.date_range("2000-1-1", periods=10, freq="T")
+    df1 = df1.set_index(index)
+    df2 = df1.copy()
+    assert df1.equals(df2)
+
+    # MultiIndex
+    df3 = df1.set_index(["text"], append=True)
+    df2 = df1.set_index(["text"], append=True)
+    assert df3.equals(df2)
+
+    df2 = df1.set_index(["floats"], append=True)
+    assert not df3.equals(df2)
+
+    # NaN in index
+    df3 = df1.set_index(["floats"], append=True)
+    df2 = df1.set_index(["floats"], append=True)
+    assert df3.equals(df2)
+
+
+#Tests equals for Series
+def test_equals_list_array(val):
+    arr = np.array([1, 2])
+    s1 = Series([arr, arr])
+    s2 = s1.copy()
+    assert s1.equals(s2)
+
+    s1[1] = val
+
+    cm = (
+        pd.testing.assert_produces_warning(FutureWarning, check_stacklevel=False)
+        if isinstance(val, str)
+        else nullcontext()
+    )
+    with cm:
+        assert not s1.equals(s2)
+
+
+def test_equals_false_negative():
+    # Verify false negative behavior of equals function for dtype object
+    arr = [False, np.nan]
+    s1 = Series(arr)
+    s2 = s1.copy()
+    s3 = Series(index=range(2), dtype=object)
+    s4 = s3.copy()
+    s5 = s3.copy()
+    s6 = s3.copy()
+
+    s3[:-1] = s4[:-1] = s5[0] = s6[0] = False
+    assert s1.equals(s1)
+    assert s1.equals(s2)
+    assert s1.equals(s3)
+    assert s1.equals(s4)
+    assert s1.equals(s5)
+    assert s5.equals(s6)
+
+
+def test_equals_matching_nas():
+    # matching but not identical NAs
+    left = Series([np.datetime64("NaT")], dtype=object)
+    right = Series([np.datetime64("NaT")], dtype=object)
+    assert left.equals(right)
+    assert Index(left).equals(Index(right))
+    assert left.array.equals(right.array)
+
+    left = Series([np.timedelta64("NaT")], dtype=object)
+    right = Series([np.timedelta64("NaT")], dtype=object)
+    assert left.equals(right)
+    assert Index(left).equals(Index(right))
+    assert left.array.equals(right.array)
+
+    left = Series([np.float64("NaN")], dtype=object)
+    right = Series([np.float64("NaN")], dtype=object)
+    assert left.equals(right)
+    assert Index(left).equals(Index(right))
+    assert left.array.equals(right.array)
+
+
+def test_equals_mismatched_nas(nulls_fixture, nulls_fixture2):
+    left = nulls_fixture
+    right = nulls_fixture2
+    if hasattr(right, "copy"):
+        right = right.copy()
+    else:
+        right = copy.copy(right)
+
+    ser = Series([left], dtype=object)
+    ser2 = Series([right], dtype=object)
+
+    if pd._libs.missing.is_matching_na(left, right):
+        assert ser.equals(ser2)
+    elif (left is None and pd.core.dtypes.common.is_float(right)) or (right is None and pd.core.dtypes.common.is_float(left)):
+        assert ser.equals(ser2)
+    else:
+        assert not ser.equals(ser2)
+
+
+def test_equals_none_vs_nan():
+    ser = Series([1, None], dtype=object)
+    ser2 = Series([1, np.nan], dtype=object)
+
+    assert ser.equals(ser2)
+    assert Index(ser).equals(Index(ser2))
+    assert ser.array.equals(ser2.array)
