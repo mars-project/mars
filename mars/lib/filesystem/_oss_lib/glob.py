@@ -13,16 +13,18 @@
 # limitations under the License.
 
 """
-Filename globbing utility.
-This is the change from python glob.
+Filename globbing utility, modified from python glob.
 
-obviously，this implementation is not optimal, it will cause too many oss requests.
-Lately, We can then convert the glob expression into a regular expression, and then match the oss key list.
-But before that, we need to figure out how to deal with magic char in oss key,
-such like oss glob: oss://bucket/[key]/*, the key oss://bucket/[key]/a exactly exists.
+obviously，this implementation is not optimal, it will cause too many
+oss requests. Lately, We can then convert the glob expression into
+a regular expression, and then match the oss key list.
+But before that, we need to figure out how to deal with magic char
+in oss key, such like oss glob: oss://bucket/[key]/*, the key
+oss://bucket/[key]/a exactly exists.
 
 Notes:
-	OSS need a bucket to specify the file or dir, the "**" patten is not supported. So _isrecursive(pattern) is removed.
+    OSS need a bucket to specify the file or dir, the "**" patten is
+    not supported. So _isrecursive(pattern) is removed.
 """
 
 import fnmatch
@@ -46,7 +48,7 @@ def glob(pathname, *, recursive=False):
 
 def iglob(pathname, *, recursive=False):
     """Return an iterator which yields the paths matching a pathname pattern.
-    The pattern may contain simple shell-style wildcards a la
+    The pattern may contain simple shell-style wildcards like
     fnmatch. However, unlike fnmatch, filenames starting with a
     dot are special cases that are not matched by '*' and '?'
     patterns.

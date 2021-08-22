@@ -36,12 +36,12 @@ class OSSFileEntry:
         self._is_dir = is_dir
         self._stat = stat
         self._storage_options = storage_options
-    
+
     def is_dir(self):
         if self._is_dir is None:
             self._is_dir = oss_isdir(self._path)
         return self._is_dir
-    
+
     def is_file(self):
         if self._is_file is None:
             if self.is_dir() or not oss_exists(self._path):
@@ -49,16 +49,16 @@ class OSSFileEntry:
             else:
                 self._is_file = True
         return self._is_file
-    
+
     def stat(self):
         if self._stat is None:
             self._stat = oss_stat(self._path)
         return self._stat
-    
+
     @property
     def name(self):
         return self._name
-    
+
     @property
     def path(self):
         return self._path
