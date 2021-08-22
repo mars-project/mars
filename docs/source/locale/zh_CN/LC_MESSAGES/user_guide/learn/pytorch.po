@@ -1,0 +1,161 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 1999-2020, The Alibaba Group Holding Ltd.
+# This file is distributed under the same license as the mars package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2021.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: mars 0.8.0a1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-20 11:13+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.7.0\n"
+
+#: ../../source/user_guide/learn/pytorch.rst:5
+msgid "Integrate with PyTorch"
+msgstr "和Pytorch集成"
+
+#: ../../source/user_guide/learn/pytorch.rst:9
+msgid ""
+"This introduction will give a brief tour about how to integrate `PyTorch "
+"<https://pytorch.org/>`_ in Mars."
+msgstr "这篇指引会介绍如何在 Mars 里集成 `PyTorch <https://pytorch.org/>`_。"
+
+#: ../../source/user_guide/learn/pytorch.rst:13
+msgid "Installation"
+msgstr "安装"
+
+#: ../../source/user_guide/learn/pytorch.rst:15
+msgid ""
+"If you are trying to use Mars on a single machine, e.g. on your laptop, "
+"make sure PyTorch is installed."
+msgstr "如果尝试在单机比如你的笔记本上使用 Mars，确保 PyTorch 已经安装。"
+
+#: ../../source/user_guide/learn/pytorch.rst:18
+msgid "You can install PyTorch via pip:"
+msgstr "通过 pip 安装 PyTorch："
+
+#: ../../source/user_guide/learn/pytorch.rst:24
+msgid ""
+"Visit `installation guide for PyTorch <https://pytorch.org/get-"
+"started/locally/>`_ for more information."
+msgstr ""
+"访问 `PyTorch 安装指南 <https://pytorch.org/get-started/locally/>`_ 获取"
+"更多信息"
+
+#: ../../source/user_guide/learn/pytorch.rst:27
+msgid ""
+"On the other hand, if you are about to use Mars on a cluster, maker sure "
+"PyTorch is installed on each worker."
+msgstr ""
+"另一方面，如果你打算在集群中使用 Mars，确保 PyTorch 在每一个worker上已"
+"安装。"
+
+#: ../../source/user_guide/learn/pytorch.rst:31
+msgid "Prepare data"
+msgstr "准备数据"
+
+#: ../../source/user_guide/learn/pytorch.rst:33
+msgid ""
+"The dataset here we used is `ionosphere dataset "
+"<http://archive.ics.uci.edu/ml/machine-learning-databases/ionosphere/>`_,"
+" click link to download data."
+msgstr ""
+"这里我们使用 `ionosphere 数据集 <http://archive.ics.uci.edu/ml/machine-"
+"learning-databases/ionosphere/>`_，点击链接下载数据。"
+
+#: ../../source/user_guide/learn/pytorch.rst:38
+msgid "Prepare PyTorch script"
+msgstr "编写 PyTorch 脚本"
+
+#: ../../source/user_guide/learn/pytorch.rst:40
+msgid ""
+"Now we create a Python file called ``torch_demo.py`` which contains the "
+"logic of PyTorch."
+msgstr ""
+"现在我们创建一个命名为 `torch_demo.py` 的 Python 文件，它包含了 PyTorch "
+"的处理逻辑。"
+
+#: ../../source/user_guide/learn/pytorch.rst:119
+msgid ""
+"Mars libraries including DataFrame and so forth could be used directly to"
+" process massive data and accelerate preprocess."
+msgstr "Mars DataFrame 等模块可以直接在脚本里使用，以处理大规模数据和加速预处理。"
+
+#: ../../source/user_guide/learn/pytorch.rst:123
+msgid "Run PyTorch script via Mars"
+msgstr "通过 Mars 运行 PyTorch 脚本"
+
+#: ../../source/user_guide/learn/pytorch.rst:125
+msgid "The PyTorch script can be submitted via :meth:`run_pytorch_script` now."
+msgstr "现在可以通过 :meth:`run_pytorch_script` 提交 PyTorch 脚本。"
+
+#: ../../source/user_guide/learn/pytorch.rst:141
+msgid "Distributed training or inference"
+msgstr "分布式训练和推理"
+
+#: ../../source/user_guide/learn/pytorch.rst:143
+msgid ""
+"Refer to :ref:`deploy` section for deployment, or :ref:`k8s` section for "
+"running Mars on Kubernetes."
+msgstr "部署参考 :ref:`deploy` 部分， 在 Kubernetes 上运行参考 :ref:`k8s` 部分。"
+
+#: ../../source/user_guide/learn/pytorch.rst:146
+msgid ""
+"As you can tell from ``torch_demo.py``, Mars will set environment "
+"variable automatically. Thus you don't need to worry about the "
+"distributed setting, what you need do is to write a proper `distributed "
+"PyTorch script. "
+"<https://pytorch.org/tutorials/beginner/dist_overview.html>`_."
+msgstr ""
+"你能从 ``torch_demo.py`` 中看出，Mars 会自动设置相关的环境变量。你不需要"
+"考虑分布式相关的设置，你需要做的是写一个正确的 `分布式PyTorch脚本 <https:"
+"//pytorch.org/tutorials/beginner/dist_overview.html>`_。"
+
+#: ../../source/user_guide/learn/pytorch.rst:151
+msgid ""
+"Once a cluster exists, you can either set the session as default, the "
+"training and prediction shown above will be submitted to the cluster, or "
+"you can specify ``session=***`` explicitly as well."
+msgstr ""
+"一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
+"集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
+
+#: ../../source/user_guide/learn/pytorch.rst:169
+msgid "MarsDataset"
+msgstr "MarsDataset"
+
+#: ../../source/user_guide/learn/pytorch.rst:171
+msgid ""
+"In order to use Mars to process data, we implemented a "
+":class:`MarsDataset` that can convert Mars object "
+"(:class:`mars.tensor.Tensor`, :class:`mars.dataframe.DataFrame`, "
+":class:`mars.dataframe.Series`) to ``torch.util.data.Dataset``."
+msgstr ""
+"为了更好地使用 Mars 处理数据，我们实现了一个 MarsDataset 对象，继承 ``"
+"torch.util.data.Dataset``，能够接收Mars 类型的数据（:class:`mars.tensor."
+"Tensor`、:class:`mars.dataframe.DataFrame`、:class:`mars.dataframe.Series"
+"`）。"
+
+#: ../../source/user_guide/learn/pytorch.rst:188
+msgid ""
+"Now, :meth:`run_pytorch_script` allow pass data to script. So you can "
+"preprocess data via mars, then pass data to script."
+msgstr ""
+"现在，:meth:`run_pytorch_script` 允许传送 Mars 类型的数据到脚本中。所以你"
+"可以先通过 Mars 处理数据，再将其传送到脚本中。"
+
+#: ../../source/user_guide/learn/pytorch.rst:208
+msgid "``torch_script.py``"
+msgstr "``torch_script.py``"
+
+#: ../../source/user_guide/learn/pytorch.rst:270
+msgid "result:"
+msgstr "运行结果："
+

@@ -33,8 +33,8 @@ from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
 from mars.dataframe.datasource.read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
 from mars.dataframe.datasource.date_range import date_range
-    
-    
+
+
 def test_from_pandas_dataframe():
     data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
     df = from_pandas_df(data, chunk_size=4)

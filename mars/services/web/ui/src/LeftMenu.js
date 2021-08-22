@@ -16,6 +16,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Divider from '@material-ui/core/Divider';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
@@ -26,35 +27,91 @@ import MemoryIcon from '@material-ui/icons/Memory';
 import AssignmentReturnedIcon from '@material-ui/icons/AssignmentReturned';
 import DescriptionIcon from '@material-ui/icons/Description';
 import GitHub from '@material-ui/icons/GitHub';
+import { useStyles } from './Style';
 
 export default function LeftMenu() {
+    const classes = useStyles();
+    const getHashPath = () => (window.location.hash.substring(1));
+    const [hash, setHash] = React.useState(getHashPath());
+
+    window.addEventListener('hashchange', () => {
+        setHash(getHashPath());
+    }, false);
+
+    const genNodeSubMenu = (nodeRole) => {
+        const match = hash.match(/^\/(supervisor|worker)\/([^/]+)/, 1);
+        return (
+            match && nodeRole === match[1] &&
+            <React.Fragment>
+                <Divider />
+                <List component="div" disablePadding>
+                    <ListItem button className={classes.nestedListItem}
+                        component={Link} to={`/${match[1]}/${match[2]}`}
+                        selected={true}
+                    >
+                        <ListItemIcon />
+                        <ListItemText primary={match[2]} />
+                    </ListItem>
+                </List>
+            </React.Fragment>
+        );
+    };
+
+    const genSessionSubMenu = () => {
+        const match = hash.match(/^\/session\/([^/]+)\/task/, 1);
+        return (
+            match &&
+            <React.Fragment>
+                <Divider />
+                <List component="div" disablePadding>
+                    <ListItem button className={classes.nestedListItem}
+                        component={Link} to={`/session/${match[1]}/task`}
+                        selected={true}
+                    >
+                        <ListItemIcon />
+                        <ListItemText primary={match[1]} />
+                    </ListItem>
+                </List>
+            </React.Fragment>
+        );
+    };
+
     return (
-        <List>
+        <List className={classes.leftMenu}>
             <div>
-                <ListItem button component={Link} to="/">
+                <ListItem button component={Link} to="/" selected={hash === '/'}>
                     <ListItemIcon>
                         <DashboardIcon />
                     </ListItemIcon>
                     <ListItemText primary="Dashboard" />
                 </ListItem>
-                <ListItem button component={Link} to="/supervisor">
+                <ListItem button component={Link} to="/supervisor"
+                    selected={hash.startsWith('/supervisor')}
+                >
                     <ListItemIcon>
                         <SupervisedUserCircleIcon />
                     </ListItemIcon>
                     <ListItemText primary="Supervisors" />
                 </ListItem>
-                <ListItem button component={Link} to="/worker">
+                {genNodeSubMenu('supervisor')}
+                <ListItem button component={Link} to="/worker"
+                    selected={hash.startsWith('/worker')}
+                >
                     <ListItemIcon>
                         <MemoryIcon />
                     </ListItemIcon>
                     <ListItemText primary="Workers" />
                 </ListItem>
-                <ListItem button component="a" href="/#/session">
+                {genNodeSubMenu('worker')}
+                <ListItem button component={Link} to="/session"
+                    selected={hash === '/session'}
+                >
                     <ListItemIcon>
                         <AssignmentReturnedIcon />
                     </ListItemIcon>
                     <ListItemText primary="Sessions" />
                 </ListItem>
+                {genSessionSubMenu()}
                 <ListItem button component="a" href="https://docs.pymars.org" target="_blank">
                     <ListItemIcon>
                         <DescriptionIcon />

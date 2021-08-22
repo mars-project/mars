@@ -1,4 +1,4 @@
-.. _tensorflow:
+.. _integrate_tensorflow:
 
 *************************
 Integrate with TensorFlow

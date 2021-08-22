@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import namedtuple
+from mars.services.core import AbstractService
 
 
-KstestResult = namedtuple('KstestResult', ('statistic', 'pvalue'))
+class AbsDeriveService(AbstractService):
+    pass

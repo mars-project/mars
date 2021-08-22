@@ -57,6 +57,10 @@ class SubtaskProcessor:
         self.subtask = subtask
         self._session_id = self.subtask.session_id
         self._chunk_graph = subtask.chunk_graph
+        self._actual_chunk_count = len([
+            chunk for chunk in subtask.chunk_graph
+            if not isinstance(chunk.op, (Fetch, FetchShuffle))
+        ])
         self._band = band
         self._supervisor_address = supervisor_address
         self._engines = engines if engines is not None else \
@@ -134,7 +138,8 @@ class SubtaskProcessor:
     async def _async_execute_operand(self,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
-        self._op_progress[op.key] = 0.0
+        if not isinstance(op, (Fetch, FetchShuffle)):
+            self._op_progress[op.key] = 0.0
         get_context().set_running_operand_key(self._session_id, op.key)
         return asyncio.to_thread(self._execute_operand, ctx, op)
 
@@ -190,7 +195,7 @@ class SubtaskProcessor:
                     self.result.status = SubtaskStatus.cancelled
                     raise
 
-            self._op_progress[chunk.op.key] = 1.0
+            self.set_op_progress(chunk.op.key, 1.0)
 
             for inp in chunk.inputs:
                 ref_counts[inp.key] -= 1
@@ -377,7 +382,7 @@ class SubtaskProcessor:
     async def report_progress_periodically(self, interval=.5, eps=0.001):
         last_progress = self.result.progress
         while not self.result.status.is_done:
-            size = len(self._chunk_graph)
+            size = self._actual_chunk_count
             progress = sum(self._op_progress.values()) / size
             assert progress <= 1
             self.result.progress = progress
