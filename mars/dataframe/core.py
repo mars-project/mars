@@ -1268,7 +1268,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
         name = name or self.name or 0
         return dataframe_from_tensor(self, columns=[name])
-    
+
     def between(self, left, right, inclusive="both"):
         """
         Return boolean Series equivalent to left <= series <= right.
