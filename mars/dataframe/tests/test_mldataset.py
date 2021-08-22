@@ -56,27 +56,31 @@ async def create_cluster(request):
 async def test_dataset_related_classes(ray_large_cluster):
     from mars.dataframe.dataset import RecordBatch, RayObjectPiece
     # in order to pass checks
-    value = np.random.rand(10, 10)
-    df = pd.DataFrame(value)
+    value1 = np.random.rand(10, 10)
+    value2 = np.random.rand(10, 10)
+    df1 = pd.DataFrame(value1)
+    df2 = pd.DataFrame(value2)
     if ray:
-        obj_ref = ray.put(df)
-        piece = RayObjectPiece(addr='address0', obj_ref=obj_ref)
-        data = piece.read()
-        pd.testing.assert_frame_equal(data, df)
+        obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
+        piece1 = RayObjectPiece(index=0, addr='address0', obj_ref=obj_ref1)
+        piece2 = RayObjectPiece(index=1, addr='address1', obj_ref=obj_ref2)
+        data = piece1.read()
+        pd.testing.assert_frame_equal(data, df1)
 
         batch = RecordBatch(shard_id=0,
-                            prefix='test_batch',
-                            record_pieces=[piece])
+                            record_pieces=[piece1, piece2])
         assert batch.shard_id == 0
-        assert batch.prefix == 'test_batch'
-        # only one data in batch
-        data = list(batch.__iter__())[0]
-        pd.testing.assert_frame_equal(data, df)
+        # the first data in batch
+        data1, data2 = batch.__iter__()
+        pd.testing.assert_frame_equal(data1, df1)
+        pd.testing.assert_frame_equal(data2, df2)
 
 
 @require_ray
 @pytest.mark.asyncio
-async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster):
+@pytest.mark.parametrize('test_option', [[10, 5], [6, 3], [8, 4],
+                                         [5, None], [None, None]])
+async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
@@ -84,7 +88,8 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster):
         df: md.DataFrame = md.DataFrame(value, chunk_size=5)
         df.execute()
 
-        ds = mds.to_ray_mldataset(df, num_shards=5)
+        num_partitions, num_shards = test_option
+        ds = mds.to_ray_mldataset(df, num_partitions=num_partitions, num_shards=num_shards)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 
@@ -106,7 +111,7 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mds.to_ray_mldataset(df, num_shards=num_shards)
+        ds = mds.to_ray_mldataset(df, num_partitions=num_shards, num_shards=num_shards)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 

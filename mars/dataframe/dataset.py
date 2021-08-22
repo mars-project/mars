@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import pandas as pd
 from ..utils import ceildiv, lazy_import
-from typing import Iterable, List
+from collections import defaultdict
+from typing import Dict, Iterable, List
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
@@ -23,31 +25,45 @@ ml_dataset = lazy_import('ray.util.data')
 
 class RayObjectPiece:
     def __init__(self,
+                 index,
                  addr,
                  obj_ref):
-        """Represents a single entity holding the object ref."""
-        self.addr = addr
-        self.obj_ref = obj_ref
+        """Represents a single entity holding the object ref.
+
+        Args:
+            index (int): index of the data in DataFrame
+            addr (BandType): band that stores the data
+            obj_ref (ray.ObjectRef): ObjectRef to the data
+        """
+        self._index = index
+        self._addr = addr
+        self._obj_ref = obj_ref
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def addr(self):
+        return self._addr
 
     def read(self) -> pd.DataFrame:
-        df: pd.DataFrame = ray.get(self.obj_ref)
-
-        return df
+        return ray.get(self._obj_ref)
 
 
 class RecordBatch:
     def __init__(self,
                  shard_id: int,
-                 prefix: str,
                  record_pieces: List[RayObjectPiece]):
-        """Holding a list of RayObjectPieces."""
-        self._shard_id = shard_id
-        self._prefix = prefix
-        self.record_pieces = record_pieces
+        """Iterable batch holding a list of RayObjectPieces.
 
-    @property
-    def prefix(self) -> str:
-        return self._prefix
+        Args:
+            shard_id (int): id of the shard
+            prefix (str): prefix name of the batch
+            record_pieces (List[RayObjectPiece]): list of RayObjectRefs
+        """
+        self._shard_id = shard_id
+        self._record_pieces = record_pieces
 
     @property
     def shard_id(self) -> int:
@@ -55,19 +71,31 @@ class RecordBatch:
 
     def __iter__(self) -> Iterable[pd.DataFrame]:
         """Returns the item_generator required from ParallelIteratorWorker."""
-        for piece in self.record_pieces:
+        for piece in self._record_pieces:
             yield piece.read()
 
 
+def _group_pieces(index_to_pieces: Dict[int, RayObjectPiece],
+                  num_shards: int,
+                  num_addrs: int):
+    group_to_pieces = defaultdict(list)
+    if not num_shards or num_shards == num_addrs:
+        for piece in index_to_pieces.values():
+            group_to_pieces[str(piece.addr)].append(piece)
+    else:
+        splits = np.array_split(list(index_to_pieces.values()), num_shards)
+        for idx, split in enumerate(splits):
+            pieces = list(split)
+            group_to_pieces['group-' + str(idx)] = pieces
+    return group_to_pieces
+
+
 def _create_ml_dataset(name: str,
-                       record_pieces: List[RayObjectPiece],
-                       num_shards: int):
-    # TODO: (maybe) combine some chunks according to num_shards
+                       group_to_pieces: Dict[str, List[RayObjectPiece]]):
     record_batches = []
-    for rank, pieces in enumerate(record_pieces):
+    for rank, pieces in enumerate(group_to_pieces.values()):
         record_batches.append(RecordBatch(shard_id=rank,
-                                          prefix=name,
-                                          record_pieces=[pieces]))
+                                          record_pieces=pieces))
     worker_cls = ray.remote(parallel_it.ParallelIteratorWorker)
     actors = [worker_cls.remote(g, False) for g in record_batches]
     it = parallel_it.from_actors(actors, name)
@@ -76,7 +104,7 @@ def _create_ml_dataset(name: str,
     return ds
 
 
-def _rechunk_if_needed(df, num_shards: int=None):
+def _rechunk_if_needed(df, num_partitions: int=None):
     num_rows = df.shape[0]
     num_columns = df.shape[1]
     need_re_execute = False
@@ -86,9 +114,9 @@ def _rechunk_if_needed(df, num_shards: int=None):
         # ensure each part holds all columns
         df = df.rebalance(axis=1, num_partitions=1)
         need_re_execute = True
-    if num_shards and chunk_size > ceildiv(num_rows, num_shards):
-        # ensure enough parts for num_shards
-        df = df.rebalance(axis=0, num_partitions=num_shards)
+    if num_partitions and chunk_size > ceildiv(num_rows, num_partitions):
+        # ensure enough parts for num_partitions
+        df = df.rebalance(axis=0, num_partitions=num_partitions)
         need_re_execute = True
     if need_re_execute:
         df.execute()
@@ -96,12 +124,38 @@ def _rechunk_if_needed(df, num_shards: int=None):
 
 
 def to_ray_mldataset(df,
+                     num_partitions: int = None,
                      num_shards: int = None):
-    df = _rechunk_if_needed(df, num_shards=num_shards)
+    """Create a MLDataset from Mars DataFrame
+
+    Args:
+        df (mars.dataframe.Dataframe): the Mars DataFrame
+        num_partitions (int, optional): the number of partitions into which
+            the df will be divided. Defaults to None.
+        num_shards (int, optional): the number of shards that will be created
+            for the MLDataset. Defaults to None.
+
+    Returns:
+        a MLDataset
+    """
+    if num_partitions and num_shards:
+        assert num_partitions % num_shards == 0,\
+                f"num_partitions: {num_partitions} should be a multiple of "\
+                f"num_shards: {num_shards}"
+    df = _rechunk_if_needed(df, num_partitions=num_partitions)
+    # chunk_addr_refs is fetched directly rather than in batches
     # during `fetch` procedure, it'll be checked that df has been executed
     chunk_addr_refs = df.fetch(only_refs=True)
-    record_pieces = []
-    # chunk_addr_refs is fetched directly rather than in batches
-    for addr, obj_ref in chunk_addr_refs:
-        record_pieces.append(RayObjectPiece(addr, obj_ref))
-    return _create_ml_dataset("from_mars", record_pieces, num_shards)
+    addrs = set()
+    index_to_pieces = {}
+    # items in chunk_addr_refs are ordered by positions in df
+    # while adjacent chunks may belong to different addrs, i.e.
+    #       chunk1 for addr1,
+    #       chunk2 & chunk3 for addr2,
+    #       chunk4 for addr1
+    for idx, (addr, obj_ref) in enumerate(chunk_addr_refs):
+        index_to_pieces[idx] = RayObjectPiece(idx, addr, obj_ref)
+        addrs.add(addr)
+    group_to_pieces = _group_pieces(index_to_pieces, num_shards,
+                                    num_addrs=len(list(addrs)))
+    return _create_ml_dataset("from_mars", group_to_pieces)
