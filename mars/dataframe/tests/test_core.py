@@ -339,12 +339,10 @@ def test_between_datetime_values(setup):
 
     result = ser[ser.between(ser[3], ser[17])]
     expected = ser[3:18].dropna()
-    # expected = expected.execute().fetch()
     pd.testing.assert_series_equal(result, expected)
 
     result = ser[ser.between(ser[3], ser[17], inclusive="neither")]
     expected = ser[5:16].dropna()
-    # expected = expected.execute().fetch()
     pd.testing.assert_series_equal(result, expected)
 
 
