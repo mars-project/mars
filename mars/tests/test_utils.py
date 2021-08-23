@@ -396,3 +396,15 @@ def _run_task_timeout_detector(log_file_name):
         task.cancel()
 
     asyncio.run(main())
+
+
+def test_import_error_handler():
+    try:
+        import required_module
+    except ImportError:
+        required_module = utils.ImportErrorHandler('required_module')
+
+    with pytest.raises(AttributeError) as e:
+        required_module.method()
+    msg = e.value.args[0]
+    assert msg == 'required_module is required but not installed.'
