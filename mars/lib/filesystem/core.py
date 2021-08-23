@@ -20,10 +20,12 @@ from urllib.parse import urlparse
 from ..compression import compress
 from .base import path_type, FileSystem
 from .local import LocalFileSystem
+from .oss import OSSFileSystem
 
 
 _filesystems = {
-    'file': LocalFileSystem
+    'file': LocalFileSystem,
+    'oss': OSSFileSystem
 }
 
 
@@ -52,7 +54,7 @@ def get_fs(path: path_type,
         raise ValueError(f'Unknown file system type: {scheme}, '
                          f'available include: {", ".join(_filesystems)}')
 
-    if scheme == 'file':
+    if scheme == 'file' or scheme == 'oss':
         # local file system use an singleton.
         return file_system_type.get_instance()
     else:
