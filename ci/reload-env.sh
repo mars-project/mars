@@ -12,12 +12,10 @@ fi
 
 if [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then
   export UNAME="windows"
-  if [ -n "$CONDA" ]; then
-    CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
-    export PATH="$CONDA/Library:$CONDA/Library/bin:$CONDA/Scripts:$CONDA:$PATH"
-    export PATH="$CONDA/envs/test/Library:$CONDA/envs/test/Library/bin:$CONDA/envs/test/Scripts:$CONDA/envs/test:$PATH"
-  fi
-elif [ -n "$CONDA" ]; then
+  CONDA=$(echo "/$CONDA" | sed -e 's/\\/\//g' -e 's/://')
+  export PATH="$CONDA/Library:$CONDA/Library/bin:$CONDA/Scripts:$CONDA:$PATH"
+  export PATH="$CONDA/envs/test/Library:$CONDA/envs/test/Library/bin:$CONDA/envs/test/Scripts:$CONDA/envs/test:$PATH"
+else
   export CONDA="$HOME/miniconda"
   export PATH="$HOME/miniconda/envs/test/bin:$HOME/miniconda/bin:$PATH"
 fi
@@ -33,9 +31,7 @@ if [ -n "$WITH_HADOOP" ] && [ -d /usr/local/hadoop ]; then
   export PATH="$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin"
 fi
 
-if [ -n "$CONDA" ]; then
-  export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
-fi
+export PYTHON=$(python -c "import sys; print('.'.join(str(v) for v in sys.version_info[:3]))")
 
 function retry {
   retrial=5

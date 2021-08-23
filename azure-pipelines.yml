@@ -45,7 +45,6 @@ jobs:
 
     - bash: |
         set -e
-        source ci/reload-env.sh
         source ci/install-conda.sh
       displayName: 'Install conda'
 
