@@ -19,7 +19,7 @@ from .common import *
 try:
     import oss2
 except ImportError:
-    oss2 = ImportErrorHandler('oss2')
+    oss2 = ModulePlaceholder('oss2')
 
 
 class OSSIOBase(IOBase):
