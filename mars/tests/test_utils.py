@@ -29,7 +29,6 @@ from io import BytesIO
 from enum import Enum
 
 import numpy as np
-
 try:
     import pandas as pd
 except ImportError:  # pragma: no cover
@@ -155,7 +154,6 @@ def test_tokenize():
 
     def f(a, b):
         return np.add(a, b)
-
     assert utils.tokenize(f) == utils.tokenize(copy.deepcopy(f))
 
     partial_f = partial(f, 1, k=0)
@@ -398,6 +396,17 @@ def _run_task_timeout_detector(log_file_name):
         task.cancel()
 
     asyncio.run(main())
+
+
+def test_module_placeholder():
+    required_module = utils.ModulePlaceholder('required_module')
+
+    with pytest.raises(AttributeError):
+        required_module()
+    with pytest.raises(AttributeError) as e:
+        required_module.method()
+    msg = e.value.args[0]
+    assert msg == 'required_module is required but not installed.'
 
 
 def test_merge_dict():

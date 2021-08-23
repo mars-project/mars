@@ -11,26 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import scipy.special as spspecial
-
-from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialBinOp, _register_special_op
-
-
-@_register_special_op
-class TensorXLogY(TensorSpecialBinOp):
-    _func_name = 'xlogy'
-
-    @classmethod
-    def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
-            return True
-        return False
-
-
-@implement_scipy(spspecial.xlogy)
-@infer_dtype(spspecial.xlogy)
-def xlogy(x1, x2, out=None, where=None, **kwargs):
-    op = TensorXLogY(**kwargs)
-    return op(x1, x2, out=out, where=where)

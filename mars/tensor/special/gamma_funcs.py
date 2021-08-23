@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import scipy.special as spspecial
+
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import spspecial, TensorSpecialUnaryOp, TensorSpecialMultiOp, \
+from .core import TensorSpecialUnaryOp, TensorSpecialMultiOp, \
     TensorSpecialBinOp, _register_special_op
 
 

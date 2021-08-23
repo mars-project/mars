@@ -1262,6 +1262,20 @@ def get_chunk_key_to_data_keys(chunk_graph):
     return chunk_key_to_data_keys
 
 
+class ModulePlaceholder:
+    def __init__(self, mod_name: str):
+        self._mod_name = mod_name
+
+    def _raises(self):
+        raise AttributeError(f'{self._mod_name} is required but not installed.')
+
+    def __getattr__(self, key):
+        self._raises()
+
+    def __call__(self, *_args, **_kwargs):
+        self._raises()
+
+
 def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):
     """
     Merges src dict into dest dict.

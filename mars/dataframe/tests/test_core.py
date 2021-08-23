@@ -201,6 +201,35 @@ def test_to_frame_or_series(setup):
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
 
 
+def test_assign(setup):
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame({"A": rs.rand(10), "B": rs.rand(10)})
+
+    df = DataFrame(raw, chunk_size=5)
+    result = df.assign(C=df.B / df.A).execute().fetch()
+    expected = raw.assign(C=raw.B / raw.A)
+    pd.testing.assert_frame_equal(result, expected)
+
+    # lambda syntax
+    result = df.assign(C=lambda x: x.B / x.A).execute().fetch()
+    expected = raw.assign(C=lambda x: x.B / x.A)
+    pd.testing.assert_frame_equal(result, expected)
+
+    # Non-Series array-like
+    row_list = rs.rand(10).tolist()
+    result = df.assign(C=row_list).execute().fetch()
+    expected = raw.assign(C=row_list)
+    pd.testing.assert_frame_equal(result, expected)
+
+    # multiple
+    row_list = rs.rand(10).tolist()
+    result = df.assign(C=row_list, D=df.A, E=lambda x: x.B)
+    result['C'] = result['C'].astype('int64')
+    expected = raw.assign(C=row_list, D=raw.A, E=lambda x: x.B)
+    expected['C'] = expected['C'].astype('int64')
+    pd.testing.assert_frame_equal(result.execute().fetch(), expected)
+
+
 def test_key_value(setup):
     raw = pd.DataFrame(np.random.rand(4, 3), columns=list('ABC'))
     df = DataFrame(raw)
