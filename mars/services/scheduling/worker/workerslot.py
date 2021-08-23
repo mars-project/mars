@@ -129,6 +129,7 @@ class BandSlotManagerActor(mo.Actor):
         slot_id = self._free_slots.pop()
         self._fresh_slots.difference_update([slot_id])
         self._slot_to_session_stid[slot_id] = session_stid
+        logger.debug('Slot %d acquired for subtask %r', slot_id, session_stid)
         raise mo.Return(slot_id)
 
     async def get_slot_address(self, slot_id: int):
@@ -146,6 +147,7 @@ class BandSlotManagerActor(mo.Actor):
             event.set()
 
         self._slot_to_session_stid.pop(slot_id, None)
+        logger.debug('Slot %d released', slot_id)
 
         if slot_id not in self._free_slots:
             self._free_slots.add(slot_id)

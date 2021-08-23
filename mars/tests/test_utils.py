@@ -407,3 +407,11 @@ def test_module_placeholder():
         required_module.method()
     msg = e.value.args[0]
     assert msg == 'required_module is required but not installed.'
+
+
+def test_readable_size():
+    assert utils.readable_size(32) == '32.00'
+    assert utils.readable_size(14354) == '14.02K'
+    assert utils.readable_size(14354000) == '13.69M'
+    assert utils.readable_size(14354000000) == '13.37G'
+    assert utils.readable_size(14354000000000) == '13.05T'

@@ -242,6 +242,9 @@ def get_next_port(typ: int = None,
 
     occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]
+    random.seed(int(time.time() * 1000000) | randn)
+    randn = random.randint(0, 100000000)
+
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
     for i in range(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
         if i in occupied:
@@ -584,19 +587,6 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
                     # cudf doesn't support inplace
                     result = result.sort_index(axis=1)
     return result
-
-
-def numpy_dtype_from_descr_json(obj: Union[list, np.dtype]) -> np.dtype:
-    """
-    Construct numpy dtype from it's np.dtype.descr.
-
-    The dtype can be trivial, but can also be very complex (nested) record type. In that
-    case, the tuple in `descr` will be made as `list`, which can be understood by `np.dtype()`.
-    This utility helps the reconstruct work.
-    """
-    if isinstance(obj, list):
-        return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
-    return obj
 
 
 def has_unknown_shape(*tiled_tileables: TileableType) -> bool:

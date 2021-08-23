@@ -300,8 +300,8 @@ async def test_cancel_without_kill(actor_pool):
 
     subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
                       chunk_graph=chunk_graph)
-    await execution_ref.run_subtask(
-        subtask, 'numa-0', pool.external_address)
+    await asyncio.wait_for(execution_ref.run_subtask(
+        subtask, 'numa-0', pool.external_address), timeout=30)
 
     # check if results are correct
     assert await storage_api.get(remote_result.key)
