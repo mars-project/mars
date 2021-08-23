@@ -283,14 +283,14 @@ def test_between_datetime_values(setup):
     pd.testing.assert_series_equal(result, expected)
 
 
-# def test_between_period_values(setup):
-#     pd_series = pd.Series(pd.period_range("2000-01-01", periods=10, freq="D"))
-#     pd_left, pd_right = pd_series[2], pd_series[7]
-#     expected = (pd_series >= pd_left) & (pd_series <= pd_right)
-#     series = Series(pd_series, chunk_size=5)
-#     left, right = series[2], series[7]
-#     result = series.between(left, right).execute().fetch()
-#     pd.testing.assert_series_equal(result, expected)
+def test_between_period_values(setup):
+    pd_series = pd.Series(pd.period_range("2000-01-01", periods=10, freq="D"))
+    pd_left, pd_right = pd_series[2], pd_series[7]
+    expected = (pd_series >= pd_left) & (pd_series <= pd_right)
+    series = Series(pd_series, chunk_size=5)
+    left, right = series[2], series[7]
+    result = series.between(left, right).execute().fetch()
+    pd.testing.assert_series_equal(result, expected)
 
 
 def test_between_inclusive_string(setup):
