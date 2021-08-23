@@ -1260,3 +1260,11 @@ def get_chunk_key_to_data_keys(chunk_graph):
                             keys.append(key)
             chunk_key_to_data_keys[chunk.key] = keys
     return chunk_key_to_data_keys
+
+
+class ImportErrorHandler:
+    def __init__(self, name: str):
+        self._name = name
+
+    def __getattr__(self, key):
+        raise AttributeError(f'{self._name} is required but not installed.')

@@ -1972,8 +1972,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
 
         Where the value is a callable, evaluated on `df`:
 
-        >>> df.assign(temp_f=lambda x: x.temp_c * 9 / 5 + 32)
-        >>> df.execute()
+        >>> df.assign(temp_f=lambda x: x.temp_c * 9 / 5 + 32).execute()
                   temp_c  temp_f
         Portland    17.0    62.6
         Berkeley    25.0    77.0
@@ -1981,8 +1980,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         Alternatively, the same behavior can be achieved by directly
         referencing an existing Series or sequence:
 
-        >>> df.assign(temp_f=df['temp_c'] * 9 / 5 + 32)
-        >>> df.execute()
+        >>> df.assign(temp_f=df['temp_c'] * 9 / 5 + 32).execute()
                   temp_c  temp_f
         Portland    17.0    62.6
         Berkeley    25.0    77.0
@@ -1991,8 +1989,7 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
         of the columns depends on another one defined within the same assign:
 
         >>> df.assign(temp_f=lambda x: x['temp_c'] * 9 / 5 + 32,
-        ...           temp_k=lambda x: (x['temp_f'] +  459.67) * 5 / 9)
-        >>> df.execute()
+        ...           temp_k=lambda x: (x['temp_f'] +  459.67) * 5 / 9).execute()
                   temp_c  temp_f  temp_k
         Portland    17.0    62.6  290.15
         Berkeley    25.0    77.0  298.15
