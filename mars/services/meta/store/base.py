@@ -111,18 +111,18 @@ class AbstractMetaStore(ABC):
         """
 
     @abstractmethod
-    async def set_chunk_bands(self,
-                              object_id: str,
-                              bands: List[BandType]):
+    async def remove_chunk_bands(self,
+                                 object_id: str,
+                                 bands: List[BandType]):
         """
-        Set bands of chunk.
+        Remove bands from chunk.
 
         Parameters
         ----------
         object_id : str
             Object ID.
         bands : List[BandType]
-            Band of chunk to add, shall be tuple of (worker, band).
+            Bands of chunk to remove, shall be tuple of (worker, band).
         """
 
     @abstractmethod

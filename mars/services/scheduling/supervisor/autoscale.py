@@ -18,6 +18,7 @@ import logging
 import random
 import time
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import List, Set, Dict, Optional, Any
 
 from .... import oscar as mo
@@ -86,7 +87,7 @@ class AutoscalerActor(mo.Actor):
         for address in addresses:
             await self._cluster_api.set_node_status(
                 node=address, role=NodeRole.WORKER, status=NodeStatus.STOPPING)
-        # Ensure global_slot_manager get latest bands timely, so that we can invoke `is_band_idle`
+        # Ensure global_slot_manager get latest bands timely, so that we can invoke `wait_band_idle`
         # to ensure there won't be new tasks scheduled to the stopping worker.
         await self.global_slot_ref.refresh_bands()
         excluded_bands = set(b for bands in workers_bands.values() for b in bands)
@@ -94,9 +95,8 @@ class AutoscalerActor(mo.Actor):
         async def release_worker(address):
             logger.info("Start to release worker %s.", address)
             worker_bands = workers_bands[address]
-            for band in worker_bands:
-                while not await self.global_slot_ref.is_band_idle(band):
-                    await asyncio.sleep(0.1)
+            await asyncio.gather(*[self.global_slot_ref.wait_band_idle(band)
+                                   for band in worker_bands])
             await self._migrate_data_of_bands(worker_bands, excluded_bands)
             await self._cluster_api.release_worker(address)
             self._dynamic_workers.remove(address)
@@ -121,28 +121,30 @@ class AutoscalerActor(mo.Actor):
         for session_id in session_ids:
             from mars.services.meta import MetaAPI
             meta_api = await MetaAPI.create(session_id, self.address)
+            batch_fetch, batch_delete = defaultdict(list), defaultdict(list)
+            batch_add_chunk_bands, batch_remove_chunk_bands = [], []
             for src_band in bands:
                 band_data_keys = await meta_api.get_band_chunks(src_band)
                 for data_key in band_data_keys:
                     dest_band = await self._select_target_band(src_band, data_key, excluded_bands)
+                    logger.debug('Move chunk % from band %s to band %s.', data_key, src_band, dest_band)
+                    dest_storage_api = await self._get_storage_api(session_id, dest_band[0])
                     # For ray backend, there will only be meta update rather than data transfer
-                    try:
-                        await (await self._get_storage_api(session_id, dest_band[0])).fetch(
-                            data_key, band_name=src_band[1], remote_address=src_band[0])
-                    except Exception:
-                        logger.info('chunk meta %s', await meta_api.get_chunk_meta(data_key))
-                        raise
-                    await (await self._get_storage_api(session_id, src_band[0])).delete(data_key)
-                    chunk_bands = (await meta_api.get_chunk_meta(data_key, fields=['bands'])).get('bands')
-                    chunk_bands.remove(src_band)
-                    if dest_band not in chunk_bands:
-                        chunk_bands.append(dest_band)
-                    await meta_api.set_chunk_bands(data_key, chunk_bands)
+                    batch_fetch[dest_storage_api].append(
+                        dest_storage_api.fetch.delay(data_key, band_name=src_band[1], remote_address=src_band[0]))
+                    src_storage_api = await self._get_storage_api(session_id, src_band[0])
+                    batch_delete[src_storage_api].append(src_storage_api.delete.delay(data_key))
+                    batch_add_chunk_bands.append(meta_api.add_chunk_bands.delay(data_key, [dest_band]))
+                    batch_remove_chunk_bands.append(meta_api.remove_chunk_bands.delay(data_key, [src_band]))
+            await asyncio.gather(*[api.fetch.batch(*fetches) for api, fetches in batch_fetch.items()])
+            await meta_api.add_chunk_bands.batch(*batch_add_chunk_bands)
+            await meta_api.remove_chunk_bands.batch(*batch_remove_chunk_bands)
+            await asyncio.gather(*[api.delete.batch(*deletes) for api, deletes in batch_delete.items()])
 
     async def _select_target_band(self, band: BandType, data_key: str, excluded_bands: Set[BandType]):
         all_bands = (await self._cluster_api.get_all_bands())
         bands = list(b for b in all_bands.keys() if (b[1] == band[1]
-                     and b != band and b not in excluded_bands))
+                                                     and b != band and b not in excluded_bands))
         if not bands:
             raise RuntimeError(f'No bands to migrate data to, '
                                f'all available bands is {all_bands}, '
@@ -241,11 +243,10 @@ class PendingTaskBacklogStrategy(AbstractScaleStrategy):
 
     async def _scale_in(self):
         idle_bands = set(await self._autoscaler.global_slot_ref.get_idle_bands(self._worker_idle_timeout))
-        # ensure all bands of the worker are idle
-        idle_bands = [band for band in idle_bands if idle_bands.issuperset(
-            set(await self._autoscaler.get_worker_bands(band[0])))]
-        # exclude non-dynamic created workers
-        idle_bands = set(band for band in idle_bands if band[0] in self._autoscaler.get_dynamic_workers())
+        # exclude non-dynamic created workers and ensure all bands of the worker are idle
+        idle_bands = {band for band in idle_bands
+                      if band[0] in self._autoscaler.get_dynamic_workers()
+                      and idle_bands.issuperset(set(await self._autoscaler.get_worker_bands(band[0])))}
         worker_addresses = set(band[0] for band in idle_bands)
         if worker_addresses:
             logger.debug("Bands %s of workers % has been idle for as least %s seconds.",

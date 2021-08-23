@@ -34,6 +34,7 @@ class GlobalSlotManagerActor(mo.Actor):
         self._band_stid_slots = defaultdict(dict)
         self._band_used_slots = defaultdict(lambda: 0)
         self._band_idle_start_time = defaultdict(time.time)
+        self._band_idle_events = dict()
         self._band_total_slots = dict()
 
         self._cluster_api = None
@@ -99,6 +100,8 @@ class GlobalSlotManagerActor(mo.Actor):
         if self._band_used_slots[band] == 0:
             self._band_used_slots.pop(band)
             self._band_idle_start_time[band] = time.time()
+            if band in self._band_idle_events:
+                self._band_idle_events.pop(band).set()
         else:
             self._band_idle_start_time[band] = -1
 
@@ -115,5 +118,11 @@ class GlobalSlotManagerActor(mo.Actor):
                 idle_bands.append(band)
         return idle_bands
 
-    async def is_band_idle(self, band: BandType):
-        return self._band_idle_start_time[band] > 0
+    async def wait_band_idle(self, band: BandType):
+        if self._band_idle_start_time[band] <= 0:
+            if band in self._band_idle_events:
+                event = self._band_idle_events[band]
+            else:
+                event = asyncio.Event()
+                self._band_idle_events[band] = event
+            return event.wait()

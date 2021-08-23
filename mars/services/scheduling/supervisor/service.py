@@ -45,10 +45,9 @@ class SchedulingSupervisorService(AbstractService):
             GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
             address=self._address)
 
-        service_config = self._config.get('scheduling', {}).get('autoscale', {})
-        extra_config = service_config.copy()
+        autoscale_config = self._config.get('scheduling', {}).get('autoscale', {})
         await mo.create_actor(AutoscalerActor,
-                              extra_config,
+                              autoscale_config,
                               uid=AutoscalerActor.default_uid(),
                               address=self._address)
 

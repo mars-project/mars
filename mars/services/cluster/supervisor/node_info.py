@@ -19,7 +19,6 @@ from typing import Dict, List, Optional, Set
 from .... import oscar as mo
 from ....typing import BandType
 from ...core import NodeRole
-from ..backends import AbstractClusterBackend, get_cluster_backend
 from ..core import NodeInfo, WatchNotifier, NodeStatus
 
 DEFAULT_NODE_DEAD_TIMEOUT = 120
@@ -167,21 +166,3 @@ class NodeInfoCollectorActor(mo.Actor):
                 info.status = NodeStatus.STOPPED
 
         await self._role_to_notifier[role].notify()
-
-
-class NodeAllocatorActor(mo.StatelessActor):
-    def __init__(self, backend_name: str, lookup_address: str):
-        self._backend_name = backend_name
-        self._lookup_address = lookup_address
-        self._backend: Optional[AbstractClusterBackend] = None
-
-    async def __post_create__(self):
-        backend_cls = get_cluster_backend(self._backend_name)
-        self._backend = await backend_cls.create(NodeRole.WORKER, self._lookup_address, self.address)
-
-    async def request_worker(self, worker_cpu: int, worker_mem: int,
-                             timeout: int = None) -> str:
-        return await self._backend.request_worker(worker_cpu, worker_mem, timeout=timeout)
-
-    async def release_worker(self, address: str):
-        await self._backend.release_worker(address)

@@ -235,7 +235,7 @@ class ClusterAPI(AbstractClusterAPI):
 
     @alru_cache(cache_exceptions=False)
     async def _get_node_allocator_ref(self):
-        from ..supervisor.node_info import NodeAllocatorActor
+        from ..supervisor.node_allocator import NodeAllocatorActor
         [node_allocator_ref] = await self.get_supervisor_refs(
             [NodeAllocatorActor.default_uid()])
         return node_allocator_ref
@@ -246,7 +246,8 @@ class MockClusterAPI(ClusterAPI):
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
         from ..supervisor.locator import SupervisorPeerLocatorActor
         from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_info import NodeInfoCollectorActor, NodeAllocatorActor
+        from ..supervisor.node_allocator import NodeAllocatorActor
+        from ..supervisor.node_info import NodeInfoCollectorActor
 
         dones, _ = await asyncio.wait([
             mo.create_actor(SupervisorPeerLocatorActor, 'fixed', address,

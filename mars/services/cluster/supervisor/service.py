@@ -16,7 +16,8 @@ from .... import oscar as mo
 from ...core import NodeRole, AbstractService
 from ..uploader import NodeInfoUploaderActor
 from .locator import SupervisorPeerLocatorActor
-from .node_info import NodeInfoCollectorActor, NodeAllocatorActor
+from .node_allocator import NodeAllocatorActor
+from .node_info import NodeInfoCollectorActor
 
 
 class ClusterSupervisorService(AbstractService):

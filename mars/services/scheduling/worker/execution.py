@@ -414,6 +414,3 @@ class SubtaskExecutionActor(mo.StatelessActor):
             await subtask_info.aio_task
         except asyncio.CancelledError:
             pass
-
-    async def is_worker_idle(self):
-        return len(self._subtask_info) == 0

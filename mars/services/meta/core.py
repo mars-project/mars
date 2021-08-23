@@ -151,6 +151,7 @@ class ObjectMeta(_TileableMeta):
 class _ChunkMeta(_CommonMeta):
     index: Tuple[int] = None
     bands: List[BandType] = None
+    # needed by ray ownership to keep object alive when worker died.
     object_ref: Any = None
 
 
