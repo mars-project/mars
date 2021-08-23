@@ -398,12 +398,11 @@ def _run_task_timeout_detector(log_file_name):
     asyncio.run(main())
 
 
-def test_import_error_handler():
-    try:
-        import required_module
-    except ImportError:
-        required_module = utils.ImportErrorHandler('required_module')
+def test_module_placeholder():
+    required_module = utils.ModulePlaceholder('required_module')
 
+    with pytest.raises(AttributeError):
+        required_module()
     with pytest.raises(AttributeError) as e:
         required_module.method()
     msg = e.value.args[0]
