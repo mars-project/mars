@@ -78,19 +78,18 @@ async def test_dataset_related_classes(ray_large_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize('test_option', [[5, 5], [3, 3], [4, 4],
-                                         [5, None], [None, 5],
+@pytest.mark.parametrize('test_option', [[5, 5], [5, 4],
                                          [None, None]])
 async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
         value = np.random.rand(20, 10)
-        df: md.DataFrame = md.DataFrame(value, chunk_size=5)
+        chunk_size, num_shards = test_option
+        df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
         df.execute()
 
-        num_partitions, num_shards = test_option
-        ds = mds.to_ray_mldataset(df, num_shards=num_shards, num_partitions=num_partitions)
+        ds = mds.to_ray_mldataset(df, num_shards=num_shards)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 
@@ -112,7 +111,7 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mds.to_ray_mldataset(df, num_partitions=num_shards, num_shards=num_shards)
+        ds = mds.to_ray_mldataset(df)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 

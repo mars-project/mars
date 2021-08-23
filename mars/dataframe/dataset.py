@@ -76,10 +76,9 @@ class RecordBatch:
 
 
 def _group_pieces(index_to_pieces: Dict[int, RayObjectPiece],
-                  num_shards: int,
-                  num_addrs: int):
+                  num_shards: int):
     group_to_pieces = defaultdict(list)
-    if not num_shards or num_shards == num_addrs:
+    if not num_shards:
         for piece in index_to_pieces.values():
             group_to_pieces[str(piece.addr)].append(piece)
     else:
@@ -104,37 +103,34 @@ def _create_ml_dataset(name: str,
     return ds
 
 
-def _rechunk_if_needed(df, num_partitions: int = None):
+def _rechunk_if_needed(df, num_shards: int = None):
+    chunk_size = df.extra_params.raw_chunk_size or max(df.shape)
     num_rows = df.shape[0]
     num_columns = df.shape[1]
-    need_re_execute = False
-    chunk_size_not_set = df.extra_params.raw_chunk_size is None
-    chunk_size = df.extra_params.raw_chunk_size or max(df.shape)
+    # if chunk size not set, num_chunks_in_row = 1
+    # if chunk size is set more than max(df.shape), num_chunks_in_row = 1
+    # otherwise, num_chunks_in_row depends on ceildiv(num_rows, chunk_size)
+    num_chunks_in_row = ceildiv(num_rows, chunk_size)
+    naive_num_partitions = ceildiv(num_rows, num_columns)
 
+    need_re_execute = False
     # ensure each part holds all columns
     if chunk_size < num_columns:
         df = df.rebalance(axis=1, num_partitions=1)
         need_re_execute = True
-    # deal with params: num_partitions
-    if not num_partitions:
-        # there are 2 conditions: chunk_size is set or not
-        # while the latter should be dealt with
-        if chunk_size_not_set:
-            df = df.rebalance(axis=0, num_partitions=ceildiv(num_rows, num_columns))
-            need_re_execute = True
-    elif chunk_size > ceildiv(num_rows, num_partitions):
-        # ensure enough parts for num_partitions
-        df = df.rebalance(axis=0, num_partitions=num_partitions)
+    if num_shards and num_chunks_in_row < num_shards:
+        df = df.rebalance(axis=0, num_partitions=num_shards)
         need_re_execute = True
-
+    if not num_shards and num_chunks_in_row == 1:
+        df = df.rebalance(axis=0, num_partitions=naive_num_partitions)
+        need_re_execute = True
     if need_re_execute:
         df.execute()
     return df
 
 
 def to_ray_mldataset(df,
-                     num_shards: int = None,
-                     num_partitions: int = None):
+                     num_shards: int = None):
     """Create a MLDataset from Mars DataFrame
 
     Args:
@@ -145,23 +141,11 @@ def to_ray_mldataset(df,
             If num_shards equals num_nodes mentions above, chunks will alse be
                 grouped by nodes where they lie.
             Otherwise, chunks will be grouped by their order in DataFrame.
-        num_partitions (int, optional): the number of partitions into which
-            the df will be divided. Defaults to None.
-            If num_partitions is None, DataFrame will be rebalanced on axis 0
-                according to its chunk_size. If chunk_size is set, num_partitions
-                will be ceildiv(num_rows, chunk_size). If chunk_size isn't set,
-                num_partitions will be ceildiv(num_rows, num_columns).
-            If num_partitions is not None, DataFrame will be rebalanced on axis 0
-                according to num_partitions.
 
     Returns:
         a MLDataset
     """
-    if num_partitions and num_shards:
-        assert num_partitions % num_shards == 0,\
-                f"num_partitions: {num_partitions} should be a multiple of "\
-                f"num_shards: {num_shards}"
-    df = _rechunk_if_needed(df, num_partitions=num_partitions)
+    df = _rechunk_if_needed(df, num_shards)
     # chunk_addr_refs is fetched directly rather than in batches
     # during `fetch` procedure, it'll be checked that df has been executed
     chunk_addr_refs = df.fetch(only_refs=True)
@@ -175,6 +159,5 @@ def to_ray_mldataset(df,
     for idx, (addr, obj_ref) in enumerate(chunk_addr_refs):
         index_to_pieces[idx] = RayObjectPiece(idx, addr, obj_ref)
         addrs.add(addr)
-    group_to_pieces = _group_pieces(index_to_pieces, num_shards,
-                                    num_addrs=len(list(addrs)))
+    group_to_pieces = _group_pieces(index_to_pieces, num_shards)
     return _create_ml_dataset("from_mars", group_to_pieces)
