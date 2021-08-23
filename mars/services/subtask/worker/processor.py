@@ -97,21 +97,25 @@ class SubtaskProcessor:
         return self.subtask.subtask_id
 
     async def _load_input_data(self):
-        keys = []
-        gets = []
+        keys, gets, accept_nones = [], [], []
         for chunk in self._chunk_graph.iter_indep():
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
+                accept_nones.append(True)
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
+                    accept_nones.append(False)
         if keys:
             logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
             inputs = await self._storage_api.get.batch(*gets)
-            self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
+            self._datastore.update(
+                {key: get for key, get, accept_none in zip(keys, inputs, accept_nones)
+                 if accept_none or get is not None}
+            )
             logger.debug('Finish getting input data keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
         return keys

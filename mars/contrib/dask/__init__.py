@@ -14,15 +14,13 @@
 
 # noinspection PyUnresolvedReferences
 
-
-def raise_dask_required_error():
-    raise ImportError('you need to have dask installed for this to work')
+from ...utils import ModulePlaceholder
 
 
 try:
     import dask
 except ImportError:
-    convert_dask_collection = mars_scheduler = raise_dask_required_error
+    convert_dask_collection = mars_scheduler = ModulePlaceholder('dask')
 else:
     from .converter import convert_dask_collection
     from .scheduler import mars_scheduler

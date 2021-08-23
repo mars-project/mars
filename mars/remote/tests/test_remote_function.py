@@ -177,3 +177,15 @@ def test_unknown_shape_inputs(setup):
     result = s.execute().fetch()
     expected = (raw[raw > 0] * 3).sum()
     assert pytest.approx(result) == expected
+
+
+def test_none_outputs(setup):
+    def f(*_args):
+        pass
+
+    r1 = spawn(f, args=(0,))
+    r2 = spawn(f, args=(r1, 1))
+    r3 = spawn(f, args=(r1, 2))
+    r4 = spawn(f, args=(r2, r3))
+
+    assert r4.execute().fetch() is None

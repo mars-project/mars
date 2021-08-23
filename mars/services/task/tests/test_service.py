@@ -318,7 +318,6 @@ async def test_get_tileable_details(start_test_service):
         progress_controller = get_context().get_remote_object('progress_controller')
         progress_controller.wait()
         get_context().set_progress(1.0)
-        return 'RET'
 
     # test non-fused DAGs
     r1 = mr.spawn(f)
