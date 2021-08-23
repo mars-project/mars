@@ -415,15 +415,16 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             if isinstance(inp, (DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, TENSOR_CHUNK_TYPE))]
         if len(property_inputs) == 1:
             properties = self._calc_properties(*property_inputs)
-        elif any(inp.ndim == 0 for inp in property_inputs):
-            if property_inputs[0].ndim == 0:
-                property_inputs = reversed(property_inputs)
-            properties = self._calc_properties(*property_inputs)
-        else:
+        elif any(inp.ndim == 2 for inp in property_inputs):
             df1, df2 = property_inputs \
                 if isinstance(property_inputs[0], DATAFRAME_CHUNK_TYPE) else \
                 reversed(property_inputs)
             properties = self._calc_properties(df1, df2, axis=self.axis)
+        else:
+            if property_inputs[0].ndim < property_inputs[1].ndim or \
+                    isinstance(property_inputs[0], (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
+                property_inputs = reversed(property_inputs)
+            properties = self._calc_properties(*property_inputs)
 
         inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
 
