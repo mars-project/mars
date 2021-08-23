@@ -325,7 +325,7 @@ def test_key_value(setup):
 def test_between(setup):
     pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
     pd_left, pd_right = pd_series[2], pd_series[7]
-    expected = (pd_series >= pd_left) & (pd_series <= pd_right)
+    expected = pd_series.between(pd_left, pd_right)
 
     series = Series(pd_series, chunk_size=5)
     left, right = series[2], series[7]
@@ -362,7 +362,7 @@ def test_between_datetime_values(setup):
 def test_between_inclusive_string(setup):
     pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
     pd_left, pd_right = pd_series[2], pd_series[7]
-    expected = (pd_series >= pd_left) & (pd_series <= pd_right)
+    expected = pd_series.between(pd_left, pd_right)
 
     series = Series(pd_series, chunk_size=5)
     left, right = series[2], series[7]
@@ -370,15 +370,15 @@ def test_between_inclusive_string(setup):
     pd.testing.assert_series_equal(result, expected)
 
     result = series.between(left, right, inclusive="left").execute().fetch()
-    expected = (pd_series >= pd_left) & (pd_series < pd_right)
+    expected = pd_series.between(pd_left, pd_right, inclusive="left")
     pd.testing.assert_series_equal(result, expected)
 
     result = series.between(left, right, inclusive="right").execute().fetch()
-    expected = (pd_series > pd_left) & (pd_series <= pd_right)
+    expected = pd_series.between(pd_left, pd_right, inclusive="right")
     pd.testing.assert_series_equal(result, expected)
 
     result = series.between(left, right, inclusive="neither").execute().fetch()
-    expected = (pd_series > pd_left) & (pd_series < pd_right)
+    expected = pd_series.between(pd_left, pd_right, inclusive="neither")
     pd.testing.assert_series_equal(result, expected)
 
 
@@ -398,14 +398,10 @@ def test_between_error_args(setup):
 
 def test_between_inclusive_warning(setup):
     pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
-    pd_left, pd_right = pd_series[2], pd_series[7]
     series = Series(pd_series, chunk_size=5)
     left, right = series[2], series[7]
+
     with pd.testing.assert_produces_warning(FutureWarning):
-        result = series.between(left, right, inclusive=False).execute().fetch()
-        expected = (pd_series > pd_left) & (pd_series < pd_right)
-        pd.testing.assert_series_equal(result, expected)
+        series.between(left, right, inclusive=False)
     with pd.testing.assert_produces_warning(FutureWarning):
-        result = series.between(left, right, inclusive=True).execute().fetch()
-        expected = (pd_series >= pd_left) & (pd_series <= pd_right)
-        pd._testing.assert_series_equal(result, expected)
+        series.between(left, right, inclusive=True)
