@@ -103,7 +103,7 @@ export default class TaskTileableGraph extends React.Component {
             .then((res) => {
                 this.setState({
                     tileableDetails: res,
-                })
+                });
             });
     }
 
@@ -118,9 +118,7 @@ export default class TaskTileableGraph extends React.Component {
         this.fetchGraphDetail();
     }
 
-    componentWillUnmount() {
-        clearInterval(this.interval);
-    }
+
 
     /**
      * Creates one status entry for the legend of DAG
@@ -211,7 +209,7 @@ export default class TaskTileableGraph extends React.Component {
                  * should be filled with color. The second stop adds a white color to
                  * the rest of the node
                  */
-                var nodeProgressGradient = inner.append('linearGradient')
+                let nodeProgressGradient = inner.append('linearGradient')
                     .attr('id', 'progress-' + tileable.tileableId);
 
                 nodeProgressGradient.append('stop')
@@ -270,12 +268,6 @@ export default class TaskTileableGraph extends React.Component {
             // Create the renderer
             const render = new DagRender();
 
-            // Set up zoom support
-            const zoom = d3Zoom().on('zoom', function (e) {
-                inner.attr('transform', e.transform);
-            });
-            svg.call(zoom);
-
             if (this.state.tileables.length !== 0) {
                 // Run the renderer. This is what draws the final graph.
                 render(inner, this.g);
@@ -294,8 +286,23 @@ export default class TaskTileableGraph extends React.Component {
             inner.selectAll('g.node').on('click', handleClick);
 
             // Center the graph
-            const initialScale = 0.9;
+            const bounds = inner.node().getBBox();
+            const parent = inner.node().parentElement;
+            const width = bounds.width,
+                height = bounds.height;
+            const fullWidth = parent.clientWidth,
+                fullHeight = parent.clientHeight;
+            const initialScale = fullHeight >= height ? 1 : fullHeight / height;
+
+            d3Select('.output').attr('transform', 'translate(' + (fullWidth - width * initialScale) / 2 + ', ' + (fullHeight - height * initialScale) / 2 + ')');
+
+            // Set up zoom support
+            const zoom = d3Zoom().on('zoom', function (e) {
+                inner.attr('transform', e.transform);
+            });
+
             svg.call(
+                zoom,
                 zoom.transform,
                 d3ZoomIdentity.scale(initialScale)
             );
@@ -325,7 +332,7 @@ export default class TaskTileableGraph extends React.Component {
                     .attr('offset', tileableDetail.progress);
             })
         }
-    }
+    };
 
     render() {
         return (
