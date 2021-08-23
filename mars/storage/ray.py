@@ -17,6 +17,7 @@ import inspect
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
+from ..oscar.errors import ActorNotExist
 from ..utils import lazy_import, implements, register_ray_serializer
 from .base import StorageBackend, StorageLevel, ObjectInfo, register_storage_backend
 from .core import BufferWrappedFileObject, StorageFileObject
@@ -157,7 +158,11 @@ class RayStorage(StorageBackend):
     async def _get_ray_supervisor_actor(self):
         if self._address and not self._ray_supervisor_actor:
             from mars.services.cluster import ClusterAPI
-            cluster_api = await ClusterAPI.create(self._address)
+            try:
+                cluster_api = await ClusterAPI.create(self._address)
+            except ActorNotExist:
+                self._address = None
+                return None
             supervisor_address = (await cluster_api.get_supervisors())[0]
             self._ray_supervisor_actor = ray.get_actor(supervisor_address)
         return self._ray_supervisor_actor

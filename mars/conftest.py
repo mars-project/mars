@@ -47,7 +47,7 @@ def ray_start_regular(request):
 
 
 @pytest.fixture
-def ray_large_cluster(request):
+def ray_large_cluster(request):  # pragma: no cover
     param = getattr(request, "param", {})
     num_nodes = param.get('num_nodes', 3)
     num_cpus = param.get('num_cpus', 10)

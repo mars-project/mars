@@ -53,7 +53,7 @@ def _load_config(config: Union[str, Dict] = None):
         filename = os.path.join(d, 'rayconfig.yml')
     full_config = load_service_config_file(filename)
     if config and not isinstance(config, str):
-        if not isinstance(config, Dict):
+        if not isinstance(config, Dict):  # pragma: no cover
             raise ValueError(f'{config} is not a dict')
         flatten_keys = set(k for k in config.keys() if isinstance(k, str) and '.' in k)
         nested_flatten_config = flatten_dict_to_nested_dict({k: config[k] for k in flatten_keys})
@@ -134,7 +134,7 @@ class ClusterStateActor(mo.StatelessActor):
         # TODO rescale ray placement group instead of creating new placement group
         pg_name = f'{self._pg_name}_{next(self._pg_counter)}'
         pg = ray.util.placement_group(name=pg_name, bundles=[bundle], strategy="SPREAD")
-        create_pg_timeout = timeout or 10
+        create_pg_timeout = timeout or 5
         try:
             await asyncio.wait_for(pg.ready(), timeout=create_pg_timeout)
         except asyncio.TimeoutError:
@@ -170,6 +170,12 @@ class ClusterStateActor(mo.StatelessActor):
         await stop_worker(address, self._config)
         pool, pg = self._dynamic_created_workers.pop(address)
         await pool.actor_pool.remote('stop')
+        if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
+            try:
+                # must clean up first, or coverage info lost
+                await pool.cleanup.remote()
+            except:  # noqa: E722  # nosec  # pylint: disable=bare-except
+                pass
         ray.kill(pool)
         ray.util.remove_placement_group(pg)
 
@@ -190,7 +196,7 @@ async def new_cluster(cluster_name: str,
     try:
         await cluster.start()
         return await RayClient.create(cluster)
-    except Exception as ex:
+    except Exception as ex:  # pragma: no cover
         # cleanup the cluster if failed.
         try:
             await cluster.stop()
@@ -239,12 +245,12 @@ class RayCluster:
             .get('supervisor', {}) \
             .get('sub_pool_num', DEFAULT_SUPERVISOR_SUB_POOL_NUM)
         from mars.storage.ray import support_specify_owner
-        if not support_specify_owner():
+        if not support_specify_owner():  # pragma: no cover
             logger.warning('Current installed ray version does not support specify owner, '
                            'autoscale may not work.')
             # config['scheduling']['autoscale']['enabled'] = False
         self.supervisor_address = process_placement_to_address(self._cluster_name, 0, 0)
-        if 'cluster' not in self._config:
+        if 'cluster' not in self._config:  # pragma: no cover
             self._config['cluster'] = dict()
         self._config['cluster']['lookup_address'] = self.supervisor_address
         address_to_resources[node_placement_to_address(self._cluster_name, 0)] = {

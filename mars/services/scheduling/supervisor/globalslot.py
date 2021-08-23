@@ -33,7 +33,7 @@ class GlobalSlotManagerActor(mo.Actor):
     def __init__(self):
         self._band_stid_slots = defaultdict(dict)
         self._band_used_slots = defaultdict(lambda: 0)
-        self._band_idle_start_time = defaultdict(time.time)
+        self._band_idle_start_time = dict()
         self._band_idle_events = dict()
         self._band_total_slots = dict()
 
@@ -47,7 +47,11 @@ class GlobalSlotManagerActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
+                old_bands = set(self._band_total_slots.keys())
                 self._band_total_slots = bands
+                new_bands = set(bands.keys()) - old_bands
+                for band in new_bands:
+                    self._update_slot_usage(band, 0)
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 

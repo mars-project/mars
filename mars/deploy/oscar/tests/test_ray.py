@@ -223,6 +223,7 @@ def test_load_config():
             'scheduling.autoscale.enabled': True,
             'scheduling.autoscale': {}
         })
+    assert _load_config(CONFIG_FILE)['session']['custom_log_dir'] == 'auto'
 
 
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 3, 'num_cpus': 1}], indirect=True)
@@ -241,7 +242,7 @@ async def test_request_worker(ray_large_cluster):
         assert await cluster_state_ref.request_worker(timeout=5)
 
 
-@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 10}], indirect=True)
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4, 'num_cpus': 2}], indirect=True)
 @pytest.mark.parametrize('init_workers', [0, 1])
 @require_ray
 @pytest.mark.asyncio
@@ -252,15 +253,13 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
                                worker_mem=100 * 1024 ** 2,
                                config={
                                    'scheduling.autoscale.enabled': True,
-                                   'scheduling.autoscale.scheduler_check_interval': 1,
                                    'scheduling.autoscale.scheduler_backlog_timeout': 1,
-                                   'scheduling.autoscale.sustained_scheduler_backlog_timeout': 1,
                                    'scheduling.autoscale.worker_idle_timeout': 10000000,
-                                   'scheduling.autoscale.max_workers': 9
+                                   'scheduling.autoscale.max_workers': 10
                                })
     async with client:
         def time_consuming(x):
-            time.sleep(2)
+            time.sleep(1)
             return x * x
 
         series_size = 100
@@ -279,10 +278,9 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
 async def test_auto_scale_in(ray_large_cluster):
     config = _load_config()
     config['scheduling']['autoscale']['enabled'] = True
-    config['scheduling']['autoscale']['scheduler_check_interval'] = 1
     config['scheduling']['autoscale']['worker_idle_timeout'] = 1
     config['scheduling']['autoscale']['max_workers'] = 4
-    config['scheduling']['autoscale']['min_workers'] = 1
+    config['scheduling']['autoscale']['min_workers'] = 2
     client = await new_cluster('test_cluster',
                                worker_num=0,
                                worker_cpu=2,
@@ -297,10 +295,12 @@ async def test_auto_scale_in(ray_large_cluster):
         series_size = 100
         assert md.Series(list(range(series_size)), chunk_size=20).sum().execute().fetch() == \
                pd.Series(list(range(series_size))).sum()
-        while await autoscaler_ref.get_dynamic_worker_nums() > 1:
+        while await autoscaler_ref.get_dynamic_worker_nums() > 2:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
+        await asyncio.sleep(1)
+        assert await autoscaler_ref.get_dynamic_worker_nums() == 2
 
 
 @pytest.mark.timeout(timeout=120)
@@ -316,7 +316,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
                                    'scheduling.autoscale.enabled': True,
                                    'scheduling.autoscale.scheduler_check_interval': 1,
                                    'scheduling.autoscale.scheduler_backlog_timeout': 1,
-                                   'scheduling.autoscale.worker_idle_timeout': 10,
+                                   'scheduling.autoscale.worker_idle_timeout': 5,
                                    'scheduling.autoscale.min_workers': 1,
                                    'scheduling.autoscale.max_workers': 4
                                })
@@ -334,11 +334,11 @@ async def test_ownership_when_scale_in(ray_large_cluster):
             print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
-        groupby_sum_df = df.groupby('a').sum()
+        groupby_sum_df = df.rechunk(40).groupby('a').sum()
         print(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
-        assert len(df.to_pandas()) == len(pd_df)
-        assert len(pd_df.groupby('a').sum()) == len(pd_df.groupby('a').sum())
+        assert df.to_pandas().to_dict() == pd_df.to_dict()
+        assert groupby_sum_df.to_pandas().to_dict() == pd_df.groupby('a').sum().to_dict()

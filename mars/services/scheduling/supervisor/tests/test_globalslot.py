@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 
 import pytest
 
@@ -47,15 +48,23 @@ async def test_global_slot(actor_pool):
     band = (pool.external_address, 'numa-0')
     band_slots = bands[band]
 
+    assert band in await global_slot_ref.get_idle_bands(0)
     assert ['subtask0'] == await global_slot_ref.apply_subtask_slots(
         band, session_id, ['subtask0'], [1])
+    assert band not in await global_slot_ref.get_idle_bands(0)
 
     await global_slot_ref.update_subtask_slots(
         band, session_id, 'subtask0', band_slots)
     assert [] == await global_slot_ref.apply_subtask_slots(
         band, session_id, ['subtask1'], [1])
 
+    wait_coro = global_slot_ref.wait_band_idle(band)
+    (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
+    assert not done
     await global_slot_ref.release_subtask_slots(
         band, session_id, 'subtask0')
+    (done, pending) = await asyncio.wait([wait_coro], timeout=0.5)
+    assert done
+    assert band in await global_slot_ref.get_idle_bands(0)
     assert ['subtask1'] == await global_slot_ref.apply_subtask_slots(
         band, session_id, ['subtask1'], [1])

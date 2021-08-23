@@ -138,7 +138,6 @@ class DictMetaStore(AbstractMetaStore):
     def _remove_chunk_bands(self,
                             object_id: str,
                             bands: List[BandType]):
-        print(f'======object_id {object_id}')
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) - set(bands))
