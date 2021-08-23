@@ -104,36 +104,55 @@ def _create_ml_dataset(name: str,
     return ds
 
 
-def _rechunk_if_needed(df, num_partitions: int=None):
+def _rechunk_if_needed(df, num_partitions: int = None):
     num_rows = df.shape[0]
     num_columns = df.shape[1]
     need_re_execute = False
+    chunk_size_not_set = df.extra_params.raw_chunk_size is None
     chunk_size = df.extra_params.raw_chunk_size or max(df.shape)
 
+    # ensure each part holds all columns
     if chunk_size < num_columns:
-        # ensure each part holds all columns
         df = df.rebalance(axis=1, num_partitions=1)
         need_re_execute = True
-    if num_partitions and chunk_size > ceildiv(num_rows, num_partitions):
+    # deal with params: num_partitions
+    if not num_partitions:
+        # there are 2 conditions: chunk_size is set or not
+        # while the latter should be dealt with
+        if chunk_size_not_set:
+            df = df.rebalance(axis=0, num_partitions=ceildiv(num_rows, num_columns))
+            need_re_execute = True
+    elif chunk_size > ceildiv(num_rows, num_partitions):
         # ensure enough parts for num_partitions
         df = df.rebalance(axis=0, num_partitions=num_partitions)
         need_re_execute = True
+
     if need_re_execute:
         df.execute()
     return df
 
 
 def to_ray_mldataset(df,
-                     num_partitions: int = None,
-                     num_shards: int = None):
+                     num_shards: int = None,
+                     num_partitions: int = None):
     """Create a MLDataset from Mars DataFrame
 
     Args:
         df (mars.dataframe.Dataframe): the Mars DataFrame
-        num_partitions (int, optional): the number of partitions into which
-            the df will be divided. Defaults to None.
         num_shards (int, optional): the number of shards that will be created
             for the MLDataset. Defaults to None.
+            If num_shards is None, chunks will be grouped by nodes where they lie.
+            If num_shards equals num_nodes mentions above, chunks will alse be
+                grouped by nodes where they lie.
+            Otherwise, chunks will be grouped by their order in DataFrame.
+        num_partitions (int, optional): the number of partitions into which
+            the df will be divided. Defaults to None.
+            If num_partitions is None, DataFrame will be rebalanced on axis 0
+                according to its chunk_size. If chunk_size is set, num_partitions
+                will be ceildiv(num_rows, chunk_size). If chunk_size isn't set,
+                num_partitions will be ceildiv(num_rows, num_columns).
+            If num_partitions is not None, DataFrame will be rebalanced on axis 0
+                according to num_partitions.
 
     Returns:
         a MLDataset

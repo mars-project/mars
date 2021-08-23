@@ -78,8 +78,9 @@ async def test_dataset_related_classes(ray_large_cluster):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize('test_option', [[10, 5], [6, 3], [8, 4],
-                                         [5, None], [None, None]])
+@pytest.mark.parametrize('test_option', [[5, 5], [3, 3], [4, 4],
+                                         [5, None], [None, 5],
+                                         [None, None]])
 async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
@@ -89,7 +90,7 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
         df.execute()
 
         num_partitions, num_shards = test_option
-        ds = mds.to_ray_mldataset(df, num_partitions=num_partitions, num_shards=num_shards)
+        ds = mds.to_ray_mldataset(df, num_shards=num_shards, num_partitions=num_partitions)
         if ml_dataset:
             assert isinstance(ds, ml_dataset.MLDataset)
 
