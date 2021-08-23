@@ -512,7 +512,13 @@ class TaskProcessorActor(mo.Actor):
         node_list = []
         edge_list = []
 
+        visited = set()
+
         for chunk in tileable_graph:
+            if chunk.key in visited:
+                continue
+            visited.add(chunk.key)
+
             node_name = str(chunk.op)
 
             node_list.append({
@@ -529,8 +535,8 @@ class TaskProcessorActor(mo.Actor):
                 })
 
         graph_dict = {
-            'tileables': [i for n, i in enumerate(node_list) if i not in node_list[n + 1:]],
-            'dependencies': [i for n, i in enumerate(edge_list) if i not in edge_list[n + 1:]]
+            'tileables': node_list,
+            'dependencies': edge_list
         }
         return graph_dict
 

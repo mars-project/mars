@@ -35,20 +35,53 @@ export default class TaskTileableGraph extends React.Component {
             tileables: [],
             dependencies: [],
             tileableDetails: {},
+            tileableStatus: [
+                {
+                    text: 'Pending',
+                    color: '#FFFFFF',
+                    legendDotXLoc: '430',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '440',
+                    legendTextYLoc: '21',
+                },
+                {
+                    text: 'Running',
+                    color: '#F4B400',
+                    legendDotXLoc: '10',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '20',
+                    legendTextYLoc: '21',
+                },
+                {
+                    text: 'Succeeded',
+                    color: '#00CD95',
+                    legendDotXLoc: '105',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '115',
+                    legendTextYLoc: '21',
+                },
+                {
+                    text: 'Failed',
+                    color: '#E74C3C',
+                    legendDotXLoc: '345',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '355',
+                    legendTextYLoc: '21',
+                },
+                {
+                    text: 'Cancelled',
+                    color: '#BFC9CA',
+                    legendDotXLoc: '225',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '235',
+                    legendTextYLoc: '21',
+                },
+            ]
         };
     }
 
     fetchGraphDetail() {
         const { sessionId, taskId } = this.props;
-
-        fetch(`api/session/${sessionId}/task/${taskId
-        }/tileable_detail`)
-            .then(res => res.json())
-            .then((res) => {
-                this.setState({
-                    tileableDetails: res,
-                })
-            });
 
         fetch(`api/session/${sessionId}/task/${taskId
         }/tileable_graph?action=get_tileable_graph_as_json`)
@@ -61,9 +94,68 @@ export default class TaskTileableGraph extends React.Component {
             });
     }
 
+    fetchTileableDetail() {
+        const { sessionId, taskId } = this.props;
+
+        fetch(`api/session/${sessionId}/task/${taskId
+        }/tileable_detail`)
+            .then(res => res.json())
+            .then((res) => {
+                this.setState({
+                    tileableDetails: res,
+                })
+            });
+    }
+
     componentDidMount() {
         this.g = new dagGraphLib.Graph().setGraph({});
+
+        if (this.interval !== undefined) {
+            clearInterval(this.interval);
+        }
+        this.interval = setInterval(() => this.fetchTileableDetail(), 5000);
+        this.fetchTileableDetail();
         this.fetchGraphDetail();
+    }
+
+    /**
+     * Creates one status entry for the legend of DAG
+     *
+     * @param {*} svgContainer - The SVG container that the legend will be placed in
+     * @param {*} dotX - X coordinate of the colored dot for the legend entry
+     * @param {*} dotY - Y coordinate of the colored dot for the legend entry
+     * @param {*} textX - X coordinate of the label for the legend entry
+     * @param {*} textY - Y coordinate of the label for the legend entry
+     * @param {*} color - Status color for the legend entry
+     * @param {*} text - Label for the legend entry
+     */
+    generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
+        if (color === '#FFFFFF') {
+            // add an additional stroke so
+            // the white color can be visited
+            svgContainer
+                .append('circle')
+                .attr('cx', dotX)
+                .attr('cy', dotY)
+                .attr('r', 6)
+                .attr('stroke', '#333')
+                .style('fill', color);
+        } else {
+            svgContainer
+                .append('circle')
+                .attr('cx', dotX)
+                .attr('cy', dotY)
+                .attr('r', 6)
+                .style('fill', color);
+        }
+
+        svgContainer
+            .append('text')
+            .attr('x', textX)
+            .attr('y', textY)
+            .text(text)
+            .style('font-size', '15px')
+            .attr('alignment-baseline', 'middle');
     }
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
@@ -72,133 +164,77 @@ export default class TaskTileableGraph extends React.Component {
             return;
         }
 
-        if ((prevStates.tileables !== this.state.tileables
-                && prevStates.dependencies !== this.state.dependencies)
-                || prevStates.tileableDetails !== this.state.tileableDetails) {
+        /**
+         * If the tileables and dependencies are different, this is a
+         * new DAG, so we will erase everything from the canvas and
+         * generate a new dag
+         */
+        if (prevStates.tileables !== this.state.tileables
+            && prevStates.dependencies !== this.state.dependencies) {
             d3Select('#svg-canvas').selectAll('*').remove();
 
             // Set up an SVG group so that we can translate the final graph.
             const svg = d3Select('#svg-canvas'),
                 inner = svg.append('g');
 
-            svg
-                .append("circle")
-                .attr("cx", 400)
-                .attr("cy", 20)
-                .attr("r", 6)
-                .style("fill", "#f4b400");
-            svg
-                .append("circle")
-                .attr("cx", 400)
-                .attr("cy", 40)
-                .attr("r", 6)
-                .style("fill", "#00ff00");
-            svg
-                .append("circle")
-                .attr("cx", 400)
-                .attr("cy", 60)
-                .attr("r", 6)
-                .style("fill", "#808080");
-            svg
-                .append("circle")
-                .attr("cx", 400)
-                .attr("cy", 80)
-                .attr("r", 6)
-                .style("fill", "#ff0000");
-            svg
-                .append("circle")
-                .attr("cx", 400)
-                .attr("cy", 100)
-                .attr("r", 6)
-                .attr("stroke", "#333")
-                .style("fill", "#ffffff");
-
-            svg
-                .append("text")
-                .attr("x", 420)
-                .attr("y", 100)
-                .text("Pending")
-                .style("font-size", "15px")
-                .attr("alignment-baseline", "middle");
-            svg
-                .append("text")
-                .attr("x", 420)
-                .attr("y", 20)
-                .text("Running")
-                .style("font-size", "15px")
-                .attr("alignment-baseline", "middle");
-            svg
-                .append("text")
-                .attr("x", 420)
-                .attr("y", 40)
-                .text("Succeeded")
-                .style("font-size", "15px")
-                .attr("alignment-baseline", "middle");
-            svg
-                .append("text")
-                .attr("x", 420)
-                .attr("y", 60)
-                .text("Cancelled")
-                .style("font-size", "15px")
-                .attr("alignment-baseline", "middle");
-            svg
-                .append("text")
-                .attr("x", 420)
-                .attr("y", 80)
-                .text("Failed")
-                .style("font-size", "15px")
-                .attr("alignment-baseline", "middle");
-
-
             this.g = new dagGraphLib.Graph().setGraph({});
+
+            // Create the legend for DAG
+            const legendSVG = d3Select('#legend');
+            this.state.tileableStatus.forEach((status) => this.generateGraphLegendItem(
+                legendSVG,
+                status.legendDotXLoc,
+                status.legendDotYLoc,
+                status.legendTextXLoc,
+                status.legendTextYLoc,
+                status.color,
+                status.text
+            ));
+
+            // Add the tileables to DAG
             this.state.tileables.forEach((tileable) => {
                 const value = { tileable };
+                const tileableDetail = this.state.tileableDetails[tileable.tileableId];
+                const nameEndIndex = tileable.tileableName.indexOf('key') - 1;
 
-                let nameEndIndex = tileable.tileableName.indexOf('key') - 1;
                 value.label = tileable.tileableName.substring(0, nameEndIndex);
                 value.rx = value.ry = 5;
                 this.g.setNode(tileable.tileableId, value);
 
-                const tileableDetail = this.state.tileableDetails[tileable.tileableId];
-
+                /**
+                 * Add the progress color using SVG linear gradient. The offset on
+                 * the first stop on the linear gradient marks how much of the node
+                 * should be filled with color. The second stop adds a white color to
+                 * the rest of the node
+                 */
                 var nodeProgressGradient = inner.append('linearGradient')
                     .attr('id', 'progress-' + tileable.tileableId);
 
-                if (tileableDetail.status === 0) {
-                    nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#ffffff')
-                    .attr('offset', '0%');
-                } else if (tileableDetail.status === 1) {
-                    nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#f4b400')
-                    .attr('offset', tileableDetail.progress * 100 + '%');
-                } else if (tileableDetail.status === 2) {
-                    nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#00ff00')
-                    .attr('offset', '100%');
-                } else if (tileableDetail.status === 3) {
-                    nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#ff0000')
-                    .attr('offset', tileableDetail.progress * 100 + '%');
-                } else {
-                    nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#808080')
-                    .attr('offset', tileableDetail.progress * 100 + '%');
-                }
+                nodeProgressGradient.append('stop')
+                    .attr('id', 'progress-' + tileable.tileableId + '-stop')
+                    .attr('stop-color', this.state.tileableStatus[tileableDetail.status].color)
+                    .attr('offset', tileableDetail.progress);
 
                 nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#ffffff')
-                    .attr('offset', '0%');
+                    .attr('stop-color', '#FFFFFF')
+                    .attr('offset', '0');
 
-                // In future fill color based on progress
+                /**
+                 * apply the linear gradient and other css properties
+                 * to nodes.
+                 */
                 const node = this.g.node(tileable.tileableId);
                 node.style = `
                     cursor: pointer;
                     stroke: #333;
                     fill: url(#progress-` + tileable.tileableId + `)`;
-                 node.labelStyle = 'cursor: pointer';
+                node.labelStyle = 'cursor: pointer';
             });
 
+            /**
+             * Adds edges to the DAG. If an edge has a linkType of 1,
+             * the edge will be a dashed line.
+             */
             this.state.dependencies.forEach((dependency) => {
                 if (dependency.linkType === 1) {
                     this.g.setEdge(
@@ -241,6 +277,7 @@ export default class TaskTileableGraph extends React.Component {
                 render(inner, this.g);
             }
 
+            // onClick function for the tileable
             const handleClick = (e, node) => {
                 if (this.props.onTileableClick) {
                     const selectedTileable = this.state.tileables.filter(
@@ -265,14 +302,39 @@ export default class TaskTileableGraph extends React.Component {
                 svg.attr('height', 40);
             }
         }
+
+        /**
+         * If the tileables and dependencies didn't change and
+         * only the tileable status changed, we know this is the
+         * old graph with updated tileable status, so we just
+         * need to update the color of nodes and the progress bar
+         */
+        if (prevStates.tileables === this.state.tileables
+            && prevStates.dependencies === this.state.dependencies
+            && prevStates.tileableDetails !== this.state.tileableDetails) {
+            const svg = d3Select('#svg-canvas');
+            this.state.tileables.forEach((tileable) => {
+                const tileableDetail = this.state.tileableDetails[tileable.tileableId];
+
+                svg.select('#progress-' + tileable.tileableId + '-stop')
+                    .attr('stop-color', this.state.tileableStatus[tileableDetail.status].color)
+                    .attr('offset', tileableDetail.progress);
+            })
+        }
     }
 
     render() {
         return (
-            <svg
-                id="svg-canvas"
-                style={{ margin: 30, width: '90%' }}
-            />
+            <React.Fragment>
+                <svg
+                    id='legend'
+                    style={{ marginLeft: '6%', width: '90%', height: '10%' }}
+                />
+                <svg
+                    id='svg-canvas'
+                    style={{ margin: 30, width: '90%', height: '80%' }}
+                />
+            </React.Fragment>
         );
     }
 }
