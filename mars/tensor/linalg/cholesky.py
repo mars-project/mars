@@ -139,13 +139,10 @@ class TensorCholesky(TensorHasInput, TensorOperandMixin):
 
         with device(device_id):
             if xp is np:
-                try:
-                    import scipy.linalg
+                import scipy.linalg
 
-                    ctx[chunk.key] = scipy.linalg.cholesky(a, lower=op.lower)
-                    return
-                except ImportError:  # pragma: no cover
-                    pass
+                ctx[chunk.key] = scipy.linalg.cholesky(a, lower=op.lower)
+                return
 
             r = xp.linalg.cholesky(a)
             if not chunk.op.lower:

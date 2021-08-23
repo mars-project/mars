@@ -19,12 +19,12 @@ from ._oss_lib import common as oc
 from ._oss_lib.glob import glob
 from ._oss_lib.handle import OSSIOBase, dict_to_url
 from .base import FileSystem, path_type
-from ...utils import implements, ImportErrorHandler
+from ...utils import implements, ModulePlaceholder
 
 try:
     import oss2
 except ImportError:
-    oss2 = ImportErrorHandler('oss2')
+    oss2 = ModulePlaceholder('oss2')
 
 _oss_time_out = 10
 

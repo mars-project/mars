@@ -17,12 +17,12 @@ import json
 import os
 
 from ..base import path_type, stringify_path
-from ....utils import ImportErrorHandler
+from ....utils import ModulePlaceholder
 
 try:
     import oss2
 except ImportError:
-    oss2 = ImportErrorHandler('oss2')
+    oss2 = ModulePlaceholder('oss2')
 
 # OSS api time out
 _oss_time_out = 10
