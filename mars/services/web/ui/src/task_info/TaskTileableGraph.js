@@ -118,6 +118,10 @@ export default class TaskTileableGraph extends React.Component {
         this.fetchGraphDetail();
     }
 
+    componentWillUnmount() {
+        clearInterval(this.interval);
+    }
+
     /**
      * Creates one status entry for the legend of DAG
      *
