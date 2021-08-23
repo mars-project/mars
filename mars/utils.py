@@ -921,6 +921,13 @@ def is_object_dtype(dtype: np.dtype) -> bool:
         return False
 
 
+def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
+    if pd.api.types.is_extension_array_dtype(dtype):
+        return dtype
+    else:
+        return np.dtype(dtype)
+
+
 def calc_object_overhead(chunk: ChunkType,
                          shape: Tuple[int]) -> int:
     from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
@@ -1262,9 +1269,15 @@ def get_chunk_key_to_data_keys(chunk_graph):
     return chunk_key_to_data_keys
 
 
-class ImportErrorHandler:
-    def __init__(self, name: str):
-        self._name = name
+class ModulePlaceholder:
+    def __init__(self, mod_name: str):
+        self._mod_name = mod_name
+
+    def _raises(self):
+        raise AttributeError(f'{self._mod_name} is required but not installed.')
 
     def __getattr__(self, key):
-        raise AttributeError(f'{self._name} is required but not installed.')
+        self._raises()
+
+    def __call__(self, *_args, **_kwargs):
+        self._raises()
