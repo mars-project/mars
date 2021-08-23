@@ -365,6 +365,11 @@ async def test_get_tileable_details(start_test_service):
     details = await task_api.get_tileable_details(task_id)
     assert details[r5.key]['progress'] == details[r6.key]['progress'] == 0.25
 
+    await ref.set()
+    await asyncio.sleep(0.1)
+    await ref.set()
+    await task_api.wait_task(task_id)
+
     # test raises
     r7 = mr.spawn(f, kwargs={'raises': 1})
 

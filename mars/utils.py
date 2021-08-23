@@ -921,6 +921,13 @@ def is_object_dtype(dtype: np.dtype) -> bool:
         return False
 
 
+def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
+    if pd.api.types.is_extension_array_dtype(dtype):
+        return dtype
+    else:
+        return np.dtype(dtype)
+
+
 def calc_object_overhead(chunk: ChunkType,
                          shape: Tuple[int]) -> int:
     from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
