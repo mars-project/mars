@@ -66,7 +66,7 @@ class RayActorDriver(BaseActorDriver):
                         # must save the local reference until this is fixed:
                         # https://github.com/ray-project/ray/issues/7815
                         ray_actor = ray.get_actor(address)
-                        ray.get(ray_actor.cleanup.remote())
+                        ray.get(ray_actor.collect_coverage.remote())
                     ray.kill(ray.get_actor(address))
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass

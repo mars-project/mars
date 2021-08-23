@@ -191,7 +191,7 @@ class ClusterStateActor(mo.StatelessActor):
             if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
                 try:
                     # must clean up first, or coverage info lost
-                    await pool.cleanup.remote()
+                await pool.collect_coverage.remote()
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass
             ray.kill(pool)
