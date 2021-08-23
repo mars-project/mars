@@ -226,10 +226,7 @@ export default class TaskTileableGraph extends React.Component {
                  * to nodes.
                  */
                 const node = this.g.node(tileable.tileableId);
-                node.style = `
-                    cursor: pointer;
-                    stroke: #333;
-                    fill: url(#progress-` + tileable.tileableId + `)`;
+                node.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + tileable.tileableId + ')';
                 node.labelStyle = 'cursor: pointer';
             });
 
@@ -330,9 +327,9 @@ export default class TaskTileableGraph extends React.Component {
                 svg.select('#progress-' + tileable.tileableId + '-stop')
                     .attr('stop-color', this.state.tileableStatus[tileableDetail.status].color)
                     .attr('offset', tileableDetail.progress);
-            })
+            });
         }
-    };
+    }
 
     render() {
         return (
