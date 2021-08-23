@@ -195,6 +195,7 @@ Combining / joining / merging
    :toctree: generated/
 
    DataFrame.append
+   DataFrame.assign
    DataFrame.join
    DataFrame.merge
 

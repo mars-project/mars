@@ -202,98 +202,32 @@ def test_to_frame_or_series(setup):
 
 
 def test_assign(setup):
-    df = DataFrame({"A": [1, 2, 3], "B": [4, 5, 6]})
-    original = df.copy()
-    result = df.assign(C=df.B / df.A)
-    result = result.execute().fetch()
-    expected = df.copy()
-    expected["C"] = [4, 2.5, 2]
-    expected_temp = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected_temp)
+    rs = np.random.RandomState(0)
+    raw = pd.DataFrame({"A": rs.rand(10), "B": rs.rand(10)})
+
+    df = DataFrame(raw, chunk_size=5)
+    result = df.assign(C=df.B / df.A).execute().fetch()
+    expected = raw.assign(C=raw.B / raw.A)
+    pd.testing.assert_frame_equal(result, expected)
 
     # lambda syntax
-    result = df.assign(C=lambda x: x.B / x.A)
-    result = result.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected_temp)
-
-    # original is unmodified
-    original_temp = original.copy().execute().fetch()
-    df_temp = df.copy().execute().fetch()
-    pd.testing.assert_frame_equal(df_temp, original_temp)
+    result = df.assign(C=lambda x: x.B / x.A).execute().fetch()
+    expected = raw.assign(C=lambda x: x.B / x.A)
+    pd.testing.assert_frame_equal(result, expected)
 
     # Non-Series array-like
-    result = df.assign(C=[4, 2.5, 2])
-    result = result.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected_temp)
-
-    # original is unmodified
-    original_temp = original.copy().execute().fetch()
-    df_temp = df.copy().execute().fetch()
-    pd.testing.assert_frame_equal(original_temp, df_temp)
-
-    result = df.assign(B=df.B / df.A)
-    result = result.execute().fetch()
-    expected = expected.drop("B", axis=1).rename(columns={"C": "B"})
-    expected = expected.execute().fetch()
+    row_list = rs.rand(10).tolist()
+    result = df.assign(C=row_list).execute().fetch()
+    expected = raw.assign(C=row_list)
     pd.testing.assert_frame_equal(result, expected)
 
-    # overwrite
-    result = df.assign(A=df.A + df.B)
-    result = result.execute().fetch()
-    expected = df.copy()
-    expected["A"] = [5, 7, 9]
-    expected["A"] = expected["A"].astype('int64')
-    expected_temp = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected_temp)
-
-    # lambda
-    result = df.assign(A=lambda x: x.A + x.B)
-    result = result.execute().fetch()
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
-
-
-def test_assign_multiple(setup):
-    df = DataFrame([[1, 4], [2, 5], [3, 6]], columns=["A", "B"])
-    result = df.assign(C=[7, 8, 9], D=df.A, E=lambda x: x.B)
-    result["C"] = result["C"].astype('int64')
-    result = result.execute().fetch()
-    expected = DataFrame(
-        [[1, 4, 7, 1, 4], [2, 5, 8, 2, 5], [3, 6, 9, 3, 6]], columns=list("ABCDE")
-    )
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
-
-
-def test_assign_order(setup):
-    df = DataFrame([[1, 2], [3, 4]], columns=["A", "B"])
-    result = df.assign(D=df.A + df.B, C=df.A - df.B)
-    result = result.execute().fetch()
-    expected = DataFrame([[1, 2, 3, -1], [3, 4, 7, -1]], columns=list("ABDC"))
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
-
-    result = df.assign(C=df.A - df.B, D=df.A + df.B)
-    result = result.execute().fetch()
-    expected = DataFrame([[1, 2, -1, 3], [3, 4, -1, 7]], columns=list("ABCD"))
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
-
-
-def test_assign_dependent(setup):
-    df = DataFrame({"A": [1, 2], "B": [3, 4]})
-
-    result = df.assign(C=df.A, D=lambda x: x["A"] + x["C"])
-    result = result.execute().fetch()
-    expected = DataFrame([[1, 3, 1, 2], [2, 4, 2, 4]], columns=list("ABCD"))
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
-
-    result = df.assign(C=lambda df: df.A, D=lambda df: df["A"] + df["C"])
-    result = result.execute().fetch()
-    expected = DataFrame([[1, 3, 1, 2], [2, 4, 2, 4]], columns=list("ABCD"))
-    expected = expected.execute().fetch()
-    pd.testing.assert_frame_equal(result, expected)
+    # multiple
+    row_list = rs.rand(10).tolist()
+    result = df.assign(C=row_list, D=df.A, E=lambda x: x.B)
+    result['C'] = result['C'].astype('int64')
+    expected = raw.assign(C=row_list, D=raw.A, E=lambda x: x.B)
+    expected['C'] = expected['C'].astype('int64')
+    pd.testing.assert_frame_equal(result.execute().fetch(), expected)
 
 
 def test_key_value(setup):
