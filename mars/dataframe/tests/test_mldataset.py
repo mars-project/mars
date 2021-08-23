@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-import mars.dataframe.dataset as mds
+import mars.dataframe.dataset as mdd
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
@@ -27,7 +27,10 @@ from mars.utils import lazy_import
 
 ray = lazy_import('ray')
 ml_dataset = lazy_import('ray.util.data')
+# Ray Datasets is available in early preview at ray.data with Ray 1.6+
+# (and ray.experimental.data in Ray 1.5)
 ray_dataset = lazy_import('ray.data')
+ray_exp_dataset = lazy_import('ray.experimental.data')
 xgboost_ray = lazy_import('xgboost_ray')
 sklearn = lazy_import('sklearn')
 sklearn_datasets = lazy_import('sklearn.datasets')
@@ -96,9 +99,10 @@ async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster):
         df: md.DataFrame = md.DataFrame(value, chunk_size=5)
         df.execute()
 
-        ds = mds.to_ray_mldataset(df, num_shards=5)
-        if ml_dataset:
-            assert isinstance(ds, ml_dataset.MLDataset)
+        ds = mdd.to_ray_dataset(df, num_shards=5)
+        real_ray_dataset = ray_dataset or ray_exp_dataset
+        if real_ray_dataset:
+            assert isinstance(ds, real_ray_dataset.Dataset)
 
 
 @require_ray
@@ -117,9 +121,10 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mds.to_ray_mldataset(df, num_shards=num_shards)
-        if ml_dataset:
-            assert isinstance(ds, ml_dataset.MLDataset)
+        ds = mdd.to_ray_dataset(df, num_shards=num_shards)
+        real_ray_dataset = ray_dataset or ray_exp_dataset
+        if real_ray_dataset:
+            assert isinstance(ds, real_ray_dataset.Dataset)
 
         # train
         train_set = RayDMatrix(ds, "target")

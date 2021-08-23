@@ -123,7 +123,7 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
 def read_obj_refs(refs, columns=None,
                   incremental_index=False,
                   **kwargs):
-    dtypes = ray.get(_get_dtypes.remote(refs[0]))
+    dtypes = ray.get(ray.remote(_get_dtypes).remote(refs[0]))
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
 
@@ -133,6 +133,5 @@ def read_obj_refs(refs, columns=None,
               dtypes=dtypes)
 
 
-@ray.remote
 def _get_dtypes(t):
     return t.dtypes
