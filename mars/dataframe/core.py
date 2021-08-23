@@ -1275,6 +1275,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
         This function returns a boolean vector containing `True` wherever the
         corresponding Series element is between the boundary values `left` and
         `right`. NA values are treated as `False`.
+
         Parameters
         ----------
         left : scalar or list-like
@@ -1283,45 +1284,47 @@ class Series(HasShapeTileable, _ToPandasMixin):
             Right boundary.
         inclusive : {"both", "neither", "left", "right"}
             Include boundaries. Whether to set each bound as closed or open.
-            .. versionchanged:: 1.3.0
+
         Returns
         -------
         Series
             Series representing whether each element is between left and
             right (inclusive).
+
         See Also
         --------
         Series.gt : Greater than of series and other.
         Series.lt : Less than of series and other.
+
         Notes
         -----
         This function is equivalent to ``(left <= ser) & (ser <= right)``
+
         Examples
         --------
         >>> import mars.dataframe as md
         >>> s = md.Series([2, 0, 4, 8, np.nan])
         Boundary values are included by default:
-        >>> s.between(1, 4)
-        >>> s.execute()
+        >>> s.between(1, 4).execute()
         0     True
         1    False
         2     True
         3    False
         4    False
         dtype: bool
+
         With `inclusive` set to ``"neither"`` boundary values are excluded:
-        >>> s.between(1, 4, inclusive="neither")
-        >>> s.execute()
+        >>> s.between(1, 4, inclusive="neither").execute()
         0     True
         1    False
         2    False
         3    False
         4    False
         dtype: bool
+
         `left` and `right` can be any scalar value:
         >>> s = md.Series(['Alice', 'Bob', 'Carol', 'Eve'])
-        >>> s.between('Anna', 'Daniel')
-        >>> s.execute()
+        >>> s.between('Anna', 'Daniel').execute()
         0    False
         1     True
         2     True
