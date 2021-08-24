@@ -118,6 +118,21 @@ Pairwise metrics
    metrics.pairwise.rbf_kernel
    metrics.pairwise_distances
 
+.. _modelselection_ref:
+
+Model Selection
+===============
+
+Splitter Classes
+----------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   model_selection.KFold
+
 Splitter Functions
 ------------------
 

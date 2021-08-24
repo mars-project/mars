@@ -512,7 +512,13 @@ class TaskProcessorActor(mo.Actor):
         node_list = []
         edge_list = []
 
+        visited = set()
+
         for chunk in tileable_graph:
+            if chunk.key in visited:
+                continue
+            visited.add(chunk.key)
+
             node_name = str(chunk.op)
 
             node_list.append({
@@ -527,6 +533,7 @@ class TaskProcessorActor(mo.Actor):
                     'toTileableId': chunk.key,
                     'linkType': 1 if is_pure_dep else 0,
                 })
+
         graph_dict = {
             'tileables': node_list,
             'dependencies': edge_list

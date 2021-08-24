@@ -318,7 +318,6 @@ async def test_get_tileable_details(start_test_service):
         progress_controller = get_context().get_remote_object('progress_controller')
         progress_controller.wait()
         get_context().set_progress(1.0)
-        return 'RET'
 
     # test non-fused DAGs
     r1 = mr.spawn(f)
@@ -365,6 +364,11 @@ async def test_get_tileable_details(start_test_service):
     await asyncio.sleep(1)
     details = await task_api.get_tileable_details(task_id)
     assert details[r5.key]['progress'] == details[r6.key]['progress'] == 0.25
+
+    await ref.set()
+    await asyncio.sleep(0.1)
+    await ref.set()
+    await task_api.wait_task(task_id)
 
     # test raises
     r7 = mr.spawn(f, kwargs={'raises': 1})
