@@ -16,6 +16,7 @@ import argparse
 import asyncio
 import glob
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -179,7 +180,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         for proc in w_procs + [sv_proc]:
             if not proc:
                 continue
-            proc.terminate()
+            proc.send_signal(signal.SIGINT)
             try:
                 proc.wait(3)
             except subprocess.TimeoutExpired:

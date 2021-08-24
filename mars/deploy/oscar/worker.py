@@ -15,6 +15,7 @@
 import os
 
 from ...resource import cpu_count, cuda_count
+from ...services import NodeRole
 from ...utils import get_next_port
 from .cmdline import OscarCommandRunner
 from .local import start_worker, stop_worker
@@ -23,6 +24,7 @@ from .pool import create_worker_actor_pool
 
 class WorkerCommandRunner(OscarCommandRunner):
     command_description = 'Mars Worker'
+    node_role = NodeRole.WORKER
 
     def __init__(self):
         super().__init__()
@@ -51,7 +53,7 @@ class WorkerCommandRunner(OscarCommandRunner):
             args.endpoint = f'{args.host}:{get_next_port()}'
         self.n_io_process = int(args.n_io_process)
 
-        n_cpu = cpu_count() if args.n_cpu == 'auto' else args.n_cpu
+        n_cpu = cpu_count() if args.n_cpu == 'auto' else int(args.n_cpu)
 
         if 'CUDA_VISIBLE_DEVICES' in os.environ:  # pragma: no cover
             args.cuda_devices = os.environ['CUDA_VISIBLE_DEVICES'].strip()

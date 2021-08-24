@@ -126,7 +126,8 @@ async def wait_all_supervisors_ready(endpoint):
     await cluster_api.wait_all_supervisors_ready()
 
 
-def get_third_party_modules_from_config(config: Dict, role: NodeRole):
+def get_third_party_modules_from_config(config: Dict, role: NodeRole, environ=None):
+    environ = environ or os.environ
     third_party_modules = config.get('third_party_modules', [])
     if isinstance(third_party_modules, list):
         modules = third_party_modules
@@ -144,7 +145,7 @@ def get_third_party_modules_from_config(config: Dict, role: NodeRole):
                         f'or dict, but got a {type(third_party_modules)} instead.')
 
     all_modules = []
-    for mods in tuple(modules or ()) + (os.environ.get('MARS_LOAD_MODULES'),):
+    for mods in tuple(modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
         all_modules.extend(mods.split(',') if mods else [])
     return all_modules
 
