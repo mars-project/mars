@@ -16,54 +16,26 @@ import numpy as np
 import pandas as pd
 from ..utils import ceildiv, lazy_import
 from collections import defaultdict
-from typing import Dict, Iterable, List
+from typing import Iterable
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
 ml_dataset = lazy_import('ray.util.data')
 
 
-class RayObjectPiece:
+class ObjRefBatch:
     def __init__(self,
-                 index,
-                 addr,
-                 obj_ref):
-        """Represents a single entity holding the object ref.
-
-        Args:
-            index (int): index of the data in DataFrame
-            addr (BandType): band that stores the data
-            obj_ref (ray.ObjectRef): ObjectRef to the data
-        """
-        self._index = index
-        self._addr = addr
-        self._obj_ref = obj_ref
-
-    @property
-    def index(self):
-        return self._index
-
-    @property
-    def addr(self):
-        return self._addr
-
-    def read(self) -> pd.DataFrame:
-        return ray.get(self._obj_ref)
-
-
-class RecordBatch:
-    def __init__(self,
-                 shard_id: int,
-                 record_pieces: List[RayObjectPiece]):
-        """Iterable batch holding a list of RayObjectPieces.
+                 shard_id,
+                 obj_refs):
+        """Iterable batch holding a list of ray.ObjectRefs.
 
         Args:
             shard_id (int): id of the shard
             prefix (str): prefix name of the batch
-            record_pieces (List[RayObjectPiece]): list of RayObjectRefs
+            obj_refs (List[ray.ObjectRefs]): list of ray.ObjectRefs
         """
         self._shard_id = shard_id
-        self._record_pieces = record_pieces
+        self._obj_refs = obj_refs
 
     @property
     def shard_id(self) -> int:
@@ -71,31 +43,42 @@ class RecordBatch:
 
     def __iter__(self) -> Iterable[pd.DataFrame]:
         """Returns the item_generator required from ParallelIteratorWorker."""
-        for piece in self._record_pieces:
-            yield piece.read()
+        for obj_ref in self._obj_refs:
+            yield ray.get(obj_ref)
 
 
-def _group_pieces(index_to_pieces: Dict[int, RayObjectPiece],
-                  num_shards: int):
-    group_to_pieces = defaultdict(list)
+def _group_obj_refs(chunk_addr_refs,
+                    num_shards):
+    """Group fetched ray.ObjectRefs into a dict for later use.
+
+    Args:
+        chunk_addr_refs (List[Tuple(str, ray.ObjectRef)]): a list of add & ray.ObjectRef
+            of each chunk.
+        num_shards (int): the number of shards that will be created for the MLDataset.
+
+    Returns:
+        Dict[str, List[ray.ObjectRef]]: a dict that defines which group of ray.ObjectRefs will
+            be in an ObjRefBatch.
+    """
+    group_to_obj_refs = defaultdict(list)
     if not num_shards:
-        for piece in index_to_pieces.values():
-            group_to_pieces[str(piece.addr)].append(piece)
+        for addr, obj_ref in chunk_addr_refs:
+            group_to_obj_refs[addr].append(obj_ref)
     else:
-        splits = np.array_split(list(index_to_pieces.values()), num_shards)
+        splits = np.array_split([ref for _, ref in chunk_addr_refs],
+                                num_shards)
         for idx, split in enumerate(splits):
-            pieces = list(split)
-            group_to_pieces['group-' + str(idx)] = pieces
-    return group_to_pieces
+            group_to_obj_refs['group-' + str(idx)] = list(split)
+    return group_to_obj_refs
 
 
-def _create_ml_dataset(name: str,
-                       group_to_pieces: Dict[str, List[RayObjectPiece]]):
+def _create_ml_dataset(name,
+                       group_to_obj_refs):
     record_batches = []
-    for rank, pieces in enumerate(group_to_pieces.values()):
-        record_batches.append(RecordBatch(shard_id=rank,
-                                          record_pieces=pieces))
-    worker_cls = ray.remote(parallel_it.ParallelIteratorWorker)
+    for rank, obj_refs in enumerate(group_to_obj_refs.values()):
+        record_batches.append(ObjRefBatch(shard_id=rank,
+                                          obj_refs=obj_refs))
+    worker_cls = ray.remote(num_cpus=0)(parallel_it.ParallelIteratorWorker)
     actors = [worker_cls.remote(g, False) for g in record_batches]
     it = parallel_it.from_actors(actors, name)
     ds = ml_dataset.from_parallel_iter(
@@ -148,16 +131,11 @@ def to_ray_mldataset(df,
     df = _rechunk_if_needed(df, num_shards)
     # chunk_addr_refs is fetched directly rather than in batches
     # during `fetch` procedure, it'll be checked that df has been executed
-    chunk_addr_refs = df.fetch(only_refs=True)
-    addrs = set()
-    index_to_pieces = {}
     # items in chunk_addr_refs are ordered by positions in df
     # while adjacent chunks may belong to different addrs, i.e.
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    for idx, (addr, obj_ref) in enumerate(chunk_addr_refs):
-        index_to_pieces[idx] = RayObjectPiece(idx, addr, obj_ref)
-        addrs.add(addr)
-    group_to_pieces = _group_pieces(index_to_pieces, num_shards)
-    return _create_ml_dataset("from_mars", group_to_pieces)
+    chunk_addr_refs = df.fetch(only_refs=True)
+    group_to_obj_refs = _group_obj_refs(chunk_addr_refs, num_shards)
+    return _create_ml_dataset("from_mars", group_to_obj_refs)

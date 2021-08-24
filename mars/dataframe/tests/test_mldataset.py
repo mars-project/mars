@@ -54,7 +54,7 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 async def test_dataset_related_classes(ray_large_cluster):
-    from mars.dataframe.dataset import RecordBatch, RayObjectPiece
+    from mars.dataframe.dataset import ObjRefBatch
     # in order to pass checks
     value1 = np.random.rand(10, 10)
     value2 = np.random.rand(10, 10)
@@ -62,13 +62,8 @@ async def test_dataset_related_classes(ray_large_cluster):
     df2 = pd.DataFrame(value2)
     if ray:
         obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
-        piece1 = RayObjectPiece(index=0, addr='address0', obj_ref=obj_ref1)
-        piece2 = RayObjectPiece(index=1, addr='address1', obj_ref=obj_ref2)
-        data = piece1.read()
-        pd.testing.assert_frame_equal(data, df1)
-
-        batch = RecordBatch(shard_id=0,
-                            record_pieces=[piece1, piece2])
+        batch = ObjRefBatch(shard_id=0,
+                            obj_refs=[obj_ref1, obj_ref2])
         assert batch.shard_id == 0
         # the first data in batch
         data1, data2 = batch.__iter__()
