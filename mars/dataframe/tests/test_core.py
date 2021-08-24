@@ -335,7 +335,7 @@ def test_between_inclusive_warning(setup):
     series = Series(pd_series, chunk_size=5)
     left, right = series[2], series[7]
 
-    with pd.testing.assert_produces_warning(FutureWarning):
+    with pytest.warns(FutureWarning):
         series.between(left, right, inclusive=False)
-    with pd.testing.assert_produces_warning(FutureWarning):
+    with pytest.warns(FutureWarning):
         series.between(left, right, inclusive=True)
