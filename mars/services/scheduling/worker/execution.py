@@ -56,47 +56,6 @@ class SubtaskExecutionInfo:
     kill_timeout: Optional[int] = None
 
 
-class SlotContext:
-    def __init__(self, subtask: Subtask,
-                 slot_manager_ref: Union[mo.ActorRef, BandSlotManagerActor],
-                 enable_kill_slot: bool = True):
-        self._subtask = subtask
-        self._slot_manager_ref = slot_manager_ref
-        self._slot_id = None
-        self._enable_kill_slot = enable_kill_slot
-        self._should_kill_slot = False
-
-    @property
-    def slot_id(self):
-        return self._slot_id
-
-    async def get_slot_address(self):
-        return await self._slot_manager_ref.get_slot_address(self.slot_id)
-
-    def kill_slot_when_exit(self):
-        if self._enable_kill_slot:  # pragma: no branch
-            self._should_kill_slot = True
-
-    async def __aenter__(self):
-        self._slot_id = await self._slot_manager_ref.acquire_free_slot(
-                (self._subtask.session_id, self._subtask.subtask_id))
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        try:
-            if self._should_kill_slot:
-                try:
-                    # this may cause the failed slot to restart multiple times.
-                    await self._slot_manager_ref.kill_slot(self._slot_id)
-                finally:
-                    # TODO(fyrestone): Make the slot management more reliable.
-                    #  currently, the slot will not be freed if we kill slot failed.
-                    self._slot_id = None
-        finally:
-            if self._slot_id is not None:
-                await self._slot_manager_ref.release_free_slot(self._slot_id)
-
-
 async def _retry_run(subtask: Subtask,
                      subtask_info: SubtaskExecutionInfo,
                      target_async_func,
@@ -315,7 +274,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             subtask_info.result.traceback = tb
         finally:
             if batch_quota_req:
-                await quota_ref.release_quotas(list(batch_quota_req.keys()))
+                await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
             self._subtask_info.pop(subtask.subtask_id, None)
             global_slot_ref = await self._get_global_slot_ref()
@@ -343,37 +302,47 @@ class SubtaskExecutionActor(mo.StatelessActor):
         assert subtask_info.max_retries >= 0
 
         async def _run_subtask_once():
-            # check quota each retry.
-            await quota_ref.request_batch_quota(batch_quota_req)
+            aiotask = None
+            slot_id = None
+            try:
+                await quota_ref.request_batch_quota(batch_quota_req)
 
-            async with SlotContext(subtask, slot_manager_ref,
-                                   enable_kill_slot=self._enable_kill_slot) as ctx:
-                aiotask = None
+                if subtask_info.cancelling:
+                    raise asyncio.CancelledError
+
+                slot_id = await slot_manager_ref.acquire_free_slot(
+                    (subtask.session_id, subtask.subtask_id))
+
+                subtask_info.result.status = SubtaskStatus.running
+                aiotask = asyncio.create_task(subtask_api.run_subtask_in_slot(
+                    band_name, slot_id, subtask))
+                return await asyncio.shield(aiotask)
+            except asyncio.CancelledError as ex:
                 try:
-                    if subtask_info.cancelling:
-                        raise asyncio.CancelledError
-
-                    subtask_info.result.status = SubtaskStatus.running
-                    aiotask = asyncio.create_task(subtask_api.run_subtask_in_slot(
-                        band_name, ctx.slot_id, subtask))
-                    return await asyncio.shield(aiotask)
-                except asyncio.CancelledError as ex:
-                    try:
+                    if aiotask is not None:
                         await asyncio.wait_for(
                                 asyncio.shield(subtask_api.cancel_subtask_in_slot(
-                                        band_name, ctx.slot_id)),
+                                        band_name, slot_id)),
                                 subtask_info.kill_timeout)
-                    except asyncio.TimeoutError:
-                        if self._enable_kill_slot:
-                            ctx.kill_slot_when_exit()
-                        else:
-                            await aiotask
-                    finally:
-                        raise ex
-                except (OSError, MarsError) as ex:
-                    sub_pool_address = await ctx.get_slot_address()
-                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
+                except asyncio.TimeoutError:
+                    if self._enable_kill_slot:
+                        await slot_manager_ref.kill_slot(slot_id)
+                        # as slot is restarted, we does not need to trace it
+                        slot_id = None
+                    else:
+                        await aiotask
+                finally:
                     raise ex
+            except (OSError, MarsError) as ex:
+                if slot_id is not None:
+                    # may encounter subprocess memory error
+                    sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
+                raise ex
+            finally:
+                if slot_id is not None:
+                    await slot_manager_ref.release_free_slot(slot_id)
+                await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
         # TODO(fyrestone): For the retryable op, we should rerun it when
