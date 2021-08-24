@@ -171,7 +171,7 @@ async def test_execute_tensor(actor_pool):
     chunk_graph.add_edge(input1, result_chunk)
     chunk_graph.add_edge(input2, result_chunk)
 
-    subtask = Subtask('test_task', session_id=session_id, chunk_graph=chunk_graph)
+    subtask = Subtask('test_subtask', session_id=session_id, chunk_graph=chunk_graph)
     await execution_ref.run_subtask(subtask, 'numa-0', pool.external_address)
 
     # check if results are correct
@@ -239,14 +239,17 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     chunk_graph.add_node(remote_result)
     chunk_graph.add_edge(input1, remote_result)
 
-    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
                       chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
     await asyncio.sleep(1)
 
     with Timer() as timer:
-        await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
+        await asyncio.wait_for(
+            execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
+            timeout=30,
+        )
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(aiotask, timeout=30)
     assert timer.duration < 15
@@ -263,7 +266,8 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
 
-    subtask = Subtask(f'test_task2_{uuid.uuid4()}', session_id=session_id, chunk_graph=chunk_graph)
+    subtask = Subtask(f'test_subtask2_{uuid.uuid4()}', session_id=session_id,
+                      chunk_graph=chunk_graph)
     await asyncio.wait_for(
         execution_ref.run_subtask(subtask, 'numa-0', pool.external_address),
         timeout=30)
@@ -289,13 +293,16 @@ async def test_cancel_without_kill(actor_pool):
     chunk_graph = ChunkGraph([remote_result])
     chunk_graph.add_node(remote_result)
 
-    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
                       chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
     await asyncio.sleep(0.5)
 
-    await execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1)
+    await asyncio.wait_for(
+        execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
+        timeout=30,
+    )
     with pytest.raises(asyncio.CancelledError):
         await asyncio.wait_for(aiotask, timeout=30)
 
@@ -304,7 +311,7 @@ async def test_cancel_without_kill(actor_pool):
     chunk_graph = ChunkGraph([remote_result])
     chunk_graph.add_node(remote_result)
 
-    subtask = Subtask(f'test_task_{uuid.uuid4()}', session_id=session_id,
+    subtask = Subtask(f'test_subtask_{uuid.uuid4()}', session_id=session_id,
                       chunk_graph=chunk_graph)
     await asyncio.wait_for(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address), timeout=30)

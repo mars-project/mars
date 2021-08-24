@@ -338,6 +338,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                 raise ex
             finally:
+                logger.debug('Subtask passed, slot_id=%r', slot_id)
                 if slot_id is not None:
                     await slot_manager_ref.release_free_slot(slot_id)
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))

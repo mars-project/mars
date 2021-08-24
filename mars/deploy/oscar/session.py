@@ -50,7 +50,6 @@ from ...utils import implements, merge_chunks, sort_dataframe_result, \
     register_asyncio_task_timeout_detector, classproperty, \
     copy_tileables, build_fetch
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -751,6 +750,8 @@ class _IsolatedSession(AbstractAsyncSession):
             elif isinstance(tileable.op, Fetch):
                 break
             else:
+                logger.debug('Cannot fetch unexpected tileable %r with key %s',
+                             tileable, tileable.key)
                 raise ValueError(f'Cannot fetch unexecuted '
                                  f'tileable: {tileable}')
 

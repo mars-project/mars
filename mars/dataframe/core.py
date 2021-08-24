@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import weakref
-import warnings
 from collections.abc import Iterable
 from io import StringIO
 from typing import Union, Dict, Any

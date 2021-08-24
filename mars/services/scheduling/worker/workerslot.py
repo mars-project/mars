@@ -176,7 +176,7 @@ class BandSlotManagerActor(mo.Actor):
             yield self._restart_done_event.wait()
             return
 
-        self._restart_done_event.clear()
+        self._restart_done_event = asyncio.Event()
         self._restarting = True
         slot_ids = [slot_id for slot_id in self._free_slots
                     if slot_id not in self._fresh_slots]
