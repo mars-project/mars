@@ -136,6 +136,6 @@ def to_ray_mldataset(df,
     #       chunk4 for addr1
     _chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = df.fetch(only_refs=True)
     # chances are that there's only one chunk then _chunk_addr_refs is Tuple[Tuple, 'ray.ObjectRef']
-    chunk_addr_refs = [_chunk_addr_refs] if type(_chunk_addr_refs) is not List else _chunk_addr_refs
+    chunk_addr_refs = [_chunk_addr_refs] if not isinstance(_chunk_addr_refs, List) else _chunk_addr_refs
     group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(chunk_addr_refs, num_shards)
     return _create_ml_dataset("from_mars", group_to_obj_refs)
