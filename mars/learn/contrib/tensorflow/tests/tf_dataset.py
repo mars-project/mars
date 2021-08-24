@@ -16,11 +16,11 @@ import os
 import json
 import sys
 
-import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
 from mars.learn.contrib.tensorflow import get_tfdataset
 from tensorflow.python.data.ops.dataset_ops import DatasetV2
+
 
 def get_model():
     model = tf.keras.Sequential()
@@ -32,23 +32,14 @@ def get_model():
                   metrics=['accuracy'])
     return model
 
+
 def train(feature_data, labels):
     data = feature_data
     labels = labels
 
     db_train = get_tfdataset(data, labels)
     assert isinstance(db_train, DatasetV2)
-    db_train.repeat().batch(32)
-    print(f"db_train.element_spec: {db_train.element_spec}")
-
-
-    # data = np.random.random((1000, 32))
-    # labels = np.random.random((1000, 10))
-
-    # db_train = tf.data.Dataset.from_tensor_slices((data, labels))
-    db_train = get_tfdataset(data, labels)
     db_train = db_train.batch(32)
-    print(f"db_train.element_spec: {db_train.element_spec}")
 
     model = get_model()
     model.fit(db_train, epochs=2)

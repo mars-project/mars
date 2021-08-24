@@ -15,7 +15,6 @@
 import pytest
 import os
 
-from tensorflow.python.keras.backend import dtype
 
 import mars.tensor as mt
 import mars.dataframe as md
