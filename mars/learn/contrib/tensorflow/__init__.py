@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from .run_script import run_tensorflow_script
+from .dataset import get_tfdataset
+
 
 
 def register_op():
