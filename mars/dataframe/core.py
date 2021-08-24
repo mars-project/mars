@@ -1330,6 +1330,12 @@ class Series(HasShapeTileable, _ToPandasMixin):
         3    False
         dtype: bool
         """
+        if isinstance(inclusive, bool):  # pragma: no cover
+            # for pandas < 1.3.0
+            if inclusive:
+                inclusive = "both"
+            else:
+                inclusive = "neither"
         if inclusive == "both":
             lmask = self >= left
             rmask = self <= right

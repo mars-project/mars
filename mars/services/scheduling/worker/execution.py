@@ -237,6 +237,11 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     total_memory_cost -= pop_result_cost
         return sum(t[1] for t in size_context.values()), max_memory_cost
 
+    @classmethod
+    def _check_cancelling(cls, subtask_info: SubtaskExecutionInfo):
+        if subtask_info.cancelling:
+            raise asyncio.CancelledError
+
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
         subtask_info = self._subtask_info[subtask.subtask_id]
@@ -254,8 +259,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 subtask, subtask_info.supervisor_address, band_name)
             _store_size, calc_size = await asyncio.to_thread(
                 self._estimate_sizes, subtask, input_sizes)
-            if subtask_info.cancelling:
-                raise asyncio.CancelledError
+            self._check_cancelling(subtask_info)
 
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
             subtask_info.result = await self._retry_run_subtask(
@@ -302,29 +306,36 @@ class SubtaskExecutionActor(mo.StatelessActor):
             slot_id = None
             try:
                 await quota_ref.request_batch_quota(batch_quota_req)
-
-                if subtask_info.cancelling:
-                    raise asyncio.CancelledError
+                self._check_cancelling(subtask_info)
 
                 slot_id = await slot_manager_ref.acquire_free_slot(
                     (subtask.session_id, subtask.subtask_id)
                 )
+                self._check_cancelling(subtask_info)
 
                 subtask_info.result.status = SubtaskStatus.running
                 aiotask = asyncio.create_task(subtask_api.run_subtask_in_slot(
                     band_name, slot_id, subtask))
                 return await asyncio.shield(aiotask)
             except asyncio.CancelledError as ex:
+                # make sure allocated slots are traced
+                if slot_id is None:  # pragma: no cover
+                    slot_id = await slot_manager_ref.get_subtask_slot(
+                        (subtask.session_id, subtask.subtask_id)
+                    )
                 try:
                     if aiotask is not None:
-                        kill_timeout = subtask_info.kill_timeout if self._enable_kill_slot else None
                         await asyncio.wait_for(
                             asyncio.shield(subtask_api.cancel_subtask_in_slot(band_name, slot_id)),
-                            kill_timeout
+                            subtask_info.kill_timeout
                         )
                 except asyncio.TimeoutError:
+                    logger.debug('Wait for subtask to cancel timed out (%s). '
+                                 'Start killing slot %d', subtask_info.kill_timeout, slot_id)
                     await slot_manager_ref.kill_slot(slot_id)
                     # as slot is restarted, we does not need to trace it
+                    sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                     slot_id = None
                 except:  # pragma: no cover
                     logger.exception('Unexpected errors raised when handling cancel')
@@ -338,7 +349,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                 raise ex
             finally:
-                logger.debug('Subtask passed, slot_id=%r', slot_id)
+                logger.debug('Subtask running ended, slot_id=%r', slot_id)
                 if slot_id is not None:
                     await slot_manager_ref.release_free_slot(slot_id)
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
@@ -367,12 +378,14 @@ class SubtaskExecutionActor(mo.StatelessActor):
                                  max_retries=subtask_max_retries)
         return task
 
-    async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
+    async def cancel_subtask(self, subtask_id: str,
+                             kill_timeout: Optional[int] = 5):
         try:
             subtask_info = self._subtask_info[subtask_id]
         except KeyError:
             return
 
+        kill_timeout = kill_timeout if self._enable_kill_slot else None
         if not subtask_info.cancelling:
             subtask_info.kill_timeout = kill_timeout
             subtask_info.cancelling = True

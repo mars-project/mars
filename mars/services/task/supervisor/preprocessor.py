@@ -150,11 +150,12 @@ class TaskPreprocessor:
     def analyze(self,
                 chunk_graph: ChunkGraph,
                 available_bands: Dict[BandType, int]) -> SubtaskGraph:
-        logger.info('Start to gen subtask graph.')
+        logger.debug('Start to gen subtask graph for task %s', self._task.task_id)
         task = self._task
         analyzer = GraphAnalyzer(chunk_graph, available_bands, task)
         graph = analyzer.gen_subtask_graph()
-        logger.info('Generated subtask graph of %s subtasks.', len(graph))
+        logger.debug('Generated subtask graph of %s subtasks for task %s',
+                     len(graph), self._task.task_id)
         return graph
 
     def _get_done(self):

@@ -750,10 +750,8 @@ class _IsolatedSession(AbstractAsyncSession):
             elif isinstance(tileable.op, Fetch):
                 break
             else:
-                logger.debug('Cannot fetch unexpected tileable %r with key %s',
-                             tileable, tileable.key)
                 raise ValueError(f'Cannot fetch unexecuted '
-                                 f'tileable: {tileable}')
+                                 f'tileable: {tileable!r}')
 
         if isinstance(tileable.op, Fetch):
             return tileable, indexes
@@ -901,6 +899,7 @@ class _IsolatedSession(AbstractAsyncSession):
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
+        self._tileable_to_fetch.clear()
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
 

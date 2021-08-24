@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import asyncio
+import os
+import tempfile
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -121,23 +123,26 @@ async def actor_pool(request):
                                               uid=SubtaskExecutionActor.default_uid(),
                                               address=pool.external_address)
         # create quota actor
-        await mo.create_actor(MockQuotaActor, 'numa-0', 102400,
-                              uid=QuotaActor.gen_uid('numa-0'),
-                              address=pool.external_address)
+        quota_ref = await mo.create_actor(MockQuotaActor, 'numa-0', 102400,
+                                          uid=QuotaActor.gen_uid('numa-0'),
+                                          address=pool.external_address)
         # create dispatcher actor
         band_slot_ref = await mo.create_actor(MockBandSlotManagerActor,
                                               (pool.external_address, 'numa-0'), n_slots,
                                               uid=BandSlotManagerActor.gen_uid('numa-0'),
                                               address=pool.external_address)
         # create mock task manager actor
-        await mo.create_actor(MockTaskManager,
-                              uid=TaskManagerActor.gen_uid(session_id),
-                              address=pool.external_address)
+        task_manager_ref = await mo.create_actor(MockTaskManager,
+                                                 uid=TaskManagerActor.gen_uid(session_id),
+                                                 address=pool.external_address)
 
         try:
             yield pool, session_id, meta_api, storage_api, execution_ref
         finally:
+            await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
+            await mo.destroy_actor(quota_ref)
+            await mo.destroy_actor(execution_ref)
             await MockStorageAPI.cleanup(pool.external_address)
             await MockSubtaskAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)
@@ -277,9 +282,12 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
 @pytest.mark.parametrize('actor_pool', [(1, False)], indirect=True)
 async def test_cancel_without_kill(actor_pool):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    executed_file = os.path.join(tempfile.gettempdir(),
+                                 f'mars_test_cancel_without_kill_{os.getpid()}.tmp')
 
     def delay_fun(delay):
         import mars
+        open(executed_file, 'w').close()
         time.sleep(delay)
         mars._slot_marker = 1
         return delay
@@ -316,5 +324,7 @@ async def test_cancel_without_kill(actor_pool):
     await asyncio.wait_for(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address), timeout=30)
 
-    # check if results are correct
-    assert await storage_api.get(remote_result.key)
+    # check if slots not killed (or slot assignment may be cancelled)
+    if os.path.exists(executed_file):
+        assert await storage_api.get(remote_result.key)
+        os.unlink(executed_file)

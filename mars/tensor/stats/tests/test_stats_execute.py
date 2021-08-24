@@ -207,8 +207,7 @@ def test_t_test_execution(setup):
     ('approx', 'two-sided'),
 ])
 def test_ks_1samp(setup, chunk_size, mode, alternative):
-    start = np.random.randint(10, 100)
-    x = tensor(np.linspace(-start, start, 9), chunk_size=5)
+    x = tensor(np.linspace(-15, 15, 9), chunk_size=5)
 
     result = ks_1samp(x, sp_norm.cdf, mode=mode).execute().fetch()
     expected = sp_ks_1samp(x, sp_norm.cdf, mode=mode)
