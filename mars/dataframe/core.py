@@ -1331,17 +1331,6 @@ class Series(HasShapeTileable, _ToPandasMixin):
         3    False
         dtype: bool
         """
-        if inclusive is True or inclusive is False:
-            warnings.warn(
-                "Boolean inputs to the `inclusive` argument are deprecated in"
-                "favour of `both` or `neither`.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            if inclusive:
-                inclusive = "both"
-            else:
-                inclusive = "neither"
         if inclusive == "both":
             lmask = self >= left
             rmask = self <= right

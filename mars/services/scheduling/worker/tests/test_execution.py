@@ -125,16 +125,22 @@ async def actor_pool(request):
                               uid=QuotaActor.gen_uid('numa-0'),
                               address=pool.external_address)
         # create dispatcher actor
-        await mo.create_actor(MockBandSlotManagerActor,
-                              (pool.external_address, 'numa-0'), n_slots,
-                              uid=BandSlotManagerActor.gen_uid('numa-0'),
-                              address=pool.external_address)
+        band_slot_ref = await mo.create_actor(MockBandSlotManagerActor,
+                                              (pool.external_address, 'numa-0'), n_slots,
+                                              uid=BandSlotManagerActor.gen_uid('numa-0'),
+                                              address=pool.external_address)
         # create mock task manager actor
         await mo.create_actor(MockTaskManager,
                               uid=TaskManagerActor.gen_uid(session_id),
                               address=pool.external_address)
 
-        yield pool, session_id, meta_api, storage_api, execution_ref
+        try:
+            yield pool, session_id, meta_api, storage_api, execution_ref
+        finally:
+            await mo.destroy_actor(band_slot_ref)
+            await MockStorageAPI.cleanup(pool.external_address)
+            await MockSubtaskAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio

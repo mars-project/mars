@@ -328,14 +328,3 @@ def test_between_error_args(setup):
     with pytest.raises(ValueError, match=value_error_msg):
         series = Series(pd.date_range("1/1/2000", periods=10), chunk_size=5)
         series.between(left, right, inclusive="yes").execute().fetch()
-
-
-def test_between_inclusive_warning(setup):
-    pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
-    series = Series(pd_series, chunk_size=5)
-    left, right = series[2], series[7]
-
-    with pytest.warns(FutureWarning):
-        series.between(left, right, inclusive=False)
-    with pytest.warns(FutureWarning):
-        series.between(left, right, inclusive=True)

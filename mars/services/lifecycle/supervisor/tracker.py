@@ -83,7 +83,7 @@ class LifecycleTrackerActor(mo.Actor):
     async def decref_chunks(self, chunk_keys: List[str]):
         to_remove_chunk_keys = self._get_remove_chunk_keys(chunk_keys)
         # make _remove_chunks release actor lock so that multiple `decref_chunks` can run concurrently.
-        await self._remove_chunks(to_remove_chunk_keys)
+        yield self._remove_chunks(to_remove_chunk_keys)
 
     async def _remove_chunks(self, to_remove_chunk_keys: List[str]):
         if not to_remove_chunk_keys:
@@ -160,7 +160,7 @@ class LifecycleTrackerActor(mo.Actor):
             self._tileable_ref_counts[tileable_key] -= 1
 
             decref_chunk_keys.extend(self._tileable_key_to_chunk_keys[tileable_key])
-        await self.decref_chunks(decref_chunk_keys)
+        yield self.decref_chunks(decref_chunk_keys)
 
     def get_tileable_ref_counts(self, tileable_keys: List[str]) -> List[int]:
         return [self._tileable_ref_counts[tileable_key]
