@@ -63,7 +63,7 @@ from .map_chunk import map_chunk, TensorMapChunk
 from .insert import insert
 from .delete import delete
 from .in1d import in1d
-from .pad import pad
+from .arraypad import pad
 
 
 def _install():
