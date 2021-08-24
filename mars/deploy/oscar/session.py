@@ -854,6 +854,7 @@ class _IsolatedSession(AbstractAsyncSession):
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
                 if only_refs:
+                    # Currently there's only one item in the returned List from storage_api.get_infos()
                     result += [(chunk_to_band[fetch_info.chunk], fetch_info.data[0].object_id)
                                for fetch_info in fetch_infos]
                 else:

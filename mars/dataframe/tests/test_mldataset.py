@@ -54,7 +54,7 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 async def test_dataset_related_classes(ray_large_cluster):
-    from mars.dataframe.dataset import ObjRefBatch
+    from mars.dataframe.dataset import ChunkRefBatch
     # in order to pass checks
     value1 = np.random.rand(10, 10)
     value2 = np.random.rand(10, 10)
@@ -62,13 +62,13 @@ async def test_dataset_related_classes(ray_large_cluster):
     df2 = pd.DataFrame(value2)
     if ray:
         obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
-        batch = ObjRefBatch(shard_id=0,
+        batch = ChunkRefBatch(shard_id=0,
                             obj_refs=[obj_ref1, obj_ref2])
         assert batch.shard_id == 0
         # the first data in batch
-        data1, data2 = batch.__iter__()
-        pd.testing.assert_frame_equal(data1, df1)
-        pd.testing.assert_frame_equal(data2, df2)
+        batch = iter(batch)
+        pd.testing.assert_frame_equal(next(batch), df1)
+        pd.testing.assert_frame_equal(next(batch), df2)
 
 
 @require_ray
@@ -79,14 +79,13 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
-        value = np.random.rand(20, 10)
+        value = np.random.rand(10, 10)
         chunk_size, num_shards = test_option
         df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
         df.execute()
 
         ds = mds.to_ray_mldataset(df, num_shards=num_shards)
-        if ml_dataset:
-            assert isinstance(ds, ml_dataset.MLDataset)
+        assert isinstance(ds, ml_dataset.MLDataset)
 
 
 @require_ray
@@ -107,8 +106,7 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
 
         num_shards = 4
         ds = mds.to_ray_mldataset(df)
-        if ml_dataset:
-            assert isinstance(ds, ml_dataset.MLDataset)
+        assert isinstance(ds, ml_dataset.MLDataset)
 
         # train
         train_set = RayDMatrix(ds, "target")

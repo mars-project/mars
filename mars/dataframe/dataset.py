@@ -16,14 +16,14 @@ import numpy as np
 import pandas as pd
 from ..utils import ceildiv, lazy_import
 from collections import defaultdict
-from typing import Iterable
+from typing import Dict, Iterable, List, Tuple
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')
 ml_dataset = lazy_import('ray.util.data')
 
 
-class ObjRefBatch:
+class ChunkRefBatch:
     def __init__(self,
                  shard_id,
                  obj_refs):
@@ -47,18 +47,18 @@ class ObjRefBatch:
             yield ray.get(obj_ref)
 
 
-def _group_obj_refs(chunk_addr_refs,
-                    num_shards):
+def _group_chunk_refs(chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']],
+                      num_shards: int):
     """Group fetched ray.ObjectRefs into a dict for later use.
 
     Args:
-        chunk_addr_refs (List[Tuple(str, ray.ObjectRef)]): a list of add & ray.ObjectRef
-            of each chunk.
+        chunk_addr_refs (List[Tuple[Tuple, ray.ObjectRef]]): a list of tuples of
+            band & ray.ObjectRef of each chunk.
         num_shards (int): the number of shards that will be created for the MLDataset.
 
     Returns:
         Dict[str, List[ray.ObjectRef]]: a dict that defines which group of ray.ObjectRefs will
-            be in an ObjRefBatch.
+            be in an ChunkRefBatch.
     """
     group_to_obj_refs = defaultdict(list)
     if not num_shards:
@@ -72,12 +72,12 @@ def _group_obj_refs(chunk_addr_refs,
     return group_to_obj_refs
 
 
-def _create_ml_dataset(name,
-                       group_to_obj_refs):
+def _create_ml_dataset(name: str,
+                       group_to_obj_refs: Dict[str, List['ray.ObjectRef']]):
     record_batches = []
     for rank, obj_refs in enumerate(group_to_obj_refs.values()):
-        record_batches.append(ObjRefBatch(shard_id=rank,
-                                          obj_refs=obj_refs))
+        record_batches.append(ChunkRefBatch(shard_id=rank,
+                                            obj_refs=obj_refs))
     worker_cls = ray.remote(num_cpus=0)(parallel_it.ParallelIteratorWorker)
     actors = [worker_cls.remote(g, False) for g in record_batches]
     it = parallel_it.from_actors(actors, name)
@@ -121,8 +121,6 @@ def to_ray_mldataset(df,
         num_shards (int, optional): the number of shards that will be created
             for the MLDataset. Defaults to None.
             If num_shards is None, chunks will be grouped by nodes where they lie.
-            If num_shards equals num_nodes mentions above, chunks will alse be
-                grouped by nodes where they lie.
             Otherwise, chunks will be grouped by their order in DataFrame.
 
     Returns:
@@ -136,6 +134,8 @@ def to_ray_mldataset(df,
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    chunk_addr_refs = df.fetch(only_refs=True)
-    group_to_obj_refs = _group_obj_refs(chunk_addr_refs, num_shards)
+    _chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = df.fetch(only_refs=True)
+    # chances are that there's only one chunk then _chunk_addr_refs is Tuple[Tuple, 'ray.ObjectRef']
+    chunk_addr_refs = [_chunk_addr_refs] if type(_chunk_addr_refs) is not List else _chunk_addr_refs
+    group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(chunk_addr_refs, num_shards)
     return _create_ml_dataset("from_mars", group_to_obj_refs)
