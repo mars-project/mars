@@ -396,3 +396,14 @@ def _run_task_timeout_detector(log_file_name):
         task.cancel()
 
     asyncio.run(main())
+
+
+def test_module_placeholder():
+    required_module = utils.ModulePlaceholder('required_module')
+
+    with pytest.raises(AttributeError):
+        required_module()
+    with pytest.raises(AttributeError) as e:
+        required_module.method()
+    msg = e.value.args[0]
+    assert msg == 'required_module is required but not installed.'

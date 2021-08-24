@@ -20,9 +20,9 @@ import pandas as pd
 
 from ...core import ENTITY_TYPE, recursive_tile
 from ...serialization.serializables import AnyField, Float64Field
-from ...tensor.core import TENSOR_TYPE, ChunkData, Chunk
+from ...tensor.core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, ChunkData, Chunk
 from ...tensor.datasource import tensor as astensor
-from ...utils import classproperty
+from ...utils import classproperty, get_dtype
 from ..align import align_series_series, align_dataframe_series, align_dataframe_dataframe
 from ..core import DATAFRAME_TYPE, SERIES_TYPE, DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE
 from ..initializer import Series, DataFrame
@@ -282,8 +282,9 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
 
     @classmethod
     def _calc_properties(cls, x1, x2=None, axis='columns'):
-        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) \
-                and (x2 is None or pd.api.types.is_scalar(x2) or isinstance(x2, TENSOR_TYPE)):
+        if isinstance(x1, (DATAFRAME_TYPE, DATAFRAME_CHUNK_TYPE)) and (
+                x2 is None or pd.api.types.is_scalar(x2) or
+                isinstance(x2, (TENSOR_TYPE, TENSOR_CHUNK_TYPE))):
             if x2 is None:
                 dtypes = x1.dtypes
             elif pd.api.types.is_scalar(x2):
@@ -297,13 +298,16 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
             return {'shape': x1.shape, 'dtypes': dtypes,
                     'columns_value': x1.columns_value, 'index_value': x1.index_value}
 
-        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) \
-                and (x2 is None or pd.api.types.is_scalar(x2) or isinstance(x2, TENSOR_TYPE)):
+        if isinstance(x1, (SERIES_TYPE, SERIES_CHUNK_TYPE)) and (
+                x2 is None or pd.api.types.is_scalar(x2) or
+                isinstance(x2, (TENSOR_TYPE, TENSOR_CHUNK_TYPE))):
             x2_dtype = x2.dtype if hasattr(x2, 'dtype') else type(x2)
-            dtype = infer_dtype(x1.dtype, np.dtype(x2_dtype), cls._operator)
+            x2_dtype = get_dtype(x2_dtype)
+            dtype = infer_dtype(x1.dtype, x2_dtype, cls._operator)
             ret = {'shape': x1.shape, 'dtype': dtype, 'index_value': x1.index_value}
-            if pd.api.types.is_scalar(x2) or (hasattr(x2, 'ndim') and (x2.ndim == 0 or
-                                                                       x2.ndim == 1)):
+            if pd.api.types.is_scalar(x2) or (
+                    hasattr(x2, 'ndim') and (
+                    x2.ndim == 0 or x2.ndim == 1)):
                 ret['name'] = x1.name
             return ret
 
@@ -406,13 +410,21 @@ class DataFrameBinOpMixin(DataFrameOperandMixin):
         raise NotImplementedError('Unknown combination of parameters')
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        property_inputs = [inp for inp in inputs if isinstance(inp, (DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE))]
+        property_inputs = [
+            inp for inp in inputs
+            if isinstance(inp, (DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, TENSOR_CHUNK_TYPE))]
         if len(property_inputs) == 1:
             properties = self._calc_properties(*property_inputs)
-        else:
-            df1, df2 = property_inputs if isinstance(property_inputs[0], DATAFRAME_CHUNK_TYPE) else \
+        elif any(inp.ndim == 2 for inp in property_inputs):
+            df1, df2 = property_inputs \
+                if isinstance(property_inputs[0], DATAFRAME_CHUNK_TYPE) else \
                 reversed(property_inputs)
             properties = self._calc_properties(df1, df2, axis=self.axis)
+        else:
+            if property_inputs[0].ndim < property_inputs[1].ndim or \
+                    isinstance(property_inputs[0], (TENSOR_TYPE, TENSOR_CHUNK_TYPE)):
+                property_inputs = reversed(property_inputs)
+            properties = self._calc_properties(*property_inputs)
 
         inputs = [inp for inp in inputs if isinstance(inp, (Chunk, ChunkData))]
 

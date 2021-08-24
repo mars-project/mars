@@ -452,7 +452,7 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     assert session._session.client.web_address is None
 
     with session:
-        # 1 supervisor, 1 worker main pool, 2 worker sub pools.
+        # 1 main pool, 3 sub pools(2 worker + 1 io).
         assert len(get_output_filenames()) == 4
 
     session.stop_server()

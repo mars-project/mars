@@ -23,15 +23,16 @@ import pandas as pd
 from pandas.api.types import is_string_dtype
 from pandas.api.extensions import ExtensionDtype
 from pandas.core.dtypes.cast import find_common_type
-try:
-    import pyarrow as pa
-except ImportError:  # pragma: no cover
-    pass
 
 from ..core import Entity, ExecutableTuple
 from ..lib.mmh3 import hash as mmh_hash
 from ..tensor.utils import dictify_chunk_size, normalize_chunk_sizes
-from ..utils import tokenize, sbytes, lazy_import
+from ..utils import tokenize, sbytes, lazy_import, ModulePlaceholder
+
+try:
+    import pyarrow as pa
+except ImportError:  # pragma: no cover
+    pa = ModulePlaceholder('pyarrow')
 
 cudf = lazy_import('cudf', globals=globals(), rename='cudf')
 
