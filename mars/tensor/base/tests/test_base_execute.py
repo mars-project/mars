@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from itertools import combinations_with_replacement
 import numpy as np
 import scipy.sparse as sps
 import pandas as pd
