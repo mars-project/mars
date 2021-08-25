@@ -868,7 +868,7 @@ class _IsolatedSession(AbstractAsyncSession):
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
                 index_to_data = [(fetch_info.chunk.index, fetch_info.data)
-                                    for fetch_info in fetch_infos]
+                                 for fetch_info in fetch_infos]
                 merged = merge_chunks(index_to_data)
                 if hasattr(tileable, 'order') and tileable.ndim > 0:
                     module = get_array_module(merged)
@@ -890,7 +890,7 @@ class _IsolatedSession(AbstractAsyncSession):
             filters = available_fields
         else:
             for filter_name in filters:
-                if filter_name not in available_fields:
+                if filter_name not in available_fields:  # pragma: no cover
                     raise TypeError(f'`fetch_infos` got unexpected '
                                     f'filter name: {filter_name}')
             filters = set(filters)
