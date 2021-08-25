@@ -114,7 +114,6 @@ class SharedMemoryStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        kwargs.pop('supervisor_address', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'SharedMemoryStorage got unexpected config: {",".join(kwargs)}')
 

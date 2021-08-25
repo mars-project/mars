@@ -116,8 +116,8 @@ class RayStorage(StorageBackend):
     name = 'ray'
 
     def __init__(self, *args, **kwargs):
-        self._supervisor_address = kwargs.get('supervisor_address')
-        self._ray_supervisor_actor = None
+        self._owner_address = kwargs.get('owner')
+        self._owner = None  # A ray actor which will own the objects put by workers.
 
     @classmethod
     @implements(StorageBackend.setup)
@@ -146,18 +146,14 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        if support_specify_owner():
-            ray_supervisor_actor = await self._get_ray_supervisor_actor()
-            object_id = ray.put(obj, _owner=ray_supervisor_actor)
+        if support_specify_owner() and self._owner_address:
+            if not self._owner:
+                self._owner = ray.get_actor(self._owner_address)
+            object_id = ray.put(obj, _owner=self._owner)
         else:
             object_id = ray.put(obj)
         # We can't get the serialized bytes length from ray.put
         return ObjectInfo(object_id=object_id)
-
-    async def _get_ray_supervisor_actor(self):
-        if self._supervisor_address and not self._ray_supervisor_actor:
-            self._ray_supervisor_actor = ray.get_actor(self._supervisor_address)
-        return self._ray_supervisor_actor
 
     @implements(StorageBackend.delete)
     async def delete(self, object_id):
