@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .run_script import run_tensorflow_script
-from .dataset import get_tfdataset  # noqa: F401 # pylint: disable=unused-import
+from .dataset import gen_tensorflow_dataset  # noqa: F401 # pylint: disable=unused-import
 
 
 def register_op():

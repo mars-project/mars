@@ -14,6 +14,8 @@
 
 
 import copy
+from typing import List
+
 import pandas as pd
 import numpy as np
 try:
@@ -27,7 +29,6 @@ from ....core.context import get_context
 from ....tensor.core import TENSOR_TYPE
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
 from ....utils import require_not_none
-from typing import List
 
 
 ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
@@ -114,7 +115,7 @@ class MarsDataset:
         )
 
 
-def get_tfdataset(*tileable,
+def gen_tensorflow_dataset(*tileable,
                  output_shapes = None,
                  output_types = None,
                  fetch_kwargs=None):
