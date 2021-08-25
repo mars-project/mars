@@ -21,7 +21,7 @@ import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
 from mars.core import tile
-from mars.services import start_services, NodeRole
+from mars.services import start_services, stop_services, NodeRole
 from mars.services.cluster import MockClusterAPI
 from mars.services.session import MockSessionAPI, SessionAPI
 from mars.services.meta import MockMetaAPI, MetaAPI, WebMetaAPI
@@ -81,6 +81,8 @@ async def test_meta_mock_api(obj):
         with pytest.raises(KeyError):
             await meta_api.get_chunk_meta(chunk.key)
 
+        await MockClusterAPI.cleanup(pool.external_address)
+
 
 @pytest.mark.asyncio
 async def test_meta_web_api():
@@ -122,3 +124,6 @@ async def test_meta_web_api():
 
         with pytest.raises(KeyError):
             await web_api.get_chunk_meta('non-exist-key')
+
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)

@@ -45,6 +45,5 @@ class StorageWorkerService(AbstractService):
                               address=self._address)
 
     async def stop(self):
-        storage_manager_ref = await mo.actor_ref(
-            address=self._address, uid=StorageManagerActor.default_uid())
-        await mo.destroy_actor(storage_manager_ref)
+        await mo.destroy_actor(mo.create_actor_ref(
+            address=self._address, uid=StorageManagerActor.default_uid()))
