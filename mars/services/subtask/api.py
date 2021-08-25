@@ -90,8 +90,8 @@ class MockSubtaskAPI(SubtaskAPI):
 
     @classmethod
     async def cleanup(cls, address: str):
-        from .worker.manager import SubtaskManagerActor
+        from .worker.manager import SubtaskRunnerManagerActor
         await mo.destroy_actor(mo.create_actor_ref(
-            uid=SubtaskManagerActor.default_uid(),
+            uid=SubtaskRunnerManagerActor.default_uid(),
             address=address
         ))
