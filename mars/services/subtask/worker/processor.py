@@ -253,6 +253,7 @@ class SubtaskProcessor:
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
         data_key_to_store_size = dict()
         data_key_to_memory_size = dict()
+        data_key_to_object_id = dict()
         if puts:
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
@@ -260,6 +261,7 @@ class SubtaskProcessor:
                 for store_key, store_info in zip(stored_keys, store_infos):
                     data_key_to_store_size[store_key] = store_info.store_size
                     data_key_to_memory_size[store_key] = store_info.memory_size
+                    data_key_to_object_id[store_key] = store_info.object_id
                 logger.debug('Finish putting data keys: %s, '
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
@@ -274,13 +276,14 @@ class SubtaskProcessor:
 
         # clear data
         self._datastore = dict()
-        return stored_keys, data_key_to_store_size, data_key_to_memory_size
+        return stored_keys, data_key_to_store_size, data_key_to_memory_size, data_key_to_object_id
 
     async def _store_meta(self,
                           chunk_graph: ChunkGraph,
                           stored_keys: List,
                           data_key_to_store_size: Dict,
-                          data_key_to_memory_size: Dict):
+                          data_key_to_memory_size: Dict,
+                          data_key_to_object_id: Dict):
         key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
         set_chunk_metas = []
@@ -293,11 +296,12 @@ class SubtaskProcessor:
             store_size = data_key_to_store_size[chunk_key]
             memory_size = data_key_to_memory_size[chunk_key]
             result_data_size += memory_size
+            object_ref = data_key_to_object_id[chunk_key]
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,
                     store_size=store_size, bands=[self._band],
-                    chunk_key=chunk_key))
+                    chunk_key=chunk_key, object_ref=object_ref))
         for chunk in chunk_graph.result_chunks:
             if chunk.key not in data_key_to_store_size:
                 # mapper, set meta, so that storage can make sure
@@ -358,9 +362,9 @@ class SubtaskProcessor:
                 unpinned = True
                 await self._unpin_data(input_keys)
             # store results data
-            stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
+            stored_keys, store_sizes, memory_sizes, data_key_to_object_id = await self._store_data(chunk_graph)
             # store meta
-            await self._store_meta(chunk_graph, stored_keys, store_sizes, memory_sizes)
+            await self._store_meta(chunk_graph, stored_keys, store_sizes, memory_sizes, data_key_to_object_id)
         except asyncio.CancelledError:
             self.result.status = SubtaskStatus.cancelled
             self.result.progress = 1.0
