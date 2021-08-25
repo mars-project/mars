@@ -18,7 +18,7 @@ import sys
 
 import tensorflow as tf
 from tensorflow.keras import layers
-from mars.learn.contrib.tensorflow import get_tfdataset
+from mars.learn.contrib.tensorflow import gen_tensorflow_dataset
 from tensorflow.python.data.ops.dataset_ops import DatasetV2
 
 
@@ -37,7 +37,7 @@ def train(feature_data, labels):
     data = feature_data
     labels = labels
 
-    db_train = get_tfdataset(data, labels)
+    db_train = gen_tensorflow_dataset(data, labels)
     assert isinstance(db_train, DatasetV2)
     db_train = db_train.batch(32)
 

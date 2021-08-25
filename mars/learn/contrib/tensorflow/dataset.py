@@ -18,17 +18,14 @@ from typing import List
 
 import pandas as pd
 import numpy as np
-try:
-    import tensorflow as tf
-except ImportError: # pragma: no cover
-    tensorflow = None
-    Dataset = object
 
 from .... import execute
 from ....core.context import get_context
 from ....tensor.core import TENSOR_TYPE
 from ....dataframe.core import DATAFRAME_TYPE, SERIES_TYPE
-from ....utils import require_not_none
+from ....utils import require_not_none, lazy_import
+
+tf = lazy_import("tensorflow")
 
 
 ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,

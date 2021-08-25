@@ -19,7 +19,7 @@ import os
 import mars.tensor as mt
 import mars.dataframe as md
 from mars.utils import lazy_import
-from mars.learn.contrib.tensorflow import get_tfdataset, run_tensorflow_script
+from mars.learn.contrib.tensorflow import gen_tensorflow_dataset, run_tensorflow_script
 
 tf_installed = lazy_import('tensorflow', globals=globals()) is not None
 
@@ -28,7 +28,7 @@ tf_installed = lazy_import('tensorflow', globals=globals()) is not None
 def test_mars_dataset(setup_cluster):
     import numpy as np
     import pandas as pd
-    from tensorflow.python.data.ops.dataset_ops import DatasetV2
+    tf_dataset_ops = lazy_import("tensorflow.python.data.ops.dataset_ops")
 
     # Mars tensor
     data = mt.random.rand(1000, 32, dtype='f4')
@@ -37,8 +37,8 @@ def test_mars_dataset(setup_cluster):
     data_verify = data[:10].execute().fetch()
     labels_verify = labels[:10].execute().fetch()
 
-    dataset = get_tfdataset(data, labels)
-    assert isinstance(dataset, DatasetV2)
+    dataset = gen_tensorflow_dataset(data, labels)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, labels_verify)
@@ -50,8 +50,8 @@ def test_mars_dataset(setup_cluster):
     data_verify = data[:10]
     labels_verify = labels[:10]
 
-    dataset = get_tfdataset(data, labels)
-    assert isinstance(dataset, DatasetV2)
+    dataset = gen_tensorflow_dataset(data, labels)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, labels_verify)
@@ -63,9 +63,9 @@ def test_mars_dataset(setup_cluster):
     data_verify = data.iloc[:10].execute().fetch().values
     labels_verify = labels.iloc[:10].execute().fetch().values
 
-    dataset = get_tfdataset(data, labels, fetch_kwargs={
+    dataset = gen_tensorflow_dataset(data, labels, fetch_kwargs={
         'extra_config': {'check_series_name': False}})
-    assert isinstance(dataset, DatasetV2)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, labels_verify)
@@ -75,9 +75,9 @@ def test_mars_dataset(setup_cluster):
 
     label_verify = label[:10].execute().fetch()
 
-    dataset = get_tfdataset(data, label, fetch_kwargs={
+    dataset = gen_tensorflow_dataset(data, label, fetch_kwargs={
         'extra_config': {'check_series_name': False}})
-    assert isinstance(dataset, DatasetV2)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, label_verify)
@@ -88,8 +88,8 @@ def test_mars_dataset(setup_cluster):
 
     data_verify = data.iloc[:10].values
     labels_verify = labels.iloc[:10].values
-    dataset = get_tfdataset(data, labels)
-    assert isinstance(dataset, DatasetV2)
+    dataset = gen_tensorflow_dataset(data, labels)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, labels_verify)
@@ -99,8 +99,8 @@ def test_mars_dataset(setup_cluster):
 
     label_verify = label[:10]
 
-    dataset = get_tfdataset(data, label)
-    assert isinstance(dataset, DatasetV2)
+    dataset = gen_tensorflow_dataset(data, label)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, label_verify)
@@ -110,8 +110,8 @@ def test_mars_dataset(setup_cluster):
 
     label_verify = label[:10]
 
-    dataset = get_tfdataset(data, label)
-    assert isinstance(dataset, DatasetV2)
+    dataset = gen_tensorflow_dataset(data, label)
+    assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, (data_1batch, label_1batch) in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)
         np.testing.assert_array_equal(label_1batch, label_verify)
@@ -120,7 +120,7 @@ def test_mars_dataset(setup_cluster):
     label = tuple(range(1000))
 
     with pytest.raises(TypeError) as e:
-        dataset = get_tfdataset(data, label)
+        dataset = gen_tensorflow_dataset(data, label)
     exec_msg = e.value.args[0]
     assert exec_msg == "Unexpected dataset type: <class 'tuple'>"
 
