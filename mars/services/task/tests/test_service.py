@@ -383,7 +383,7 @@ async def test_get_tileable_details(start_test_service):
 
 
 @pytest.mark.asyncio
-async def test_get_tileable_details(start_test_service):
+async def test_get_subtasks(start_test_service):
     sv_pool_address, task_api, storage_api = start_test_service
 
     def f1():
