@@ -421,6 +421,24 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def fetch_infos(self, *tileables, filters, **kwargs) -> list:
+        """
+        Fetch infos of tileables.
+
+        Parameters
+        ----------
+        tileables
+            Tileables.
+        filters
+            List of filters
+        kwargs
+
+        Returns
+        -------
+        fetched_infos : list
+        """
+
+    @abstractmethod
     def decref(self, *tileables_keys):
         """
         Decref tileables.
@@ -796,8 +814,7 @@ class _IsolatedSession(AbstractAsyncSession):
         from ...tensor.core import TensorOrder
         from ...tensor.array_utils import get_array_module
 
-        only_refs = kwargs.get('only_refs', False)
-        if kwargs and 'only_refs' not in kwargs:  # pragma: no cover
+        if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
             raise TypeError(f'`fetch` got unexpected '
                             f'arguments: {unexpected_keys}')
@@ -838,41 +855,107 @@ class _IsolatedSession(AbstractAsyncSession):
                 chunk = fetch_info.chunk
                 band = chunk_to_band[chunk]
                 storage_api = await self._get_storage_api(band)
-                get = storage_api.get.delay(chunk.key, conditions=conditions) \
-                    if not only_refs else storage_api.get_infos.delay(chunk.key)
-                storage_api_to_gets[storage_api].append(get)
+                storage_api_to_gets[storage_api].append(
+                    storage_api.get.delay(chunk.key, conditions=conditions))
                 storage_api_to_fetch_infos[storage_api].append(fetch_info)
             for storage_api in storage_api_to_gets:
                 fetched_data = await storage_api.get.batch(
-                    *storage_api_to_gets[storage_api]) if not only_refs else \
-                        await storage_api.get_infos.batch(
-                            *storage_api_to_gets[storage_api])
+                    *storage_api_to_gets[storage_api])
                 infos = storage_api_to_fetch_infos[storage_api]
                 for info, data in zip(infos, fetched_data):
                     info.data = data
 
             result = []
             for tileable, fetch_infos in zip(tileables, fetch_infos_list):
-                if only_refs:
+                index_to_data = [(fetch_info.chunk.index, fetch_info.data)
+                                    for fetch_info in fetch_infos]
+                merged = merge_chunks(index_to_data)
+                if hasattr(tileable, 'order') and tileable.ndim > 0:
+                    module = get_array_module(merged)
+                    if tileable.order == TensorOrder.F_ORDER and \
+                            hasattr(module, 'asfortranarray'):
+                        merged = module.asfortranarray(merged)
+                    elif tileable.order == TensorOrder.C_ORDER and \
+                            hasattr(module, 'ascontiguousarray'):
+                        merged = module.ascontiguousarray(merged)
+                if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
+                        getattr(merged, 'size', None) == 1:
+                    merged = merged.item()
+                result.append(self._process_result(tileable, merged))
+            return result
+
+    async def fetch_infos(self, *tileables, filters, **kwargs) -> list:
+        available_fields = {'object_id', 'level', 'memory_size', 'store_size', 'band'}
+        if filters is None:
+            filters = available_fields
+        else:
+            for filter_name in filters:
+                if filter_name not in available_fields:
+                    raise TypeError(f'`fetch_infos` got unexpected '
+                                    f'filter name: {filter_name}')
+            filters = set(filters)
+
+        if kwargs:  # pragma: no cover
+            unexpected_keys = ', '.join(list(kwargs.keys()))
+            raise TypeError(f'`fetch` got unexpected '
+                            f'arguments: {unexpected_keys}')
+
+        with enter_mode(build=True):
+            chunks = []
+            get_chunk_metas = []
+            fetch_infos_list = []
+            for tileable in tileables:
+                fetch_tileable, _ = self._get_to_fetch_tileable(tileable)
+                fetch_infos = []
+                for chunk in fetch_tileable.chunks:
+                    chunks.append(chunk)
+                    get_chunk_metas.append(
+                        self._meta_api.get_chunk_meta.delay(
+                            chunk.key, fields=['bands']))
+                    fetch_infos.append(ChunkFetchInfo(tileable=tileable,
+                                                      chunk=chunk,
+                                                      indexes=None))
+                fetch_infos_list.append(fetch_infos)
+            chunk_metas = \
+                await self._meta_api.get_chunk_meta.batch(*get_chunk_metas)
+            chunk_to_band = {chunk: meta['bands'][0]
+                            for chunk, meta in zip(chunks, chunk_metas)}
+
+            storage_api_to_gets = defaultdict(list)
+            storage_api_to_fetch_infos = defaultdict(list)
+            for fetch_info in itertools.chain(*fetch_infos_list):
+                chunk = fetch_info.chunk
+                band = chunk_to_band[chunk]
+                storage_api = await self._get_storage_api(band)
+                storage_api_to_gets[storage_api].append(storage_api.get_infos.delay(chunk.key))
+                storage_api_to_fetch_infos[storage_api].append(fetch_info)
+            for storage_api in storage_api_to_gets:
+                fetched_data = await storage_api.get_infos.batch(*storage_api_to_gets[storage_api])
+                infos = storage_api_to_fetch_infos[storage_api]
+                for info, data in zip(infos, fetched_data):
+                    info.data = data
+
+            result = []
+            for fetch_infos in fetch_infos_list:
+                fetched = defaultdict(list)
+                for fetch_info in fetch_infos:
+                    band = chunk_to_band[fetch_info.chunk]
                     # Currently there's only one item in the returned List from storage_api.get_infos()
-                    result += [(chunk_to_band[fetch_info.chunk], fetch_info.data[0].object_id)
-                               for fetch_info in fetch_infos]
-                else:
-                    index_to_data = [(fetch_info.chunk.index, fetch_info.data)
-                                     for fetch_info in fetch_infos]
-                    merged = merge_chunks(index_to_data)
-                    if hasattr(tileable, 'order') and tileable.ndim > 0:
-                        module = get_array_module(merged)
-                        if tileable.order == TensorOrder.F_ORDER and \
-                                hasattr(module, 'asfortranarray'):
-                            merged = module.asfortranarray(merged)
-                        elif tileable.order == TensorOrder.C_ORDER and \
-                                hasattr(module, 'ascontiguousarray'):
-                            merged = module.ascontiguousarray(merged)
-                    if hasattr(tileable, 'isscalar') and tileable.isscalar() and \
-                            getattr(merged, 'size', None) == 1:
-                        merged = merged.item()
-                    result.append(self._process_result(tileable, merged))
+                    data = fetch_info.data[0]
+                    if 'object_id' in filters:
+                        fetched['object_id'].append(data.object_id)
+                    if 'level' in filters:
+                        fetched['level'].append(data.level)
+                    if 'memory_size' in filters:
+                        fetched['memory_size'].append(data.memory_size)
+                    if 'store_size' in filters:
+                        fetched['store_size'].append(data.store_size)
+                    # data.band misses ip info, e.g. 'numa-0'
+                    # while band doesn't, e.g. (address0, 'numa-0')
+                    if 'band' in filters:
+                        fetched['band'].append(band)
+                result.append(fetched)
+
             return result
 
     async def decref(self, *tileable_keys):
@@ -1250,6 +1333,11 @@ class SyncSession(AbstractSyncSession):
         coro = _fetch(*tileables, session=self._isolated_session, **kwargs)
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
+    @implements(AbstractSyncSession.fetch_infos)
+    def fetch_infos(self, *tileables, filters, **kwargs) -> list:
+        coro = _fetch_infos(*tileables, filters=filters, session=self._isolated_session, **kwargs)
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
+
     @implements(AbstractSyncSession.decref)
     @_delegate_to_isolated_session
     def decref(self, *tileables_keys):
@@ -1387,7 +1475,19 @@ async def _fetch(tileable: TileableType,
         tileable, tileables = tileable[0], tileable[1:]
     session = _get_isolated_session(session)
     data = await session.fetch(tileable, *tileables, **kwargs)
-    return data[0] if len(tileables) == 0 and len(data) == 1 else data
+    return data[0] if len(tileables) == 0 else data
+
+
+async def _fetch_infos(tileable: TileableType,
+                       *tileables: Tuple[TileableType],
+                       session: _IsolatedSession = None,
+                       filters: List[str] = None,
+                       **kwargs):
+    if isinstance(tileable, tuple) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
+    session = _get_isolated_session(session)
+    data = await session.fetch_infos(tileable, *tileables, filters=filters, **kwargs)
+    return data[0] if len(tileables) == 0 else data
 
 
 def fetch(tileable: TileableType,
@@ -1403,6 +1503,21 @@ def fetch(tileable: TileableType,
 
     session = _ensure_sync(session)
     return session.fetch(tileable, *tileables, **kwargs)
+
+
+def fetch_infos(tileable: TileableType,
+                *tileables: Tuple[TileableType],
+                filters: List[str],
+                session: SyncSession = None,
+                **kwargs):
+    if isinstance(tileable, tuple) and len(tileables) == 0:
+        tileable, tileables = tileable[0], tileable[1:]
+    if session is None:
+        session = get_default_session()
+        if session is None:  # pragma: no cover
+            raise ValueError('No session found')
+    session = _ensure_sync(session)
+    return session.fetch_infos(tileable, *tileables, filters=filters, **kwargs)
 
 
 def fetch_log(*tileables: TileableType,

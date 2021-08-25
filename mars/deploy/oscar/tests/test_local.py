@@ -173,6 +173,23 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
+@pytest.mark.asyncio
+async def test_fetch_infos(create_cluster):
+    raw = np.random.RandomState(0).rand(30, 5)
+    raw_df = pd.DataFrame(raw, index=np.arange(1, 31))
+
+    df = md.DataFrame(raw_df, chunk_size=10)
+    df.execute()
+    fetched_infos = df.fetch_infos()
+    print(fetched_infos)
+
+    assert 'object_id' in fetched_infos
+    assert 'level' in fetched_infos
+    assert 'memory_size' in fetched_infos
+    assert 'store_size' in fetched_infos
+    assert 'band' in fetched_infos
+
+
 def _my_func():
     print('output from function')
 

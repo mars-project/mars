@@ -14,7 +14,7 @@
 
 import numpy as np
 import pandas as pd
-from ..utils import ceildiv, lazy_import
+from ....utils import ceildiv, lazy_import
 from collections import defaultdict
 from typing import Dict, Iterable, List, Tuple
 
@@ -25,8 +25,8 @@ ml_dataset = lazy_import('ray.util.data')
 
 class ChunkRefBatch:
     def __init__(self,
-                 shard_id,
-                 obj_refs):
+                 shard_id: int,
+                 obj_refs: 'ray.ObjectRef'):
         """Iterable batch holding a list of ray.ObjectRefs.
 
         Args:
@@ -134,8 +134,9 @@ def to_ray_mldataset(df,
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    _chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = df.fetch(only_refs=True)
-    # chances are that there's only one chunk then _chunk_addr_refs is Tuple[Tuple, 'ray.ObjectRef']
-    chunk_addr_refs = [_chunk_addr_refs] if not isinstance(_chunk_addr_refs, List) else _chunk_addr_refs
+    fetched_infos: Dict[str, List] = df.fetch_infos(filters=['band', 'object_id'])
+    chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = [(band, object_id) for band, object_id in
+                                                            zip(fetched_infos['band'],
+                                                                fetched_infos['object_id'])]
     group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(chunk_addr_refs, num_shards)
     return _create_ml_dataset("from_mars", group_to_obj_refs)

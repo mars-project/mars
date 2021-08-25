@@ -519,8 +519,7 @@ class _BatchedFetcher:
         from .indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
 
         batch_size = kw.pop('batch_size', 1000)
-        only_refs = kw.get('only_refs', False)
-        if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)) or only_refs:
+        if isinstance(self.op, (DataFrameIlocGetItem, SeriesIlocGetItem)):
             # see GH#1871
             # already iloc, do not trigger batch fetch
             return self._fetch(session=session, **kw)
@@ -528,6 +527,9 @@ class _BatchedFetcher:
             batches = list(self._iter(batch_size=batch_size,
                                       session=session, **kw))
             return pd.concat(batches) if len(batches) > 1 else batches[0]
+
+    def fetch_infos(self, filters=None, session=None, **kw):
+        return self._fetch_infos(filters=filters, session=session, **kw)
 
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):

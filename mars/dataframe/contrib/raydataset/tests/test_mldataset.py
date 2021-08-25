@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-import mars.dataframe.dataset as mdd
+import mars.dataframe.contrib.raydataset as mdd
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
@@ -54,7 +54,7 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 async def test_dataset_related_classes(ray_large_cluster):
-    from mars.dataframe.dataset import ChunkRefBatch
+    from mars.dataframe.contrib.raydataset import ChunkRefBatch
     # in order to pass checks
     value1 = np.random.rand(10, 10)
     value2 = np.random.rand(10, 10)
@@ -63,7 +63,7 @@ async def test_dataset_related_classes(ray_large_cluster):
     if ray:
         obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
         batch = ChunkRefBatch(shard_id=0,
-                            obj_refs=[obj_ref1, obj_ref2])
+                              obj_refs=[obj_ref1, obj_ref2])
         assert batch.shard_id == 0
         # the first data in batch
         batch = iter(batch)
