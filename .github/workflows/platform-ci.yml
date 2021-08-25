@@ -149,4 +149,11 @@ jobs:
       - name: Report coverage data
         shell: bash
         run: |
+          if [[ "$GITHUB_REF" =~ ^"refs/pull/" ]]; then
+            # reject PRs with master branch
+            if [[ "$GITHUB_HEAD_REF" == "master" ]]; then
+              >&2 echo "Cannot upload coverage using master branch. Try using another branch instead."
+              exit 1
+            fi
+          fi
           bash <(curl -s https://codecov.io/bash)

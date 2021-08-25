@@ -1303,7 +1303,9 @@ class Series(HasShapeTileable, _ToPandasMixin):
         --------
         >>> import mars.dataframe as md
         >>> s = md.Series([2, 0, 4, 8, np.nan])
+
         Boundary values are included by default:
+
         >>> s.between(1, 4).execute()
         0     True
         1    False
@@ -1313,6 +1315,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
         dtype: bool
 
         With `inclusive` set to ``"neither"`` boundary values are excluded:
+
         >>> s.between(1, 4, inclusive="neither").execute()
         0     True
         1    False
@@ -1322,6 +1325,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
         dtype: bool
 
         `left` and `right` can be any scalar value:
+
         >>> s = md.Series(['Alice', 'Bob', 'Carol', 'Eve'])
         >>> s.between('Anna', 'Daniel').execute()
         0    False
