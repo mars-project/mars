@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import weakref
-import warnings
 from collections.abc import Iterable
 from io import StringIO
 from typing import Union, Dict, Any
@@ -1331,13 +1330,8 @@ class Series(HasShapeTileable, _ToPandasMixin):
         3    False
         dtype: bool
         """
-        if inclusive is True or inclusive is False:
-            warnings.warn(
-                "Boolean inputs to the `inclusive` argument are deprecated in"
-                "favour of `both` or `neither`.",
-                FutureWarning,
-                stacklevel=2,
-            )
+        if isinstance(inclusive, bool):  # pragma: no cover
+            # for pandas < 1.3.0
             if inclusive:
                 inclusive = "both"
             else:

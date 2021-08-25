@@ -347,10 +347,12 @@ def _calc_prob_2samp(d, n1, n2, alternative, mode):  # pragma: no cover
 
 def _compute_dplus(cdfvals, n):
     """Computes D+ as used in the Kolmogorov-Smirnov test.
+
     Parameters
     ----------
     cdfvals: array_like
       Sorted array of CDF values between 0 and 1
+
     Returns
     -------
       Maximum distance of the CDF values below Uniform(0, 1)
@@ -360,10 +362,12 @@ def _compute_dplus(cdfvals, n):
 
 def _compute_dminus(cdfvals, n):
     """Computes D- as used in the Kolmogorov-Smirnov test.
+
     Parameters
     ----------
     cdfvals: array_like
       Sorted array of CDF values between 0 and 1
+
     Returns
     -------
       Maximum distance of the CDF values above Uniform(0, 1)

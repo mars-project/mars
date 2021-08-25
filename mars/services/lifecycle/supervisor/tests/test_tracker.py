@@ -75,3 +75,4 @@ async def test_tracker():
                 await tracker.decref_tileables(['not_tracked'])
         finally:
             await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)

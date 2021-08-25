@@ -111,7 +111,9 @@ async def test_slot_assign(actor_pool: ActorPoolType):
     assert len((await slot_manager_ref.dump_data()).free_slots) == group_size
 
     async def task_fun(idx):
-        slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
+        session_stid = ('session_id', f'subtask_id{idx}')
+        slot_id = await slot_manager_ref.acquire_free_slot(session_stid)
+        assert slot_id == await slot_manager_ref.get_subtask_slot(session_stid)
         ref = await mo.actor_ref(uid=TaskActor.gen_uid(slot_id), address=pool.external_address)
         await ref.queued_call(idx, delay)
 
