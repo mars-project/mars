@@ -613,9 +613,11 @@ class TaskProcessorActor(mo.Actor):
                         continue
                     returned_subtasks.add(subtask.subtask_id)
 
+                    # since the number of subtasks is large, we will not
+                    # display the name of subtasks and hence we won't return
+                    # the subtask_name field
                     subtask_list.append({
                         'subtask_id': subtask.subtask_id,
-                        'subtask_name': subtask.subtask_name,
                         'subtask_progress': subtask_results[subtask.subtask_id].progress,
                     })
                 break
