@@ -602,7 +602,7 @@ class TaskProcessorActor(mo.Actor):
 
                 for subtask, result in stage.subtask_results.items():
                     subtask_results[subtask.subtask_id] = result
-                for subtask, result in stage.subtask_temp_results.items():
+                for subtask, result in stage.subtask_snapshots.items():
                     if subtask.subtask_id in subtask_results:
                         continue
                     subtask_results[subtask.subtask_id] = result
