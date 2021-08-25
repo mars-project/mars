@@ -420,9 +420,9 @@ async def test_get_tileable_details(start_test_service):
 
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
-            assert subtask.subtask_id not in subtask_ids
-            subtask_ids.add(subtask.subtask_id)
+            assert subtask.get('subtask_id') not in subtask_ids
+            subtask_ids.add(subtask.get('subtask_id'))
 
         for dependency in subtask_details.get('dependencies'):
-            assert dependency.from_subtask_id in subtask_ids
-            assert dependency.to_subtask_id in subtask_ids
+            assert dependency.get('from_subtask_id') in subtask_ids
+            assert dependency.get('to_subtask_id') in subtask_ids
