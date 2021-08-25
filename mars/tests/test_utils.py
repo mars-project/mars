@@ -426,3 +426,11 @@ def test_flatten_dict_to_nested_dict():
     with pytest.raises(ValueError):
         flatten_dict_to_nested_dict({'a.b.c': 1, 'a.b': 2})
     assert flatten_dict_to_nested_dict({'a.b.c': 1, 'a.b.d': 2}) == {'a': {'b': {'c': 1, 'd': 2}}}
+
+
+def test_readable_size():
+    assert utils.readable_size(32) == '32.00'
+    assert utils.readable_size(14354) == '14.02K'
+    assert utils.readable_size(14354000) == '13.69M'
+    assert utils.readable_size(14354000000) == '13.37G'
+    assert utils.readable_size(14354000000000) == '13.05T'

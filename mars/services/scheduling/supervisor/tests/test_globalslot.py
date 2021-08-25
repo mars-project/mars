@@ -34,9 +34,11 @@ async def actor_pool():
             GlobalSlotManagerActor, uid=GlobalSlotManagerActor.default_uid(),
             address=pool.external_address)
 
-        yield pool, session_id, global_slot_ref
-
-        await mo.destroy_actor(global_slot_ref)
+        try:
+            yield pool, session_id, global_slot_ref
+        finally:
+            await mo.destroy_actor(global_slot_ref)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio

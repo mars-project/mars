@@ -276,3 +276,21 @@ class MockClusterAPI(ClusterAPI):
         api = await super().create(address=address)
         await api.mark_node_ready()
         return api
+
+    @classmethod
+    async def cleanup(cls, address: str):
+        from ..supervisor.locator import SupervisorPeerLocatorActor
+        from ..uploader import NodeInfoUploaderActor
+        from ..supervisor.node_info import NodeInfoCollectorActor
+
+        await asyncio.wait([
+            mo.destroy_actor(mo.create_actor_ref(
+                uid=SupervisorPeerLocatorActor.default_uid(),
+                address=address)),
+            mo.destroy_actor(mo.create_actor_ref(
+                uid=NodeInfoCollectorActor.default_uid(),
+                address=address)),
+            mo.destroy_actor(mo.create_actor_ref(
+                uid=NodeInfoUploaderActor.default_uid(),
+                address=address)),
+        ])

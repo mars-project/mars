@@ -20,6 +20,9 @@ from mars.core import tile
 from mars.dataframe import cut
 from mars.dataframe.initializer import DataFrame, Series, Index
 from mars.lib.groupby_wrapper import wrapped_groupby
+from mars.lib.version import parse as parse_version
+
+_with_inclusive_bounds = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 def test_dataframe_params():
@@ -254,3 +257,60 @@ def test_key_value(setup):
 
     result = idx.values.execute().fetch()
     np.testing.assert_array_equal(result, raw.values)
+
+
+def test_between(setup):
+    pd_series = pd.Series(pd.date_range("1/1/2000", periods=10))
+    pd_left, pd_right = pd_series[3], pd_series[7]
+    series = Series(pd_series, chunk_size=5)
+    left, right = series.iloc[3], series.iloc[7]
+
+    result = series.between(left, right).execute().fetch()
+    expected = pd_series.between(pd_left, pd_right)
+    pd.testing.assert_series_equal(result, expected)
+
+    if _with_inclusive_bounds:
+        result = series.between(left, right, inclusive="both").execute().fetch()
+        expected = pd_series.between(pd_left, pd_right, inclusive="both")
+        pd.testing.assert_series_equal(result, expected)
+
+        result = series.between(left, right, inclusive="left").execute().fetch()
+        expected = pd_series.between(pd_left, pd_right, inclusive="left")
+        pd.testing.assert_series_equal(result, expected)
+
+        result = series.between(left, right, inclusive="right").execute().fetch()
+        expected = pd_series.between(pd_left, pd_right, inclusive="right")
+        pd.testing.assert_series_equal(result, expected)
+
+        result = series.between(left, right, inclusive="neither").execute().fetch()
+        expected = pd_series.between(pd_left, pd_right, inclusive="neither")
+        pd.testing.assert_series_equal(result, expected)
+
+    with pytest.raises(ValueError):
+        series = Series(pd.date_range("1/1/2000", periods=10), chunk_size=5)
+        series.between(left, right, inclusive="yes").execute().fetch()
+
+    # test_between_datetime_values
+    pd_series = pd.Series(pd.bdate_range("1/1/2000", periods=20).astype(object))
+    pd_series[::2] = np.nan
+
+    series = Series(pd_series, chunk_size=5)
+    result = series[series.between(series[3], series[17])].execute().fetch()
+    expected = pd_series[3:18].dropna()
+    pd.testing.assert_series_equal(result, expected)
+
+    result = series[series.between(series[3], series[17], inclusive="neither")] \
+        .execute().fetch()
+    expected = pd_series[5:16].dropna()
+    pd.testing.assert_series_equal(result, expected)
+
+    # test_between_period_values
+    pd_series = pd.Series(pd.period_range("2000-01-01", periods=10, freq="D"))
+    pd_left, pd_right = pd_series[2], pd_series[7]
+
+    series = Series(pd_series, chunk_size=5)
+    left, right = series[2], series[7]
+
+    result = series.between(left, right).execute().fetch()
+    expected = pd_series.between(pd_left, pd_right)
+    pd.testing.assert_series_equal(result, expected)

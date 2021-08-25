@@ -22,7 +22,7 @@ import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.core.context import get_context
-from mars.services import start_services, NodeRole
+from mars.services import start_services, stop_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.subtask import SubtaskStatus
@@ -110,6 +110,8 @@ async def start_test_service(actor_pools, request):
         yield sv_pool.external_address, task_api, storage_api
     finally:
         await MockStorageAPI.cleanup(worker_pool.external_address)
+        await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
 
 
 @pytest.mark.asyncio
@@ -364,6 +366,11 @@ async def test_get_tileable_details(start_test_service):
     await asyncio.sleep(1)
     details = await task_api.get_tileable_details(task_id)
     assert details[r5.key]['progress'] == details[r6.key]['progress'] == 0.25
+
+    await ref.set()
+    await asyncio.sleep(0.1)
+    await ref.set()
+    await task_api.wait_task(task_id)
 
     # test raises
     r7 = mr.spawn(f, kwargs={'raises': 1})

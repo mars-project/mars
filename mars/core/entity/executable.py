@@ -178,7 +178,7 @@ class _ToObjectMixin(_ExecuteAndFetchMixin):
 
 class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def __init__(self, *args):
-        super().__init__()
+        tuple.__init__(*args)
 
         self._fields_to_idx = None
         self._fields = None
@@ -217,6 +217,10 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
 
         session = _get_session(self, session)
         ret = execute(*self, session=session, **kw)
+
+        if session not in self._executed_sessions:
+            self._executed_sessions.append(session)
+
         if kw.get('wait', True):
             return self
         else:
@@ -232,6 +236,8 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
     def fetch(self, session: SessionType = None, **kw):
         if len(self) == 0:
             return tuple()
+
+        session = _get_session(self, session)
         ret = super().fetch(session=session, **kw)
         if self._raw_type is not None:
             ret = self._raw_type(*ret)

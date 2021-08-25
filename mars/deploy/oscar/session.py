@@ -50,7 +50,6 @@ from ...utils import implements, merge_chunks, sort_dataframe_result, \
     register_asyncio_task_timeout_detector, classproperty, \
     copy_tileables, build_fetch
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -752,7 +751,7 @@ class _IsolatedSession(AbstractAsyncSession):
                 break
             else:
                 raise ValueError(f'Cannot fetch unexecuted '
-                                 f'tileable: {tileable}')
+                                 f'tileable: {tileable!r}')
 
         if isinstance(tileable.op, Fetch):
             return tileable, indexes
@@ -900,6 +899,7 @@ class _IsolatedSession(AbstractAsyncSession):
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
+        self._tileable_to_fetch.clear()
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
 

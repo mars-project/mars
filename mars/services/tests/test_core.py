@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-
 import pytest
 from tornado import httpclient
 
@@ -46,10 +44,9 @@ async def test_start_service(actor_pool_context):
         'test_svc2': {'uid': 'TestActor2', 'arg2': 'val2',  'ref': 'TestActor1'},
         'web': {'port': web_port},
     }
-    with warnings.catch_warnings(record=True) as w:
+    with pytest.warns(RuntimeWarning) as record:
         await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
-        assert 'test_warn_svc' in str(w[-1].message)
-        assert issubclass(w[-1].category, RuntimeWarning)
+        assert 'test_warn_svc' in str(record[-1].message)
 
     ref1 = await mo.actor_ref('TestActor1', address=pool.external_address)
     ref2 = await mo.actor_ref('TestActor2', address=pool.external_address)

@@ -83,6 +83,8 @@ async def test_api(actor_pool):
     assert pool_addr in await api.get_nodes_info(
         role=NodeRole.WORKER, exclude_statuses={NodeStatus.STOPPED})
 
+    await MockClusterAPI.cleanup(pool_addr)
+
 
 @pytest.mark.asyncio
 async def test_web_api(actor_pool):
@@ -117,3 +119,5 @@ async def test_web_api(actor_pool):
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
             web_api.watch_all_bands()), timeout=0.1)
+
+    await MockClusterAPI.cleanup(pool_addr)

@@ -1268,6 +1268,94 @@ class Series(HasShapeTileable, _ToPandasMixin):
         name = name or self.name or 0
         return dataframe_from_tensor(self, columns=[name])
 
+    def between(self, left, right, inclusive="both"):
+        """
+        Return boolean Series equivalent to left <= series <= right.
+        This function returns a boolean vector containing `True` wherever the
+        corresponding Series element is between the boundary values `left` and
+        `right`. NA values are treated as `False`.
+
+        Parameters
+        ----------
+        left : scalar or list-like
+            Left boundary.
+        right : scalar or list-like
+            Right boundary.
+        inclusive : {"both", "neither", "left", "right"}
+            Include boundaries. Whether to set each bound as closed or open.
+
+        Returns
+        -------
+        Series
+            Series representing whether each element is between left and
+            right (inclusive).
+
+        See Also
+        --------
+        Series.gt : Greater than of series and other.
+        Series.lt : Less than of series and other.
+
+        Notes
+        -----
+        This function is equivalent to ``(left <= ser) & (ser <= right)``
+
+        Examples
+        --------
+        >>> import mars.dataframe as md
+        >>> s = md.Series([2, 0, 4, 8, np.nan])
+        Boundary values are included by default:
+        >>> s.between(1, 4).execute()
+        0     True
+        1    False
+        2     True
+        3    False
+        4    False
+        dtype: bool
+
+        With `inclusive` set to ``"neither"`` boundary values are excluded:
+        >>> s.between(1, 4, inclusive="neither").execute()
+        0     True
+        1    False
+        2    False
+        3    False
+        4    False
+        dtype: bool
+
+        `left` and `right` can be any scalar value:
+        >>> s = md.Series(['Alice', 'Bob', 'Carol', 'Eve'])
+        >>> s.between('Anna', 'Daniel').execute()
+        0    False
+        1     True
+        2     True
+        3    False
+        dtype: bool
+        """
+        if isinstance(inclusive, bool):  # pragma: no cover
+            # for pandas < 1.3.0
+            if inclusive:
+                inclusive = "both"
+            else:
+                inclusive = "neither"
+        if inclusive == "both":
+            lmask = self >= left
+            rmask = self <= right
+        elif inclusive == "left":
+            lmask = self >= left
+            rmask = self < right
+        elif inclusive == "right":
+            lmask = self > left
+            rmask = self <= right
+        elif inclusive == "neither":
+            lmask = self > left
+            rmask = self < right
+        else:
+            raise ValueError(
+                "Inclusive has to be either string of 'both',"
+                "'left', 'right', or 'neither'."
+            )
+
+        return lmask & rmask
+
 
 class BaseDataFrameChunkData(ChunkData):
     __slots__ = '_dtypes_value',
