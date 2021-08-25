@@ -123,6 +123,8 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
 
         pd.testing.assert_frame_equal(value2, read_value)
 
+        await MockStorageAPI.cleanup(pool.external_address)
+
 
 @pytest.mark.asyncio
 async def test_web_storage_api():
@@ -171,3 +173,6 @@ async def test_web_storage_api():
         sliced_value = await web_storage_api.get(
             t.chunks[0].key, conditions=[slice(3, 5), slice(None, None)])
         np.testing.assert_array_equal(value[3:5, :], sliced_value)
+
+        await MockStorageAPI.cleanup(pool.external_address)
+        await MockClusterAPI.cleanup(pool.external_address)

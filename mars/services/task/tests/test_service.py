@@ -22,7 +22,7 @@ import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.core.context import get_context
-from mars.services import start_services, NodeRole
+from mars.services import start_services, stop_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.subtask import SubtaskStatus
@@ -110,6 +110,8 @@ async def start_test_service(actor_pools, request):
         yield sv_pool.external_address, task_api, storage_api
     finally:
         await MockStorageAPI.cleanup(worker_pool.external_address)
+        await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
+        await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
 
 
 @pytest.mark.asyncio

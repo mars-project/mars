@@ -342,6 +342,7 @@ class TaskProcessorActor(mo.Actor):
 
         self._task_id_to_processor = dict()
         self._cur_processor = None
+        self._subtask_decref_events = dict()
 
         self._cluster_api = None
         self._meta_api = None
@@ -487,7 +488,7 @@ class TaskProcessorActor(mo.Actor):
             progress = sum(result.progress for result
                            in stage_processor.subtask_results.values())
             progress += sum(result.progress for subtask_key, result
-                            in stage_processor.subtask_temp_results.items()
+                            in stage_processor.subtask_snapshots.items()
                             if subtask_key not in stage_processor.subtask_results)
             subtask_progress += progress / n_subtask
             n_stage += 1
@@ -551,7 +552,7 @@ class TaskProcessorActor(mo.Actor):
 
                 for subtask, result in stage.subtask_results.items():
                     subtask_results[subtask.subtask_id] = result
-                for subtask, result in stage.subtask_temp_results.items():
+                for subtask, result in stage.subtask_snapshots.items():
                     if subtask.subtask_id in subtask_results:
                         continue
                     subtask_results[subtask.subtask_id] = result
@@ -653,6 +654,13 @@ class TaskProcessorActor(mo.Actor):
     async def _decref_input_subtasks(self,
                                      subtask: Subtask,
                                      subtask_graph: SubtaskGraph):
+        # make sure subtasks are decreffed only once
+        if subtask.subtask_id not in self._subtask_decref_events:
+            self._subtask_decref_events[subtask.subtask_id] = asyncio.Event()
+        else:  # pragma: no cover
+            await self._subtask_decref_events[subtask.subtask_id].wait()
+            return
+
         decref_chunk_keys = []
         for in_subtask in subtask_graph.iter_predecessors(subtask):
             for result_chunk in in_subtask.chunk_graph.results:
@@ -667,6 +675,7 @@ class TaskProcessorActor(mo.Actor):
                             decref_chunk_keys.extend([key[0] for key in data_keys])
                 decref_chunk_keys.append(result_chunk.key)
         await self._lifecycle_api.decref_chunks(decref_chunk_keys)
+        self._subtask_decref_events.pop(subtask.subtask_id).set()
 
     async def set_subtask_result(self, subtask_result: SubtaskResult):
         stage_processor = self._cur_processor.cur_stage_processor
@@ -677,7 +686,7 @@ class TaskProcessorActor(mo.Actor):
             # set before
             return
 
-        stage_processor.subtask_temp_results[subtask] = subtask_result
+        stage_processor.subtask_snapshots[subtask] = subtask_result
         if subtask_result.status.is_done:
             try:
                 # Since every worker will call supervisor to set subtask result,
