@@ -419,10 +419,10 @@ async def test_get_tileable_details(start_test_service):
         assert (num_subtasks == 1 and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
 
         subtask_ids = set()
-        for subtask in subtask_details.subtasks:
+        for subtask in subtask_details.get('subtasks'):
             assert subtask.subtask_id not in subtask_ids
             subtask_ids.add(subtask.subtask_id)
 
-        for dependency in subtask_details.dependencies:
+        for dependency in subtask_details.get('dependencies'):
             assert dependency.from_subtask_id in subtask_ids
             assert dependency.to_subtask_id in subtask_ids

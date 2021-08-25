@@ -617,8 +617,8 @@ class TaskProcessorActor(mo.Actor):
                     # display the name of subtasks and hence we won't return
                     # the subtask_name field
                     subtask_list.append({
-                        'subtask_id': subtask.subtask_id,
-                        'subtask_progress': subtask_results[subtask.subtask_id].progress,
+                        'subtaskId': subtask.subtask_id,
+                        'subtaskProgress': subtask_results[subtask.subtask_id].progress,
                     })
                 break
 
@@ -630,8 +630,8 @@ class TaskProcessorActor(mo.Actor):
                     for predecessor in stage.subtask_graph.iter_predecessors(subtask):
                         if predecessor.subtask_id in returned_subtasks:
                             dependency_list.append({
-                                'from_subtask_id': predecessor.subtask_id,
-                                'to_subtask_id': subtask.subtask_id,
+                                'fromSubtaskId': predecessor.subtask_id,
+                                'toSubtaskId': subtask.subtask_id,
                             })
 
         subtask_dict = {
