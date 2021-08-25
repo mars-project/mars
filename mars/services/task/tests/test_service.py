@@ -410,7 +410,7 @@ async def test_get_tileable_details(start_test_service):
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
 
     for tileable in tileable_graph.tileables:
-        subtask_details = task_api.get_tileable_subtasks(task_id, tileable.tileableId)
+        subtask_details = task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
 
         num_subtasks = len(subtask_details.get('subtasks'))
         num_dependencies = len(subtask_details.get('dependencies'))
