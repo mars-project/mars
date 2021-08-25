@@ -614,12 +614,18 @@ class TaskProcessorActor(mo.Actor):
                         continue
                     returned_subtasks.add(subtask.subtask_id)
 
+                    subtaskResult = subtask_results[subtask.subtask_id]
+                    if not subtaskResult:
+                        progress = 1.0
+                    else:
+                        progress = subtaskResult.progress
+
                     # since the number of subtasks is large, we will not
                     # display the name of subtasks and hence we won't return
                     # the subtask_name field
                     subtask_list.append({
                         'subtaskId': subtask.subtask_id,
-                        'subtaskProgress': subtask_results[subtask.subtask_id].progress,
+                        'subtaskProgress': progress
                     })
                 break
 
