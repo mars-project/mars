@@ -625,15 +625,18 @@ class TaskProcessorActor(mo.Actor):
 
         # return only the dependencies that belong to the subtask
         # structure of the input tileable
-        for tileable, subtasks in tileable_to_subtasks.items():
-            if tileable.key == tileable_id:
-                for subtask in subtasks:
-                    for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                        if predecessor.subtask_id in returned_subtasks:
-                            dependency_list.append({
-                                'fromSubtaskId': predecessor.subtask_id,
-                                'toSubtaskId': subtask.subtask_id,
-                            })
+        for processor in self._task_id_to_processor.values():
+            for stage in processor.stage_processors:
+                for tileable, subtasks in tileable_to_subtasks.items():
+                    if tileable.key == tileable_id:
+                        for subtask in subtasks:
+                            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                                if predecessor.subtask_id in returned_subtasks:
+                                    dependency_list.append({
+                                        'fromSubtaskId': predecessor.subtask_id,
+                                        'toSubtaskId': subtask.subtask_id,
+                                    })
+                    break
 
         subtask_dict = {
             'subtasks': subtask_list,
