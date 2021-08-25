@@ -219,8 +219,7 @@ class SubtaskQueueingActor(mo.Actor):
             self._stid_to_items.pop(stid, None)
             for band in bands:
                 band_queue = self._band_queues.get(band)
-                if band_queue:
-                    self._ensure_top_item_valid(band_queue)
+                self._ensure_top_item_valid(band_queue)
 
     async def all_bands_busy(self) -> bool:
         """Return True if all bands queue has tasks waiting to be submitted."""

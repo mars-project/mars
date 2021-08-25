@@ -497,7 +497,15 @@ class StorageManagerActor(mo.StatelessActor):
                              storage_config: Dict):
         backend = get_storage_backend(storage_backend)
         storage_config = storage_config or dict()
-        init_params, teardown_params = await backend.setup(address=self.address, **storage_config)
+
+        from ..cluster import ClusterAPI
+        try:
+            cluster_api = await ClusterAPI.create(self.address)
+            supervisor_address = (await cluster_api.get_supervisors())[0]
+        except mo.ActorNotExist:
+            supervisor_address = None
+        init_params, teardown_params = await backend.setup(
+            supervisor_address=supervisor_address, **storage_config)
         client = backend(**init_params)
         self._init_params[band_name][storage_backend] = init_params
         self._teardown_params[band_name][storage_backend] = teardown_params

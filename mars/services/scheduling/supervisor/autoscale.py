@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 class AutoscalerActor(mo.Actor):
-    __slots__ = '_config'
 
     def __init__(self, autoscale_conf: Dict[str, Any]):
         self._enabled = autoscale_conf.get('enabled', False)

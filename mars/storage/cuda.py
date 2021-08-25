@@ -218,7 +218,7 @@ class CudaStorage(StorageBackend):
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
-        kwargs.pop('address', None)
+        kwargs.pop('supervisor_address', None)
         size = kwargs.pop('size', None)
         if kwargs:  # pragma: no cover
             raise TypeError(f'CudaStorage got unexpected config: {",".join(kwargs)}')

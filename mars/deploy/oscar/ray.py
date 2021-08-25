@@ -244,7 +244,7 @@ class RayCluster:
             .get('ray', {}) \
             .get('supervisor', {}) \
             .get('sub_pool_num', DEFAULT_SUPERVISOR_SUB_POOL_NUM)
-        from mars.storage.ray import support_specify_owner
+        from ...storage.ray import support_specify_owner
         if not support_specify_owner():  # pragma: no cover
             logger.warning('Current installed ray version does not support specify owner, '
                            'autoscale may not work.')
