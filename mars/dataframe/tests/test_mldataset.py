@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-import mars.dataframe.dataset as mds
+import mars.dataframe.dataset as mdd
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
@@ -84,7 +84,7 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
         df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
         df.execute()
 
-        ds = mds.to_ray_mldataset(df, num_shards=num_shards)
+        ds = mdd.to_ray_mldataset(df, num_shards=num_shards)
         assert isinstance(ds, ml_dataset.MLDataset)
 
 
@@ -105,7 +105,7 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mds.to_ray_mldataset(df)
+        ds = mdd.to_ray_mldataset(df)
         assert isinstance(ds, ml_dataset.MLDataset)
 
         # train
