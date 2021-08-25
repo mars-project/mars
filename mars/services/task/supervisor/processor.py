@@ -587,6 +587,58 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
+    def get_tileable_subtasks(self, tileable_id: str):
+        tileable_to_subtasks = dict()
+        subtask_results = dict()
+        returned_subtasks = set()
+
+        subtask_list = []
+        dependency_list = []
+
+        for processor in self._task_id_to_processor.values():
+            for stage in processor.stage_processors:
+                tileable_to_subtasks.update(stage.tileable_to_subtasks)
+
+                for subtask, result in stage.subtask_results.items():
+                    subtask_results[subtask.subtask_id] = result
+                for subtask, result in stage.subtask_temp_results.items():
+                    if subtask.subtask_id in subtask_results:
+                        continue
+                    subtask_results[subtask.subtask_id] = result
+
+        for tileable, subtasks in tileable_to_subtasks.items():
+            if tileable.key == tileable_id:
+                for subtask in subtasks:
+                    if subtask.subtask_id in returned_subtasks:
+                        continue
+                    returned_subtasks.add(subtask.subtask_id)
+
+                    subtask_list.append({
+                        'subtask_id': subtask.subtask_id,
+                        'subtask_name': subtask.subtask_name,
+                        'subtask_progress': subtask_results[subtask.subtask_id].progress,
+                    })
+                break
+
+        # return only the dependencies that belong to the subtask
+        # structure of the input tileable
+        for tileable, subtasks in tileable_to_subtasks.items():
+            if tileable.key == tileable_id:
+                for subtask in subtasks:
+                    for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                        if predecessor.subtask_id in returned_subtasks:
+                            dependency_list.append({
+                                'from_subtask_id': predecessor.subtask_id,
+                                'to_subtask_id': subtask.subtask_id,
+                            })
+
+        subtask_dict = {
+            'subtasks': subtask_list,
+            'dependencies': dependency_list
+        }
+
+        return subtask_dict
+
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
         tileable_graph = processor.tileable_graph

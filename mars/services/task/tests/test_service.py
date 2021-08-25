@@ -380,3 +380,49 @@ async def test_get_tileable_details(start_test_service):
     await task_api.wait_task(task_id)
     details = await task_api.get_tileable_details(task_id)
     assert details[r7.key]['status'] == SubtaskStatus.errored.value
+
+
+@pytest.mark.asyncio
+async def test_get_tileable_details(start_test_service):
+    sv_pool_address, task_api, storage_api = start_test_service
+
+    def f1():
+        return np.arange(5)
+
+    def f2():
+        return np.arange(5, 10)
+
+    def f3(f1r, f2r):
+        return np.concatenate([f1r, f2r]).sum()
+
+    r1 = mr.spawn(f1)
+    r2 = mr.spawn(f2)
+    r3 = mr.spawn(f3, args=(r1, r2))
+
+    graph = TileableGraph([r3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+
+    with pytest.raises(TaskNotExist):
+        await task_api.get_tileable_graph_as_json('non_exist')
+
+    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
+
+    for tileable in tileable_graph.tileables:
+        subtask_details = task_api.get_tileable_subtasks(task_id, tileable.tileableId)
+
+        num_subtasks = len(subtask_details.get('subtasks'))
+        num_dependencies = len(subtask_details.get('dependencies'))
+        assert num_subtasks > 0
+        assert num_dependencies <= (num_subtasks / 2) * (num_subtasks / 2)
+        assert (num_subtasks == 1 and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
+
+        subtask_ids = set()
+        for subtask in subtask_details.subtasks:
+            assert subtask.subtask_id not in subtask_ids
+            subtask_ids.add(subtask.subtask_id)
+
+        for dependency in subtask_details.dependencies:
+            assert dependency.from_subtask_id in subtask_ids
+            assert dependency.to_subtask_id in subtask_ids
