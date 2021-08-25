@@ -75,10 +75,11 @@ async def actor_pool():
             SubtaskManagerActor, None,
             uid=SubtaskManagerActor.default_uid(),
             address=pool.external_address)
-
-        yield pool, session_id, meta_api, storage_api, manager
-
-        await MockStorageAPI.cleanup(pool.external_address)
+        try:
+            yield pool, session_id, meta_api, storage_api, manager
+        finally:
+            await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 def _gen_subtask(t, session_id):

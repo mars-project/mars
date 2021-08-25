@@ -84,6 +84,7 @@ class BandSlotManagerActor(mo.Actor):
         self._restarting = False
         self._restart_done_event = asyncio.Event()
 
+        self._session_stid_to_slot = dict()
         self._slot_to_session_stid = dict()
         self._last_report_time = time.time()
 
@@ -129,7 +130,15 @@ class BandSlotManagerActor(mo.Actor):
         slot_id = self._free_slots.pop()
         self._fresh_slots.difference_update([slot_id])
         self._slot_to_session_stid[slot_id] = session_stid
+        self._session_stid_to_slot[session_stid] = slot_id
+        logger.debug('Slot %d acquired for subtask %r', slot_id, session_stid)
         raise mo.Return(slot_id)
+
+    def get_slot_address(self, slot_id: int):
+        return self._slot_control_refs[slot_id].address
+
+    def get_subtask_slot(self, session_stid: Tuple[str, str]):
+        return self._session_stid_to_slot.get(session_stid)
 
     def release_free_slot(self, slot_id: int, pid: Optional[int] = None):
         if pid is not None:
@@ -142,7 +151,9 @@ class BandSlotManagerActor(mo.Actor):
             event = self._slot_kill_events.pop(slot_id)
             event.set()
 
-        self._slot_to_session_stid.pop(slot_id, None)
+        session_stid = self._slot_to_session_stid.pop(slot_id, None)
+        self._session_stid_to_slot.pop(session_stid, None)
+        logger.debug('Slot %d released', slot_id)
 
         if slot_id not in self._free_slots:
             self._free_slots.add(slot_id)
@@ -166,7 +177,7 @@ class BandSlotManagerActor(mo.Actor):
             yield self._restart_done_event.wait()
             return
 
-        self._restart_done_event.clear()
+        self._restart_done_event = asyncio.Event()
         self._restarting = True
         slot_ids = [slot_id for slot_id in self._free_slots
                     if slot_id not in self._fresh_slots]

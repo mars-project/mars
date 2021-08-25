@@ -25,7 +25,6 @@ from .... import oscar as mo
 from ....core.graph import DAG
 from ....core.operand import Fetch, FetchShuffle
 from ....lib.aio import alru_cache
-from ....oscar import ServerClosed
 from ....storage import StorageLevel
 from ....utils import dataslots, get_chunk_key_to_data_keys
 from ...cluster import ClusterAPI
@@ -202,6 +201,11 @@ class SubtaskExecutionActor(mo.Actor):
                     total_memory_cost -= pop_result_cost
         return sum(t[1] for t in size_context.values()), max_memory_cost
 
+    @classmethod
+    def _check_cancelling(cls, subtask_info: SubtaskExecutionInfo):
+        if subtask_info.cancelling:
+            raise asyncio.CancelledError
+
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):
         subtask_api = SubtaskAPI(self.address)
         subtask_info = self._subtask_info[subtask.subtask_id]
@@ -222,8 +226,7 @@ class SubtaskExecutionActor(mo.Actor):
                 subtask, subtask_info.supervisor_address, band_name)
             _store_size, calc_size = await asyncio.to_thread(
                 self._estimate_sizes, subtask, input_sizes)
-            if subtask_info.cancelling:
-                raise asyncio.CancelledError
+            self._check_cancelling(subtask_info)
 
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
 
@@ -246,6 +249,12 @@ class SubtaskExecutionActor(mo.Actor):
             if subtask_info.cancelling:
                 raise asyncio.CancelledError
         except asyncio.CancelledError as ex:
+            # make sure allocated slots are traced
+            if slot_id is None:  # pragma: no cover
+                slot_id = await slot_manager_ref.get_subtask_slot(
+                    (subtask.session_id, subtask.subtask_id)
+                )
+
             if slot_id is not None:
                 cancel_task = asyncio.create_task(subtask_api.cancel_subtask_in_slot(band_name, slot_id))
                 try:
@@ -257,17 +266,22 @@ class SubtaskExecutionActor(mo.Actor):
                 except asyncio.TimeoutError:
                     slot_manager_ref = await self._get_slot_manager_ref(subtask_info.band_name)
                     yield slot_manager_ref.kill_slot(slot_id)
+
+                    # may encounter subprocess memory error
+                    sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
+                    await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
                     # since slot is restored, it is not occupied by now
                     slot_id = None
 
-                    try:
-                        yield run_aiotask
-                    except ServerClosed:
-                        pass
             subtask_info.result.status = SubtaskStatus.cancelled
             subtask_info.result.progress = 1.0
             raise ex
         except:  # noqa: E722  # pylint: disable=bare-except
+            if slot_id is not None:
+                # may encounter subprocess memory error
+                sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
+                await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
+
             logger.exception('Failed to run subtask %s on band %s', subtask.subtask_id, band_name)
             _, exc, tb = sys.exc_info()
             subtask_info.result.status = SubtaskStatus.errored
@@ -279,7 +293,7 @@ class SubtaskExecutionActor(mo.Actor):
                 subtask_info.result = yield run_aiotask
 
             if batch_quota_req:
-                await quota_ref.release_quotas(list(batch_quota_req.keys()))
+                await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
             if slot_id is not None:
                 await slot_manager_ref.release_free_slot(slot_id)
 
@@ -309,12 +323,14 @@ class SubtaskExecutionActor(mo.Actor):
             SubtaskExecutionInfo(task, band_name, supervisor_address)
         return task
 
-    async def cancel_subtask(self, subtask_id: str, kill_timeout: int = 5):
+    async def cancel_subtask(self, subtask_id: str,
+                             kill_timeout: Optional[int] = 5):
         try:
             subtask_info = self._subtask_info[subtask_id]
         except KeyError:
             return
 
+        kill_timeout = kill_timeout if self._enable_kill_slot else None
         if not subtask_info.cancelling:
             subtask_info.kill_timeout = kill_timeout
             subtask_info.cancelling = True
