@@ -180,7 +180,7 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
     >>> r2_score(y_true, y_pred)
     -3.0
     """
-    y_type, y_true, y_pred, multioutput = _check_reg_targets(
+    _, y_true, y_pred, multioutput = _check_reg_targets(
         y_true, y_pred, multioutput)
     check_consistent_length(y_true, y_pred, sample_weight)
 
