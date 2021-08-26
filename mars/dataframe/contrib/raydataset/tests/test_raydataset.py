@@ -31,15 +31,10 @@ ray = lazy_import('ray')
 ray_dataset = lazy_import('ray.data')
 ray_exp_dataset = lazy_import('ray.experimental.data')
 real_ray_dataset = ray_dataset or ray_exp_dataset
-
 try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
     xgboost_ray = None
-try:
-    import sklearn
-except ImportError:  # pragma: no cover
-    sklearn = None
 
 
 @pytest.fixture
@@ -75,7 +70,6 @@ async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_op
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
 @pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
