@@ -63,7 +63,9 @@ class TaskDetail extends React.Component {
                             />
                             <Grid item xs={12} sm={6}>
                                 <Grid item xs={12}>
-                                    <TileableDetail tileable={this.state.selectedTileable} />
+                                    <TileableDetail
+                                        tileable={this.state.selectedTileable}
+                                    />
                                 </Grid>
                             </Grid>
                         </Grid>

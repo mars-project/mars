@@ -72,10 +72,19 @@ async def test_meta_mock_api(obj):
         assert meta['index'] == chunk.index
         assert meta['bands'] == [(pool.external_address, 'numa-0')]
 
-        await meta_api.add_chunk_bands(chunk.key, [('1.2.3.4:1234', 'numa-0')])
-        meta = await meta_api.get_chunk_meta(chunk.key,
-                                             fields=['bands'])
-        assert ('1.2.3.4:1234', 'numa-0') in meta['bands']
+        for i in range(2):
+            band = (f'1.2.3.{i}:1234', 'numa-0')
+            await meta_api.add_chunk_bands(chunk.key, [band])
+            meta = await meta_api.get_chunk_meta(chunk.key,
+                                                 fields=['bands'])
+            assert band in meta['bands']
+        meta = await meta_api.get_chunk_meta(chunk.key, fields=['bands'])
+        band = meta['bands'][0]
+        chunks = await meta_api.get_band_chunks(band)
+        assert chunk.key in chunks
+        await meta_api.remove_chunk_bands(chunk.key, [band])
+        meta = await meta_api.get_chunk_meta(chunk.key, fields=['bands'])
+        assert band not in meta['bands']
 
         await meta_api.del_chunk_meta(chunk.key)
         with pytest.raises(KeyError):

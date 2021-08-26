@@ -60,7 +60,7 @@ class FIFOStrategy(SpillStrategy):
         self._data_sizes[key] = data_size
 
     def record_delete_info(self, key):
-        self._data_sizes.pop(key)
+        self._data_sizes.pop(key, None)
         if key in self._spilling_keys:
             self._spilling_keys.remove(key)
 

@@ -49,6 +49,8 @@ TileableDetail.propTypes = {
         tileableId: PropTypes.string,
         tileableName: PropTypes.string,
     }),
+    sessionId: PropTypes.string.isRequired,
+    taskId: PropTypes.string.isRequired,
 };
 
 export default TileableDetail;
