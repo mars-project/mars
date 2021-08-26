@@ -430,6 +430,14 @@ async def test_get_subtasks(start_test_service):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
 
+    def f(*_args, raises=False):
+        get_context().set_progress(0.5)
+        if raises:
+            raise ValueError
+        progress_controller = get_context().get_remote_object('progress_controller')
+        progress_controller.wait()
+        get_context().set_progress(1.0)
+
     r5 = mr.spawn(f, args=(0,))
     r6 = mr.spawn(f, args=(r5,))
 
