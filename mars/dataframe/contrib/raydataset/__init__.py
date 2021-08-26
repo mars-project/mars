@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .mldataset import to_ray_mldataset, ChunkRefBatch
+from .dataset import to_ray_dataset, get_chunk_refs
