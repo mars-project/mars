@@ -416,10 +416,11 @@ class DictField(Field):
                  key_type: AbstractFieldType = None,
                  value_type: AbstractFieldType = None,
                  default: Any = _notset,
+                 default_factory: Optional[Callable] = None,
                  on_serialize: Callable[[Any], Any] = None,
                  on_deserialize: Callable[[Any], Any] = None):
-        super().__init__(tag, default=default, on_serialize=on_serialize,
-                         on_deserialize=on_deserialize)
+        super().__init__(tag, default=default, default_factory=default_factory,
+                         on_serialize=on_serialize, on_deserialize=on_deserialize)
         self._field_type = DictType(key_type, value_type)
 
     @property
