@@ -624,11 +624,11 @@ class TaskProcessorActor(mo.Actor):
 
                         if subtaskResult.status == {SubtaskStatus.succeeded}:
                             status = SubtaskStatus.succeeded
-                        elif status == {SubtaskStatus.cancelled}:
+                        elif subtaskResult.status == {SubtaskStatus.cancelled}:
                             status = SubtaskStatus.cancelled
-                        elif status == {SubtaskStatus.pending}:
+                        elif subtaskResult.status == {SubtaskStatus.pending}:
                             status = SubtaskStatus.pending
-                        elif status == SubtaskStatus.errored:
+                        elif subtaskResult.status == SubtaskStatus.errored:
                             status = SubtaskStatus.errored
                         else:
                             status = SubtaskStatus.running
@@ -640,7 +640,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_list.append({
                         'subtaskId': subtask.subtask_id,
                         'subtaskProgress': progress,
-                        'status': status
+                        'status': status.value
                     })
                 break
 
