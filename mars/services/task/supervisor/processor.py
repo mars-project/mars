@@ -634,7 +634,6 @@ class TaskProcessorActor(mo.Actor):
                         else:
                             status = SubtaskStatus.running
 
-
                     # since the number of subtasks is large, we will not
                     # display the name of subtasks and hence we won't return
                     # the subtask_name field
