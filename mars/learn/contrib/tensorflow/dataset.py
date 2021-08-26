@@ -14,7 +14,7 @@
 
 
 import copy
-from typing import List
+from typing import List, Tuple
 
 import pandas as pd
 import numpy as np
@@ -34,13 +34,13 @@ ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
 
 @require_not_none(tf)
 class MarsDataset:
-    def __init__(self, *tileable,
+    def __init__(self, tensors,
                  output_shapes = None,
                  output_types = None,
                  fetch_kwargs=None):
 
         self._context = get_context()
-        self._tileable = tileable
+        self._tensors = tensors
         self._output_shapes = output_shapes
         self._output_types = output_types
         self._fetch_kwargs = fetch_kwargs or dict()
@@ -48,23 +48,27 @@ class MarsDataset:
         self._check_and_convert()
 
     def _check_and_convert(self):
-        for t in self._tileable:
+        if not isinstance(self._tensors, Tuple):
+            self._tensors = (self._tensors,)
+        for t in self._tensors:
             if not isinstance(t, ACCEPT_TYPE):
                 raise TypeError(f"Unexpected dataset type: {type(t)}")
 
         if not self._output_shapes:
             get_shape = lambda t: tuple(()) if isinstance(t, (List, SERIES_TYPE, pd.Series)) \
                                   else t.shape[1:]
-            self._output_shapes = tuple(get_shape(t) for t in self._tileable)
+            self._output_shapes = get_shape(self._tensors[0]) if len(self._tensors) == 1 else \
+                                  tuple(get_shape(t) for t in self._tensors)
 
         if not self._output_types:
             get_type = lambda t: type(t[0]) if isinstance(t, List) else \
                                  t[0].dtype if isinstance(t, (DATAFRAME_TYPE, pd.DataFrame)) \
                                  else t.dtype
-            self._output_types = tuple(tf.as_dtype(get_type(t)) for t in self._tileable)
+            self._output_types = get_type(self._tensors[0]) if len(self._tensors) == 1 else \
+                                 tuple(tf.as_dtype(get_type(t)) for t in self._tensors)
 
     def _execute(self):
-        execute_data = [t for t in self._tileable if isinstance(t, ACCEPT_TYPE[:3])]
+        execute_data = [t for t in self._tensors if isinstance(t, ACCEPT_TYPE[:3])]
 
         if len(execute_data) > 0:
             execute(execute_data)
@@ -99,11 +103,11 @@ class MarsDataset:
                 self._execute()
                 self._executed = True
 
-            for i in range(len(self._tileable[0])):
-                # print(f"len(self._tileable[0]): {len(self._tileable[0])}")
-                # print(f"len(self._tileable): {len(self._tileable)}")
-                # print(tuple(self.get_data(t, i) for t in self._tileable))
-                yield tuple(self.get_data(t, i) for t in self._tileable)
+            for i in range(len(self._tensors[0])):
+                if len(self._tensors) == 1:
+                    yield self.get_data(self._tensors[0], i)
+                else:
+                    yield tuple(self.get_data(t, i) for t in self._tensors)
 
         return tf.data.Dataset.from_generator(
             make_generator,
@@ -112,7 +116,7 @@ class MarsDataset:
         )
 
 
-def gen_tensorflow_dataset(*tileable,
+def gen_tensorflow_dataset(tensors,
                  output_shapes = None,
                  output_types = None,
                  fetch_kwargs=None):
@@ -121,7 +125,7 @@ def gen_tensorflow_dataset(*tileable,
 
     Parameters
     ----------
-    tileable: Mars data type
+    tensors: a tuple consisting of Mars data type
         the data that convert to tf.data.dataset
     output_shapes:
         A (nested) structure of `tf.TensorShape` objects corresponding to
@@ -132,7 +136,7 @@ def gen_tensorflow_dataset(*tileable,
     fetch_kwargs:
         the parameters of mars object executes fetch() operation.
     """
-    mars_dataset = MarsDataset(*tileable, output_shapes=output_shapes,
+    mars_dataset = MarsDataset(tensors, output_shapes=output_shapes,
                                output_types=output_types, fetch_kwargs=fetch_kwargs)
 
     return mars_dataset.to_tf()

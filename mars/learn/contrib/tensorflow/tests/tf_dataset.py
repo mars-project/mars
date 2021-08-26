@@ -37,7 +37,7 @@ def train(feature_data, labels):
     data = feature_data
     labels = labels
 
-    db_train = gen_tensorflow_dataset(data, labels)
+    db_train = gen_tensorflow_dataset((data, labels))
     assert isinstance(db_train, DatasetV2)
     db_train = db_train.batch(32)
 
