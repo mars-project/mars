@@ -615,17 +615,32 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(subtask.subtask_id)
 
                     subtaskResult = subtask_results[subtask.subtask_id]
+
                     if not subtaskResult:
                         progress = 1.0
+                        status = SubtaskStatus.succeeded
                     else:
                         progress = subtaskResult.progress
+
+                        if subtaskResult.status == {SubtaskStatus.succeeded}:
+                            status = SubtaskStatus.succeeded
+                        elif status == {SubtaskStatus.cancelled}:
+                            status = SubtaskStatus.cancelled
+                        elif status == {SubtaskStatus.pending}:
+                            status = SubtaskStatus.pending
+                        elif status == SubtaskStatus.errored:
+                            status = SubtaskStatus.errored
+                        else:
+                            status = SubtaskStatus.running
+
 
                     # since the number of subtasks is large, we will not
                     # display the name of subtasks and hence we won't return
                     # the subtask_name field
                     subtask_list.append({
                         'subtaskId': subtask.subtask_id,
-                        'subtaskProgress': progress
+                        'subtaskProgress': progress,
+                        'status': status
                     })
                 break
 

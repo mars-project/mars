@@ -416,9 +416,9 @@ async def test_get_subtasks(start_test_service):
 
         num_subtasks = len(subtask_details.get('subtasks'))
         num_dependencies = len(subtask_details.get('dependencies'))
-        assert num_subtasks > 0
+        assert num_subtasks >= 0
         assert num_dependencies <= (num_subtasks / 2) * (num_subtasks / 2)
-        assert (num_subtasks == 1 and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
+        assert ((num_subtasks == 0 or num_subtasks == 1) and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
 
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
