@@ -592,6 +592,7 @@ class TaskProcessorActor(mo.Actor):
         tileable_to_subtasks = dict()
         subtask_results = dict()
         returned_subtasks = set()
+        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
         subtask_list = []
         dependency_list = []
@@ -614,7 +615,7 @@ class TaskProcessorActor(mo.Actor):
                         continue
                     returned_subtasks.add(subtask.subtask_id)
 
-                    subtaskResult = subtask_results[subtask.subtask_id]
+                    subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
 
                     if not subtaskResult:
                         progress = 1.0
