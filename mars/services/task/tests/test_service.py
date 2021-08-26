@@ -407,7 +407,7 @@ async def test_get_subtasks(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_subtasks('non_exist')
+        await task_api.get_tileable_subtasks('non_exist', 'non_exist')
 
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
 
