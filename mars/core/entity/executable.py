@@ -135,6 +135,13 @@ class _ExecutableMixin:
         return fetch_log(self, session=session,
                          offsets=offsets, sizes=sizes)[0]
 
+    def _fetch_infos(self, fields=None, session=None, **kw):
+        from ...deploy.oscar.session import fetch_infos
+
+        session = _get_session(self, session)
+        self._check_session(session, 'fetch_infos')
+        return fetch_infos(self, fields=fields, session=session, **kw)
+
     def _attach_session(self, session: SessionType):
         if session not in self._executed_sessions:
             _cleaner.register(self, session)
@@ -228,6 +235,13 @@ class ExecutableTuple(tuple, _ExecutableMixin, _ToObjectMixin):
         session = _get_session(self, session)
         self._check_session(session, 'fetch')
         return fetch(*self, session=session, **kw)
+
+    def _fetch_infos(self, fields=None, session=None, **kw):
+        from ...deploy.oscar.session import fetch_infos
+
+        session = _get_session(self, session)
+        self._check_session(session, 'fetch_infos')
+        return fetch_infos(*self, fields=fields, session=session, **kw)
 
     def fetch(self, session: SessionType = None, **kw):
         if len(self) == 0:

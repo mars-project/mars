@@ -41,6 +41,7 @@ from typing import Any, List, Dict, Set, Tuple, Type, Union, Callable, Optional
 
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator
 
 from ._utils import to_binary, to_str, to_text, TypeDispatcher, \
     tokenize, tokenize_int, register_tokenizer, insert_reversed_tuple, ceildiv
@@ -523,7 +524,7 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
                                  group_keys=v.group_keys, squeeze=v.squeeze,
                                  observed=v.observed, mutated=v.mutated)
         return grouped.groupby_obj
-    elif isinstance(v, (str, bytes, memoryview)):
+    elif isinstance(v, (str, bytes, memoryview, BaseEstimator)):
         result = [r[1] for r in chunk_results]
         if len(result) == 1:
             return result[0]

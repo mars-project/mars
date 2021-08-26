@@ -76,6 +76,22 @@ Matrix Decomposition
    decomposition.PCA
    decomposition.TruncatedSVD
 
+.. _ensemble_ref:
+
+Ensemble Methods
+================
+
+.. automodule:: mars.learn.metrics
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   ensemble.BlockwiseVotingClassifier
+   ensemble.BlockwiseVotingRegressor
 
 .. _metrics_ref:
 
@@ -97,6 +113,15 @@ Classification metrics
    metrics.accuracy_score
    metrics.auc
    metrics.roc_curve
+
+Regression metrics
+------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   metrics.r2_score
+
 
 Pairwise metrics
 ----------------
