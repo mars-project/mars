@@ -528,6 +528,9 @@ class _BatchedFetcher:
                                       session=session, **kw))
             return pd.concat(batches) if len(batches) > 1 else batches[0]
 
+    def fetch_infos(self, fields=None, session=None, **kw):
+        return self._fetch_infos(fields=fields, session=session, **kw)
+
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):
     __slots__ = ()
