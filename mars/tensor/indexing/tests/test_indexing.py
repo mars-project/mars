@@ -27,7 +27,7 @@ from mars.tensor.indexing import choose, unravel_index, nonzero, \
 from mars.tensor.indexing.setitem import TensorIndexSetValue
 from mars.tensor.merge.concatenate import TensorConcatenate
 
-    
+
 def test_bool_indexing():
     t = ones((100, 200, 300))
     indexed = t[t < 2]

@@ -386,13 +386,6 @@ DELETE = 740
 
 FUSE = 801
 
-# control
-ENTER = 901
-LEAVE = 902
-FIX_LATEST = 903
-IF_ELSE = 904
-NEXT_ITER = 905
-
 # table like input for tensor
 TABLE_COO = 1003
 # store tensor as coo format

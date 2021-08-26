@@ -23,7 +23,7 @@ import mars.oscar as mo
 import mars.remote as mr
 import mars.tensor as mt
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services import start_services, NodeRole
+from mars.services import start_services, stop_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.scheduling import SchedulingAPI
 from mars.services.scheduling.supervisor import GlobalSlotManagerActor
@@ -99,8 +99,8 @@ async def actor_pools():
     )
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle", "task",
-                     "scheduling", "subtask"],
+        "services": ["cluster", "session", "meta", "lifecycle",
+                     "scheduling", "subtask", "task"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -129,10 +129,17 @@ async def actor_pools():
         address=sv_pool.external_address)
     await MockStorageAPI.create(session_id, worker_pool.external_address)
 
-    yield sv_pool, worker_pool, session_id, task_manager_ref
+    try:
+        yield sv_pool, worker_pool, session_id, task_manager_ref
+    finally:
+        await session_api.delete_session(session_id)
+        await MockStorageAPI.cleanup(worker_pool.external_address)
+        await stop_services(
+            NodeRole.WORKER, config, address=worker_pool.external_address)
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
 
-    await session_api.delete_session(session_id)
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
 @pytest.mark.asyncio

@@ -20,6 +20,7 @@ from .base.cut import cut
 from .base.eval import mars_eval as eval  # pylint: disable=redefined-builtin
 from .base.melt import melt
 from .base.qcut import qcut
+from .base.to_numeric import to_numeric
 from .datasource.from_tensor import dataframe_from_tensor, series_from_tensor
 from .datasource.from_index import series_from_index
 from .datasource.from_records import from_records

@@ -242,6 +242,9 @@ def get_next_port(typ: int = None,
 
     occupied.update(_local_occupied_ports)
     randn = struct.unpack('<Q', os.urandom(8))[0]
+    random.seed(int(time.time() * 1000000) | randn)
+    randn = random.randint(0, 100000000)
+
     idx = int(randn % (1 + HIGH_PORT_BOUND - LOW_PORT_BOUND - len(occupied)))
     for i in range(LOW_PORT_BOUND, HIGH_PORT_BOUND + 1):
         if i in occupied:
@@ -586,19 +589,6 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
-def numpy_dtype_from_descr_json(obj: Union[list, np.dtype]) -> np.dtype:
-    """
-    Construct numpy dtype from it's np.dtype.descr.
-
-    The dtype can be trivial, but can also be very complex (nested) record type. In that
-    case, the tuple in `descr` will be made as `list`, which can be understood by `np.dtype()`.
-    This utility helps the reconstruct work.
-    """
-    if isinstance(obj, list):
-        return np.dtype([(k, numpy_dtype_from_descr_json(v)) for k, v in obj])
-    return obj
-
-
 def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
     for tileable in tiled_tileables:
         if getattr(tileable, 'shape', None) is None:
@@ -919,6 +909,13 @@ def is_object_dtype(dtype: np.dtype) -> bool:
                or np.issubdtype(dtype, np.bytes_)
     except TypeError:  # pragma: no cover
         return False
+
+
+def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
+    if pd.api.types.is_extension_array_dtype(dtype):
+        return dtype
+    else:
+        return np.dtype(dtype)
 
 
 def calc_object_overhead(chunk: ChunkType,
@@ -1260,3 +1257,91 @@ def get_chunk_key_to_data_keys(chunk_graph):
                             keys.append(key)
             chunk_key_to_data_keys[chunk.key] = keys
     return chunk_key_to_data_keys
+
+
+class ModulePlaceholder:
+    def __init__(self, mod_name: str):
+        self._mod_name = mod_name
+
+    def _raises(self):
+        raise AttributeError(f'{self._mod_name} is required but not installed.')
+
+    def __getattr__(self, key):
+        self._raises()
+
+    def __call__(self, *_args, **_kwargs):
+        self._raises()
+
+
+def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):
+    """
+    Merges src dict into dest dict.
+
+    Parameters
+    ----------
+    dest: Dict
+        dest dict
+    src: Dict
+        source dict
+    path: List
+        merge path
+    overwrite: bool
+        Whether overwrite dest dict when where is a conflict
+    Returns
+    -------
+    Dict
+        Updated dest dict
+    """
+    if path is None:
+        path = []
+    for key in src:
+        if key in dest:
+            if isinstance(dest[key], Dict) and isinstance(src[key], Dict):
+                merge_dict(dest[key], src[key], path + [str(key)], overwrite=overwrite)
+            elif dest[key] == src[key]:
+                pass  # same leaf value
+            elif overwrite:
+                dest[key] = src[key]
+            else:
+                raise ValueError('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            dest[key] = src[key]
+    return dest
+
+
+def flatten_dict_to_nested_dict(flatten_dict: Dict, sep='.') -> Dict:
+    """
+    Return nested dict from flatten dict.
+
+    Parameters
+    ----------
+    flatten_dict: Dict
+    sep: str
+        flatten key separator
+
+    Returns
+    -------
+    Dict
+        Nested dict
+    """
+    assert all(isinstance(k, str) for k in flatten_dict.keys())
+    nested_dict = dict()
+    # longest path first to avoid shorter path has a leaf key with value dict
+    # as sub dict by mistake.
+    keys = sorted(flatten_dict.keys(), key=lambda k: -len(k.split(sep)))
+    for k in keys:
+        sub_keys = k.split(sep)
+        sub_nested_dict = nested_dict
+        for i, sub_key in enumerate(sub_keys):
+            if i == len(sub_keys) - 1:
+                if sub_key in sub_nested_dict:
+                    raise ValueError(f'Key {k} conflict in sub key {sub_key}.')
+                sub_nested_dict[sub_key] = flatten_dict[k]
+            else:
+                if sub_key not in sub_nested_dict:
+                    new_sub_nested_dict = dict()
+                    sub_nested_dict[sub_key] = new_sub_nested_dict
+                    sub_nested_dict = new_sub_nested_dict
+                else:
+                    sub_nested_dict = sub_nested_dict[sub_key]
+    return nested_dict

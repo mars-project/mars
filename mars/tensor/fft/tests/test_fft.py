@@ -21,7 +21,7 @@ from mars.tensor.datasource import ones
 from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, irfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift
 
-    
+
 def test_standard_fft():
     t = ones((10, 20, 30), chunk_size=(3, 20, 30))
 

@@ -37,7 +37,7 @@ class SubtaskScheduleInfo:
 
 
 class SubtaskManagerActor(mo.Actor):
-    _subtask_infos: Dict[str, SubtaskScheduleInfo]
+    _subtask_infos: Dict[str, SubtaskScheduleInfo]  # key is subtask id
 
     @classmethod
     def gen_uid(cls, session_id: str):

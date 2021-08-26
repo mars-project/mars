@@ -26,7 +26,7 @@ class AbstractClusterAPI:
                        exclude_statuses: Set[NodeStatus] = None) -> Set[NodeStatus]:
         if statuses:
             return statuses
-        elif exclude_statuses:
+        elif exclude_statuses is not None:
             return set(NodeStatus.__members__.values()).difference(exclude_statuses)
         else:
             return {NodeStatus.READY}

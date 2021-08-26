@@ -12,34 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from typing import Dict
-
 from .... import oscar as mo
+from ...core import AbstractService
 from .core import SessionManagerActor
 
 
-async def start(config: Dict, address: str):
+class SessionSupervisorService(AbstractService):
     """
-    Start session service on supervisor.
+    Session service on supervisor.
 
-    Parameters
-    ----------
-    config : dict
-        service config.
-        {
-            "session" : {
-            }
+    Session Configuration
+    ---------------------
+    {
+        "session" : {
         }
-    address : str
-        Actor pool address.
+    }
     """
-    await mo.create_actor(SessionManagerActor, config,
-                          uid=SessionManagerActor.default_uid(),
-                          address=address)
+    async def start(self):
+        await mo.create_actor(SessionManagerActor, self._config,
+                              uid=SessionManagerActor.default_uid(),
+                              address=self._address)
 
-
-async def stop(config: dict, address: str):
-    await mo.destroy_actor(mo.create_actor_ref(
-        uid=SessionManagerActor.default_uid(), address=address
-    ))
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            uid=SessionManagerActor.default_uid(), address=self._address
+        ))

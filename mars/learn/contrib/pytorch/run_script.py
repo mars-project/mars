@@ -57,17 +57,19 @@ class RunPyTorch(RunScript):
         ctx = get_context()
 
         workers = pick_workers(ctx.get_worker_addresses(), op.world_size)
+        data, input_chunks = cls._get_chunk_data(op)
 
         out_chunks = []
         for i in range(op.world_size):
             chunk_op = op.copy().reset_key()
+            chunk_op._data = data
             chunk_op.expect_worker = workers[i]
             if op.init_method is None:
                 chunk_op._master_port = op.master_port
                 chunk_op._master_addr = workers[0].split(':', 1)[0]
             chunk_op._rank = i
             chunk_op._init_method = op.init_method
-            out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
+            out_chunks.append(chunk_op.new_chunk(input_chunks, index=(i,)))
 
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, chunks=out_chunks,

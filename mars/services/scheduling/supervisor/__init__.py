@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from .assigner import AssignerActor
+from .autoscale import AutoscalerActor
 from .globalslot import GlobalSlotManagerActor
 from .manager import SubtaskManagerActor
 from .queueing import SubtaskQueueingActor
-from .service import start, stop
+from .service import SchedulingSupervisorService
