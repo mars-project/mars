@@ -16,4 +16,4 @@ from .execution import SubtaskExecutionActor
 from .quota import QuotaActor, MemQuotaActor, WorkerQuotaManagerActor
 from .workerslot import WorkerSlotManagerActor, BandSlotManagerActor, \
     BandSlotControlActor
-from .service import SchedulingWorkerService
+from .service import start, stop

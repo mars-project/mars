@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-23 16:36+0800\n"
+"POT-Creation-Date: 2021-08-04 16:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.7.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/reference/learn/reference.rst:5
 msgid "Mars Learn"
@@ -235,349 +235,270 @@ msgid ""
 "<mars.learn.metrics.pairwise_distances>`\\ \\(X\\[\\, Y\\, metric\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:124
-msgid "Model Selection"
-msgstr "模型选择"
-
-#: ../../source/reference/learn/reference.rst:127
-msgid "Splitter Classes"
-msgstr "划分类"
-
-#: ../../source/reference/learn/reference.rst:135:<autosummary>:1
-msgid ""
-":obj:`model_selection.KFold <mars.learn.model_selection.KFold>`\\ "
-"\\(\\[n\\_splits\\, shuffle\\, ...\\]\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:135:<autosummary>:1
-msgid "K-Folds cross-validator"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:137
+#: ../../source/reference/learn/reference.rst:122
 msgid "Splitter Functions"
-msgstr "划分函数"
+msgstr ""
 
-#: ../../source/reference/learn/reference.rst:145:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:130:<autosummary>:1
 msgid ""
 ":obj:`model_selection.train_test_split "
 "<mars.learn.model_selection.train_test_split>`\\ \\(\\*arrays\\, ...\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:145:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:130:<autosummary>:1
 msgid "Split arrays or matrices into random train and test subsets"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:149
+#: ../../source/reference/learn/reference.rst:134
 msgid "Nearest Neighbors"
 msgstr "最邻近"
 
-#: ../../source/reference/learn/reference.rst:161:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:146:<autosummary>:1
 msgid ""
 ":obj:`neighbors.NearestNeighbors "
 "<mars.learn.neighbors.NearestNeighbors>`\\ \\(\\[n\\_neighbors\\, "
 "...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:165
+#: ../../source/reference/learn/reference.rst:150
 msgid "Preprocessing and Normalization"
 msgstr "预处理和标准化"
 
-#: ../../source/reference/learn/reference.rst:179:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:164:<autosummary>:1
 msgid ""
 ":obj:`preprocessing.MinMaxScaler "
 "<mars.learn.preprocessing.MinMaxScaler>`\\ \\(\\[feature\\_range\\, "
 "...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:179:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:164:<autosummary>:1
 msgid "Transform features by scaling each feature to a given range."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:179:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:164:<autosummary>:1
 msgid ""
 ":obj:`preprocessing.minmax_scale "
 "<mars.learn.preprocessing.minmax_scale>`\\ \\(X\\[\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:179:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:164:<autosummary>:1
 msgid ""
 ":obj:`preprocessing.normalize <mars.learn.preprocessing.normalize>`\\ "
 "\\(X\\[\\, norm\\, axis\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:179:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:164:<autosummary>:1
 msgid "Scale input vectors individually to unit norm (vector length)."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:183
+#: ../../source/reference/learn/reference.rst:168
 msgid "Semi-Supervised Learning"
 msgstr "半监督学习"
 
-#: ../../source/reference/learn/reference.rst:195:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:180:<autosummary>:1
 msgid ""
 ":obj:`semi_supervised.LabelPropagation "
 "<mars.learn.semi_supervised.LabelPropagation>`\\ \\(\\[kernel\\, "
 "...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:195:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:180:<autosummary>:1
 msgid "Label Propagation classifier"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:199
+#: ../../source/reference/learn/reference.rst:184
 msgid "Utilities"
 msgstr "工具"
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.assert_all_finite <mars.learn.utils.assert_all_finite>`\\ "
 "\\(X\\[\\, allow\\_nan\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.check_X_y <mars.learn.utils.check_X_y>`\\ \\(X\\, y\\[\\, "
 "accept\\_sparse\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Input validation for standard estimators."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.check_array <mars.learn.utils.check_array>`\\ \\(array\\[\\, "
 "accept\\_sparse\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Input validation on a tensor, list, sparse matrix or similar."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.check_consistent_length "
 "<mars.learn.utils.check_consistent_length>`\\ \\(\\*arrays\\[\\, "
 "...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Check that all arrays have consistent first dimensions."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.multiclass.type_of_target "
 "<mars.learn.utils.multiclass.type_of_target>`\\ \\(y\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Determine the type of data indicated by the target."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.multiclass.is_multilabel "
 "<mars.learn.utils.multiclass.is_multilabel>`\\ \\(y\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Check if ``y`` is in a multilabel format."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.shuffle <mars.learn.utils.shuffle>`\\ \\(\\*arrays\\, "
 "\\*\\*options\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.validation.check_is_fitted "
 "<mars.learn.utils.validation.check_is_fitted>`\\ \\(estimator\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Perform is_fitted validation for estimator."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid ""
 ":obj:`utils.validation.column_or_1d "
 "<mars.learn.utils.validation.column_or_1d>`\\ \\(y\\[\\, warn\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:219:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:204:<autosummary>:1
 msgid "Ravel column or 1d numpy array, else raises an error"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:223
+#: ../../source/reference/learn/reference.rst:208
 msgid "LightGBM Integration"
 msgstr "LightGBM 集成"
 
-#: ../../source/reference/learn/reference.rst:237:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMClassifier "
-"<mars.learn.contrib.lightgbm.LGBMClassifier>`\\ \\(\\*args\\, "
-"\\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMClassifier>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:237:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMRegressor "
-"<mars.learn.contrib.lightgbm.LGBMRegressor>`\\ \\(\\*args\\, "
-"\\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMRegressor>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:237:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:222:<autosummary>:1
 msgid ""
 ":obj:`contrib.lightgbm.LGBMRanker "
-"<mars.learn.contrib.lightgbm.LGBMRanker>`\\ \\(\\*args\\, \\*\\*kwargs\\)"
+"<mars.learn.contrib.lightgbm.LGBMRanker>`\\ \\(\\*\\_\\, \\*\\*\\_\\_\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:241
+#: ../../source/reference/learn/reference.rst:226
 msgid "PyTorch Integration"
 msgstr "PyTorch 集成"
 
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:241:<autosummary>:1
 msgid ""
 ":obj:`contrib.pytorch.run_pytorch_script "
 "<mars.learn.contrib.pytorch.run_pytorch_script>`\\ \\(script\\, ...\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:241:<autosummary>:1
 msgid "Run PyTorch script in Mars cluster."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.MarsDataset "
-"<mars.learn.contrib.pytorch.MarsDataset>`\\ \\(\\*tileables\\[\\, "
-"...\\]\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid "MarsDataset that inherit from torch.utils.data.Dataset."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.SequentialSampler "
-"<mars.learn.contrib.pytorch.SequentialSampler>`\\ \\(data\\_source\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid "\"Samples elements sequentially, always in the same order."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.RandomSampler "
-"<mars.learn.contrib.pytorch.RandomSampler>`\\ \\(data\\_source\\[\\, "
-"...\\]\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid "\""
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.SubsetRandomSampler "
-"<mars.learn.contrib.pytorch.SubsetRandomSampler>`\\ \\(indices\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-"Samples elements randomly from a given list of indices, without "
-"replacement."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid ""
-":obj:`contrib.pytorch.DistributedSampler "
-"<mars.learn.contrib.pytorch.DistributedSampler>`\\ \\(dataset\\)"
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
-msgid "Sampler that restricts data loading to a subset of the dataset."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:262
+#: ../../source/reference/learn/reference.rst:245
+#, fuzzy
 msgid "StatsModels Integration"
-msgstr "StatsModels 集成"
+msgstr "XGBoost 集成"
 
-#: ../../source/reference/learn/reference.rst:275:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
 msgid ""
 ":obj:`contrib.statsmodels.MarsDistributedModel "
 "<mars.learn.contrib.statsmodels.MarsDistributedModel>`\\ \\(\\[...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:275:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:258:<autosummary>:1
 msgid ""
 ":obj:`contrib.statsmodels.MarsResults "
 "<mars.learn.contrib.statsmodels.MarsResults>`\\ \\(model\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:279
+#: ../../source/reference/learn/reference.rst:262
 msgid "TensorFlow Integration"
 msgstr "TensorFlow 集成"
 
-#: ../../source/reference/learn/reference.rst:291:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:274:<autosummary>:1
 msgid ""
 ":obj:`contrib.tensorflow.run_tensorflow_script "
 "<mars.learn.contrib.tensorflow.run_tensorflow_script>`\\ \\(...\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:291:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:274:<autosummary>:1
 msgid "Run TensorFlow script in Mars cluster."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:295
+#: ../../source/reference/learn/reference.rst:278
 msgid "XGBoost Integration"
 msgstr "XGBoost 集成"
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.MarsDMatrix "
 "<mars.learn.contrib.xgboost.MarsDMatrix>`\\ \\(data\\[\\, label\\, "
 "...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.train <mars.learn.contrib.xgboost.train>`\\ "
 "\\(params\\, dtrain\\[\\, evals\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid "Train XGBoost model in Mars manner."
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.predict <mars.learn.contrib.xgboost.predict>`\\ "
 "\\(model\\, data\\[\\, ...\\]\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.XGBClassifier "
-"<mars.learn.contrib.xgboost.XGBClassifier>`\\ \\(\\[max\\_depth\\, "
-"...\\]\\)"
+"<mars.learn.contrib.xgboost.XGBClassifier>`\\ \\(\\*\\_\\, "
+"\\*\\*\\_\\_\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
-msgid "Implementation of the scikit-learn API for XGBoost classification."
-msgstr ""
-
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
+#: ../../source/reference/learn/reference.rst:293:<autosummary>:1
 msgid ""
 ":obj:`contrib.xgboost.XGBRegressor "
-"<mars.learn.contrib.xgboost.XGBRegressor>`\\ \\(\\[max\\_depth\\, "
-"...\\]\\)"
+"<mars.learn.contrib.xgboost.XGBRegressor>`\\ \\(\\*\\_\\, \\*\\*\\_\\_\\)"
 msgstr ""
 
-#: ../../source/reference/learn/reference.rst:310:<autosummary>:1
-msgid "Implementation of the scikit-learn API for XGBoost regressor."
-msgstr ""

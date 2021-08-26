@@ -114,14 +114,8 @@ Mars learn provides a familiar interface like scikit-learn.
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 
-Mars learn also integrates with many libraries:
-
-- :ref:`TensorFlow <integrate_tensorflow>`
-- :ref:`PyTorch <integrate_pytorch>`
-- :ref:`XGBoost <integrate_xgboost>`
-- :ref:`LightGBM <integrate_lightgbm>`
-- :ref:`Joblib <integrate_joblib>`
-- :ref:`Statsmodels <integrate_statsmodels>`
+Mars learn has also integrated many libraries, including :ref:`tensorflow`,
+:ref:`xgboost`, :ref:`lightgbm`, :ref:`joblib` and :ref:`statsmodels`.
 
 Mars remote
 -----------

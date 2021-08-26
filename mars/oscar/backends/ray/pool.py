@@ -29,7 +29,6 @@ from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
 from ..router import Router
-from ... import ServerClosed
 from ....serialization.ray import register_ray_serializers
 from ....utils import lazy_import
 
@@ -175,8 +174,6 @@ class RayPoolBase(ABC):
     async def __on_ray_recv__(self, channel_id: ChannelID, message):
         """Method for communication based on ray actors"""
         try:
-            if self._ray_server is None:
-                raise ServerClosed(f'Remote server {channel_id.dest_address} closed')
             return await self._ray_server.__on_ray_recv__(channel_id, message)
         except Exception:  # pragma: no cover
             return RayChannelException(*sys.exc_info())

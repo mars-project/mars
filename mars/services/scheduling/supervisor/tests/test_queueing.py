@@ -76,14 +76,13 @@ async def actor_pool():
                                           address=pool.external_address)
         # create queueing actor
         queueing_ref = await mo.create_actor(SubtaskQueueingActor,
-                                             session_id,
+                                             session_id, 1,
                                              uid=SubtaskQueueingActor.gen_uid(session_id),
                                              address=pool.external_address)
-        try:
-            yield pool, session_id, queueing_ref, slots_ref, manager_ref
-        finally:
-            await mo.destroy_actor(queueing_ref)
-            await MockClusterAPI.cleanup(pool.external_address)
+
+        yield pool, session_id, queueing_ref, slots_ref, manager_ref
+
+        await mo.destroy_actor(queueing_ref)
 
 
 @pytest.mark.asyncio
@@ -96,7 +95,7 @@ async def test_subtask_queueing(actor_pool):
 
     await queueing_ref.add_subtasks(subtasks, priorities)
     # queue: [4 3 2 1 0]
-    assert await queueing_ref.all_bands_busy()
+
     await queueing_ref.submit_subtasks()
     # queue: [2 1 0]
     commited_subtask_ids, _commited_bands = await manager_ref.dump_data()
@@ -113,4 +112,3 @@ async def test_subtask_queueing(actor_pool):
     # queue: []
     commited_subtasks, _commited_bands = await manager_ref.dump_data()
     assert commited_subtasks == ['4', '3', '0', '2']
-    assert not await queueing_ref.all_bands_busy()

@@ -20,8 +20,8 @@ import pytest
 
 from mars.tensor.datasource import tensor, empty, eye, ones, zeros
 from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, array, block
-
-
+    
+    
 def test_concatenate_execution(setup):
     a_data = np.random.rand(10, 20, 30)
     b_data = np.random.rand(10, 20, 40)

@@ -1,4 +1,4 @@
-.. _integrate_lightgbm:
+.. _lightgbm:
 
 ***********************
 Integrate with LightGBM
@@ -167,4 +167,4 @@ Mars object with it by wrapping your model with Mars LightGBM classes:
    lg_reg = lgb.LGBMRegressor(raw_model)
 
    # training will submitted to cluster by default
-   lg_reg.predict(X_test)
+   lg_reg.fit(X_train)

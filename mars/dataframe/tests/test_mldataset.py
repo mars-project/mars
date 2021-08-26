@@ -18,7 +18,7 @@ import pandas as pd
 import pytest
 
 import mars.dataframe as md
-import mars.dataframe.contrib.raydataset as mdd
+import mars.dataframe.dataset as mdd
 from mars.deploy.oscar.ray import new_cluster, _load_config
 from mars.deploy.oscar.session import new_session
 from mars.tests.core import require_ray
@@ -26,20 +26,30 @@ from mars.utils import lazy_import
 
 
 ray = lazy_import('ray')
+ml_dataset = lazy_import('ray.util.data')
 # Ray Datasets is available in early preview at ray.data with Ray 1.6+
 # (and ray.experimental.data in Ray 1.5)
 ray_dataset = lazy_import('ray.data')
 ray_exp_dataset = lazy_import('ray.experimental.data')
-real_ray_dataset = ray_dataset or ray_exp_dataset
+xgboost_ray = lazy_import('xgboost_ray')
+sklearn = lazy_import('sklearn')
+sklearn_datasets = lazy_import('sklearn.datasets')
 
-try:
-    import xgboost_ray
-except ImportError:  # pragma: no cover
-    xgboost_ray = None
-try:
-    import sklearn
-except ImportError:  # pragma: no cover
-    sklearn = None
+
+# TODO: register custom marks
+def require_xgboost_ray(func):
+    if pytest:
+        func = pytest.mark.xgboost_ray(func)
+    func = pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')(func)
+    return func
+
+
+# TODO: register custom marks
+def require_sklearn(func):
+    if pytest:
+        func = pytest.mark.sklearn(func)
+    func = pytest.mark.skipif(sklearn is None, reason='sklearn not installed')(func)
+    return func
 
 
 @pytest.fixture
@@ -58,40 +68,63 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.parametrize('test_option', [[5, 5], [5, 4],
-                                         [None, None]])
-async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_option):
-    assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar', default=True)
-    with session:
-        value = np.random.rand(10, 10)
-        chunk_size, num_shards = test_option
-        df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
-        df.execute()
+async def test_dataset_related_classes(ray_large_cluster):
+    from mars.dataframe.dataset import RecordBatch, RayObjectPiece
+    # in order to pass checks
+    value = np.random.rand(10, 10)
+    df = pd.DataFrame(value)
+    if ray:
+        obj_ref = ray.put(df)
+        piece = RayObjectPiece(addr='address0', obj_ref=obj_ref)
+        data = piece.read()
+        pd.testing.assert_frame_equal(data, df)
 
-        ds = mdd.to_ray_dataset(df, num_shards=num_shards)
-        assert isinstance(ds, real_ray_dataset.Dataset)
+        batch = RecordBatch(shard_id=0,
+                            prefix='test_batch',
+                            record_pieces=[piece])
+        assert batch.shard_id == 0
+        assert batch.prefix == 'test_batch'
+        # only one data in batch
+        data = list(batch.__iter__())[0]
+        pd.testing.assert_frame_equal(data, df)
 
 
 @require_ray
 @pytest.mark.asyncio
-@pytest.mark.skipif(sklearn is None, reason='sklearn not installed')
-@pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')
+async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster):
+    assert create_cluster.session
+    session = new_session(address=create_cluster.address, backend='oscar', default=True)
+    with session:
+        value = np.random.rand(20, 10)
+        df: md.DataFrame = md.DataFrame(value, chunk_size=5)
+        df.execute()
+
+        ds = mdd.to_ray_dataset(df, num_shards=5)
+        real_ray_dataset = ray_dataset or ray_exp_dataset
+        if real_ray_dataset:
+            assert isinstance(ds, real_ray_dataset.Dataset)
+
+
+@require_ray
+@require_sklearn
+@require_xgboost_ray
+@pytest.mark.asyncio
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
-    from sklearn.datasets import load_breast_cancer
 
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
-        train_x, train_y = load_breast_cancer(return_X_y=True, as_frame=True)
+        train_x, train_y = sklearn_datasets.load_breast_cancer(return_X_y=True, as_frame=True)
         pd_df = pd.concat([train_x, train_y], axis=1)
         df: md.DataFrame = md.DataFrame(pd_df)
         df.execute()
 
         num_shards = 4
-        ds = mdd.to_ray_dataset(df)
-        assert isinstance(ds, real_ray_dataset.Dataset)
+        ds = mdd.to_ray_dataset(df, num_shards=num_shards)
+        real_ray_dataset = ray_dataset or ray_exp_dataset
+        if real_ray_dataset:
+            assert isinstance(ds, real_ray_dataset.Dataset)
 
         # train
         train_set = RayDMatrix(ds, "target")

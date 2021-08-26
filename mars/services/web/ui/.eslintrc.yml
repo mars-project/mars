@@ -16,7 +16,6 @@ rules:
   new-cap: 'error'
   semi: ['error', 'always']
   quotes: ['error', 'single']
-  no-var: 'error'
 settings:
   react:
     version: 'detect'

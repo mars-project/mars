@@ -20,7 +20,7 @@ import pandas as pd
 import pytest
 
 from mars.core import enter_mode
-from mars.dataframe.initializer import DataFrame, Series
+from mars.dataframe.initializer import DataFrame
 
 
 def test_comp(setup):
@@ -56,10 +56,3 @@ def test_comp(setup):
         r_df = op(df, datetime(2013, 1, 2))
         pd.testing.assert_index_equal(r_df.index_value.to_pandas(),
                                       df.index_value.to_pandas())
-
-    # test period type
-    raw = pd.period_range("2000-01-01", periods=10, freq="D")
-    raw_series = pd.Series(raw)
-    series = Series(raw, chunk_size=5)
-    r = series >= series[1]
-    pd.testing.assert_series_equal(r.to_pandas(), raw_series >= raw_series[1])

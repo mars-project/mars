@@ -107,7 +107,6 @@ Computations / descriptive stats
    Series.all
    Series.any
    Series.autocorr
-   Series.between
    Series.corr
    Series.count
    Series.cummax

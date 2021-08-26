@@ -118,21 +118,6 @@ Pairwise metrics
    metrics.pairwise.rbf_kernel
    metrics.pairwise_distances
 
-.. _modelselection_ref:
-
-Model Selection
-===============
-
-Splitter Classes
-----------------
-
-.. currentmodule:: mars.learn
-
-.. autosummary::
-   :toctree: generated/
-
-   model_selection.KFold
-
 Splitter Functions
 ------------------
 
@@ -240,7 +225,7 @@ LightGBM Integration
 PyTorch Integration
 ======================
 
-.. automodule:: mars.learn.contrib.pytorch
+.. automodule:: mars.learn.contrib.tensorflow
    :no-members:
    :no-inherited-members:
 
@@ -251,10 +236,8 @@ PyTorch Integration
 
    contrib.pytorch.run_pytorch_script
    contrib.pytorch.MarsDataset
-   contrib.pytorch.SequentialSampler
-   contrib.pytorch.RandomSampler
-   contrib.pytorch.SubsetRandomSampler
-   contrib.pytorch.DistributedSampler
+   contrib.pytorch.MarsDistributedSampler
+   contrib.pytorch.MarsRandomSampler
 
 .. _statsmodels_ref:
 

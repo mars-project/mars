@@ -13,4 +13,4 @@
 # limitations under the License.
 
 from .custom_log import CustomLogActor
-from .service import SessionWorkerService
+from .service import start, stop

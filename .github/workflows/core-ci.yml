@@ -51,7 +51,7 @@ jobs:
         source ./ci/rewrite-cov-config.sh
 
         pip install git+https://github.com/mars-project/pytest-asyncio.git
-        pip install numpy scipy cython oss2
+        pip install numpy scipy cython
         pip install -e ".[dev,extra]"
         pip install virtualenv flaky
 
@@ -63,7 +63,20 @@ jobs:
           fi
 
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
+
+          if [[ ! "$PYTHON" =~ "3.9" ]]; then
+            conda install --quiet --yes -n test -c conda-forge --no-deps python=$PYTHON \
+              libxgboost py-xgboost xgboost lightgbm tensorflow
+          fi
+          if [[ "$PYTHON" =~ "3.6" ]]; then
+            pip install torch==1.4.0 torchvision==0.5.0 faiss-cpu fastparquet
+          fi
+          if [[ ! "$PYTHON" =~ "3.6" ]] && [[ ! "$PYTHON" =~ "3.9" ]]; then
+            pip install torch torchvision
+            pip install statsmodels tsfresh
+          fi
         fi
+        retry ./.github/workflows/download-etcd.sh
         conda list -n test
 
     - name: Test with pytest

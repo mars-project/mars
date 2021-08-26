@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-
 from collections import deque
 from typing import Dict, List, Tuple, Type, Union
 
@@ -25,8 +23,6 @@ from ...subtask import SubtaskGraph, Subtask
 from ..core import Task, new_task_id
 from .assigner import AbstractGraphAssigner, GraphAssigner
 from .fusion import Fusion
-
-logger = logging.getLogger(__name__)
 
 
 class GraphAnalyzer:
@@ -186,8 +182,7 @@ class GraphAnalyzer:
                     # the last chunk
                     result_chunks.append(copied_fuse_chunk)
             fuse_to_copied[fuse_chunk] = copied_fuse_chunk
-        self._chunk_to_copied[chunk.chunk] = self._chunk_to_copied[chunk] = \
-            fuse_to_copied[chunk.chunk]
+        self._chunk_to_copied[chunk] = fuse_to_copied[chunk.chunk]
         return subtask_chunk_graph
 
     def _gen_subtask(self,
@@ -263,17 +258,11 @@ class GraphAnalyzer:
         # assign expect workers
         cur_assigns = {op.key: self._to_band(op.expect_worker)
                        for op in start_ops if op.expect_worker is not None}
-        logger.debug('Start to assign %s start chunks for task %s',
-                     len(start_ops), self._task.task_id)
         chunk_to_bands = assigner.assign(cur_assigns=cur_assigns)
-        logger.debug('Assigned %s start chunks for task %s',
-                     len(start_ops), self._task.task_id)
 
         # fuse node
         if self._fuse_enabled:
-            logger.debug('Start to fuse chunks for task %s', self._task.task_id)
             chunk_to_bands = self._fuse(chunk_to_bands)
-            logger.debug('Chunks fused for task %s', self._task.task_id)
 
         subtask_graph = SubtaskGraph()
         chunk_to_priorities = dict()

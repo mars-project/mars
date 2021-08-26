@@ -30,7 +30,7 @@ estimators = [
     (LabelPropagation, {'kernel': 'knn', 'n_neighbors': 2}),
     (LabelPropagation, {'kernel': lambda x, y: rbf_kernel(x, y, gamma=20)})
 ]
-
+    
 
 @pytest.mark.parametrize('estimator, parameters', estimators)
 def test_fit_transduction(setup, estimator, parameters):

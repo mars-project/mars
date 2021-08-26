@@ -26,8 +26,10 @@ try:
             KMeansElkanUpdate, KMeansElkanPostprocess, KMeansPlusPlusInit, \
             KMeansLloydUpdate, KMeansLloydPostprocess
 
+
     _install()
     del _install
 except ImportError:
     KMeans = None
     k_means = None
+

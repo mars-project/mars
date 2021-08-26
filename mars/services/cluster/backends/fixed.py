@@ -35,10 +35,3 @@ class FixedClusterBackend(AbstractClusterBackend):
 
     async def get_supervisors(self, filter_ready: bool = True) -> List[str]:
         return self._supervisors
-
-    async def request_worker(
-            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        raise NotImplementedError
-
-    async def release_worker(self, address: str):
-        raise NotImplementedError

@@ -22,8 +22,8 @@ import mars.tensor as mt
 import mars.dataframe as md
 from mars.config import option_context
 from mars.dataframe.datasource.dataframe import from_pandas
-
-
+    
+    
 def test_base_execute(setup):
     with option_context({'eager_mode': True}):
         a_data = np.random.rand(10, 10)

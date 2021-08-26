@@ -12,17 +12,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import importlib
 import logging
 import os
 
+from bokeh.application import Application
+from bokeh.application.handlers import FunctionHandler
+from bokeh.server.server import Server
 from tornado import web
 
 from ... import oscar as mo
 from ...utils import get_next_port
-from ..core import AbstractService
 
 logger = logging.getLogger(__name__)
+
+
+class BokehStaticFileHandler(web.StaticFileHandler):  # pragma: no cover
+    @staticmethod
+    def _get_path_root(root, path):
+        from bokeh import server
+        path_parts = path.rsplit('/', 1)
+        if 'bokeh' in path_parts[-1]:
+            root = os.path.join(os.path.dirname(server.__file__), "static")
+        return root
+
+    @classmethod
+    def get_absolute_path(cls, root, path):
+        return super().get_absolute_path(cls._get_path_root(root, path), path)
+
+    def validate_absolute_path(self, root, absolute_path):
+        return super().validate_absolute_path(
+            self._get_path_root(root, absolute_path), absolute_path)
 
 
 class WebActor(mo.Actor):
@@ -30,16 +51,18 @@ class WebActor(mo.Actor):
         super().__init__()
         self._config = config
         self._web_server = None
-        self._web_app = None
 
         extra_mod_names = self._config.get('extra_discovery_modules') or []
+        bokeh_apps = self._config.get('bokeh_apps', {})
         web_handlers = self._config.get('web_handlers', {})
         for mod_name in extra_mod_names:
             try:
                 web_mod = importlib.import_module(mod_name)
                 web_handlers.update(getattr(web_mod, 'web_handlers', {}))
+                bokeh_apps.update(getattr(web_mod, 'bokeh_apps', {}))
             except ImportError:  # pragma: no cover
                 pass
+        self._config['bokeh_apps'] = bokeh_apps
 
     async def __post_create__(self):
         from .indexhandler import handlers as web_handlers
@@ -50,14 +73,20 @@ class WebActor(mo.Actor):
         host = self._config.get('host') or '0.0.0.0'
         port = self._config.get('port') or get_next_port()
         self._web_address = f'http://{host}:{port}'
+        bokeh_apps = self._config.get('bokeh_apps', {})
         web_handlers.update(self._config.get('web_handlers', {}))
 
+        handlers = dict()
+        for p, h in bokeh_apps.items():
+            handlers[p] = Application(FunctionHandler(
+                functools.partial(h, supervisor_addr=supervisor_addr)))
+
         handler_kwargs = {'supervisor_addr': supervisor_addr}
-        handlers = [
-            (r'[^\?\&]*/static/(.*)', web.StaticFileHandler, {'path': static_path})
+        extra_patterns = [
+            (r'[^\?\&]*/static/(.*)', BokehStaticFileHandler, {'path': static_path})
         ]
         for p, h in web_handlers.items():
-            handlers.append((p, h, handler_kwargs))
+            extra_patterns.append((p, h, handler_kwargs))
 
         retrial = 5
         while retrial:
@@ -65,8 +94,13 @@ class WebActor(mo.Actor):
                 if port is None:
                     port = get_next_port()
 
-                self._web_app = web.Application(handlers)
-                self._web_server = self._web_app.listen(port, host)
+                self._web_server = Server(
+                    handlers, allow_websocket_origin=['*'],
+                    address=host, port=port,
+                    extra_patterns=extra_patterns,
+                    http_server_kwargs={'max_buffer_size': 2 ** 32},
+                )
+                self._web_server.start()
                 logger.info('Mars Web started at %s:%d', host, port)
                 break
             except OSError:  # pragma: no cover
@@ -87,29 +121,36 @@ class WebActor(mo.Actor):
         return web_address
 
 
-class WebSupervisorService(AbstractService):
+async def start(config: dict, address: str = None):
     """
-    Web service on supervisor.
+    Start web service on supervisor.
 
-    Service Configuration
-    ---------------------
-    {
-        "web": {
-            "host": "<web host>",
-            "port": "<web port>",
-            "web_handlers": [
-                <web_handlers>,
-            ],
-            "extra_discovery_modules": [
-                "path.to.modules",
-            ]
+    Parameters
+    ----------
+    config
+        service config.
+        {
+            "web": {
+                "host": "<web host>",
+                "port": "<web port>",
+                "bokeh_apps": [
+                    <bokeh applications>,
+                ],
+                "web_handlers": [
+                    <web_handlers>,
+                ],
+                "extra_discovery_modules": [
+                    "path.to.modules",
+                ]
+            }
         }
-    }
+    address : str
+        Actor pool address.
     """
-    async def start(self):
-        await mo.create_actor(WebActor, config=self._config.get('web', {}),
-                              uid=WebActor.default_uid(), address=self._address)
+    await mo.create_actor(WebActor, config=config.get('web', {}),
+                          uid=WebActor.default_uid(), address=address)
 
-    async def stop(self):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=WebActor.default_uid(), address=self._address))
+
+async def stop(config: dict, address: str = None):
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=WebActor.default_uid(), address=address))

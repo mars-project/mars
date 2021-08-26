@@ -23,4 +23,4 @@ SessionType = TypeVar('SessionType')
 ClusterType = TypeVar('ClusterType')
 ClientType = TypeVar('ClientType')
 
-BandType = Tuple[str, str]  # (band address, resource_type)
+BandType = Tuple[str, str]

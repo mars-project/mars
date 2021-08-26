@@ -1,4 +1,4 @@
-.. _integrate_joblib:
+.. _joblib:
 
 *********************
 Integrate with joblib

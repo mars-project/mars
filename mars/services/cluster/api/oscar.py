@@ -33,6 +33,7 @@ class ClusterAPI(AbstractClusterAPI):
         self._address = address
         self._locator_ref = None
         self._uploader_ref = None
+        self._node_info_ref = None
 
     async def _init(self):
         from ..locator import SupervisorLocatorActor
@@ -217,28 +218,8 @@ class ClusterAPI(AbstractClusterAPI):
     async def set_node_disk_info(self, disk_info: List[DiskInfo]):
         await self._uploader_ref.set_node_disk_info(disk_info)
 
-    @mo.extensible
     async def set_band_storage_info(self, band_name: str, storage_info: StorageInfo):
         await self._uploader_ref.set_band_storage_info(band_name, storage_info)
-
-    async def request_worker(
-            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
-        node_allocator_ref = await self._get_node_allocator_ref()
-        address = await node_allocator_ref.request_worker(worker_cpu, worker_mem, timeout)
-        return address
-
-    async def release_worker(self, address: str):
-        node_allocator_ref = await self._get_node_allocator_ref()
-        await node_allocator_ref.release_worker(address)
-        node_info_ref = await self._get_node_info_ref()
-        await node_info_ref.update_node_info(address, NodeRole.WORKER, status=NodeStatus.STOPPED)
-
-    @alru_cache(cache_exceptions=False)
-    async def _get_node_allocator_ref(self):
-        from ..supervisor.node_allocator import NodeAllocatorActor
-        [node_allocator_ref] = await self.get_supervisor_refs(
-            [NodeAllocatorActor.default_uid()])
-        return node_allocator_ref
 
 
 class MockClusterAPI(ClusterAPI):
@@ -246,7 +227,6 @@ class MockClusterAPI(ClusterAPI):
     async def create(cls: Type[APIType], address: str, **kw) -> APIType:
         from ..supervisor.locator import SupervisorPeerLocatorActor
         from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_allocator import NodeAllocatorActor
         from ..supervisor.node_info import NodeInfoCollectorActor
 
         dones, _ = await asyncio.wait([
@@ -255,9 +235,6 @@ class MockClusterAPI(ClusterAPI):
                             address=address),
             mo.create_actor(NodeInfoCollectorActor,
                             uid=NodeInfoCollectorActor.default_uid(),
-                            address=address),
-            mo.create_actor(NodeAllocatorActor, 'fixed', address,
-                            uid=NodeAllocatorActor.default_uid(),
                             address=address),
             mo.create_actor(NodeInfoUploaderActor, NodeRole.WORKER,
                             interval=kw.get('upload_interval'),
@@ -276,21 +253,3 @@ class MockClusterAPI(ClusterAPI):
         api = await super().create(address=address)
         await api.mark_node_ready()
         return api
-
-    @classmethod
-    async def cleanup(cls, address: str):
-        from ..supervisor.locator import SupervisorPeerLocatorActor
-        from ..uploader import NodeInfoUploaderActor
-        from ..supervisor.node_info import NodeInfoCollectorActor
-
-        await asyncio.wait([
-            mo.destroy_actor(mo.create_actor_ref(
-                uid=SupervisorPeerLocatorActor.default_uid(),
-                address=address)),
-            mo.destroy_actor(mo.create_actor_ref(
-                uid=NodeInfoCollectorActor.default_uid(),
-                address=address)),
-            mo.destroy_actor(mo.create_actor_ref(
-                uid=NodeInfoUploaderActor.default_uid(),
-                address=address)),
-        ])

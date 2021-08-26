@@ -25,7 +25,7 @@ from .core import TensorReduction, TensorReductionMixin
 class TensorCountNonzero(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.COUNT_NONZERO
 
-    def __init__(self, axis=None, dtype=None, keepdims=None, combine_size=None,
+    def __init__(self, axis=None, dtype=None,keepdims=None, combine_size=None,
                  stage=None, **kw):
         if dtype is None:
             dtype = np.dtype(np.intp)

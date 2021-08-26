@@ -79,6 +79,7 @@ class RunTensorFlow(RunScript):
     def tile(cls, op):
         ctx = get_context()
 
+        port = op.port or 2221
         cluster_conf = {'worker': []}
         if op.n_ps > 0:
             cluster_conf['ps'] = []
@@ -87,7 +88,6 @@ class RunTensorFlow(RunScript):
         out_chunks = []
         worker_addresses = ctx.get_worker_addresses()
         picked_workers = pick_workers(worker_addresses, op.n_roles)
-        data, input_chunks = cls._get_chunk_data(op)
 
         ports = yield from recursive_tile(
             collect_ports(worker_addresses))
@@ -98,7 +98,6 @@ class RunTensorFlow(RunScript):
         for worker, port in zip(picked_workers, ports):
             worker_addr = worker.rsplit(':', 1)[0]
             chunk_op = op.copy().reset_key()
-            chunk_op._data = data
             addr = f'{worker_addr}:{port}'
             # tell graph actor that the chunk should be executed on the exact worker
             chunk_op.expect_worker = worker
@@ -109,7 +108,7 @@ class RunTensorFlow(RunScript):
             cluster_conf[tp].append(addr)
             chunk_op._tf_config = {'cluster': cluster_conf,
                                    'task': {'type': tp, 'index': idx}}
-            out_chunks.append(chunk_op.new_chunk(input_chunks, index=(i,)))
+            out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
             i += 1
 
         new_op = op.copy()

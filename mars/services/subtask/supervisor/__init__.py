@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...core import EmptyService
-
-
-class SubtaskSupervisorService(EmptyService):
+async def start(*_args, **_kwargs):
     pass
+
+stop = start

@@ -27,8 +27,8 @@ import Typography from '@material-ui/core/Typography';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
 import Container from '@material-ui/core/Container';
+import MenuIcon from '@material-ui/icons/Menu';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
-import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import LeftMenu from './LeftMenu';
 import PageRouter from './PageRouter';
 import { useStyles } from './Style';
@@ -36,15 +36,27 @@ import { useStyles } from './Style';
 export default function MainFrame() {
     const classes = useStyles();
     const [open, setOpen] = React.useState(true);
-    const handleDrawerStateChange = () => {
-        setOpen(!open);
+    const handleDrawerOpen = () => {
+        setOpen(true);
+    };
+    const handleDrawerClose = () => {
+        setOpen(false);
     };
 
     return (
         <div className={classes.root}>
             <CssBaseline />
-            <AppBar position="absolute" className={classes.appBar}>
+            <AppBar position="absolute" className={clsx(classes.appBar, open && classes.appBarShift)}>
                 <Toolbar className={classes.toolbar}>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        aria-label="open drawer"
+                        onClick={handleDrawerOpen}
+                        className={clsx(classes.menuButton, open && classes.menuButtonHidden)}
+                    >
+                        <MenuIcon />
+                    </IconButton>
                     <Typography component="h1" variant="h6" color="inherit" noWrap className={classes.title}>
                         Mars UI
                     </Typography>
@@ -58,14 +70,13 @@ export default function MainFrame() {
                     }}
                     open={open}
                 >
-                    <div className={classes.toolbarIcon} />
-                    <LeftMenu />
-                    <Divider className={classes.leftMenuBottomItem} />
-                    <div className={`${classes.toolbarIcon} ${classes.leftMenuBottomItem}`}>
-                        <IconButton onClick={handleDrawerStateChange}>
-                            {open? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                    <div className={classes.toolbarIcon}>
+                        <IconButton onClick={handleDrawerClose}>
+                            <ChevronLeftIcon />
                         </IconButton>
                     </div>
+                    <Divider />
+                    <LeftMenu />
                 </Drawer>
                 <main className={classes.content}>
                     <div className={classes.appBarSpacer} />

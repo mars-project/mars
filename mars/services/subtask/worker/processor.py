@@ -57,10 +57,6 @@ class SubtaskProcessor:
         self.subtask = subtask
         self._session_id = self.subtask.session_id
         self._chunk_graph = subtask.chunk_graph
-        self._actual_chunk_count = len([
-            chunk for chunk in subtask.chunk_graph
-            if not isinstance(chunk.op, (Fetch, FetchShuffle))
-        ])
         self._band = band
         self._supervisor_address = supervisor_address
         self._engines = engines if engines is not None else \
@@ -97,25 +93,21 @@ class SubtaskProcessor:
         return self.subtask.subtask_id
 
     async def _load_input_data(self):
-        keys, gets, accept_nones = [], [], []
+        keys = []
+        gets = []
         for chunk in self._chunk_graph.iter_indep():
             if isinstance(chunk.op, Fetch):
                 keys.append(chunk.key)
                 gets.append(self._storage_api.get.delay(chunk.key))
-                accept_nones.append(True)
             elif isinstance(chunk.op, FetchShuffle):
                 for key in self._chunk_key_to_data_keys[chunk.key]:
                     keys.append(key)
                     gets.append(self._storage_api.get.delay(key, error='ignore'))
-                    accept_nones.append(False)
         if keys:
             logger.debug('Start getting input data, keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
             inputs = await self._storage_api.get.batch(*gets)
-            self._datastore.update(
-                {key: get for key, get, accept_none in zip(keys, inputs, accept_nones)
-                 if accept_none or get is not None}
-            )
+            self._datastore.update({key: get for key, get in zip(keys, inputs) if get is not None})
             logger.debug('Finish getting input data keys: %s, '
                          'subtask id: %s', keys, self.subtask.subtask_id)
         return keys
@@ -142,8 +134,7 @@ class SubtaskProcessor:
     async def _async_execute_operand(self,
                                      ctx: Dict[str, Any],
                                      op: OperandType):
-        if not isinstance(op, (Fetch, FetchShuffle)):
-            self._op_progress[op.key] = 0.0
+        self._op_progress[op.key] = 0.0
         get_context().set_running_operand_key(self._session_id, op.key)
         return asyncio.to_thread(self._execute_operand, ctx, op)
 
@@ -199,7 +190,7 @@ class SubtaskProcessor:
                     self.result.status = SubtaskStatus.cancelled
                     raise
 
-            self.set_op_progress(chunk.op.key, 1.0)
+            self._op_progress[chunk.op.key] = 1.0
 
             for inp in chunk.inputs:
                 ref_counts[inp.key] -= 1
@@ -253,7 +244,6 @@ class SubtaskProcessor:
                      'subtask id: %s', stored_keys, self.subtask.subtask_id)
         data_key_to_store_size = dict()
         data_key_to_memory_size = dict()
-        data_key_to_object_id = dict()
         if puts:
             put_infos = asyncio.create_task(self._storage_api.put.batch(*puts))
             try:
@@ -261,7 +251,6 @@ class SubtaskProcessor:
                 for store_key, store_info in zip(stored_keys, store_infos):
                     data_key_to_store_size[store_key] = store_info.store_size
                     data_key_to_memory_size[store_key] = store_info.memory_size
-                    data_key_to_object_id[store_key] = store_info.object_id
                 logger.debug('Finish putting data keys: %s, '
                              'subtask id: %s', stored_keys, self.subtask.subtask_id)
             except asyncio.CancelledError:
@@ -276,14 +265,13 @@ class SubtaskProcessor:
 
         # clear data
         self._datastore = dict()
-        return stored_keys, data_key_to_store_size, data_key_to_memory_size, data_key_to_object_id
+        return stored_keys, data_key_to_store_size, data_key_to_memory_size
 
     async def _store_meta(self,
                           chunk_graph: ChunkGraph,
                           stored_keys: List,
                           data_key_to_store_size: Dict,
-                          data_key_to_memory_size: Dict,
-                          data_key_to_object_id: Dict):
+                          data_key_to_memory_size: Dict):
         key_to_result_chunk = {c.key: c for c in chunk_graph.result_chunks}
         # store meta
         set_chunk_metas = []
@@ -296,12 +284,11 @@ class SubtaskProcessor:
             store_size = data_key_to_store_size[chunk_key]
             memory_size = data_key_to_memory_size[chunk_key]
             result_data_size += memory_size
-            object_ref = data_key_to_object_id[chunk_key]
             set_chunk_metas.append(
                 self._meta_api.set_chunk_meta.delay(
                     result_chunk, memory_size=memory_size,
                     store_size=store_size, bands=[self._band],
-                    chunk_key=chunk_key, object_ref=object_ref))
+                    chunk_key=chunk_key))
         for chunk in chunk_graph.result_chunks:
             if chunk.key not in data_key_to_store_size:
                 # mapper, set meta, so that storage can make sure
@@ -362,9 +349,9 @@ class SubtaskProcessor:
                 unpinned = True
                 await self._unpin_data(input_keys)
             # store results data
-            stored_keys, store_sizes, memory_sizes, data_key_to_object_id = await self._store_data(chunk_graph)
+            stored_keys, store_sizes, memory_sizes = await self._store_data(chunk_graph)
             # store meta
-            await self._store_meta(chunk_graph, stored_keys, store_sizes, memory_sizes, data_key_to_object_id)
+            await self._store_meta(chunk_graph, stored_keys, store_sizes, memory_sizes)
         except asyncio.CancelledError:
             self.result.status = SubtaskStatus.cancelled
             self.result.progress = 1.0
@@ -390,7 +377,7 @@ class SubtaskProcessor:
     async def report_progress_periodically(self, interval=.5, eps=0.001):
         last_progress = self.result.progress
         while not self.result.status.is_done:
-            size = self._actual_chunk_count
+            size = len(self._chunk_graph)
             progress = sum(self._op_progress.values()) / size
             assert progress <= 1
             self.result.progress = progress

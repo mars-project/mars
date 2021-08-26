@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import sys
-from typing import Any, Callable, Dict, List, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Type, Union
 
 import numpy as np
 try:
@@ -25,7 +25,7 @@ from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_data_size
 from ..context import Context
 from ..mode import is_eager_mode
-from ..entity import OutputType, TILEABLE_TYPE, ExecutableTuple, \
+from ..entity import OutputType, ExecutableTuple, \
     get_chunk_types, get_tileable_types, \
     get_output_types, get_fetch_class
 
@@ -36,24 +36,11 @@ _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
 class TileableOperandMixin:
     __slots__ = ()
 
-    def check_inputs(self, inputs: List[TileableType]):
-        if not inputs:
-            return
-        for inp in inputs:
-            if isinstance(inp, TILEABLE_TYPE):
-                i = inp.extra_params['_i']
-                if not inp.op.output_types:
-                    continue
-                if inp.op.output_types[i] != OutputType.dataframe:
-                    continue
-                dtypes = getattr(inp, 'dtypes', None)
-                if dtypes is None:
-                    raise ValueError(
-                        f'{inp} has unknown dtypes, '
-                        f'it must be executed first before {str(type(self))}')
+    def check_inputs(self, inputs):
+        pass
 
     @classmethod
-    def _check_if_gpu(cls, inputs: List[TileableType]):
+    def _check_if_gpu(cls, inputs):
         if inputs is not None and \
                 len([inp for inp in inputs
                      if inp is not None and getattr(inp, 'op', None) is not None]) > 0:
@@ -62,10 +49,7 @@ class TileableOperandMixin:
             elif all(inp.op.gpu is False for inp in inputs):
                 return False
 
-    def _create_chunk(self,
-                      output_idx: int,
-                      index: Tuple[int],
-                      **kw) -> ChunkType:
+    def _create_chunk(self, output_idx, index, **kw) -> ChunkType:
         output_type = kw.pop('output_type', self._get_output_type(output_idx))
         if not output_type:
             raise ValueError('output_type should be specified')
@@ -82,10 +66,7 @@ class TileableOperandMixin:
         data = chunk_data_type(**kw)
         return chunk_type(data)
 
-    def _new_chunks(self,
-                    inputs: List[ChunkType],
-                    kws: dict = None,
-                    **kw) -> List[ChunkType]:
+    def _new_chunks(self, inputs, kws=None, **kw) -> List[ChunkType]:
         output_limit = kw.pop('output_limit', None)
         if output_limit is None:
             output_limit = getattr(self, 'output_limit')
@@ -116,31 +97,16 @@ class TileableOperandMixin:
                 t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
         return chunks
 
-    def new_chunks(self,
-                   inputs: List[ChunkType],
-                   kws: dict = None,
-                   **kwargs) -> List[ChunkType]:
+    def new_chunks(self, inputs, kws=None, **kwargs) -> List[ChunkType]:
         """
         Create chunks.
-
         A chunk is a node in a fine grained graph, all the chunk objects are created by
         calling this function, it happens mostly in tiles.
         The generated chunks will be set as this operand's outputs and each chunk will
         hold this operand as it's op.
-
-        Parameters
-        ----------
-        inputs : list
-            Input chunks.
-        kws : dict
-            Kwargs for each output.
-        kwargs : dict
-            common kwargs for all outputs
-
-        Returns
-        -------
-        chunks : list
-            Output chunks.
+        :param inputs: input chunks
+        :param kws: kwargs for each output
+        :param kwargs: common kwargs for all outputs
 
         .. note::
             It's a final method, do not override.
@@ -148,17 +114,14 @@ class TileableOperandMixin:
         """
         return self._new_chunks(inputs, kws=kws, **kwargs)
 
-    def new_chunk(self,
-                  inputs: List[ChunkType],
-                  kws: dict = None,
-                  **kw) -> ChunkType:
+    def new_chunk(self, inputs, kws=None, **kw) -> ChunkType:
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new chunk with more than 1 outputs')
 
         return self.new_chunks(inputs, kws=kws, **kw)[0]
 
     @staticmethod
-    def _fill_nan_shape(kw: dict):
+    def _fill_nan_shape(kw):
         nsplits = kw.get('nsplits')
         shape = kw.get('shape')
         if nsplits is not None and shape is not None:
@@ -174,9 +137,7 @@ class TileableOperandMixin:
             kw['nsplits'] = nsplits
         return kw
 
-    def _create_tileable(self,
-                         output_idx: int,
-                         **kw) -> TileableType:
+    def _create_tileable(self, output_idx, **kw) -> TileableType:
         output_type = kw.pop('output_type', self._get_output_type(output_idx))
         if output_type is None:
             raise ValueError('output_type should be specified')
@@ -194,10 +155,7 @@ class TileableOperandMixin:
         data = tileable_data_type(**kw)
         return tileable_type(data)
 
-    def _new_tileables(self,
-                       inputs: List[TileableType],
-                       kws: dict = None,
-                       **kw) -> List[TileableType]:
+    def _new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
         output_limit = kw.pop('output_limit', None)
         if output_limit is None:
             output_limit = getattr(self, 'output_limit')
@@ -225,44 +183,27 @@ class TileableOperandMixin:
                 t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
         return tileables
 
-    def new_tileables(self,
-                      inputs: List[TileableType],
-                      kws=None,
-                      **kw) -> List[TileableType]:
+    def new_tileables(self, inputs, kws=None, **kw) -> List[TileableType]:
         """
         Create tileable objects(Tensors or DataFrames).
-
         This is a base function for create tileable objects like tensors or dataframes,
         it will be called inside the `new_tensors` and `new_dataframes`.
         If eager mode is on, it will trigger the execution after tileable objects are created.
-
-        Parameters
-        ----------
-        inputs : list
-            Input tileables
-        kws : dict
-            Kwargs for each output.
-        kw : dict
-            Common kwargs for all outputs.
-
-        Returns
-        -------
-        tileables : list
-            Output tileables.
+        :param inputs: input tileables
+        :param kws: kwargs for each output
+        :param kw: common kwargs for all outputs
 
         .. note::
             It's a final method, do not override.
             Override the method `_new_tileables` if needed.
         """
+
         tileables = self._new_tileables(inputs, kws=kws, **kw)
         if is_eager_mode():
             ExecutableTuple(tileables).execute()
         return tileables
 
-    def new_tileable(self,
-                     inputs: List[TileableType],
-                     kws: dict = None,
-                     **kw) -> TileableType:
+    def new_tileable(self, inputs, kws=None, **kw) -> TileableType:
         if getattr(self, 'output_limit') != 1:
             raise TypeError('cannot new chunk with more than 1 outputs')
 
@@ -284,9 +225,7 @@ class TileableOperandMixin:
         raise NotImplementedError
 
     @classmethod
-    def post_tile(cls,
-                  op: OperandType,
-                  results: List[TileableType]):
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
         """
         Operation after tile.
 
@@ -299,9 +238,7 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def pre_execute(cls,
-                    ctx: Union[dict, Context],
-                    op: OperandType):
+    def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operation before execute.
 
@@ -314,15 +251,11 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: OperandType):
+    def execute(cls, ctx: Union[dict, Context], op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def post_execute(cls,
-                     ctx: Union[dict, Context],
-                     op: OperandType):
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operand before execute.
 
@@ -335,9 +268,7 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def estimate_size(cls,
-                      ctx: dict,
-                      op: OperandType):
+    def estimate_size(cls, ctx: dict, op: OperandType):
         from .fetch import FetchShuffle
 
         exec_size = 0
@@ -406,19 +337,14 @@ class TileableOperandMixin:
             ctx[out.key] = (result_size, exec_size * memory_scale // len(outputs))
 
     @classmethod
-    def concat_tileable_chunks(cls,
-                               tileable: TileableType):
+    def concat_tileable_chunks(cls, tileable):
         raise NotImplementedError
 
     @classmethod
-    def create_tileable_from_chunks(cls,
-                                    chunks: List[ChunkType],
-                                    inputs: List[TileableType] = None,
-                                    **kw) -> TileableType:
+    def create_tileable_from_chunks(cls, chunks, inputs=None, **kw):
         raise NotImplementedError
 
-    def get_fetch_op_cls(self,
-                         obj: ChunkType):
+    def get_fetch_op_cls(self, obj):
         from .shuffle import ShuffleProxy
 
         output_types = get_output_types(obj, unknown_as=OutputType.object)
@@ -433,8 +359,7 @@ class TileableOperandMixin:
 
         return _inner
 
-    def get_fuse_op_cls(self,
-                        obj: ChunkType):
+    def get_fuse_op_cls(self, obj):
         raise NotImplementedError
 
     @classmethod

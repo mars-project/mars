@@ -14,8 +14,8 @@
 
 import importlib
 import os
-import pickle
 import pkgutil
+import pickle
 import types
 import uuid
 from collections import deque
@@ -27,21 +27,23 @@ import numpy as np
 import pandas as pd
 import cloudpickle
 cimport cython
+
+from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
+    hash_from_buffer as mmh3_hash_from_buffer
+
 try:
     from pandas.tseries.offsets import Tick as PDTick
 except ImportError:
     PDTick = None
+
 try:
     from sqlalchemy.sql import Selectable as SASelectable
     from sqlalchemy.sql.sqltypes import TypeEngine as SATypeEngine
 except ImportError:
     SASelectable, SATypeEngine = None, None
 
-from .lib.mmh3 import hash as mmh_hash, hash_bytes as mmh_hash_bytes, \
-    hash_from_buffer as mmh3_hash_from_buffer
-
-cdef bint _has_cupy = bool(pkgutil.find_loader('cupy'))
-cdef bint _has_cudf = bool(pkgutil.find_loader('cudf'))
+cdef bint _has_cupy = pkgutil.find_loader('cupy')
+cdef bint _has_cudf = pkgutil.find_loader('cudf')
 
 
 cpdef str to_str(s, encoding='utf-8'):

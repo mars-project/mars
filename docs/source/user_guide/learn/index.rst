@@ -14,7 +14,6 @@ can be obtained in the :ref:`API reference <learn_api>`.
 
    joblib
    lightgbm
-   pytorch
    statsmodels
    tensorflow
    xgboost

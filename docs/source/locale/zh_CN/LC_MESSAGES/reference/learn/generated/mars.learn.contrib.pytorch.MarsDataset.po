@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-20 11:06+0800\n"
+"POT-Creation-Date: 2020-06-16 16:57+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,36 +19,5 @@ msgstr ""
 
 #: ../../source/reference/learn/generated/mars.learn.contrib.pytorch.MarsDataset.rst:2
 msgid "mars.learn.contrib.pytorch.MarsDataset"
-msgstr ""
-
-#: mars.learn.contrib.pytorch.MarsDataset:1 of
-msgid ""
-"MarsDataset that inherit from torch.utils.data.Dataset. It converts from "
-"Mars basic datatype such as Tensor, DataFrame, Series. Additionally, it's"
-" constructor can receive np.ndarray, pd.DataFrame, pd.Series type."
-msgstr ""
-
-#: mars.learn.contrib.pytorch.MarsDataset.__init__:1 of
-msgid "Initialize self.  See help(type(self)) for accurate signature."
-msgstr ""
-
-#: ../../source/reference/learn/generated/mars.learn.contrib.pytorch.MarsDataset.rst:13
-msgid "Methods"
-msgstr ""
-
-#: ../../source/reference/learn/generated/mars.learn.contrib.pytorch.MarsDataset.rst:17:<autosummary>:1
-msgid ""
-":obj:`__init__ <mars.learn.contrib.pytorch.MarsDataset.__init__>`\\ "
-"\\(\\*tileables\\[\\, fetch\\_kwargs\\]\\)"
-msgstr ""
-
-#: ../../source/reference/learn/generated/mars.learn.contrib.pytorch.MarsDataset.rst:17:<autosummary>:1
-msgid "Initialize self."
-msgstr ""
-
-#: ../../source/reference/learn/generated/mars.learn.contrib.pytorch.MarsDataset.rst:17:<autosummary>:1
-msgid ""
-":obj:`get_data <mars.learn.contrib.pytorch.MarsDataset.get_data>`\\ "
-"\\(t\\, index\\)"
 msgstr ""
 

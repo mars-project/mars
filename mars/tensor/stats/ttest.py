@@ -15,14 +15,19 @@
 from collections import namedtuple
 
 import numpy as np
-from scipy import __version__ as sp_version
-from scipy.stats import (
-    ttest_ind as sp_ttest_ind,
-    ttest_ind_from_stats as sp_ttest_ind_from_stats,
-    ttest_rel as sp_ttest_rel,
-    ttest_1samp as sp_ttest_1samp,
-)
-from scipy.stats import distributions as sp_distributions
+try:
+    from scipy import __version__ as sp_version
+    from scipy.stats import (
+        ttest_ind as sp_ttest_ind,
+        ttest_ind_from_stats as sp_ttest_ind_from_stats,
+        ttest_rel as sp_ttest_rel,
+        ttest_1samp as sp_ttest_1samp,
+    )
+    from scipy.stats import distributions as sp_distributions
+except ImportError:
+    sp_version = None
+    sp_ttest_1samp = sp_ttest_ind = sp_ttest_ind_from_stats = sp_ttest_rel = None
+    sp_distributions = None
 
 from ...core import ExecutableTuple
 from ...lib.version import parse as parse_version

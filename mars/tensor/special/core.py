@@ -13,6 +13,20 @@
 # limitations under the License.
 
 
+class _EmptyStub:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def __getattr__(self, item):
+        return getattr(self._obj, item, None)
+
+
+try:
+    import scipy.special
+    spspecial = _EmptyStub(scipy.special)
+except ImportError:  # pragma: no cover
+    spspecial = _EmptyStub(None)
+
 from ... import opcodes
 from ..arithmetic.core import TensorUnaryOp, TensorBinOp, TensorMultiOp
 from ..array_utils import np, cp, sparse, convert_order, as_same_device, device

@@ -22,6 +22,7 @@ msgid "Integrate with LightGBM"
 msgstr "和 LightGBM 集成"
 
 #: ../../source/user_guide/learn/lightgbm.rst:9
+#, fuzzy
 msgid ""
 "This is an introduction about how to use `LightGBM "
 "<https://lightgbm.readthedocs.io>`_ for training and prediction in Mars."

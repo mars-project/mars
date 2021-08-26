@@ -11,4 +11,3 @@ User Guide
    dataframe/index
    learn/index
    remote/index
-   contrib/index

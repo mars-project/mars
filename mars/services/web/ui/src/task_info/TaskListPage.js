@@ -28,7 +28,6 @@ import {useStyles} from '../Style';
 import {formatTime, getTaskStatusText} from '../Utils';
 import { Link } from 'react-router-dom';
 
-
 class TaskList extends React.Component {
     constructor(props) {
         super(props);
@@ -110,7 +109,8 @@ export default function TaskListPage(props) {
         <Grid container spacing={3}>
             <Grid item xs={12}>
                 <Title>
-                    Session {props.sessionId}
+          Session
+                    {props.sessionId}
                 </Title>
             </Grid>
             <Grid item xs={12}>

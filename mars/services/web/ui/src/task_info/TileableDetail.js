@@ -16,7 +16,8 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-
+import { Grid, Paper } from '@material-ui/core';
+import Title from '../Title';
 
 class TileableDetail extends React.Component {
     constructor(props) {
@@ -26,28 +27,40 @@ class TileableDetail extends React.Component {
 
     render() {
         if (this.props === undefined) {
-            return null;
+            return <div></div>;
         }
 
         return (
-            this.props.tileable
-                ?
-                <div>
-                    <div>Tileable ID: <br/>{this.props.tileable.tileableId}</div><br/>
-                    <div>Tileable Name: <br/>{this.props.tileable.tileableName}</div><br/>
-                </div>
-                :
-                <div>
-                    Select a tileable to view its detail
-                </div>
+            <Grid item xs={12} md={6}>
+                <Paper style={{ padding: 10 }}>
+                    <Grid item xs={12}>
+                        <Title>Tileable Detail: </Title>
+                    </Grid>
+                    <Grid item xs={12}>
+                        {
+                            this.props.tileable
+                                ?
+                                <div>
+                                    <br/>
+                                    <div>Tileable ID: <br/>{this.props.tileable.tileable_id}</div><br/>
+                                    <div>Tileable Name: <br/>{this.props.tileable.tileable_name}</div><br/>
+                                </div>
+                                :
+                                <div>
+                                    Select a tileable to view its detail
+                                </div>
+                        }
+                    </Grid>
+                </Paper>
+            </Grid>
         );
     }
 }
 
 TileableDetail.propTypes = {
     tileable: PropTypes.shape({
-        tileableId: PropTypes.string,
-        tileableName: PropTypes.string,
+        tileable_id: PropTypes.string,
+        tileable_name: PropTypes.string,
     }),
 };
 

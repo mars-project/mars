@@ -22,7 +22,7 @@ from mars.services import NodeRole
 from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
 from mars.services.cluster.api.web import web_handlers
 from mars.services.cluster.core import NodeStatus
-from mars.services.web.supervisor import WebSupervisorService
+from mars.services.web.supervisor import start as start_web
 from mars.utils import get_next_port
 
 
@@ -70,10 +70,6 @@ async def test_api(actor_pool):
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
             api.watch_all_bands(statuses={NodeStatus.READY})), timeout=0.1)
-    with pytest.raises(NotImplementedError):
-        await api.request_worker(timeout=1)
-    with pytest.raises(NotImplementedError):
-        await api.release_worker('127.0.0.1:1234')
 
     await api.set_node_status(pool_addr, NodeRole.WORKER, NodeStatus.STOPPING)
     assert {} == await api.get_all_bands()
@@ -82,8 +78,6 @@ async def test_api(actor_pool):
     assert (pool_addr, 'numa-0') in bands
     assert pool_addr in await api.get_nodes_info(
         role=NodeRole.WORKER, exclude_statuses={NodeStatus.STOPPED})
-
-    await MockClusterAPI.cleanup(pool_addr)
 
 
 @pytest.mark.asyncio
@@ -98,8 +92,7 @@ async def test_web_api(actor_pool):
             'web_handlers': web_handlers,
         }
     }
-    web_service = WebSupervisorService(web_config, pool_addr)
-    await web_service.start()
+    await start_web(web_config, pool_addr)
 
     web_api = WebClusterAPI(f'http://127.0.0.1:{web_config["web"]["port"]}')
     assert await web_api.get_supervisors() == [pool_addr]
@@ -119,5 +112,3 @@ async def test_web_api(actor_pool):
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
             web_api.watch_all_bands()), timeout=0.1)
-
-    await MockClusterAPI.cleanup(pool_addr)

@@ -54,12 +54,3 @@ class TestClusterBackend(AbstractClusterBackend):
                 self._modify_date = mtime
                 yield await self.get_supervisors()
             await asyncio.sleep(0.1)
-
-    async def request_worker(self,
-                                  worker_cpu: int = None,
-                                  worker_mem: int = None,
-                                  timeout: int = None) -> str:
-        raise NotImplementedError
-
-    async def release_worker(self, address: str):
-        raise NotImplementedError

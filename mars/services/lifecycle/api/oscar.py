@@ -51,6 +51,47 @@ class LifecycleAPI(AbstractLifecycleAPI):
             address, LifecycleTrackerActor.gen_uid(session_id))
         return LifecycleAPI(session_id, lifecycle_tracker_ref)
 
+    @classmethod
+    async def create_session(cls,
+                             session_id: str,
+                             address: str) -> "LifecycleAPI":
+        """
+        Creating a new lifecycle API for the session.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address :
+
+        Returns
+        -------
+        lifecycle_api
+            Lifecycle API.
+        """
+        lifecycle_tracker_ref = await mo.create_actor(
+            LifecycleTrackerActor, session_id, address=address,
+            uid=LifecycleTrackerActor.gen_uid(session_id))
+        return LifecycleAPI(session_id, lifecycle_tracker_ref)
+
+    @classmethod
+    async def destroy_session(cls,
+                              session_id: str,
+                              address: str):
+        """
+        Destroy session.
+
+        Parameters
+        ----------
+        session_id : str
+            Session ID.
+        address : str
+            Supervisor address
+        """
+        lifecycle_tracker_ref = await mo.actor_ref(
+            address, LifecycleTrackerActor.gen_uid(session_id))
+        return await mo.destroy_actor(lifecycle_tracker_ref)
+
     @mo.extensible
     async def track(self,
                     tileable_key: str,
@@ -166,7 +207,4 @@ class MockLifecycleAPI(LifecycleAPI):
     async def create(cls,
                      session_id: str,
                      address: str) -> "LifecycleAPI":
-        from mars.services.lifecycle.supervisor.service import LifecycleSupervisorService
-        service = LifecycleSupervisorService({}, address)
-        await service.create_session(session_id)
-        return await super().create(session_id=session_id, address=address)
+        return await super().create_session(session_id, address)

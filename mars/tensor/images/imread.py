@@ -13,18 +13,17 @@
 # limitations under the License.
 
 import numpy as np
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 from ... import opcodes as OperandDef
 from ...serialization.serializables import AnyField
 from ...config import options
 from ...lib.filesystem import open_file, glob, file_size
-from ...utils import ceildiv, ModulePlaceholder
+from ...utils import ceildiv
 from ..operands import TensorOperandMixin, TensorOperand
-
-try:
-    from PIL import Image
-except ImportError:
-    Image = ModulePlaceholder('PIL')
 
 
 def _read_image(fpath):

@@ -22,7 +22,7 @@ from mars.core.operand import OperandStage
 from mars.tensor.datasource import ones
 from mars.tensor.reshape.reshape import TensorReshape
 
-
+    
 def test_reshape():
     a = ones((10, 20, 30), chunk_size=5)
     b = a.reshape(10, 600)

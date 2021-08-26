@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import tempfile
 
 import numpy as np
 import pandas as pd
@@ -123,14 +122,11 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
 
         pd.testing.assert_frame_equal(value2, read_value)
 
-        await MockStorageAPI.cleanup(pool.external_address)
-
 
 @pytest.mark.asyncio
 async def test_web_storage_api():
     from mars.services.storage.api.web import StorageWebAPIHandler
 
-    tempdir = tempfile.mkdtemp()
     start_method = 'fork' if sys.platform != 'win32' else None
     pool = await mo.create_actor_pool('127.0.0.1', 1,
                                       subprocess_start_method=start_method)
@@ -147,8 +143,7 @@ async def test_web_storage_api():
         await MockStorageAPI.create(
             address=pool.external_address,
             session_id=session_id,
-            storage_configs={'shared_memory': dict(),
-                             'disk': dict(root_dirs=[tempdir])})
+            storage_configs={'shared_memory': dict()})
 
         web_config = {
             'port': get_next_port(),
@@ -173,6 +168,3 @@ async def test_web_storage_api():
         sliced_value = await web_storage_api.get(
             t.chunks[0].key, conditions=[slice(3, 5), slice(None, None)])
         np.testing.assert_array_equal(value[3:5, :], sliced_value)
-
-        await MockStorageAPI.cleanup(pool.external_address)
-        await MockClusterAPI.cleanup(pool.external_address)

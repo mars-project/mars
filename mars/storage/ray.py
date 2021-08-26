@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import inspect
-
 from typing import Any, Dict, List, Tuple
 from ..lib import sparse
 from ..oscar.debug import debug_async_timeout
@@ -100,30 +98,18 @@ class RayFileObject(BufferWrappedFileObject):
         pass
 
 
-_support_specify_owner = None
-
-
-def support_specify_owner():
-    global _support_specify_owner
-    if _support_specify_owner is None:
-        sig = inspect.signature(ray.put)
-        _support_specify_owner = '_owner' in sig.parameters
-    return _support_specify_owner
-
-
 @register_storage_backend
 class RayStorage(StorageBackend):
     name = 'ray'
 
     def __init__(self, *args, **kwargs):
-        self._owner_address = kwargs.get('owner')
-        self._owner = None  # A ray actor which will own the objects put by workers.
+        pass
 
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         _register_sparse_matrix_serializer()
-        return kwargs, dict()
+        return dict(), dict()
 
     @staticmethod
     @implements(StorageBackend.teardown)
@@ -146,12 +132,7 @@ class RayStorage(StorageBackend):
 
     @implements(StorageBackend.put)
     async def put(self, obj, importance=0) -> ObjectInfo:
-        if support_specify_owner() and self._owner_address:
-            if not self._owner:
-                self._owner = ray.get_actor(self._owner_address)
-            object_id = ray.put(obj, _owner=self._owner)
-        else:
-            object_id = ray.put(obj)
+        object_id = ray.put(obj)
         # We can't get the serialized bytes length from ray.put
         return ObjectInfo(object_id=object_id)
 

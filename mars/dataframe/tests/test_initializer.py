@@ -23,7 +23,7 @@ from mars.utils import lazy_import
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
 
-
+    
 def test_dataframe_initializer(setup):
     # from tensor
     raw = np.random.rand(100, 10)

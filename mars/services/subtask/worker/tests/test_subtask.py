@@ -32,7 +32,7 @@ from mars.services.scheduling import MockSchedulingAPI
 from mars.services.session import MockSessionAPI
 from mars.services.storage import MockStorageAPI
 from mars.services.subtask import Subtask, SubtaskStatus, SubtaskResult
-from mars.services.subtask.worker.manager import SubtaskRunnerManagerActor
+from mars.services.subtask.worker.manager import SubtaskManagerActor
 from mars.services.subtask.worker.runner import SubtaskRunnerActor, SubtaskRunnerRef
 from mars.services.task import new_task_id
 from mars.services.task.supervisor.manager import TaskManagerActor, TaskConfigurationActor
@@ -72,14 +72,13 @@ async def actor_pool():
             uid=FakeTaskManager.gen_uid(session_id),
             address=pool.external_address)
         manager = await mo.create_actor(
-            SubtaskRunnerManagerActor, None,
-            uid=SubtaskRunnerManagerActor.default_uid(),
+            SubtaskManagerActor, None,
+            uid=SubtaskManagerActor.default_uid(),
             address=pool.external_address)
-        try:
-            yield pool, session_id, meta_api, storage_api, manager
-        finally:
-            await MockStorageAPI.cleanup(pool.external_address)
-            await MockClusterAPI.cleanup(pool.external_address)
+
+        yield pool, session_id, meta_api, storage_api, manager
+
+        await MockStorageAPI.cleanup(pool.external_address)
 
 
 def _gen_subtask(t, session_id):

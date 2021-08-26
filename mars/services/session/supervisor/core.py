@@ -19,8 +19,6 @@ from typing import Dict, List, Optional
 from .... import oscar as mo
 from ....utils import to_binary
 from ...cluster import ClusterAPI
-from ...core import NodeRole, create_service_session, \
-    destroy_service_session
 from ..core import SessionInfo
 
 
@@ -137,17 +135,44 @@ class SessionActor(mo.Actor):
             uid=CustomLogMetaActor.gen_uid(self._session_id))
 
     async def __pre_destroy__(self):
-        await destroy_service_session(
-            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address)
+        from ...meta import MetaAPI
+        from ...lifecycle import LifecycleAPI
+        from ...scheduling import SchedulingAPI
+        from ...task import TaskAPI
+
+        if self._task_api:
+            await TaskAPI.destroy_session(self._session_id, self.address)
+        if self._lifecycle_api:
+            await LifecycleAPI.destroy_session(self._session_id, self.address)
+        if self._meta_api:
+            await MetaAPI.destroy_session(self._session_id, self.address)
+        if self._scheduling_api:
+            await SchedulingAPI.destroy_session(self._session_id, self.address)
+
         await mo.destroy_actor(self._custom_log_meta_ref)
 
     async def create_services(self):
+        from ...meta import MetaAPI
+        from ...lifecycle import LifecycleAPI
+        from ...scheduling import SchedulingAPI
         from ...task import TaskAPI
-        await create_service_session(
-            NodeRole.SUPERVISOR, self._service_config, self._session_id, self.address)
-        if 'task' in self._service_config['services']:
-            self._task_api = await TaskAPI.create(
-                session_id=self._session_id, address=self.address)
+
+        services = set(self._service_config['services'])
+
+        self._meta_api = self._scheduling_api = self._task_api = None
+
+        if services and 'meta' in services:
+            self._meta_api = await MetaAPI.create_session(
+                self._session_id, self.address)
+        if services and 'lifecycle' in services:
+            self._lifecycle_api = await LifecycleAPI.create_session(
+                self._session_id, self.address)
+        if services and 'scheduling' in services:
+            self._scheduling_api = await SchedulingAPI.create_session(
+                self._session_id, self.address, self._service_config)
+        if services and 'task' in services:
+            self._task_api = await TaskAPI.create_session(
+                self._session_id, self.address)
 
     async def get_last_idle_time(self):
         if self._task_api is None:

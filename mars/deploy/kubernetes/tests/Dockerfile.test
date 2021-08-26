@@ -5,7 +5,7 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install -c pkgs/main \
     coverage\>=5.0 cloudpickle \
   && conda clean --all -f -y
 
-RUN apt-get -yq update --allow-releaseinfo-change
+RUN apt-get -yq update
 RUN apt-get -yq install git gcc g++ procps
 
 COPY docker-logging.conf /srv/logging.conf

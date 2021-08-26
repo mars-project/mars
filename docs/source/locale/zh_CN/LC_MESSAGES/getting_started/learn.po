@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-20 11:06+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -53,25 +53,18 @@ msgid "Mars learn can integrate with XGBoost, LightGBM, TensorFlow and PyTorch."
 msgstr "Mars learn 能和 XGBoost、LightGBM、TensorFlow 以及 PyTorch 集成。"
 
 #: ../../source/getting_started/learn.rst:36
-msgid ":ref:`XGBoost <integrate_xgboost>`."
-msgstr ""
+msgid "For XGBoost, refer to :ref:`xgboost`."
+msgstr "XGBoost 参考 :ref:`xgboost`。"
 
 #: ../../source/getting_started/learn.rst:37
-msgid ":ref:`LightGBM <integrate_lightgbm>`."
-msgstr ""
+msgid "For LightGBM, refer to :ref:`lightgbm`."
+msgstr "LightGBM 参考 :ref:`lightgbm`。"
 
 #: ../../source/getting_started/learn.rst:38
-msgid ":ref:`TensorFlow <integrate_tensorflow>`."
-msgstr ""
+msgid "For TensorFlow, refer to :ref:`tensorflow`."
+msgstr "TensorFlow 参考 :ref:`tensorflow`。"
 
 #: ../../source/getting_started/learn.rst:39
-msgid ":ref:`PyTorch <integrate_pytorch>`."
-msgstr ""
+msgid "For PyTorch, doc is coming soon."
+msgstr "PyTorch 集成的文档尚在编写中。"
 
-#: ../../source/getting_started/learn.rst:40
-msgid ":ref:`Joblib <integrate_joblib>`."
-msgstr ""
-
-#: ../../source/getting_started/learn.rst:41
-msgid ":ref:`Statesmodels <integrate_statsmodels>`."
-msgstr ""

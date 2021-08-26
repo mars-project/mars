@@ -18,7 +18,7 @@ import os
 import pytest
 
 import mars.oscar as mo
-from mars.services import start_services, stop_services, NodeRole
+from mars.services import start_services, NodeRole
 from mars.services.cluster import ClusterAPI, WorkerSlotInfo, \
     QuotaInfo, StorageInfo, DiskInfo
 from mars.storage import StorageLevel
@@ -86,8 +86,3 @@ async def test_cluster_service(actor_pools):
     assert len(info_details['slot']) > 0
     assert len(info_details['quota']) > 0
     assert len(info_details['storage']) > 0
-
-    await stop_services(
-        NodeRole.WORKER, config, address=worker_pool.external_address)
-    await stop_services(
-        NodeRole.SUPERVISOR, config, address=sv_pool.external_address)

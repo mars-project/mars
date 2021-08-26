@@ -22,10 +22,9 @@ import mars.oscar as mo
 import mars.remote as mr
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.core.context import get_context
-from mars.services import start_services, stop_services, NodeRole
+from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
-from mars.services.subtask import SubtaskStatus
 from mars.services.web import WebActor
 from mars.services.meta import MetaAPI
 from mars.services.task import TaskAPI, TaskStatus, WebTaskAPI
@@ -64,8 +63,8 @@ async def start_test_service(actor_pools, request):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle",
-                     "scheduling", "subtask", "task"],
+        "services": ["cluster", "session", "lifecycle", "meta", "lifecycle", "scheduling",
+                     "task", "subtask"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -89,7 +88,7 @@ async def start_test_service(actor_pools, request):
     session_api = await SessionAPI.create(sv_pool.external_address)
     await session_api.create_session(session_id)
 
-    if not request.param:
+    if not request:
         task_api = await TaskAPI.create(session_id,
                                         sv_pool.external_address)
     else:
@@ -110,8 +109,6 @@ async def start_test_service(actor_pools, request):
         yield sv_pool.external_address, task_api, storage_api
     finally:
         await MockStorageAPI.cleanup(worker_pool.external_address)
-        await stop_services(NodeRole.WORKER, config, worker_pool.external_address)
-        await stop_services(NodeRole.SUPERVISOR, config, sv_pool.external_address)
 
 
 @pytest.mark.asyncio
@@ -231,7 +228,7 @@ async def test_task_progress(start_test_service):
 
     await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.1)
     results = await task_api.get_task_results(progress=True)
     assert results[0].progress == 0.0
 
@@ -247,7 +244,7 @@ async def test_task_progress(start_test_service):
 
 
 @pytest.mark.asyncio
-async def test_get_tileable_graph(start_test_service):
+async def test_get_tileables(start_test_service):
     _sv_pool_address, task_api, storage_api = start_test_service
 
     def f1():
@@ -269,14 +266,14 @@ async def test_get_tileable_graph(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_graph_as_json('non_exist')
+        await task_api.get_tileable_graph_dict_by_task_id("qffw2")
 
-    tileable_detail = await task_api.get_tileable_graph_as_json(task_id)
+    tileable_detail = await task_api.get_tileable_graph_dict_by_task_id(task_id)
 
-    num_tileable = len(tileable_detail.get('tileables'))
-    num_dependencies = len(tileable_detail.get('dependencies'))
-    assert num_tileable > 0
-    assert num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
+    num_tileable = len(tileable_detail.get("tileables"))
+    num_dependencies = len(tileable_detail.get("dependencies"))
+    assert  num_tileable > 0
+    assert  num_dependencies <= (num_tileable / 2) * (num_tileable / 2)
 
     assert (num_tileable == 1 and num_dependencies == 0) or (num_tileable > 1 and num_dependencies > 0)
 
@@ -287,98 +284,33 @@ async def test_get_tileable_graph(start_test_service):
 
         for node_successor in graph.iter_successors(node):
             graph_dependencies.append({
-                'fromTileableId': node.key,
-                'toTileableId': node_successor.key,
-                'linkType': 0,
+                "from_tileable_id": node.key,
+                "from_tileable_name": str(node.op),
+
+                "to_tileable_id": node_successor.key,
+                "to_tileable_name": str(node_successor.op),
+
+                "linkType": 0,
             })
 
-    for tileable in tileable_detail.get('tileables'):
-        graph_nodes.remove(tileable.get('tileableId'))
+    for tileable in tileable_detail.get("tileables"):
+        graph_nodes.remove(tileable.get("tileable_id"))
 
     assert len(graph_nodes) == 0
 
     for i in range(num_dependencies):
-        dependency = tileable_detail.get('dependencies')[i]
-        assert graph_dependencies[i] == dependency
+        dependency = tileable_detail.get("dependencies")[i]
+        assert graph_dependencies[i].get("from_tileable_id") == \
+               dependency.get("from_tileable_id")
 
+        assert graph_dependencies[i].get("from_tileable_name") == \
+               dependency.get("from_tileable_name")
 
-@pytest.mark.asyncio
-async def test_get_tileable_details(start_test_service):
-    sv_pool_address, task_api, storage_api = start_test_service
+        assert graph_dependencies[i].get("to_tileable_id") == \
+               dependency.get("to_tileable_id")
 
-    session_api = await SessionAPI.create(address=sv_pool_address)
-    ref = await session_api.create_remote_object(
-        task_api._session_id, 'progress_controller', _ProgressController)
+        assert graph_dependencies[i].get("to_tileable_name") == \
+               dependency.get("to_tileable_name")
 
-    with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_details('non_exist')
-
-    def f(*_args, raises=False):
-        get_context().set_progress(0.5)
-        if raises:
-            raise ValueError
-        progress_controller = get_context().get_remote_object('progress_controller')
-        progress_controller.wait()
-        get_context().set_progress(1.0)
-
-    # test non-fused DAGs
-    r1 = mr.spawn(f)
-    r2 = mr.spawn(f, args=(r1, 0))
-    r3 = mr.spawn(f, args=(r1, 1))
-
-    graph = TileableGraph([r2.data, r3.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-
-    def _get_fields(details, field, wrapper=None):
-        rs = [r1, r2, r3]
-        ret = [details[r.key][field] for r in rs]
-        if wrapper:
-            ret = [wrapper(v) for v in ret]
-        return ret
-
-    await asyncio.sleep(1)
-    details = await task_api.get_tileable_details(task_id)
-    assert _get_fields(details, 'progress') == [0.5, 0.0, 0.0]
-    assert _get_fields(details, 'status', SubtaskStatus) \
-        == [SubtaskStatus.running] + [SubtaskStatus.pending] * 2
-
-    await ref.set()
-    await asyncio.sleep(1)
-    details = await task_api.get_tileable_details(task_id)
-    assert _get_fields(details, 'progress') == [1.0, 0.5, 0.5]
-    assert _get_fields(details, 'status', SubtaskStatus) \
-        == [SubtaskStatus.succeeded] + [SubtaskStatus.running] * 2
-
-    await ref.set()
-    await task_api.wait_task(task_id)
-
-    # test fused DAGs
-    r5 = mr.spawn(f, args=(0,))
-    r6 = mr.spawn(f, args=(r5,))
-
-    graph = TileableGraph([r6.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-
-    await asyncio.sleep(1)
-    details = await task_api.get_tileable_details(task_id)
-    assert details[r5.key]['progress'] == details[r6.key]['progress'] == 0.25
-
-    await ref.set()
-    await asyncio.sleep(0.1)
-    await ref.set()
-    await task_api.wait_task(task_id)
-
-    # test raises
-    r7 = mr.spawn(f, kwargs={'raises': 1})
-
-    graph = TileableGraph([r7.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-    await task_api.wait_task(task_id)
-    details = await task_api.get_tileable_details(task_id)
-    assert details[r7.key]['status'] == SubtaskStatus.errored.value
+        assert graph_dependencies[i].get("linkType") == \
+               dependency.get("linkType")

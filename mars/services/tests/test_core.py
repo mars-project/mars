@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import pytest
-from tornado import httpclient
+from tornado.httpclient import AsyncHTTPClient
 
 import mars.oscar as mo
-from mars.services import NodeRole, start_services, stop_services, \
-    create_service_session, destroy_service_session
+from mars.services import NodeRole, start_services, stop_services
 from mars.utils import get_next_port
 
 
@@ -25,28 +24,22 @@ from mars.utils import get_next_port
 async def actor_pool_context():
     pool = await mo.create_actor_pool(f'127.0.0.1:{get_next_port()}', n_process=0)
     await pool.start()
-    try:
-        yield pool
-    finally:
-        await pool.stop()
+    yield pool
+    await pool.stop()
 
 
 @pytest.mark.asyncio
 async def test_start_service(actor_pool_context):
-    from mars.services.tests.test_svcs.test_svc1.supervisor import SvcSessionActor1
-
     pool = actor_pool_context
     web_port = get_next_port()
     config = {
-        'services': [['test_svc1'], 'test_svc2', 'test_warn_svc', 'web'],
-        'modules': 'mars.services.tests.test_svcs',
+        'services': [['test_svc1'], 'test_svc2', 'web'],
         'test_svc1': {'uid': 'TestActor1', 'arg1': 'val1'},
         'test_svc2': {'uid': 'TestActor2', 'arg2': 'val2',  'ref': 'TestActor1'},
         'web': {'port': web_port},
     }
-    with pytest.warns(RuntimeWarning) as record:
-        await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
-        assert 'test_warn_svc' in str(record[-1].message)
+    await start_services(NodeRole.SUPERVISOR, config, 'mars.services.tests.test_svcs',
+                         address=pool.external_address)
 
     ref1 = await mo.actor_ref('TestActor1', address=pool.external_address)
     ref2 = await mo.actor_ref('TestActor2', address=pool.external_address)
@@ -57,21 +50,12 @@ async def test_start_service(actor_pool_context):
         await start_services(NodeRole.SUPERVISOR, {'services': ['non-exist-svc']},
                              address=pool.external_address)
 
-    session_id = 'test_session'
-    await create_service_session(NodeRole.SUPERVISOR, config, session_id=session_id,
-                                 address=pool.external_address)
-    assert await mo.has_actor(mo.create_actor_ref(
-        uid=SvcSessionActor1.gen_uid(session_id), address=pool.external_address))
-    await destroy_service_session(NodeRole.SUPERVISOR, config, session_id=session_id,
-                                  address=pool.external_address)
-    assert not await mo.has_actor(mo.create_actor_ref(
-        uid=SvcSessionActor1.gen_uid(session_id), address=pool.external_address))
-
-    client = httpclient.AsyncHTTPClient()
-    resp = await client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
+    http_client = AsyncHTTPClient()
+    resp = await http_client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
     assert resp.body.decode() == 'val1'
 
-    await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
+    await stop_services(NodeRole.SUPERVISOR, config, 'mars.services.tests.test_svcs',
+                        address=pool.external_address)
     assert not await mo.has_actor(mo.create_actor_ref(
         'TestActor1', address=pool.external_address))
     assert not await mo.has_actor(mo.create_actor_ref(

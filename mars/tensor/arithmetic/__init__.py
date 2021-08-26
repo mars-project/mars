@@ -221,3 +221,4 @@ UNARY_UFUNC = {square, arcsinh, rint, sign, conj, tan, absolute, deg2rad, log, f
                cos, reciprocal, tanh, log1p, exp, arccos, arccosh, around, logical_not, conjugate,
                isfinite, isinf, isnan, signbit, spacing, floor, ceil, trunc, degrees, radians, angle,
                isreal, iscomplex, real, imag, fix, i0, sinc, nan_to_num}
+

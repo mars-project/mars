@@ -108,7 +108,6 @@ async def actor_pool():
         yield pool, session_id, execution_ref, submitter_ref, queue_ref, task_manager_ref
 
         await mo.destroy_actor(slots_ref)
-        await MockClusterAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio

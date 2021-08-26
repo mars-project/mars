@@ -22,7 +22,7 @@ import TableRow from '@material-ui/core/TableRow';
 import TableCell from '@material-ui/core/TableCell';
 import TableBody from '@material-ui/core/TableBody';
 import PropTypes from 'prop-types';
-
+import { OptionalElement } from '../Utils';
 
 export default class NodeEnvTab extends React.Component {
     constructor(props) {
@@ -62,23 +62,23 @@ export default class NodeEnvTab extends React.Component {
                         <TableCell>Endpoint</TableCell>
                         <TableCell>{this.props.endpoint}</TableCell>
                     </TableRow>
-                    {this.state.k8s_pod_name &&
+                    <OptionalElement condition={this.state.k8s_pod_name}>
                         <TableRow>
                             <TableCell>Kubernetes Pod</TableCell>
                             <TableCell>{this.state.k8s_pod_name}</TableCell>
                         </TableRow>
-                    }
-                    {this.state.yarn_container_id &&
+                    </OptionalElement>
+                    <OptionalElement condition={this.state.yarn_container_id}>
                         <TableRow>
                             <TableCell>Yarn Container ID</TableCell>
                             <TableCell>{this.state.yarn_container_id}</TableCell>
                         </TableRow>
-                    }
+                    </OptionalElement>
                     <TableRow>
                         <TableCell>Platform</TableCell>
                         <TableCell>{this.state.platform}</TableCell>
                     </TableRow>
-                    {this.state.cuda_info &&
+                    <OptionalElement condition={this.state.cuda_info}>
                         <TableRow>
                             <TableCell>CUDA</TableCell>
                             <TableCell>
@@ -93,7 +93,7 @@ export default class NodeEnvTab extends React.Component {
                                 </div>
                             </TableCell>
                         </TableRow>
-                    }
+                    </OptionalElement>
                     <TableRow>
                         <TableCell>Git Branch</TableCell>
                         <TableCell>{`${this.state.git_info.hash} ${this.state.git_info.ref}`}</TableCell>

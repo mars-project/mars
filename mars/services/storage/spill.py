@@ -60,7 +60,7 @@ class FIFOStrategy(SpillStrategy):
         self._data_sizes[key] = data_size
 
     def record_delete_info(self, key):
-        self._data_sizes.pop(key, None)
+        self._data_sizes.pop(key)
         if key in self._spilling_keys:
             self._spilling_keys.remove(key)
 
@@ -180,12 +180,6 @@ async def spill(request_size: int,
                         break
                     else:
                         await writer.write(block_data)
-        try:
-            await storage_handler.delete_object(
-                session_id, key, size, reader.object_id, level)
-        except KeyError:  # pragma: no cover
-            # workaround for the case that the object
-            # has been deleted during spill
-            logger.debug('Data %s %s is deleted during spill', session_id, key)
-            await storage_handler.delete(session_id, key, error='ignore')
+        await storage_handler.delete_object(
+            session_id, key, size, reader.object_id, level)
     logger.debug('Spill finishes, release %s bytes of %s', sum(spill_sizes), level)

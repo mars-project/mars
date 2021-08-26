@@ -21,7 +21,7 @@ from .... import oscar as mo
 from ....core import ChunkGraph
 from ....core.operand import Fuse
 from ....optimization.logical import OptimizationRecords
-from ....typing import BandType, TileableType
+from ....typing import BandType
 from ....utils import get_params_fields
 from ...scheduling import SchedulingAPI
 from ...subtask import Subtask, SubtaskGraph, SubtaskResult, SubtaskStatus
@@ -38,7 +38,6 @@ class TaskStageProcessor:
                  chunk_graph: ChunkGraph,
                  subtask_graph: SubtaskGraph,
                  bands: List[BandType],
-                 tileable_to_subtasks: Dict[TileableType, List[Subtask]],
                  optimization_records: OptimizationRecords,
                  scheduling_api: SchedulingAPI,
                  meta_api: MetaAPI):
@@ -46,7 +45,6 @@ class TaskStageProcessor:
         self.task = task
         self.chunk_graph = chunk_graph
         self.subtask_graph = subtask_graph
-        self.tileable_to_subtasks = tileable_to_subtasks
         self._bands = bands
         self._optimization_records = optimization_records
 
@@ -58,7 +56,7 @@ class TaskStageProcessor:
         self.subtask_id_to_subtask = {subtask.subtask_id: subtask
                                       for subtask in subtask_graph}
         self._subtask_to_bands: Dict[Subtask, BandType] = dict()
-        self.subtask_snapshots: Dict[Subtask, SubtaskResult] = dict()
+        self.subtask_temp_result: Dict[Subtask, SubtaskResult] = dict()
         self.subtask_results: Dict[Subtask, SubtaskResult] = dict()
         self._submitted_subtask_ids = set()
 

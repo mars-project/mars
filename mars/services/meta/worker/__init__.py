@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...core import EmptyService
+async def start(*_, **__):
+    return
 
 
-class TaskWorkerService(EmptyService):
-    pass
+stop = start

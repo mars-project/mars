@@ -55,8 +55,6 @@ class SubtaskQueueingActor(mo.Actor):
         self._session_id = session_id
         self._stid_to_bands = defaultdict(list)
         self._stid_to_items = dict()
-        # Note that we need to ensure top item in every band heap queue is valid,
-        # so that we can ensure band queue is busy if the band queue is not empty.
         self._band_queues = defaultdict(list)
 
         self._cluster_api = None
@@ -79,28 +77,9 @@ class SubtaskQueueingActor(mo.Actor):
             async for bands in self._cluster_api.watch_all_bands():
                 # confirm ready bands indeed changed
                 if bands != self._band_slot_nums:
-                    old_band_slot_nums = self._band_slot_nums
                     self._band_slot_nums = copy.deepcopy(bands)
                     if self._band_queues:
                         await self.balance_queued_subtasks()
-                        # Refresh global slot manager to get latest bands,
-                        # so that subtasks reassigned to the new bands can be
-                        # ensured to get submitted as least one subtask every band
-                        # successfully.
-                        await self._slots_ref.refresh_bands()
-                        all_bands = {*bands.keys(), *old_band_slot_nums.keys()}
-                        bands_delta = {}
-                        for b in all_bands:
-                            delta = bands.get(b, 0) - old_band_slot_nums.get(b, 0)
-                            if delta != 0:
-                                bands_delta[b] = delta
-                        # Submit tasks on new bands manually, otherwise some subtasks
-                        # will never got submitted. Note that we must ensure every new
-                        # band will get at least one subtask submitted successfully.
-                        # Later subtasks submit on the band will be triggered by the
-                        # success of previous subtasks on the same band.
-                        logger.info('Bands changed with delta %s, submit all bands.', bands_delta)
-                        await self.ref().submit_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
@@ -164,8 +143,10 @@ class SubtaskQueueingActor(mo.Actor):
             task_queue = self._band_queues[band]
             submit_items = dict()
             while task_queue and len(submit_items) < band_limit:
-                self._ensure_top_item_valid(task_queue)
                 item = heapq.heappop(task_queue)
+                # skip removed items (as they may still in the queue)
+                if item.subtask.subtask_id not in self._stid_to_items:
+                    continue
                 submit_items[item.subtask.subtask_id] = item
 
             subtask_ids = list(submit_items)
@@ -198,12 +179,6 @@ class SubtaskQueueingActor(mo.Actor):
         if submit_aio_tasks:
             yield asyncio.gather(*submit_aio_tasks)
 
-    def _ensure_top_item_valid(self, task_queue):
-        """Clean invalid subtask item from queue to ensure that """
-        while task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items:
-            #  skip removed items (as they may be re-pushed into the queue)
-            heapq.heappop(task_queue)
-
     @mo.extensible
     def update_subtask_priority(self, subtask_id: str, priority: Tuple):
         if subtask_id not in self._stid_to_bands:
@@ -215,18 +190,8 @@ class SubtaskQueueingActor(mo.Actor):
 
     def remove_queued_subtasks(self, subtask_ids: List[str]):
         for stid in subtask_ids:
-            bands = self._stid_to_bands.pop(stid, [])
+            self._stid_to_bands.pop(stid, None)
             self._stid_to_items.pop(stid, None)
-            for band in bands:
-                band_queue = self._band_queues.get(band)
-                self._ensure_top_item_valid(band_queue)
-
-    async def all_bands_busy(self) -> bool:
-        """Return True if all bands queue has tasks waiting to be submitted."""
-        bands = set(self._band_slot_nums.keys())
-        if set(self._band_queues.keys()).issuperset(bands):
-            return all(len(self._band_queues[band]) > 0 for band in bands)
-        return False
 
     async def balance_queued_subtasks(self):
         # record length of band queues
@@ -247,5 +212,3 @@ class SubtaskQueueingActor(mo.Actor):
                     item = items.pop()
                     self._stid_to_bands[item.subtask.subtask_id].append(band)
                     heapq.heappush(task_queue, item)
-            if len(task_queue) == 0:
-                self._band_queues.pop(band)

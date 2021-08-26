@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import mars.oscar as mo
-from mars.services.core import AbstractService
 
 
 class SvcActor2(mo.Actor):
@@ -30,17 +29,14 @@ class SvcActor2(mo.Actor):
         return await self._ref.get_arg() + ':' + self._arg
 
 
-class TestService2(AbstractService):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._ref = None
+async def start(config: dict, address: str = None):
+    svc_config = config['test_svc2']
+    await mo.create_actor(
+        SvcActor2, uid=svc_config['uid'], arg=svc_config['arg2'],
+        ref_uid=svc_config['ref'], address=address)
 
-    async def start(self):
-        svc_config = self._config['test_svc2']
-        self._ref = await mo.create_actor(
-            SvcActor2, uid=svc_config['uid'], arg=svc_config['arg2'],
-            ref_uid=svc_config['ref'], address=self._address)
 
-    async def stop(self):
-        assert self._ref is not None
-        await self._ref.destroy()
+async def stop(config: dict, address: str):
+    svc_config = config['test_svc2']
+    await mo.destroy_actor(mo.create_actor_ref(
+        uid=svc_config['uid'], address=address))

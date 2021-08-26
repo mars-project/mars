@@ -3,7 +3,7 @@ FROM ${BASE_CONTAINER}
 
 COPY . /opt/mars/
 
-RUN apt-get -yq update --allow-releaseinfo-change \
+RUN apt-get -yq update \
   && apt-get -yq install gcc g++ \
   && /opt/conda/bin/pip install -e /opt/mars \
   && apt-get -yq remove gcc g++ \

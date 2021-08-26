@@ -22,7 +22,7 @@ import mars.oscar as mo
 import mars.tensor as mt
 import mars.remote as mr
 from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services import start_services, stop_services, NodeRole
+from mars.services import start_services, NodeRole
 from mars.services.meta import MetaAPI
 from mars.services.session import SessionAPI
 from mars.services.storage import MockStorageAPI
@@ -76,8 +76,8 @@ async def test_subtask_service(actor_pools):
     sv_pool, worker_pool = actor_pools
 
     config = {
-        "services": ["cluster", "session", "meta", "lifecycle",
-                     "scheduling", "subtask", "task"],
+        "services": ["cluster", "session", "meta", "task", "lifecycle",
+                     "scheduling", "subtask"],
         "cluster": {
             "backend": "fixed",
             "lookup_address": sv_pool.external_address,
@@ -146,7 +146,3 @@ async def test_subtask_service(actor_pools):
     assert timer.duration < 2
 
     await MockStorageAPI.cleanup(worker_pool.external_address)
-    await stop_services(
-        NodeRole.WORKER, config, address=worker_pool.external_address)
-    await stop_services(
-        NodeRole.SUPERVISOR, config, address=sv_pool.external_address)

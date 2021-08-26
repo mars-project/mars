@@ -13,9 +13,6 @@
 # limitations under the License.
 
 from .run_script import run_pytorch_script
-from .dataset import MarsDataset  # noqa: F401 # pylint: disable=unused-import
-from .sampler import SequentialSampler, RandomSampler, \
-    SubsetRandomSampler, DistributedSampler  # noqa: F401 # pylint: disable=unused-import
 
 
 def register_op():

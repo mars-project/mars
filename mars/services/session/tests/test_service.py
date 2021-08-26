@@ -17,11 +17,11 @@ import threading
 import pytest
 import numpy as np
 
+from ...task.api import TaskAPI
 import mars.oscar as mo
 import mars.remote as mr
-from mars.services import start_services, stop_services, NodeRole
+from mars.services import start_services, NodeRole
 from mars.services.session import SessionAPI, WebSessionAPI
-from mars.services.task.api import TaskAPI
 from mars.core import TileableGraph, TileableGraphBuilder
 from mars.utils import get_next_port
 
@@ -64,9 +64,6 @@ async def test_session_service(test_web):
         assert await session_api.has_session(session_id) is False
         assert await session_api.get_sessions() == []
 
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)
-
 
 @pytest.mark.asyncio
 async def test_get_last_idle_time():
@@ -77,8 +74,8 @@ async def test_get_last_idle_time():
                                              subprocess_start_method='spawn')
     async with sv_pool, worker_pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle",
-                         "scheduling", "subtask", "task"],
+            "services": ["cluster", "session", "meta", "lifecycle", "task",
+                         "scheduling", "subtask"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": sv_pool.external_address,
@@ -143,11 +140,6 @@ async def test_get_last_idle_time():
         await task_api.submit_tileable_graph(graph, fuse_enabled=False)
         assert await session_api.get_last_idle_time() is None
 
-        await stop_services(
-            NodeRole.WORKER, config, address=worker_pool.external_address)
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
-
 
 @pytest.mark.asyncio
 async def test_dmap():
@@ -155,8 +147,8 @@ async def test_dmap():
 
     async with pool:
         config = {
-            "services": ["cluster", "session", "meta", "lifecycle",
-                         "scheduling", "subtask", "task"],
+            "services": ["cluster", "session", "meta", "lifecycle", "task",
+                         "scheduling", "subtask"],
             "cluster": {
                 "backend": "fixed",
                 "lookup_address": pool.external_address,
@@ -180,6 +172,3 @@ async def test_dmap():
         with pytest.raises(AttributeError):
             await lock.abc()
         await session_api.destroy_remote_object(session_id, 'my_lock')
-
-        await stop_services(
-            NodeRole.SUPERVISOR, config, address=pool.external_address)

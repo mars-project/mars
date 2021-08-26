@@ -14,11 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import numpy as np
 
 from ... import opcodes as OperandDef
 from ...serialization.serializables import KeyField, DataTypeField, StringField
-from ...utils import get_dtype
 from ..array_utils import as_same_device, device
 from ..operands import TensorHasInput, TensorOperandMixin
 from ..utils import get_order
@@ -150,7 +150,7 @@ def _astype(tensor, dtype, order='K', casting='unsafe', copy=True):
     >>> x.astype(int).execute()
     array([1, 2, 2])
     """
-    dtype = get_dtype(dtype)
+    dtype = np.dtype(dtype)
     tensor_order = get_order(order, tensor.order)
 
     if tensor.dtype == dtype and tensor.order == tensor_order:

@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import abc
 import asyncio
 import enum
 import importlib
-import inspect
-import warnings
-from typing import Dict, Iterable, List, Union
-
-_ModulesType = Union[List, str, None]
+from typing import Dict, List, Union
 
 
 class NodeRole(enum.Enum):
@@ -28,55 +23,14 @@ class NodeRole(enum.Enum):
     WORKER = 1
 
 
-class AbstractService(abc.ABC):
-    _instances = dict()
-
-    def __init__(self, config: Dict, address: str):
-        self._config = config
-        self._address = address
-
-    @classmethod
-    def get_instance(cls, address: str, config: Dict = None):
-        type_addr = (cls, address)
-        if type_addr not in cls._instances:
-            inst = cls._instances[type_addr] = cls(config, address)
-        else:
-            inst = cls._instances[type_addr]
-        return inst
-
-    @classmethod
-    def clear(cls):
-        cls._instances = dict()
-
-    @abc.abstractmethod
-    async def start(self):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    async def stop(self):
-        raise NotImplementedError
-
-    async def create_session(self, session_id: str):
-        pass
-
-    async def destroy_session(self, session_id: str):
-        pass
-
-
-class EmptyService(AbstractService):
-    async def start(self):
-        pass
-
-    async def stop(self):
-        pass
-
-
 def _find_service_entries(node_role: NodeRole,
                           services: List,
-                          modules: List):
+                          modules: List,
+                          method: str):
     svc_entries_list = []
 
     web_handlers = {}
+    bokeh_apps = {}
     for svc_names in services:
         if isinstance(svc_names, str):
             svc_names = [svc_names]
@@ -85,31 +39,18 @@ def _find_service_entries(node_role: NodeRole,
             svc_mod = None
             for mod_name in modules:
                 try:
-                    full_mod_name = f'{mod_name}.{svc_name}.{node_role.name.lower()}'
-                    svc_mod = importlib.import_module(full_mod_name)
-
-                    abstract_derivatives = []
-                    valid_derivatives = []
-                    for attr_name in dir(svc_mod):
-                        obj = getattr(svc_mod, attr_name)
-                        if obj is not AbstractService \
-                                and isinstance(obj, type) \
-                                and issubclass(obj, AbstractService):
-                            if inspect.isabstract(obj):
-                                abstract_derivatives.append(obj)
-                            else:
-                                valid_derivatives.append(obj)
-
-                    svc_entries.extend(valid_derivatives)
-                    if not valid_derivatives and abstract_derivatives:
-                        warnings.warn(f'Module {full_mod_name} does not have non-abstract '
-                                      f'service classes, but abstract classes '
-                                      f'{abstract_derivatives} found.', RuntimeWarning)
+                    svc_mod = importlib.import_module(
+                        mod_name + '.' + svc_name + '.' + node_role.name.lower())
+                    try:
+                        svc_entries.append(getattr(svc_mod, method))
+                    except AttributeError:
+                        pass
 
                     try:
                         web_mod = importlib.import_module(
                             mod_name + '.' + svc_name + '.api.web')
                         web_handlers.update(getattr(web_mod, 'web_handlers', {}))
+                        bokeh_apps.update(getattr(web_mod, 'bokeh_apps', {}))
                     except ImportError:
                         pass
                 except ImportError:
@@ -118,45 +59,31 @@ def _find_service_entries(node_role: NodeRole,
                 raise ImportError(f'Cannot discover {node_role} for service {svc_name}')
         svc_entries_list.append(svc_entries)
 
-    return svc_entries_list, web_handlers
+    return svc_entries_list, web_handlers, bokeh_apps
 
 
-def _normalize_modules(modules: _ModulesType):
+def _normalize_modules(modules: Union[List, str, None]):
     if modules is None:
         modules = []
     elif isinstance(modules, str):
         modules = [modules]
     else:
         modules = list(modules)
-    modules = ['mars.services'] + modules
+    modules.append('mars.services')
     return modules
 
 
-def _iter_service_instances(node_role: NodeRole,
-                            config: Dict,
-                            address: str = None,
-                            reverse: bool = False) -> Iterable[List[AbstractService]]:
-    modules = _normalize_modules(config.get('modules'))
-    service_names = config['services']
-    if reverse:
-        service_names = service_names[::-1]
-
-    svc_entries_list, _ = _find_service_entries(
-        node_role, service_names, modules)
-    for entries in svc_entries_list:
-        yield [svc_entry.get_instance(address, config) for svc_entry in entries]
-
-
 async def start_services(node_role: NodeRole, config: Dict,
+                         modules: Union[List, str, None] = None,
                          address: str = None,
                          mark_ready: bool = True):
-    modules = _normalize_modules(config.get('modules'))
+    modules = _normalize_modules(modules)
 
     # discover services
     service_names = config['services']
 
-    svc_entries_list, web_handlers = _find_service_entries(
-        node_role, service_names, modules)
+    svc_entries_list, web_handlers, bokeh_apps = _find_service_entries(
+        node_role, service_names, modules, 'start')
 
     if 'web' in service_names:
         try:
@@ -165,10 +92,10 @@ async def start_services(node_role: NodeRole, config: Dict,
             web_config = config['web'] = dict()
 
         web_config['web_handlers'] = web_handlers
+        web_config['bokeh_apps'] = bokeh_apps
 
     for entries in svc_entries_list:
-        instances = [svc_entry.get_instance(address, config) for svc_entry in entries]
-        await asyncio.gather(*[inst.start() for inst in instances])
+        await asyncio.gather(*[entry(config, address=address) for entry in entries])
 
     if mark_ready and 'cluster' in service_names:
         from .cluster import ClusterAPI
@@ -178,26 +105,13 @@ async def start_services(node_role: NodeRole, config: Dict,
 
 async def stop_services(node_role: NodeRole,
                         config: Dict,
+                        modules: Union[List, str, None] = None,
                         address: str = None):
-    for instances in _iter_service_instances(node_role, config, address, reverse=True):
-        await asyncio.gather(*[inst.stop() for inst in instances])
+    modules = _normalize_modules(modules)
 
-    AbstractService.clear()
+    service_names = config['services'][::-1]
 
-
-async def create_service_session(node_role: NodeRole,
-                                 config: Dict,
-                                 session_id: str = None,
-                                 address: str = None):
-    for instances in _iter_service_instances(node_role, config, address):
-        await asyncio.gather(*[inst.create_session(session_id)
-                               for inst in instances])
-
-
-async def destroy_service_session(node_role: NodeRole,
-                                  config: Dict,
-                                  session_id: str = None,
-                                  address: str = None):
-    for instances in _iter_service_instances(node_role, config, address, reverse=True):
-        await asyncio.gather(*[inst.destroy_session(session_id)
-                               for inst in instances])
+    svc_entries_list, _, _ = _find_service_entries(
+        node_role, service_names, modules, 'stop')
+    for entries in svc_entries_list:
+        await asyncio.gather(*[entry(config, address=address) for entry in entries])

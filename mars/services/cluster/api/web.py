@@ -159,7 +159,7 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
             path=path, method='POST', data=args_str,
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
         )
-        result = json.loads(res.body)
+        result = json.loads(await res.read())
         if watch:
             return result['version'], self._convert_node_dict(result['nodes'])
         else:
@@ -212,7 +212,7 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
 
         path = f'{self._address}/api/cluster/bands'
         res = await self._request_url('GET', path, params=params)
-        return deserialize_serializable(res.body)
+        return deserialize_serializable(await res.read())
 
     @watch_method
     async def watch_all_bands(self, role: NodeRole = None,
@@ -229,9 +229,9 @@ class WebClusterAPI(AbstractClusterAPI, MarsWebAPIClientMixin):
 
         path = f'{self._address}/api/cluster/bands'
         res = await self._request_url('GET', path, params=params)
-        return deserialize_serializable(res.body)
+        return deserialize_serializable(await res.read())
 
     async def get_mars_versions(self) -> List[str]:
         path = f'{self._address}/api/cluster/versions'
         res = await self._request_url('GET', path)
-        return list(json.loads(res.body))
+        return list(json.loads(await res.read()))

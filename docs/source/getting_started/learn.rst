@@ -33,9 +33,7 @@ For implemented learn API, refer to :ref:`learn API reference <learn_api>`.
 
 Mars learn can integrate with XGBoost, LightGBM, TensorFlow and PyTorch.
 
-- :ref:`XGBoost <integrate_xgboost>`.
-- :ref:`LightGBM <integrate_lightgbm>`.
-- :ref:`TensorFlow <integrate_tensorflow>`.
-- :ref:`PyTorch <integrate_pytorch>`.
-- :ref:`Joblib <integrate_joblib>`.
-- :ref:`Statesmodels <integrate_statsmodels>`.
+- For XGBoost, refer to :ref:`xgboost`.
+- For LightGBM, refer to :ref:`lightgbm`.
+- For TensorFlow, refer to :ref:`tensorflow`.
+- For PyTorch, doc is coming soon.

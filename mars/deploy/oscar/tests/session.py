@@ -108,7 +108,7 @@ def new_test_session(address: str = None,
     coro = _new_test_session(address, session_id=session_id,
                              backend=backend, **kwargs)
     session = _ensure_sync(asyncio.run_coroutine_threadsafe(
-        coro, isolation.loop).result(120))
+        coro, isolation.loop).result())
     if default:
         session.as_default()
     return session

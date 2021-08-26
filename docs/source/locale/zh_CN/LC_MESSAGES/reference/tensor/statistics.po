@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-20 11:06+0800\n"
+"POT-Creation-Date: 2021-08-03 18:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -185,71 +185,55 @@ msgstr ""
 msgid "Statistical tests"
 msgstr "统计检验"
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ":obj:`mars.tensor.stats.chisquare <mars.tensor.stats.chisquare>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "Calculate a one-way chi-square test."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
-msgid ":obj:`mars.tensor.stats.ks_1samp <mars.tensor.stats.ks_1samp>`"
-msgstr ""
-
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
-msgid "Performs the one-sample Kolmogorov-Smirnov test for goodness of fit."
-msgstr ""
-
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
-msgid ":obj:`mars.tensor.stats.ks_2samp <mars.tensor.stats.ks_2samp>`"
-msgstr ""
-
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
-msgid "Compute the Kolmogorov-Smirnov statistic on 2 samples."
-msgstr ""
-
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ""
 ":obj:`mars.tensor.stats.power_divergence "
 "<mars.tensor.stats.power_divergence>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "Cressie-Read power divergence statistic and goodness of fit test."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ":obj:`mars.tensor.stats.ttest_1samp <mars.tensor.stats.ttest_1samp>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "Calculate the T-test for the mean of ONE group of scores."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ":obj:`mars.tensor.stats.ttest_ind <mars.tensor.stats.ttest_ind>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "Calculate the T-test for the means of *two independent* samples of scores."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ""
 ":obj:`mars.tensor.stats.ttest_ind_from_stats "
 "<mars.tensor.stats.ttest_ind_from_stats>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "T-test for means of two independent samples from descriptive statistics."
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid ":obj:`mars.tensor.stats.ttest_rel <mars.tensor.stats.ttest_rel>`"
 msgstr ""
 
-#: ../../source/reference/tensor/statistics.rst:71:<autosummary>:1
+#: ../../source/reference/tensor/statistics.rst:69:<autosummary>:1
 msgid "Calculate the t-test on TWO RELATED samples of scores, a and b."
 msgstr ""
 

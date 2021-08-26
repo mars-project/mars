@@ -181,7 +181,7 @@ class StorageAPI(AbstractStorageAPI):
         """
         await self._storage_handler_ref.fetch_batch(
             self._session_id, [data_key], level,
-            band_name, remote_address, error)
+            remote_address, band_name, error)
 
     @fetch.batch
     async def batch_fetch(self, args_list, kwargs_list):
