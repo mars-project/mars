@@ -65,6 +65,8 @@ class TaskDetail extends React.Component {
                                 <Grid item xs={12}>
                                     <TileableDetail
                                         tileable={this.state.selectedTileable}
+                                        sessionId={this.props.match.params.session_id}
+                                        taskId={this.props.match.params.task_id}
                                     />
                                 </Grid>
                             </Grid>
