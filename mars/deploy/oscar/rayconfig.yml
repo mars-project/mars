@@ -1,5 +1,6 @@
 "@inherits": base_config.yml
 cluster:
+  backend: ray
   ray:
     supervisor:
       standalone: no
@@ -8,3 +9,8 @@ session:
   custom_log_dir: null
 storage:
   backends: [ray]
+scheduling:
+  autoscale:
+    enabled: false
+    scheduler_backlog_timeout: 20
+    worker_idle_timeout: 40

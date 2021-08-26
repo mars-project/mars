@@ -14,9 +14,11 @@
 
 import argparse
 import asyncio
+import glob
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent import futures
 from typing import List
@@ -129,9 +131,9 @@ _rerun_errors = (_ProcessExitedException,) \
     + (asyncio.TimeoutError, futures.TimeoutError, TimeoutError)
 
 
+@flaky(max_runs=10, rerun_filter=lambda err, *_: issubclass(err[0], _rerun_errors))
 @pytest.mark.parametrize('supervisor_args,worker_args,use_web_addr',
                          list(start_params.values()), ids=list(start_params.keys()))
-@flaky(rerun_filter=lambda err, *_: not issubclass(err[0], _rerun_errors))
 def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
     new_isolation()
     sv_proc = w_procs = None
@@ -154,8 +156,12 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         else:
             api_ep = oscar_ep
 
-        w_procs = [subprocess.Popen(
-            _reload_args(worker_args), env=env) for _ in range(2)]
+        w_procs = []
+        for idx in range(2):
+            w_procs.append(subprocess.Popen(
+                _reload_args(worker_args), env=env))
+            # make sure worker ports does not collide
+            time.sleep(2)
         _wait_worker_ready(oscar_ep, w_procs)
 
         new_session(api_ep)
@@ -178,6 +184,11 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
                 proc.wait(3)
             except subprocess.TimeoutExpired:
                 kill_process_tree(proc.pid)
+
+        port_prefix = os.path.join(tempfile.gettempdir(),
+                                   OscarCommandRunner._port_file_prefix)
+        for fn in glob.glob(port_prefix + '*'):
+            os.unlink(fn)
 
         stop_isolation()
 
@@ -216,7 +227,6 @@ def test_parse_args():
         'store_memory': '20M',
         'plasma_directory': '/dev/shm',
     }
-    assert app.config['storage']['filesystem'] == {
+    assert app.config['storage']['disk'] == {
             'root_dirs': '/tmp',
-            'level': 'DISK',
     }

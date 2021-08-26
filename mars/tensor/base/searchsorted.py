@@ -13,13 +13,16 @@
 # limitations under the License.
 
 import itertools
+from typing import Any, List, Tuple, Type
 
 import numpy as np
 
 from ... import opcodes as OperandDef
+from ...core import TILEABLE_TYPE
 from ...core.operand import OperandStage
-from ...serialization.serializables import KeyField, StringField, \
+from ...serialization.serializables import StringField, \
     AnyField, Int64Field, Int32Field
+from ...typing import TileableType, ChunkType
 from ...config import options
 from ...utils import has_unknown_shape
 from ..operands import TensorOperand, TensorOperandMixin
@@ -31,46 +34,22 @@ from ..array_utils import as_same_device, device
 class TensorSearchsorted(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.SEARCHSORTED
 
-    _input = KeyField('input')
-    _values = AnyField('values')
-    _side = StringField('side')
-    _combine_size = Int32Field('combine_size')
-    # offset is used only for map stage
-    _offset = Int64Field('offset')
-
-    def __init__(self, values=None, side=None, combine_size=None, offset=None, **kw):
-        super().__init__(_values=values, _side=side, _combine_size=combine_size,
-                         _offset=offset, **kw)
+    v = AnyField('v')
+    side = StringField('side')
+    combine_size = Int32Field('combine_size')
+    # for chunk
+    offset = Int64Field('offset')
+    size = Int64Field('size')
+    n_chunk = Int64Field('n_chunk')
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
-        self._input = self._inputs[0]
-        if len(self._inputs) == 2:
-            self._values = self._inputs[1]
-
-    @property
-    def input(self):
-        return self._input
-
-    @property
-    def values(self):
-        return self._values
-
-    @property
-    def side(self):
-        return self._side
-
-    @property
-    def offset(self):
-        return self._offset
-
-    @property
-    def combine_size(self):
-        return self._combine_size
+        if isinstance(self.v, TILEABLE_TYPE):
+            self.v = self._inputs[1]
 
     def __call__(self, a, v):
         inputs = [a]
-        if isinstance(v, TENSOR_TYPE):
+        if isinstance(v, TILEABLE_TYPE):
             inputs.append(v)
             shape = v.shape
         else:
@@ -100,45 +79,96 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
                                   chunks=chunks, nsplits=nsplits)
 
     @classmethod
-    def _combine_chunks(cls, to_combine, op, stage, v, idx):
+    def _combine_chunks(cls,
+                        to_combine: List[ChunkType],
+                        op_type: Type,
+                        v: Any,
+                        stage: OperandStage,
+                        chunk_index: Tuple[int]):
         from ..merge import TensorStack
 
+        dtype = np.dtype(np.intp)
         v_shape = v.shape if hasattr(v, 'shape') else ()
-        combine_op = TensorStack(axis=0, dtype=op.outputs[0].dtype)
+        combine_op = TensorStack(axis=0, dtype=dtype)
         combine_chunk = combine_op.new_chunk(to_combine, shape=v_shape)
-        chunk_op = op.copy().reset_key()
-        chunk_op.stage = stage
-        in_chunks = [combine_chunk]
-        if len(op.inputs) == 2:
-            in_chunks.append(v)
-        return chunk_op.new_chunk(in_chunks, shape=v_shape, index=idx,
-                                  order=op.outputs[0].order)
+        chunk_op = op_type(dtype=dtype, axis=(0,), stage=stage)
+        return chunk_op.new_chunk([combine_chunk], shape=v_shape, index=chunk_index,
+                                  order=TensorOrder.C_ORDER)
 
     @classmethod
-    def _tile_tree_reduction(cls, op, a, v, out):
-        if has_unknown_shape(*op.inputs):
+    def _tile_tree_reduction(cls,
+                             op: "TensorSearchsorted",
+                             a: TileableType,
+                             v: Any,
+                             out: TileableType):
+        from ..indexing import TensorSlice
+        from ..merge import TensorConcatenate
+        from ..reduction import TensorMax, TensorMin
+
+        if has_unknown_shape(a):
             yield
 
         combine_size = op.combine_size or options.combine_size
+        n_chunk = len(a.chunks)
         input_len = len(op.inputs)
         v_chunks = [v] if input_len == 1 else v.chunks
+        cum_nsplits = [0] + np.cumsum(a.nsplits[0]).tolist()
+
+        input_chunks = []
+        offsets = []
+        for i in range(n_chunk):
+            offset = cum_nsplits[i]
+            cur_chunk = a.chunks[i]
+            chunk_size = a.shape[0]
+            chunks = []
+            if i > 0:
+                last_chunk = a.chunks[i - 1]
+                if last_chunk.shape[0] > 0:
+                    slice_chunk_op = TensorSlice(slices=[slice(-1, None)],
+                                                 dtype=cur_chunk.dtype)
+                    slice_chunk = slice_chunk_op.new_chunk(
+                        [last_chunk], shape=(1,), order=out.order)
+                    chunks.append(slice_chunk)
+                    chunk_size += 1
+                    offset -= 1
+            chunks.append(cur_chunk)
+            if i < n_chunk - 1:
+                next_chunk = a.chunks[i + 1]
+                if next_chunk.shape[0] > 0:
+                    slice_chunk_op = TensorSlice(slices=[slice(1)],
+                                                 dtype=cur_chunk.dtype)
+                    slice_chunk = slice_chunk_op.new_chunk(
+                        [next_chunk], shape=(1,), order=out.order)
+                    chunks.append(slice_chunk)
+                    chunk_size += 1
+
+            concat_op = TensorConcatenate(dtype=cur_chunk.dtype)
+            concat_chunk = concat_op.new_chunk(
+                chunks, shape=(chunk_size,), order=out.order,
+                index=cur_chunk.index)
+            input_chunks.append(concat_chunk)
+            offsets.append(offset)
 
         out_chunks = []
         for v_chunk in v_chunks:
-            offsets = [0] + np.cumsum(a.nsplits[0]).tolist()[:-1]
+            chunks = []
             v_shape = v_chunk.shape if hasattr(v_chunk, 'shape') else ()
             v_index = v_chunk.index if hasattr(v_chunk, 'index') else (0,)
-            chunks = []
-            for i, c in enumerate(a.chunks):
+            for inp_chunk, offset in zip(input_chunks, offsets):
                 chunk_op = op.copy().reset_key()
                 chunk_op.stage = OperandStage.map
-                chunk_op._offset = offsets[i]
-                in_chunks = [c]
-                if input_len == 2:
-                    in_chunks.append(v_chunk)
-                chunks.append(chunk_op.new_chunk(in_chunks, shape=v_shape,
-                                                 index=c.index, order=out.order))
+                chunk_op.offset = offset
+                chunk_op.n_chunk = n_chunk
+                chunk_op.size = a.shape[0]
+                chunk_inputs = [inp_chunk]
+                if input_len > 1:
+                    chunk_inputs.append(v_chunk)
+                map_chunk = chunk_op.new_chunk(
+                    chunk_inputs, shape=v_shape, index=inp_chunk.index,
+                    order=out.order)
+                chunks.append(map_chunk)
 
+            op_type = TensorMax if op.side == 'right' else TensorMin
             while len(chunks) > combine_size:
                 new_chunks = []
                 it = itertools.count(0)
@@ -149,10 +179,12 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
                         break
 
                     new_chunks.append(
-                        cls._combine_chunks(to_combine, op, OperandStage.combine, v_chunk, (j,)))
+                        cls._combine_chunks(to_combine, op_type, v_chunk,
+                                            OperandStage.combine, (j,)))
                 chunks = new_chunks
 
-            chunk = cls._combine_chunks(chunks, op, OperandStage.reduce, v_chunk, v_index)
+            chunk = cls._combine_chunks(chunks, op_type, v_chunk,
+                                        OperandStage.agg, v_index)
             out_chunks.append(chunk)
 
         new_op = op.copy().reset_key()
@@ -166,7 +198,7 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         out = op.outputs[0]
         input_len = len(op.inputs)
         if input_len == 1:
-            v = op.values
+            v = op.v
         else:
             v = op.inputs[1]
 
@@ -179,64 +211,51 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         return xp.searchsorted(a, v, side=op.side)
 
     @classmethod
-    def _execute_map(cls, xp, a, v, op):
-        # in the map phase, calculate the indices and positions
-        # for instance, a=[1, 4, 6], v=5, return will be (2, 6)
-        indices = xp.atleast_1d(xp.searchsorted(a, v, side=op.side))
-        data_indices = indices.copy()
-        # if the value is larger than all data
-        # for instance, a=[1, 4, 6], v=7
-        # return will be (2, 6), not (3, 6), thus needs to subtract 1
-        data_indices = xp.subtract(data_indices, 1, out=data_indices,
-                                   where=data_indices >= len(a))
-        data = a[data_indices]
-        if op.offset > 0:
-            indices = xp.add(indices, op.offset, out=indices)
-        if np.isscalar(v):
-            indices, data = indices[0], data[0]
+    def _execute_map(cls,
+                     xp: Any,
+                     a: np.ndarray,
+                     v: Any,
+                     op: "TensorSearchsorted"):
+        out = op.outputs[0]
+        i = out.index[0]
+        side = op.side
 
-        return indices, data
-
-    @classmethod
-    def _execute_combine(cls, xp, a, v, op):
-        inp_indices, inp_data = a
-        if np.isscalar(v):
-            ind = xp.searchsorted(inp_data, v, side=op.side)
-            if ind >= len(inp_data):
-                ind -= 1
-            return inp_indices[ind], inp_data[ind]
+        raw_v = v
+        v = xp.atleast_1d(v)
+        searched = xp.searchsorted(a, v, side=op.side)
+        xp.add(searched, op.offset, out=searched)
+        a_min, a_max = a[0], a[-1]
+        if i == 0:
+            # the first chunk
+            if a_min == a_max:
+                miss = v > a_max
+            else:
+                miss = v > a_max if side == 'left' else v >= a_max
+        elif i == op.n_chunk - 1:
+            # the last chunk
+            if a_min == a_max:
+                miss = v < a_min
+            else:
+                miss = v <= a_min if side == 'left' else v < a_min
         else:
-            ret_indices = np.empty(v.shape, dtype=np.intp)
-            ret_data = np.empty(v.shape, dtype=inp_data.dtype)
-            for idx in itertools.product(*(range(s) for s in v.shape)):
-                ind = xp.searchsorted(inp_data[(slice(None),) + idx], v[idx], side=op.side)
-                if ind >= len(inp_indices):
-                    ind -= 1
-                ret_indices[idx] = inp_indices[(ind,) + idx]
-                ret_data[idx] = inp_data[(ind,) + idx]
-            return ret_indices, ret_data
-
-    @classmethod
-    def _execute_reduce(cls, xp, a, v, op):
-        inp_indices, inp_data = a
-        if np.isscalar(v):
-            ind = xp.searchsorted(inp_data, v, side=op.side)
-            if ind >= len(inp_indices):
-                ind -= 1
-            return inp_indices[ind]
+            if side == 'left' and a_min < a_max:
+                miss = (v <= a_min) | (v > a_max)
+            elif a_min < a_max:
+                miss = (v < a_min) | (v >= a_max)
+            else:
+                assert a_min == a_max
+                miss = v != a_min
+        if side == 'right':
+            searched[miss] = -1
         else:
-            indices = np.empty(v.shape, dtype=np.intp)
-            for idx in itertools.product(*(range(s) for s in v.shape)):
-                ind = xp.searchsorted(inp_data[(slice(None),) + idx], v[idx], side=op.side)
-                if ind >= len(inp_indices):
-                    ind -= 1
-                indices[idx] = inp_indices[(ind,) + idx]
-            return indices
+            searched[miss] = op.size + 1
+
+        return searched[0] if np.isscalar(raw_v) else searched
 
     @classmethod
     def execute(cls, ctx, op):
         a = ctx[op.inputs[0].key]
-        v = ctx[op.inputs[1].key] if len(op.inputs) == 2 else op.values
+        v = ctx[op.inputs[1].key] if len(op.inputs) == 2 else op.v
 
         data = []
         if isinstance(a, tuple):
@@ -259,12 +278,9 @@ class TensorSearchsorted(TensorOperand, TensorOperandMixin):
         with device(device_id):
             if op.stage is None:
                 ret = cls._execute_without_stage(xp, a, v, op)
-            elif op.stage == OperandStage.map:
-                ret = cls._execute_map(xp, a, v, op)
-            elif op.stage == OperandStage.combine:
-                ret = cls._execute_combine(xp, a, v, op)
             else:
-                ret = cls._execute_reduce(xp, a, v, op)
+                assert op.stage == OperandStage.map
+                ret = cls._execute_map(xp, a, v, op)
             ctx[op.outputs[0].key] = ret
 
 
@@ -353,6 +369,6 @@ def searchsorted(a, v, side='left', sorter=None, combine_size=None):
     if not np.isscalar(v):
         v = astensor(v)
 
-    op = TensorSearchsorted(values=v, side=side, dtype=np.dtype(np.intp),
+    op = TensorSearchsorted(v=v, side=side, dtype=np.dtype(np.intp),
                             combine_size=combine_size)
     return op(a, v)

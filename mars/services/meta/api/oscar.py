@@ -216,6 +216,31 @@ class MetaAPI(AbstractMetaAPI):
                               bands: List[BandType]):
         return await self._meta_store.add_chunk_bands(object_id, bands)
 
+    @add_chunk_bands.batch
+    async def batch_add_chunk_bands(self, args_list, kwargs_list):
+        add_chunk_bands_tasks = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            add_chunk_bands_tasks.append(
+                self._meta_store.add_chunk_bands.delay(*args, **kwargs))
+        return await self._meta_store.add_chunk_bands.batch(*add_chunk_bands_tasks)
+
+    @mo.extensible
+    async def remove_chunk_bands(self,
+                                 object_id: str,
+                                 bands: List[BandType]):
+        return await self._meta_store.remove_chunk_bands(object_id, bands)
+
+    @remove_chunk_bands.batch
+    async def batch_remove_chunk_bands(self, args_list, kwargs_list):
+        remove_chunk_bands_tasks = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            remove_chunk_bands_tasks.append(self._meta_store.remove_chunk_bands.delay(*args, **kwargs))
+        return await self._meta_store.remove_chunk_bands.batch(*remove_chunk_bands_tasks)
+
+    @mo.extensible
+    async def get_band_chunks(self, band: BandType) -> List[str]:
+        return await self._meta_store.get_band_chunks(band)
+
 
 class MockMetaAPI(MetaAPI):
     @classmethod

@@ -16,9 +16,10 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
+import random
+import string
 import threading
 import time
-import uuid
 import warnings
 from abc import ABC, ABCMeta, abstractmethod
 from collections import defaultdict
@@ -48,7 +49,6 @@ from ...typing import ClientType, BandType
 from ...utils import implements, merge_chunks, sort_dataframe_result, \
     register_asyncio_task_timeout_detector, classproperty, \
     copy_tileables, build_fetch
-
 
 logger = logging.getLogger(__name__)
 
@@ -769,7 +769,7 @@ class _IsolatedSession(AbstractAsyncSession):
                 break
             else:
                 raise ValueError(f'Cannot fetch unexecuted '
-                                 f'tileable: {tileable}')
+                                 f'tileable: {tileable!r}')
 
         if isinstance(tileable.op, Fetch):
             return tileable, indexes
@@ -991,6 +991,7 @@ class _IsolatedSession(AbstractAsyncSession):
     async def destroy(self):
         await super().destroy()
         await self._session_api.delete_session(self._session_id)
+        self._tileable_to_fetch.clear()
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
 
@@ -1221,9 +1222,11 @@ class ProgressBar:
         self.progress_bar.__exit__(*_)
 
     def update(self, progress: float):
+        progress = min(progress, 100)
         last_progress = self.last_progress
         if self.progress_bar:
-            self.progress_bar.update(progress - last_progress)
+            incr = max(progress - last_progress, 0)
+            self.progress_bar.update(incr)
         self.last_progress = max(last_progress, progress)
 
 
@@ -1555,13 +1558,18 @@ def ensure_isolation_created(kwargs):
         return new_isolation(loop=loop)
 
 
+def _new_session_id():
+    return ''.join(random.choice(string.ascii_letters + string.digits)
+                   for _ in range(24))
+
+
 async def _new_session(address: str,
                        session_id: str = None,
                        backend: str = 'oscar',
                        default: bool = False,
                        **kwargs) -> AbstractSession:
     if session_id is None:
-        session_id = str(uuid.uuid4())
+        session_id = _new_session_id()
 
     session = await AsyncSession.init(
         address, session_id=session_id,
@@ -1584,7 +1592,7 @@ def new_session(address: str = None,
             kwargs['init_local'] = True
 
     if session_id is None:
-        session_id = str(uuid.uuid4())
+        session_id = _new_session_id()
 
     session = SyncSession.init(
         address, session_id=session_id,

@@ -432,11 +432,10 @@ class StorageHandlerActor(mo.StatelessActor):
         if get_metas:
             metas = await meta_api.get_chunk_meta.batch(*get_metas)
         else:  # pragma: no cover
-            metas = [(address, band_name)] * len(missing_keys)
+            metas = [{'bands': [(address, band_name)]}] * len(missing_keys)
         for data_key, bands in zip(missing_keys, metas):
             if bands is not None:
                 remote_keys[bands['bands'][0]].add(data_key)
-
         transfer_tasks = []
         fetch_keys = []
         for band, keys in remote_keys.items():

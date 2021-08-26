@@ -70,10 +70,11 @@ async def actor_pool():
                                         uid=TaskManagerActor.gen_uid(session_id),
                                         address=pool.external_address,
                                         allocate_strategy=MainPool())
-
-        yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
-
-        await MockStorageAPI.cleanup(pool.external_address)
+        try:
+            yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
+        finally:
+            await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 async def _merge_data(fetch_tileable: Tileable,

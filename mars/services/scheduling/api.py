@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from abc import ABC
-from typing import Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import List, Optional, Tuple, Type, TypeVar, Union
 
 from ... import oscar as mo
 from ...lib.aio import alru_cache
@@ -49,50 +48,6 @@ class SchedulingAPI(ABC):
         scheduling_api = SchedulingAPI(
             session_id, address, manager_ref, queueing_ref)
         return scheduling_api
-
-    @classmethod
-    async def create_session(cls: Type[APIType],
-                             session_id: str,
-                             address: str,
-                             service_config: Optional[Dict] = None) -> APIType:
-        service_config = service_config or dict()
-        scheduling_config = service_config.get('scheduling', {})
-
-        from .supervisor.assigner import AssignerActor
-        assigner_coro = mo.create_actor(
-            AssignerActor, session_id, address=address,
-            uid=AssignerActor.gen_uid(session_id))
-
-        from .supervisor.queueing import SubtaskQueueingActor
-        queueing_coro = mo.create_actor(
-            SubtaskQueueingActor, session_id, scheduling_config.get('submit_period'),
-            address=address, uid=SubtaskQueueingActor.gen_uid(session_id))
-
-        _assigner_ref, queueing_ref = await asyncio.gather(assigner_coro, queueing_coro)
-
-        from .supervisor.manager import SubtaskManagerActor
-        manager_ref = await mo.create_actor(
-            SubtaskManagerActor, session_id, address=address,
-            uid=SubtaskManagerActor.gen_uid(session_id)
-        )
-
-        scheduling_api = SchedulingAPI(
-            session_id, address, manager_ref, queueing_ref)
-        return scheduling_api
-
-    @classmethod
-    async def destroy_session(cls,
-                              session_id: str,
-                              address: str):
-        from .supervisor.queueing import SubtaskQueueingActor
-        from .supervisor.manager import SubtaskManagerActor
-        from .supervisor.assigner import AssignerActor
-
-        destroy_tasks = []
-        for actor_cls in [SubtaskManagerActor, SubtaskQueueingActor, AssignerActor]:
-            ref = await mo.actor_ref(actor_cls.gen_uid(session_id), address=address)
-            destroy_tasks.append(asyncio.create_task(ref.destroy()))
-        await asyncio.gather(*destroy_tasks)
 
     async def add_subtasks(self,
                            subtasks: List[Subtask],
@@ -171,9 +126,12 @@ class MockSchedulingAPI(SchedulingAPI):
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str) -> APIType:
-        from .supervisor import GlobalSlotManagerActor
+        from .supervisor import GlobalSlotManagerActor, AutoscalerActor
         await mo.create_actor(GlobalSlotManagerActor,
                               uid=GlobalSlotManagerActor.default_uid(),
+                              address=address)
+        await mo.create_actor(AutoscalerActor, {},
+                              uid=AutoscalerActor.default_uid(),
                               address=address)
 
         from ... import resource as mars_resource
@@ -191,4 +149,7 @@ class MockSchedulingAPI(SchedulingAPI):
                               uid=WorkerQuotaManagerActor.default_uid(),
                               address=address)
 
-        return await super().create_session(session_id, address)
+        from .supervisor import SchedulingSupervisorService
+        service = SchedulingSupervisorService({}, address)
+        await service.create_session(session_id)
+        return await super().create(session_id, address)

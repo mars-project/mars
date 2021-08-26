@@ -4,9 +4,9 @@ services:
   - storage
   - meta
   - lifecycle
-  - task
   - scheduling
   - subtask
+  - task
 cluster:
   backend: fixed
   node_timeout: 120
@@ -26,3 +26,10 @@ task:
     optimize_tileable_graph: yes
     optimize_chunk_graph: yes
     fuse_enabled: yes
+scheduling:
+  autoscale:
+    enabled: false
+    min_workers: 1  # Must >=1, mars need at least 1 worker to fetch data
+    max_workers: 100
+    scheduler_backlog_timeout: 60
+    worker_idle_timeout: 120

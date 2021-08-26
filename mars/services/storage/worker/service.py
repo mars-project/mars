@@ -13,49 +13,37 @@
 # limitations under the License.
 
 from .... import oscar as mo
+from ...core import AbstractService
 from ..core import StorageManagerActor
 
 
-async def start(config: dict, address: str):
+class StorageWorkerService(AbstractService):
     """
-    Start storage service on worker
-    Parameters
-    ----------
-    config
-        storage service config.
-        {
-            "storage": {
-                "backends": ["plasma"],
-                "<storage backend name>"： "<setup params>",
-            }
+    Storage service on worker
+
+    Service Configuration
+    ---------------------
+    {
+        "storage": {
+            "backends": ["plasma"],
+            "<storage backend name>"： "<setup params>",
         }
-    address
-        address of actor pool
+    }
     """
-    storage_configs = config['storage']
-    backends = storage_configs.get('backends')
-    options = storage_configs.get('default_config', dict())
-    transfer_block_size = options.get('transfer_block_size', None)
-    backend_config = {backend: storage_configs.get(backend, dict())
-                      for backend in backends}
+    async def start(self):
+        storage_configs = self._config['storage']
+        backends = storage_configs.get('backends')
+        options = storage_configs.get('default_config', dict())
+        transfer_block_size = options.get('transfer_block_size', None)
+        backend_config = {backend: storage_configs.get(backend, dict())
+                          for backend in backends}
 
-    await mo.create_actor(StorageManagerActor,
-                          backend_config,
-                          transfer_block_size,
-                          uid=StorageManagerActor.default_uid(),
-                          address=address)
+        await mo.create_actor(StorageManagerActor,
+                              backend_config,
+                              transfer_block_size,
+                              uid=StorageManagerActor.default_uid(),
+                              address=self._address)
 
-
-async def stop(config: dict, address: str):
-    """
-    Stop storage service on worker
-    Parameters
-    ----------
-    config:
-        storage service config
-    address:
-        main pool address of worker
-    """
-    storage_manager_ref = await mo.actor_ref(
-        address=address, uid=StorageManagerActor.default_uid())
-    await mo.destroy_actor(storage_manager_ref)
+    async def stop(self):
+        await mo.destroy_actor(mo.create_actor_ref(
+            address=self._address, uid=StorageManagerActor.default_uid()))
