@@ -134,7 +134,7 @@ def to_ray_mldataset(df,
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    fetched_infos: Dict[str, List] = df.fetch_infos(filters=['band', 'object_id'])
+    fetched_infos: Dict[str, List] = df.fetch_infos(fields=['band', 'object_id'])
     chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = [(band, object_id) for band, object_id in
                                                             zip(fetched_infos['band'],
                                                                 fetched_infos['object_id'])]

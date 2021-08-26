@@ -188,6 +188,7 @@ async def test_fetch_infos(create_cluster):
     assert 'store_size' in fetched_infos
     assert 'band' in fetched_infos
 
+    fetch_infos((df, df), fields=None)
     results_infos = mr.ExecutableTuple([df, df]).execute()._fetch_infos()
     assert len(results_infos) == 2
     assert 'object_id' in results_infos[0]
@@ -309,7 +310,7 @@ def test_no_default_session():
         execute(b, show_progress=False)
 
     np.testing.assert_array_equal(fetch(b), raw + 1)
-    fetch_infos(b, filters=None)
+    fetch_infos(b, fields=None)
     assert get_default_async_session() is not None
     stop_server()
     assert get_default_async_session() is None

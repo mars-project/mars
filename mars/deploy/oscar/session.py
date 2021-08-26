@@ -421,7 +421,7 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def fetch_infos(self, *tileables, filters, **kwargs) -> list:
+    def fetch_infos(self, *tileables, fields, **kwargs) -> list:
         """
         Fetch infos of tileables.
 
@@ -429,8 +429,8 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         ----------
         tileables
             Tileables.
-        filters
-            List of filters
+        fields
+            List of fields
         kwargs
 
         Returns
@@ -884,16 +884,16 @@ class _IsolatedSession(AbstractAsyncSession):
                 result.append(self._process_result(tileable, merged))
             return result
 
-    async def fetch_infos(self, *tileables, filters, **kwargs) -> list:
+    async def fetch_infos(self, *tileables, fields, **kwargs) -> list:
         available_fields = {'object_id', 'level', 'memory_size', 'store_size', 'band'}
-        if filters is None:
-            filters = available_fields
+        if fields is None:
+            fields = available_fields
         else:
-            for filter_name in filters:
-                if filter_name not in available_fields:  # pragma: no cover
+            for field_name in fields:
+                if field_name not in available_fields:  # pragma: no cover
                     raise TypeError(f'`fetch_infos` got unexpected '
-                                    f'filter name: {filter_name}')
-            filters = set(filters)
+                                    f'field name: {field_name}')
+            fields = set(fields)
 
         if kwargs:  # pragma: no cover
             unexpected_keys = ', '.join(list(kwargs.keys()))
@@ -942,17 +942,17 @@ class _IsolatedSession(AbstractAsyncSession):
                     band = chunk_to_band[fetch_info.chunk]
                     # Currently there's only one item in the returned List from storage_api.get_infos()
                     data = fetch_info.data[0]
-                    if 'object_id' in filters:
+                    if 'object_id' in fields:
                         fetched['object_id'].append(data.object_id)
-                    if 'level' in filters:
+                    if 'level' in fields:
                         fetched['level'].append(data.level)
-                    if 'memory_size' in filters:
+                    if 'memory_size' in fields:
                         fetched['memory_size'].append(data.memory_size)
-                    if 'store_size' in filters:
+                    if 'store_size' in fields:
                         fetched['store_size'].append(data.store_size)
                     # data.band misses ip info, e.g. 'numa-0'
                     # while band doesn't, e.g. (address0, 'numa-0')
-                    if 'band' in filters:
+                    if 'band' in fields:
                         fetched['band'].append(band)
                 result.append(fetched)
 
@@ -1337,8 +1337,8 @@ class SyncSession(AbstractSyncSession):
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     @implements(AbstractSyncSession.fetch_infos)
-    def fetch_infos(self, *tileables, filters, **kwargs) -> list:
-        coro = _fetch_infos(*tileables, filters=filters, session=self._isolated_session, **kwargs)
+    def fetch_infos(self, *tileables, fields, **kwargs) -> list:
+        coro = _fetch_infos(*tileables, fields=fields, session=self._isolated_session, **kwargs)
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result()
 
     @implements(AbstractSyncSession.decref)
@@ -1484,12 +1484,12 @@ async def _fetch(tileable: TileableType,
 async def _fetch_infos(tileable: TileableType,
                        *tileables: Tuple[TileableType],
                        session: _IsolatedSession = None,
-                       filters: List[str] = None,
+                       fields: List[str] = None,
                        **kwargs):
     if isinstance(tileable, tuple) and len(tileables) == 0:
         tileable, tileables = tileable[0], tileable[1:]
     session = _get_isolated_session(session)
-    data = await session.fetch_infos(tileable, *tileables, filters=filters, **kwargs)
+    data = await session.fetch_infos(tileable, *tileables, fields=fields, **kwargs)
     return data[0] if len(tileables) == 0 else data
 
 
@@ -1510,7 +1510,7 @@ def fetch(tileable: TileableType,
 
 def fetch_infos(tileable: TileableType,
                 *tileables: Tuple[TileableType],
-                filters: List[str],
+                fields: List[str],
                 session: SyncSession = None,
                 **kwargs):
     if isinstance(tileable, tuple) and len(tileables) == 0:
@@ -1520,7 +1520,7 @@ def fetch_infos(tileable: TileableType,
         if session is None:  # pragma: no cover
             raise ValueError('No session found')
     session = _ensure_sync(session)
-    return session.fetch_infos(tileable, *tileables, filters=filters, **kwargs)
+    return session.fetch_infos(tileable, *tileables, fields=fields, **kwargs)
 
 
 def fetch_log(*tileables: TileableType,
