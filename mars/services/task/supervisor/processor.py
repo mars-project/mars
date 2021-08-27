@@ -618,7 +618,7 @@ class TaskProcessorActor(mo.Actor):
 
                     if not subtaskResult:
                         progress = 1.0
-                        status = SubtaskStatus.succeeded
+                        status = SubtaskStatus.succeeded.value
                     else:
                         progress = subtaskResult.progress
 
