@@ -88,8 +88,7 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              # Change back to `pip install ray[default]` when ray-1.6.0 is released.
-              pip install https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-2.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
+              pip install ray[default]
               pip install xgboost_ray
             fi
             if [ -n "$RUN_DASK" ]; then
