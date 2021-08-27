@@ -635,12 +635,8 @@ class TaskProcessorActor(mo.Actor):
 
             subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
 
-            if not subtaskResult:
-                progress = 1.0
-                status = SubtaskStatus.succeeded.value
-            else:
-                progress = subtaskResult.progress
-                status = subtaskResult.status.value
+            progress = subtaskResult.progress
+            status = subtaskResult.status.value
 
             # since the number of subtasks is large, we will not
             # display the name of subtasks and hence we won't return
