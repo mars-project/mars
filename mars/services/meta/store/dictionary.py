@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 from dataclasses import asdict
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from .... import oscar as mo
 from ....utils import implements
@@ -29,6 +30,7 @@ class DictMetaStore(AbstractMetaStore):
     def __init__(self, session_id: str, **kw):
         super().__init__(session_id)
         self._store: Dict[str, _CommonMeta] = dict()
+        self._band_chunks: Dict[BandType, Set[str]] = defaultdict(set)
         if kw:  # pragma: no cover
             raise TypeError(f'Keyword arguments {kw!r} cannot be recognized.')
 
@@ -43,6 +45,9 @@ class DictMetaStore(AbstractMetaStore):
                   object_id: str,
                   meta: _CommonMeta):
         self._store[object_id] = meta
+        if isinstance(meta, _ChunkMeta):
+            for band in meta.bands:
+                self._band_chunks[band].add(object_id)
 
     @implements(AbstractMetaStore.set_meta)
     @mo.extensible
@@ -89,6 +94,13 @@ class DictMetaStore(AbstractMetaStore):
         return metas
 
     def _del_meta(self, object_id: str):
+        meta = self._store[object_id]
+        if isinstance(meta, _ChunkMeta):
+            for band in meta.bands:
+                chunks = self._band_chunks[band]
+                chunks.remove(object_id)
+                if len(chunks) == 0:
+                    del self._band_chunks[band]
         del self._store[object_id]
 
     @implements(AbstractMetaStore.del_meta)
@@ -108,6 +120,8 @@ class DictMetaStore(AbstractMetaStore):
         meta = self._store[object_id]
         assert isinstance(meta, _ChunkMeta)
         meta.bands = list(set(meta.bands) | set(bands))
+        for band in bands:
+            self._band_chunks[band].add(object_id)
 
     @implements(AbstractMetaStore.add_chunk_bands)
     @mo.extensible
@@ -120,3 +134,27 @@ class DictMetaStore(AbstractMetaStore):
     async def batch_add_chunk_bands(self, args_list, kwargs_list):
         for args, kwargs in zip(args_list, kwargs_list):
             self._add_chunk_bands(*args, **kwargs)
+
+    def _remove_chunk_bands(self,
+                            object_id: str,
+                            bands: List[BandType]):
+        meta = self._store[object_id]
+        assert isinstance(meta, _ChunkMeta)
+        meta.bands = list(set(meta.bands) - set(bands))
+        for band in bands:
+            self._band_chunks[band].remove(object_id)
+
+    @implements(AbstractMetaStore.remove_chunk_bands)
+    @mo.extensible
+    async def remove_chunk_bands(self,
+                                 object_id: str,
+                                 bands: List[BandType]):
+        self._remove_chunk_bands(object_id, bands)
+
+    @remove_chunk_bands.batch
+    async def batch_remove_chunk_bands(self, args_list, kwargs_list):
+        for args, kwargs in zip(args_list, kwargs_list):
+            self._remove_chunk_bands(*args, **kwargs)
+
+    async def get_band_chunks(self, band: BandType) -> List[str]:
+        return list(self._band_chunks[band])

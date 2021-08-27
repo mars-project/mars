@@ -11,16 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Tuple, TypeVar
-
-OperandType = TypeVar('OperandType')
-TileableType = TypeVar('TileableType')
-ChunkType = TypeVar('ChunkType')
-EntityType = TypeVar('EntityType')
-SessionType = TypeVar('SessionType')
-
-ClusterType = TypeVar('ClusterType')
-ClientType = TypeVar('ClientType')
-
-BandType = Tuple[str, str]  # (band address, resource_type)
