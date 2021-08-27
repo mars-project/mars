@@ -86,6 +86,10 @@ def test_unary_execution(setup, func):
     'hankel1e',
     'hankel2',
     'hankel2e',
+    'hyp2f1',
+    'hyp1f1',
+    'hyperu',
+    'hyp0f1'
 ])
 def test_binary_execution(setup, func):
     sp_func = getattr(spspecial, func)
