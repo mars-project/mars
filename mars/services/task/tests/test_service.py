@@ -398,8 +398,8 @@ async def test_get_subtasks(start_test_service):
             progress_controller.wait()
             get_context().set_progress((1 + idx) * 1.0 / count)
 
-    r = mr.spawn(f1, args=(2,))
 
+    r = mr.spawn(f1, args=(2,))
     graph = TileableGraph([r.data])
     next(TileableGraphBuilder(graph).build())
 
@@ -435,7 +435,6 @@ async def test_get_subtasks(start_test_service):
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
         subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-
         for subtask in subtask_details.get('subtasks'):
             assert subtask.get('status') >= 0 and subtask.get('status') <= 4
 
@@ -444,13 +443,11 @@ async def test_get_subtasks(start_test_service):
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
         subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-
         for subtask in subtask_details.get('subtasks'):
             assert subtask.get('status') == SubtaskStatus.succeeded.value
 
-    r7 = mr.spawn(f1, kwargs={'raises': 1})
-
-    graph = TileableGraph([r7.data])
+    r_errored = mr.spawn(f1, kwargs={'raises': 1})
+    graph = TileableGraph([r_errored.data])
     next(TileableGraphBuilder(graph).build())
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
@@ -460,22 +457,3 @@ async def test_get_subtasks(start_test_service):
         subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
         for subtask in subtask_details.get('subtasks'):
             assert subtask.get('status') == SubtaskStatus.errored.value
-
-    def f2():
-        time.sleep(100)
-
-    rs = [mr.spawn(f2) for _ in range(10)]
-
-    graph = TileableGraph([r.data for r in rs])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-    await asyncio.sleep(.5)
-    with Timer() as timer:
-        await task_api.cancel_task(task_id)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-
-        for subtask in subtask_details.get('subtasks'):
-            assert subtask.get('status') == SubtaskStatus.cancelled.value

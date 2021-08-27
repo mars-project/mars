@@ -243,6 +243,20 @@ class TaskProcessor:
         if self._preprocessor.chunk_optimization_records_list:
             return self._preprocessor.chunk_optimization_records_list[-1]
 
+    def _get_tileable_id_to_tileable(self) -> Dict[str, TileableType]:
+        tileable_id_to_tileable = dict()
+
+        tileable_graph = self._preprocessor.tileable_graph
+        tile_ctx = self._preprocessor.tile_context
+
+        for tileable in tileable_graph:
+            if tileable not in tile_ctx:
+                continue
+            tileable_id_to_tileable[str(tileable.key)] = tileable
+
+        return tileable_id_to_tileable
+
+
     def _get_tileable_to_subtasks(self, subtask_graph: SubtaskGraph) \
             -> Dict[TileableType, List[Subtask]]:
         tileable_to_chunks = defaultdict(set)
@@ -295,9 +309,13 @@ class TaskProcessor:
             self._preprocessor.analyze, chunk_graph, available_bands)
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph)
+        tileable_id_to_tileable = await asyncio.to_thread(
+            self._get_tileable_id_to_tileable
+        )
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), tileable_to_subtasks,
+            tileable_id_to_tileable,
             self._get_chunk_optimization_records(),
             self._scheduling_api, self._meta_api)
         return stage_processor
@@ -589,6 +607,7 @@ class TaskProcessorActor(mo.Actor):
         return tileable_infos
 
     def get_tileable_subtasks(self, tileable_id: str):
+        tileable_id_to_tileable = dict()
         tileable_to_subtasks = dict()
         subtask_results = dict()
         returned_subtasks = set()
@@ -599,6 +618,7 @@ class TaskProcessorActor(mo.Actor):
 
         for processor in self._task_id_to_processor.values():
             for stage in processor.stage_processors:
+                tileable_id_to_tileable.update(stage.tileable_id_to_tileable)
                 tileable_to_subtasks.update(stage.tileable_to_subtasks)
 
                 for subtask, result in stage.subtask_results.items():
@@ -607,55 +627,40 @@ class TaskProcessorActor(mo.Actor):
                     if subtask.subtask_id not in subtask_results:
                         subtask_results[subtask.subtask_id] = result
 
-        for tileable, subtasks in tileable_to_subtasks.items():
-            if tileable.key == tileable_id:
-                for subtask in subtasks:
-                    if subtask.subtask_id not in returned_subtasks:
-                        returned_subtasks.add(subtask.subtask_id)
+        requested_tileable = tileable_id_to_tileable[tileable_id]
+        requested_subtasks = tileable_to_subtasks[requested_tileable]
 
-                    subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
+        for subtask in requested_subtasks:
+            if subtask.subtask_id not in returned_subtasks:
+                returned_subtasks.add(subtask.subtask_id)
 
-                    if not subtaskResult:
-                        progress = 1.0
-                        status = SubtaskStatus.succeeded.value
-                    else:
-                        progress = subtaskResult.progress
+            subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
 
-                        if subtaskResult.status == SubtaskStatus.succeeded:
-                            status = SubtaskStatus.succeeded.value
-                        elif subtaskResult.status == SubtaskStatus.cancelled:
-                            status = SubtaskStatus.cancelled.value
-                        elif subtaskResult.status == SubtaskStatus.pending:
-                            status = SubtaskStatus.pending.value
-                        elif subtaskResult.status == SubtaskStatus.errored:
-                            status = SubtaskStatus.errored.value
-                        else:
-                            status = SubtaskStatus.running.value
+            if not subtaskResult:
+                progress = 1.0
+                status = SubtaskStatus.succeeded.value
+            else:
+                progress = subtaskResult.progress
+                status = subtaskResult.status.value
 
-                    # since the number of subtasks is large, we will not
-                    # display the name of subtasks and hence we won't return
-                    # the subtask_name field
-                    subtask_list.append({
-                        'subtaskId': subtask.subtask_id,
-                        'subtaskProgress': progress,
-                        'status': status
-                    })
-                break
+            # since the number of subtasks is large, we will not
+            # display the name of subtasks and hence we won't return
+            # the subtask_name field
+            subtask_list.append({
+                'subtaskId': subtask.subtask_id,
+                'subtaskProgress': progress,
+                'status': status
+            })
 
         # return only the dependencies that belong to the subtask
         # structure of the input tileable
-        for processor in self._task_id_to_processor.values():
-            for stage in processor.stage_processors:
-                for tileable, subtasks in tileable_to_subtasks.items():
-                    if tileable.key == tileable_id:
-                        for subtask in subtasks:
-                            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                                if predecessor.subtask_id in returned_subtasks:
-                                    dependency_list.append({
-                                        'fromSubtaskId': predecessor.subtask_id,
-                                        'toSubtaskId': subtask.subtask_id,
-                                    })
-                    break
+        for subtask in requested_subtasks:
+            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                if predecessor.subtask_id in returned_subtasks:
+                    dependency_list.append({
+                        'fromSubtaskId': predecessor.subtask_id,
+                        'toSubtaskId': subtask.subtask_id,
+                    })
 
         subtask_dict = {
             'subtasks': subtask_list,
