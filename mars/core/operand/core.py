@@ -462,6 +462,7 @@ def execute(results: Dict[str, Any], op: OperandType):
 
     # pre execute
     op.pre_execute(results, op)
+    succeeded = False
     try:
         if UFuncTypeError is None:  # pragma: no cover
             return executor(results, op)
@@ -469,7 +470,9 @@ def execute(results: Dict[str, Any], op: OperandType):
             # Cast `UFuncTypeError` to `TypeError` since subclasses of the former is unpickleable.
             # The `UFuncTypeError` was introduced by numpy#12593 since v1.17.0.
             try:
-                return executor(results, op)
+                result = executor(results, op)
+                succeeded = True
+                return result
             except UFuncTypeError as e:  # pragma: no cover
                 raise TypeError(str(e)).with_traceback(sys.exc_info()[2]) from None
     except NotImplementedError:
@@ -477,10 +480,13 @@ def execute(results: Dict[str, Any], op: OperandType):
             if op_cls in _op_type_to_executor:
                 executor = _op_type_to_executor[op_cls]
                 _op_type_to_executor[type(op)] = executor
-                return executor(results, op)
+                result = executor(results, op)
+                succeeded = True
+                return result
         raise KeyError(f'No handler found for op: {op}')
     finally:
-        op.post_execute(results, op)
+        if succeeded:
+            op.post_execute(results, op)
 
 
 def estimate_size(results: Dict[str, Any], op: OperandType):
