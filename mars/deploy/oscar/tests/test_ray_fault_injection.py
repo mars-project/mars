@@ -77,7 +77,12 @@ async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, 
                          [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
-                           pytest.raises(ServerClosed)]])
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')],
+                          [FaultType.ProcessExit, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(ServerClosed)]
+                          ])
 @pytest.mark.asyncio
 async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
     await test_fault_injection.test_rerun_subtask(fault_cluster, fault_config)

@@ -149,6 +149,7 @@ class NodeInfoCollectorActor(mo.Actor):
                               version: Optional[int] = None):
         role = role or NodeRole.WORKER
         version = yield self._role_to_notifier[role].watch(version=version)
+        print('watch_all_bands:', version, self.get_all_bands())
         raise mo.Return((version, self.get_all_bands(role=role, statuses=statuses)))
 
     async def put_starting_nodes(self, nodes: List[str], role: NodeRole):

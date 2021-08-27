@@ -47,6 +47,10 @@ class GlobalSlotManagerActor(mo.Actor):
 
         async def watch_bands():
             async for bands in self._cluster_api.watch_all_bands():
+                # remove obsolete bands
+                for obsolete_band in (self._band_total_slots.keys() - bands.keys()):
+                    self._band_stid_slots.pop(obsolete_band, None)
+                    self._band_used_slots.pop(obsolete_band, None)
                 old_bands = set(self._band_total_slots.keys())
                 self._band_total_slots = bands
                 new_bands = set(bands.keys()) - old_bands

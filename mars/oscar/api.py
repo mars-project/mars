@@ -20,6 +20,8 @@ from collections import defaultdict
 from .backend import get_backend
 from .context import get_context
 from .core import _Actor, _StatelessActor, ActorRef
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 
 async def create_actor(actor_cls, *args, uid=None, address=None, **kwargs) -> ActorRef:

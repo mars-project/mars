@@ -105,6 +105,7 @@ class TaskStageProcessor:
         self._done.set()
 
     async def set_subtask_result(self, result: SubtaskResult):
+        print('in set_subtask_result:', result.status)
         subtask = self.subtask_id_to_subtask[result.subtask_id]
         self.subtask_results[subtask] = result.merge_bands(self.subtask_results.get(subtask))
         self._submitted_subtask_ids.difference_update([result.subtask_id])

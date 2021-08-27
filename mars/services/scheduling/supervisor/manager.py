@@ -18,8 +18,12 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union
 
+from ... import NodeRole
+from ...cluster import ClusterAPI
+from ...cluster.core import NodeStatus
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....oscar import ServerClosed
 from ....typing import BandType
 from ....utils import dataslots
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
@@ -61,6 +65,10 @@ class SubtaskManagerActor(mo.Actor):
     @alru_cache
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
+
+    @alru_cache
+    async def _get_cluster_api(self):
+        return await ClusterAPI.create(self.address)
 
     async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
         async with redirect_subtask_errors(self, subtasks):
@@ -118,9 +126,23 @@ class SubtaskManagerActor(mo.Actor):
     async def _await_subtask_result(self, subtask: Subtask, band: BandType):
         """To capture the run_subtask error, e.g. exception, process crash."""
         async with redirect_subtask_errors(self, [subtask]):
-            execution_ref = await self._get_execution_ref(band)
-            await execution_ref.run_subtask(
-                subtask, band[1], self.address)
+            try:
+                print(f'run_subtask: {band} {subtask}')
+                execution_ref = await self._get_execution_ref(band)
+                await execution_ref.run_subtask(
+                    subtask, band[1], self.address)
+            except Exception as e:
+                print(f'subtask error: {e}, {band =}')
+                if isinstance(e, ServerClosed):
+                    cluster_api = await self._get_cluster_api()
+                    print(f'before: {await cluster_api.get_all_bands()=}')
+                    await cluster_api.set_node_status(
+                        node=band[0], role=NodeRole.WORKER, status=NodeStatus.STOPPING)
+                    print(f'after: {await cluster_api.get_all_bands()=}')
+                else:
+                    await self._global_slot_ref.release_subtask_slots(
+                        band, subtask.session_id, subtask.subtask_id)
+                await self.add_subtasks([subtask], priorities=[subtask.priority or tuple()])
 
     async def cancel_subtasks(self, subtask_ids: List[str],
                               kill_timeout: Union[float, int] = 5):

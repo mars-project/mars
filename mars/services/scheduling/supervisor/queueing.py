@@ -147,6 +147,7 @@ class SubtaskQueueingActor(mo.Actor):
                 HeapItem(subtask, priority + (self._max_enqueue_id,))
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
+            print('add queue:', band, heap_item)
         logger.debug('%d subtasks enqueued', len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
@@ -232,6 +233,7 @@ class SubtaskQueueingActor(mo.Actor):
         # record length of band queues
         band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
         move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+        print(f'{move_queued_subtasks=}')
         items = []
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():
