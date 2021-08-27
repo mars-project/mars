@@ -610,9 +610,8 @@ class TaskProcessorActor(mo.Actor):
         for tileable, subtasks in tileable_to_subtasks.items():
             if tileable.key == tileable_id:
                 for subtask in subtasks:
-                    if subtask.subtask_id in returned_subtasks:
-                        continue
-                    returned_subtasks.add(subtask.subtask_id)
+                    if subtask.subtask_id not in returned_subtasks:
+                        returned_subtasks.add(subtask.subtask_id)
 
                     subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
 
