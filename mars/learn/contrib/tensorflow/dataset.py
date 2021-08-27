@@ -67,13 +67,13 @@ class MarsDataset:
             self._output_types = get_type(self._tensors[0]) if len(self._tensors) == 1 else \
                                  tuple(tf.as_dtype(get_type(t)) for t in self._tensors)
 
-    def _execute(self):
+    def _execute(self):     # pragma: no cover
         execute_data = [t for t in self._tensors if isinstance(t, ACCEPT_TYPE[:3])]
 
         if len(execute_data) > 0:
             execute(execute_data)
 
-    def get_data(self, t, index):
+    def get_data(self, t, index):   # pragma: no cover
         fetch_kwargs = dict()
         if self._fetch_kwargs:
             fetch_kwargs = copy.deepcopy(self._fetch_kwargs)
@@ -98,7 +98,7 @@ class MarsDataset:
 
         convert into a tensorflow.data.Dataset
         """
-        def make_generator():
+        def make_generator():   # pragma: no cover
             if not self._executed:
                 self._execute()
                 self._executed = True
@@ -122,10 +122,25 @@ def gen_tensorflow_dataset(tensors,
                  fetch_kwargs=None):
     """
     convert mars data type to tf.data.Dataset. Note this is based tensorflow 2.0
+    For example
+    -----------
+    >>> # convert a tensor to tf.data.Dataset.
+    >>> data = mt.tensor([[1, 2], [3, 4]])
+    >>> dataset = gen_tensorflow_dataset(data)
+    >>> list(dataset.as_numpy_iterator())
+    [array([1, 2]), array([3, 4])]
+    >>> dataset.element_spec
+    TensorSpec(shape=(2,), dtype=tf.int64, name=None)
+
+    >>> # convert a tuple of tensors to tf.data.Dataset.
+    >>> data1 = mt.tensor([1, 2]); data2 = mt.tensor([3, 4]); data3 = mt.tensor([5, 6])
+    >>> dataset = gen_tensorflow_dataset((data1, data2, data3))
+    >>> list(dataset.as_numpy_iterator())
+    [(1, 3, 5), (2, 4, 6)]
 
     Parameters
     ----------
-    tensors: a tuple consisting of Mars data type
+    tensors: Mars data type or a tuple consisting of Mars data type
         the data that convert to tf.data.dataset
     output_shapes:
         A (nested) structure of `tf.TensorShape` objects corresponding to
@@ -135,6 +150,9 @@ def gen_tensorflow_dataset(tensors,
         component of an element yielded from mars object.
     fetch_kwargs:
         the parameters of mars object executes fetch() operation.
+    Returns
+    -------
+        tf.data.Dataset
     """
     mars_dataset = MarsDataset(tensors, output_shapes=output_shapes,
                                output_types=output_types, fetch_kwargs=fetch_kwargs)
