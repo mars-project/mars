@@ -27,6 +27,7 @@ from .datasource.from_records import from_records
 from .datasource.read_csv import read_csv
 from .datasource.read_sql import read_sql, read_sql_table, read_sql_query
 from .datasource.read_parquet import read_parquet
+from .datasource.read_obj_refs import read_obj_refs
 from .datasource.date_range import date_range
 from .fetch import DataFrameFetch, DataFrameFetchShuffle
 from .merge import concat, merge
