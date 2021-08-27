@@ -89,7 +89,9 @@ jobs:
             fi
             if [ -n "$WITH_RAY" ]; then
               pip install ray[default]
-              pip install xgboost_ray
+              # Change back to `pip install xgboost_ray` when it doesn't install older version of numpy
+              pip install git+https://github.com/ray-project/xgboost_ray.git#xgboost_ray
+              pip install --upgrade numpy
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
