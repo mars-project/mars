@@ -398,7 +398,6 @@ async def test_get_subtasks(start_test_service):
             progress_controller.wait()
             get_context().set_progress((1 + idx) * 1.0 / count)
 
-
     r = mr.spawn(f1, args=(2,))
     graph = TileableGraph([r.data])
     next(TileableGraphBuilder(graph).build())
