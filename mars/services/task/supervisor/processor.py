@@ -256,7 +256,6 @@ class TaskProcessor:
 
         return tileable_id_to_tileable
 
-
     def _get_tileable_to_subtasks(self, subtask_graph: SubtaskGraph) \
             -> Dict[TileableType, List[Subtask]]:
         tileable_to_chunks = defaultdict(set)
