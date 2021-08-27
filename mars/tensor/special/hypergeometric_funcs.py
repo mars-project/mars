@@ -27,7 +27,7 @@ class TensorHYP2F1(TensorSpecialBinOp):
 
 @implement_scipy(spspecial.hyp2f1)
 @infer_dtype(spspecial.hyp2f1)
-def hyp2f1(a,b,c,z **kwargs):
+def hyp2f1(a,b,c,z,**kwargs):
     op = TensorHYP2F1(**kwargs)
     return op(a,b,c,z)
 
@@ -40,7 +40,7 @@ class TensorHYP1F1(TensorSpecialBinOp):
 
 @implement_scipy(spspecial.hyp1f1)
 @infer_dtype(spspecial.hyp1f1)
-def hyp1f1(a,b,x,out = None **kwargs):
+def hyp1f1(a,b,x,out = None,**kwargs):
     op = TensorHYP1F1(**kwargs)
     return op(a,b,x,out)
 
@@ -53,7 +53,7 @@ class TensorHYPERU(TensorSpecialBinOp):
 
 @implement_scipy(spspecial.hyperu)
 @infer_dtype(spspecial.hyperu)
-def hyperu(a,b,x,out = None **kwargs):
+def hyperu(a,b,x,out = None,**kwargs):
     op = TensorHYPERU(**kwargs)
     return op(a,b,x,out)
 
@@ -66,7 +66,7 @@ class TensorHYP0F1(TensorSpecialBinOp):
 
 @implement_scipy(spspecial.hyp0f1)
 @infer_dtype(spspecial.hyp0f1)
-def hyp0f1(v, z, out = None **kwargs):
+def hyp0f1(v, z, out = None,**kwargs):
     op = TensorHYP0F1(**kwargs)
     return op(v, z, out)
 
