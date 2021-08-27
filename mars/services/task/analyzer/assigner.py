@@ -87,7 +87,7 @@ class GraphAssigner(AbstractGraphAssigner):
         Returns
         -------
         slot_assign_limits: dict
-            Slot to limination of number of initial operands.
+            Slot to limitation of number of initial operands.
         """
         actual_count: int = initial_count - sum(occupied.values())
         band_slots = sorted(self.get_device_band_slots().items(),
@@ -95,7 +95,7 @@ class GraphAssigner(AbstractGraphAssigner):
         bands: List[BandType] = [it[0] for it in band_slots]
         slots = np.asarray([it[1] for it in band_slots], dtype=np.float32)
 
-        # remove assigned nodes from limitatins
+        # remove assigned nodes from limitations
         counts = initial_count * slots / slots.sum()
         for i, band in enumerate(bands):
             counts[i] = max(0, counts[i] - occupied.get(band, 0))
@@ -180,6 +180,7 @@ class GraphAssigner(AbstractGraphAssigner):
         average_spread_range = len(graph) * 1.0 / len(self.get_device_band_slots())
         spread_ranges = defaultdict(lambda: average_spread_range)
         # assign from other chunks to be assigned
+        # TODO: sort by what?
         sorted_candidates = [v for v in chunk_to_assign]
         while max(band_quotas.values()):
             band = max(band_quotas, key=lambda k: band_quotas[k])

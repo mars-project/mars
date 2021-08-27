@@ -16,11 +16,6 @@ from typing import Any, Dict
 
 from .....core import OperandType
 from .....tests.core import _check_args, ObjectCheckMixin
-from ....tests.fault_injection_manager import (
-    ExtraConfigKey,
-    FaultPosition,
-    handle_fault,
-)
 from ...worker.processor import SubtaskProcessor
 
 
@@ -56,42 +51,3 @@ class CheckedSubtaskProcessor(ObjectCheckMixin, SubtaskProcessor):
         await super().done()
         for op in self._operand_executors:
             op.unregister_executor()
-
-
-_fault_args = [ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME]
-
-
-class FaultInjectionSubtaskProcessor(SubtaskProcessor):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        fault_options = dict()
-        kwargs = self.subtask.extra_config or dict()
-        self._operand_executors = operand_executors = \
-            kwargs.pop('operand_executors', dict())
-        for op, executor in operand_executors.items():
-            op.register_executor(executor)
-        for key in _fault_args:
-            if key in kwargs:
-                fault_options[key] = kwargs[key]
-        self._fault_options = fault_options
-        self._fault_injection_manager = None
-
-    async def done(self):
-        await super().done()
-        for op in self._operand_executors:
-            op.unregister_executor()
-
-    async def run(self):
-        self._fault_injection_manager = await self._session_api.get_remote_object(
-                self._session_id,
-                self._fault_options[ExtraConfigKey.FAULT_INJECTION_MANAGER_NAME])
-        return await super().run()
-
-    async def _async_execute_operand(self,
-                                     ctx: Dict[str, Any],
-                                     op: OperandType):
-        fault = await self._fault_injection_manager.get_fault(
-            FaultPosition.ON_EXECUTE_OPERAND, {'subtask': self.subtask, 'operand': op})
-        handle_fault(fault)
-        return await super()._async_execute_operand(ctx, op)

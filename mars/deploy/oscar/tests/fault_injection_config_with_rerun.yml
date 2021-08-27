@@ -1,7 +1,5 @@
 "@inherits": '@default'
 third_party_modules:
   - mars.services.tests.fault_injection_patch
-subtask:
-  subtask_processor_cls: mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor
 scheduling:
   subtask_max_retries: 2
