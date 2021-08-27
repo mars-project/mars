@@ -622,11 +622,11 @@ class TaskProcessorActor(mo.Actor):
                     else:
                         progress = subtaskResult.progress
 
-                        if subtaskResult.status == {SubtaskStatus.succeeded}:
+                        if subtaskResult.status == SubtaskStatus.succeeded:
                             status = SubtaskStatus.succeeded.value
-                        elif subtaskResult.status == {SubtaskStatus.cancelled}:
+                        elif subtaskResult.status == SubtaskStatus.cancelled:
                             status = SubtaskStatus.cancelled.value
-                        elif subtaskResult.status == {SubtaskStatus.pending}:
+                        elif subtaskResult.status == SubtaskStatus.pending:
                             status = SubtaskStatus.pending.value
                         elif subtaskResult.status == SubtaskStatus.errored:
                             status = SubtaskStatus.errored.value
