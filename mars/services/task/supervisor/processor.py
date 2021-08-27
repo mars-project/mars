@@ -604,9 +604,8 @@ class TaskProcessorActor(mo.Actor):
                 for subtask, result in stage.subtask_results.items():
                     subtask_results[subtask.subtask_id] = result
                 for subtask, result in stage.subtask_snapshots.items():
-                    if subtask.subtask_id in subtask_results:
-                        continue
-                    subtask_results[subtask.subtask_id] = result
+                    if subtask.subtask_id not in subtask_results:
+                        subtask_results[subtask.subtask_id] = result
 
         for tileable, subtasks in tileable_to_subtasks.items():
             if tileable.key == tileable_id:
@@ -624,15 +623,15 @@ class TaskProcessorActor(mo.Actor):
                         progress = subtaskResult.progress
 
                         if subtaskResult.status == {SubtaskStatus.succeeded}:
-                            status = SubtaskStatus.succeeded
+                            status = SubtaskStatus.succeeded.value
                         elif subtaskResult.status == {SubtaskStatus.cancelled}:
-                            status = SubtaskStatus.cancelled
+                            status = SubtaskStatus.cancelled.value
                         elif subtaskResult.status == {SubtaskStatus.pending}:
-                            status = SubtaskStatus.pending
+                            status = SubtaskStatus.pending.value
                         elif subtaskResult.status == SubtaskStatus.errored:
-                            status = SubtaskStatus.errored
+                            status = SubtaskStatus.errored.value
                         else:
-                            status = SubtaskStatus.running
+                            status = SubtaskStatus.running.value
 
                     # since the number of subtasks is large, we will not
                     # display the name of subtasks and hence we won't return
@@ -640,7 +639,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_list.append({
                         'subtaskId': subtask.subtask_id,
                         'subtaskProgress': progress,
-                        'status': status.value
+                        'status': status
                     })
                 break
 

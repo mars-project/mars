@@ -423,6 +423,7 @@ async def test_get_subtasks(start_test_service):
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
             assert subtask.get('status') >= 0 and subtask.get('status') <= 4
+            assert subtask.get('progress') >= 0.0 and subtask.get('progress') <= 1.0
             assert subtask.get('subtaskId') not in subtask_ids
             subtask_ids.add(subtask.get('subtaskId'))
 
@@ -459,6 +460,7 @@ async def test_get_subtasks(start_test_service):
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
             assert subtask.get('status') >= 0 and subtask.get('status') <= 4
+            assert subtask.get('progress') >= 0.0 and subtask.get('progress') <= 1.0
             assert subtask.get('subtaskId') not in subtask_ids
             subtask_ids.add(subtask.get('subtaskId'))
 
