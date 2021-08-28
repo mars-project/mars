@@ -345,6 +345,16 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         name : str
         """
 
+    @abstractmethod
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunksize,
+                                    name: str = None):
+        """
+        Create a mutable tensor.
+        """
+    
     async def stop_server(self):
         """
         Stop server.
@@ -493,6 +503,16 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
         -------
         web_endpoint : str
             web endpoint
+        """
+
+    @abstractmethod
+    def create_mutable_tensor(self,
+                              shape: tuple,
+                              dtype: str,
+                              chunksize,
+                              name: str = None):
+        """
+        Create a mutable tensor.
         """
 
     def fetch_log(self,
@@ -901,7 +921,7 @@ class _IsolatedSession(AbstractAsyncSession):
         await self._session_api.delete_session(self._session_id)
         if self._asyncio_task_timeout_detector_task:  # pragma: no cover
             self._asyncio_task_timeout_detector_task.cancel()
-
+    
     async def create_remote_object(self,
                                    session_id: str,
                                    name: str,
@@ -919,6 +939,13 @@ class _IsolatedSession(AbstractAsyncSession):
                                     session_id: str,
                                     name: str):
         return await self._session_api.destroy_remote_object(session_id, name)
+
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunksize,
+                                    name: str = None):
+        return await self._session_api.create_mutable_tensor(self._session_id, shape, dtype, chunksize, name)
 
     async def stop_server(self):
         if self.client:
@@ -1088,6 +1115,15 @@ class AsyncSession(AbstractAsyncSession):
                                     name: str):
         pass  # pragma: no cover
 
+    @implements(AbstractAsyncSession.create_mutable_tensor)
+    @_delegate_to_isolated_session
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunksize,
+                                    name: str = None):
+        pass  # pragma: no cover
+    
     @implements(AbstractAsyncSession.get_web_endpoint)
     @_delegate_to_isolated_session
     async def get_web_endpoint(self) -> Optional[str]:
@@ -1274,6 +1310,14 @@ class SyncSession(AbstractSyncSession):
     @implements(AbstractSyncSession.get_cluster_versions)
     @_delegate_to_isolated_session
     def get_cluster_versions(self) -> List[str]:
+        pass  # pragma: no cover
+
+    @implements(AbstractSyncSession.create_mutable_tensor)
+    @_delegate_to_isolated_session
+    def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    chunksize,
+                                    dtype: str):
         pass  # pragma: no cover
 
     def destroy(self):

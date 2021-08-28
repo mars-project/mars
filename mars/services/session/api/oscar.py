@@ -109,6 +109,15 @@ class SessionAPI(AbstractSessionAPI):
         session = await self._get_session_ref(session_id)
         return await session.destroy_remote_object(name)
 
+    async def create_mutable_tensor(self,
+                                    session_id: str,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunksize,
+                                    name: str = None):
+        session = await self._get_session_ref(session_id)
+        return await session.create_mutable_tensor(shape, dtype, chunksize,name)
+
     @alru_cache(cache_exceptions=False)
     async def _get_custom_log_meta_ref(self, session_id: str) -> \
             Union[CustomLogMetaActor, mo.ActorRef]:

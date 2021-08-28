@@ -14,6 +14,7 @@
 
 import asyncio
 import functools
+import random
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
@@ -165,6 +166,13 @@ class SessionActor(mo.Actor):
 
     async def destroy_remote_object(self, name: str):
         return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
+
+    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunksize, name: str = None):
+        from ...mutable import MutableTensorActor
+        if name is None:
+            name = 'mut-tensor-%s' % hex(random.randint(0, 99999))
+        return await mo.create_actor(
+            MutableTensorActor, shape, dtype, chunksize, name, address=self.address, uid=to_binary(name))
 
 
 class RemoteObjectActor(mo.Actor):

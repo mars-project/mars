@@ -98,3 +98,12 @@ class AbstractSessionAPI(ABC):
         logs : dict
             chunk op key to result.
         """
+
+    @abstractmethod
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    chunksize,
+                                    dtype: str):
+        """
+        Create a mutable tensor.
+        """
