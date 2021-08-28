@@ -17,15 +17,12 @@ from abc import ABCMeta, abstractmethod
 
 import scipy.sparse as sp
 from numpy.linalg import LinAlgError
-from scipy import linalg
-from scipy.sparse.linalg import lsqr
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
 from sklearn.base import MultiOutputMixin
 from sklearn.utils.sparsefuncs import mean_variance_axis
 from sklearn.utils.extmath import safe_sparse_dot
 
-from ... import remote as mr
 from ... import tensor as mt
 from ..base import BaseEstimator, RegressorMixin
 from ...lib import sparse as mars_sp
