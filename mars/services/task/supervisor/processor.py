@@ -648,9 +648,7 @@ class TaskProcessorActor(mo.Actor):
                 })
 
         for subtask in requested_subtasks:
-            if len(stage.subtask_graph.iter_predecessors(subtask)) == 0: # pragma: no cover
-                continue
-            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+            for predecessor in stage.subtask_graph.iter_predecessors(subtask): # pragma: no cover
                 predecessor_id = predecessor.subtask_id
 
                 # If the predecessor is in other tileable subtasks, create
