@@ -20,7 +20,7 @@ import pytest
 
 import mars.oscar as mo
 import mars.remote as mr
-from mars.core import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from mars.core import TileableGraph, TileableGraphBuilder
 from mars.core.context import get_context
 from mars.services import start_services, stop_services, NodeRole
 from mars.services.session import SessionAPI
@@ -28,7 +28,6 @@ from mars.services.storage import MockStorageAPI
 from mars.services.subtask import SubtaskStatus
 from mars.services.web import WebActor
 from mars.services.meta import MetaAPI
-from mars.services.subtask import Subtask
 from mars.services.task import TaskAPI, TaskStatus, WebTaskAPI
 from mars.services.task.errors import TaskNotExist
 from mars.utils import Timer
