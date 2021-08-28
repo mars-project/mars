@@ -166,7 +166,7 @@ class MockLifecycleAPI(LifecycleAPI):
     async def create(cls,
                      session_id: str,
                      address: str) -> "LifecycleAPI":
-        from mars.services.lifecycle.supervisor.service import LifecycleSupervisorService
+        from ..supervisor.service import LifecycleSupervisorService
         service = LifecycleSupervisorService({}, address)
         await service.create_session(session_id)
         return await super().create(session_id=session_id, address=address)
