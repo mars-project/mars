@@ -523,18 +523,22 @@ def test_preprocess_copy_data_no_checks(setup, is_sparse, to_copy):
 
     if is_sparse:
         X = sparse.csr_matrix(X)
+        error_msg = re.escape("Does not support sparse input!")
+        with pytest.raises(NotImplementedError, match=error_msg):
+            X_, y_, _, _, _ = _preprocess_data(X, y, True,
+                                               copy=to_copy, check_input=False)
+    else:
+        X_, y_, _, _, _ = _preprocess_data(X, y, True,
+                                           copy=to_copy, check_input=False)
 
-    X_, y_, _, _, _ = _preprocess_data(X, y, True,
-                                       copy=to_copy, check_input=False)
-
-    if to_copy and is_sparse:
-        assert not np.may_share_memory(X_.data, X.data)
-    elif to_copy:
-        assert not np.may_share_memory(X_.to_numpy(), X)
-    elif is_sparse:
-        assert np.may_share_memory(X_.data, X.data)
-    # else:  # fake pass
-    #     assert np.may_share_memory(X_.to_numpy(), X)
+        if to_copy and is_sparse:
+            assert not np.may_share_memory(X_.data, X.data)
+        elif to_copy:
+            assert not np.may_share_memory(X_.to_numpy(), X)
+        elif is_sparse:
+            assert np.may_share_memory(X_.data, X.data)
+        # else:  # fake pass
+        #     assert np.may_share_memory(X_.to_numpy(), X)
 
 
 def test_dtype_preprocess_data(setup):

@@ -20,7 +20,6 @@ from numpy.linalg import LinAlgError
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
 from sklearn.base import MultiOutputMixin
-from sklearn.utils.sparsefuncs import mean_variance_axis
 from sklearn.utils.extmath import safe_sparse_dot
 
 from ... import tensor as mt
@@ -29,7 +28,6 @@ from ...lib import sparse as mars_sp
 from ..preprocessing import normalize as f_normalize
 from ...tensor.datasource import tensor as astensor
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
-from ..utils.sparsefuncs import inplace_column_scale
 
 
 def _preprocess_data(
@@ -78,25 +76,8 @@ def _preprocess_data(
 
     if fit_intercept:
         if sp.issparse(X):
-            X_offset, X_var = mean_variance_axis(X, axis=0)
-            if not return_mean:
-                X_offset[:] = X.dtype.type(0)
-
-            if normalize:
-
-                # TODO: f_normalize could be used here as well but the function
-                # inplace_csr_row_normalize_l2 must be changed such that it
-                # can return also the norms computed internally
-
-                # transform variance to norm in-place
-                X_var *= X.shape[0]
-                X_scale = mt.sqrt(X_var, X_var)
-                del X_var
-                X_scale[X_scale == 0] = 1
-                inplace_column_scale(X, 1. / X_scale)
-            else:
-                X_scale = mt.ones(X.shape[1], dtype=X.dtype)
-
+            raise NotImplementedError(
+                "Does not support sparse input!")
         else:
             X_offset = mt.average(X, axis=0, weights=sample_weight)
             X = X - X_offset
