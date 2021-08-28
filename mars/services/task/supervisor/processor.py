@@ -250,8 +250,6 @@ class TaskProcessor:
         tile_ctx = self._preprocessor.tile_context
 
         for tileable in tileable_graph:
-            if tileable not in tile_ctx:
-                continue
             tileable_id_to_tileable[str(tileable.key)] = tileable
 
         return tileable_id_to_tileable
@@ -626,19 +624,14 @@ class TaskProcessorActor(mo.Actor):
                     if subtask.subtask_id not in subtask_results:
                         subtask_results[subtask.subtask_id] = result
 
-        if not tileable_id_to_tileable.has_key(tileable_id):
-            return {
-                'subtasks': [],
-                'dependencies': []
-            }
-        requested_tileable = tileable_id_to_tileable[tileable_id]
+        requested_tileable = tileable_id_to_tileable.get(tileable_id, None)
+        requested_subtasks = tileable_to_subtasks.get(requested_tileable, None)
 
-        if not tileable_to_subtasks.has_key(requested_tileable):
+        if requested_tileable == None or requested_subtasks == None:
             return {
                 'subtasks': [],
                 'dependencies': []
             }
-        requested_subtasks = tileable_to_subtasks[requested_tileable]
 
         for subtask in requested_subtasks:
             if subtask.subtask_id not in returned_subtasks:
