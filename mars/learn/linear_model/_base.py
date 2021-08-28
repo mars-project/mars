@@ -28,6 +28,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from ... import remote as mr
 from ... import tensor as mt
 from ..base import BaseEstimator, RegressorMixin
+from ...lib import sparse as mars_sp
 from ..preprocessing import normalize as f_normalize
 from ...tensor.datasource import tensor as astensor
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
@@ -190,9 +191,10 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
             self.coef_.execute()
             self.intercept_ = (
                 y_offset - mt.dot(X_offset, self.coef_.T)
-            ).to_numpy()
+            ).execute()
         else:
-            self.intercept_ = 0.0
+            self.intercept_ = mt.tensor(0.0)
+            self.intercept_.execute()
 
     def _more_tags(self):
         return {"requires_y": True}
@@ -265,7 +267,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         self,
         *,
         fit_intercept=True,
-        normalize="deprecated",
+        normalize=False,
         copy_X=True,
         positive=False,
     ):
@@ -313,60 +315,24 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
             X, y = _rescale_data(X, y, sample_weight)
 
         if self.positive:
-            # # When optimize.nnls is implemented, one can directly
-            # # utilize the following code.
-            # if y.ndim < 2:
-            #     self.coef_, self._residues = optimize.nnls(X, y)
-            # else:
-            #     # scipy.optimize.nnls cannot handle y with shape (M, K)
-            #     outs = Parallel(n_jobs=n_jobs_)(
-            #         delayed(optimize.nnls)(
-            #             X, y[:, j]) for j in range(y.shape[1]))
-            #     self.coef_, self._residues = map(mt.vstack, zip(*outs))
-            #     self.coef_.execute()
+            # TODO: implement optimize.nnls first
             raise NotImplementedError(
                 "Does not support positive coefficients!")
-        elif sp.issparse(X):
-            X_offset_scale = X_offset / X_scale
-
-            def matvec(b):
-                return X.dot(b) - b.dot(X_offset_scale)
-
-            def rmatvec(b):
-                return X.T.dot(b) - X_offset_scale * mt.sum(b)
-
-            X_centered = sp.linalg.LinearOperator(shape=X.shape,
-                                                  matvec=matvec,
-                                                  rmatvec=rmatvec)
-
-            if y.ndim < 2:
-                out = lsqr(X_centered, y)
-                self.coef_ = out[0]
-                self._residues = out[3]
-            else:
-                outs = []
-                for j in range(y.shape[1]):
-                    outs.append(mr.remote(lsqr(X_centered, y[:, j].ravel())))
-                self.coef_ = mt.vstack([out[0] for out in outs])
-                self.coef_.execute()
-                self._residues = mt.vstack([out[3] for out in outs])
+        elif mars_sp.issparse(X):
+            # TODO: implement sparse.linalg.lsqr first
+            raise NotImplementedError(
+                "Does not support sparse input!")
         else:
             try:
-                # # Don't know why the following does not work
-                # self.coef_ = mt.dot(
-                #     mt.linalg.inv(mt.dot(mt.transpose(X), X)),
-                #     mt.dot(mt.transpose(X), y)
-                # )
-                # self.coef_ = self.coef_.T
-                # self.coef_.execute()
-
-                self.coef_ = mt.linalg.inv(((X.T @ X)) @ (X.T @ y)).T
+                # Matrix multiplication does NOT satisfy associative law
+                # Tyipical mistake:
+                #   (mt.linalg.inv(X.T @ X) @ (X.T @ y)).T
+                self.coef_ = (mt.linalg.inv(X.T @ X) @ X.T @ y).T
                 self.coef_.execute()
-
             except LinAlgError:
-                self.coef_, self._residues, self.rank_, self.singular_ = \
-                    linalg.lstsq(X, y)
-                self.coef_ = self.coef_.T
+                # TODO: implement linalg.lstsq first
+                raise NotImplementedError(
+                    "Does not support sigular matrix!")
 
         if y.ndim == 1:
             self.coef_ = mt.ravel(self.coef_)

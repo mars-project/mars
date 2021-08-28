@@ -38,27 +38,58 @@ rtol = 1e-6
 
 
 def test_linear_regression(setup):
-    # Test LinearRegression on a simple dataset.
-    # a simple dataset
+    # Regular model fitting, #samples > 2, #features >= 2
+    X = [[1, 1.5], [1.8, 2], [4, 5]]
+    Y = [1, 2, 3]
+
+    reg = LinearRegression()
+    reg.fit(X, Y)
+
+    model = sklearn_LR()
+    model.fit(X, Y)
+
+    assert_array_almost_equal(reg.coef_, model.coef_)
+    assert_array_almost_equal(reg.intercept_, model.intercept_)
+    assert_array_almost_equal(reg.predict(X), model.predict(X))
+
+    # Regular model fitting, #samples <= 2, # features < 2
+    error_msg = (re.escape("Does not support sigular matrix!"))
+
     X = [[1], [2]]
     Y = [1, 2]
 
     reg = LinearRegression()
     reg.fit(X, Y)
 
-    assert_array_almost_equal(reg.coef_, [1])
-    assert_array_almost_equal(reg.intercept_, [0])
-    assert_array_almost_equal(reg.predict(X), [1, 2])
+    model = sklearn_LR()
+    model.fit(X, Y)
 
-    # test it also for degenerate input
+    assert_array_almost_equal(reg.coef_, model.coef_)
+    assert_array_almost_equal(reg.intercept_, model.intercept_)
+    assert_array_almost_equal(reg.predict(X), model.predict(X))
+
+    # Extra case #1: singluar matrix, degenerate input
+    error_msg = (re.escape("Does not support sigular matrix!"))
+
     X = [[1]]
     Y = [0]
 
     reg = LinearRegression()
+    with pytest.raises(NotImplementedError, match=error_msg):
+        reg.fit(X, Y)
+
+    # Extra case #2: algebrically singluar matrix but algorithmically not
+    X = [[1, 1.5], [1.8, 2]]
+    Y = [1, 2]
+
+    reg = LinearRegression()
     reg.fit(X, Y)
-    assert_array_almost_equal(reg.coef_, [0])
-    assert_array_almost_equal(reg.intercept_, [0])
-    assert_array_almost_equal(reg.predict(X), [0])
+
+    model = sklearn_LR()
+    model.fit(X, Y)
+
+    with pytest.raises(AssertionError):
+        assert_array_almost_equal(reg.coef_, model.coef_)
 
 
 def test_linear_regression_sample_weights(setup):
@@ -100,7 +131,7 @@ def test_linear_regression_sample_weights(setup):
                 assert_array_almost_equal(coefs1, coefs2)
             else:
                 assert_array_almost_equal(coefs1, coefs2[1:])
-                assert_almost_equal(inter1, coefs2[0])
+                assert_almost_equal(inter1.to_numpy(), coefs2[0])
 
 
 def test_raises_value_error_if_positive_and_sparse(setup):
@@ -191,9 +222,18 @@ def test_linear_regression_sparse_equal_dense(setup, normalize, fit_intercept):
     clf_dense = LinearRegression(**params)
     clf_sparse = LinearRegression(**params)
     clf_dense.fit(X, y)
-    clf_sparse.fit(Xcsr, y)
-    assert clf_dense.intercept_ == pytest.approx(clf_sparse.intercept_)
-    assert_allclose(clf_dense.coef_, clf_sparse.coef_)
+
+    if fit_intercept is False:
+        error_msg = re.escape(
+            "module 'mars.lib.sparse' has no attribute 'linalg'"
+        )
+        with pytest.raises(AttributeError, match=error_msg):
+            clf_sparse.fit(Xcsr, y)
+    else:
+        clf_sparse.fit(Xcsr, y)
+        assert (clf_dense.intercept_.to_numpy()
+                == pytest.approx(clf_sparse.intercept_.to_numpy()))
+        assert_allclose(clf_dense.coef_, clf_sparse.coef_)
 
 
 def test_linear_regression_multiple_outcome(setup, random_state=0):
