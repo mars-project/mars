@@ -392,13 +392,51 @@ async def test_get_subtasks(start_test_service):
     ref = await session_api.create_remote_object(
         task_api._session_id, 'progress_controller', _ProgressController)
 
-    def f1(count: int):
+    def f1():
+        return np.arange(5)
+
+    def f2():
+        return np.arange(5, 10)
+
+    def f3(f1r, f2r):
+        return np.concatenate([f1r, f2r]).sum()
+
+    r1 = mr.spawn(f1)
+    r2 = mr.spawn(f2)
+    r3 = mr.spawn(f3, args=(r1, r2))
+
+    graph = TileableGraph([r3.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
+    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
+    for tileable in tileable_graph.get('tileables'):
+        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
+
+        num_subtasks = len(subtask_details.get('subtasks'))
+        num_dependencies = len(subtask_details.get('dependencies'))
+        assert num_subtasks >= 0
+        assert num_dependencies <= (num_subtasks / 2) * (num_subtasks / 2)
+        assert ((num_subtasks == 0 or num_subtasks == 1) and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
+
+        subtask_ids = set()
+        for subtask in subtask_details.get('subtasks'):
+            assert ((subtask.get('status') >= 0 and subtask.get('status') <= 4) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
+            assert ((subtask.get('subtaskProgress') >= 0 and subtask.get('subtaskProgress') <= 1) or (subtask.get('subtaskProgress') == -1 and subtask.get('status') == -1))
+            assert subtask.get('subtaskId') not in subtask_ids
+            subtask_ids.add(subtask.get('subtaskId'))
+
+        for dependency in subtask_details.get('dependencies'):
+            assert dependency.get('fromSubtaskId') in subtask_ids
+            assert dependency.get('toSubtaskId') in subtask_ids
+
+    def f4(count: int):
         progress_controller = get_context().get_remote_object('progress_controller')
         for idx in range(count):
             progress_controller.wait()
             get_context().set_progress((1 + idx) * 1.0 / count)
 
-    r = mr.spawn(f1, args=(2,))
+    r = mr.spawn(f4, args=(2,))
     graph = TileableGraph([r.data])
     next(TileableGraphBuilder(graph).build())
 
@@ -456,42 +494,3 @@ async def test_get_subtasks(start_test_service):
         subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
         for subtask in subtask_details.get('subtasks'):
             assert ((subtask.get('status') == SubtaskStatus.errored.value) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
-
-    def f2():
-        return np.arange(5)
-
-    def f3():
-        return np.arange(5, 10)
-
-    def f4(f1r, f2r):
-        return np.concatenate([f1r, f2r]).sum()
-
-    r1 = mr.spawn(f2)
-    r2 = mr.spawn(f3)
-    r3 = mr.spawn(f4, args=(r1, r2))
-
-    graph = TileableGraph([r3.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-
-        num_subtasks = len(subtask_details.get('subtasks'))
-        num_dependencies = len(subtask_details.get('dependencies'))
-        assert num_subtasks >= 0
-        assert num_dependencies <= (num_subtasks / 2) * (num_subtasks / 2)
-        assert ((num_subtasks == 0 or num_subtasks == 1) and num_dependencies == 0) or (num_subtasks > 1 and num_dependencies > 0)
-
-        subtask_ids = set()
-        for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') >= 0 and subtask.get('status') <= 4) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
-            assert ((subtask.get('subtaskProgress') >= 0 and subtask.get('subtaskProgress') <= 1) or (subtask.get('subtaskProgress') == -1 and subtask.get('status') == -1))
-            assert subtask.get('subtaskId') not in subtask_ids
-            subtask_ids.add(subtask.get('subtaskId'))
-
-        for dependency in subtask_details.get('dependencies'):
-            assert dependency.get('fromSubtaskId') in subtask_ids
-            assert dependency.get('toSubtaskId') in subtask_ids
