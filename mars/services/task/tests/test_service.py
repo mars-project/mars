@@ -387,7 +387,6 @@ async def test_get_tileable_details(start_test_service):
 @pytest.mark.asyncio
 async def test_get_subtasks(start_test_service):
     sv_pool_address, task_api, storage_api = start_test_service
-
     session_api = await SessionAPI.create(address=sv_pool_address)
     ref = await session_api.create_remote_object(
         task_api._session_id, 'progress_controller', _ProgressController)
