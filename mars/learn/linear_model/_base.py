@@ -130,7 +130,7 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
     """Base class for Linear Models"""
 
     @abstractmethod
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         """Fit model."""
 
     def _decision_function(self, X):
@@ -174,7 +174,7 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
             self.intercept_ = mt.tensor(0.0)
             self.intercept_.execute()
 
-    def _more_tags(self):
+    def _more_tags(self):  # noqa: R0201  # pylint: disable=no-self-use
         return {"requires_y": True}
 
 
