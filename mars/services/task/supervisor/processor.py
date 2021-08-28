@@ -634,7 +634,6 @@ class TaskProcessorActor(mo.Actor):
                 returned_subtasks.add(subtask.subtask_id)
 
                 subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
-
                 progress = subtaskResult.progress
                 status = subtaskResult.status.value
 
