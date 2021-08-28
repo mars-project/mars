@@ -402,7 +402,7 @@ async def test_get_subtasks(start_test_service):
         return a.sum() * b.sum() / (a.product() * a.sum()) * b.product()
 
     ra = mr.spawn(a)
-    rb = mr.spanw(b)
+    rb = mr.spawn(b)
     rc = mr.spawn(c, args=(ra, rb))
 
     graph = TileableGraph([rc.data])
