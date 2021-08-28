@@ -222,7 +222,7 @@ Apache Software Foundation License 2.0
 - kubernetes-client:11.0.0
 - async_generator:1.10
 - dataclasses:0.8
-- vineyard:0.1.2
+- vineyard:0.2.7
 - ray:1.4.0
 - uvloop:0.15.2
 - oss2:2.12.0
