@@ -245,9 +245,7 @@ class TaskProcessor:
 
     def _get_tileable_id_to_tileable(self) -> Dict[str, TileableType]:
         tileable_id_to_tileable = dict()
-
         tileable_graph = self._preprocessor.tileable_graph
-        tile_ctx = self._preprocessor.tile_context
 
         for tileable in tileable_graph:
             tileable_id_to_tileable[str(tileable.key)] = tileable
