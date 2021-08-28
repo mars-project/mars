@@ -631,8 +631,13 @@ class TaskProcessorActor(mo.Actor):
                 'subtasks': [],
                 'dependencies': []
             }
-
         requested_tileable = tileable_id_to_tileable[tileable_id]
+
+        if not tileable_to_subtasks.has_key(requested_tileable):
+            return {
+                'subtasks': [],
+                'dependencies': []
+            }
         requested_subtasks = tileable_to_subtasks[requested_tileable]
 
         for subtask in requested_subtasks:
