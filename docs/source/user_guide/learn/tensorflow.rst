@@ -168,4 +168,123 @@ and prediction shown above will be submitted to the cluster, or you can specify
    # Or, session could be specified as well
    run_tensorflow_script('tf_demo.py', n_workers=1, session=sess)
 
+Use ``gen_tensorflow_dataset``
+---------------------------------
+You can convert Mars data(``mars.Tensor``, ``mars.Dataframe``, ``mars.Series``) to
+``tf.data.Dataset`` by :meth:`gen_tensorflow_dataset`.
 
+.. code-block:: ipython
+    In [1]: data = mt.tensor([[1, 2], [3, 4]])
+    In [2]: dataset = gen_tensorflow_dataset(data)
+    In [3]: list(dataset.as_numpy_iterator())
+    Out[3]: [array([1, 2]), array([3, 4])]
+
+    In [1]: data1 = mt.tensor([1, 2]); data2 = mt.tensor([3, 4]); data3 = mt.tensor([5, 6])
+    In [2]: dataset = gen_tensorflow_dataset((data1, data2, data3))
+    In [3]: list(dataset.as_numpy_iterator())
+    Out[3]: [(1, 3, 5), (2, 4, 6)]
+
+Now, you can preprocess the data via mars, and pass data to script.
+
+.. code-block:: python
+    
+    import mars.dataframe as md
+    from sklearn.preprocessing import LabelEncoder
+    from mars.learn.contrib.tensorflow import run_tensorflow_script 
+
+
+    df = md.read_csv('ionosphere.data', header=None)
+    X = df.iloc[:, :-1].astype('float32')
+    y = df.iloc[:, -1]
+    y = LabelEncoder().fit_transform(y.execute().fetch())
+    X.exeute()
+    X_train = X[:len(X)*0.7]
+    y_train = y[:len(y)*0.7]
+    X_test = X[len(X)*0.7]
+    y_test = y[len(y)*0.7]
+    
+    run_tensorflow_script(
+        "tf_demo.py", n_workers=2, data={'X_train': X_train, 'y_train': y_train, 
+        'X_test':X_test, 'y_test': y_test}, port=9945, session=sess)
+
+``tf_demo.py``
+
+.. code-block:: python
+
+    import os
+
+    from mars.learn.contrib.tensorflow import gen_tensorflow_dataset
+    import tensorflow as tf
+    from tensorflow.keras import Sequential
+    from tensorflow.keras.layers import Dense
+
+
+    def get_model(n_features):
+        model = Sequential()
+        model.add(Dense(10, activation='relu', kernel_initializer='he_normal',
+                        input_shape=(n_features,)))
+        model.add(Dense(8, activation='relu', kernel_initializer='he_normal'))
+        model.add(Dense(1, activation='sigmoid'))
+
+        # compile the model
+        model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+        return model
+
+
+    def train(X_train, X_test, y_train, y_test):
+        model = get_model(X_train.shape[1])
+
+        db_train = gen_tensorflow_dataset((X_train, y_train))
+        db_train = db_train.batch(32)
+        db_test = gen_tensorflow_dataset((X_test, y_test))
+        db_test = db_test.batch(32)
+
+        # fit model
+        model.fit(db_train, epochs=150)
+        # evaluate
+        loss, acc = model.evaluate(db_train)
+        print('Test accuracy: %.3f' % acc)
+
+
+    if __name__ == '__main__':
+        X_train = globals()['X_train']
+        y_train = globals()['y_train']
+        X_test = globals()['X_test']
+        y_test = globals()['y_test']
+
+        if 'TF_CONFIG' in os.environ:
+            # distributed TensorFlow
+            multiworker_strategy = tf.distribute.experimental.MultiWorkerMirroredStrategy()
+
+            with multiworker_strategy.scope():
+                train(X_train, X_test, y_train, y_test)
+        else:
+            train(X_train, X_test, y_train, y_test)
+
+result:
+
+.. code-block:: ipython
+
+    Epoch 1/150
+    8/Unknown - 3s 292ms/step - loss: 0.6650 - accuracy: 0.6255      8/Unknown - 3s 292ms/step - loss: 0.6650 - accura8/8 [==============================] - 3s 292ms/step - loss: 0.6650 - accuracy: 0.6255
+    8/8 [==============================] - 3s 292ms/step - loss: 0.6650 - accuracy: 0.6255
+    Epoch 2/150
+    Epoch 2/150
+    1/8 [==>...........................] - ETA: 2s - loss: 0.6864 - accuracy: 0.78121/8 [==>...........................] - E
+    7/8 [=========================>....] - ETA: 0s - loss: 0.6540 - accuracy: 0.64297/8 [=========================>....] - E
+    8/8 [==============================] - ETA: 0s - loss: 0.6487 - accuracy: 0.64948/8 [==============================] - E
+    8/8 [==============================] - 2s 295ms/step - loss: 0.6487 - accuracy: 0.6494
+    8/8 [==============================] - 2s 295ms/step - loss: 0.6487 - accuracy: 0.6494
+    Epoch 3/150
+    Epoch 3/150
+    ...
+    Epoch 150/150
+    Epoch 150/150
+    1/8 [==>...........................] - ETA: 3s - loss: 0.0133 - accuracy: 1.00001/8 [==>...........................] - E
+    6/8 [=====================>........] - ETA: 0s - loss: 0.0484 - accuracy: 0.98446/8 [=====================>........] - E
+    8/8 [==============================] - ETA: 0s - loss: 0.0406 - accuracy: 0.98808/8 [==============================] - E
+    8/8 [==============================] - 3s 385ms/step - loss: 0.0406 - accuracy: 0.9880
+    8/8 [==============================] - 3s 385ms/step - loss: 0.0406 - accuracy: 0.9880
+    Test accuracy: 0.988
+    Test accuracy: 0.988
