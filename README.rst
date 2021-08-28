@@ -187,6 +187,10 @@ Mars remote allows users to execute functions in parallel.
 |                                           |                                            |
 +-------------------------------------------+--------------------------------------------+
 
+DASK on Mars
+------------
+
+Refer to `DASK on Mars`_ for more information.
 
 Eager Mode
 ```````````
@@ -308,3 +312,4 @@ Thank you in advance for your contributions!
 .. _`中文文档`: https://docs.pymars.org/zh_CN/latest/
 .. _`Run on Kubernetes`: https://docs.pymars.org/en/latest/installation/kubernetes.html
 .. _`Run on Yarn`: https://docs.pymars.org/en/latest/installation/yarn.html
+.. _`DASK on Mars`: https://docs.pymars.org/en/latest/user_guide/contrib/dask.html
