@@ -61,50 +61,6 @@ class MetaAPI(AbstractMetaAPI):
 
         return MetaAPI(session_id, meta_store_ref)
 
-    @classmethod
-    async def create_session(cls,
-                             session_id: str,
-                             address: str) -> "MetaAPI":
-        """
-        Creating a new meta store for the session, and return meta API.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        meta_api
-            Meta API.
-        """
-        # get MetaStoreManagerActor ref.
-        meta_store_manager_ref = await mo.actor_ref(
-            address, MetaStoreManagerActor.default_uid())
-        meta_store_ref = \
-            await meta_store_manager_ref.new_session_meta_store(session_id)
-        return MetaAPI(session_id, meta_store_ref)
-
-    @classmethod
-    async def destroy_session(cls,
-                              session_id: str,
-                              address: str):
-        """
-        Destroy a session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-        """
-        meta_store_ref = await mo.actor_ref(
-            address, MetaStoreActor.gen_uid(session_id))
-        return await mo.destroy_actor(meta_store_ref)
-
     @mo.extensible
     async def set_tileable_meta(self,
                                 tileable,

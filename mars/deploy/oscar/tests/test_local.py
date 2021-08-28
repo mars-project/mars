@@ -32,7 +32,7 @@ import mars.tensor as mt
 import mars.remote as mr
 from mars.config import option_context
 from mars.deploy.oscar.session import get_default_async_session, \
-    get_default_session, new_session, execute, fetch, stop_server, \
+    get_default_session, new_session, execute, fetch, fetch_infos, stop_server, \
     AsyncSession, _IsolatedWebSession
 from mars.deploy.oscar.local import new_cluster
 from mars.deploy.oscar.service import load_config
@@ -173,6 +173,31 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
+@pytest.mark.asyncio
+async def test_fetch_infos(create_cluster):
+    raw = np.random.RandomState(0).rand(30, 5)
+    raw_df = pd.DataFrame(raw, index=np.arange(1, 31))
+
+    df = md.DataFrame(raw_df, chunk_size=10)
+    df.execute()
+    fetched_infos = df.fetch_infos()
+
+    assert 'object_id' in fetched_infos
+    assert 'level' in fetched_infos
+    assert 'memory_size' in fetched_infos
+    assert 'store_size' in fetched_infos
+    assert 'band' in fetched_infos
+
+    fetch_infos((df, df), fields=None)
+    results_infos = mr.ExecutableTuple([df, df]).execute()._fetch_infos()
+    assert len(results_infos) == 2
+    assert 'object_id' in results_infos[0]
+    assert 'level' in results_infos[0]
+    assert 'memory_size' in results_infos[0]
+    assert 'store_size' in results_infos[0]
+    assert 'band' in results_infos[0]
+
+
 def _my_func():
     print('output from function')
 
@@ -285,6 +310,7 @@ def test_no_default_session():
         execute(b, show_progress=False)
 
     np.testing.assert_array_equal(fetch(b), raw + 1)
+    fetch_infos(b, fields=None)
     assert get_default_async_session() is not None
     stop_server()
     assert get_default_async_session() is None

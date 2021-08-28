@@ -633,29 +633,42 @@ class TaskProcessorActor(mo.Actor):
             if subtask.subtask_id not in returned_subtasks:
                 returned_subtasks.add(subtask.subtask_id)
 
-            subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
+                subtaskResult = subtask_results.get(subtask.subtask_id, default_result)
 
-            progress = subtaskResult.progress
-            status = subtaskResult.status.value
+                progress = subtaskResult.progress
+                status = subtaskResult.status.value
 
-            # since the number of subtasks is large, we will not
-            # display the name of subtasks and hence we won't return
-            # the subtask_name field
-            subtask_list.append({
-                'subtaskId': subtask.subtask_id,
-                'subtaskProgress': progress,
-                'status': status
-            })
+                # since the number of subtasks is large, we will not
+                # display the name of subtasks and hence we won't return
+                # the subtask_name field
+                subtask_list.append({
+                    'subtaskId': subtask.subtask_id,
+                    'subtaskProgress': progress,
+                    'status': status
+                })
 
-        # return only the dependencies that belong to the subtask
-        # structure of the input tileable
         for subtask in requested_subtasks:
             for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                if predecessor.subtask_id in returned_subtasks:
-                    dependency_list.append({
-                        'fromSubtaskId': predecessor.subtask_id,
-                        'toSubtaskId': subtask.subtask_id,
+                predecessor_id = predecessor.subtask_id
+
+                # If the predecessor is in other tileable subtasks, create
+                # a special node on the graph and mark it with a special
+                # color to inform the user that the current subtask has
+                # dependencies from other tileables, so users
+                # won't just see a subtask that is rendered isolatedly
+                # on the frontend
+                if predecessor_id not in returned_subtasks:
+                    returned_subtasks.add(predecessor_id)
+                    subtask_list.append({
+                        'subtaskId': predecessor_id,
+                        'subtaskProgress': -1,
+                        'status': -1
                     })
+
+                dependency_list.append({
+                    'fromSubtaskId': predecessor_id,
+                    'toSubtaskId': subtask.subtask_id,
+                })
 
         subtask_dict = {
             'subtasks': subtask_list,
