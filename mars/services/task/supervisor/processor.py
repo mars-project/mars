@@ -626,6 +626,12 @@ class TaskProcessorActor(mo.Actor):
                     if subtask.subtask_id not in subtask_results:
                         subtask_results[subtask.subtask_id] = result
 
+        if not tileable_id_to_tileable.has_key(tileable_id):
+            return {
+                'subtasks': [],
+                'dependencies': []
+            }
+
         requested_tileable = tileable_id_to_tileable[tileable_id]
         requested_subtasks = tileable_to_subtasks[requested_tileable]
 
