@@ -457,18 +457,18 @@ async def test_get_subtasks(start_test_service):
         for subtask in subtask_details.get('subtasks'):
             assert ((subtask.get('status') == SubtaskStatus.errored.value) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
 
-    def f1():
+    def f2():
         return np.arange(5)
 
-    def f2():
+    def f3():
         return np.arange(5, 10)
 
-    def f3(f1r, f2r):
+    def f4(f1r, f2r):
         return np.concatenate([f1r, f2r]).sum()
 
-    r1 = mr.spawn(f1)
-    r2 = mr.spawn(f2)
-    r3 = mr.spawn(f3, args=(r1, r2))
+    r1 = mr.spawn(f2)
+    r2 = mr.spawn(f3)
+    r3 = mr.spawn(f4, args=(r1, r2))
 
     graph = TileableGraph([r3.data])
     next(TileableGraphBuilder(graph).build())
