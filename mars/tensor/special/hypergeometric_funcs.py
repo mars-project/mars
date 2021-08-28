@@ -69,6 +69,3 @@ class TensorHYP0F1(TensorSpecialBinOp):
 def hyp0f1(v, z, out = None,**kwargs):
     op = TensorHYP0F1(**kwargs)
     return op(v, z, out)
-
-
-
