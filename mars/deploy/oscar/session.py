@@ -804,7 +804,7 @@ class _IsolatedSession(AbstractAsyncSession):
     @alru_cache(cache_exceptions=False)
     async def _get_storage_api(self, band: BandType):
         if urlparse(self.address).scheme == 'http':
-            from mars.services.storage.api import WebStorageAPI
+            from ...services.storage.api import WebStorageAPI
             storage_api = WebStorageAPI(self._session_id, self.address, band[1])
         else:
             storage_api = await StorageAPI.create(self._session_id, band[0], band[1])
