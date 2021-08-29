@@ -8,14 +8,14 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-12-18 14:49+0800\n"
+"POT-Creation-Date: 2021-08-29 20:21+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.0\n"
+"Generated-By: Babel 2.9.1\n"
 
 #: ../../source/user_guide/learn/tensorflow.rst:5
 msgid "Integrate with TensorFlow"
@@ -136,4 +136,35 @@ msgid ""
 msgstr ""
 "一旦一个集群存在，你可以要么设置默认 session，训练和预测就会自动提交到"
 "集群，要么你可以通过 ``session=***`` 显示指定运行的 session。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:172
+msgid "Use ``gen_tensorflow_dataset``"
+msgstr "使用 ``gen_tensorflow_dataset``"
+
+#: ../../source/user_guide/learn/tensorflow.rst:174
+msgid ""
+"You can convert Mars data(:class:`mars.tensor.Tensor`, "
+":class:`mars.dataframe.DataFrame`, :class:`mars.dataframe.Series`) to "
+"`tf.data.Dataset <https://tensorflow.google. "
+"cn/api_docs/python/tf/data/Dataset>`_ by :meth:`gen_tensorflow_dataset`. "
+"It also support :class:`numpy.ndarray`, :class:`pandas.DataFrame`, "
+":class:`pandas.Series`."
+msgstr ""
+"你可以利用 :meth:`gen_tensorflow_dataset` 将Mars类型数据"
+"（:class:`mars.tensor.Tensor`，:class:`mars.dataframe.DataFrame`，"
+":class:`mars.dataframe.Series`）转换为 `tf.data.Dataset <https://tensorflow."
+"google.cn/api_docs/python/tf/data/Dataset>`_。该接口也支持 "
+":class:`numpy.ndarray`，:class:`pandas.DataFrame`，:class:`pandas.Series`。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:191
+msgid "Now, you can preprocess the data via mars, and pass data to script."
+msgstr "现在，你可以用Mars预处理数据，然后将数据传到脚本中。"
+
+#: ../../source/user_guide/learn/tensorflow.rst:214
+msgid "``tf_demo.py``"
+msgstr ""
+
+#: ../../source/user_guide/learn/tensorflow.rst:269
+msgid "result:"
+msgstr "结果："
 

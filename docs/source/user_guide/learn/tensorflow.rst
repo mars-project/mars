@@ -170,10 +170,14 @@ and prediction shown above will be submitted to the cluster, or you can specify
 
 Use ``gen_tensorflow_dataset``
 ---------------------------------
-You can convert Mars data(``mars.Tensor``, ``mars.Dataframe``, ``mars.Series``) to
-``tf.data.Dataset`` by :meth:`gen_tensorflow_dataset`.
 
-.. code-block:: ipython
+You can convert Mars data(:class:`mars.tensor.Tensor`, :class:`mars.dataframe.DataFrame`,
+:class:`mars.dataframe.Series`) to `tf.data.Dataset <https://tensorflow.google.
+cn/api_docs/python/tf/data/Dataset>`_ by :meth:`gen_tensorflow_dataset`. It also 
+support :class:`numpy.ndarray`, :class:`pandas.DataFrame`, :class:`pandas.Series`.
+
+.. code-block:: python
+
     In [1]: data = mt.tensor([[1, 2], [3, 4]])
     In [2]: dataset = gen_tensorflow_dataset(data)
     In [3]: list(dataset.as_numpy_iterator())
@@ -200,8 +204,8 @@ Now, you can preprocess the data via mars, and pass data to script.
     X.exeute()
     X_train = X[:len(X)*0.7]
     y_train = y[:len(y)*0.7]
-    X_test = X[len(X)*0.7]
-    y_test = y[len(y)*0.7]
+    X_test = X[len(X)*0.7:]
+    y_test = y[len(y)*0.7:]
     
     run_tensorflow_script(
         "tf_demo.py", n_workers=2, data={'X_train': X_train, 'y_train': y_train, 
