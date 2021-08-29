@@ -70,6 +70,10 @@ async def test_api(actor_pool):
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
             api.watch_all_bands(statuses={NodeStatus.READY})), timeout=0.1)
+    with pytest.raises(NotImplementedError):
+        await api.request_worker(timeout=1)
+    with pytest.raises(NotImplementedError):
+        await api.release_worker('127.0.0.1:1234')
 
     await api.set_node_status(pool_addr, NodeRole.WORKER, NodeStatus.STOPPING)
     assert {} == await api.get_all_bands()
@@ -78,6 +82,8 @@ async def test_api(actor_pool):
     assert (pool_addr, 'numa-0') in bands
     assert pool_addr in await api.get_nodes_info(
         role=NodeRole.WORKER, exclude_statuses={NodeStatus.STOPPED})
+
+    await MockClusterAPI.cleanup(pool_addr)
 
 
 @pytest.mark.asyncio
@@ -113,3 +119,5 @@ async def test_web_api(actor_pool):
     with pytest.raises(asyncio.TimeoutError):
         await asyncio.wait_for(wait_async_gen(
             web_api.watch_all_bands()), timeout=0.1)
+
+    await MockClusterAPI.cleanup(pool_addr)

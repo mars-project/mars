@@ -1,0 +1,18 @@
+* text=auto
+# enforce text on certain files
+*.py text
+*.pyx text
+*.pyi text
+*.pxd text
+*.c text
+*.cpp text
+*.h text
+*.hpp text
+*.html text
+*.csv text
+*.js text
+*.jsx text
+*.ts text
+*.json text
+*.yaml text
+*.yml text

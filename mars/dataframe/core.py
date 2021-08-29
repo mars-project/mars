@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import weakref
-import warnings
 from collections.abc import Iterable
 from io import StringIO
 from typing import Union, Dict, Any
@@ -528,6 +527,9 @@ class _BatchedFetcher:
             batches = list(self._iter(batch_size=batch_size,
                                       session=session, **kw))
             return pd.concat(batches) if len(batches) > 1 else batches[0]
+
+    def fetch_infos(self, fields=None, session=None, **kw):
+        return self._fetch_infos(fields=fields, session=session, **kw)
 
 
 class IndexData(HasShapeTileableData, _ToPandasMixin):
@@ -1304,7 +1306,9 @@ class Series(HasShapeTileable, _ToPandasMixin):
         --------
         >>> import mars.dataframe as md
         >>> s = md.Series([2, 0, 4, 8, np.nan])
+
         Boundary values are included by default:
+
         >>> s.between(1, 4).execute()
         0     True
         1    False
@@ -1314,6 +1318,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
         dtype: bool
 
         With `inclusive` set to ``"neither"`` boundary values are excluded:
+
         >>> s.between(1, 4, inclusive="neither").execute()
         0     True
         1    False
@@ -1323,6 +1328,7 @@ class Series(HasShapeTileable, _ToPandasMixin):
         dtype: bool
 
         `left` and `right` can be any scalar value:
+
         >>> s = md.Series(['Alice', 'Bob', 'Carol', 'Eve'])
         >>> s.between('Anna', 'Daniel').execute()
         0    False
@@ -1331,13 +1337,8 @@ class Series(HasShapeTileable, _ToPandasMixin):
         3    False
         dtype: bool
         """
-        if inclusive is True or inclusive is False:
-            warnings.warn(
-                "Boolean inputs to the `inclusive` argument are deprecated in"
-                "favour of `both` or `neither`.",
-                FutureWarning,
-                stacklevel=2,
-            )
+        if isinstance(inclusive, bool):  # pragma: no cover
+            # for pandas < 1.3.0
             if inclusive:
                 inclusive = "both"
             else:

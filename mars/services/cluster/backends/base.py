@@ -39,7 +39,7 @@ class AbstractClusterBackend(ABC):
         """
 
     @abstractmethod
-    def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
+    async def watch_supervisors(self) -> AsyncGenerator[List[str], None]:
         """
         Watch changes of supervisors
 
@@ -63,6 +63,23 @@ class AbstractClusterBackend(ABC):
         -------
         out : List[str]
             List of supervisors
+        """
+
+    @abstractmethod
+    async def request_worker(
+            self, worker_cpu: int = None, worker_mem: int = None, timeout: int = None) -> str:
+        """
+        Create a new worker
+
+        Returns
+        -------
+        Address of the new created worker
+        """
+
+    @abstractmethod
+    async def release_worker(self, address: str):
+        """
+        Return a worker
         """
 
 

@@ -51,6 +51,19 @@ jobs:
           source ./ci/reload-env.sh
           codespell
 
+      - name: Check file mode changes
+        shell: bash
+        run: |
+          source ./ci/reload-env.sh
+          git fetch origin master
+          bash ci/modecheck.sh
+
+      - name: Check imports
+        shell: bash
+        run: |
+          source ./ci/reload-env.sh
+          python ci/importcheck.py
+
       - name: Check copyright headers
         shell: bash
         run: |
