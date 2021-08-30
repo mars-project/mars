@@ -63,3 +63,6 @@ class TestClusterBackend(AbstractClusterBackend):
 
     async def release_worker(self, address: str):
         raise NotImplementedError
+
+    async def reconstruct_worker(self, address: str):
+        raise NotImplementedError

@@ -35,3 +35,6 @@ class NodeAllocatorActor(mo.StatelessActor):
 
     async def release_worker(self, address: str):
         await self._backend.release_worker(address)
+
+    async def reconstruct_worker(self, address: str):
+        await self._backend.reconstruct_worker(address)

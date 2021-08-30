@@ -38,6 +38,12 @@ logger = logging.getLogger(__name__)
 _is_windows: bool = sys.platform.startswith('win')
 
 
+class RayPoolState(Enum):
+    INIT = 0
+    POOL_READY = 1
+    SERVICE_READY = 2
+
+
 @_register_message_handler
 class RayMainActorPool(MainActorPoolBase):
     @classmethod
@@ -80,20 +86,21 @@ class RayMainActorPool(MainActorPoolBase):
             num_cpus=num_cpus, name=external_address,
             max_concurrency=10000,  # By default, 1000 tasks can be running concurrently.
             max_restarts=-1,  # Auto restarts by ray
-            placement_group=pg, placement_group_bundle_index=bundle_index).remote()
-        await actor_handle.start.remote(actor_pool_config, process_index)
+            placement_group=pg, placement_group_bundle_index=bundle_index).remote(
+                actor_pool_config, process_index)
+        await actor_handle.start.remote()
         return actor_handle
 
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
-        process_index = self._config.get_process_index(address)
-        await process.start.remote(self._config, process_index)
+        await process.start.remote()
 
         if self._auto_recover == 'actor':
             # need to recover all created actors
             for _, message in self._allocated_actors[address].values():
                 create_actor_message: CreateActorMessage = message
                 await self.call(address, create_actor_message)
+            await process.mark_service_ready.remote()
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
         if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
@@ -101,28 +108,26 @@ class RayMainActorPool(MainActorPoolBase):
             await process.cleanup.remote()
         await self._kill_actor_forcibly(process)
 
-    async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle'):
+    async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle', timeout=30):
+        r = process.wait.remote(timeout)
         ray.kill(process, no_restart=False)
-        wait_time, waited_time = 30, 0
-        while await self.is_sub_pool_alive(process):  # pragma: no cover
-            if waited_time > wait_time:
-                raise Exception(f'''Can't kill process {process} in {wait_time} seconds.''')
-            await asyncio.sleep(1)
-            logger.info(f'Waited {waited_time} seconds for {process} to be killed.')
+        ready, _ = ray.wait([r], timeout=timeout)
+        if ready:
+            try:
+                ray.get(ready[0])
+            except ray.exceptions.RayActorError:
+                return  # We expect a RayActorError, it indicated that the actor is died.
+        raise Exception(f'The actor {process} is not died after ray.kill {timeout} seconds.')
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:
-            # try to call the method of sup pool, if success, it's alive.
-            await process.actor_pool.remote('health_check')
-            return True
+            if self._auto_recover == 'process':
+                return await process.state.remote() in [RayPoolState.POOL_READY, RayPoolState.SERVICE_READY]
+            else:
+                return await process.state.remote() == RayPoolState.SERVICE_READY
         except Exception:
             logger.info("Detected RaySubPool %s died", process)
             return False
-
-
-class PoolStatus(Enum):
-    HEALTHY = 0
-    UNHEALTHY = 1
 
 
 @_register_message_handler
@@ -137,14 +142,12 @@ class RaySubActorPool(SubActorPoolBase):
         finally:
             self._stopped.set()
 
-    def health_check(self):  # noqa: R0201  # pylint: disable=no-self-use
-        return PoolStatus.HEALTHY
-
 
 class RayPoolBase(ABC):
     __slots__ = '_actor_pool', '_ray_server'
 
     _actor_pool: Optional['AbstractActorPool']
+    _state: RayPoolState = RayPoolState.INIT
 
     def __new__(cls, *args, **kwargs):
         if not _is_windows:
@@ -190,6 +193,15 @@ class RayPoolBase(ABC):
         else:
             return attr
 
+    def state(self):
+        return self._state
+
+    def getpid(self):
+        return os.getpid()
+
+    async def wait(self, seconds):
+        await asyncio.wait(seconds)
+
     def cleanup(self):
         logger.info('Cleaning up %s of process %s now', self, os.getpid())
         try:
@@ -202,19 +214,48 @@ class RayPoolBase(ABC):
 class RayMainPool(RayPoolBase):
     _actor_pool: RayMainActorPool
 
-    async def start(self, *args, **kwargs):
-        address, n_process = args
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self._args = args
+        self._kwargs = kwargs
+
+    async def start(self):
+        # create mars pool outside the constructor is to avoid ray actor creation failed.
+        # ray can't get the creation exception.
+        address, n_process = self._args
+        assert self._state == RayPoolState.INIT, \
+            f"The pool {address} is already started, current state is {self._state}"
         self._actor_pool = await create_actor_pool(
-            address, n_process=n_process, pool_cls=RayMainActorPool, **kwargs)
+            address, n_process=n_process, pool_cls=RayMainActorPool, **self._kwargs)
         self._set_ray_server(self._actor_pool)
+        self._state = RayPoolState.POOL_READY
+
+    async def mark_service_ready(self):
+        results = []
+        for _, sub_pool in self._actor_pool.sub_processes.items():
+            r = sub_pool.mark_service_ready.remote()
+            results.append(r)
+        await asyncio.gather(*results)
+        self._state = RayPoolState.SERVICE_READY
+        await self._actor_pool.start_monitor()
 
 
 class RaySubPool(RayPoolBase):
     _actor_pool: RaySubActorPool
 
-    async def start(self, *args, **kwargs):
-        actor_config, process_index = args
-        env = actor_config.get_pool_config(process_index)['env']
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self._args = args
+        self._kwargs = kwargs
+
+    async def start(self):
+        # create mars pool outside the constructor is to avoid ray actor creation failed.
+        # ray can't get the creation exception.
+        actor_config, process_index = self._args
+        pool_config = actor_config.get_pool_config(process_index)
+        assert self._state == RayPoolState.INIT, \
+            f"The pool {pool_config['external_address']} is already started, current state is {self._state}"
+        env = pool_config['env']
         if env:
             os.environ.update(env)
         self._actor_pool = await RaySubActorPool.create({
@@ -224,3 +265,7 @@ class RaySubPool(RayPoolBase):
         self._set_ray_server(self._actor_pool)
         await self._actor_pool.start()
         asyncio.create_task(self._actor_pool.join())
+        self._state = RayPoolState.POOL_READY
+
+    def mark_service_ready(self):
+        self._state = RayPoolState.SERVICE_READY

@@ -212,6 +212,10 @@ class MainActorPool(MainActorPoolBase):
                 create_actor_message: CreateActorMessage = message
                 await self.call(address, create_actor_message)
 
+    async def start(self):
+        await super().start()
+        await self.start_monitor()
+
 
 @_register_message_handler
 class SubActorPool(SubActorPoolBase):

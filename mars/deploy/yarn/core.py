@@ -152,6 +152,9 @@ class YarnClusterBackend(AbstractClusterBackend):
     async def release_worker(self, address: str):
         raise NotImplementedError
 
+    async def reconstruct_worker(self, address: str):
+        raise NotImplementedError
+
 
 class YarnServiceMixin(object):
     service_name = None

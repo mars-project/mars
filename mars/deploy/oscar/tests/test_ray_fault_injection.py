@@ -34,8 +34,6 @@ RAY_CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_with_ray_config.yml')
 FAULT_INJECTION_CONFIG = {
     "third_party_modules": ["mars.services.tests.fault_injection_patch"],
-    "subtask": {
-        "subtask_processor_cls": "mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor"}
 }
 SUBTASK_RERUN_CONFIG = {"scheduling": {"subtask_max_retries": 2}}
 

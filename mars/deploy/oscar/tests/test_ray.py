@@ -23,6 +23,8 @@ import pytest
 from .... import oscar as mo
 from .... import tensor as mt
 from .... import dataframe as md
+from ....oscar.backends.ray.pool import RayPoolState
+from ....oscar.backends.ray.utils import process_address_to_placement, process_placement_to_address
 from ....serialization.ray import register_ray_serializers
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
 from ....tests.core import require_ray
@@ -246,8 +248,61 @@ async def test_request_worker(ray_large_cluster):
         workers = await asyncio.gather(*[cluster_state_ref.request_worker(timeout=5) for _ in range(2)])
         assert all(worker is not None for worker in workers)
         assert not await cluster_state_ref.request_worker(timeout=5)
-        await asyncio.gather(*[cluster_state_ref.release_worker(worker) for worker in workers])
+        release_workers = [cluster_state_ref.release_worker(worker) for worker in workers]
+        # Duplicate release workers requests should be handled.
+        release_workers.extend([cluster_state_ref.release_worker(worker) for worker in workers])
+        await asyncio.gather(*release_workers)
         assert await cluster_state_ref.request_worker(timeout=5)
+        cluster_state_ref.reconstruct_worker()
+
+
+@pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 3, 'num_cpus': 1}], indirect=True)
+@require_ray
+@pytest.mark.asyncio
+async def test_reconstruct_worker(ray_large_cluster):
+    worker_cpu, worker_mem = 1, 100 * 1024 ** 2
+    client = await new_cluster('test_cluster', worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem)
+    async with client:
+        cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
+        worker = await cluster_state_ref.request_worker(timeout=5)
+        pg_name, bundle_index, process_index = process_address_to_placement(worker)
+        worker_sub_pool = process_placement_to_address(pg_name, bundle_index, process_index + 1)
+
+        worker_actor = ray.get_actor(worker)
+        worker_pid = await worker_actor.getpid.remote()
+        # the worker pool actor should be destroyed even we get actor.
+        worker_sub_pool_actor = ray.get_actor(worker_sub_pool)
+        worker_sub_pool_pid = await worker_sub_pool_actor.getpid.remote()
+
+        # kill worker main pool
+        ray.kill(ray.get_actor(worker), no_restart=False)
+        # check worker main pool state, because ray.kill is an async operation
+        for _ in range(10):
+            try:
+                state = await worker_actor.state.remote()
+                assert state == RayPoolState.INIT
+                break
+            except Exception as e:
+                print(e)
+                time.sleep(1)
+
+        # duplicated reconstruct worker request can be handled.
+        await asyncio.gather(cluster_state_ref.reconstruct_worker(worker),
+                             cluster_state_ref.reconstruct_worker(worker))
+        worker_actor = ray.get_actor(worker)
+        new_worker_pid = await worker_actor.getpid.remote()
+        worker_sub_pool_actor = ray.get_actor(worker_sub_pool)
+        new_worker_sub_pool_pid = await worker_sub_pool_actor.getpid.remote()
+        assert new_worker_pid != worker_pid
+        assert new_worker_sub_pool_pid != worker_sub_pool_pid
+
+        # the compute should be ok after the worker is reconstructed.
+        raw = np.random.RandomState(0).rand(10, 5)
+        a = mt.tensor(raw, chunk_size=5).sum(axis=1)
+        b = a.execute(show_progress=False)
+        assert b is a
+        result = a.fetch()
+        np.testing.assert_array_equal(result, raw.sum(axis=1))
 
 
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4, 'num_cpus': 2}], indirect=True)
