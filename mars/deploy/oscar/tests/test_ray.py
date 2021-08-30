@@ -322,7 +322,7 @@ async def test_ownership_when_scale_in(ray_large_cluster):
                                    'scheduling.autoscale.enabled': True,
                                    'scheduling.autoscale.scheduler_check_interval': 1,
                                    'scheduling.autoscale.scheduler_backlog_timeout': 1,
-                                   'scheduling.autoscale.worker_idle_timeout': 5,
+                                   'scheduling.autoscale.worker_idle_timeout': 10,
                                    'scheduling.autoscale.min_workers': 1,
                                    'scheduling.autoscale.max_workers': 4
                                })
@@ -333,13 +333,13 @@ async def test_ownership_when_scale_in(ray_large_cluster):
         await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(2)])
         df = md.DataFrame(mt.random.rand(100, 4, chunk_size=2), columns=list('abcd'))
         print(df.execute())
-        pd_df = df.to_pandas()
         assert await autoscaler_ref.get_dynamic_worker_nums() > 1
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
             dynamic_workers = await autoscaler_ref.get_dynamic_workers()
             print(f'Waiting workers {dynamic_workers} to be released.')
             await asyncio.sleep(1)
         # Test data on node of released worker can still be fetched
+        pd_df = df.to_pandas()
         groupby_sum_df = df.rechunk(40).groupby('a').sum()
         print(groupby_sum_df.execute())
         while await autoscaler_ref.get_dynamic_worker_nums() > 1:
