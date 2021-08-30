@@ -32,7 +32,13 @@ from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
 from mars.dataframe.datasource.from_records import from_records
 from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
 from mars.dataframe.datasource.read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
+from mars.dataframe.datasource.read_obj_refs import read_obj_refs, DataFrameReadObjRefs
 from mars.dataframe.datasource.date_range import date_range
+from mars.tests.core import require_ray
+from mars.utils import lazy_import
+
+
+ray = lazy_import('ray')
 
 
 def test_from_pandas_dataframe():
@@ -430,6 +436,26 @@ def test_read_sql():
             read_sql_table(table_name, uri, chunk_size=4, index_col=b'a')
         with pytest.raises(TypeError):
             read_sql_query('select * from ' + table_name, uri, partition_col='b')
+
+
+@require_ray
+def test_read_obj_refs():
+    test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                            'b': [f's{i}' for i in range(10)]})
+    test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                            'b': [f's{i}' for i in range(10)]})
+    df = pd.concat([test_df1, test_df2])
+    obj_refs = [ray.put(test_df1), ray.put(test_df2)]
+    mdf = read_obj_refs(obj_refs)
+
+    assert mdf.shape[1] == 2
+    pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())
+    pd.testing.assert_series_equal(df.dtypes, mdf.dtypes)
+
+    mdf = tile(mdf)
+    assert len(mdf.chunks) == 2
+    for chunk in mdf.chunks:
+        assert isinstance(chunk.op, DataFrameReadObjRefs)
 
 
 def test_date_range():

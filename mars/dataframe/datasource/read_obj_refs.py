@@ -17,9 +17,8 @@ import numpy as np
 import pandas as pd
 
 from ... import opcodes as OperandDef
-from ...config import options
-from ...serialization.serializables import AnyField, BoolField, ListField, StringField, Int64Field
-from ..utils import parse_index, to_arrow_dtypes, lazy_import
+from ...serialization.serializables import AnyField, BoolField, ListField, Int64Field
+from ..utils import parse_index, lazy_import
 from .core import IncrementalIndexDatasource, IncrementalIndexDataSourceMixin
 
 ray = lazy_import('ray')
@@ -30,17 +29,14 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
     _op_type_ = OperandDef.READ_OBJ_REF
 
     _refs = AnyField('refs')
-    _engine = StringField('engine')
     _columns = ListField('columns')
-    _use_arrow_dtype = BoolField('use_arrow_dtype')
     _incremental_index = BoolField('incremental_index')
     _nrows = Int64Field('nrows')
 
-    def __init__(self, refs=None, engine=None, columns=None, use_arrow_dtype=None,
+    def __init__(self, refs=None, columns=None,
                  incremental_index=None, nrows=None,
                  **kw):
-        super().__init__(_refs=refs, _engine=engine, _columns=columns,
-                         _use_arrow_dtype=use_arrow_dtype,
+        super().__init__(_refs=refs, _columns=columns,
                          _incremental_index=incremental_index,
                          _nrows=nrows,
                          **kw)
@@ -50,34 +46,18 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
         return self._refs
 
     @property
-    def engine(self):
-        return self._engine
-
-    @property
     def columns(self):
         return self._columns
-
-    @property
-    def use_arrow_dtype(self):
-        return self._use_arrow_dtype
 
     @property
     def incremental_index(self):
         return self._incremental_index
 
     @classmethod
-    def _to_arrow_dtypes(cls, dtypes, op):
-        if op.use_arrow_dtype is None and not op.gpu and \
-                options.dataframe.use_arrow_dtype:  # pragma: no cover
-            # check if use_arrow_dtype set on the server side
-            dtypes = to_arrow_dtypes(dtypes)
-        return dtypes
-
-    @classmethod
     def _tile_partitioned(cls, op: "DataFrameReadObjRefs"):
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
-        dtypes = cls._to_arrow_dtypes(out_df.dtypes, op)
+        dtypes = out_df.dtypes
         dataset = op.refs
 
         chunk_index = 0
