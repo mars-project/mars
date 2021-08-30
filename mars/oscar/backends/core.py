@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Dict, Union, Iterable
+from typing import Dict, Union
 
 from ..errors import ServerClosed
 from .communication import Client
