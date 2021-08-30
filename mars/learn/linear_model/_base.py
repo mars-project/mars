@@ -20,13 +20,13 @@ from numpy.linalg import LinAlgError
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
 from sklearn.base import MultiOutputMixin
-from sklearn.utils.extmath import safe_sparse_dot
 
+from ... import execute
 from ... import tensor as mt
-from ..base import BaseEstimator, RegressorMixin
 from ...lib import sparse as mars_sp
-from ..preprocessing import normalize as f_normalize
 from ...tensor.datasource import tensor as astensor
+from ..base import BaseEstimator, RegressorMixin
+from ..preprocessing import normalize as f_normalize
 from ..utils.validation import _check_sample_weight, check_array, FLOAT_DTYPES
 
 
@@ -67,7 +67,7 @@ def _preprocess_data(
         X = check_array(X, copy=copy, accept_sparse=['csr', 'csc'],
                         dtype=FLOAT_DTYPES)
     elif copy:
-        if sp.issparse(X):
+        if mars_sp.issparse(X):
             X = X.copy()
         else:
             X = X.copy(order='K')
@@ -75,7 +75,7 @@ def _preprocess_data(
     y = astensor(y, dtype=X.dtype)
 
     if fit_intercept:
-        if sp.issparse(X):
+        if mars_sp.issparse(X):
             raise NotImplementedError(
                 "Does not support sparse input!")
         else:
@@ -121,8 +121,10 @@ def _rescale_data(X, y, sample_weight):
     sw_matrix = sp.dia_matrix(
         (sample_weight, 0),
         shape=(n_samples, n_samples))
-    X = safe_sparse_dot(sw_matrix, X)
-    y = safe_sparse_dot(sw_matrix, y)
+    # X = safe_sparse_dot(sw_matrix, X)
+    # y = safe_sparse_dot(sw_matrix, y)
+    X = mt.dot(sw_matrix, X)
+    y = mt.dot(sw_matrix, y)
     return X, y
 
 
@@ -140,9 +142,11 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
                                 y="no_validation",
                                 accept_sparse=["csr", "csc", "coo"],
                                 reset=False)
-        return safe_sparse_dot(X,
-                               self.coef_.T,
-                               dense_output=True) + self.intercept_
+        return mt.dot(X,
+                      self.coef_.T) + self.intercept_
+        # return safe_sparse_dot(X,
+        #                        self.coef_.T,
+        #                        dense_output=True) + self.intercept_
 
     def predict(self, X):
         """
@@ -166,10 +170,11 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
         """Set the intercept_"""
         if self.fit_intercept:
             self.coef_ = self.coef_ / X_scale
-            self.coef_.execute()
+            self.coef_
             self.intercept_ = (
                 y_offset - mt.dot(X_offset, self.coef_.T)
-            ).execute()
+            )
+            execute(self.coef_, self.intercept_)
         else:
             self.intercept_ = mt.tensor(0.0)
             self.intercept_.execute()

@@ -33,6 +33,7 @@ from mars.learn.linear_model import LinearRegression
 from mars.learn.linear_model._base import (_preprocess_data,
                                            _rescale_data)
 
+
 rng = np.random.RandomState(0)
 rtol = 1e-6
 
@@ -460,43 +461,37 @@ def test_preprocess_data_weighted(setup):
     assert_array_almost_equal(Xt, (X - expected_X_mean) / expected_X_norm)
     assert_array_almost_equal(yt, y - expected_y_mean)
 
-# # AttributeError: 'SparseMatrix' object has no attribute 'A'
-# def test_sparse_preprocess_data_with_return_mean():
-#     n_samples = 200
-#     n_features = 2
-#     # random_state not supported yet in sparse.rand
-#     X = sparse.rand(n_samples, n_features, density=.5)  # , random_state=rng
-#     X = X.tolil()
-#     y = rng.rand(n_samples)
-#     XA = X.toarray()
-#     expected_X_norm = np.std(XA, axis=0) * np.sqrt(X.shape[0])
 
-#     Xt, yt, X_mean, y_mean, X_norm = \
-#         _preprocess_data(X, y, fit_intercept=False, normalize=False,
-#                          return_mean=True)
-#     assert_array_almost_equal(X_mean, np.zeros(n_features))
-#     assert_array_almost_equal(y_mean, 0)
-#     assert_array_almost_equal(X_norm, np.ones(n_features))
-#     assert_array_almost_equal(Xt.to_numpy().A, XA)
-#     assert_array_almost_equal(yt, y)
+def test_sparse_preprocess_data_with_return_mean(setup):
+    n_samples = 200
+    n_features = 2
+    # random_state not supported yet in sparse.rand
+    X = sparse.rand(n_samples, n_features, density=.5)  # , random_state=rng
+    X = sparse.csr_matrix(X)
+    y = rng.rand(n_samples)
+    XA = X.toarray()
+    # expected_X_norm = np.std(XA, axis=0) * np.sqrt(X.shape[0])
 
-#     Xt, yt, X_mean, y_mean, X_norm = \
-#         _preprocess_data(X, y, fit_intercept=True, normalize=False,
-#                          return_mean=True)
-#     assert_array_almost_equal(X_mean, np.mean(XA, axis=0))
-#     assert_array_almost_equal(y_mean, np.mean(y, axis=0))
-#     assert_array_almost_equal(X_norm, np.ones(n_features))
-#     assert_array_almost_equal(Xt.A, XA)
-#     assert_array_almost_equal(yt, y - np.mean(y, axis=0))
+    Xt, yt, X_mean, y_mean, X_norm = \
+        _preprocess_data(X, y, fit_intercept=False, normalize=False,
+                         return_mean=True)
+    assert_array_almost_equal(X_mean, np.zeros(n_features))
+    assert_array_almost_equal(y_mean, 0)
+    assert_array_almost_equal(X_norm, np.ones(n_features))
+    assert_array_almost_equal(Xt.to_numpy().toarray(), XA)
+    assert_array_almost_equal(yt, y)
 
-#     Xt, yt, X_mean, y_mean, X_norm = \
-#         _preprocess_data(X, y, fit_intercept=True, normalize=True,
-#                          return_mean=True)
-#     assert_array_almost_equal(X_mean, np.mean(XA, axis=0))
-#     assert_array_almost_equal(y_mean, np.mean(y, axis=0))
-#     assert_array_almost_equal(X_norm, expected_X_norm)
-#     assert_array_almost_equal(Xt.A, XA / expected_X_norm)
-#     assert_array_almost_equal(yt, y - np.mean(y, axis=0))
+    error_msg = re.escape("Does not support sparse input!")
+    with pytest.raises(NotImplementedError, match=error_msg):
+        Xt, yt, X_mean, y_mean, X_norm = \
+            _preprocess_data(X, y, fit_intercept=True, normalize=False,
+                             return_mean=True, check_input=False)
+
+    error_msg = re.escape("Does not support sparse input!")
+    with pytest.raises(NotImplementedError, match=error_msg):
+        Xt, yt, X_mean, y_mean, X_norm = \
+            _preprocess_data(X, y, fit_intercept=True, normalize=True,
+                             return_mean=True, check_input=False)
 
 
 # # AttributeError: 'TensorData' object has no attribute 'getformat'
