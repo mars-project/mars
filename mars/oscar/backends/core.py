@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Dict, Union
+from typing import Dict, Union, Iterable
 
 from ..errors import ServerClosed
 from .communication import Client
@@ -67,6 +67,12 @@ class ActorCaller:
                 self._client_to_message_futures[client] = dict()
                 for future in message_futures.values():
                     future.set_exception(e)
+
+        message_futures = self._client_to_message_futures.get(client)
+        self._client_to_message_futures[client] = dict()
+        error = ServerClosed(f'Remote server {client.dest_address} closed')
+        for future in message_futures.values():
+            future.set_exception(error)
 
     async def call(self,
                    router: Router,
