@@ -23,7 +23,6 @@ from sklearn.base import MultiOutputMixin
 
 from ... import execute
 from ... import tensor as mt
-from ...lib import sparse as mars_sp
 from ...tensor.datasource import tensor as astensor
 from ..base import BaseEstimator, RegressorMixin
 from ..preprocessing import normalize as f_normalize
@@ -63,19 +62,20 @@ def _preprocess_data(
     if sample_weight is not None:
         sample_weight = astensor(sample_weight)
 
+    X = astensor(X)
+    y = astensor(y, dtype=X.dtype)
+
     if check_input:
         X = check_array(X, copy=copy, accept_sparse=['csr', 'csc'],
                         dtype=FLOAT_DTYPES)
     elif copy:
-        if mars_sp.issparse(X):
+        if X.issparse():
             X = X.copy()
         else:
             X = X.copy(order='K')
 
-    y = astensor(y, dtype=X.dtype)
-
     if fit_intercept:
-        if mars_sp.issparse(X):
+        if X.issparse():
             raise NotImplementedError(
                 "Does not support sparse input!")
         else:
@@ -89,6 +89,9 @@ def _preprocess_data(
         y_offset = mt.average(y, axis=0, weights=sample_weight)
         y = y - y_offset
     else:
+        if X.issparse():
+            raise NotImplementedError(
+                "Does not support sparse input!")
         X_offset = mt.zeros(X.shape[1], dtype=X.dtype)
         X_scale = mt.ones(X.shape[1], dtype=X.dtype)
         if y.ndim == 1:
@@ -300,7 +303,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
             # TODO: implement optimize.nnls first
             raise NotImplementedError(
                 "Does not support positive coefficients!")
-        elif mars_sp.issparse(X):
+        elif X.issparse():
             # TODO: implement sparse.linalg.lsqr first
             raise NotImplementedError(
                 "Does not support sparse input!")

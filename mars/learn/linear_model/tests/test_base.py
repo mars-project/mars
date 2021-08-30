@@ -194,12 +194,11 @@ def test_linear_regression_sparse(setup, random_state=0):
         X = sparse.eye(n, n)
         beta = random_state.rand(n)
         y = X * beta[:, np.newaxis]
-
         ols = LinearRegression()
-        ols.fit(X, y.ravel())
-        assert_array_almost_equal(beta, ols.coef_ + ols.intercept_, decimal=1)
 
-        assert_array_almost_equal(ols.predict(X) - y.ravel(), 0, decimal=1)
+        error_msg = re.escape("Does not support sparse input!")
+        with pytest.raises(NotImplementedError, match=error_msg):
+            ols.fit(X, y.ravel())
 
 
 @pytest.mark.parametrize('normalize', [True, False])
@@ -219,16 +218,13 @@ def test_linear_regression_sparse_equal_dense(setup, normalize, fit_intercept):
     clf_dense.fit(X, y)
 
     if fit_intercept is False:
-        error_msg = re.escape(
-            "module 'mars.lib.sparse' has no attribute 'linalg'"
-        )
-        with pytest.raises(AttributeError, match=error_msg):
+        error_msg = re.escape("Does not support sparse input!")
+        with pytest.raises(NotImplementedError, match=error_msg):
             clf_sparse.fit(Xcsr, y)
     else:
-        clf_sparse.fit(Xcsr, y)
-        assert (clf_dense.intercept_.to_numpy()
-                == pytest.approx(clf_sparse.intercept_.to_numpy()))
-        assert_allclose(clf_dense.coef_, clf_sparse.coef_)
+        error_msg = re.escape("Does not support sparse input!")
+        with pytest.raises(NotImplementedError, match=error_msg):
+            clf_sparse.fit(Xcsr, y)
 
 
 def test_linear_regression_multiple_outcome(setup, random_state=0):
@@ -253,15 +249,15 @@ def test_linear_regression_sparse_multiple_outcome(setup, random_state=0):
     X, y = make_sparse_uncorrelated(random_state=random_state)
     X = sparse.coo_matrix(X)
     Y = np.vstack((y, y)).T
-    n_features = X.shape[1]
 
     ols = LinearRegression()
-    ols.fit(X, Y)
-    assert ols.coef_.shape == (2, n_features)
-    Y_pred = ols.predict(X)
-    ols.fit(X, y.ravel())
-    y_pred = ols.predict(X)
-    assert_array_almost_equal(np.vstack((y_pred, y_pred)).T, Y_pred, decimal=3)
+    error_msg = re.escape("Does not support sparse input!")
+    with pytest.raises(NotImplementedError, match=error_msg):
+        ols.fit(X, Y)
+
+    error_msg = re.escape("Does not support sparse input!")
+    with pytest.raises(NotImplementedError, match=error_msg):
+        ols.fit(X, y.ravel())
 
 
 # # When optimize.nnls is implemented, one can utilize this test case
@@ -411,22 +407,36 @@ def test_preprocess_data_multioutput(setup):
     y = rng.rand(n_samples, n_outputs)
     expected_y_mean = np.mean(y, axis=0)
 
-    args = [X, sparse.csc_matrix(X)]
-    for X in args:
+    # case 1
+    _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=False,
+                                           normalize=False)
+    assert_array_almost_equal(y_mean, np.zeros(n_outputs))
+    assert_array_almost_equal(yt, y)
+
+    _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=True,
+                                           normalize=False)
+    assert_array_almost_equal(y_mean, expected_y_mean)
+    assert_array_almost_equal(yt, y - y_mean)
+
+    _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=True,
+                                           normalize=True)
+    assert_array_almost_equal(y_mean, expected_y_mean)
+    assert_array_almost_equal(yt, y - y_mean)
+
+    # case 2
+    X = sparse.csc_matrix(X)
+    error_msg = "Does not support sparse input!"
+    with pytest.raises(NotImplementedError, match=error_msg):
         _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=False,
                                                normalize=False)
-        assert_array_almost_equal(y_mean, np.zeros(n_outputs))
-        assert_array_almost_equal(yt, y)
 
+    with pytest.raises(NotImplementedError, match=error_msg):
         _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=True,
                                                normalize=False)
-        assert_array_almost_equal(y_mean, expected_y_mean)
-        assert_array_almost_equal(yt, y - y_mean)
 
+    with pytest.raises(NotImplementedError, match=error_msg):
         _, yt, _, y_mean, _ = _preprocess_data(X, y, fit_intercept=True,
                                                normalize=True)
-        assert_array_almost_equal(y_mean, expected_y_mean)
-        assert_array_almost_equal(yt, y - y_mean)
 
 
 def test_preprocess_data_weighted(setup):
@@ -469,17 +479,12 @@ def test_sparse_preprocess_data_with_return_mean(setup):
     X = sparse.rand(n_samples, n_features, density=.5)  # , random_state=rng
     X = sparse.csr_matrix(X)
     y = rng.rand(n_samples)
-    XA = X.toarray()
-    # expected_X_norm = np.std(XA, axis=0) * np.sqrt(X.shape[0])
 
-    Xt, yt, X_mean, y_mean, X_norm = \
-        _preprocess_data(X, y, fit_intercept=False, normalize=False,
-                         return_mean=True)
-    assert_array_almost_equal(X_mean, np.zeros(n_features))
-    assert_array_almost_equal(y_mean, 0)
-    assert_array_almost_equal(X_norm, np.ones(n_features))
-    assert_array_almost_equal(Xt.to_numpy().toarray(), XA)
-    assert_array_almost_equal(yt, y)
+    error_msg = re.escape("Does not support sparse input!")
+    with pytest.raises(NotImplementedError, match=error_msg):
+        Xt, yt, X_mean, y_mean, X_norm = \
+            _preprocess_data(X, y, fit_intercept=False, normalize=False,
+                             return_mean=True)
 
     error_msg = re.escape("Does not support sparse input!")
     with pytest.raises(NotImplementedError, match=error_msg):
