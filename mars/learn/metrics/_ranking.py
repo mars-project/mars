@@ -184,6 +184,42 @@ def _binary_clf_curve(y_true, y_score, pos_label=None, sample_weight=None,
     ret = mt.ExecutableTuple([fps, tps, y_score[threshold_idxs]])
     return ret.execute(session=session, **(run_kwargs or dict()))
 
+def _binary_roc_auc_score(y_true, y_score, sample_weight = None,
+                                     max_fpr=None, session=None, run_kwargs=None):
+    """Binary roc auc score."""
+
+    from numpy import interp
+
+    if len(mt.unique(y_true).execute()) != 2:
+      raise ValueError("Only one class present in y_true. ROC AUC score "
+                        "is not defined in that case.")
+      
+    fpr, tpr, _ = roc_curve(y_true, y_score, sample_weight=sample_weight,
+                                    session = session, run_kwargs = run_kwargs)
+    fpr, tpr = mt.ExecutableTuple([fpr, tpr]).fetch(session = session)           
+
+    if max_fpr is None or max_fpr == 1:
+        return auc(fpr, tpr, session=session, run_kwargs=run_kwargs)
+    if max_fpr <= 0 or max_fpr > 1:
+        raise ValueError(f"Expected max_fpr in range (0, 1], got: {max_fpr}")
+
+    # Add a single point at max_fpr by linear interpolation
+    stop = mt.searchsorted(fpr, max_fpr, 'right').execute(session=session,
+                                **(run_kwargs or dict())).fetch(session = session)
+    x_interp = [fpr[stop - 1], fpr[stop]]
+    y_interp = [tpr[stop - 1], tpr[stop]]                   
+    tpr = list(tpr[:stop])
+    tpr.append(interp(max_fpr, x_interp, y_interp))
+    fpr = list(fpr[:stop])
+    fpr.append(max_fpr)
+    partial_auc = auc(fpr, tpr, session = session, run_kwargs=run_kwargs)
+
+    # McClish correction: standardize result to be 0.5 if non-discriminant
+    # and 1 if maximal
+    min_area = 0.5 * max_fpr**2
+    max_area = max_fpr
+    return 0.5 * (1 + (partial_auc.fetch(session=session) - min_area) / (max_area - min_area))
+
 
 def roc_curve(y_true, y_score, pos_label=None, sample_weight=None,
               drop_intermediate=True, session=None, run_kwargs=None):
