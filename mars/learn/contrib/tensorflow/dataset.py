@@ -54,6 +54,10 @@ class MarsDataset:
             if not isinstance(t, ACCEPT_TYPE):
                 raise TypeError(f"Unexpected dataset type: {type(t)}")
 
+        if not self._executed:
+            self._execute()
+            self._executed = True
+
         if not self._output_shapes:
             get_shape = lambda t: tuple(()) if isinstance(t, (List, SERIES_TYPE, pd.Series)) \
                                   else t.shape[1:]
