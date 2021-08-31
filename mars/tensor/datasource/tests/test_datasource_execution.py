@@ -39,16 +39,16 @@ try:
 except ImportError:  # pragma: no cover
     zarr = None
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.lib.sparse import SparseNDArray
-from mars.tensor.datasource import tensor, ones_like, zeros, zeros_like, \
+from .... import tensor as mt
+from .... import dataframe as md
+from ....lib.sparse import SparseNDArray
+from ....tests.core import require_cupy
+from ....utils import lazy_import
+from ...lib import nd_grid
+from .. import tensor, ones_like, zeros, zeros_like, \
     full, full_like, arange, empty, empty_like, diag, diagflat, eye, \
     linspace, meshgrid, indices, triu, tril, from_dataframe, fromtiledb, \
     fromhdf5, fromzarr
-from mars.tensor.lib import nd_grid
-from mars.tests.core import require_cupy
-from mars.utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
 

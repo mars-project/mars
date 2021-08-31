@@ -19,10 +19,10 @@ import pandas as pd
 import numpy as np
 import pytest
 
-import mars.dataframe as md
-from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
-from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
-from mars.optimization.logical.tileable import optimize
+from ..... import dataframe as md
+from .....core import TileableGraph, TileableGraphBuilder, enter_mode
+from .....dataframe.indexing.iloc import DataFrameIlocGetItem, SeriesIlocGetItem
+from .. import optimize
 
 
 @pytest.fixture(scope='module')

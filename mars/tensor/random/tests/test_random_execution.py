@@ -19,10 +19,10 @@ from collections import namedtuple
 import numpy as np
 import pytest
 
-from mars import tensor
-from mars.core import tile
-from mars.lib.sparse.core import issparse
-from mars.tensor.datasource import tensor as from_ndarray
+from .... import tensor
+from ....core import tile
+from ....lib.sparse.core import issparse
+from ...datasource import tensor as from_ndarray
 
 
 def test_rand_execution(setup):

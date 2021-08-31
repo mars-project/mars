@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.dataframe import Series, DataFrame
-from mars.tensor import tensor
+from ....tensor import tensor
+from ... import Series, DataFrame
 
 
 def test_series_quantile_execution(setup):

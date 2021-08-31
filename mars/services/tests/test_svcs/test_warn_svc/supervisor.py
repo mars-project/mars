@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.core import AbstractService
+from ....core import AbstractService
 
 
 class AbsDeriveService(AbstractService):

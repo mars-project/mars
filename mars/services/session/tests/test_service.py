@@ -17,13 +17,13 @@ import threading
 import pytest
 import numpy as np
 
-import mars.oscar as mo
-import mars.remote as mr
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.session import SessionAPI, WebSessionAPI
-from mars.services.task.api import TaskAPI
-from mars.core import TileableGraph, TileableGraphBuilder
-from mars.utils import get_next_port
+from .... import oscar as mo
+from .... import remote as mr
+from ....core import TileableGraph, TileableGraphBuilder
+from ....utils import get_next_port
+from ... import start_services, stop_services, NodeRole
+from ...task.api import TaskAPI
+from .. import SessionAPI, WebSessionAPI
 
 
 @pytest.mark.parametrize('test_web', [False, True])

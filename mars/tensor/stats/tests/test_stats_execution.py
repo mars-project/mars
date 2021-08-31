@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import functools
 
 import numpy as np
@@ -31,9 +30,9 @@ from scipy.stats import (
     ttest_1samp as sp_ttest_1samp,
 )
 
-from mars.lib.version import parse as parse_version
-from mars.tensor import tensor
-from mars.tensor.stats import (
+from ....lib.version import parse as parse_version
+from ... import tensor
+from .. import (
     entropy, power_divergence, chisquare,
     ttest_ind, ttest_rel, ttest_1samp, ttest_ind_from_stats,
     ks_1samp, ks_2samp,

@@ -14,17 +14,18 @@
 
 from typing import Union
 
-from mars import oscar as mo
-from mars.lib.aio import alru_cache
-from mars.services.scheduling.worker.execution import SubtaskExecutionActor
-from mars.services.subtask import Subtask
-from mars.services.tests.fault_injection_manager import (
+from ... import oscar as mo
+from ...lib.aio import alru_cache
+from ...tests.core import patch_cls, patch_super as super
+from ..session import SessionAPI
+from ..scheduling.worker.execution import SubtaskExecutionActor
+from ..subtask import Subtask
+from ..tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
     FaultPosition,
     handle_fault,
 )
-from mars.tests.core import patch_cls, patch_super as super
 
 
 @patch_cls(SubtaskExecutionActor)
@@ -43,7 +44,6 @@ class FaultInjectedSubtaskExecutionActor(SubtaskExecutionActor):
     @staticmethod
     @alru_cache(cache_exceptions=False)
     async def _get_session_api(supervisor_address: str):
-        from mars.services.session import SessionAPI
         return await SessionAPI.create(supervisor_address)
 
     async def internal_run_subtask(self, subtask: Subtask, band_name: str):

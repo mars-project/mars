@@ -18,10 +18,11 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.tensor.datasource import ones, tensor
-from mars.tensor.reduction import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
-    nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, std, nancumsum, nancumprod
-from mars.utils import ignore_warning
+from ....utils import ignore_warning
+from ...datasource import ones, tensor
+from .. import mean, nansum, nanmax, nanmin, nanmean, nanprod, nanargmax, \
+    nanargmin, nanvar, nanstd, count_nonzero, allclose, array_equal, var, \
+    std, nancumsum, nancumprod
 
 
 def test_sum_prod_execution(setup):

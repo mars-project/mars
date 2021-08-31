@@ -16,9 +16,9 @@
 
 import numpy as np
 
-from mars.lib.mkl_interface import mkl_free_buffers
-from mars.tensor.datasource import tensor
-from mars.tensor.fft import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
+from ....lib.mkl_interface import mkl_free_buffers
+from ...datasource import tensor
+from .. import fft, ifft, fft2, ifft2, fftn, ifftn, rfft, irfft, rfft2, irfft2, \
     rfftn, hfft, ihfft, fftfreq, rfftfreq, fftshift, ifftshift, irfftn
 
 

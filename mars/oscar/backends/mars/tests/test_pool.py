@@ -20,24 +20,22 @@ import sys
 import time
 
 import pytest
-from mars.oscar.context import get_context
-from mars.oscar.utils import create_actor_ref
 
-from mars.oscar import Actor, kill_actor
-from mars.oscar.backends.allocate_strategy import \
+from .....tests.core import mock
+from .....utils import get_next_port
+from .... import create_actor_ref, Actor, kill_actor
+from ....context import get_context
+from ....errors import NoIdleSlot, ActorNotExist, ServerClosed
+from ...allocate_strategy import \
     AddressSpecified, IdleLabel, MainPool, RandomSubPool, ProcessIndex
-from mars.oscar.backends.config import ActorPoolConfig
-from mars.oscar.backends.mars.pool import MainActorPool
-from mars.oscar.backends.mars.pool import SubActorPool
-from mars.oscar.backends.message import new_message_id, \
+from ...config import ActorPoolConfig
+from ...message import new_message_id, \
     CreateActorMessage, DestroyActorMessage, HasActorMessage, \
     ActorRefMessage, SendMessage, TellMessage, ControlMessage, \
     CancelMessage, ErrorMessage, ControlMessageType, MessageType
-from mars.oscar.backends.pool import create_actor_pool
-from mars.oscar.backends.router import Router
-from mars.oscar.errors import NoIdleSlot, ActorNotExist, ServerClosed
-from mars.tests.core import mock
-from mars.utils import get_next_port
+from ...pool import create_actor_pool
+from ...router import Router
+from ..pool import MainActorPool, SubActorPool
 
 
 class _CannotBeUnpickled:

@@ -19,8 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import EntityData
-from mars.serialization.serializables import FieldTypes
+from ....core import EntityData
+from .. import FieldTypes
 
 
 class MyClass(EntityData):

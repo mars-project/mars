@@ -16,10 +16,10 @@ import asyncio
 
 import pytest
 
-from mars.oscar.backends.router import Router
-from mars.oscar.backends.core import ActorCaller
-from mars.oscar.errors import ServerClosed
-from mars.tests.core import mock
+from ...tests.core import mock
+from ..backends.router import Router
+from ..backends.core import ActorCaller
+from ..errors import ServerClosed
 
 
 @pytest.mark.asyncio

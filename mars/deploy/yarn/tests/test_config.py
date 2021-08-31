@@ -15,8 +15,8 @@
 
 import os
 
-import mars
-from mars.deploy.yarn.config import SecurityConfig, AppFileConfig, AppMasterConfig, \
+from .... import __file__ as mars_file
+from ..config import SecurityConfig, AppFileConfig, AppMasterConfig, \
     MarsApplicationConfig, MarsSupervisorConfig, MarsWorkerConfig
 
 
@@ -56,13 +56,13 @@ def test_supervisor_config():
                                   log_config='logging.conf', env={'TEST_ENV': 'test_val'},
                                   extra_args='-Dsupervisor.default_cpu_usage=0').build()
     config_envs = config['env']
-    assert config_envs['MARS_SOURCE_PATH'] == os.path.dirname(os.path.dirname(mars.__file__))
+    assert config_envs['MARS_SOURCE_PATH'] == os.path.dirname(os.path.dirname(mars_file))
 
     config = MarsSupervisorConfig('venv://path/to_env', 'mars.test_mod', cpu=2,
                                   log_config='logging.conf', env={'TEST_ENV': 'test_val'},
                                   extra_args='-Dsupervisor.default_cpu_usage=0').build()
     config_envs = config['env']
-    assert config_envs['MARS_SOURCE_PATH'] == os.path.dirname(os.path.dirname(mars.__file__))
+    assert config_envs['MARS_SOURCE_PATH'] == os.path.dirname(os.path.dirname(mars_file))
 
 
 def test_worker_config():

@@ -19,8 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import enter_mode
-from mars.dataframe.initializer import DataFrame, Series
+from ....core import enter_mode
+from ...initializer import DataFrame, Series
 
 
 def test_comp(setup):

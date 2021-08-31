@@ -11,23 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-
-import pytest
-
-from .....utils import lazy_import
-from .. import run_pytorch_script
-
-
-torch_installed = lazy_import('torch', globals=globals()) is not None
-
-
-@pytest.mark.skipif(not torch_installed, reason='pytorch not installed')
-def test_distributed_run_py_torch_script(setup_cluster):
-    sess = setup_cluster
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        'pytorch_sample.py')
-    assert run_pytorch_script(
-        path, n_workers=2, command_argv=['multiple'],
-        port=9945, session=sess).fetch()['status'] == 'ok'

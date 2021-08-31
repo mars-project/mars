@@ -19,7 +19,7 @@ import threading
 
 import pytest
 
-from mars.config import options, option_context, is_integer, is_string, Config
+from ..config import options, option_context, is_integer, is_string, Config
 
 
 def test_config_context():

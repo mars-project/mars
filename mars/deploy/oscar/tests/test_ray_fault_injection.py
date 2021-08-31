@@ -16,17 +16,17 @@ import os
 
 import pytest
 
-from mars.deploy.oscar.ray import new_cluster, _load_config
-from mars.deploy.oscar.tests import test_fault_injection
-from mars.oscar.errors import ServerClosed
-from mars.services.tests.fault_injection_manager import (
+from ....oscar.errors import ServerClosed
+from ....services.tests.fault_injection_manager import (
     FaultInjectionError,
     FaultInjectionUnhandledError,
     FaultPosition,
     FaultType,
 )
-from mars.tests.core import require_ray
-from mars.utils import lazy_import
+from ....tests.core import require_ray
+from ....utils import lazy_import
+from ..ray import new_cluster, _load_config
+from ..tests import test_fault_injection
 
 ray = lazy_import('ray')
 

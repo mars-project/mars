@@ -23,7 +23,7 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-import mars.dataframe as md
+from .... import dataframe as md
 
 
 def test_check_na_execution(setup):

@@ -23,11 +23,11 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-import mars.dataframe as md
-from mars.core.operand import OperandStage
-from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
-from mars.tests.core import assert_groupby_equal, require_cudf
-from mars.utils import arrow_array_to_objects
+from .... import dataframe as md
+from ....core.operand import OperandStage
+from ....tests.core import assert_groupby_equal, require_cudf
+from ....utils import arrow_array_to_objects
+from ..aggregation import DataFrameGroupByAgg
 
 
 class MockReduction1(md.CustomReduction):

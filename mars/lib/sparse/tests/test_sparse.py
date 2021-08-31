@@ -17,9 +17,9 @@
 import numpy as np
 import scipy.sparse as sps
 
-from mars.lib.sparse import SparseNDArray, SparseVector, SparseMatrix
-from mars.lib.sparse.core import issparse
-import mars.lib.sparse as mls
+from ... import sparse as mls
+from .. import SparseNDArray, SparseVector, SparseMatrix
+from ..core import issparse
 
 
 s1_data = sps.csr_matrix([[1, 0, 1], [0, 0, 1]])

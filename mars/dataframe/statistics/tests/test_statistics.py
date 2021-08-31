@@ -15,11 +15,11 @@
 import numpy as np
 import pandas as pd
 
-from mars.core import tile
-from mars.tensor import Tensor
-from mars.dataframe.core import Series, DataFrame
-from mars.dataframe.datasource.series import from_pandas as series_from_pandas
-from mars.dataframe.datasource.dataframe import from_pandas as df_from_pandas
+from ....core import tile
+from ....tensor import Tensor
+from ...core import Series, DataFrame
+from ...datasource.dataframe import from_pandas as df_from_pandas
+from ...datasource.series import from_pandas as series_from_pandas
 
 
 def test_series_quantile():
