@@ -145,8 +145,7 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
                           command_argv: List[str] = None,
                           retry_when_fail: bool = False,
                           session: SessionType = None,
-                          run_kwargs: Dict[str, Any] = None,
-                          port: int = None):
+                          run_kwargs: Dict[str, Any] = None):
     """
     Run TensorFlow script in Mars cluster.
 
@@ -170,8 +169,6 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
         Mars session, if not provided, will use default one.
     run_kwargs : dict
         Extra kwargs for `session.run`.
-    port : int
-        Port of TensorFlow worker or ps, will automatically increase for the same worker
 
     Returns
     -------
@@ -192,5 +189,5 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
     op = RunTensorFlow(data=data, code=to_binary(code),
                        n_workers=int(n_workers), n_ps=int(n_ps),
                        retry_when_fail=retry_when_fail, gpu=gpu,
-                       port=port, command_args=command_argv)
+                       command_args=command_argv)
     return op(inputs).execute(session=session, **(run_kwargs or {}))
