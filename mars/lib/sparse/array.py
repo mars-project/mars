@@ -679,9 +679,6 @@ class SparseArray(SparseNDArray):
     hankel2 = partialmethod(_scipy_binary, 'hankel2')
     hankel2e = partialmethod(_scipy_binary, 'hankel2e')
 
-    hyp2f1 = partialmethod(_scipy_binary, 'hyp2f1')
-    hyp1f1 = partialmethod(_scipy_binary, 'hyp1f1')
-    hyperu = partialmethod(_scipy_binary, 'hyperu')
     hyp0f1 = partialmethod(_scipy_binary, 'hyp0f1')
 
     def __eq__(self, other):

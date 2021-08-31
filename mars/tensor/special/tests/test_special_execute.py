@@ -197,4 +197,3 @@ def test_quadruple_execution(setup, func):
 
     expected = sp_func(raw1.toarray(), raw2, raw3, raw4)
     np.testing.assert_array_equal(result.toarray(), expected)
-    
