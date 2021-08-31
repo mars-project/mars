@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../source/user_guide/learn/pytorch.rst:5
 msgid "Integrate with PyTorch"
-msgstr "和Pytorch集成"
+msgstr "和 PyTorch 集成"
 
 #: ../../source/user_guide/learn/pytorch.rst:9
 msgid ""

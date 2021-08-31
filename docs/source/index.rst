@@ -163,6 +163,11 @@ Mars remote allows users to execute functions in parallel.
 |                                           |                                            |
 +-------------------------------------------+--------------------------------------------+
 
+DASK on Mars
+------------
+
+Refer to :ref:`DASK on Mars <integrate_dask>`.
+
 Easy to scale in and scale out
 ------------------------------
 

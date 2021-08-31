@@ -126,8 +126,9 @@ class AutoscalerActor(mo.Actor):
         """Move data from `bands` to other available bands"""
         session_ids = list(self.queueing_refs.keys())
         for session_id in session_ids:
-            from mars.services.meta import MetaAPI
+            from ...meta import MetaAPI
             meta_api = await MetaAPI.create(session_id, self.address)
+
             batch_fetch, batch_delete = defaultdict(list), defaultdict(list)
             batch_add_chunk_bands, batch_remove_chunk_bands = [], []
             for src_band in bands:
@@ -162,7 +163,7 @@ class AutoscalerActor(mo.Actor):
 
     @alru_cache(cache_exceptions=False)
     async def _get_storage_api(self, session_id: str, address: str):
-        from mars.services.storage import StorageAPI
+        from ...storage import StorageAPI
         return await StorageAPI.create(session_id, address)
 
 

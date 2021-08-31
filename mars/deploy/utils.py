@@ -19,7 +19,7 @@ from typing import Callable, Dict, List, Union, TextIO
 
 import yaml
 
-from mars.services import NodeRole
+from ..services import NodeRole
 
 DEFAULT_CONFIG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'oscar/config.yml')
