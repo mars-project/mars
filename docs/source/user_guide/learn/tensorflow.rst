@@ -205,7 +205,7 @@ Now, you can preprocess the data via mars, and pass data to script.
     
     run_tensorflow_script(
         "tf_demo.py", n_workers=2, data={'X_train': X_train, 'y_train': y_train, 
-        'X_test':X_test, 'y_test': y_test}, port=9945, session=sess)
+        'X_test':X_test, 'y_test': y_test}, session=sess)
 
 ``tf_demo.py``
 
