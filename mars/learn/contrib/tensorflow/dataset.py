@@ -78,6 +78,8 @@ class MarsDataset:
             execute(execute_data)
 
     def get_data(self, t, index):   # pragma: no cover
+        # coverage not included as now there is no solution to cover tensorflow methods
+        # see https://github.com/tensorflow/tensorflow/issues/33759 fot more details.
         fetch_kwargs = dict()
         if self._fetch_kwargs:
             fetch_kwargs = copy.deepcopy(self._fetch_kwargs)
