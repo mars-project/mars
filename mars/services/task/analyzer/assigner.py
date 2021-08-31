@@ -173,7 +173,7 @@ class GraphAssigner(AbstractGraphAssigner):
         # calculate the number of chunks to be assigned to each band
         # given number of bands and existing assignments
         band_quotas = self._calc_band_assign_limits(
-            len(chunk_to_assign), assigned_counts)
+            len(chunk_to_assign) + sum(assigned_counts.values()), assigned_counts)
 
         # calculate expected descendant count (spread range) of
         # every band and subtract assigned number from it
