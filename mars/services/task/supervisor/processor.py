@@ -608,69 +608,68 @@ class TaskProcessorActor(mo.Actor):
         subtask_list = []
         dependency_list = []
 
+        requested_tileable = None
+        requested_subtasks = None
+
         for processor in self._task_id_to_processor.values():
             for stage in processor.stage_processors:
                 if tileable_id in stage.tileable_id_to_tileable:
                     requested_tileable = stage.tileable_id_to_tileable.get(tileable_id)
                     requested_subtasks = stage.tileable_to_subtasks.get(requested_tileable, None)
+                    break
+            if requested_subtasks is not None:
+                break
 
-                    if requested_subtasks == None: # pragma: no cover
-                        return {
-                            'subtasks': [],
-                            'dependencies': []
-                        }
+        if requested_subtasks is None: # pragma: no cover
+            return {
+                'subtasks': [],
+                'dependencies': []
+            }
 
-                    for subtask in requested_subtasks:
-                        if subtask.subtask_id not in returned_subtasks:
-                            returned_subtasks.add(subtask.subtask_id)
+        for subtask in requested_subtasks:
+            if subtask.subtask_id not in returned_subtasks:
+                returned_subtasks.add(subtask.subtask_id)
 
-                            subtaskResult = stage.subtask_results.get(subtask, default_result)
-                            progress = subtaskResult.progress
-                            status = subtaskResult.status.value
+                subtask_result = stage.subtask_results.get(subtask, default_result)
+                progress = subtask_result.progress
+                status = subtask_result.status.value
 
-                            # since the number of subtasks is large, we will not
-                            # display the name of subtasks and hence we won't return
-                            # the subtask_name field
-                            subtask_list.append({
-                                'subtaskId': subtask.subtask_id,
-                                'subtaskProgress': progress,
-                                'status': status
-                            })
+                subtask_list.append({
+                    'subtaskId': subtask.subtask_id,
+                    'subtaskName': subtask.subtask_name,
+                    'subtaskProgress': progress,
+                    'status': status
+                })
 
-                    for subtask in requested_subtasks:
-                        for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                            predecessor_id = predecessor.subtask_id
+        for subtask in requested_subtasks:
+            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                predecessor_id = predecessor.subtask_id
 
-                            # If the predecessor is in other tileable subtasks, create
-                            # a special node on the graph and mark it with a special
-                            # color to inform the user that the current subtask has
-                            # dependencies from other tileables, so users
-                            # won't just see a subtask that is rendered isolatedly
-                            # on the frontend
-                            if predecessor_id not in returned_subtasks:
-                                returned_subtasks.add(predecessor_id)
-                                subtask_list.append({
-                                    'subtaskId': predecessor_id,
-                                    'subtaskProgress': -1,
-                                    'status': -1
-                                })
+                # If the predecessor is in other tileable subtasks, create
+                # a special node on the graph and mark it with a special
+                # color to inform the user that the current subtask has
+                # dependencies from other tileables, so users
+                # won't just see a subtask that is rendered isolatedly
+                # on the frontend
+                if predecessor_id not in returned_subtasks:
+                    returned_subtasks.add(predecessor_id)
+                    subtask_list.append({
+                        'subtaskId': predecessor_id,
+                        'subtaskProgress': -1,
+                        'status': -1
+                    })
 
-                            dependency_list.append({
-                                'fromSubtaskId': predecessor_id,
-                                'toSubtaskId': subtask.subtask_id,
-                            })
+                dependency_list.append({
+                    'fromSubtaskId': predecessor_id,
+                    'toSubtaskId': subtask.subtask_id,
+                })
 
-                    subtask_dict = {
-                        'subtasks': subtask_list,
-                        'dependencies': dependency_list
-                    }
-
-                    return subtask_dict
-
-        return {
-            'subtasks': [],
-            'dependencies': []
+        subtask_dict = {
+            'subtasks': subtask_list,
+            'dependencies': dependency_list
         }
+
+        return subtask_dict
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
