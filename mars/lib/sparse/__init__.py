@@ -286,6 +286,7 @@ hyp1f1 = partial(call_sparse, 'hyp1f1')
 hyperu = partial(call_sparse, 'hyperu')
 hyp0f1 = partial(_call_bin, 'hyp0f1')
 
+
 def equal(a, b, **_):
     try:
         return a == b
@@ -811,4 +812,3 @@ def solve_triangular(a, b, lower=False, sparse=True):
     from .matrix import solve_triangular_sparse_matrix
 
     return solve_triangular_sparse_matrix(a, b, lower=lower, sparse=sparse)
-
