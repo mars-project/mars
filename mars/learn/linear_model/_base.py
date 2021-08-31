@@ -15,7 +15,6 @@
 import numbers
 from abc import ABCMeta, abstractmethod
 
-import scipy.sparse as sp
 from numpy.linalg import LinAlgError
 from sklearn.utils.validation import (check_is_fitted,
                                       _deprecate_positional_args)
