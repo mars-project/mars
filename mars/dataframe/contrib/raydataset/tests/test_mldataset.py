@@ -86,6 +86,7 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
 
 @require_ray
 @pytest.mark.asyncio
+@pytest.mark.skipif(xgboost_ray is None, reason='xgboost_ray not installed')
 async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
     from xgboost_ray import RayDMatrix, RayParams, train
     from sklearn.datasets import load_breast_cancer
