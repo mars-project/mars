@@ -16,12 +16,12 @@ import scipy.special as spspecial
 
 from ..arithmetic.utils import arithmetic_operand
 from ..utils import infer_dtype, implement_scipy
-from .core import TensorSpecialBinOp, _register_special_op
+from .core import TensorSpecialBinOp, _register_special_op, TensorSpecialMultiOp
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
-class TensorHYP2F1(TensorSpecialBinOp):
+class TensorHYP2F1(TensorSpecialMultiOp):
+    _ARG_COUNT = 4
     _func_name = 'hyp2f1'
 
 
@@ -33,8 +33,8 @@ def hyp2f1(a, b, c, z, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
-class TensorHYP1F1(TensorSpecialBinOp):
+class TensorHYP1F1(TensorSpecialMultiOp):
+    _ARG_COUNT = 3
     _func_name = 'hyp1f1'
 
 
@@ -46,8 +46,8 @@ def hyp1f1(a, b, x, out = None, **kwargs):
 
 
 @_register_special_op
-@arithmetic_operand(sparse_mode='binary_and')
-class TensorHYPERU(TensorSpecialBinOp):
+class TensorHYPERU(TensorSpecialMultiOp):
+    _ARG_COUNT = 3
     _func_name = 'hyperu'
 
 
@@ -69,3 +69,4 @@ class TensorHYP0F1(TensorSpecialBinOp):
 def hyp0f1(v, z, out = None, **kwargs):
     op = TensorHYP0F1(**kwargs)
     return op(v, z, out)
+    
