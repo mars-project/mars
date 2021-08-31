@@ -124,8 +124,6 @@ def _rescale_data(X, y, sample_weight):
     sw_matrix = sp.dia_matrix(
         (sample_weight, 0),
         shape=(n_samples, n_samples))
-    # X = safe_sparse_dot(sw_matrix, X)
-    # y = safe_sparse_dot(sw_matrix, y)
     X = mt.dot(sw_matrix, X)
     y = mt.dot(sw_matrix, y)
     return X, y
@@ -147,9 +145,6 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
                                 reset=False)
         return mt.dot(X,
                       self.coef_.T) + self.intercept_
-        # return safe_sparse_dot(X,
-        #                        self.coef_.T,
-        #                        dense_output=True) + self.intercept_
 
     def predict(self, X):
         """
@@ -309,7 +304,8 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 "Does not support sparse input!")
         else:
             try:
-                # Matrix multiplication does NOT satisfy associative law
+                # In numpy:
+                #   Mat mul does NOT always satisfy associative law
                 # Tyipical mistake:
                 #   (mt.linalg.inv(X.T @ X) @ (X.T @ y)).T
                 self.coef_ = (mt.linalg.inv(X.T @ X) @ X.T @ y).T
