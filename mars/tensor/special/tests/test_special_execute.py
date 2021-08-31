@@ -86,6 +86,7 @@ def test_unary_execution(setup, func):
     'hankel1e',
     'hankel2',
     'hankel2e',
+    'hyp0f1'
 ])
 def test_binary_execution(setup, func):
     sp_func = getattr(spspecial, func)
@@ -120,6 +121,8 @@ def test_binary_execution(setup, func):
 @pytest.mark.parametrize('func', [
     'betainc',
     'betaincinv',
+    'hyp1f1',
+    'hyperu',
 ])
 def test_triple_execution(setup, func):
     sp_func = getattr(spspecial, func)
@@ -152,4 +155,45 @@ def test_triple_execution(setup, func):
     result = r.execute().fetch()
 
     expected = sp_func(raw1.toarray(), raw2, raw3)
+    np.testing.assert_array_equal(result.toarray(), expected)
+
+
+@pytest.mark.parametrize('func', [
+    'hyp2f1',
+])
+def test_quadruple_execution(setup, func):
+    sp_func = getattr(spspecial, func)
+    mt_func = getattr(mt_special, func)
+
+    raw1 = np.random.rand(4, 3, 2)
+    raw2 = np.random.rand(4, 3, 2)
+    raw3 = np.random.rand(4, 3, 2)
+    raw4 = np.random.rand(4, 3, 2)
+    a = tensor(raw1, chunk_size=3)
+    b = tensor(raw2, chunk_size=3)
+    c = tensor(raw3, chunk_size=3)
+    d = tensor(raw4, chunk_size=3)
+
+    r = mt_func(a, b, c, d)
+
+    result = r.execute().fetch()
+    expected = sp_func(raw1, raw2, raw3, raw4)
+
+    np.testing.assert_array_equal(result, expected)
+
+    # test sparse
+    raw1 = sps.csr_matrix(np.array([0, 1.0, 1.01, np.nan] * 3).reshape(4, 3))
+    a = tensor(raw1, chunk_size=3)
+    raw2 = np.random.rand(4, 3)
+    b = tensor(raw2, chunk_size=3)
+    raw3 = np.random.rand(4, 3)
+    c = tensor(raw3, chunk_size=3)
+    raw4 = np.random.rand(4, 3)
+    d = tensor(raw4, chunk_size=3)
+
+    r = mt_func(a, b, c, d)
+
+    result = r.execute().fetch()
+
+    expected = sp_func(raw1.toarray(), raw2, raw3, raw4)
     np.testing.assert_array_equal(result.toarray(), expected)
