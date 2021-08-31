@@ -614,7 +614,7 @@ class TaskProcessorActor(mo.Actor):
                     requested_tileable = stage.tileable_id_to_tileable.get(tileable_id)
                     requested_subtasks = stage.tileable_to_subtasks.get(requested_tileable, None)
 
-                    if requested_subtasks == None:
+                    if requested_subtasks == None: # pragma: no cover
                         return {
                             'subtasks': [],
                             'dependencies': []
