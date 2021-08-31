@@ -121,9 +121,8 @@ def _rescale_data(X, y, sample_weight):
             sample_weight,
             dtype=sample_weight.dtype)
     sample_weight = mt.sqrt(sample_weight)
-    sw_matrix = sp.dia_matrix(
-        (sample_weight, 0),
-        shape=(n_samples, n_samples))
+    sw_matrix = mt.diag(sample_weight,
+                        sparse=True)
     X = mt.dot(sw_matrix, X)
     y = mt.dot(sw_matrix, y)
     return X, y
