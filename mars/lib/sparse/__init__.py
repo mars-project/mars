@@ -811,3 +811,4 @@ def solve_triangular(a, b, lower=False, sparse=True):
     from .matrix import solve_triangular_sparse_matrix
 
     return solve_triangular_sparse_matrix(a, b, lower=lower, sparse=sparse)
+
