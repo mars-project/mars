@@ -43,6 +43,7 @@ from .eval import df_eval, df_query
 from .check_monotonic import check_monotonic, is_monotonic, \
     is_monotonic_increasing, is_monotonic_decreasing
 from .pct_change import pct_change
+from .info import info
 
 
 def _install():
@@ -80,6 +81,7 @@ def _install():
         setattr(t, 'eval', df_eval)
         setattr(t, 'query', df_query)
         setattr(t, 'pct_change', pct_change)
+        setattr(t, 'info', info)
 
     for t in SERIES_TYPE:
         setattr(t, 'to_gpu', to_gpu)

@@ -18,6 +18,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import pytest
+import io
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -857,6 +858,58 @@ def test_cut_execution(setup):
     s3[-1] = np.inf
     with pytest.raises(ValueError):
         cut(s3, 3).execute()
+
+
+def test_info_execution(setup):
+    raw = pd.DataFrame({"a": [1, 2, 3, 4], "b": [2, 3, 4, 5]})
+    df = from_pandas_df(raw)
+
+    # test default
+    md_buf = io.StringIO()
+    pd_buf = io.StringIO()
+    raw.info(buf=pd_buf)
+    df.info(buf=md_buf)
+
+    # class name is not the same as pandas
+    pd_info = pd_buf.getvalue().split('\n')[1:]
+    md_info = md_buf.getvalue().split('\n')[1:]
+    assert pd_info == md_info
+
+    # test verbose
+    md_buf = io.StringIO()
+    pd_buf = io.StringIO()
+    raw.info(buf=pd_buf, verbose=False)
+    df.info(buf=md_buf, verbose=False)
+    pd_info = pd_buf.getvalue().split('\n')[1:]
+    md_info = md_buf.getvalue().split('\n')[1:]
+    assert pd_info == md_info
+
+    # test max_cols
+    md_buf = io.StringIO()
+    pd_buf = io.StringIO()
+    raw.info(buf=pd_buf, max_cols=3)
+    df.info(buf=md_buf, max_cols=3)
+    pd_info = pd_buf.getvalue().split('\n')[1:]
+    md_info = md_buf.getvalue().split('\n')[1:]
+    assert pd_info == md_info
+
+    # test memory_usage
+    md_buf = io.StringIO()
+    pd_buf = io.StringIO()
+    raw.info(buf=pd_buf, memory_usage='deep')
+    df.info(buf=md_buf, memory_usage='deep')
+    pd_info = pd_buf.getvalue().split('\n')[1:]
+    md_info = md_buf.getvalue().split('\n')[1:]
+    assert pd_info == md_info
+
+    # test show_counts
+    md_buf = io.StringIO()
+    pd_buf = io.StringIO()
+    raw.info(buf=pd_buf, show_counts=False)
+    df.info(buf=md_buf, show_counts=False)
+    pd_info = pd_buf.getvalue().split('\n')[1:]
+    md_info = md_buf.getvalue().split('\n')[1:]
+    assert pd_info == md_info
 
 
 def test_to_numeric_execition(setup):
