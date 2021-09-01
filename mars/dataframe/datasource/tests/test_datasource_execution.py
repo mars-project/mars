@@ -923,3 +923,4 @@ def test_read_obj_refs(setup):
     obj_refs = [ray.put(df1), ray.put(df2)]
     mdf = md.read_obj_refs(obj_refs)
     assert df.equals(mdf.execute().fetch())
+    ray.shutdown()

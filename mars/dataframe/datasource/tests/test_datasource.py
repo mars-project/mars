@@ -456,6 +456,7 @@ def test_read_obj_refs():
     assert len(mdf.chunks) == 2
     for chunk in mdf.chunks:
         assert isinstance(chunk.op, DataFrameReadObjRefs)
+    ray.shutdown()
 
 
 def test_date_range():
