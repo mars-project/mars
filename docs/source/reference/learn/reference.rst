@@ -313,6 +313,7 @@ TensorFlow Integration
    :toctree: generated/
 
    contrib.tensorflow.run_tensorflow_script
+   contrib.tensorflow.gen_tensorflow_dataset
 
 .. _xgboost_ref:
 
