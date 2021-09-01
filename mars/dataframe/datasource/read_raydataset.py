@@ -24,9 +24,9 @@ from .core import IncrementalIndexDatasource, IncrementalIndexDataSourceMixin
 ray = lazy_import('ray')
 
 
-class DataFrameReadObjRefs(IncrementalIndexDatasource,
-                           IncrementalIndexDataSourceMixin):
-    _op_type_ = OperandDef.READ_OBJ_REF
+class DataFrameReadRayDataset(IncrementalIndexDatasource,
+                              IncrementalIndexDataSourceMixin):
+    _op_type_ = OperandDef.READ_RAYDATASET
 
     _refs = AnyField('refs')
     _columns = ListField('columns')
@@ -54,7 +54,7 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
         return self._incremental_index
 
     @classmethod
-    def _tile_partitioned(cls, op: "DataFrameReadObjRefs"):
+    def _tile_partitioned(cls, op: "DataFrameReadRayDataset"):
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
         dtypes = out_df.dtypes
@@ -85,7 +85,7 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
         return cls._tile_partitioned(op)
 
     @classmethod
-    def execute(cls, ctx, op: "DataFrameReadObjRefs"):
+    def execute(cls, ctx, op: "DataFrameReadRayDataset"):
         out = op.outputs[0]
         refs = op.refs
 
@@ -98,15 +98,15 @@ class DataFrameReadObjRefs(IncrementalIndexDatasource,
                                   columns_value=columns_value)
 
 
-def read_obj_refs(refs, columns=None,
-                  incremental_index=False,
-                  **kwargs):
+def read_raydataset(refs, columns=None,
+                    incremental_index=False,
+                    **kwargs):
     dtypes = ray.get(ray.remote(_get_dtypes).remote(refs[0]))
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
 
-    op = DataFrameReadObjRefs(refs=refs, columns=columns,
-                              incremental_index=incremental_index)
+    op = DataFrameReadRayDataset(refs=refs, columns=columns,
+                                 incremental_index=incremental_index)
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=dtypes)
 
