@@ -48,12 +48,11 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
             chunk_idx = reverse(c.index)
             index_value = parse_index(c.dtypes.index)
             columns_value = c.index_value
-            dtypes = pd.Series([c.dtypes[0]] * c.shape[0], index=c.op.data.index)
             out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
                                            index=chunk_idx,
                                            index_value=index_value,
                                            columns_value=columns_value,
-                                           dtypes=dtypes)
+                                           dtypes=None)
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
