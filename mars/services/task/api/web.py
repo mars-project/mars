@@ -117,6 +117,12 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         res = await oscar_api.get_tileable_details(task_id)
         self.write(json.dumps(res))
 
+    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtasks', method='get')
+    async def get_tileable_subtasks(self, session_id: str, task_id: str, tileable_id: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_subtasks(task_id, tileable_id)
+        self.write(json.dumps(res))
+
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
     async def get_task_progress(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
@@ -225,5 +231,10 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
 
     async def get_tileable_details(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileable_detail'
+        res = await self._request_url(path=path, method='GET')
+        return json.loads(res.body.decode())
+
+    async def get_tileable_subtasks(self, task_id: str, tileable_id: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtasks'
         res = await self._request_url(path=path, method='GET')
         return json.loads(res.body.decode())
