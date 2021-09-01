@@ -15,10 +15,10 @@
 import pytest
 from tornado import httpclient
 
-import mars.oscar as mo
-from mars.services import NodeRole, start_services, stop_services, \
+from ... import oscar as mo
+from ...utils import get_next_port
+from .. import NodeRole, start_services, stop_services, \
     create_service_session, destroy_service_session
-from mars.utils import get_next_port
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ async def actor_pool_context():
 
 @pytest.mark.asyncio
 async def test_start_service(actor_pool_context):
-    from mars.services.tests.test_svcs.test_svc1.supervisor import SvcSessionActor1
+    from .test_svcs.test_svc1.supervisor import SvcSessionActor1
 
     pool = actor_pool_context
     web_port = get_next_port()

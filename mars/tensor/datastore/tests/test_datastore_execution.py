@@ -38,7 +38,7 @@ try:
 except ImportError:
     vineyard = None
 
-from mars.tensor import tensor, arange, totiledb, tohdf5, tozarr
+from ... import tensor, arange, totiledb, tohdf5, tozarr
 
 _exec_timeout = 120 if 'CI' in os.environ else -1
 

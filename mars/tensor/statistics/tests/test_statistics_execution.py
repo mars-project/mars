@@ -16,14 +16,14 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.utils import ignore_warning
-from mars.tensor.datasource import arange, tensor, empty
-from mars.tensor.statistics import average, cov, corrcoef, ptp, \
-    digitize, histogram_bin_edges, histogram, quantile, percentile, median
-from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
-from mars.tensor.base import sort
-from mars.tensor.merge import stack
-from mars.tensor.reduction import all as tall
+from ....utils import ignore_warning
+from ...datasource import arange, tensor, empty
+from ...base import sort
+from ...merge import stack
+from ...reduction import all as tall
+from .. import average, cov, corrcoef, ptp, digitize, \
+    histogram_bin_edges, histogram, quantile, percentile, median
+from ..quantile import INTERPOLATION_TYPES
 
 
 def test_average_execution(setup):

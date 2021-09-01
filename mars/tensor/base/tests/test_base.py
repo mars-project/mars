@@ -17,10 +17,10 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.tensor.datasource import ones, tensor, arange
-from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
+from ....core import tile
+from ....core.operand import OperandStage
+from ...datasource import ones, tensor, arange
+from .. import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, topk, to_gpu, to_cpu

@@ -24,10 +24,10 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-from mars.lib.filesystem import glob, FileSystem, LocalFileSystem, FSMap
-from mars.tests.core import require_hadoop
+from ....tests.core import require_hadoop
+from .. import glob, FileSystem, LocalFileSystem, FSMap
 if pa is not None:
-    from mars.lib.filesystem.arrow import ArrowBasedLocalFileSystem, HadoopFileSystem
+    from ..arrow import ArrowBasedLocalFileSystem, HadoopFileSystem
 else:  # pragma: no cover
     ArrowBasedLocalFileSystem = None
 

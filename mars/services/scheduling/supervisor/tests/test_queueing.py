@@ -15,11 +15,11 @@
 import pytest
 from typing import Tuple, List
 
-import mars.oscar as mo
-from mars.services.cluster import MockClusterAPI
-from mars.services.scheduling.supervisor import AssignerActor, \
+from ..... import oscar as mo
+from ....cluster import MockClusterAPI
+from ....subtask import Subtask
+from ...supervisor import AssignerActor, \
     SubtaskManagerActor, SubtaskQueueingActor, GlobalSlotManagerActor
-from mars.services.subtask import Subtask
 
 
 class MockSlotsActor(mo.Actor):

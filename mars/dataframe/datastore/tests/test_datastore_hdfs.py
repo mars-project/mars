@@ -16,8 +16,8 @@ import pandas as pd
 import numpy as np
 import pytest
 
-import mars.dataframe as md
-from mars.tests.core import require_hadoop
+from .... import dataframe as md
+from ....tests.core import require_hadoop
 
 
 TEST_DIR = '/tmp/test'

@@ -17,13 +17,13 @@ from typing import Any, Dict
 import numpy as np
 import pytest
 
-import mars.tensor as mt
-from mars.config import option_context
-from mars.core import TileableType, OperandType
-from mars.deploy.oscar.service import load_config
-from mars.deploy.oscar.tests.session import new_test_session, CONFIG_FILE
-from mars.services.task.supervisor.tests import CheckedTaskPreprocessor
-from mars.services.subtask.worker.tests import CheckedSubtaskProcessor
+from .... import tensor as mt
+from ....config import option_context
+from ....core import TileableType, OperandType
+from ....services.task.supervisor.tests import CheckedTaskPreprocessor
+from ....services.subtask.worker.tests import CheckedSubtaskProcessor
+from ..service import load_config
+from ..tests.session import new_test_session, CONFIG_FILE
 
 
 class FakeCheckedTaskPreprocessor(CheckedTaskPreprocessor):

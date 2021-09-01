@@ -27,13 +27,13 @@ try:
 except ImportError:  # pragma: no cover
     SkNearestNeighbors = None
 
-import mars.tensor as mt
-from mars.core import tile
-from mars.learn.neighbors import NearestNeighbors
-from mars.learn.proxima.core import proxima
-from mars.lib.sparse import SparseNDArray
-from mars.tests.core import require_cupy
-from mars.utils import lazy_import
+from .... import tensor as mt
+from ....core import tile
+from ....lib.sparse import SparseNDArray
+from ....tests.core import require_cupy
+from ....utils import lazy_import
+from ...proxima.core import proxima
+from .. import NearestNeighbors
 
 cupy = lazy_import('cupy', globals=globals())
 

@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from mars.tensor.datasource import ones, tensor
+from ...datasource import ones, tensor
 
 
 def test_reshape_execution(setup):

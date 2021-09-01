@@ -22,8 +22,8 @@ try:
 except ImportError:
     Image = None
 
-from mars.core import tile
-from mars.tensor.images import imread
+from ....core import tile
+from ...images import imread
 
 
 @pytest.mark.skipif(not Image, reason='Pillow not installed')

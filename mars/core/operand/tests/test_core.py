@@ -15,9 +15,8 @@
 import numpy as np
 import pytest
 
-from mars.core import OutputType
-from mars.core.operand import Operand, TileableOperandMixin, \
-    execute, estimate_size
+from ... import OutputType
+from .. import Operand, TileableOperandMixin, execute, estimate_size
 
 
 class MyOperand(Operand, TileableOperandMixin):

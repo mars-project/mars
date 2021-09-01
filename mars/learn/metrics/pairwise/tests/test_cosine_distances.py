@@ -17,8 +17,8 @@ import scipy.sparse as sps
 import pytest
 from sklearn.metrics.pairwise import cosine_distances as sk_cosine_distances
 
-from mars import tensor as mt
-from mars.learn.metrics.pairwise import cosine_distances
+from ..... import tensor as mt
+from .. import cosine_distances
 
 
 raw_dense_x = np.random.rand(25, 10)

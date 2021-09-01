@@ -18,14 +18,14 @@ from typing import List, Tuple
 
 import pytest
 
-import mars.oscar as mo
-from mars.services.cluster import MockClusterAPI
-from mars.services.scheduling.supervisor import SubtaskQueueingActor, \
-    SubtaskManagerActor, GlobalSlotManagerActor
-from mars.services.scheduling.worker import SubtaskExecutionActor
-from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
-from mars.services.task.supervisor.manager import TaskManagerActor
-from mars.typing import BandType
+from ..... import oscar as mo
+from .....typing import BandType
+from ....cluster import MockClusterAPI
+from ....subtask import Subtask, SubtaskResult, SubtaskStatus
+from ....task.supervisor.manager import TaskManagerActor
+from ...supervisor import SubtaskQueueingActor, SubtaskManagerActor, \
+    GlobalSlotManagerActor
+from ...worker import SubtaskExecutionActor
 
 
 class MockTaskManagerActor(mo.Actor):

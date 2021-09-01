@@ -17,7 +17,7 @@ import sys
 
 import pytest
 
-import mars.oscar as mo
+from ..... import oscar as mo
 
 
 class DummyActor(mo.Actor):

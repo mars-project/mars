@@ -23,24 +23,24 @@ from typing import Tuple
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-import mars.remote as mr
-from mars.core import ChunkGraph, ChunkGraphBuilder, \
+from ..... import oscar as mo
+from ..... import remote as mr
+from .....core import ChunkGraph, ChunkGraphBuilder, \
     TileableGraph, TileableGraphBuilder
-from mars.remote.core import RemoteFunction
-from mars.services.scheduling.worker import SubtaskExecutionActor, \
-    QuotaActor, BandSlotManagerActor
-from mars.services.cluster import MockClusterAPI
-from mars.services.lifecycle import MockLifecycleAPI
-from mars.services.meta import MockMetaAPI
-from mars.services.session import MockSessionAPI
-from mars.services.storage import MockStorageAPI
-from mars.services.storage.handler import StorageHandlerActor
-from mars.services.subtask import MockSubtaskAPI, Subtask
-from mars.services.task.supervisor.manager import TaskManagerActor
-from mars.tensor.fetch import TensorFetch
-from mars.tensor.arithmetic import TensorTreeAdd
-from mars.utils import Timer
+from .....remote.core import RemoteFunction
+from .....tensor.fetch import TensorFetch
+from .....tensor.arithmetic import TensorTreeAdd
+from .....utils import Timer
+from ....cluster import MockClusterAPI
+from ....lifecycle import MockLifecycleAPI
+from ....meta import MockMetaAPI
+from ....session import MockSessionAPI
+from ....storage import MockStorageAPI
+from ....storage.handler import StorageHandlerActor
+from ....subtask import MockSubtaskAPI, Subtask
+from ....task.supervisor.manager import TaskManagerActor
+from ...worker import SubtaskExecutionActor, QuotaActor, \
+    BandSlotManagerActor
 
 
 class CancelDetectActorMixin:

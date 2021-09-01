@@ -15,11 +15,11 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.tensor.datasource import tensor, array
-from mars.tensor.statistics import digitize, histogram_bin_edges, \
+from ....core import tile
+from ...datasource import tensor, array
+from .. import digitize, histogram_bin_edges, \
     quantile, percentile
-from mars.tensor.statistics.quantile import INTERPOLATION_TYPES
+from ..quantile import INTERPOLATION_TYPES
 
 
 def test_digitize():

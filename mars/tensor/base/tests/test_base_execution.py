@@ -19,16 +19,18 @@ import scipy.sparse as sps
 import pandas as pd
 import pytest
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars import execute, fetch
-from mars.tensor.base import copyto, transpose, moveaxis, broadcast_to, broadcast_arrays, where, \
-    expand_dims, rollaxis, atleast_1d, atleast_2d, atleast_3d, argwhere, array_split, split, \
-    hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, flip, flipud, fliplr, repeat, tile, \
-    isin, searchsorted, unique, sort, argsort, partition, argpartition, topk, argtopk, \
+from .... import dataframe as md
+from .... import tensor as mt
+from .... import execute, fetch
+from ....tests.core import require_cupy
+from ...datasource import tensor, ones, zeros, arange
+from .. import copyto, transpose, moveaxis, broadcast_to, \
+    broadcast_arrays, where, expand_dims, rollaxis, atleast_1d, \
+    atleast_2d, atleast_3d, argwhere, array_split, split, \
+    hsplit, vsplit, dsplit, roll, squeeze, diff, ediff1d, \
+    flip, flipud, fliplr, repeat, tile, isin, searchsorted, \
+    unique, sort, argsort, partition, argpartition, topk, argtopk, \
     trapz, shape, to_gpu, to_cpu, swapaxes
-from mars.tensor.datasource import tensor, ones, zeros, arange
-from mars.tests.core import require_cupy
 
 
 def test_rechunk_execution(setup):

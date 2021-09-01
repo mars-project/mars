@@ -20,11 +20,12 @@ try:
 except ImportError:
     pa = None
 
-from mars.config import option_context
-from mars.core import enter_mode
-from mars.dataframe.arrays import _use_bool_any_all
-from mars.dataframe import ArrowStringDtype, ArrowStringArray, ArrowListDtype, ArrowListArray
-from mars.dataframe.utils import arrow_table_to_pandas_dataframe
+from ...config import option_context
+from ...core import enter_mode
+from .. import ArrowStringDtype, ArrowStringArray, ArrowListDtype, \
+    ArrowListArray
+from ..arrays import _use_bool_any_all
+from ..utils import arrow_table_to_pandas_dataframe
 
 
 @pytest.mark.skipif(pa is None, reason='pyarrow not installed')

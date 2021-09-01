@@ -15,11 +15,10 @@
 import pytest
 import os
 
-
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.utils import lazy_import
-from mars.learn.contrib.tensorflow import gen_tensorflow_dataset, run_tensorflow_script
+from ..... import tensor as mt
+from ..... import dataframe as md
+from .....utils import lazy_import
+from .. import gen_tensorflow_dataset, run_tensorflow_script
 
 tf_installed = lazy_import('tensorflow', globals=globals()) is not None
 
@@ -35,7 +34,6 @@ def test_mars_dataset(setup_cluster):
     data_verify = data[:10].execute().fetch()
 
     dataset = gen_tensorflow_dataset(data)
-    print(dataset)
     assert isinstance(dataset, tf_dataset_ops.DatasetV2)
     for _, data_1batch in enumerate(dataset.repeat().batch(10).take(1)):
         np.testing.assert_array_equal(data_1batch, data_verify)

@@ -25,11 +25,10 @@ from distutils.spawn import find_executable
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
 
-import mars.tensor as mt
-from mars.tests.core import flaky, require_hadoop
-from mars.deploy.yarn import new_cluster
+from .... import tensor as mt
+from ....tests.core import flaky, require_hadoop
+from ...yarn import new_cluster
 
 logger = logging.getLogger(__name__)
 MARS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(mt.__file__)))
@@ -91,7 +90,7 @@ def _run_yarn_test_with_env(env_path, timeout):
         r = (a * b * 2 + 1).sum().execute().fetch()
 
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(r, expected.sum())
+        np.testing.assert_array_equal(r, expected.sum())
     finally:
         if cluster is not None:
             cluster.stop()

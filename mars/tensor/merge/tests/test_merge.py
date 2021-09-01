@@ -17,9 +17,9 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.tensor.datasource import ones, empty
-from mars.tensor.merge import concatenate, stack
+from ....core import tile
+from ...datasource import ones, empty
+from .. import concatenate, stack
 
 
 def test_concatenate():

@@ -14,11 +14,11 @@
 
 import pytest
 
-from mars.core import enter_mode, is_eager_mode, is_kernel_mode, is_build_mode
+from .. import enter_mode, is_eager_mode, is_kernel_mode, is_build_mode
 
 
 def test_enter_mode():
-    from mars.config import option_context, options
+    from ...config import option_context, options
 
     @enter_mode(kernel=True)
     def wrapped():

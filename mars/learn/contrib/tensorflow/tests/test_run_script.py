@@ -15,13 +15,12 @@
 import os
 
 import pytest
-
-from mars.learn.contrib.tensorflow import run_tensorflow_script
-
 try:
     import tensorflow
 except ImportError:
     tensorflow = None
+
+from .. import run_tensorflow_script
 
 
 @pytest.mark.skipif(tensorflow is None, reason='tensorflow not installed')

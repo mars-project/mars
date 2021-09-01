@@ -17,9 +17,9 @@ import uuid
 import pytest
 import numpy as np
 
-import mars.tensor as mt
-from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.session import get_default_async_session
+from .... import tensor as mt
+from ..local import new_cluster
+from ..session import get_default_async_session
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')

@@ -73,7 +73,7 @@ def _extract_line_block(lines: List, lineno: int, end_lineno: int, indent: str):
 def format_results(results: List[CheckResult], root_path):
     rel_import_count = sum(len(res.absolute_imports) for res in results)
     if rel_import_count > 0:
-        print(f'Do not use absolute imports for mars module in non-test '
+        print(f'Do not use absolute imports for mars module in '
               f'code ({rel_import_count}):', file=sys.stderr)
         for res in results:
             if not res.absolute_imports:
@@ -90,9 +90,10 @@ def main():
     root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     results = []
     for root, _dirs, files in os.walk(os.path.join(root_path, 'mars')):
-        if 'tests' in root:
-            continue
         for fn in files:
+            if '/tests' in root and not fn.startswith('test_'):
+                # allow test auxiliary files to use full imports
+                continue
             abs_path = os.path.join(root, fn)
             rel_path = os.path.relpath(abs_path, root_path)
 

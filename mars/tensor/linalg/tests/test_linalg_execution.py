@@ -17,13 +17,13 @@
 import numpy as np
 import scipy.sparse as sps
 
-from mars.learn.datasets.samples_generator import make_low_rank_matrix
-from mars.lib.sparse import issparse, SparseNDArray
-from mars.tensor.datasource import tensor, diag, ones, arange
-from mars.tensor.linalg import qr, svd, cholesky, norm, lu, \
-    solve_triangular, solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
-from mars.tensor.random import uniform
-from mars.utils import ignore_warning
+from ....learn.datasets.samples_generator import make_low_rank_matrix
+from ....lib.sparse import issparse, SparseNDArray
+from ....utils import ignore_warning
+from ...datasource import tensor, diag, ones, arange
+from ...random import uniform
+from .. import qr, svd, cholesky, norm, lu, solve_triangular, \
+    solve, inv, tensordot, dot, inner, vdot, matmul, randomized_svd
 
 
 def test_qr_execution(setup):
@@ -385,7 +385,7 @@ def test_lu_execution(setup):
 
 
 def test_solve_triangular(setup):
-    from mars.tensor import tril, triu
+    from ... import tril, triu
     rs = np.random.RandomState(0)
 
     data1 = rs.randint(1, 10, (20, 20))

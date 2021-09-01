@@ -13,14 +13,13 @@
 # limitations under the License.
 
 import pytest
-
-import mars.tensor as mt
-from mars.learn.contrib.xgboost import XGBRegressor
-
 try:
     import xgboost
 except ImportError:
     xgboost = None
+
+from ..... import tensor as mt
+from ..regressor import XGBRegressor
 
 n_rows = 1000
 n_columns = 10

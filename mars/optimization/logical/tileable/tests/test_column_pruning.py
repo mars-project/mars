@@ -21,9 +21,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-from mars.core import TileableGraph, TileableGraphBuilder, enter_mode
-from mars.optimization.logical.tileable import optimize
+from ..... import dataframe as md
+from .....core import TileableGraph, TileableGraphBuilder, enter_mode
+from .. import optimize
 
 
 @pytest.fixture(scope='module')

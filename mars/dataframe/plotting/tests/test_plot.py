@@ -23,8 +23,8 @@ try:
 except ImportError:  # pragma: no cover
     matplotlib = None
 
-from mars import tensor as mt
-from mars import dataframe as md
+from .... import tensor as mt
+from .... import dataframe as md
 
 
 def close(fignum=None):  # pragma: no cover
