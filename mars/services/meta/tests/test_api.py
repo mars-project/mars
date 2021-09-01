@@ -16,16 +16,16 @@ import sys
 
 import pytest
 
-import mars.dataframe as md
-import mars.oscar as mo
-import mars.remote as mr
-import mars.tensor as mt
-from mars.core import tile
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.cluster import MockClusterAPI
-from mars.services.session import MockSessionAPI, SessionAPI
-from mars.services.meta import MockMetaAPI, MetaAPI, WebMetaAPI
-from mars.utils import get_next_port
+from .... import dataframe as md
+from .... import oscar as mo
+from .... import remote as mr
+from .... import tensor as mt
+from ....core import tile
+from ....utils import get_next_port
+from ... import start_services, stop_services, NodeRole
+from ...cluster import MockClusterAPI
+from ...session import MockSessionAPI, SessionAPI
+from .. import MockMetaAPI, MetaAPI, WebMetaAPI
 
 
 t = mt.random.rand(10, 10)

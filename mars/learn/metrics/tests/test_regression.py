@@ -20,9 +20,9 @@ from sklearn.exceptions import UndefinedMetricWarning
 from sklearn.utils._testing import assert_almost_equal, \
     assert_array_equal, assert_array_almost_equal
 
-import mars.tensor as mt
-from mars.learn.metrics import r2_score
-from mars.learn.metrics._regresssion import _check_reg_targets
+from .... import tensor as mt
+from .. import r2_score
+from .._regresssion import _check_reg_targets
 
 
 def test__check_reg_targets(setup):

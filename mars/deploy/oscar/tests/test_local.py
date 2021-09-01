@@ -27,20 +27,20 @@ try:
 except ImportError:
     vineyard = None
 
-import mars.dataframe as md
-import mars.tensor as mt
-import mars.remote as mr
-from mars.config import option_context
-from mars.deploy.oscar.session import get_default_async_session, \
-    get_default_session, new_session, execute, fetch, stop_server, \
-    AsyncSession, _IsolatedWebSession
-from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.service import load_config
-from mars.lib.aio import new_isolation
-from mars.storage import StorageLevel
-from mars.services.storage import StorageAPI
-from mars.tensor.arithmetic.add import TensorAdd
-from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+from .... import dataframe as md
+from .... import tensor as mt
+from .... import remote as mr
+from ....config import option_context
+from ....lib.aio import new_isolation
+from ....storage import StorageLevel
+from ....services.storage import StorageAPI
+from ....tensor.arithmetic.add import TensorAdd
+from ..local import new_cluster
+from ..service import load_config
+from ..session import get_default_async_session, \
+    get_default_session, new_session, execute, fetch, \
+    stop_server, AsyncSession, _IsolatedWebSession
+from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )

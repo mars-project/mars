@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import tile
-from mars.dataframe import cut
-from mars.dataframe.initializer import DataFrame, Series, Index
-from mars.lib.groupby_wrapper import wrapped_groupby
-from mars.lib.version import parse as parse_version
+from ...core import tile
+from ...lib.groupby_wrapper import wrapped_groupby
+from ...lib.version import parse as parse_version
+from .. import cut
+from ..initializer import DataFrame, Series, Index
 
 _with_inclusive_bounds = parse_version(pd.__version__) >= parse_version('1.3.0')
 

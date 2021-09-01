@@ -20,14 +20,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.oscar as mo
-from mars.oscar.backends.allocate_strategy import IdleLabel
-from mars.services.storage.errors import DataNotExist
-from mars.services.storage.core import DataManagerActor, StorageManagerActor,\
+from .... import oscar as mo
+from ....oscar.backends.allocate_strategy import IdleLabel
+from ....storage import StorageLevel
+from ..core import DataManagerActor, StorageManagerActor, \
     StorageQuotaActor
-from mars.services.storage.handler import StorageHandlerActor
-from mars.services.storage.transfer import ReceiverManagerActor, SenderManagerActor
-from mars.storage import StorageLevel
+from ..errors import DataNotExist
+from ..handler import StorageHandlerActor
+from ..transfer import ReceiverManagerActor, SenderManagerActor
 
 _is_windows = sys.platform.lower().startswith('win')
 

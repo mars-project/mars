@@ -14,10 +14,10 @@
 
 import pytest
 
-import mars.oscar as mo
-from mars.services.cluster import ClusterAPI, MockClusterAPI
-from mars.services.session import MockSessionAPI
-from mars.services.scheduling.supervisor import GlobalSlotManagerActor
+from ..... import oscar as mo
+from ....cluster import ClusterAPI, MockClusterAPI
+from ....session import MockSessionAPI
+from ...supervisor import GlobalSlotManagerActor
 
 
 @pytest.fixture

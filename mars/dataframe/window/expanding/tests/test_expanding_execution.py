@@ -17,7 +17,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 
-from mars import dataframe as md
+from ..... import dataframe as md
 
 
 def test_dataframe_expanding_agg(setup):

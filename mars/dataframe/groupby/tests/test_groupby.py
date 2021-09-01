@@ -18,14 +18,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-from mars import opcodes
-from mars.core import OutputType, tile
-from mars.core.operand import OperandStage
-from mars.dataframe.core import DataFrameGroupBy, SeriesGroupBy, DataFrame
-from mars.dataframe.groupby.core import DataFrameGroupByOperand, DataFrameShuffleProxy
-from mars.dataframe.groupby.aggregation import DataFrameGroupByAgg
-from mars.dataframe.groupby.getitem import GroupByIndex
+from .... import dataframe as md
+from .... import opcodes
+from ....core import OutputType, tile
+from ....core.operand import OperandStage
+from ...core import DataFrameGroupBy, SeriesGroupBy, DataFrame
+from ..core import DataFrameGroupByOperand, DataFrameShuffleProxy
+from ..aggregation import DataFrameGroupByAgg
+from ..getitem import GroupByIndex
 
 
 def test_groupby():

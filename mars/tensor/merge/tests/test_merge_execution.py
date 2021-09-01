@@ -18,8 +18,9 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.tensor.datasource import tensor, empty, eye, ones, zeros
-from mars.tensor import concatenate, stack, hstack, vstack, dstack, column_stack, union1d, array, block
+from ...datasource import tensor, empty, eye, ones, zeros
+from ... import concatenate, stack, hstack, vstack, dstack, column_stack, \
+    union1d, array, block
 
 
 def test_concatenate_execution(setup):

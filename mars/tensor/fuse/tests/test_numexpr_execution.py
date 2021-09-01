@@ -17,8 +17,8 @@
 
 import numpy as np
 
-from mars.tensor.datasource import tensor
-from mars.utils import ignore_warning
+from ....utils import ignore_warning
+from ...datasource import tensor
 
 
 def test_base_execution(setup):
@@ -44,7 +44,7 @@ def _gen_pairs(seq):
 
 @ignore_warning
 def test_unary_execution(setup):
-    from mars.tensor.arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
+    from ...arithmetic import UNARY_UFUNC, arccosh, invert, sin, conj
 
     _sp_unary_ufunc = {arccosh, invert, conj}
     _new_unary_ufunc = list(UNARY_UFUNC - _sp_unary_ufunc)[:3]
@@ -76,7 +76,7 @@ def test_unary_execution(setup):
 
 @ignore_warning
 def test_bin_execution(setup):
-    from mars.tensor.arithmetic import BIN_UFUNC, mod, fmod, \
+    from ...arithmetic import BIN_UFUNC, mod, fmod, \
         bitand, bitor, bitxor, lshift, rshift, ldexp
 
     _sp_bin_ufunc = [mod, fmod, bitand, bitor, bitxor, lshift, rshift]

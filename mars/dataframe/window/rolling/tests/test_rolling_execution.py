@@ -15,7 +15,7 @@
 import numpy as np
 import pandas as pd
 
-from mars import dataframe as md
+from ..... import dataframe as md
 
 
 def test_rolling_agg_execution(setup):

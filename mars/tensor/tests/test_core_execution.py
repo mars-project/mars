@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from mars.tensor import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
+from .. import ones, add, swapaxes, moveaxis, atleast_1d, atleast_2d, \
     atleast_3d, squeeze, tensor
 
 

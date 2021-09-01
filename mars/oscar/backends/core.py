@@ -68,6 +68,12 @@ class ActorCaller:
                 for future in message_futures.values():
                     future.set_exception(e)
 
+        message_futures = self._client_to_message_futures.get(client)
+        self._client_to_message_futures[client] = dict()
+        error = ServerClosed(f'Remote server {client.dest_address} closed')
+        for future in message_futures.values():
+            future.set_exception(error)
+
     async def call(self,
                    router: Router,
                    dest_address: str,

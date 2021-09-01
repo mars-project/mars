@@ -17,8 +17,8 @@ import logging
 import os
 from typing import Optional, List, AsyncGenerator
 
-from mars.services import NodeRole
-from mars.services.cluster.backends import \
+from ... import NodeRole
+from ...cluster.backends import \
     AbstractClusterBackend, register_cluster_backend
 
 logger = logging.getLogger(__name__)

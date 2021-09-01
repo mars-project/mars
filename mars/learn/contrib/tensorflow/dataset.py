@@ -35,8 +35,8 @@ ACCEPT_TYPE = (TENSOR_TYPE, DATAFRAME_TYPE, SERIES_TYPE,
 @require_not_none(tf)
 class MarsDataset:
     def __init__(self, tensors,
-                 output_shapes = None,
-                 output_types = None,
+                 output_shapes=None,
+                 output_types=None,
                  fetch_kwargs=None):
 
         self._context = get_context()
@@ -123,9 +123,9 @@ class MarsDataset:
 
 
 def gen_tensorflow_dataset(tensors,
-                 output_shapes = None,
-                 output_types = None,
-                 fetch_kwargs=None):
+                           output_shapes=None,
+                           output_types=None,
+                           fetch_kwargs=None):
     """
     convert mars data type to tf.data.Dataset. Note this is based tensorflow 2.0
     For example

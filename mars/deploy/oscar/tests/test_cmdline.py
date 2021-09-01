@@ -26,15 +26,15 @@ from typing import List
 import numpy as np
 import pytest
 
-import mars.tensor as mt
-from mars.deploy.oscar.cmdline import OscarCommandRunner
-from mars.deploy.oscar.worker import WorkerCommandRunner
-from mars.lib.aio import new_isolation, get_isolation, stop_isolation
-from mars.services import NodeRole
-from mars.services.cluster import ClusterAPI
-from mars.session import new_session
-from mars.tests import flaky
-from mars.utils import get_next_port, kill_process_tree
+from .... import tensor as mt
+from ....lib.aio import new_isolation, get_isolation, stop_isolation
+from ....services import NodeRole
+from ....services.cluster import ClusterAPI
+from ....session import new_session
+from ....tests import flaky
+from ....utils import get_next_port, kill_process_tree
+from ..cmdline import OscarCommandRunner
+from ..worker import WorkerCommandRunner
 
 
 class _ProcessExitedException(Exception):

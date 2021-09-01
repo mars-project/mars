@@ -16,14 +16,14 @@ import os
 import numpy as np
 import pytest
 
-import mars.tensor as mt
-from mars.deploy.oscar.ray import new_cluster, _load_config
-from mars.deploy.oscar.session import get_default_session, new_session
-from mars.deploy.oscar.tests import test_local
-from mars.serialization.ray import register_ray_serializers
-from mars.tests.core import require_ray
-from mars.utils import lazy_import
-from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+from .... import tensor as mt
+from ....serialization.ray import register_ray_serializers
+from ....tests.core import require_ray
+from ....utils import lazy_import
+from ..ray import new_cluster, _load_config
+from ..session import get_default_session, new_session
+from ..tests import test_local
+from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )

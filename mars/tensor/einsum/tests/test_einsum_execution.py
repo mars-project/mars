@@ -16,8 +16,8 @@
 
 import numpy as np
 
-from mars.tensor.datasource import tensor
-from mars.tensor import einsum
+from ... import einsum
+from ...datasource import tensor
 
 
 def test_einsum_execution(setup):

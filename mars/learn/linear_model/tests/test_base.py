@@ -29,9 +29,8 @@ from sklearn.linear_model import LinearRegression as sklearn_LR
 from sklearn.linear_model._base import make_dataset
 from sklearn.utils import check_random_state
 
-from mars.learn.linear_model import LinearRegression
-from mars.learn.linear_model._base import (_preprocess_data,
-                                           _rescale_data)
+from .. import LinearRegression
+from .._base import _preprocess_data, _rescale_data
 
 
 rng = np.random.RandomState(0)

@@ -19,8 +19,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.dataframe import DataFrame, Series, ArrowStringDtype
-from mars.tests.core import require_cudf
+from ....tests.core import require_cudf
+from ... import DataFrame, Series, ArrowStringDtype
 
 
 @pytest.mark.parametrize(

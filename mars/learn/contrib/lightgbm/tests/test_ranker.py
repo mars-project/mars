@@ -14,11 +14,10 @@
 
 import pytest
 
-import mars.tensor as mt
-
+from ..... import tensor as mt
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRanker
+    from .. import LGBMRanker
 except ImportError:
     lightgbm = LGBMRanker = None
 

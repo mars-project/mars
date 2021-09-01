@@ -17,10 +17,10 @@ import pandas as pd
 import pytest
 import scipy.sparse as sps
 
-from mars import tensor as mt
-from mars import dataframe as md
-from mars.config import option_context
-from mars.learn.utils.checks import check_non_negative_then_return_value, assert_all_finite
+from .... import tensor as mt
+from .... import dataframe as md
+from ....config import option_context
+from ..checks import check_non_negative_then_return_value, assert_all_finite
 
 
 def test_check_non_negative_then_return_value_execution(setup):

@@ -19,10 +19,10 @@ import numpy as np
 from sklearn.utils._testing import assert_array_almost_equal, assert_raises, \
     assert_almost_equal, assert_raise_message
 
-from mars import tensor as mt
-from mars.learn.datasets.samples_generator import make_low_rank_matrix, \
+from .... import tensor as mt
+from ....tensor.linalg import svd
+from ..samples_generator import make_low_rank_matrix, \
     make_classification, make_blobs
-from mars.tensor.linalg import svd
 
 
 def test_make_classification(setup):

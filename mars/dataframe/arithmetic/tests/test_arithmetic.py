@@ -21,21 +21,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import OutputType, OperandType, tile
-from mars.core.operand import OperandStage
-from mars.dataframe.core import IndexValue
-from mars.dataframe.utils import hash_dtypes
-from mars.dataframe.utils import split_monotonic_index_min_max, \
+from ....core import OutputType, OperandType, tile
+from ....core.operand import OperandStage
+from ....utils import dataslots
+from ...align import DataFrameIndexAlign, DataFrameShuffleProxy
+from ...core import IndexValue
+from ...datasource.dataframe import from_pandas, DataFrameDataSource
+from ...datasource.series import from_pandas as from_pandas_series, SeriesDataSource
+from ...utils import hash_dtypes
+from ...utils import split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, filter_index_value
-from mars.dataframe.datasource.dataframe import from_pandas, DataFrameDataSource
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series, SeriesDataSource
-from mars.dataframe.arithmetic import DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
+from .. import DataFrameAbs, DataFrameAdd, DataFrameSubtract, \
     DataFrameMul, DataFrameFloorDiv, DataFrameTrueDiv, DataFrameMod, DataFramePower, \
     DataFrameEqual, DataFrameNotEqual, DataFrameGreater, DataFrameLess, \
     DataFrameGreaterEqual, DataFrameLessEqual, DataFrameNot, \
     DataFrameAnd, DataFrameOr, DataFrameXor
-from mars.dataframe.align import DataFrameIndexAlign, DataFrameShuffleProxy
-from mars.utils import dataslots
 
 
 def comp_func(name, reverse_name):
