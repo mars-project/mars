@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.core import ChunkGraph
-from mars.services.task.analyzer.fusion import Fusion
-from mars.tensor.arithmetic import TensorTreeAdd
+from .....core import ChunkGraph
+from .....tensor.arithmetic import TensorTreeAdd
+from ..fusion import Fusion
 
 
 def test_fuse():

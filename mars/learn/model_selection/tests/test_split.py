@@ -22,12 +22,12 @@ try:
 except ImportError:  # pragma: no cover
     sps = None
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars.dataframe.core import DATAFRAME_TYPE
-from mars.learn.model_selection import train_test_split, KFold
-from mars.learn.utils.validation import _num_samples
-from mars.lib.sparse import SparseNDArray
+from .... import dataframe as md
+from .... import tensor as mt
+from ....dataframe.core import DATAFRAME_TYPE
+from ....lib.sparse import SparseNDArray
+from ...utils.validation import _num_samples
+from .. import train_test_split, KFold
 
 
 def test_train_test_split_errors(setup):

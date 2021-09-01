@@ -16,9 +16,9 @@ import os
 
 import pytest
 
-from mars.deploy.utils import load_service_config_file, \
+from ...services import NodeRole
+from ..utils import load_service_config_file, \
     get_third_party_modules_from_config, next_in_thread
-from mars.services import NodeRole
 
 _cwd = os.path.abspath(os.getcwd())
 

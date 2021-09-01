@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import pytest
 
-from mars.contrib.dask import convert_dask_collection, mars_scheduler
-from mars.utils import lazy_import
+from ....utils import lazy_import
+from .. import convert_dask_collection, mars_scheduler
 
 dask_installed = lazy_import('dask', globals=globals()) is not None
 mimesis_installed = lazy_import('mimesis', globals=globals()) is not None

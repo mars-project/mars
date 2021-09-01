@@ -24,12 +24,11 @@ from distutils.spawn import find_executable
 
 import numpy as np
 import pytest
-from numpy.testing import assert_array_equal
 
-import mars.tensor as mt
-from mars.deploy.kubernetes import new_cluster
-from mars.deploy.kubernetes.config import HostPathVolumeConfig
-from mars.tests.core import mock
+from .... import tensor as mt
+from ....tests.core import mock
+from .. import new_cluster
+from ..config import HostPathVolumeConfig
 
 try:
     from kubernetes import config as k8s_config, client as k8s_client
@@ -152,7 +151,7 @@ def test_run_in_kubernetes():
         r = c.execute().fetch()
 
         expected = (np.ones(a.shape) * 2 * 1 + 1) ** 2 * 2 + 1
-        assert_array_equal(r, expected.sum())
+        np.testing.assert_array_equal(r, expected.sum())
 
 
 @pytest.mark.skipif(not kube_available, reason='Cannot run without kubernetes')

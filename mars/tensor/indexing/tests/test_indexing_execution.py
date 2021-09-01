@@ -18,11 +18,11 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import options
-from mars.tensor.datasource import tensor, arange, zeros
-from mars.tensor.indexing import take, compress, extract, choose, \
+from ....config import options
+from ... import mod, stack, hstack
+from ...datasource import tensor, arange, zeros
+from .. import take, compress, extract, choose, \
     unravel_index, nonzero, flatnonzero, fill_diagonal
-from mars.tensor import mod, stack, hstack
 
 
 def test_bool_indexing_execution(setup):

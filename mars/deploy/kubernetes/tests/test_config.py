@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.deploy.kubernetes.config import NamespaceConfig, RoleConfig, \
-    RoleBindingConfig, ServiceConfig, EmptyDirVolumeConfig, MarsSupervisorsConfig, \
+from ..config import NamespaceConfig, RoleConfig, RoleBindingConfig, \
+    ServiceConfig, EmptyDirVolumeConfig, MarsSupervisorsConfig, \
     MarsWorkersConfig
 
 

@@ -19,10 +19,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils._testing import assert_no_warnings, assert_warns
 
-from mars import tensor as mt
-from mars.learn.metrics.pairwise import rbf_kernel
-from mars.learn.neighbors import NearestNeighbors
-from mars.learn.semi_supervised import LabelPropagation
+from .... import tensor as mt
+from ...metrics.pairwise import rbf_kernel
+from ...neighbors import NearestNeighbors
+from .. import LabelPropagation
 
 
 estimators = [

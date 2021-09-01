@@ -15,11 +15,11 @@
 import pytest
 import os
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.utils import lazy_import
-from mars.learn.contrib.pytorch import MarsDataset, RandomSampler, SequentialSampler, \
-                        SubsetRandomSampler, DistributedSampler, run_pytorch_script
+from ..... import tensor as mt
+from ..... import dataframe as md
+from .....utils import lazy_import
+from .. import MarsDataset, RandomSampler, SequentialSampler, \
+    SubsetRandomSampler, DistributedSampler, run_pytorch_script
 
 torch_installed = lazy_import('torch', globals=globals()) is not None
 

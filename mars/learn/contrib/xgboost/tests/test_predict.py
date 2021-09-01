@@ -15,16 +15,15 @@
 import numpy as np
 import pandas as pd
 import pytest
-
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.learn.contrib.xgboost import MarsDMatrix, train, predict
-
 try:
     import xgboost
     from xgboost import Booster
 except ImportError:
     xgboost = None
+
+from ..... import tensor as mt
+from ..... import dataframe as md
+from .. import MarsDMatrix, train, predict
 
 n_rows = 1000
 n_columns = 10

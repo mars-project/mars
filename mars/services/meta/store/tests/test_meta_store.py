@@ -14,10 +14,10 @@
 
 import pytest
 
-import mars.tensor as mt
-from mars.core import tile
-from mars.services.meta import TensorMeta
-from mars.services.meta.store import get_meta_store
+from ..... import tensor as mt
+from .....core import tile
+from ... import TensorMeta
+from ...store import get_meta_store
 
 
 @pytest.mark.asyncio

@@ -15,11 +15,10 @@
 import pandas as pd
 import pytest
 
-import mars.tensor as mt
-
+from ..... import tensor as mt
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMRegressor
+    from .. import LGBMRegressor
 except ImportError:
     lightgbm = LGBMRegressor = None
 

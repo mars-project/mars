@@ -16,15 +16,15 @@ import asyncio
 import pytest
 from typing import Tuple, List
 
-import mars.oscar as mo
-from mars.services.cluster import ClusterAPI
-from mars.services.cluster.core import NodeRole, NodeStatus
-from mars.services.cluster.uploader import NodeInfoUploaderActor
-from mars.services.cluster.supervisor.locator import SupervisorPeerLocatorActor
-from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
-from mars.services.scheduling.supervisor import AssignerActor, \
+from ..... import oscar as mo
+from ....cluster import ClusterAPI
+from ....cluster.core import NodeRole, NodeStatus
+from ....cluster.uploader import NodeInfoUploaderActor
+from ....cluster.supervisor.locator import SupervisorPeerLocatorActor
+from ....cluster.supervisor.node_info import NodeInfoCollectorActor
+from ....subtask import Subtask
+from ...supervisor import AssignerActor, \
     SubtaskManagerActor, SubtaskQueueingActor, GlobalSlotManagerActor
-from mars.services.subtask import Subtask
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):

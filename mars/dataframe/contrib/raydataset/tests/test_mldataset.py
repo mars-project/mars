@@ -17,12 +17,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-import mars.dataframe.contrib.raydataset as mdd
-from mars.deploy.oscar.ray import new_cluster, _load_config
-from mars.deploy.oscar.session import new_session
-from mars.tests.core import require_ray
-from mars.utils import lazy_import
+from ..... import dataframe as md
+from .....deploy.oscar.ray import new_cluster, _load_config
+from .....deploy.oscar.session import new_session
+from .....tests.core import require_ray
+from .....utils import lazy_import
+from ....contrib import raydataset as mdd
 
 
 ray = lazy_import('ray')
@@ -54,7 +54,7 @@ async def create_cluster(request):
 @require_ray
 @pytest.mark.asyncio
 async def test_dataset_related_classes(ray_large_cluster):
-    from mars.dataframe.contrib.raydataset import ChunkRefBatch
+    from ..mldataset import ChunkRefBatch
     # in order to pass checks
     value1 = np.random.rand(10, 10)
     value2 = np.random.rand(10, 10)

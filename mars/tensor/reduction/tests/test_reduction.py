@@ -17,11 +17,11 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.tensor.datasource import ones, tensor
-from mars.tensor.merge import TensorConcatenate
-from mars.tensor.reduction import all, TensorMean, TensorArgmax, TensorArgmin
+from ....core import tile
+from ....core.operand import OperandStage
+from ...datasource import ones, tensor
+from ...merge import TensorConcatenate
+from .. import all, TensorMean, TensorArgmax, TensorArgmin
 
 
 def test_base_reduction():

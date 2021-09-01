@@ -14,9 +14,10 @@
 
 import numpy as np
 import pandas as pd
-from ....utils import ceildiv, lazy_import
 from collections import defaultdict
 from typing import Dict, Iterable, List, Tuple
+
+from ....utils import ceildiv, lazy_import
 
 ray = lazy_import('ray')
 parallel_it = lazy_import('ray.util.iter')

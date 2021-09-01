@@ -35,8 +35,8 @@ try:
 except ImportError:
     fastparquet = None
 
-import mars.dataframe as md
-from mars.dataframe import DataFrame
+from .... import dataframe as md
+from ... import DataFrame
 
 
 def test_to_csv_execution(setup):

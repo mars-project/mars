@@ -17,9 +17,9 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.tensor.datasource import tensor as from_ndarray
-from mars.tensor.random import beta, rand, choice, multivariate_normal, \
+from ....core import tile
+from ...datasource import tensor as from_ndarray
+from .. import beta, rand, choice, multivariate_normal, \
     randint, randn, permutation, TensorPermutation, shuffle, RandomState
 
 

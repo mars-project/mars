@@ -18,12 +18,12 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-import mars.tensor as mt
-from mars.core import tile
-from mars.tensor import ones, tensor, dot, empty
-from mars.tensor.core import SparseTensor, Tensor
-from mars.tensor.linalg import matmul
-from mars.tensor.linalg.inv import TensorInv
+from .... import tensor as mt
+from ....core import tile
+from ... import ones, tensor, dot, empty
+from ...core import SparseTensor, Tensor
+from .. import matmul
+from ..inv import TensorInv
 
 
 def test_qr():
@@ -358,7 +358,7 @@ def test_inv():
 
 
 def test_tensordot():
-    from mars.tensor.linalg import tensordot, dot, inner
+    from .. import tensordot, dot, inner
 
     t1 = ones((3, 4, 6), chunk_size=2)
     t2 = ones((4, 3, 5), chunk_size=2)

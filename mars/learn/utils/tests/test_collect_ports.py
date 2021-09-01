@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.learn.utils.collect_ports import collect_ports
+from ..collect_ports import collect_ports
 
 
 def test_collect_ports(setup_cluster):

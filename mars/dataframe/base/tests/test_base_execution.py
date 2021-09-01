@@ -23,17 +23,17 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-from mars.config import options, option_context
-from mars.dataframe import eval as mars_eval, cut, qcut
-from mars.dataframe.base import to_gpu, to_cpu
-from mars.dataframe.base.to_numeric import to_numeric
-from mars.dataframe.base.rebalance import DataFrameRebalance
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.tensor import tensor
-from mars.tests.core import require_cudf
-from mars.utils import lazy_import
+from ....config import options, option_context
+from ....tensor import tensor
+from ....tests.core import require_cudf
+from ....utils import lazy_import
+from ... import eval as mars_eval, cut, qcut
+from ...datasource.dataframe import from_pandas as from_pandas_df
+from ...datasource.series import from_pandas as from_pandas_series
+from ...datasource.index import from_pandas as from_pandas_index
+from .. import to_gpu, to_cpu
+from ..to_numeric import to_numeric
+from ..rebalance import DataFrameRebalance
 
 cudf = lazy_import('cudf', globals=globals())
 

@@ -19,18 +19,18 @@ from collections import defaultdict
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-import mars.remote as mr
-import mars.tensor as mt
-from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.session import SessionAPI
-from mars.services.scheduling import SchedulingAPI
-from mars.services.scheduling.supervisor import GlobalSlotManagerActor
-from mars.services.storage import StorageAPI, MockStorageAPI
-from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
-from mars.services.task import new_task_id
-from mars.services.task.supervisor.manager import TaskManagerActor
+from .... import oscar as mo
+from .... import remote as mr
+from .... import tensor as mt
+from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ... import start_services, stop_services, NodeRole
+from ...session import SessionAPI
+from ...storage import StorageAPI, MockStorageAPI
+from ...subtask import Subtask, SubtaskResult, SubtaskStatus
+from ...task import new_task_id
+from ...task.supervisor.manager import TaskManagerActor
+from .. import SchedulingAPI
+from ..supervisor import GlobalSlotManagerActor
 
 
 class FakeTaskManager(TaskManagerActor):

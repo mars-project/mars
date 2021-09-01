@@ -16,14 +16,14 @@ import asyncio
 
 import pytest
 
-import mars.oscar as mo
-from mars._version import __version__ as mars_version
-from mars.services import NodeRole
-from mars.services.cluster.api import MockClusterAPI, WebClusterAPI
-from mars.services.cluster.api.web import web_handlers
-from mars.services.cluster.core import NodeStatus
-from mars.services.web.supervisor import WebSupervisorService
-from mars.utils import get_next_port
+from .... import oscar as mo
+from ...._version import __version__ as mars_version
+from ....utils import get_next_port
+from ... import NodeRole
+from ...web.supervisor import WebSupervisorService
+from ..api import MockClusterAPI, WebClusterAPI
+from ..api.web import web_handlers
+from ..core import NodeStatus
 
 
 @pytest.fixture

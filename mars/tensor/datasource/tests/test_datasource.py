@@ -24,19 +24,19 @@ try:
 except (ImportError, OSError):  # pragma: no cover
     tiledb = None
 
-from mars import dataframe as md
-from mars.core import enter_mode, tile
-from mars.tensor import ones, zeros, tensor, full, arange, diag, linspace, \
+from .... import dataframe as md
+from ....core import enter_mode, tile
+from ... import ones, zeros, tensor, full, arange, diag, linspace, \
     triu, tril, ones_like
-from mars.tensor.datasource import array, fromtiledb, TensorTileDBDataSource, \
+from ...core import Tensor, SparseTensor
+from .. import array, fromtiledb, TensorTileDBDataSource, \
     fromdense, asarray, ascontiguousarray, asfortranarray
-from mars.tensor.datasource.tri import TensorTriu, TensorTril
-from mars.tensor.datasource.zeros import TensorZeros
-from mars.tensor.datasource.from_dense import DenseToSparse
-from mars.tensor.datasource.array import CSRMatrixDataSource
-from mars.tensor.datasource.ones import TensorOnes, TensorOnesLike
-from mars.tensor.core import Tensor, SparseTensor
-from mars.tensor.datasource.from_dataframe import from_dataframe
+from ..tri import TensorTriu, TensorTril
+from ..zeros import TensorZeros
+from ..from_dense import DenseToSparse
+from ..array import CSRMatrixDataSource
+from ..ones import TensorOnes, TensorOnesLike
+from ..from_dataframe import from_dataframe
 
 
 def test_array():
@@ -198,7 +198,7 @@ def test_zeros():
 
 
 def test_data_source():
-    from mars.tensor.base.broadcast_to import TensorBroadcastTo
+    from ...base.broadcast_to import TensorBroadcastTo
 
     data = np.random.random((10, 3))
     t = tensor(data, chunk_size=2)

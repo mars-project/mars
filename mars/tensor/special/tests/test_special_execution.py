@@ -17,8 +17,8 @@ import pytest
 import scipy.sparse as sps
 import scipy.special as spspecial
 
-from mars.tensor import tensor
-from mars.tensor import special as mt_special
+from ... import tensor
+from ... import special as mt_special
 
 
 @pytest.mark.parametrize('func', [

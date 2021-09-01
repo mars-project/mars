@@ -17,8 +17,8 @@ import scipy.sparse as sps
 import pytest
 from sklearn.metrics.pairwise import manhattan_distances as sk_manhattan_distances
 
-from mars import tensor as mt
-from mars.learn.metrics.pairwise import manhattan_distances
+from ..... import tensor as mt
+from .. import manhattan_distances
 
 
 def test_manhattan_distances():

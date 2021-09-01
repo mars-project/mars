@@ -35,9 +35,9 @@ except ImportError:  # pragma: no cover
     pd = None
 import pytest
 
-from mars import utils
-from mars.core import tile
-import mars.tensor as mt
+from .. import tensor as mt
+from .. import utils
+from ..core import tile
 
 
 def test_string_conversion():

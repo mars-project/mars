@@ -19,10 +19,10 @@ from scipy.special import (
     betainc as scipy_betainc,
 )
 
-from mars.core import tile
-from mars.tensor import tensor
-from mars.tensor.special.err_fresnel import erf, TensorErf
-from mars.tensor.special.gamma_funcs import (
+from ....core import tile
+from ... import tensor
+from ..err_fresnel import erf, TensorErf
+from ..gamma_funcs import (
     gammaln, TensorGammaln,
     betainc, TensorBetaInc,
 )

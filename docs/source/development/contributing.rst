@@ -122,6 +122,26 @@ Python code style.  Simply run command below to check your code style:
 
     flake8 mars
 
+You may fix these issues manually or use automated tools like `autopep8
+<https://github.com/hhatto/autopep8>`_ to fix them for you. To facilitate the
+process, we create a tool. You can simply run
+
+.. code-block:: bash
+
+    pip install autopep8
+    bash ./bin/fix-flake8.sh
+
+in Bash to fix these issues. For Windows users, commands above should be run in
+Git Bash or a WSL terminal.
+
+We also require relative import in code for all Mars modules. Use
+
+.. code-block:: bash
+
+    python ./ci/importcheck.py
+
+to check if your code meet the requirement.
+
 Building Documentations
 -----------------------
 Mars uses ``sphinx`` to build documents. You need to install necessary packages

@@ -18,8 +18,8 @@ import scipy.sparse as sp
 from sklearn.utils import check_random_state
 from sklearn.utils._testing import assert_array_almost_equal, assert_array_less
 
-import mars.tensor as mt
-from mars.learn.decomposition import TruncatedSVD
+from .... import tensor as mt
+from .. import TruncatedSVD
 
 
 # Make an X that looks somewhat like a small tf-idf matrix.

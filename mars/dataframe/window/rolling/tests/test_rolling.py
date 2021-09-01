@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import dataframe as md
-from mars.core import tile
+from ..... import dataframe as md
+from .....core import tile
 
 
 def test_rolling():

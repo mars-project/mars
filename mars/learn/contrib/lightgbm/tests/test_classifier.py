@@ -19,12 +19,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.tensor as mt
-import mars.dataframe as md
-
+from ..... import tensor as mt
+from ..... import dataframe as md
 try:
     import lightgbm
-    from mars.learn.contrib.lightgbm import LGBMClassifier
+    from .. import LGBMClassifier
 except ImportError:
     lightgbm = LGBMClassifier = None
 

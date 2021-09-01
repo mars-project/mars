@@ -18,15 +18,14 @@ import tempfile
 import numpy as np
 import pandas as pd
 import pytest
-
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.learn.contrib.xgboost import XGBClassifier
-
 try:
     import xgboost
 except ImportError:
     xgboost = None
+
+from ..... import tensor as mt
+from ..... import dataframe as md
+from ..classifier import XGBClassifier
 
 n_rows = 1000
 n_columns = 10

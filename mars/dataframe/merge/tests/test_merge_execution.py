@@ -15,10 +15,10 @@
 import numpy as np
 import pandas as pd
 
-from mars.dataframe.datasource.dataframe import from_pandas
-from mars.dataframe.datasource.series import from_pandas as series_from_pandas
-from mars.dataframe.merge import concat
-from mars.dataframe.utils import sort_dataframe_inplace
+from ...datasource.dataframe import from_pandas
+from ...datasource.series import from_pandas as series_from_pandas
+from ...utils import sort_dataframe_inplace
+from .. import concat
 
 
 def test_merge(setup):
