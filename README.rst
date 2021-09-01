@@ -138,6 +138,14 @@ Mars learn provides a familiar interface like scikit-learn.
 |                                             |                                                    |
 +---------------------------------------------+----------------------------------------------------+
 
+Mars learn also integrates with many libraries:
+
+- `TensorFlow <https://docs.pymars.org/en/latest/user_guide/learn/tensorflow.html>`_
+- `PyTorch <https://docs.pymars.org/en/latest/user_guide/learn/pytorch.html>`_
+- `XGBoost <https://docs.pymars.org/en/latest/user_guide/learn/xgboost.html>`_
+- `LightGBM <https://docs.pymars.org/en/latest/user_guide/learn/lightgbm.html>`_
+- `Joblib <https://docs.pymars.org/en/latest/user_guide/learn/joblib.html>`_
+- `Statsmodels <https://docs.pymars.org/en/latest/user_guide/learn/statsmodels.html>`_
 
 Mars remote
 -----------
@@ -179,6 +187,10 @@ Mars remote allows users to execute functions in parallel.
 |                                           |                                            |
 +-------------------------------------------+--------------------------------------------+
 
+DASK on Mars
+------------
+
+Refer to `DASK on Mars`_ for more information.
 
 Eager Mode
 ```````````
@@ -300,3 +312,4 @@ Thank you in advance for your contributions!
 .. _`中文文档`: https://docs.pymars.org/zh_CN/latest/
 .. _`Run on Kubernetes`: https://docs.pymars.org/en/latest/installation/kubernetes.html
 .. _`Run on Yarn`: https://docs.pymars.org/en/latest/installation/yarn.html
+.. _`DASK on Mars`: https://docs.pymars.org/en/latest/user_guide/contrib/dask.html

@@ -38,7 +38,7 @@ jobs:
         source ./ci/rewrite-cov-config.sh
 
         pip install git+https://github.com/mars-project/pytest-asyncio.git
-        pip install numpy scipy cython
+        pip install numpy scipy cython oss2
         pip install -e ".[dev,extra]"
         pip install virtualenv flaky
         conda list -n test
@@ -61,16 +61,16 @@ jobs:
             mars/oscar mars/services mars/storage mars/lib mars/tests
           mv .coverage build/.coverage.dist.file
         elif [[ $UNAME == "windows" ]]; then
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=5 --timeout=1500 \
+          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
             mars/oscar
           mv .coverage build/.coverage.oscar.file
 
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=5 --timeout=1500 \
+          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
             mars/services
           mv .coverage build/.coverage.services.file
 
           # skip mars/tests temporarily, as it may cause test stuck and needs more inspection
-          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=5 --timeout=1500 \
+          python -m pytest $PYTEST_CONFIG --force-flaky --max-runs=10 --timeout=1500 \
             mars/storage mars/lib  # mars/tests
           mv .coverage build/.coverage.misc.file
         fi

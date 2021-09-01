@@ -39,8 +39,8 @@ class RayActorDriver(BaseActorDriver):
                                       strategy="SPREAD")
         create_pg_timeout = 10
         done, _ = ray.wait([pg.ready()], timeout=create_pg_timeout)
-        if not done:
-            raise Exception(f'''Can't create placement group in {create_pg_timeout} seconds''')
+        if not done:  # pragma: no cover
+            raise Exception(f'''Can't create placement group {pg.bundle_specs} in {create_pg_timeout} seconds''')
         cluster_info = {
             'address_to_resources': address_to_resources,
             'pg_name': pg_name,
@@ -58,12 +58,15 @@ class RayActorDriver(BaseActorDriver):
         pg = cls._cluster_info['pg_group']
         for index, bundle_spec in enumerate(pg.bundle_specs):
             n_process = int(bundle_spec["CPU"]) + 1
-            for process_index in range(n_process):
+            for process_index in reversed(range(n_process)):
                 address = process_placement_to_address(pg_name, index, process_index=process_index)
                 try:
                     if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
-                        # must clean up first, or coverage info lost
-                        ray.get(ray.get_actor(address).cleanup.remote())
+                        # must clean up first, or coverage info lost.
+                        # must save the local reference until this is fixed:
+                        # https://github.com/ray-project/ray/issues/7815
+                        ray_actor = ray.get_actor(address)
+                        ray.get(ray_actor.cleanup.remote())
                     ray.kill(ray.get_actor(address))
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except
                     pass

@@ -19,7 +19,7 @@ from ....oscar.backends.allocate_strategy import IdleLabel
 from .runner import SubtaskRunnerActor
 
 
-class SubtaskManagerActor(mo.Actor):
+class SubtaskRunnerManagerActor(mo.Actor):
     def __init__(self, subtask_processor_cls: Type):
         # specify subtask process class
         # for test purpose

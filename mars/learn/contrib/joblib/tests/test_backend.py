@@ -18,7 +18,7 @@ from sklearn.datasets import load_digits
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.svm import SVC
 
-from mars.learn.contrib.joblib import register_mars_backend
+from .. import register_mars_backend
 
 register_mars_backend()
 

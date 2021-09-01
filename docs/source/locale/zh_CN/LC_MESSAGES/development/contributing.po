@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-05 17:47+0800\n"
+"POT-Creation-Date: 2021-08-31 15:12+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -200,11 +200,34 @@ msgstr ""
 "使用 `flake8 <https://flake8.pycqa.org>`_ 检查代码样式。你可以使用下面的"
 "代码运行检查："
 
-#: ../../source/development/contributing.rst:126
+#: ../../source/development/contributing.rst:125
+msgid ""
+"You may fix these issues manually or use automated tools like `autopep8 "
+"<https://github.com/hhatto/autopep8>`_ to fix them for you. To facilitate"
+" the process, we create a tool. You can simply run"
+msgstr ""
+"你可以手动修复列出的问题，也可以尝试使用像 `autopep8 <https://github.com/hhatto/autopep8>`_ "
+"这样的工具自动化修复这些问题。为了便于自动化修复，我们编写了一个工具。你可以在 Bash 中运行"
+
+#: ../../source/development/contributing.rst:134
+msgid ""
+"in Bash to fix these issues. For Windows users, commands above should be "
+"run in Git Bash or a WSL terminal."
+msgstr "来修复这些问题。需要注意的是，Windows 用户需要使用 Git Bash 或者 WSL 终端来执行这些命令。"
+
+#: ../../source/development/contributing.rst:137
+msgid "We also require relative import in code for all Mars modules. Use"
+msgstr "我们也要求在代码中对 Mars 包使用相对引用。你可以使用"
+
+#: ../../source/development/contributing.rst:143
+msgid "to check if your code meet the requirement."
+msgstr "来检查你的代码是否满足要求。"
+
+#: ../../source/development/contributing.rst:146
 msgid "Building Documentations"
 msgstr "编译文档"
 
-#: ../../source/development/contributing.rst:127
+#: ../../source/development/contributing.rst:147
 msgid ""
 "Mars uses ``sphinx`` to build documents. You need to install necessary "
 "packages with the command below to install these dependencies and build "
@@ -213,11 +236,11 @@ msgstr ""
 "Mars 使用 ``sphinx`` 编译文档。在编译 HTML 格式的文档前，你需要使用下面的"
 "命令安装必要的依赖包"
 
-#: ../../source/development/contributing.rst:137
+#: ../../source/development/contributing.rst:157
 msgid "The built documents are in ``docs/build/html`` directory."
 msgstr "编译完成的 HTML 文档位于 ``docs/build/html`` 目录下。"
 
-#: ../../source/development/contributing.rst:139
+#: ../../source/development/contributing.rst:159
 msgid ""
 "When you want to create translations of Mars documents, you may append "
 "``-l <locale>`` after the ``I18NSPHINXLANGS`` variable in ``Makefile``. "
@@ -230,7 +253,7 @@ msgstr ""
 "命令为文档生成翻译文件（``*.po``），生成后的文件位于 ``docs/source/locale"
 "/<locale>/LC_MESSAGES`` 下："
 
-#: ../../source/development/contributing.rst:150
+#: ../../source/development/contributing.rst:170
 msgid ""
 "After that you can translate Mars documents into your language. Note that"
 " when you run ``make gettext`` again, translations will be broken into a "
@@ -241,11 +264,11 @@ msgstr ""
 "make gettext``，翻译后的文字将被转为固定宽度文字。对于中文译者，为达到该"
 "效果，需要安装 ``jieba`` 分词包。"
 
-#: ../../source/development/contributing.rst:155
+#: ../../source/development/contributing.rst:175
 msgid "When you finish translation, you can run"
 msgstr "在完成翻译后，你可以执行"
 
-#: ../../source/development/contributing.rst:163
+#: ../../source/development/contributing.rst:183
 msgid "to build the document in the language you just translated into."
 msgstr "以使用你刚才翻译的语言编译文档。"
 

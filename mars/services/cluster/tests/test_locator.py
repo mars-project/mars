@@ -19,16 +19,13 @@ from typing import List
 
 import pytest
 
-import mars.oscar as mo
-from mars.services.cluster.core import NodeRole, NodeStatus
-from mars.services.cluster.supervisor.node_info \
-    import NodeInfoCollectorActor
-from mars.services.cluster.supervisor.locator import \
-    SupervisorPeerLocatorActor
-from mars.services.cluster.worker.locator import \
-    WorkerSupervisorLocatorActor
-from mars.services.cluster.tests import backend
-from mars.utils import Timer
+from .... import oscar as mo
+from ....utils import Timer
+from ..core import NodeRole, NodeStatus
+from ..supervisor.locator import SupervisorPeerLocatorActor
+from ..supervisor.node_info import NodeInfoCollectorActor
+from ..tests import backend
+from ..worker.locator import WorkerSupervisorLocatorActor
 
 del backend
 

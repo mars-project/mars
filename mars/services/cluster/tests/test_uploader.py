@@ -16,12 +16,11 @@ import asyncio
 
 import pytest
 
-import mars.oscar as mo
-from mars.services import NodeRole
-from mars.services.cluster.supervisor.locator import \
-    SupervisorPeerLocatorActor
-from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
-from mars.services.cluster.uploader import NodeInfoUploaderActor
+from .... import oscar as mo
+from ... import NodeRole
+from ..supervisor.locator import SupervisorPeerLocatorActor
+from ..supervisor.node_info import NodeInfoCollectorActor
+from ..uploader import NodeInfoUploaderActor
 
 
 @pytest.fixture

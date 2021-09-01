@@ -15,21 +15,20 @@
 import os
 
 import pytest
-
-from mars.learn.contrib.tensorflow import run_tensorflow_script
-
 try:
     import tensorflow
 except ImportError:
     tensorflow = None
+
+from .. import run_tensorflow_script
 
 
 @pytest.mark.skipif(tensorflow is None, reason='tensorflow not installed')
 def test_local_run_tensor_flow_script(setup_cluster):
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tf_distributed_sample.py')
     assert run_tensorflow_script(
-        path, n_workers=2, command_argv=['multiple'],
-        port=2222).fetch()['status'] == 'ok'
+        path, n_workers=2, command_argv=['multiple']
+    ).fetch()['status'] == 'ok'
 
     with pytest.raises(ValueError):
         run_tensorflow_script(path, n_workers=0)

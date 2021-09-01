@@ -27,20 +27,20 @@ try:
 except ImportError:
     vineyard = None
 
-import mars.dataframe as md
-import mars.tensor as mt
-import mars.remote as mr
-from mars.config import option_context
-from mars.deploy.oscar.session import get_default_async_session, \
-    get_default_session, new_session, execute, fetch, stop_server, \
-    AsyncSession, _IsolatedWebSession
-from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.service import load_config
-from mars.lib.aio import new_isolation
-from mars.storage import StorageLevel
-from mars.services.storage import StorageAPI
-from mars.tensor.arithmetic.add import TensorAdd
-from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+from .... import dataframe as md
+from .... import tensor as mt
+from .... import remote as mr
+from ....config import option_context
+from ....lib.aio import new_isolation
+from ....storage import StorageLevel
+from ....services.storage import StorageAPI
+from ....tensor.arithmetic.add import TensorAdd
+from ..local import new_cluster
+from ..service import load_config
+from ..session import get_default_async_session, \
+    get_default_session, new_session, execute, fetch, fetch_infos, \
+    stop_server, AsyncSession, _IsolatedWebSession
+from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
@@ -173,6 +173,31 @@ async def test_sync_execute_in_async(create_cluster):
     np.testing.assert_array_equal(res, np.ones((10, 10)) + 1)
 
 
+@pytest.mark.asyncio
+async def test_fetch_infos(create_cluster):
+    raw = np.random.RandomState(0).rand(30, 5)
+    raw_df = pd.DataFrame(raw, index=np.arange(1, 31))
+
+    df = md.DataFrame(raw_df, chunk_size=10)
+    df.execute()
+    fetched_infos = df.fetch_infos()
+
+    assert 'object_id' in fetched_infos
+    assert 'level' in fetched_infos
+    assert 'memory_size' in fetched_infos
+    assert 'store_size' in fetched_infos
+    assert 'band' in fetched_infos
+
+    fetch_infos((df, df), fields=None)
+    results_infos = mr.ExecutableTuple([df, df]).execute()._fetch_infos()
+    assert len(results_infos) == 2
+    assert 'object_id' in results_infos[0]
+    assert 'level' in results_infos[0]
+    assert 'memory_size' in results_infos[0]
+    assert 'store_size' in results_infos[0]
+    assert 'band' in results_infos[0]
+
+
 def _my_func():
     print('output from function')
 
@@ -285,6 +310,7 @@ def test_no_default_session():
         execute(b, show_progress=False)
 
     np.testing.assert_array_equal(fetch(b), raw + 1)
+    fetch_infos(b, fields=None)
     assert get_default_async_session() is not None
     stop_server()
     assert get_default_async_session() is None
@@ -452,7 +478,7 @@ def test_load_third_party_modules(cleanup_third_party_modules_output):  # noqa: 
     assert session._session.client.web_address is None
 
     with session:
-        # 1 supervisor, 1 worker main pool, 2 worker sub pools.
+        # 1 main pool, 3 sub pools(2 worker + 1 io).
         assert len(get_output_filenames()) == 4
 
     session.stop_server()

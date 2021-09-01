@@ -8,26 +8,30 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.8.0a1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-16 21:57+0800\n"
+"POT-Creation-Date: 2021-08-29 00:57+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.1\n"
+"Generated-By: Babel 2.8.0\n"
 
 #: ../../source/user_guide/contrib/dask.rst:5
-msgid "Dask on Mars"
-msgstr "Dask on Mars"
+msgid "DASK on Mars"
+msgstr "DASK on Mars"
 
 #: ../../source/user_guide/contrib/dask.rst:7
+msgid "New in version 0.8.0a2"
+msgstr "自 0.8.0a2 起支持"
+
+#: ../../source/user_guide/contrib/dask.rst:9
 msgid ""
 "Dask-on-Mars provides a simple way to execute the entire Dask ecosystem "
 "on top of Mars."
 msgstr "Dask-on-Mars 使得用户能通过简单的 API 调用，在 Mars 中运行大部分 Dask 任务"
 
-#: ../../source/user_guide/contrib/dask.rst:9
+#: ../../source/user_guide/contrib/dask.rst:11
 msgid ""
 "`Dask <https://dask.org/>`__ is a flexible library for parallel computing"
 " in Python, geared towards scaling analytics and scientific computing "
@@ -38,7 +42,7 @@ msgstr ""
 "`Dask <https://dask.org/>`__ 是一个用于并行计算的 Python 库，旨在为大规模"
 "数据的分析和科学计算提供并行的计算解决方案。"
 
-#: ../../source/user_guide/contrib/dask.rst:15
+#: ../../source/user_guide/contrib/dask.rst:17
 msgid ""
 "For execution on Mars, you should *not* use the `Dask.distributed "
 "<https://distributed.dask.org/en/latest/quickstart.html>`__ client, "
@@ -48,11 +52,11 @@ msgstr ""
 "distributed.dask.org/en/latest/quickstart.html>`__ 相关特性，只需使用普通"
 "的 Dask 特性和功能"
 
-#: ../../source/user_guide/contrib/dask.rst:20
+#: ../../source/user_guide/contrib/dask.rst:22
 msgid "Scheduler"
 msgstr "使用 Dask 调度器"
 
-#: ../../source/user_guide/contrib/dask.rst:22
+#: ../../source/user_guide/contrib/dask.rst:24
 msgid ""
 "The main API for Dask-on-Mars is :meth:`mars.contrib.dask.mars_scheduler`"
 ". It uses Dask’s scheduler API, which allows you to specify any callable"
@@ -63,11 +67,15 @@ msgstr ""
 "兼容了 Dask 的 scheduler 接口，这使得用户可以直接指定使用 mars_scheduler "
 "来调度执行 Dask 任务。"
 
-#: ../../source/user_guide/contrib/dask.rst:39
+#: ../../source/user_guide/contrib/dask.rst:40
+msgid "You can also set Mars scheduler as default one."
+msgstr "也可以把 Mars 的调度器设置为默认。"
+
+#: ../../source/user_guide/contrib/dask.rst:49
 msgid "Convert Dask Collections"
 msgstr "将 Dask 任务转变为 Mars 任务"
 
-#: ../../source/user_guide/contrib/dask.rst:41
+#: ../../source/user_guide/contrib/dask.rst:51
 msgid ""
 ":meth:`mars.contrib.dask.convert_dask_collection` can be used when user "
 "needs to manipulate dask collections with :ref:`Mars remote API <remote>`"
@@ -80,7 +88,7 @@ msgstr ""
 "将 Dask 任务转变为 Mars 任务。这一函数返回的 Mars 对象与 :meth:`mars."
 "remote.spawn` 返回的对象类型一致。"
 
-#: ../../source/user_guide/contrib/dask.rst:63
+#: ../../source/user_guide/contrib/dask.rst:73
 msgid ""
 "Dask-on-Mars is an ongoing project. Please open an issue if you find that"
 " one of these dask functionalities doesn’t run on Mars."

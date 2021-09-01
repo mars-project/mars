@@ -16,10 +16,10 @@ import numpy as np
 import pytest
 from sklearn.metrics import accuracy_score as sklearn_accuracy_score
 
-import mars.tensor as mt
-from mars.learn.metrics import accuracy_score
-from mars.learn.metrics._classification import _check_targets
-from mars.lib.sparse import SparseNDArray
+from .... import tensor as mt
+from ....lib.sparse import SparseNDArray
+from .. import accuracy_score
+from .._classification import _check_targets
 
 
 IND = 'multilabel-indicator'

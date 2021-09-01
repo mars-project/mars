@@ -19,13 +19,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.oscar as mo
-from mars.serialization import AioDeserializer, AioSerializer
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.cluster import MockClusterAPI
-from mars.services.storage import StorageAPI
-from mars.storage import StorageLevel
-from mars.tests.core import require_cudf, require_cupy
+from .... import oscar as mo
+from ....serialization import AioDeserializer, AioSerializer
+from ....storage import StorageLevel
+from ....tests.core import require_cudf, require_cupy
+from ... import start_services, stop_services, NodeRole
+from ...cluster import MockClusterAPI
+from .. import StorageAPI
 
 _is_windows = sys.platform.lower().startswith('win')
 
@@ -179,3 +179,7 @@ async def test_storage_service_with_cuda(actor_pools_with_gpu):
     get_data2 = await storage_api.get('mock_cudf_key')
     assert isinstance(get_data2, cudf.DataFrame)
     cudf.testing.assert_frame_equal(data2, get_data2)
+
+    await MockClusterAPI.cleanup(worker_pool.external_address)
+    await stop_services(
+        NodeRole.WORKER, config, address=worker_pool.external_address)

@@ -15,8 +15,8 @@
 import numpy as np
 import pandas as pd
 
-from mars.core import tile
-from mars.dataframe import DataFrame
+from ....core import tile
+from ... import DataFrame
 
 
 def test_to_csv():

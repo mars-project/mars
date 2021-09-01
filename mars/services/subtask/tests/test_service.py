@@ -18,18 +18,18 @@ import time
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-import mars.tensor as mt
-import mars.remote as mr
-from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services import start_services, NodeRole
-from mars.services.meta import MetaAPI
-from mars.services.session import SessionAPI
-from mars.services.storage import MockStorageAPI
-from mars.services.subtask import SubtaskAPI, Subtask, SubtaskResult
-from mars.services.task import new_task_id
-from mars.services.task.supervisor.manager import TaskManagerActor
-from mars.utils import Timer
+from .... import oscar as mo
+from .... import tensor as mt
+from .... import remote as mr
+from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ....utils import Timer
+from ... import start_services, stop_services, NodeRole
+from ...meta import MetaAPI
+from ...session import SessionAPI
+from ...storage import MockStorageAPI
+from ...task import new_task_id
+from ...task.supervisor.manager import TaskManagerActor
+from .. import SubtaskAPI, Subtask, SubtaskResult
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -146,3 +146,7 @@ async def test_subtask_service(actor_pools):
     assert timer.duration < 2
 
     await MockStorageAPI.cleanup(worker_pool.external_address)
+    await stop_services(
+        NodeRole.WORKER, config, address=worker_pool.external_address)
+    await stop_services(
+        NodeRole.SUPERVISOR, config, address=sv_pool.external_address)

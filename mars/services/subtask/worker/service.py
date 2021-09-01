@@ -14,7 +14,7 @@
 
 from .... import oscar as mo
 from ...core import AbstractService
-from .manager import SubtaskManagerActor
+from .manager import SubtaskRunnerManagerActor
 
 
 class SubtaskWorkerService(AbstractService):
@@ -32,11 +32,11 @@ class SubtaskWorkerService(AbstractService):
     async def start(self):
         subtask_config = self._config.get('subtask', dict())
         subtask_processor_cls = subtask_config.get('subtask_processor_cls')
-        await mo.create_actor(SubtaskManagerActor,
+        await mo.create_actor(SubtaskRunnerManagerActor,
                               subtask_processor_cls=subtask_processor_cls,
                               address=self._address,
-                              uid=SubtaskManagerActor.default_uid())
+                              uid=SubtaskRunnerManagerActor.default_uid())
 
     async def stop(self):
         await mo.destroy_actor(mo.create_actor_ref(
-            uid=SubtaskManagerActor.default_uid(), address=self._address))
+            uid=SubtaskRunnerManagerActor.default_uid(), address=self._address))

@@ -17,11 +17,11 @@ import scipy.sparse as sps
 import pytest
 from sklearn.metrics import euclidean_distances as sk_euclidean_distances
 
-from mars import tensor as mt
-from mars.config import option_context
-from mars.lib.sparse import SparseNDArray
-from mars.learn.metrics import euclidean_distances
-from mars.learn.utils import check_array
+from ..... import tensor as mt
+from .....config import option_context
+from .....lib.sparse import SparseNDArray
+from ....utils import check_array
+from ... import euclidean_distances
 
 
 def test_euclidean_distances_op():

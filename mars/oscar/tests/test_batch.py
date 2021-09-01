@@ -19,7 +19,7 @@ import sys
 
 import pytest
 
-from mars.oscar.batch import extensible, build_args_binder
+from ..batch import extensible, build_args_binder
 
 
 def _wrap_async(use_async):

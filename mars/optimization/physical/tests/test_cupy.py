@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mars.tensor as mt
-from mars.core import enter_mode, TileableGraph, \
+from .... import tensor as mt
+from ....core import enter_mode, TileableGraph, \
     TileableGraphBuilder, ChunkGraphBuilder
-from mars.optimization.physical.cupy import CupyRuntimeOptimizer
+from ..cupy import CupyRuntimeOptimizer
 
 
 @enter_mode(build=True)

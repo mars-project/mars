@@ -104,10 +104,23 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         res = await oscar_api.get_task_result(task_id)
         self.write(json.dumps(_json_serial_task_result(res)))
 
-    @web_api('(?P<task_id>[^/]+)' + '/tileable_graph', method='get', arg_filter={'action': 'get_tileable_graph_as_json'})
-    async def get_tileable_graph_dict_by_task_id(self, session_id: str, task_id: str):
+    @web_api('(?P<task_id>[^/]+)/tileable_graph', method='get',
+             arg_filter={'action': 'get_tileable_graph_as_json'})
+    async def get_tileable_graph_as_json(self, session_id: str, task_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
-        res = await oscar_api.get_tileable_graph_dict_by_task_id(task_id)
+        res = await oscar_api.get_tileable_graph_as_json(task_id)
+        self.write(json.dumps(res))
+
+    @web_api('(?P<task_id>[^/]+)/tileable_detail', method='get')
+    async def get_tileable_details(self, session_id: str, task_id: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_details(task_id)
+        self.write(json.dumps(res))
+
+    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtasks', method='get')
+    async def get_tileable_subtasks(self, session_id: str, task_id: str, tileable_id: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_subtasks(task_id, tileable_id)
         self.write(json.dumps(res))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
@@ -210,8 +223,18 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         await self._request_url(path=path, method='DELETE')
 
-    async def get_tileable_graph_dict_by_task_id(self, task_id: str):
+    async def get_tileable_graph_as_json(self, task_id: str):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileable_graph'
         params = dict(action='get_tileable_graph_as_json')
         res = await self._request_url(path=path, params=params, method='GET')
+        return json.loads(res.body.decode())
+
+    async def get_tileable_details(self, task_id: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/tileable_detail'
+        res = await self._request_url(path=path, method='GET')
+        return json.loads(res.body.decode())
+
+    async def get_tileable_subtasks(self, task_id: str, tileable_id: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtasks'
+        res = await self._request_url(path=path, method='GET')
         return json.loads(res.body.decode())

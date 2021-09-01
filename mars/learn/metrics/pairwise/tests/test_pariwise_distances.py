@@ -19,9 +19,9 @@ from sklearn.neighbors import NearestNeighbors as SkNearestNeighbors
 from sklearn.exceptions import DataConversionWarning
 from sklearn.utils._testing import assert_warns
 
-from mars import tensor as mt
-from mars.learn.metrics import pairwise_distances, pairwise_distances_topk
-from mars.session import execute, fetch
+from ..... import tensor as mt
+from .....session import execute, fetch
+from ... import pairwise_distances, pairwise_distances_topk
 
 
 def test_pairwise_distances_execution(setup):

@@ -22,8 +22,8 @@ from typing import List
 
 import pytest
 
-import mars.oscar as mo
-from mars.oscar.debug import reload_debug_opts_from_env, get_debug_options
+from ..... import oscar as mo
+from ....debug import reload_debug_opts_from_env, get_debug_options
 
 
 class DebugActor(mo.Actor):

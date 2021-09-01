@@ -14,11 +14,11 @@
 
 import pytest
 
-import mars.oscar as mo
-from mars.services import start_services, NodeRole
-from mars.services.session.api import SessionAPI
-from mars.services.meta.api import MetaAPI
-from mars.services.meta.supervisor import MetaSupervisorService
+from .... import oscar as mo
+from ... import start_services, stop_services, NodeRole
+from ...session.api import SessionAPI
+from ..api import MetaAPI
+from ..supervisor import MetaSupervisorService
 
 
 @pytest.mark.asyncio
@@ -53,3 +53,6 @@ async def test_meta_service():
 
         # test alru_cache
         assert await MetaAPI.create(session_id, pool.external_address) is meta_api
+
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)

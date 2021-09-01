@@ -21,6 +21,7 @@ from collections import namedtuple
 from typing import Any, Callable, Coroutine, Dict, Type
 from urllib.parse import urlparse
 
+from ....serialization import serialize, deserialize
 from ....utils import implements, classproperty
 from ....utils import lazy_import
 from ...debug import debug_async_timeout
@@ -28,7 +29,6 @@ from ...errors import ServerClosed
 from ..communication.base import Channel, ChannelType, Server, Client
 from ..communication.core import register_client, register_server
 from ..communication.errors import ChannelClosed
-from mars.serialization import serialize, deserialize
 
 ray = lazy_import("ray")
 logger = logging.getLogger(__name__)

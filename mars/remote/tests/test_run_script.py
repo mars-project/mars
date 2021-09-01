@@ -17,9 +17,9 @@ from io import BytesIO
 
 import pytest
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.remote import run_script
+from ... import tensor as mt
+from ... import dataframe as md
+from .. import run_script
 
 
 script1 = b"""

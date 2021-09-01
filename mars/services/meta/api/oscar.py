@@ -61,50 +61,6 @@ class MetaAPI(AbstractMetaAPI):
 
         return MetaAPI(session_id, meta_store_ref)
 
-    @classmethod
-    async def create_session(cls,
-                             session_id: str,
-                             address: str) -> "MetaAPI":
-        """
-        Creating a new meta store for the session, and return meta API.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-
-        Returns
-        -------
-        meta_api
-            Meta API.
-        """
-        # get MetaStoreManagerActor ref.
-        meta_store_manager_ref = await mo.actor_ref(
-            address, MetaStoreManagerActor.default_uid())
-        meta_store_ref = \
-            await meta_store_manager_ref.new_session_meta_store(session_id)
-        return MetaAPI(session_id, meta_store_ref)
-
-    @classmethod
-    async def destroy_session(cls,
-                              session_id: str,
-                              address: str):
-        """
-        Destroy a session.
-
-        Parameters
-        ----------
-        session_id : str
-            Session ID.
-        address : str
-            Supervisor address.
-        """
-        meta_store_ref = await mo.actor_ref(
-            address, MetaStoreActor.gen_uid(session_id))
-        return await mo.destroy_actor(meta_store_ref)
-
     @mo.extensible
     async def set_tileable_meta(self,
                                 tileable,
@@ -223,6 +179,23 @@ class MetaAPI(AbstractMetaAPI):
             add_chunk_bands_tasks.append(
                 self._meta_store.add_chunk_bands.delay(*args, **kwargs))
         return await self._meta_store.add_chunk_bands.batch(*add_chunk_bands_tasks)
+
+    @mo.extensible
+    async def remove_chunk_bands(self,
+                                 object_id: str,
+                                 bands: List[BandType]):
+        return await self._meta_store.remove_chunk_bands(object_id, bands)
+
+    @remove_chunk_bands.batch
+    async def batch_remove_chunk_bands(self, args_list, kwargs_list):
+        remove_chunk_bands_tasks = []
+        for args, kwargs in zip(args_list, kwargs_list):
+            remove_chunk_bands_tasks.append(self._meta_store.remove_chunk_bands.delay(*args, **kwargs))
+        return await self._meta_store.remove_chunk_bands.batch(*remove_chunk_bands_tasks)
+
+    @mo.extensible
+    async def get_band_chunks(self, band: BandType) -> List[str]:
+        return await self._meta_store.get_band_chunks(band)
 
 
 class MockMetaAPI(MetaAPI):

@@ -1,8 +1,10 @@
-.. _dask:
+.. _integrate_dask:
 
 ============
-Dask on Mars
+DASK on Mars
 ============
+
+.. Note:: New in version 0.8.0a2
 
 Dask-on-Mars provides a simple way to execute the entire Dask ecosystem on top of Mars.
 
@@ -34,6 +36,14 @@ scheduler that you would like Dask to use to execute your workload.
    >>> dask_task = dask.delayed(inc)(1)
    >>> dask_task.compute(scheduler=mars_scheduler) # Run delayed object on top of Mars
    2
+
+You can also set Mars scheduler as default one.
+
+.. code-block:: python
+
+   >>> import dask
+   >>> from mars.contrib.dask import mars_scheduler
+   >>> dask.config.set(scheduler=mars_scheduler)
 
 Convert Dask Collections
 ------------------------

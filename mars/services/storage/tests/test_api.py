@@ -19,18 +19,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.oscar as mo
-import mars.tensor as mt
-from mars.core import tile
-from mars.serialization import AioDeserializer, AioSerializer
-from mars.services.cluster import MockClusterAPI
-from mars.services.meta import MockMetaAPI
-from mars.services.session import MockSessionAPI
-from mars.services.storage.api import MockStorageAPI, WebStorageAPI
-from mars.services.web import WebActor
-from mars.storage import StorageLevel
-from mars.tests.core import require_ray
-from mars.utils import get_next_port
+from .... import oscar as mo
+from .... import tensor as mt
+from ....core import tile
+from ....serialization import AioDeserializer, AioSerializer
+from ....storage import StorageLevel
+from ....tests.core import require_ray
+from ....utils import get_next_port
+from ...cluster import MockClusterAPI
+from ...meta import MockMetaAPI
+from ...session import MockSessionAPI
+from ...web import WebActor
+from ..api import MockStorageAPI, WebStorageAPI
 
 try:
     import vineyard
@@ -123,10 +123,12 @@ async def test_storage_mock_api(ray_start_regular, storage_configs):
 
         pd.testing.assert_frame_equal(value2, read_value)
 
+        await MockStorageAPI.cleanup(pool.external_address)
+
 
 @pytest.mark.asyncio
 async def test_web_storage_api():
-    from mars.services.storage.api.web import StorageWebAPIHandler
+    from ..api.web import StorageWebAPIHandler
 
     tempdir = tempfile.mkdtemp()
     start_method = 'fork' if sys.platform != 'win32' else None
@@ -171,3 +173,6 @@ async def test_web_storage_api():
         sliced_value = await web_storage_api.get(
             t.chunks[0].key, conditions=[slice(3, 5), slice(None, None)])
         np.testing.assert_array_equal(value[3:5, :], sliced_value)
+
+        await MockStorageAPI.cleanup(pool.external_address)
+        await MockClusterAPI.cleanup(pool.external_address)

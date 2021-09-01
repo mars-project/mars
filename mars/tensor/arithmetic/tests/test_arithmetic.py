@@ -18,15 +18,15 @@ import numpy as np
 import pytest
 import scipy.sparse as sps
 
-from mars.core import enter_mode, tile
-from mars.tensor.datasource import array, ones, tensor, empty
-from mars.tensor.fetch import TensorFetch
-from mars.tensor.arithmetic import add, subtract, truediv, log, frexp, \
+from ....core import enter_mode, tile
+from ...datasource import array, ones, tensor, empty
+from ...fetch import TensorFetch
+from ...linalg import matmul
+from ...core import Tensor, SparseTensor
+from .. import add, subtract, truediv, log, frexp, \
     around, isclose, isfinite, negative, cos, tree_add, tree_multiply, \
     TensorAdd, TensorTreeAdd, TensorTreeMultiply, TensorSubtract, \
     TensorLog, TensorIsclose, TensorGreaterThan
-from mars.tensor.linalg import matmul
-from mars.tensor.core import Tensor, SparseTensor
 
 
 def test_add():

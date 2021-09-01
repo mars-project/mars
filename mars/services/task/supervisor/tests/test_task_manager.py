@@ -23,23 +23,23 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-import mars.oscar as mo
-import mars.remote as mr
-import mars.tensor as mt
-from mars.core import Tileable, TileableGraph, TileableGraphBuilder
-from mars.oscar.backends.allocate_strategy import MainPool
-from mars.services.cluster import MockClusterAPI
-from mars.services.lifecycle import MockLifecycleAPI
-from mars.services.meta import MockMetaAPI
-from mars.services.scheduling import MockSchedulingAPI
-from mars.services.session import MockSessionAPI
-from mars.services.storage import StorageAPI, MockStorageAPI
-from mars.services.subtask import MockSubtaskAPI
-from mars.services.task.core import TaskStatus, TaskResult
-from mars.services.task.supervisor.manager import \
-    TaskConfigurationActor, TaskManagerActor
-from mars.utils import Timer, merge_chunks
+from ..... import dataframe as md
+from ..... import oscar as mo
+from ..... import remote as mr
+from ..... import tensor as mt
+from .....core import Tileable, TileableGraph, TileableGraphBuilder
+from .....oscar.backends.allocate_strategy import MainPool
+from .....storage import StorageLevel
+from .....utils import Timer, merge_chunks
+from ....cluster import MockClusterAPI
+from ....lifecycle import MockLifecycleAPI
+from ....meta import MockMetaAPI
+from ....scheduling import MockSchedulingAPI
+from ....session import MockSessionAPI
+from ....storage import StorageAPI, MockStorageAPI
+from ....subtask import MockSubtaskAPI
+from ...core import TaskStatus, TaskResult
+from ..manager import TaskConfigurationActor, TaskManagerActor
 
 
 @pytest.fixture
@@ -70,10 +70,11 @@ async def actor_pool():
                                         uid=TaskManagerActor.gen_uid(session_id),
                                         address=pool.external_address,
                                         allocate_strategy=MainPool())
-
-        yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
-
-        await MockStorageAPI.cleanup(pool.external_address)
+        try:
+            yield pool, session_id, meta_api, lifecycle_api, storage_api, manager
+        finally:
+            await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 async def _merge_data(fetch_tileable: Tileable,
@@ -283,7 +284,6 @@ async def test_shuffle(actor_pool):
     assert len(ref_counts) == 0
 
     # test if exists in storage
-    from mars.storage import StorageLevel
     assert len(await storage_api.list(level=StorageLevel.MEMORY)) == 0
 
 

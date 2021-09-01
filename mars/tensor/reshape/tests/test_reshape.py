@@ -17,10 +17,10 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.tensor.datasource import ones
-from mars.tensor.reshape.reshape import TensorReshape
+from ....core import tile
+from ....core.operand import OperandStage
+from ...datasource import ones
+from ..reshape import TensorReshape
 
 
 def test_reshape():

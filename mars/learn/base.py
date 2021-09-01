@@ -43,13 +43,68 @@ class ClassifierMixin:
 
         Returns
         -------
-        score : float
+        score : Tensor
             Mean accuracy of self.predict(X) wrt. y.
         """
         from .metrics import accuracy_score
         result = accuracy_score(y, self.predict(X), sample_weight=sample_weight,
                                 session=session, run_kwargs=run_kwargs)
         return result
+
+
+class RegressorMixin:
+    """Mixin class for all regression estimators in scikit-learn."""
+    _estimator_type = "regressor"
+
+    def score(self, X, y, sample_weight=None):
+        """Return the coefficient of determination :math:`R^2` of the
+        prediction.
+
+        The coefficient :math:`R^2` is defined as :math:`(1 - \\frac{u}{v})`,
+        where :math:`u` is the residual sum of squares ``((y_true - y_pred)
+        ** 2).sum()`` and :math:`v` is the total sum of squares ``((y_true -
+        y_true.mean()) ** 2).sum()``. The best possible score is 1.0 and it
+        can be negative (because the model can be arbitrarily worse). A
+        constant model that always predicts the expected value of `y`,
+        disregarding the input features, would get a :math:`R^2` score of
+        0.0.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples. For some estimators this may be a precomputed
+            kernel matrix or a list of generic objects instead with shape
+            ``(n_samples, n_samples_fitted)``, where ``n_samples_fitted``
+            is the number of samples used in the fitting for the estimator.
+
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True values for `X`.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights.
+
+        Returns
+        -------
+        score : Tensor
+            :math:`R^2` of ``self.predict(X)`` wrt. `y`.
+
+        Notes
+        -----
+        The :math:`R^2` score used when calling ``score`` on a regressor uses
+        ``multioutput='uniform_average'`` from version 0.23 to keep consistent
+        with default value of :func:`~sklearn.metrics.r2_score`.
+        This influences the ``score`` method of all the multioutput
+        regressors (except for
+        :class:`~sklearn.multioutput.MultiOutputRegressor`).
+        """
+
+        from .metrics import r2_score
+
+        y_pred = self.predict(X)
+        return r2_score(y, y_pred, sample_weight=sample_weight)
+
+    def _more_tags(self):  # noqa: R0201  # pylint: disable=no-self-use
+        return {'requires_y': True}
 
 
 class BaseEstimator(SklearnBaseEstimator):
@@ -91,6 +146,9 @@ class BaseEstimator(SklearnBaseEstimator):
                     f"This {type(self).__name__} estimator requires y to be passed, "
                     "but the target y is None."
                 )
+            X = check_array(X, **check_params)
+            out = X
+        elif isinstance(y, str) and y == 'no_validation':
             X = check_array(X, **check_params)
             out = X
         else:  # pragma: no cover

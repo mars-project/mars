@@ -16,15 +16,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.core import tile
-from mars.tensor.core import TENSOR_CHUNK_TYPE, TENSOR_TYPE, Tensor
-from mars.dataframe.core import SERIES_CHUNK_TYPE, SERIES_TYPE, Series, \
+from .... import dataframe as md
+from .... import tensor as mt
+from ....core import tile
+from ....tensor.core import TENSOR_CHUNK_TYPE, TENSOR_TYPE, Tensor
+from ...core import SERIES_CHUNK_TYPE, SERIES_TYPE, Series, \
     DATAFRAME_TYPE, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
+from ..iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
     IndexingError, HeadTailOptimizedOperandMixin
-from mars.dataframe.indexing.loc import DataFrameLocGetItem
+from ..loc import DataFrameLocGetItem
 
 
 def test_set_index():

@@ -18,11 +18,11 @@ import sys
 import pytest
 from tornado import httpclient
 
-import mars.oscar as mo
-from mars.services.web import WebActor, web_api, MarsServiceWebAPIHandler, \
+from .... import oscar as mo
+from ....utils import get_next_port
+from .. import WebActor, web_api, MarsServiceWebAPIHandler, \
     MarsWebAPIClientMixin
-from mars.services.web.api.web import MarsApiEntryHandler
-from mars.utils import get_next_port
+from ..api.web import MarsApiEntryHandler
 
 
 class TestAPIHandler(MarsServiceWebAPIHandler):

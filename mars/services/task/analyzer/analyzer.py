@@ -263,15 +263,17 @@ class GraphAnalyzer:
         # assign expect workers
         cur_assigns = {op.key: self._to_band(op.expect_worker)
                        for op in start_ops if op.expect_worker is not None}
-        logger.info('Start to assign %s start chunks.', len(start_ops))
+        logger.debug('Start to assign %s start chunks for task %s',
+                     len(start_ops), self._task.task_id)
         chunk_to_bands = assigner.assign(cur_assigns=cur_assigns)
-        logger.info('Assigned %s start chunks.', len(start_ops))
+        logger.debug('Assigned %s start chunks for task %s',
+                     len(start_ops), self._task.task_id)
 
         # fuse node
         if self._fuse_enabled:
-            logger.info('Start to fuse chunks.')
+            logger.debug('Start to fuse chunks for task %s', self._task.task_id)
             chunk_to_bands = self._fuse(chunk_to_bands)
-            logger.info('Fused chunks.')
+            logger.debug('Chunks fused for task %s', self._task.task_id)
 
         subtask_graph = SubtaskGraph()
         chunk_to_priorities = dict()

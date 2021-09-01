@@ -76,6 +76,22 @@ Matrix Decomposition
    decomposition.PCA
    decomposition.TruncatedSVD
 
+.. _ensemble_ref:
+
+Ensemble Methods
+================
+
+.. automodule:: mars.learn.metrics
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   ensemble.BlockwiseVotingClassifier
+   ensemble.BlockwiseVotingRegressor
 
 .. _metrics_ref:
 
@@ -98,6 +114,15 @@ Classification metrics
    metrics.auc
    metrics.roc_curve
 
+Regression metrics
+------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   metrics.r2_score
+
+
 Pairwise metrics
 ----------------
 
@@ -117,6 +142,21 @@ Pairwise metrics
    metrics.pairwise.manhattan_distances
    metrics.pairwise.rbf_kernel
    metrics.pairwise_distances
+
+.. _modelselection_ref:
+
+Model Selection
+===============
+
+Splitter Classes
+----------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   model_selection.KFold
 
 Splitter Functions
 ------------------
@@ -225,7 +265,7 @@ LightGBM Integration
 PyTorch Integration
 ======================
 
-.. automodule:: mars.learn.contrib.tensorflow
+.. automodule:: mars.learn.contrib.pytorch
    :no-members:
    :no-inherited-members:
 
@@ -236,8 +276,10 @@ PyTorch Integration
 
    contrib.pytorch.run_pytorch_script
    contrib.pytorch.MarsDataset
-   contrib.pytorch.MarsDistributedSampler
-   contrib.pytorch.MarsRandomSampler
+   contrib.pytorch.SequentialSampler
+   contrib.pytorch.RandomSampler
+   contrib.pytorch.SubsetRandomSampler
+   contrib.pytorch.DistributedSampler
 
 .. _statsmodels_ref:
 
@@ -271,6 +313,7 @@ TensorFlow Integration
    :toctree: generated/
 
    contrib.tensorflow.run_tensorflow_script
+   contrib.tensorflow.gen_tensorflow_dataset
 
 .. _xgboost_ref:
 

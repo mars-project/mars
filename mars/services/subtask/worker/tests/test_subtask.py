@@ -20,23 +20,23 @@ import time
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-import mars.tensor as mt
-import mars.remote as mr
-from mars.core.context import get_context
-from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services.cluster import MockClusterAPI
-from mars.services.lifecycle import MockLifecycleAPI
-from mars.services.meta import MockMetaAPI
-from mars.services.scheduling import MockSchedulingAPI
-from mars.services.session import MockSessionAPI
-from mars.services.storage import MockStorageAPI
-from mars.services.subtask import Subtask, SubtaskStatus, SubtaskResult
-from mars.services.subtask.worker.manager import SubtaskManagerActor
-from mars.services.subtask.worker.runner import SubtaskRunnerActor, SubtaskRunnerRef
-from mars.services.task import new_task_id
-from mars.services.task.supervisor.manager import TaskManagerActor, TaskConfigurationActor
-from mars.utils import Timer
+from ..... import oscar as mo
+from ..... import tensor as mt
+from ..... import remote as mr
+from .....core.context import get_context
+from .....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from .....utils import Timer
+from ....cluster import MockClusterAPI
+from ....lifecycle import MockLifecycleAPI
+from ....meta import MockMetaAPI
+from ....scheduling import MockSchedulingAPI
+from ....session import MockSessionAPI
+from ....storage import MockStorageAPI
+from ....task import new_task_id
+from ....task.supervisor.manager import TaskManagerActor, TaskConfigurationActor
+from ... import Subtask, SubtaskStatus, SubtaskResult
+from ...worker.manager import SubtaskRunnerManagerActor
+from ...worker.runner import SubtaskRunnerActor, SubtaskRunnerRef
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -72,13 +72,14 @@ async def actor_pool():
             uid=FakeTaskManager.gen_uid(session_id),
             address=pool.external_address)
         manager = await mo.create_actor(
-            SubtaskManagerActor, None,
-            uid=SubtaskManagerActor.default_uid(),
+            SubtaskRunnerManagerActor, None,
+            uid=SubtaskRunnerManagerActor.default_uid(),
             address=pool.external_address)
-
-        yield pool, session_id, meta_api, storage_api, manager
-
-        await MockStorageAPI.cleanup(pool.external_address)
+        try:
+            yield pool, session_id, meta_api, storage_api, manager
+        finally:
+            await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)
 
 
 def _gen_subtask(t, session_id):

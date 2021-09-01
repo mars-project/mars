@@ -222,9 +222,10 @@ Apache Software Foundation License 2.0
 - kubernetes-client:11.0.0
 - async_generator:1.10
 - dataclasses:0.8
-- vineyard:0.1.2
+- vineyard:0.2.7
 - ray:1.4.0
 - uvloop:0.15.2
+- oss2:2.12.0
 
 
 BSD 3-Clause
@@ -263,6 +264,13 @@ MIT License
 - react-router-dom:5.2.0
 - material-ui:4.0.0
 - lodash:4.17.0
+- dagre-d3:0.6.4
+
+
+ISC License
+-----------
+
+- d3:7.0.0
 
 
 CC0 1.0 Universal (CC0 1.0)

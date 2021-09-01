@@ -35,16 +35,16 @@ try:
 except ImportError:  # pragma: no cover
     sqlalchemy = None
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.config import option_context
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
-from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
-from mars.dataframe.datasource.from_records import from_records
-from mars.tests.core import require_cudf
-from mars.utils import arrow_array_to_objects
+from .... import tensor as mt
+from .... import dataframe as md
+from ....config import option_context
+from ....tests.core import require_cudf
+from ....utils import arrow_array_to_objects
+from ..dataframe import from_pandas as from_pandas_df
+from ..series import from_pandas as from_pandas_series
+from ..index import from_pandas as from_pandas_index, from_tileable
+from ..from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
+from ..from_records import from_records
 
 
 def test_from_pandas_dataframe_execution(setup):
