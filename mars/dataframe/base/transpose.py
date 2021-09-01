@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-import pandas as pd
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import OutputType
 from ..utils import parse_index
+from ...core.operand import OperandStage
 
 
 def reverse(x):
@@ -30,11 +30,12 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         super().__init__(**kw)
         self.output_types = [OutputType.dataframe]
 
-    def __call__(self, arg):
+    def __call__(self, args):
+        arg = args[0]
         new_shape = arg.shape[::-1]
         dtypes = arg.dtypes
         columns_value = arg.index_value
-        index_value = parse_index(dtypes.index, store_data=True)
+        index_value = parse_index(dtypes.index)
         return self.new_dataframe([arg], shape=new_shape, dtypes=dtypes,
                                   columns_value=columns_value, index_value=index_value)
 
@@ -43,6 +44,7 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
+            chunk_op.stage = OperandStage.map
             chunk_shape = tuple(s if np.isnan(s) else int(s)
                                 for s in reverse(c.shape))
             chunk_idx = reverse(c.index)
@@ -67,7 +69,7 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         ctx[op.outputs[0].key] = out
 
 
-def transpose(arg):
+def transpose(*args):
     """
             Transpose index and columns.
 
@@ -165,4 +167,4 @@ def transpose(arg):
             dtype: object
             """
     op = DataFrameTranspose()
-    return op(arg)
+    return op(args)

@@ -34,6 +34,9 @@ from mars.dataframe.datasource.index import from_pandas as from_pandas_index
 from mars.tensor import tensor
 from mars.tests.core import require_cudf
 from mars.utils import lazy_import
+from ....tensor import arange
+from ....dataframe import DataFrame
+from ....tensor.random import rand
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -880,6 +883,31 @@ def test_transpose_execution(setup):
     # test multi chunks
     df = from_pandas_df(raw, chunk_size=2)
     result = df.T.execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # dtypes are varied
+    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": [5, -6, 7], "c": [1, 2, 3]})
+
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": ['5', '-6', '7']})
+
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # Transposing from results of other operands
+    raw = pd.DataFrame(np.arange(0, 100).reshape(10, 10))
+
+    df = DataFrame(arange(0, 100, chunk_size=5).reshape(10, 10))
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    df = DataFrame(rand(100, 100, chunk_size=10))
+    raw = df.to_pandas()
+    result = df.transpose().execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
 
 
