@@ -19,12 +19,12 @@ try:
 except ImportError:  # pragma: no cover
     faiss = None
 
-from mars import tensor as mt
-from mars.core import tile
-from mars.learn.neighbors._faiss import build_faiss_index, _load_index, \
+from .... import tensor as mt
+from ....core import tile
+from ....session import execute, fetch
+from .. import NearestNeighbors
+from .._faiss import build_faiss_index, _load_index, \
     faiss_query, _gen_index_string_and_sample_count
-from mars.learn.neighbors import NearestNeighbors
-from mars.session import execute, fetch
 
 
 @pytest.mark.skipif(faiss is None, reason='faiss not installed')

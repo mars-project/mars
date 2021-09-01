@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars import tensor as mt
-from mars.core import recursive_tile
-from mars.tensor.operands import TensorOperand, TensorOperandMixin
-from mars.utils import has_unknown_shape
+from .... import tensor as mt
+from ....tensor.operands import TensorOperand, TensorOperandMixin
+from ....utils import has_unknown_shape
+from ... import recursive_tile
 
 
 class _TestOperand(TensorOperand, TensorOperandMixin):

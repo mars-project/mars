@@ -14,9 +14,6 @@
 
 import pytest
 
-from mars.deploy.oscar.session import new_session, get_default_session
-from mars.learn.contrib.tsfresh import MarsDistributor
-
 try:
     import tsfresh
     from tsfresh import extract_features
@@ -25,6 +22,9 @@ try:
     from tsfresh.utilities.dataframe_functions import impute
 except ImportError:
     tsfresh = None
+
+from .....deploy.oscar.session import new_session, get_default_session
+from .. import MarsDistributor
 
 
 @pytest.mark.skipif(tsfresh is None, reason='tsfresh not installed')

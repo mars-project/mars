@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web import MarsRequestHandler
-
-import mars.oscar as mo
+from ...... import oscar as mo
+from .....web import MarsRequestHandler
 
 
 class TestWebHandler(MarsRequestHandler):

@@ -17,11 +17,11 @@ import os
 
 import pytest
 
-import mars.oscar as mo
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.cluster import ClusterAPI, WorkerSlotInfo, \
-    QuotaInfo, StorageInfo, DiskInfo
-from mars.storage import StorageLevel
+from .... import oscar as mo
+from ....storage import StorageLevel
+from ... import start_services, stop_services, NodeRole
+from .. import ClusterAPI, WorkerSlotInfo, QuotaInfo, \
+    StorageInfo, DiskInfo
 
 
 @pytest.fixture

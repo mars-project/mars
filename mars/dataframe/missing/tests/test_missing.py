@@ -18,9 +18,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-from mars.core import tile
-from mars.core.operand import OperandStage
+from .... import dataframe as md
+from ....core import tile
+from ....core.operand import OperandStage
 
 
 def test_fill_na():

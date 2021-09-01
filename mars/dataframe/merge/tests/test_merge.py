@@ -15,12 +15,12 @@
 import numpy as np
 import pandas as pd
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.dataframe.core import IndexValue
-from mars.dataframe.base.standardize_range_index import ChunkStandardizeRangeIndex
-from mars.dataframe.datasource.dataframe import from_pandas
-from mars.dataframe.merge import DataFrameMergeAlign, DataFrameShuffleMerge, concat
+from ....core import tile
+from ....core.operand import OperandStage
+from ...core import IndexValue
+from ...base.standardize_range_index import ChunkStandardizeRangeIndex
+from ...datasource.dataframe import from_pandas
+from .. import DataFrameMergeAlign, DataFrameShuffleMerge, concat
 
 
 def test_merge():

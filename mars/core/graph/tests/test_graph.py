@@ -14,8 +14,8 @@
 
 import pytest
 
-import mars.tensor as mt
-from mars.core.graph import DAG, GraphContainsCycleError
+from .... import tensor as mt
+from .. import DAG, GraphContainsCycleError
 
 
 def test_dag():

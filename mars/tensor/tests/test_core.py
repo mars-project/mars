@@ -14,8 +14,8 @@
 
 import numpy as np
 
-import mars.tensor as mt
-from mars.core import tile
+from ... import tensor as mt
+from ...core import tile
 
 
 def test_params():

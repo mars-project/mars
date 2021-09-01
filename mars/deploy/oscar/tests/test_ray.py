@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import time
 
@@ -19,16 +20,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.oscar as mo
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.deploy.oscar.ray import new_cluster, _load_config
-from mars.deploy.oscar.session import get_default_session, new_session
-from mars.deploy.oscar.tests import test_local
-from mars.serialization.ray import register_ray_serializers
-from mars.tests.core import require_ray
-from mars.utils import lazy_import
-from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+from .... import oscar as mo
+from .... import tensor as mt
+from .... import dataframe as md
+from ....serialization.ray import register_ray_serializers
+from ....services.scheduling.supervisor.autoscale import AutoscalerActor
+from ....tests.core import require_ray
+from ....utils import lazy_import
+from ..ray import new_cluster, _load_config
+from ..session import get_default_session, new_session
+from ..tests import test_local
+from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
@@ -271,7 +273,6 @@ async def test_auto_scale_out(ray_large_cluster, init_workers: int):
         series_size = 100
         assert md.Series(list(range(series_size)), chunk_size=1).apply(time_consuming).sum().execute().fetch() ==\
                pd.Series(list(range(series_size))).apply(lambda x: x*x).sum()
-        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
         assert await autoscaler_ref.get_dynamic_worker_nums() > 0
@@ -293,7 +294,6 @@ async def test_auto_scale_in(ray_large_cluster):
                                worker_mem=100 * 1024 ** 2,
                                config=config)
     async with client:
-        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
         new_worker_nums = 3
@@ -327,7 +327,6 @@ async def test_ownership_when_scale_in(ray_large_cluster):
                                    'scheduling.autoscale.max_workers': 4
                                })
     async with client:
-        from mars.services.scheduling.supervisor.autoscale import AutoscalerActor
         autoscaler_ref = mo.create_actor_ref(
             uid=AutoscalerActor.default_uid(), address=client._cluster.supervisor_address)
         await asyncio.gather(*[autoscaler_ref.request_worker() for _ in range(2)])

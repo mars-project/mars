@@ -17,8 +17,8 @@ import scipy.sparse as sps
 import pytest
 from sklearn.preprocessing import normalize as sk_normalize
 
-from mars import tensor as mt
-from mars.learn.preprocessing import normalize
+from .... import tensor as mt
+from .. import normalize
 
 
 def test_normalize_op():

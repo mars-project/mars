@@ -17,8 +17,8 @@ from sklearn.datasets import load_iris
 from sklearn.utils import gen_batches
 from sklearn.utils._testing import assert_array_almost_equal, assert_allclose
 
-from mars import tensor as mt
-from mars.learn.preprocessing import MinMaxScaler, minmax_scale
+from .... import tensor as mt
+from .. import MinMaxScaler, minmax_scale
 
 
 def assert_correct_incr(i, batch_start, batch_stop, n, chunk_size,

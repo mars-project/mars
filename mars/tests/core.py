@@ -254,7 +254,7 @@ class ObjectCheckMixin:
                                      % (real_dtype, expected_dtype))
 
     def assert_tensor_consistent(self, expected, real):
-        from mars.lib.sparse import SparseNDArray
+        from ..lib.sparse import SparseNDArray
         np_types = (np.generic, np.ndarray, pd.Timestamp, SparseNDArray)
         if cupy is not None:
             np_types += (cupy.ndarray,)
@@ -324,9 +324,9 @@ class ObjectCheckMixin:
 
     def assert_groupby_consistent(self, expected, real):
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
-        from mars.lib.groupby_wrapper import GroupByWrapper
-        from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
-        from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+        from ..lib.groupby_wrapper import GroupByWrapper
+        from ..dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
+        from ..dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 
         df_groupby_types = (DataFrameGroupBy,)
         series_groupby_types = (SeriesGroupBy,)
@@ -380,12 +380,12 @@ class ObjectCheckMixin:
         self.assert_index_value_consistent(expected.categories_value, real.categories)
 
     def assert_object_consistent(self, expected, real):
-        from mars.tensor.core import TENSOR_TYPE
-        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
+        from ..tensor.core import TENSOR_TYPE
+        from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
             INDEX_TYPE, CATEGORICAL_TYPE
 
-        from mars.tensor.core import TENSOR_CHUNK_TYPE
-        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
+        from ..tensor.core import TENSOR_CHUNK_TYPE
+        from ..dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
             GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
 
         op = getattr(expected, 'op', None)

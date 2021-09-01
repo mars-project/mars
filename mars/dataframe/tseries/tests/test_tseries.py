@@ -15,7 +15,7 @@
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
+from .... import dataframe as md
 
 
 def test_to_datetime():

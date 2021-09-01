@@ -281,6 +281,11 @@ hankel1e = partial(_call_bin, 'hankel1e')
 hankel2 = partial(_call_bin, 'hankel2')
 hankel2e = partial(_call_bin, 'hankel2e')
 
+hyp2f1 = partial(call_sparse, 'hyp2f1')
+hyp1f1 = partial(call_sparse, 'hyp1f1')
+hyperu = partial(call_sparse, 'hyperu')
+hyp0f1 = partial(_call_bin, 'hyp0f1')
+
 
 def equal(a, b, **_):
     try:

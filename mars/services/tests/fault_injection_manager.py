@@ -17,8 +17,8 @@ import os
 import uuid
 from abc import ABC, abstractmethod
 
-from mars.core.base import MarsError
-from mars.services.session import SessionAPI
+from ...core.base import MarsError
+from ..session import SessionAPI
 
 
 class ExtraConfigKey:

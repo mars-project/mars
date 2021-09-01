@@ -20,12 +20,12 @@ import tempfile
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-from mars.services.storage.core import StorageManagerActor, \
-    StorageQuotaActor, build_data_info
-from mars.services.storage.handler import StorageHandlerActor
-from mars.storage import StorageLevel, PlasmaStorage
-from mars.utils import calc_data_size
+from .... import oscar as mo
+from ....storage import StorageLevel, PlasmaStorage
+from ....utils import calc_data_size
+from ..core import StorageManagerActor, StorageQuotaActor, \
+    build_data_info
+from ..handler import StorageHandlerActor
 
 # todo enable this test module when spill support added
 #  on storage quotas

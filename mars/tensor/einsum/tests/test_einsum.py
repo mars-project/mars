@@ -16,9 +16,9 @@
 
 import numpy as np
 
-from mars.core import tile
-from mars.tensor.datasource import tensor
-from mars.tensor import einsum
+from ....core import tile
+from ... import einsum
+from ...datasource import tensor
 
 
 def test_einsum():

@@ -19,13 +19,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.oscar as mo
-from mars.serialization import AioDeserializer, AioSerializer
-from mars.services import start_services, stop_services, NodeRole
-from mars.services.cluster import MockClusterAPI
-from mars.services.storage import StorageAPI
-from mars.storage import StorageLevel
-from mars.tests.core import require_cudf, require_cupy
+from .... import oscar as mo
+from ....serialization import AioDeserializer, AioSerializer
+from ....storage import StorageLevel
+from ....tests.core import require_cudf, require_cupy
+from ... import start_services, stop_services, NodeRole
+from ...cluster import MockClusterAPI
+from .. import StorageAPI
 
 _is_windows = sys.platform.lower().startswith('win')
 

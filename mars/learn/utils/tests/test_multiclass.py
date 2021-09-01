@@ -24,9 +24,9 @@ from sklearn.utils.multiclass import \
     is_multilabel as sklearn_is_multilabel, \
     type_of_target as sklearn_type_of_target
 
-import mars.tensor as mt
-from mars.learn.utils.multiclass import is_multilabel, \
-    unique_labels, type_of_target
+from .... import tensor as mt
+from ..multiclass import is_multilabel, unique_labels, \
+    type_of_target
 
 
 EXAMPLES = {

@@ -14,8 +14,8 @@
 
 import pandas as pd
 
-from mars.dataframe import to_datetime, Series, DataFrame, Index
-from mars.tensor import tensor
+from ....tensor import tensor
+from ... import to_datetime, Series, DataFrame, Index
 
 
 def test_to_datetime_execution(setup):
