@@ -44,7 +44,6 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
-            chunk_op.stage = OperandStage.map
             chunk_shape = tuple(s if np.isnan(s) else int(s)
                                 for s in reverse(c.shape))
             chunk_idx = reverse(c.index)
