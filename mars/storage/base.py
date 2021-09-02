@@ -146,6 +146,18 @@ class StorageBackend(ABC):
             storage level.
         """
 
+    @property
+    @abstractmethod
+    def backend_info() -> dict:
+        """
+        Get the customized backend info of this storage backend.
+
+        Returns
+        -------
+        info: dict
+            Customized storage backend info dict.
+        """
+
     @abstractmethod
     async def get(self, object_id, **kwargs) -> object:
         """

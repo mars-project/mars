@@ -33,6 +33,7 @@ class SubtaskWorkerService(AbstractService):
         subtask_config = self._config.get('subtask', dict())
         subtask_processor_cls = subtask_config.get('subtask_processor_cls')
         await mo.create_actor(SubtaskRunnerManagerActor,
+                              worker_address=self._address,
                               subtask_processor_cls=subtask_processor_cls,
                               address=self._address,
                               uid=SubtaskRunnerManagerActor.default_uid())

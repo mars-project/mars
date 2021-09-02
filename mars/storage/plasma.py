@@ -199,6 +199,11 @@ class PlasmaStorage(StorageBackend):
     def size(self) -> Optional[int]:
         return self._capacity
 
+    @property
+    @implements(StorageBackend.backend_info)
+    def backend_info(self):
+        return {'name': self.name}
+
     def _check_plasma_limit(self, size: int):
         used_size = psutil.disk_usage(self._plasma_directory).used
         total = psutil.disk_usage(self._plasma_directory).total

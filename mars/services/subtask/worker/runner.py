@@ -42,8 +42,10 @@ class SubtaskRunnerActor(mo.Actor):
 
     def __init__(self,
                  band: BandType,
+                 worker_address: str,
                  subtask_processor_cls: Type = None):
         self._band = band
+        self._worker_address = worker_address
         self._subtask_processor_cls = \
             self._get_subtask_processor_cls(subtask_processor_cls)
 
@@ -93,7 +95,7 @@ class SubtaskRunnerActor(mo.Actor):
         if session_id not in self._session_id_to_processors:
             self._session_id_to_processors[session_id] = await mo.create_actor(
                 SubtaskProcessorActor, session_id, self._band,
-                supervisor_address, self._subtask_processor_cls,
+                supervisor_address, self._worker_address, self._subtask_processor_cls,
                 uid=SubtaskProcessorActor.gen_uid(session_id),
                 address=self.address)
         processor = self._session_id_to_processors[session_id]

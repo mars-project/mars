@@ -1,0 +1,186 @@
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import numpy as np
+import pandas as pd
+
+from ... import opcodes as OperandDef
+from ...core import OutputType
+from ...core.operand.base import SchedulingHint
+from ...serialization.serializables import TupleField, StringField
+from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
+from ..operands import DataFrameOperand, DataFrameOperandMixin
+
+try:
+    import vineyard
+    from vineyard.data.dataframe import make_global_dataframe
+    from vineyard.data.utils import to_json
+except ImportError:
+    vineyard = None
+
+
+class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_STORE_VINEYARD_CHUNK
+
+    # vineyard ipc socket
+    _vineyard_socket = StringField('vineyard_socket')
+
+    # vineyard object id
+    _vineyard_object_id = StringField('vineyard_object_id')
+
+    def __init__(self, vineyard_socket=None, dtypes=None, **kw):
+        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes,
+                         _output_types=[OutputType.dataframe], **kw)
+
+    def __call__(self, df):
+        return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
+                                  index_value=df.index_value, columns_value=df.columns_value)
+
+    @property
+    def vineyard_socket(self):
+        return self._vineyard_socket
+
+    @property
+    def vineyard_object_id(self):
+        return self._vineyard_object_id
+
+    @classmethod
+    def _get_out_chunk(cls, op, in_chunk):
+        chunk_op = op.copy().reset_key()
+        out_chunk_shape = (np.nan,) * in_chunk.ndim
+        return chunk_op.new_chunk([in_chunk], shape=out_chunk_shape,
+                                  index=in_chunk.index)
+
+    @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        merge_op = DataFrameToVinyardStoreMeta(
+                vineyard_socket=op.vineyard_socket,
+                chunk_shape=op.inputs[0].chunk_shape,
+                shape=op.inputs[0].shape,
+                dtypes=op.inputs[0].dtypes)
+        return merge_op.new_chunks(out_chunks, shape=(1,),
+                                   index=(0,) * out_chunks[0].ndim)
+
+    @classmethod
+    def tile(cls, op):
+        out_chunks = []
+        scheduling_hint = SchedulingHint(not_fuseable=True)
+        for chunk in op.inputs[0].chunks:
+            chunk_op = op.copy().reset_key()
+            chunk_op.scheduling_hint = scheduling_hint
+            out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, dtypes=chunk.dtypes,
+                                           index_value=chunk.index_value,
+                                           columns_value=chunk.columns_value,
+                                           index=chunk.index)
+            out_chunks.append(out_chunk)
+        out_chunks = cls._process_out_chunks(op, out_chunks)
+
+        in_df = op.inputs[0]
+        new_op = op.copy().reset_key()
+        return new_op.new_dataframes(op.inputs, shape=op.inputs[0].shape,
+                                     dtypes=in_df.dtypes,
+                                     index_value=in_df.index_value,
+                                     columns_value=in_df.columns_value,
+                                     chunks=out_chunks, nsplits=((np.prod(op.inputs[0].chunk_shape),),))
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if vineyard is None:
+            raise RuntimeError('vineyard is not available')
+
+        socket, needs_put = resolve_vineyard_socket(ctx, op)
+        client = vineyard.connect(socket)
+
+        # some op might be fused and executed twice on different workers
+        if not needs_put:
+            # might be fused
+            try:
+                meta = ctx.get_chunks_meta([op.inputs[0].key])[0]
+                df_id = vineyard.ObjectID(meta['object_ref'])
+                if not client.exists(df_id):
+                    needs_put = True
+            except KeyError:
+                needs_put = True
+        if needs_put:
+            df_id = client.put(ctx[op.inputs[0].key],
+                                   partition_index=op.inputs[0].index)
+        else:
+            meta = client.get_meta(df_id)
+            new_meta = vineyard.ObjectMeta()
+            for k, v in meta.items():
+                if k not in ['id', 'signature', 'instance_id']:
+                    if isinstance(v, vineyard.ObjectMeta):
+                        new_meta.add_member(k, v)
+                    else:
+                        new_meta[k] = v
+            new_meta['partition_index_'] = to_json(op.inputs[0].index)
+            df_id = client.create_metadata(new_meta).id
+
+        client.persist(df_id)
+        ctx[op.outputs[0].key] = pd.DataFrame({0: [df_id]})
+
+
+class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
+    _op_type_ = OperandDef.DATAFRAME_STORE_VINEYARD_META
+
+    _shape = TupleField('shape')
+    _chunk_shape = TupleField('chunk_shape')
+
+    # vineyard ipc socket
+    _vineyard_socket = StringField('vineyard_socket')
+
+    def __init__(self, vineyard_socket=None, chunk_shape=None, shape=None, **kw):
+        super().__init__(_vineyard_socket=vineyard_socket,
+                         _chunk_shape=chunk_shape, _shape=shape,
+                         _output_types=[OutputType.dataframe], **kw)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def chunk_shape(self):
+        return self._chunk_shape
+
+    @property
+    def vineyard_socket(self):
+        return self._vineyard_socket
+
+    @classmethod
+    def _process_out_chunks(cls, op, out_chunks):
+        if len(out_chunks) == 1:
+            return out_chunks
+        else:
+            raise NotImplementedError('not implemented')
+
+    @classmethod
+    def tile(cls, op):
+        return [super().tile(op)[0]]
+
+    @classmethod
+    def execute(cls, ctx, op):
+        if vineyard is None:
+            raise RuntimeError('vineyard is not available')
+
+        socket, _ = resolve_vineyard_socket(ctx, op)
+        client = vineyard.connect(socket)
+
+        # # store the result object id to execution context
+        chunks = [ctx[chunk.key][0][0] for chunk in op.inputs]
+        ctx[op.outputs[0].key] = pd.DataFrame({0: [make_global_dataframe(client, chunks).id]})
+
+
+def to_vineyard(df, vineyard_socket=None):
+    op = DataFrameToVineyardChunk(vineyard_socket=vineyard_socket)
+    return op(df)

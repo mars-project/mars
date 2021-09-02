@@ -136,6 +136,11 @@ class SharedMemoryStorage(StorageBackend):
     def level(self) -> StorageLevel:
         return StorageLevel.MEMORY
 
+    @property
+    @implements(StorageBackend.backend_info)
+    def backend_info(self):
+        return {'name': self.name}
+
     @classmethod
     def _generate_object_id(cls):
         return ''.join(random.choice(ascii_letters + digits) for _ in range(30))

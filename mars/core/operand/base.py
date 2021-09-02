@@ -61,6 +61,8 @@ class SchedulingHint(Serializable):
     expect_worker = StringField('expect_worker', default=None)
     # will this operand be assigned a worker or not
     reassign_worker = BoolField('reassign_worker', default=False)
+    # mark a op as non-fuseable to avoid potential (might incorrect) re-computation
+    not_fuseable = BoolField('not_fuseable', default=False)
     # True means control dependency, False means data dependency
     _pure_depends = ListField('pure_depends', FieldTypes.bool, default=None)
     # useful when setting chunk index as priority,
@@ -78,6 +80,8 @@ class SchedulingHint(Serializable):
 
     def can_be_fused(self) -> bool:
         if self.reassign_worker:
+            return False
+        if self.not_fuseable:
             return False
         if self._pure_depends and \
                 any(depend for depend in self._pure_depends):
