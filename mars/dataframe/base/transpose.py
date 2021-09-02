@@ -15,13 +15,6 @@ import numpy as np
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ...core import OutputType
 from ..utils import parse_index
-from ...core.operand import OperandStage
-
-
-def reverse(x):
-    if x is None:
-        return
-    return x[::-1]
 
 
 class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
@@ -45,8 +38,8 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
             chunk_shape = tuple(s if np.isnan(s) else int(s)
-                                for s in reverse(c.shape))
-            chunk_idx = reverse(c.index)
+                                for s in c.shape[::-1])
+            chunk_idx = c.index[::-1]
             index_value = parse_index(c.dtypes.index)
             columns_value = c.index_value
             out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
@@ -57,7 +50,7 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        nsplits = reverse(op.inputs[0].nsplits)
+        nsplits = op.inputs[0].nsplits[::-1]
         return new_op.new_dataframe(op.inputs, op.outputs[0].shape, dtypes=op.outputs[0].dtypes,
                                     chunks=out_chunks, nsplits=nsplits)
 

@@ -25,7 +25,9 @@ except ImportError:  # pragma: no cover
 
 
 from ....config import options, option_context
-from ....tensor import tensor
+from ....dataframe import DataFrame
+from ....tensor import arange, tensor
+from ....tensor.random import rand
 from ....tests.core import require_cudf
 from ....utils import lazy_import
 from ... import eval as mars_eval, cut, qcut
@@ -35,9 +37,6 @@ from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
-from ....tensor import arange
-from ....dataframe import DataFrame
-from ....tensor.random import rand
 
 
 cudf = lazy_import('cudf', globals=globals())
