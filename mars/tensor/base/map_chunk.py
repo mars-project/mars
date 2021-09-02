@@ -66,7 +66,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         self._args = replace_objects(self._args, mapping)
         self._kwargs = replace_objects(self._kwargs, mapping)
 
-    def __call__(self, t, dtype=None):
+    def __call__(self, t, dtype=None, shape=None):
         if dtype is None:
             try:
                 kwargs = self.kwargs or dict()
@@ -79,7 +79,10 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
                 raise TypeError('Cannot estimate output type of map_chunk call')
             dtype = mock_result.dtype
 
-        new_shape = t.shape if self.elementwise else (np.nan,) * t.ndim
+        if shape is not None:
+            new_shape = shape
+        else:
+            new_shape = t.shape if self.elementwise else (np.nan,) * t.ndim
         inputs = [t] + find_objects(self.args, ENTITY_TYPE) + \
                  find_objects(self.kwargs, ENTITY_TYPE)
         return self.new_tensor(inputs, dtype=dtype, shape=new_shape)
@@ -100,9 +103,10 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         chunks = []
         for c in inp.chunks:
             params = c.params
-            params['dtype'] = inp.dtype
+            params['dtype'] = out.dtype
             if not op.elementwise:
-                params['shape'] = (np.nan,) * c.ndim
+                params['shape'] = (np.nan,) * out.ndim
+                params['index'] = params['index'][:out.ndim]
 
             new_op = op.copy().reset_key()
             new_op.tileable_op_key = out.key
@@ -113,7 +117,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
 
         new_op = op.copy().reset_key()
         params = out.params
-        nsplits = inp.nsplits
+        nsplits = inp.nsplits[:out.ndim]
         if not op.elementwise:
             nsplits = tuple((np.nan,) * len(sp) for sp in nsplits)
         return new_op.new_tileables([inp], chunks=chunks, nsplits=nsplits, **params)
@@ -176,8 +180,9 @@ def map_chunk(t, func, args=(), **kwargs):
     """
     elementwise = kwargs.pop('elementwise', None)
     dtype = np.dtype(kwargs.pop('dtype')) if 'dtype' in kwargs else None
+    shape = kwargs.pop('shape', None)
     with_chunk_index = kwargs.pop('with_chunk_index', False)
 
     op = TensorMapChunk(func=func, args=args, kwargs=kwargs, elementwise=elementwise,
                         with_chunk_index=with_chunk_index)
-    return op(t, dtype=dtype)
+    return op(t, dtype=dtype, shape=shape)
