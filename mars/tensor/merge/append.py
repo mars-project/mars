@@ -70,5 +70,5 @@ def append(arr, values, axis=None):
         if arr.ndim != 1:
             arr = arr.ravel()
         values = ravel(values)
-        axis = arr.ndim-1
+        axis = arr.ndim - 1
     return concatenate((arr, values), axis=axis)
