@@ -72,12 +72,6 @@ def transpose(*args):
             ----------
             *args : tuple, optional
                 Accepted for compatibility with NumPy.
-            copy : bool, default False
-                Whether to copy the data after transposing, even for DataFrames
-                with a single dtype.
-
-                Note that a copy is always required for mixed dtype DataFrames,
-                or for DataFrames with any extension types.
 
             Returns
             -------
@@ -91,8 +85,7 @@ def transpose(*args):
             Notes
             -----
             Transposing a DataFrame with mixed dtypes will result in a homogeneous
-            DataFrame with the `object` dtype. In such a case, a copy of the data
-            is always made.
+            DataFrame with the `object` dtype.
 
             Examples
             --------
