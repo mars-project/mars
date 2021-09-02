@@ -23,6 +23,7 @@ from ....services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ....tensor.base.psrs import PSRSConcatPivot
 from ....tests.core import require_ray
 from ....utils import lazy_import
 from ..ray import new_cluster, _load_config
@@ -80,6 +81,20 @@ async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, 
 @pytest.mark.asyncio
 async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
     await test_fault_injection.test_rerun_subtask(fault_cluster, fault_config)
+
+
+@require_ray
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': SUBTASK_RERUN_CONFIG}],
+                         indirect=True)
+@pytest.mark.parametrize('fault_config',
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]],
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]]])
+@pytest.mark.asyncio
+async def test_rerun_subtask_describe(ray_start_regular, fault_cluster, fault_config):
+    await test_fault_injection.test_rerun_subtask_describe(fault_cluster, fault_config)
 
 
 @require_ray

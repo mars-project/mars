@@ -3,3 +3,6 @@ third_party_modules:
   - mars.services.tests.fault_injection_patch
 scheduling:
   subtask_max_retries: 2
+storage:
+  # shared-memory38 may lose object if the process crash after put success.
+  backends: [plasma]

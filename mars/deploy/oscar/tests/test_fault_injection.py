@@ -19,9 +19,8 @@ import pandas as pd
 
 from .... import dataframe as md
 from .... import tensor as mt
-from ....remote import spawn
-from ....tensor.base.psrs import PSRSConcatPivot
 from ....oscar.errors import ServerClosed
+from ....remote import spawn
 from ....services.tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
@@ -30,6 +29,7 @@ from ....services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ....tensor.base.psrs import PSRSConcatPivot
 from ..local import new_cluster
 from ..session import get_default_async_session
 
