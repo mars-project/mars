@@ -20,7 +20,7 @@ import pytest
 
 from ...datasource import tensor, empty, eye, ones, zeros
 from ... import concatenate, stack, hstack, vstack, dstack, column_stack, \
-    union1d, array, block
+    union1d, array, block, append
 
 
 def test_concatenate_execution(setup):
@@ -352,3 +352,16 @@ def test_block_execution(setup):
     r = c.execute().fetch()
     expected = array([[1]])
     np.testing.assert_array_equal(r, expected)
+
+
+@pytest.mark.parametrize('axis', [0, None])
+def test_append_execution(setup, axis):
+    raw1 = np.random.rand(10, 3)
+    raw2 = np.random.rand(6, 3)
+
+    a1 = tensor(raw1, chunk_size=3)
+    a2 = tensor(raw2, chunk_size=4)
+    r = append(a1, a2, axis=axis)
+    result = r.execute().fetch()
+    expected = np.append(raw1, raw2, axis=axis)
+    np.testing.assert_array_equal(result, expected)

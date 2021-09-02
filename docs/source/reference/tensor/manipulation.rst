@@ -109,8 +109,9 @@ Adding and removing elements
    :toctree: generated/
    :nosignatures:
 
-    mars.tensor.insert
     mars.tensor.delete
+    mars.tensor.insert
+    mars.tensor.append
     mars.tensor.unique
 
 
