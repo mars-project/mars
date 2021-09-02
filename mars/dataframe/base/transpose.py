@@ -26,10 +26,9 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, args):
         arg = args[0]
         new_shape = arg.shape[::-1]
-        dtypes = arg.dtypes
         columns_value = arg.index_value
-        index_value = parse_index(dtypes.index)
-        return self.new_dataframe([arg], shape=new_shape, dtypes=dtypes,
+        index_value = parse_index(arg.dtypes.index)
+        return self.new_dataframe([arg], shape=new_shape, dtypes=None,
                                   columns_value=columns_value, index_value=index_value)
 
     @classmethod
