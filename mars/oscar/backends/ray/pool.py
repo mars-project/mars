@@ -167,7 +167,7 @@ class RayPoolBase(ABC):
         RayServer.set_ray_actor_started()
 
     @abstractmethod
-    async def start(self, *args, **kwargs):
+    async def start(self):
         """Start actor pool in ray actor"""
 
     def _set_ray_server(self, actor_pool: AbstractActorPool):
@@ -196,11 +196,12 @@ class RayPoolBase(ABC):
     def state(self):
         return self._state
 
-    def getpid(self):
+    @staticmethod
+    def getpid():
         return os.getpid()
 
     async def wait(self, seconds):
-        await asyncio.wait(seconds)
+        await asyncio.sleep(seconds)
 
     def cleanup(self):
         logger.info('Cleaning up %s of process %s now', self, os.getpid())

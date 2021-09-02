@@ -180,7 +180,6 @@ class ClusterStateActor(mo.StatelessActor):
 
         task = self._releasing_tasks.get(address)
         if task is not None:
-            print(f"Waiting for releasing worker {address}")
             logger.info("Waiting for releasing worker %s", address)
             return await task
 
