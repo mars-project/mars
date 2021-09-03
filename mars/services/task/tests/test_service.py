@@ -386,7 +386,7 @@ async def test_get_tileable_details(start_test_service):
 
 
 @pytest.mark.asyncio
-async def test_get_subtasks(start_test_service):
+async def test_get_subtask_graph(start_test_service):
     sv_pool_address, task_api, storage_api = start_test_service
     session_api = await SessionAPI.create(address=sv_pool_address)
     ref = await session_api.create_remote_object(
@@ -412,7 +412,7 @@ async def test_get_subtasks(start_test_service):
 
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
+        subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'))
 
         num_subtasks = len(subtask_details.get('subtasks'))
         num_dependencies = len(subtask_details.get('dependencies'))
@@ -422,8 +422,6 @@ async def test_get_subtasks(start_test_service):
 
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') >= 0 and subtask.get('status') <= 4) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
-            assert ((subtask.get('subtaskProgress') >= 0 and subtask.get('subtaskProgress') <= 1) or (subtask.get('subtaskProgress') == -1 and subtask.get('status') == -1))
             assert subtask.get('subtaskId') not in subtask_ids
             subtask_ids.add(subtask.get('subtaskId'))
 
@@ -444,12 +442,12 @@ async def test_get_subtasks(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_subtasks('non_exist', 'non_exist')
+        await task_api.get_tileable_subtask_graph('non_exist', 'non_exist')
 
     await asyncio.sleep(0.2)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
+        subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'))
 
         num_subtasks = len(subtask_details.get('subtasks'))
         num_dependencies = len(subtask_details.get('dependencies'))
@@ -459,8 +457,6 @@ async def test_get_subtasks(start_test_service):
 
         subtask_ids = set()
         for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') == SubtaskStatus.pending.value) or (subtask.get('subtaskProgress') == -1 and subtask.get('status') == -1))
-            assert ((subtask.get('subtaskProgress') == 0) or (subtask.get('subtaskProgress') == -1 and subtask.get('status') == -1))
             assert subtask.get('subtaskId') not in subtask_ids
             subtask_ids.add(subtask.get('subtaskId'))
 
@@ -468,21 +464,86 @@ async def test_get_subtasks(start_test_service):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
 
-    await ref.set()
-    await asyncio.sleep(1)
+@pytest.mark.asyncio
+async def test_get_subtask_detail(start_test_service):
+    sv_pool_address, task_api, storage_api = start_test_service
+    session_api = await SessionAPI.create(address=sv_pool_address)
+    ref = await session_api.create_remote_object(
+        task_api._session_id, 'progress_controller', _ProgressController)
+
+    def a():
+        return md.DataFrame([[1, 2], [3, 4]])
+
+    def b():
+        return md.DataFrame([[1, 2, 3, 4], [4, 3, 2, 1]])
+
+    def c(a, b):
+        return a.sum() * b.sum() / (a.product() * a.sum()) * b.product()
+
+    ra = mr.spawn(a)
+    rb = mr.spawn(b)
+    rc = mr.spawn(c, args=(ra, rb))
+
+    graph = TileableGraph([rc.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-        for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') >= 0 and subtask.get('status') <= 4) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
+        subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
+
+        subtask_ids = set()
+        for subtask_id, subtask_detail in subtask_details.items():
+            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('subtaskProgress') == -1))
+            assert ((subtask_detail.get('subtaskProgress') >= 0 and subtask_detail.get('subtaskProgress') <= 1) or (subtask_detail.get('subtaskProgress') == -1 and subtask_detail.get('status') == -1))
+            assert subtask_id not in subtask_ids
+            subtask_ids.add(subtask_id)
+
+    def f1(count: int):
+        progress_controller = get_context().get_remote_object('progress_controller')
+        for idx in range(count):
+            progress_controller.wait()
+            get_context().set_progress((1 + idx) * 1.0 / count)
+
+    r = mr.spawn(f1, args=(2,))
+    graph = TileableGraph([r.data])
+    next(TileableGraphBuilder(graph).build())
+
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+
+    with pytest.raises(TaskNotExist):
+        await task_api.get_tileable_subtask_detail('non_exist', 'non_exist')
+
+    await asyncio.sleep(0.2)
+    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
+    for tileable in tileable_graph.get('tileables'):
+        subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
+
+        subtask_ids = set()
+        for subtask_id, subtask_detail in subtask_details.items():
+            assert ((subtask_detail.get('status') == SubtaskStatus.pending.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('subtaskProgress') == -1))
+            assert ((subtask_detail.get('subtaskProgress') == 0) or (subtask_detail.get('subtaskProgress') == -1 and subtask_detail.get('status') == -1))
+            assert subtask_id not in subtask_ids
+            subtask_ids.add(subtask_id)
 
     await ref.set()
     await asyncio.sleep(1)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-        for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') == SubtaskStatus.succeeded.value) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
+        subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
+        for subtask_id, subtask_detail in subtask_details.items():
+            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('subtaskProgress') == -1))
+            assert ((subtask_detail.get('subtaskProgress') >= 0 and subtask_detail.get('subtaskProgress') <= 1) or (subtask_detail.get('subtaskProgress') == -1 and subtask_detail.get('status') == -1))
+
+    await ref.set()
+    await asyncio.sleep(1)
+    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
+    for tileable in tileable_graph.get('tileables'):
+        subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
+        for subtask_id, subtask_detail in subtask_details.items():
+            assert ((subtask_detail.get('status') == SubtaskStatus.succeeded.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('subtaskProgress') == -1))
+            assert ((subtask_detail.get('subtaskProgress') == 1) or (subtask_detail.get('subtaskProgress') == -1 and subtask_detail.get('status') == -1))
 
     r_errored = mr.spawn(f1, kwargs={'raises': 1})
     graph = TileableGraph([r_errored.data])
@@ -492,6 +553,6 @@ async def test_get_subtasks(start_test_service):
     await task_api.wait_task(task_id)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'))
-        for subtask in subtask_details.get('subtasks'):
-            assert ((subtask.get('status') == SubtaskStatus.errored.value) or (subtask.get('status') == -1 and subtask.get('subtaskProgress') == -1))
+        subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
+        for subtask_id, subtask_detail in subtask_details.items():
+            assert ((subtask_detail.get('status') == SubtaskStatus.errored.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('subtaskProgress') == -1))
