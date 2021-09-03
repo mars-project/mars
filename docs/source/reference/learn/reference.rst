@@ -93,6 +93,21 @@ Ensemble Methods
    ensemble.BlockwiseVotingClassifier
    ensemble.BlockwiseVotingRegressor
 
+.. _linear_model_ref:
+
+Linear Models
+=============
+
+Classical linear regressors
+---------------------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   linear_model.LinearRegression
+
 .. _metrics_ref:
 
 Metrics
@@ -198,8 +213,10 @@ Preprocessing and Normalization
 .. autosummary::
    :toctree: generated/
 
+   preprocessing.LabelBinarizer
    preprocessing.MinMaxScaler
    preprocessing.minmax_scale
+   preprocessing.label_binarize
    preprocessing.normalize
 
 .. _semi_supervised_ref:
