@@ -666,6 +666,11 @@ class Index(HasShapeTileable, _ToPandasMixin):
         self._axis = axis
 
     @property
+    def T(self):
+        """Return the transpose, which is by definition self."""
+        return self
+
+    @property
     def name(self):
         return self._data.name
 
@@ -1067,6 +1072,11 @@ class Series(HasShapeTileable, _ToPandasMixin):
 
     def from_tensor(self, in_tensor, index=None, name=None):
         return self._data.from_tensor(in_tensor, index=index, name=name)
+
+    @property
+    def T(self):
+        """Return the transpose, which is by definition self."""
+        return self
 
     @property
     def ndim(self):
@@ -1720,6 +1730,10 @@ class DataFrame(HasShapeTileable, _ToPandasMixin):
     def __dir__(self):
         result = list(super().__dir__())
         return sorted(result + [k for k in self.dtypes.index if isinstance(k, str) and k.isidentifier()])
+
+    @property
+    def T(self):
+        return self.transpose()
 
     @property
     def ndim(self):

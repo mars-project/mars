@@ -24,6 +24,7 @@ Properties
    Index.names
    Index.ndim
    Index.size
+   Index.T
    Index.memory_usage
 
 Modifying and computations
