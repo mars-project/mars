@@ -110,6 +110,10 @@ class TensorPad(TensorHasInput, TensorOperandMixin):
 
 
 def pad(array, pad_width, mode='constant', **kwagrs):
+    unsupported_modes = ['maximum', 'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
+    if (mode in unsupported_modes) or callable(mode):
+        raise NotImplementedError('Input mode has not been supported')
+
     array = astensor(array)
 
     pad_width = np.asarray(pad_width)
