@@ -127,6 +127,7 @@ Classification metrics
 
    metrics.accuracy_score
    metrics.auc
+   metrics.log_loss
    metrics.roc_curve
 
 Regression metrics

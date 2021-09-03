@@ -15,10 +15,12 @@
 import numpy as np
 import pytest
 from sklearn.metrics import accuracy_score as sklearn_accuracy_score
+from sklearn.utils._testing import assert_almost_equal
+from sklearn.utils._mocking import MockDataFrame
 
 from .... import tensor as mt
 from ....lib.sparse import SparseNDArray
-from .. import accuracy_score
+from .. import accuracy_score, log_loss
 from .._classification import _check_targets
 
 
@@ -141,3 +143,87 @@ def test_accuracy_score(setup):
     expected = sklearn_accuracy_score(y_true, y_pred, sample_weight=sample_weight,
                                       normalize=False)
     assert pytest.approx(result) == expected
+
+
+def test_log_loss(setup):
+    # binary case with symbolic labels ("no" < "yes")
+    y_true = ["no", "no", "no", "yes", "yes", "yes"]
+    y_pred = mt.array([[0.5, 0.5], [0.1, 0.9], [0.01, 0.99],
+                       [0.9, 0.1], [0.75, 0.25], [0.001, 0.999]])
+    loss = log_loss(y_true, y_pred).fetch()
+    assert_almost_equal(loss, 1.8817971)
+
+    # multiclass case; adapted from http://bit.ly/RJJHWA
+    y_true = [1, 0, 2]
+    y_pred = [[0.2, 0.7, 0.1], [0.6, 0.2, 0.2], [0.6, 0.1, 0.3]]
+    loss = log_loss(y_true, y_pred, normalize=True).fetch()
+    assert_almost_equal(loss, 0.6904911)
+
+    # check that we got all the shapes and axes right
+    # by doubling the length of y_true and y_pred
+    y_true *= 2
+    y_pred *= 2
+    loss = log_loss(y_true, y_pred, normalize=False).fetch()
+    assert_almost_equal(loss, 0.6904911 * 6, decimal=6)
+
+    # check eps and handling of absolute zero and one probabilities
+    y_pred = np.asarray(y_pred) > .5
+    loss = log_loss(y_true, y_pred, normalize=True, eps=.1).fetch()
+    assert_almost_equal(loss, log_loss(y_true, np.clip(y_pred, .1, .9)).fetch())
+
+    # raise error if number of classes are not equal.
+    y_true = [1, 0, 2]
+    y_pred = [[0.2, 0.7], [0.6, 0.5], [0.4, 0.1]]
+    with pytest.raises(ValueError):
+        log_loss(y_true, y_pred)
+    with pytest.raises(ValueError):
+        log_loss(y_true, y_pred, labels=[0, 1, 2])
+
+    # case when y_true is a string array object
+    y_true = ["ham", "spam", "spam", "ham"]
+    y_pred = [[0.2, 0.7], [0.6, 0.5], [0.4, 0.1], [0.7, 0.2]]
+    loss = log_loss(y_true, y_pred).fetch()
+    assert_almost_equal(loss, 1.0383217, decimal=6)
+
+    # test labels option
+
+    y_true = [2, 2]
+    y_pred = [[0.2, 0.7], [0.6, 0.5]]
+    y_score = np.array([[0.1, 0.9], [0.1, 0.9]])
+    error_str = (r'y_true contains only one label \(2\). Please provide '
+                 r'the true labels explicitly through the labels argument.')
+    with pytest.raises(ValueError, match=error_str):
+        log_loss(y_true, y_pred)
+    error_str = (r'The labels array needs to contain at least two '
+                 r'labels for log_loss, got \[1\].')
+    with pytest.raises(ValueError, match=error_str):
+        log_loss(y_true, y_pred, labels=[1])
+
+    # works when the labels argument is used
+
+    true_log_loss = -np.mean(np.log(y_score[:, 1]))
+    calculated_log_loss = log_loss(y_true, y_score, labels=[1, 2]).fetch()
+    assert_almost_equal(calculated_log_loss, true_log_loss)
+
+    # ensure labels work when len(np.unique(y_true)) != y_pred.shape[1]
+    y_true = [1, 2, 2]
+    y_score2 = [[0.2, 0.7, 0.3], [0.6, 0.5, 0.3], [0.3, 0.9, 0.1]]
+    loss = log_loss(y_true, y_score2, labels=[1, 2, 3]).fetch()
+    assert_almost_equal(loss, 1.0630345, decimal=6)
+
+
+def test_log_loss_pandas_input(setup):
+    # case when input is a pandas series and dataframe gh-5715
+    y_tr = np.array(["ham", "spam", "spam", "ham"])
+    y_pr = np.array([[0.2, 0.7], [0.6, 0.5], [0.4, 0.1], [0.7, 0.2]])
+    types = [(MockDataFrame, MockDataFrame)]
+    try:
+        from pandas import Series, DataFrame
+        types.append((Series, DataFrame))
+    except ImportError:
+        pass
+    for TrueInputType, PredInputType in types:
+        # y_pred dataframe, y_true series
+        y_true, y_pred = TrueInputType(y_tr), PredInputType(y_pr)
+        loss = log_loss(y_true, y_pred).fetch()
+        assert_almost_equal(loss, 1.0383217, decimal=6)
