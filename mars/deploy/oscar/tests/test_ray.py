@@ -54,7 +54,7 @@ async def create_cluster(request):
                                worker_mem=1 * 1024 ** 3,
                                config=ray_config)
     async with client:
-        yield client
+        yield client, param
 
 
 @require_ray
@@ -84,8 +84,9 @@ async def test_fetch_infos(ray_large_cluster, create_cluster):
 @require_ray
 @pytest.mark.asyncio
 def test_sync_execute(ray_large_cluster, create_cluster):
-    assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar')
+    client = create_cluster[0]
+    assert client.session
+    session = new_session(address=client.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 5)
         a = mt.tensor(raw, chunk_size=5).sum(axis=1)
@@ -147,8 +148,9 @@ async def test_optional_supervisor_node(ray_large_cluster, test_option):
 @require_ray
 @pytest.mark.asyncio
 async def test_web_session(ray_large_cluster, create_cluster):
-    await test_local.test_web_session(create_cluster)
-    web_address = create_cluster.web_address
+    client = create_cluster[0]
+    await test_local.test_web_session(client)
+    web_address = client.web_address
     assert await ray.remote(_run_web_session).remote(web_address)
     assert await ray.remote(_sync_web_session_test).remote(web_address)
 
@@ -186,8 +188,9 @@ async def test_load_third_party_modules(ray_large_cluster, config_exception):
                          indirect=True)
 @pytest.mark.asyncio
 def test_load_third_party_modules2(ray_large_cluster, create_cluster):
-    assert create_cluster.session
-    session = new_session(address=create_cluster.address, backend='oscar')
+    client = create_cluster[0]
+    assert client.session
+    session = new_session(address=client.address, backend='oscar')
     with session:
         raw = np.random.RandomState(0).rand(10, 10)
         a = mt.tensor(raw, chunk_size=5)

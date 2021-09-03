@@ -85,6 +85,7 @@ class MockSubtaskAPI(SubtaskAPI):
         await mo.create_actor(
             SubtaskRunnerManagerActor, None,
             uid=SubtaskRunnerManagerActor.default_uid(),
+            worker_address=address,
             address=address)
         return await super().create(address)
 

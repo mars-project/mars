@@ -74,6 +74,7 @@ async def actor_pool():
         manager = await mo.create_actor(
             SubtaskRunnerManagerActor, None,
             uid=SubtaskRunnerManagerActor.default_uid(),
+            worker_address=pool.external_address,
             address=pool.external_address)
         try:
             yield pool, session_id, meta_api, storage_api, manager
