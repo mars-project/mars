@@ -117,10 +117,16 @@ class TaskWebAPIHandler(MarsServiceWebAPIHandler):
         res = await oscar_api.get_tileable_details(task_id)
         self.write(json.dumps(res))
 
-    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtasks', method='get')
+    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtask_graph', method='get')
     async def get_tileable_subtasks(self, session_id: str, task_id: str, tileable_id: str):
         oscar_api = await self._get_oscar_task_api(session_id)
         res = await oscar_api.get_tileable_subtasks(task_id, tileable_id)
+        self.write(json.dumps(res))
+
+    @web_api('(?P<task_id>[^/]+)/(?P<tileable_id>[^/]+)/subtask_detail', method='get')
+    async def get_tileable_subtask_detail(self, session_id: str, task_id: str, tileable_id: str):
+        oscar_api = await self._get_oscar_task_api(session_id)
+        res = await oscar_api.get_tileable_subtask_detail(task_id, tileable_id)
         self.write(json.dumps(res))
 
     @web_api('(?P<task_id>[^/]+)', method='get', arg_filter={'action': 'progress'})
@@ -235,6 +241,11 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         return json.loads(res.body.decode())
 
     async def get_tileable_subtasks(self, task_id: str, tileable_id: str):
-        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtasks'
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtask_graph'
+        res = await self._request_url(path=path, method='GET')
+        return json.loads(res.body.decode())
+
+    async def get_tileable_subtask_detail(self, task_id: str, tileable_id: str):
+        path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtask_detail'
         res = await self._request_url(path=path, method='GET')
         return json.loads(res.body.decode())

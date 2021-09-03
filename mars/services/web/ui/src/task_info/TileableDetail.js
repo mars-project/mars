@@ -16,7 +16,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-// import SubtaskGraph from './SubtaskGraph';
+import SubtaskGraph from './SubtaskGraph';
 
 
 class TileableDetail extends React.Component {
@@ -33,20 +33,20 @@ class TileableDetail extends React.Component {
         return (
             this.props.tileable
                 ?
-                <div>
+                <React.Fragment>
                     <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
                     <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/>
                     <div>Subtask Graph:</div><br/>
-                    {/* <SubtaskGraph
+                    <SubtaskGraph
                         sessionId={this.props.sessionId}
                         taskId={this.props.taskId}
-                        tileableId={this.props.tileable.tileableId}
-                    /> */}
-                </div>
+                        tileableId={this.props.tileable.id}
+                    />
+                </React.Fragment>
                 :
-                <div>
+                <React.Fragment>
                     Select a tileable to view its detail
-                </div>
+                </React.Fragment>
         );
     }
 }

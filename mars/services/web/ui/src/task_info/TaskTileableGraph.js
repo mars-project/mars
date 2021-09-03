@@ -17,12 +17,7 @@
 import React from 'react';
 import { select as d3Select } from 'd3-selection';
 import {
-    zoom as d3Zoom,
-    zoomIdentity as d3ZoomIdentity
-} from 'd3-zoom';
-import {
     graphlib as dagGraphLib,
-    render as DagRender
 } from 'dagre-d3';
 import PropTypes from 'prop-types';
 import DAGChart from './charts/DAGChart';

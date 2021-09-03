@@ -72,6 +72,9 @@ export default class DAGChart extends React.Component {
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
+        console.log(this.props);
+        console.log(prevProps);
+
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
         }
@@ -81,13 +84,14 @@ export default class DAGChart extends React.Component {
         }
 
         /**
-         * If the tileables and dependencies are different, this is a
+         * If the nodes and dependencies are different, this is a
          * new DAG, so we will erase everything from the canvas and
          * generate a new dag
          */
         if (prevProps.nodes !== this.props.nodes
             && prevProps.dependencies !== this.props.dependencies) {
-            d3Select(this.props.graphName).selectAll('*').remove();
+            console.log('removed');
+            d3Select('#' + this.props.graphName).selectAll('*').remove();
 
             // Set up an SVG group so that we can translate the final graph.
             const svg = d3Select('#' + this.props.graphName),
@@ -95,17 +99,24 @@ export default class DAGChart extends React.Component {
 
             this.g = new dagGraphLib.Graph().setGraph({});
 
-            // Add the tileables to DAG
+            // Add the nodes to DAG
             this.props.nodes.forEach((node) => {
                 const value = { node };
                 const nodeDetail = this.props.nodesStatus[node.id];
 
-                if (node.name !== undefined) {
+                if (this.props.graphName === 'tileableGraph') {
                     const nameEndIndex = node.name.indexOf('key') - 1;
                     value.label = node.name.substring(0, nameEndIndex);;
+                } else if (this.props.graphName === 'subtaskGraph') {
+                    value.label = '';
                 }
 
-                value.rx = value.ry = 5;
+                if (this.props.nodeShape === 'tileableGraph') {
+                    value.rx = value.ry = 5;
+                } else if (this.props.nodeShape === 'subtaskGraph') {
+                    value.r = 5;
+                }
+
                 this.g.setNode(node.id, value);
 
                 /**
@@ -117,23 +128,34 @@ export default class DAGChart extends React.Component {
                 let nodeProgressGradient = inner.append('linearGradient')
                     .attr('id', 'progress-' + node.id);
 
-                nodeProgressGradient.append('stop')
-                    .attr('id', 'progress-' + node.id + '-stop')
-                    .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
-                    .attr('offset', nodeDetail.progress);
-
-                nodeProgressGradient.append('stop')
-                    .attr('stop-color', '#FFFFFF')
-                    .attr('offset', '0');
+                const dagNode = this.g.node(node.id);
 
                 /**
-                 * apply the linear gradient and other css properties
-                 * to nodes.
+                 * If the status and progress are both -1, this is a
+                 * predecessor node for subtask graph. So we will hide
+                 * the node
                  */
-                const dagNode = this.g.node(node.id);
-                dagNode.shape = this.props.nodeShape;
-                dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
-                dagNode.labelStyle = 'cursor: pointer';
+                if (nodeDetail === undefined || nodeDetail.status === -1 && nodeDetail.progress === -1) {
+                    dagNode.style = 'visibility: hidden';
+                    dagNode.labelStyle = 'visibility: hidden';
+                } else {
+                    nodeProgressGradient.append('stop')
+                        .attr('id', 'progress-' + node.id + '-stop')
+                        .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
+                        .attr('offset', nodeDetail.progress);
+
+                    nodeProgressGradient.append('stop')
+                        .attr('stop-color', '#FFFFFF')
+                        .attr('offset', '0');
+
+                    /**
+                     * apply the linear gradient and other css properties
+                     * to nodes.
+                     */
+                    dagNode.shape = this.props.nodeShape;
+                    dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
+                    dagNode.labelStyle = 'cursor: pointer';
+                }
             });
 
             /**
@@ -218,7 +240,7 @@ export default class DAGChart extends React.Component {
         }
 
         /**
-         * If the tileables and dependencies didn't change and
+         * If the nodes and dependencies didn't change and
          * only the tileable status changed, we know this is the
          * old graph with updated tileable status, so we just
          * need to update the color of nodes and the progress bar
@@ -230,9 +252,19 @@ export default class DAGChart extends React.Component {
             this.props.nodes.forEach((node) => {
                 const nodeDetail = this.props.nodesStatus[node.id];
 
-                svg.select('#progress-' + node.id + '-stop')
-                    .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
-                    .attr('offset', nodeDetail.progress);
+                if (nodeDetail !== undefined && nodeDetail.status !== -1 && nodeDetail.progress !== -1) {
+                    const dagNode = this.g(node.id);
+
+                    if (dagNode.style === 'visibility: hidden') {
+                        dagNode.shape = this.props.nodeShape;
+                        dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
+                        dagNode.labelStyle = 'cursor: pointer';
+                    }
+
+                    svg.select('#progress-' + node.id + '-stop')
+                        .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
+                        .attr('offset', nodeDetail.progress);
+                }
             });
         }
     }

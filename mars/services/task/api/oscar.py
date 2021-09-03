@@ -83,6 +83,12 @@ class TaskAPI(AbstractTaskAPI):
             tileable_id
         )
 
+    async def get_tileable_subtask_detail(self, task_id: str, tileable_id: str):
+        return await self._task_manager_ref.get_tileable_subtask_detail(
+            task_id,
+            tileable_id
+        )
+
     async def wait_task(self, task_id: str, timeout: float = None):
         return await self._task_manager_ref.wait_task(
             task_id, timeout=timeout)
