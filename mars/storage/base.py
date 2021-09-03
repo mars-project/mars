@@ -148,7 +148,7 @@ class StorageBackend(ABC):
 
     @property
     @abstractmethod
-    def backend_info() -> dict:
+    def backend_info(self) -> dict:
         """
         Get the customized backend info of this storage backend.
 
