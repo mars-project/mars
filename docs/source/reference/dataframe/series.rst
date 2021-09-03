@@ -24,6 +24,7 @@ Attributes
 
    Series.dtype
    Series.shape
+   Series.T
    Series.ndim
    Series.name
    Series.memory_usage

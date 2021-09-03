@@ -53,6 +53,8 @@ def test_series_params():
     series = tile(series)
     c = series.chunks[0]
 
+    assert series.T is series
+
     assert any(np.isnan(s) for s in c.params['shape'])
     assert np.isnan(c.params['index_value'].min_val)
     c.params = c.get_params_from_data(raw[raw < 2])
@@ -75,6 +77,8 @@ def test_index_params():
     index = series.index
     index = tile(index)
     c = index.chunks[0]
+
+    assert index.T is index
 
     assert any(np.isnan(s) for s in c.params['shape'])
     assert np.isnan(c.params['index_value'].min_val)

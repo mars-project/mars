@@ -23,7 +23,6 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-
 from ....config import options, option_context
 from ....dataframe import DataFrame
 from ....tensor import arange, tensor
@@ -37,7 +36,6 @@ from ...datasource.index import from_pandas as from_pandas_index
 from .. import to_gpu, to_cpu
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
-
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -876,12 +874,6 @@ def test_transpose_execution(setup):
     result = df.transpose().execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
 
-    # test 1 chunk
-    df = from_pandas_df(raw)
-    result = df.T.execute().fetch()
-    pd.testing.assert_frame_equal(result, raw.transpose())
-
-    # test multi chunks
     df = from_pandas_df(raw, chunk_size=2)
     result = df.T.execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
@@ -901,7 +893,6 @@ def test_transpose_execution(setup):
 
     # Transposing from results of other operands
     raw = pd.DataFrame(np.arange(0, 100).reshape(10, 10))
-
     df = DataFrame(arange(0, 100, chunk_size=5).reshape(10, 10))
     result = df.transpose().execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())

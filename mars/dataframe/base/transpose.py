@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import numpy as np
-from ..operands import DataFrameOperand, DataFrameOperandMixin
+
+from ... import opcodes
 from ...core import OutputType
+from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
 
 class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
+    _op_code_ = opcodes.TRANSPOSE
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -50,14 +54,14 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy()
         nsplits = op.inputs[0].nsplits[::-1]
-        return new_op.new_dataframe(op.inputs, op.outputs[0].shape, dtypes=op.outputs[0].dtypes,
-                                    chunks=out_chunks, nsplits=nsplits)
+        params = op.outputs[0].params
+        return new_op.new_dataframe(op.inputs, chunks=out_chunks,
+                                    nsplits=nsplits, **params)
 
     @classmethod
     def execute(cls, ctx, op):
         inp = ctx[op.inputs[0].key]
-        out = inp.transpose()
-        ctx[op.outputs[0].key] = out
+        ctx[op.outputs[0].key] = inp.transpose()
 
 
 def transpose(*args):
@@ -91,6 +95,7 @@ def transpose(*args):
     --------
     **Square DataFrame with homogeneous dtype**
 
+    >>> import mars.dataframe as md
     >>> d1 = {'col1': [1, 2], 'col2': [3, 4]}
     >>> df1 = md.DataFrame(data=d1).execute()
     >>> df1
@@ -111,6 +116,7 @@ def transpose(*args):
     col1    int64
     col2    int64
     dtype: object
+
     >>> df1_transposed.dtypes
     0    int64
     1    int64
@@ -145,6 +151,7 @@ def transpose(*args):
     employed       bool
     kids          int64
     dtype: object
+
     >>> df2_transposed.dtypes
     0    object
     1    object
