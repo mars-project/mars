@@ -72,9 +72,6 @@ export default class DAGChart extends React.Component {
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
-        console.log(this.props);
-        console.log(prevProps);
-
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
         }
@@ -249,21 +246,24 @@ export default class DAGChart extends React.Component {
             && prevProps.dependencies === this.props.dependencies
             && prevProps.nodesStatus !== this.props.nodesStatus) {
             const svg = d3Select('#' + this.props.graphName);
+
             this.props.nodes.forEach((node) => {
                 const nodeDetail = this.props.nodesStatus[node.id];
 
                 if (nodeDetail !== undefined && nodeDetail.status !== -1 && nodeDetail.progress !== -1) {
-                    const dagNode = this.g(node.id);
+                    const dagNode = this.g.node(node.id);
 
-                    if (dagNode.style === 'visibility: hidden') {
-                        dagNode.shape = this.props.nodeShape;
-                        dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
-                        dagNode.labelStyle = 'cursor: pointer';
+                    if (dagNode !== undefined) {
+                        if (dagNode.style === 'visibility: hidden') {
+                            dagNode.shape = this.props.nodeShape;
+                            dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
+                            dagNode.labelStyle = 'cursor: pointer';
+                        }
+
+                        svg.select('#progress-' + node.id + '-stop')
+                            .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
+                            .attr('offset', nodeDetail.progress);
                     }
-
-                    svg.select('#progress-' + node.id + '-stop')
-                        .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
-                        .attr('offset', nodeDetail.progress);
                 }
             });
         }

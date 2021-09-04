@@ -603,7 +603,6 @@ class TaskProcessorActor(mo.Actor):
 
     def get_tileable_subtasks(self, tileable_id: str):
         returned_subtasks = set()
-        # default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
         subtask_list = []
         dependency_list = []
@@ -630,10 +629,6 @@ class TaskProcessorActor(mo.Actor):
             if subtask.subtask_id not in returned_subtasks:
                 returned_subtasks.add(subtask.subtask_id)
 
-                # subtask_result = stage.subtask_results.get(subtask, default_result)
-                # progress = subtask_result.progress
-                # status = subtask_result.status.value
-
                 subtask_list.append({
                     'subtaskId': subtask.subtask_id,
                     'subtaskName': subtask.subtask_name,
@@ -653,6 +648,21 @@ class TaskProcessorActor(mo.Actor):
                 dependency_list.append({
                     'fromSubtaskId': predecessor_id,
                     'toSubtaskId': subtask.subtask_id,
+                })
+
+            for successor in stage.subtask_graph.iter_successors(subtask):
+                successor_id = successor.subtask_id
+
+                if successor_id not in returned_subtasks:
+                    returned_subtasks.add(successor_id)
+                    subtask_list.append({
+                        'subtaskId': successor_id,
+                        'subtaskName': successor.subtask_name,
+                    })
+
+                dependency_list.append({
+                    'fromSubtaskId': subtask.subtask_id,
+                    'toSubtaskId': successor_id,
                 })
 
         subtask_dict = {
@@ -704,6 +714,17 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(predecessor_id)
 
                     subtask_detail[predecessor_id] = {
+                        'status': -1,
+                        'progress': -1,
+                    }
+
+            for successor in stage.subtask_graph.iter_successors(subtask):
+                successor_id = successor.subtask_id
+
+                if successor_id not in returned_subtasks:
+                    returned_subtasks.add(successor_id)
+
+                    subtask_detail[successor_id] = {
                         'status': -1,
                         'progress': -1,
                     }
