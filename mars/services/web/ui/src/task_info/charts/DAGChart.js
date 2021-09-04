@@ -87,7 +87,6 @@ export default class DAGChart extends React.Component {
          */
         if (prevProps.nodes !== this.props.nodes
             && prevProps.dependencies !== this.props.dependencies) {
-            console.log('removed');
             d3Select('#' + this.props.graphName).selectAll('*').remove();
 
             // Set up an SVG group so that we can translate the final graph.
@@ -111,7 +110,7 @@ export default class DAGChart extends React.Component {
                 if (this.props.nodeShape === 'tileableGraph') {
                     value.rx = value.ry = 5;
                 } else if (this.props.nodeShape === 'subtaskGraph') {
-                    value.r = 5;
+                    value.r = 20;
                 }
 
                 this.g.setNode(node.id, value);
@@ -216,7 +215,7 @@ export default class DAGChart extends React.Component {
                 fullHeight = parent.clientHeight;
             const initialScale = fullHeight >= height ? 1 : fullHeight / height;
 
-            d3Select('.output').attr('transform', 'translate(' + (fullWidth - width * initialScale) / 2 + ', ' + (fullHeight - height * initialScale) / 2 + ')');
+            d3Select('#' + this.props.graphName).select('.output').attr('transform', 'translate(' + (fullWidth - width * initialScale) / 2 + ', ' + (fullHeight - height * initialScale) / 2 + ')');
 
             // Set up zoom support
             const zoom = d3Zoom().on('zoom', function (e) {
