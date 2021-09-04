@@ -260,6 +260,22 @@ Utilities
    utils.validation.check_is_fitted
    utils.validation.column_or_1d
 
+.. _learn_misc_ref：
+
+Misc
+====
+
+.. automodule:: mars.learn.wrappers
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   wrappers.ParallelPostFit
+
 .. _lightgbm_ref:
 
 LightGBM Integration
