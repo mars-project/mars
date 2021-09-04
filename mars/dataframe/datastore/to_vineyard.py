@@ -34,10 +34,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_STORE_VINEYARD_CHUNK
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
-
-    # vineyard object id
-    _vineyard_object_id = StringField('vineyard_object_id')
+    vineyard_socket = StringField('vineyard_socket')
 
     def __init__(self, vineyard_socket=None, dtypes=None, **kw):
         super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes,
@@ -46,14 +43,6 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     def __call__(self, df):
         return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
                                   index_value=df.index_value, columns_value=df.columns_value)
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
-
-    @property
-    def vineyard_object_id(self):
-        return self._vineyard_object_id
 
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
@@ -75,7 +64,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     @classmethod
     def tile(cls, op):
         out_chunks = []
-        scheduling_hint = SchedulingHint(not_fuseable=True)
+        scheduling_hint = SchedulingHint(fuseable=False)
         for chunk in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
@@ -134,28 +123,12 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.DATAFRAME_STORE_VINEYARD_META
 
-    _shape = TupleField('shape')
-    _chunk_shape = TupleField('chunk_shape')
-
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
-    def __init__(self, vineyard_socket=None, chunk_shape=None, shape=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket,
-                         _chunk_shape=chunk_shape, _shape=shape,
+    def __init__(self, vineyard_socket=None, **kw):
+        super().__init__(vineyard_socket=vineyard_socket,
                          _output_types=[OutputType.dataframe], **kw)
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def chunk_shape(self):
-        return self._chunk_shape
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):

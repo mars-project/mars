@@ -48,14 +48,10 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     _input = KeyField('input')
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
     def __init__(self, vineyard_socket=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, **kw)
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
+        super().__init__(vineyard_socket=vineyard_socket, **kw)
 
     @classmethod
     def _get_out_chunk(cls, op, in_chunk):
@@ -68,7 +64,6 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     def _process_out_chunks(cls, op, out_chunks):
         merge_op = TensorVineyardDataStoreMeta(
                 vineyard_socket=op.vineyard_socket,
-                chunk_shape=op.inputs[0].chunk_shape, shape=op.inputs[0].shape,
                 sparse=op.sparse, dtype=op.inputs[0].dtype)
         return merge_op.new_chunks(out_chunks, shape=(1,),
                                    index=(0,) * out_chunks[0].ndim)
@@ -76,7 +71,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     @classmethod
     def tile(cls, op):
         out_chunks = []
-        scheduling_hint = SchedulingHint(not_fuseable=True)
+        scheduling_hint = SchedulingHint(fuseable=False)
         for chunk in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
@@ -131,29 +126,13 @@ class TensorVineyardDataStoreMeta(TensorDataStore):
     _op_type_ = OperandDef.TENSOR_STORE_VINEYARD_META
 
     _input = KeyField('input')
-    _shape = TupleField('shape')
-    _chunk_shape = TupleField('chunk_shape')
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
-    def __init__(self, vineyard_socket=None,
-                 chunk_shape=None, shape=None, dtype=None, sparse=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket,
-                         _chunk_shape=chunk_shape, _shape=shape,
+    def __init__(self, vineyard_socket=None, dtype=None, sparse=None, **kw):
+        super().__init__(vineyard_socket=vineyard_socket,
                          _dtype=dtype, _sparse=sparse, **kw)
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def chunk_shape(self):
-        return self._chunk_shape
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):

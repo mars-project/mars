@@ -82,11 +82,6 @@ class FileSystemStorage(StorageBackend):
     def size(self) -> Optional[int]:
         return self._size
 
-    @property
-    @implements(StorageBackend.backend_info)
-    def backend_info(self):
-        return {'name': self.name}
-
     def _generate_path(self):
         file_name = str(uuid.uuid4())
         selected_index = mod_hash(file_name, len(self._root_dirs))

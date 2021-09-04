@@ -16,7 +16,6 @@ import json
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...core.operand.base import SchedulingHint
 from ...serialization.serializables import StringField
 from ...storage.base import StorageLevel
 from ...utils import calc_nsplits, has_unknown_shape
@@ -46,21 +45,13 @@ class TensorFromVineyard(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD_META
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
     # ObjectID in vineyard
-    _object_id = StringField('object_id')
+    object_id = StringField('object_id')
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id, **kw)
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
-
-    @property
-    def object_id(self):
-        return self._object_id
+        super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
     @classmethod
     def tile(cls, op):
@@ -70,9 +61,7 @@ class TensorFromVineyard(TensorNoInput):
         out_chunks = []
         for index, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
-            chunk_op._vineyard_socket = op.vineyard_socket
-            chunk_op._object_id = op.object_id
-            chunk_op.scheduling_hint = SchedulingHint(expect_worker=worker)
+            chunk_op.expect_worker = worker
             out_chunk = chunk_op.new_chunk([], dtype=np.dtype(object), shape=(1,),
                                            index=(index,))
             out_chunks.append(out_chunk)
@@ -112,24 +101,16 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD_CHUNK
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
     # ObjectID of chunk in vineyard
-    _object_id = StringField('object_id')
+    object_id = StringField('object_id')
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id, **kw)
+        super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
     def __call__(self, meta):
         return self.new_tensor([meta], shape=(np.nan,))
-
-    @property
-    def object_id(self):
-        return self._object_id
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
 
     @classmethod
     def tile(cls, op):
@@ -146,7 +127,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
             for info in infos[0]:  # n.b. 1-element ndarray
                 chunk_op = op.copy().reset_key()
                 chunk_op._object_id = info[0]
-                chunk_op.scheduling_hint = SchedulingHint(expect_worker=info[1])
+                chunk_op.expect_worker = info[1]
                 dtype = info[2]
                 shape = info[3]
                 chunk_index = info[4]

@@ -239,11 +239,6 @@ class CudaStorage(StorageBackend):
     def size(self) -> Union[int, None]:
         return self._size
 
-    @property
-    @implements(StorageBackend.backend_info)
-    def backend_info(self):
-        return {'name': self.name}
-
     @staticmethod
     def _to_cuda(obj):  # pragma: no cover
         if isinstance(obj, np.ndarray):

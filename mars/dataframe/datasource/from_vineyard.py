@@ -18,7 +18,6 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.context import get_context
-from ...core.operand.base import SchedulingHint
 from ...serialization.serializables import StringField
 from ...tensor.datasource.from_vineyard import resolve_vineyard_socket
 from ...utils import calc_nsplits, has_unknown_shape
@@ -40,22 +39,14 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
     generated_columns = ["id", "worker_address", "dtypes", "shape", "index", "columns"]
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
     # ObjectID in vineyard
-    _object_id = StringField('object_id')
+    object_id = StringField('object_id')
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id,
+        super().__init__(vineyard_socket=vineyard_socket, object_id=object_id,
                          _output_types=[OutputType.dataframe], **kw)
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
-
-    @property
-    def object_id(self):
-        return self._object_id
 
     def check_inputs(self, inputs):
         # no inputs
@@ -72,7 +63,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         self.extra_params['shape'] = shape  # set shape to make the operand key different
         return super()._new_tileables(inputs, kws=kws, **kw)
 
-    def __call__(self, shape, chunk_size=None, dtypes=None, index_value=None, columns_value=None):
+    def __call__(self, shape, dtypes=None, index_value=None, columns_value=None):
         return self.new_dataframe(None, shape, dtypes=dtypes,
                                   index_value=index_value,
                                   columns_value=columns_value)
@@ -86,9 +77,7 @@ class DataFrameFromVineyard(DataFrameOperand, DataFrameOperandMixin):
         dtypes = pd.Series([np.dtype('O')] * len(cls.generated_columns), index=cls.generated_columns)
         for index, worker in enumerate(workers):
             chunk_op = op.copy().reset_key()
-            chunk_op._vineyard_socket = op.vineyard_socket
-            chunk_op._object_id = op.object_id
-            chunk_op.scheduling_hint = SchedulingHint(expect_worker=worker)
+            chunk_op.expect_worker = worker
             out_chunk = chunk_op.new_chunk([], dtypes=dtypes,
                                            shape=(1, len(cls.generated_columns)),
                                            index=(index, 0),
@@ -139,24 +128,16 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.TENSOR_FROM_VINEYARD_CHUNK
 
     # vineyard ipc socket
-    _vineyard_socket = StringField('vineyard_socket')
+    vineyard_socket = StringField('vineyard_socket')
 
     # ObjectID of chunk in vineyard
-    _object_id = StringField('object_id')
+    object_id = StringField('object_id')
 
     def __init__(self, vineyard_socket=None, object_id=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _object_id=object_id, **kw)
+        super().__init__(vineyard_socket=vineyard_socket, object_id=object_id, **kw)
 
     def __call__(self, meta):
         return self.new_dataframe([meta])
-
-    @property
-    def object_id(self):
-        return self._object_id
-
-    @property
-    def vineyard_socket(self):
-        return self._vineyard_socket
 
     @classmethod
     def tile(cls, op):
@@ -172,9 +153,8 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         for chunk, infos in zip(op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)):
             for _, info in infos.iterrows():
                 chunk_op = op.copy().reset_key()
-                chunk_op._object_id = info["id"]
-                chunk_op.scheduling_hint = \
-                    SchedulingHint(expect_worker=info["worker_address"])
+                chunk_op.object_id = info["id"]
+                chunk_op.expect_worker = info["worker_address"]
                 dtypes = info["dtypes"]
                 columns = info["columns"]
                 shape = info["shape"]

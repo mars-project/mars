@@ -137,11 +137,6 @@ class RayStorage(StorageBackend):
         # if object spilling is available.
         return StorageLevel.MEMORY | StorageLevel.REMOTE
 
-    @property
-    @implements(StorageBackend.backend_info)
-    def backend_info(self):
-        return {'name': self.name}
-
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
