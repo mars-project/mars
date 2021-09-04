@@ -21,6 +21,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 import psutil
 
 from .... import oscar as mo
+from ....oscar.errors import NoFreeSlot
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ....typing import BandType
 from ...cluster import WorkerSlotInfo, ClusterAPI
@@ -122,7 +123,9 @@ class BandSlotManagerActor(mo.Actor):
             GlobalSlotManagerActor.default_uid()])
         return self._global_slots_ref
 
-    async def acquire_free_slot(self, session_stid: Tuple[str, str]):
+    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
+        if not block and self._semaphore.locked():
+            raise NoFreeSlot(f"No free slot for {session_stid}")
         yield self._semaphore.acquire()
         if self._restarting:
             yield self._restart_done_event.wait()
@@ -150,6 +153,16 @@ class BandSlotManagerActor(mo.Actor):
         if slot_id in self._slot_kill_events:
             event = self._slot_kill_events.pop(slot_id)
             event.set()
+
+        if pid is not None:
+            if slot_id in self._slot_to_session_stid:
+                # We should release the slot by one role, if the slot is
+                # acquired by the SubtaskExecutionActor, then the slot
+                # should be released by it, too.
+                session_stid = self._slot_to_session_stid[slot_id]
+                logger.info('Slot %s released by pid %s, but not for %s',
+                            slot_id, pid, session_stid)
+                return
 
         session_stid = self._slot_to_session_stid.pop(slot_id, None)
         self._session_stid_to_slot.pop(session_stid, None)

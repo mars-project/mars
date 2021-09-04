@@ -333,10 +333,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     logger.debug('Wait for subtask to cancel timed out (%s). '
                                  'Start killing slot %d', subtask_info.kill_timeout, slot_id)
                     await slot_manager_ref.kill_slot(slot_id)
-                    # as slot is restarted, we does not need to trace it
                     sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
                     await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
-                    slot_id = None
                 except:  # pragma: no cover
                     logger.exception('Unexpected errors raised when handling cancel')
                     raise

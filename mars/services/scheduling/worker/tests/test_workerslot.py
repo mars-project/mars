@@ -23,6 +23,7 @@ import pandas as pd
 
 from ..... import oscar as mo
 from .....oscar import ServerClosed
+from .....oscar.errors import NoFreeSlot
 from .....oscar.backends.allocate_strategy import IdleLabel
 from .....utils import get_next_port
 from ...supervisor import GlobalSlotManagerActor
@@ -233,3 +234,33 @@ async def test_report_usage(actor_pool: ActorPoolType):
     assert slots == pytest.approx(1.0)
     assert session_id == 'session_id'
     assert subtask_id == 'subtask_id'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('actor_pool', [1], indirect=True)
+async def test_slot_fault_tolerance(actor_pool: ActorPoolType):
+    pool, slot_manager_ref = actor_pool
+    # acquire -> slot restarted = can't acquire more.
+    slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
+    await slot_manager_ref.release_free_slot(slot_id, os.getpid())
+    with pytest.raises(NoFreeSlot):
+        await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'), block=False)
+    await slot_manager_ref.release_free_slot(slot_id)
+
+    # acquire -> release -> slot restarted = can only acquire once.
+    slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'))
+    await slot_manager_ref.release_free_slot(slot_id)
+    await slot_manager_ref.release_free_slot(slot_id, os.getpid())
+    await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'))
+    with pytest.raises(NoFreeSlot):
+        await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'), block=False)
+    await slot_manager_ref.release_free_slot(slot_id)
+
+    # acquire -> release -> acquire -> slot restarted = can't acquire more.
+    slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'))
+    await slot_manager_ref.release_free_slot(slot_id)
+    await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'))
+    await slot_manager_ref.release_free_slot(slot_id, os.getpid())
+    with pytest.raises(NoFreeSlot):
+        await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'), block=False)
+    await slot_manager_ref.release_free_slot(slot_id)

@@ -33,6 +33,10 @@ class NoIdleSlot(MarsError):
     pass
 
 
+class NoFreeSlot(MarsError):
+    pass
+
+
 class ServerClosed(MarsError):
     pass
 
