@@ -47,7 +47,7 @@ export default class SubtaskGraph extends React.Component {
                                 id: subtask.subtaskId,
                                 name: subtask.subtaskName,
                             }
-                        )
+                        );
                     }),
 
                     dependencies: res.dependencies.map(({fromSubtaskId, toSubtaskId}) => {
@@ -56,7 +56,7 @@ export default class SubtaskGraph extends React.Component {
                                 fromNodeId: fromSubtaskId,
                                 toNodeId: toSubtaskId,
                             }
-                        )
+                        );
                     }),
                 });
             });

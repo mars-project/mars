@@ -87,7 +87,7 @@ export default class TaskTileableGraph extends React.Component {
      * @param {*} color - Status color for the legend entry
      * @param {*} text - Label for the legend entry
      */
-     generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
+    generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
         if (color === '#FFFFFF') {
             // add an additional stroke so
             // the white color can be visited
@@ -130,7 +130,7 @@ export default class TaskTileableGraph extends React.Component {
                                 id: tileableId,
                                 name: tileableName,
                             }
-                        )
+                        );
                     }),
                     dependencies: res.dependencies.map(({fromTileableId, toTileableId}) => {
                         return (
@@ -138,7 +138,7 @@ export default class TaskTileableGraph extends React.Component {
                                 fromNodeId: fromTileableId,
                                 toNodeId: toTileableId,
                             }
-                        )
+                        );
                     }),
                 });
             });

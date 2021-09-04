@@ -103,7 +103,7 @@ export default class DAGChart extends React.Component {
 
                 if (this.props.graphName === 'tileableGraph') {
                     const nameEndIndex = node.name.indexOf('key') - 1;
-                    value.label = node.name.substring(0, nameEndIndex);;
+                    value.label = node.name.substring(0, nameEndIndex);
                 } else if (this.props.graphName === 'subtaskGraph') {
                     value.label = '';
                 }
