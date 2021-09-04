@@ -189,13 +189,13 @@ class TaskManagerActor(mo.Actor):
 
         return await processor_ref.get_tileable_details()
 
-    async def get_tileable_subtasks(self, task_id, tileable_id):
+    async def get_tileable_subtask_graph(self, task_id, tileable_id):
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
         except KeyError:
             raise TaskNotExist(f'Task {task_id} does not exist')
 
-        return await processor_ref.get_tileable_subtasks(tileable_id)
+        return await processor_ref.get_tileable_subtask_graph(tileable_id)
 
     async def get_tileable_subtask_detail(self, task_id, tileable_id):
         try:

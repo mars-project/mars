@@ -77,8 +77,8 @@ class TaskAPI(AbstractTaskAPI):
     async def get_tileable_details(self, task_id: str):
         return await self._task_manager_ref.get_tileable_details(task_id)
 
-    async def get_tileable_subtasks(self, task_id: str, tileable_id: str):
-        return await self._task_manager_ref.get_tileable_subtasks(
+    async def get_tileable_subtask_graph(self, task_id: str, tileable_id: str):
+        return await self._task_manager_ref.get_tileable_subtask_graph(
             task_id,
             tileable_id
         )

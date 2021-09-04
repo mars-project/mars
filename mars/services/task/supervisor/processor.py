@@ -601,7 +601,7 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
-    def get_tileable_subtasks(self, tileable_id: str):
+    def get_tileable_subtask_graph(self, tileable_id: str):
         returned_subtasks = set()
 
         subtask_list = []
