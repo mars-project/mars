@@ -16,3 +16,4 @@ from .pairwise import euclidean_distances, pairwise_distances, pairwise_distance
 from ._classification import accuracy_score, log_loss
 from ._ranking import roc_curve, auc
 from ._regresssion import r2_score
+from ._scorer import get_scorer
