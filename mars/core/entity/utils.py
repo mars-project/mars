@@ -64,7 +64,6 @@ def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
         tileable = raw[0]
         tileables = raw[1:]
 
-    inputs_set = set(tileable.op.inputs)
     to_tile = [tileable] + list(tileables)
     q = [t for t in to_tile if t.is_coarse()]
     while q:
@@ -79,7 +78,6 @@ def recursive_tile(tileable: TileableType, *tileables: TileableType) -> \
             for inp in t.op.inputs:
                 if has_unknown_shape(inp):
                     to_update_inputs.append(inp)
-                if inp not in inputs_set:
                     chunks.extend(inp.chunks)
             if obj is None:
                 yield chunks + to_update_inputs
