@@ -21,6 +21,6 @@ class Chunk:
 
     def write(self, index, value):
         self._tensor[index] = value
-    
+
     def read(self, index):
         return self._tensor[index]

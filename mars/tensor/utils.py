@@ -78,21 +78,6 @@ def normalize_chunk_sizes(shape, chunk_size):
 
     return tuple(chunk_sizes)
 
-def normalize_index(shape, index):
-    #Todo convert the index
-    index = np.array(index)
-    normalized_idx = np.empty_like(index) 
-    for i in range(len(index)):
-        if (index[i]==None):
-            normalized_idx[i]=np.arange(shape[i])
-        elif isinstance(index[i],slice) or isinstance(index[i],tuple) or isinstance(index[i],int):
-            normalized_idx[i] = np.array(index[i])
-    for i in normalized_idx:
-        pass
-
-            
-        
-
 def broadcast_shape(*shapes):
     if len(shapes) == 1:
         return shapes[0]

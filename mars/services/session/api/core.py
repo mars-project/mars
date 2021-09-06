@@ -101,9 +101,11 @@ class AbstractSessionAPI(ABC):
 
     @abstractmethod
     async def create_mutable_tensor(self,
+                                    session_id: str,
                                     shape: tuple,
+                                    dtype: str,
                                     chunksize,
-                                    dtype: str):
+                                    name: str = None):
         """
         Create a mutable tensor.
         """

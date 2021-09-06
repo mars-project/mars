@@ -1,13 +1,6 @@
 import asyncio
 import numpy as np
-import os
-
-import mars.dataframe as md
-import mars.tensor as mt
-import mars.remote as mr
-from mars.services.session.supervisor.core import SessionActor
 from mars.tensor.utils import *
-
 from mars.deploy.oscar.local import new_cluster
 from mars.lib.aio import new_isolation
 

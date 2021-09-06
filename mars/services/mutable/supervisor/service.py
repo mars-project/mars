@@ -1,10 +1,24 @@
-import asyncio
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 import itertools
 from typing import OrderedDict
-from mars.tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
+from ....tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
 from .... import oscar as mo
 from ..worker.service import MutableTensorChunkActor
+
 
 class MutableTensorActor(mo.Actor):
     def __init__(self, shape: tuple, dtype: str, chunksize, name: str = None):
@@ -62,7 +76,7 @@ class MutableTensorActor(mo.Actor):
 
     async def read(self, index):
         result = split_indexes_into_chunks(self._nsplits,index)
-        ans=[]
+        ans_list = []
         for idx,v in result[0].items():
             if len(v[0] > 0):
                 target_index = 0
@@ -76,17 +90,5 @@ class MutableTensorActor(mo.Actor):
                 for nidx in v:
                     val = await chunk_actor.read(idx,nidx)
                     print(idx,nidx,val)
-                    ans.append(val)
-        return ans
-        
-    @property
-    def shape(self):
-        return self._shape
-
-    @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def name(self):
-        return self._name
+                    ans_list.append(val)
+        return ans_list

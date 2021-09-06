@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import asyncio
+import uuid
 import functools
-import random
 from typing import Dict, List, Optional
 
 from .... import oscar as mo
@@ -170,7 +170,7 @@ class SessionActor(mo.Actor):
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunksize, name: str = None):
         from ...mutable.supervisor.service import MutableTensorActor
         if name is None:
-            name = 'mut-tensor-%s' % hex(random.randint(0, 99999))
+            name = str(uuid.uuid1())
         ref = await mo.create_actor(
             MutableTensorActor, shape, dtype, chunksize, name, address=self.address, uid=to_binary(name))
         await ref.assign_chunks()
