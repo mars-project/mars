@@ -54,13 +54,6 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         super().__init__(vineyard_socket=vineyard_socket, **kw)
 
     @classmethod
-    def _get_out_chunk(cls, op, in_chunk):
-        chunk_op = op.copy().reset_key()
-        out_chunk_shape = (1,)
-        return chunk_op.new_chunk([in_chunk], shape=out_chunk_shape,
-                                  index=in_chunk.index)
-
-    @classmethod
     def _process_out_chunks(cls, op, out_chunks):
         merge_op = TensorVineyardDataStoreMeta(
                 vineyard_socket=op.vineyard_socket,
