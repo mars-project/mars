@@ -38,7 +38,8 @@ try:
 except ImportError:
     vineyard = None
 
-from ... import tensor, arange, totiledb, tohdf5, tozarr
+from ... import tensor, arange, totiledb, tohdf5, tozarr, tovineyard
+from ...datasource import fromvineyard
 
 _exec_timeout = 120 if 'CI' in os.environ else -1
 
@@ -203,3 +204,34 @@ def test_store_zarr_execution(setup):
         r.execute()
         result = zarr.open_array(path)
         np.testing.assert_array_equal(result, raw + 1)
+
+
+@pytest.mark.skipif(vineyard is None, reason='vineyard not installed')
+def test_vineyard_execution(setup):
+    raw = np.random.RandomState(0).rand(55, 55)
+
+    extra_config = {
+        'check_dtype': False,
+        'check_nsplits': False,
+        'check_shape': False,
+    }
+
+    with vineyard.deploy.local.start_vineyardd() as (_, vineyard_socket):
+        a = tensor(raw, chunk_size=15)
+        a.execute()  # n.b.: pre-execute
+
+        b = tovineyard(a, vineyard_socket=vineyard_socket)
+        object_id = b.execute(extra_config=extra_config).fetch()[0]
+
+        c = fromvineyard(object_id, vineyard_socket=vineyard_socket)
+        value = c.execute(extra_config=extra_config).fetch()
+        np.testing.assert_allclose(value, raw)
+
+        a = tensor(raw, chunk_size=15)  # n.b.: no pre-execute
+
+        b = tovineyard(a, vineyard_socket=vineyard_socket)
+        object_id = b.execute(extra_config=extra_config).fetch()[0]
+
+        c = fromvineyard(object_id, vineyard_socket=vineyard_socket)
+        value = c.execute(extra_config=extra_config).fetch()
+        np.testing.assert_allclose(value, raw)

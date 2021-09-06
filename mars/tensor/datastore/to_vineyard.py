@@ -17,7 +17,7 @@ import numpy as np
 
 from ... import opcodes as OperandDef
 from ...core.operand.base import SchedulingHint
-from ...serialization.serializables import TupleField, KeyField, StringField
+from ...serialization.serializables import KeyField, StringField
 from ...storage.base import StorageLevel
 from ..datasource import tensor as astensor
 from .core import TensorDataStore
@@ -57,27 +57,26 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
     def _process_out_chunks(cls, op, out_chunks):
         merge_op = TensorVineyardDataStoreMeta(
                 vineyard_socket=op.vineyard_socket,
-                sparse=op.sparse, dtype=op.inputs[0].dtype)
-        return merge_op.new_chunks(out_chunks, shape=(1,),
+                sparse=op.sparse, dtype=np.dtype('O'))
+        return merge_op.new_chunks(out_chunks, shape=(1,), dtype=np.dtype('O'),
                                    index=(0,) * out_chunks[0].ndim)
 
     @classmethod
     def tile(cls, op):
         out_chunks = []
         scheduling_hint = SchedulingHint(fuseable=False)
-        for chunk in op.inputs[0].chunks:
+        for idx, chunk in enumerate(op.inputs[0].chunks):
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
-            out_chunk = chunk_op.new_chunk([chunk], dtype=chunk.dtype, shape=(1,),
-                                           index=chunk.index)
+            out_chunk = chunk_op.new_chunk([chunk], dtype=np.dtype('O'),
+                                           shape=(1,), index=(idx,))
             out_chunks.append(out_chunk)
         out_chunks = cls._process_out_chunks(op, out_chunks)
 
         new_op = op.copy().reset_key()
-        return new_op.new_tensors(op.inputs,
-                                  shape=op.input.shape, dtype=op.input.dtype,
-                                  chunks=out_chunks,
-                                  nsplits=((np.prod(op.input.chunk_shape),),))
+        return new_op.new_tensors(op.inputs, shape=(len(out_chunks),),
+                                  dtype=np.dtype('O'), chunks=out_chunks,
+                                  nsplits=((1,),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -112,7 +111,9 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
             tensor_id = client.create_metadata(new_meta).id
 
         client.persist(tensor_id)
-        ctx[op.outputs[0].key] = tensor_id
+        holder = np.empty((1,), dtype=object)
+        holder[0] = tensor_id
+        ctx[op.outputs[0].key] = holder
 
 
 class TensorVineyardDataStoreMeta(TensorDataStore):
@@ -128,15 +129,15 @@ class TensorVineyardDataStoreMeta(TensorDataStore):
                          _dtype=dtype, _sparse=sparse, **kw)
 
     @classmethod
-    def _process_out_chunks(cls, op, out_chunks):
-        if len(out_chunks) == 1:
-            return out_chunks
-        else:
-            raise NotImplementedError('not implemented')
-
-    @classmethod
     def tile(cls, op):
-        return [super().tile(op)[0]]
+        chunk_op = op.copy().reset_key()
+        out_chunk = chunk_op.new_chunk(op.inputs[0].chunks, dtype=np.dtype('O'),
+                                       shape=(1,), index=(0,))
+        new_op = op.copy().reset_key()
+        return new_op.new_tensors(op.inputs,
+                                  shape=(1,), dtype=np.dtype('O'),
+                                  chunks=[out_chunk],
+                                  nsplits=((1,),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -147,8 +148,10 @@ class TensorVineyardDataStoreMeta(TensorDataStore):
         client = vineyard.connect(socket)
 
         # # store the result object id to execution context
-        chunks = [ctx[chunk.key] for chunk in op.inputs]
-        ctx[op.outputs[0].key] = make_global_tensor(client, chunks).id
+        chunks = [ctx[chunk.key][0] for chunk in op.inputs]
+        holder = np.empty((1,), dtype=object)
+        holder[0] = make_global_tensor(client, chunks).id
+        ctx[op.outputs[0].key] = holder
 
 
 def tovineyard(x, vineyard_socket=None):

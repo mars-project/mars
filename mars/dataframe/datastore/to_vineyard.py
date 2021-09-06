@@ -21,6 +21,7 @@ from ...core.operand.base import SchedulingHint
 from ...serialization.serializables import TupleField, StringField
 from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
 from ..operands import DataFrameOperand, DataFrameOperandMixin
+from ..utils import parse_index
 
 try:
     import vineyard
@@ -42,39 +43,42 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df):
         return self.new_dataframe([df], shape=(0, 0), dtypes=df.dtypes,
-                                  index_value=df.index_value, columns_value=df.columns_value)
+                                  index_value=df.index_value,
+                                  columns_value=df.columns_value)
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):
+        dtypes=pd.Series([np.dtype('O')], index=pd.Index([0]))
         merge_op = DataFrameToVinyardStoreMeta(
                 vineyard_socket=op.vineyard_socket,
                 chunk_shape=op.inputs[0].chunk_shape,
-                shape=op.inputs[0].shape,
-                dtypes=op.inputs[0].dtypes)
-        return merge_op.new_chunks(out_chunks, shape=(1,),
-                                   index=(0,) * out_chunks[0].ndim)
+                shape=(1, 1), dtypes=dtypes)
+        return merge_op.new_chunks(out_chunks, shape=(1, 1), dtypes=dtypes,
+                                   index=(0,0))
 
     @classmethod
     def tile(cls, op):
         out_chunks = []
         scheduling_hint = SchedulingHint(fuseable=False)
-        for chunk in op.inputs[0].chunks:
+        dtypes = pd.Series([np.dtype('O')], index=pd.Index([0]))
+        for idx, chunk in enumerate(op.inputs[0].chunks):
             chunk_op = op.copy().reset_key()
             chunk_op.scheduling_hint = scheduling_hint
-            out_chunk = chunk_op.new_chunk([chunk], shape=chunk.shape, dtypes=chunk.dtypes,
+            out_chunk = chunk_op.new_chunk([chunk], shape=(1, 1), dtypes=dtypes,
                                            index_value=chunk.index_value,
                                            columns_value=chunk.columns_value,
-                                           index=chunk.index)
+                                           index=(idx, 0))
             out_chunks.append(out_chunk)
         out_chunks = cls._process_out_chunks(op, out_chunks)
 
         in_df = op.inputs[0]
         new_op = op.copy().reset_key()
-        return new_op.new_dataframes(op.inputs, shape=op.inputs[0].shape,
-                                     dtypes=in_df.dtypes,
+        return new_op.new_dataframes(op.inputs, shape=(len(out_chunks), 1),
+                                     dtypes=dtypes,
                                      index_value=in_df.index_value,
                                      columns_value=in_df.columns_value,
-                                     chunks=out_chunks, nsplits=((np.prod(op.inputs[0].chunk_shape),),))
+                                     chunks=out_chunks,
+                                     nsplits=((np.prod(op.inputs[0].chunk_shape),),))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -96,7 +100,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
                 needs_put = True
         if needs_put:
             df_id = client.put(ctx[op.inputs[0].key],
-                                   partition_index=op.inputs[0].index)
+                               partition_index=op.inputs[0].index)
         else:
             meta = client.get_meta(df_id)
             new_meta = vineyard.ObjectMeta()
@@ -119,20 +123,25 @@ class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
     # vineyard ipc socket
     vineyard_socket = StringField('vineyard_socket')
 
-    def __init__(self, vineyard_socket=None, **kw):
-        super().__init__(vineyard_socket=vineyard_socket,
+    def __init__(self, vineyard_socket=None, dtypes=None, **kw):
+        super().__init__(vineyard_socket=vineyard_socket, dtypes=dtypes,
                          _output_types=[OutputType.dataframe], **kw)
 
     @classmethod
-    def _process_out_chunks(cls, op, out_chunks):
-        if len(out_chunks) == 1:
-            return out_chunks
-        else:
-            raise NotImplementedError('not implemented')
-
-    @classmethod
     def tile(cls, op):
-        return [super().tile(op)[0]]
+        dtypes = pd.Series([np.dtype('O')], index=pd.Index([0]))
+        chunk_op = op.copy().reset_key()
+        out_chunk = chunk_op.new_chunk(op.inputs[0].chunks, shape=(1, 1), dtypes=dtypes,
+                                        index_value=parse_index(pd.Index([0])),
+                                        columns_value=parse_index(pd.Index([0])),
+                                        index=(0, 0))
+        new_op = op.copy().reset_key()
+        return new_op.new_dataframes(op.inputs, shape=(1, 1),
+                                     dtypes=dtypes,
+                                     index_value=parse_index(pd.Index([0])),
+                                     columns_value=parse_index(pd.Index([0])),
+                                     chunks=[out_chunk],
+                                     nsplits=((1,),(1,)))
 
     @classmethod
     def execute(cls, ctx, op):
@@ -144,7 +153,8 @@ class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
 
         # # store the result object id to execution context
         chunks = [ctx[chunk.key][0][0] for chunk in op.inputs]
-        ctx[op.outputs[0].key] = pd.DataFrame({0: [make_global_dataframe(client, chunks).id]})
+        ctx[op.outputs[0].key] = pd.DataFrame(
+                {0: [make_global_dataframe(client, chunks).id]})
 
 
 def to_vineyard(df, vineyard_socket=None):
