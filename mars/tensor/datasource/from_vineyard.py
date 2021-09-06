@@ -126,7 +126,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
         for chunk, infos in zip(op.inputs[0].chunks, ctx.get_chunks_result(in_chunk_keys)):
             for info in infos[0]:  # n.b. 1-element ndarray
                 chunk_op = op.copy().reset_key()
-                chunk_op._object_id = info[0]
+                chunk_op.object_id = info[0]
                 chunk_op.expect_worker = info[1]
                 dtype = info[2]
                 shape = info[3]
