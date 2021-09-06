@@ -37,7 +37,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
     vineyard_socket = StringField('vineyard_socket')
 
     def __init__(self, vineyard_socket=None, dtypes=None, **kw):
-        super().__init__(_vineyard_socket=vineyard_socket, _dtypes=dtypes,
+        super().__init__(vineyard_socket=vineyard_socket, _dtypes=dtypes,
                          _output_types=[OutputType.dataframe], **kw)
 
     def __call__(self, df):
