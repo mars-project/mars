@@ -12,18 +12,16 @@ from mars.deploy.oscar.local import new_cluster
 from mars.lib.aio import new_isolation
 
 async def work(session):
-    tmp = await session.create_mutable_tensor(shape=(1000,1000),dtype=np.double,
-    chunksize=(50,50),name="test2")
-    await tmp.get_chunks()
-    await tmp.assign_chunks()
-    for i in range(2,1000,100):
-        for j in range(2,1000,100):
-            await tmp.write((i,j))
-    # t = mt.ones((1024, 1024), chunk_size=256)
+    tensor = await session.create_mutable_tensor(shape=(100,100,100),dtype=np.double,
+    chunksize=(10,10,10),name="mytensor")
+    await tensor.write(((11,2,3),(14,5,6),(17,8,9)),1)
+    t = await tensor.read(((11,),(14,),(17,)))
+    print(t)
+    # t = mt.ones((134217728//1024, 134217728//1024), chunk_size=134217728//16//1024)
     # info = await session.execute(t)
     # await info
     # r = await session.fetch(t)
-    # print(r)
+    # print(len(r))
 
 async def main():
     client = await new_cluster(n_worker=2,
@@ -33,12 +31,6 @@ async def main():
         await work(client.session)
 
 if __name__ == '__main__':
-    # chunk_size = (3,3)
-    # print((1)*3)
-    # shape=[10,10]
-    # shape = normalize_shape(shape)
-    # chunk_size = normalize_chunk_sizes(shape,chunk_size)
-    # print(shape,chunk_size)
     isolation = new_isolation()
     future = asyncio.run_coroutine_threadsafe(main(), isolation.loop)
     result = future.result()

@@ -171,8 +171,10 @@ class SessionActor(mo.Actor):
         from ...mutable import MutableTensorActor
         if name is None:
             name = 'mut-tensor-%s' % hex(random.randint(0, 99999))
-        return await mo.create_actor(
+        ref = await mo.create_actor(
             MutableTensorActor, shape, dtype, chunksize, name, address=self.address, uid=to_binary(name))
+        await ref.assign_chunks()
+        return ref
 
 
 class RemoteObjectActor(mo.Actor):

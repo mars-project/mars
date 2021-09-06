@@ -13,8 +13,12 @@
 # limitations under the License.
 
 import asyncio
-from typing import List, Any, Dict, Type, Tuple
+from mars.dataframe.indexing import reset_index
+import sys
+import itertools
+from typing import List, Any, Dict, OrderedDict, Type, Tuple
 from mars.core.graph.builder import chunk
+from mars.tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
 import numpy as np
 import random
 from ..cluster import ClusterAPI
@@ -23,20 +27,22 @@ from ... import oscar as mo
 
 
 class Chunk:
-    def __init__(self, index, shape) -> None:
-        self._index = index
+    def __init__(self, shape,value=None) -> None:
         self._shape = shape
-        self._ops = []
+        self._tensor = np.ones(shape)
 
-    def set(self, index):
-        self._ops.append(index)
-        print('chunkactorstart index index',self._index,index)
+    def write(self, index, value):
+        self._tensor[index] = value
+    
+    def read(self, index):
+        return self._tensor[index]
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, indice, chunklist: List[Chunk] = None) -> None:
-        self._chunklist = chunklist
-        self.startindice=indice
+    def __init__(self, chunklist: OrderedDict, value=None) -> None:
+        self.idx_chunk = OrderedDict()
+        for k,v in chunklist.items():
+            self.idx_chunk[k] = Chunk(v,value)
 
     async def __post_create__(self):
         pass
@@ -44,12 +50,13 @@ class MutableTensorChunkActor(mo.Actor):
     async def __on_receive__(self, message):
         return await super().__on_receive__(message)
 
-    async def write(self, index,indice):
-        chunk=self._chunklist[indice-self.startindice]
-        chunk.set(index)
-        if index==(1,10001):
-            print(self.startindice)
+    async def write(self, index,relatepos,value):
+        chunk:Chunk = self.idx_chunk[index]
+        chunk.write(tuple(relatepos),value)
 
+    async def read(self, index, relatepos):
+        chunk:Chunk = self.idx_chunk[index]
+        return chunk.read(tuple(relatepos))
 
 class MutableTensorActor(mo.Actor):
     def __init__(self, shape: tuple, dtype: str, chunksize, name: str = None):
@@ -61,6 +68,7 @@ class MutableTensorActor(mo.Actor):
         self._chunks = []
         self._chunk_to_actors = []
         self._chunkactors_lastindex = []
+        self._nsplits = decide_chunk_sizes(self._shape,self._chunksize,sys.getsizeof(int))
 
     async def __post_create__(self):
         return await super().__post_create__()
@@ -69,90 +77,71 @@ class MutableTensorActor(mo.Actor):
         return (chunk._shape[0]-1)*self._shape[1]+chunk._shape[1]
 
     async def assign_chunks(self):
-        workernumer = 3
-        chunknumber = len(self._chunks)
-        for i in range(workernumer):
-            ref = await mo.create_actor(MutableTensorChunkActor,
-                                        i*(chunknumber//workernumer),
-                                        self._chunks[i*(chunknumber//workernumer):(i+1)*(chunknumber//workernumer)]
-                                        if i != workernumer-1 else self._chunks[i*(chunknumber//workernumer):], address=self.address)
-            self._chunk_to_actors.append(ref)
-            if i != workernumer-1:
-                chunk = (i+1)*(chunknumber//workernumer)-1
-            else:
-                chunk = chunknumber-1
-            self._chunkactors_lastindex.append(chunk)
+        leftworker = workernumer = 3;chunknumber = 1;num = 0
+        for nsplit in self._nsplits:
+            chunknumber *= len(nsplit)
+        leftchunk = chunknumber
+        chunk_list = OrderedDict()
+        for idx in itertools.product(*(range(len(nsplit)) for nsplit in self._nsplits)):
+            chunk_list[idx] = [self._nsplits[i][idx[i]] for i in range(len(idx))]
+            num += 1;leftchunk -= 1
+            if (num == chunknumber//workernumer and  leftworker != 1  or leftworker == 1 and leftchunk == 0):
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor,chunk_list,address=self.address)
+                num = 0;chunk_list = OrderedDict();leftworker -= 1
+                self._chunk_to_actors.append(chunk_ref)
+                pos = self.calc_index(idx)
+                self._chunkactors_lastindex.append(pos)
 
-    def get_chunks(self):
-        tmp = self._chunksize
-        if isinstance(tmp, int):
-            for lastrow in np.arange(0, self._shape[0], tmp):
-                for lastcolumn in np.arange(0, self._shape[1], tmp):
-                    chunk = Chunk((lastrow+1, lastcolumn+1),
-                                  (min(tmp, self._shape[0]-lastrow),
-                                   min(tmp, self._shape[1]-lastcolumn)))
-                    self._chunks.append(chunk)
+    def calc_index(self,idx):
+        pos = 0;acc = 1
+        for it,nsplit in zip(itertools.count(0),reversed(self._nsplits)):
+            it = len(idx) - it-1
+            pos += acc*(idx[it])
+            acc *= len(nsplit)
+        return pos
 
-        if isinstance(tmp, tuple):
-            if isinstance(tmp[0], tuple):
-                # Todo under tuple in tuple situation, get chunks
-                pass
-            else:
-                for lastrow in np.arange(0, self._shape[0], tmp[0]):
-                    for lastcolumn in np.arange(0, self._shape[1], tmp[1]):
-                        chunk = Chunk((lastrow+1, lastcolumn+1),
-                                      (min(tmp[0], self._shape[0]-lastrow),
-                                      min(tmp[1], self._shape[1]-lastcolumn)))
-                        self._chunks.append(chunk)
+    async def write(self, index,value):
+        result = split_indexes_into_chunks(self._nsplits,index)
+        for idx,v in result[0].items():
+            if len(v[0] > 0):
+                target_index = 0
+                pos = self.calc_index(idx)
+                for actor_index, lastindex in zip(itertools.count(0),self._chunkactors_lastindex):
+                    if lastindex >= pos:
+                        target_index = actor_index
+                        break
+                chunk_actor = self._chunk_to_actors[target_index]
+                v = v.T
+                for nidx in v:
+                    await chunk_actor.write(idx,nidx,value)
 
-    def judge(self,chunk:Chunk,index):
-        pass
-        if index[0]>chunk._index[0]+chunk._shape[0]-1:
-            return False
-        if index[0]<chunk._index[0]:
-            return True
-        if index[1]<=chunk._index[1]+chunk._shape[1]-1:
-            return True
-        else:
-            return False
+    async def read(self, index):
+        result = split_indexes_into_chunks(self._nsplits,index)
+        ans=[]
+        for idx,v in result[0].items():
+            if len(v[0] > 0):
+                target_index = 0
+                pos = self.calc_index(idx)
+                for actor_index, lastindex in zip(itertools.count(0),self._chunkactors_lastindex):
+                    if lastindex >= pos:
+                        target_index = actor_index
+                        break
+                chunk_actor = self._chunk_to_actors[target_index]
+                v = v.T
+                for nidx in v:
+                    val = await chunk_actor.read(idx,nidx)
+                    ans.append(val)
+        return ans
         
-
-    async def write(self, index):
-        #使用两次二分搜索
-        #第一次二分找index所在的chunk
-        l=-1;r=len(self._chunks)
-        while r-l>1:
-            mid=(l+r)//2
-            if index == (1,10001):
-                print(l,r,self._chunks[mid]._index,index)
-            #judge：判断index是否在当前chunk或者在这个chunk之前的chunk
-            #之前的chunk是基于从上到下，从左到右的顺序
-            if self.judge(self._chunks[mid],index):
-                r=mid
-            else:
-                l=mid
-        indice = r
-        #第二次二分找chunk所在的chunkactor
-        l = -1; r = len(self._chunkactors_lastindex)
-        while r-l>1:
-            mid=(l+r)//2
-            if self._chunkactors_lastindex[mid]<indice:
-                l=mid
-            else:
-                r=mid
-
-        ref = self._chunk_to_actors[r]
-        if index == (1,10001):
-            print("index found",self._chunks[indice]._index,indice)
-        
-        await ref.write(index,indice)
-
+    @property
     def shape(self):
         return self._shape
 
+    @property
     def dtype(self):
         return self._dtype
 
+    @property
     def name(self):
         return self._name
 
