@@ -17,7 +17,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { select as d3Select } from 'd3-selection';
-import DAGChart from './charts/DAGChart';
+import DAGCanvasChart from './charts/DAGCanvasChart';
 
 
 export default class SubtaskGraph extends React.Component {
@@ -182,7 +182,7 @@ export default class SubtaskGraph extends React.Component {
                     id='subtasks-legend'
                     style={{ marginLeft: '6%', width: '90%', height: 50 }}
                 />
-                <DAGChart
+                <DAGCanvasChart
                     graphName='subtaskGraph'
                     dagStyle={dagStyle}
                     nodes={this.state.subtasks}
