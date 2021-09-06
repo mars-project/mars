@@ -24,7 +24,7 @@ from enum import Enum
 from typing import List, Optional
 
 from .communication import ChannelID, RayServer, RayChannelException
-from .utils import process_address_to_placement, process_placement_to_address, get_placement_group
+from .utils import process_address_to_placement, process_placement_to_address, get_placement_group, kill_and_wait
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import AbstractActorPool, MainActorPoolBase, SubActorPoolBase, create_actor_pool, _register_message_handler
@@ -103,21 +103,7 @@ class RayMainActorPool(MainActorPoolBase):
             await process.mark_service_ready.remote()
 
     async def kill_sub_pool(self, process: 'ray.actor.ActorHandle', force: bool = False):
-        if 'COV_CORE_SOURCE' in os.environ and not force:  # pragma: no cover
-            # must clean up first, or coverage info lost
-            await process.cleanup.remote()
-        await self._kill_actor_forcibly(process)
-
-    async def _kill_actor_forcibly(self, process: 'ray.actor.ActorHandle', timeout=30):
-        r = process.wait.remote(timeout)
-        ray.kill(process, no_restart=False)
-        ready, _ = ray.wait([r], timeout=timeout)
-        if ready:
-            try:
-                ray.get(ready[0])
-            except ray.exceptions.RayActorError:
-                return  # We expect a RayActorError, it indicated that the actor is died.
-        raise Exception(f'The actor {process} is not died after ray.kill {timeout} seconds.')
+        await kill_and_wait(process)
 
     async def is_sub_pool_alive(self, process: 'ray.actor.ActorHandle'):
         try:

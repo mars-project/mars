@@ -18,13 +18,13 @@ import os
 import pytest
 
 from ..... import oscar as mo
-from .....tests.core import require_ray
+from .....tests.core import require_ray, mock
 from .....utils import lazy_import
 from ....context import get_context
 from ....errors import ServerClosed
 from ...allocate_strategy import ProcessIndex, MainPool
 from ..pool import RayMainPool, RayMainActorPool, create_actor_pool, RayPoolState
-from ..utils import process_placement_to_address
+from ..utils import process_placement_to_address, kill_and_wait
 
 ray = lazy_import('ray')
 
@@ -182,3 +182,17 @@ async def test_auto_recover(ray_start_regular, auto_recover):
             # https://github.com/ray-project/ray/issues/7815
             ray_actor = ray.get_actor(addr)
             ray.get(ray_actor.cleanup.remote())
+
+
+@require_ray
+@pytest.mark.asyncio
+@mock.patch('ray.kill')
+async def test_kill_and_wait_timeout(fake_ray_kill, ray_start_regular):
+    pg_name, n_process = 'ray_cluster', 1
+    pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}])
+    ray.get(pg.ready())
+    address = process_placement_to_address(pg_name, 0, process_index=0)
+    # start the actor pool
+    actor_handle = await mo.create_actor_pool(address, n_process=n_process)
+    with pytest.raises(Exception, match='not died'):
+        await kill_and_wait(actor_handle, timeout=1)

@@ -23,13 +23,13 @@ import pytest
 from .... import oscar as mo
 from .... import tensor as mt
 from .... import dataframe as md
-from ....oscar.backends.ray.pool import RayPoolState
-from ....oscar.backends.ray.utils import process_address_to_placement, process_placement_to_address
+from ....oscar.backends.ray.utils import process_address_to_placement, process_placement_to_address, kill_and_wait
 from ....serialization.ray import register_ray_serializers
+from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
-from ....tests.core import require_ray
+from ....tests.core import require_ray, mock
 from ....utils import lazy_import
-from ..ray import new_cluster, _load_config
+from ..ray import new_cluster, _load_config, ClusterStateActor
 from ..session import get_default_session, new_session
 from ..tests import test_local
 from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
@@ -263,8 +263,8 @@ async def test_reconstruct_worker(ray_large_cluster):
     worker_cpu, worker_mem = 1, 100 * 1024 ** 2
     client = await new_cluster('test_cluster', worker_num=0, worker_cpu=worker_cpu, worker_mem=worker_mem)
     async with client:
-        cluster_state_ref = client._cluster._cluster_backend.get_cluster_state_ref()
-        worker = await cluster_state_ref.request_worker(timeout=5)
+        cluster_api = await ClusterAPI.create(client._cluster.supervisor_address)
+        worker = await cluster_api.request_worker(timeout=5)
         pg_name, bundle_index, process_index = process_address_to_placement(worker)
         worker_sub_pool = process_placement_to_address(pg_name, bundle_index, process_index + 1)
 
@@ -275,20 +275,11 @@ async def test_reconstruct_worker(ray_large_cluster):
         worker_sub_pool_pid = await worker_sub_pool_actor.getpid.remote()
 
         # kill worker main pool
-        ray.kill(ray.get_actor(worker), no_restart=False)
-        # check worker main pool state, because ray.kill is an async operation
-        for _ in range(10):
-            try:
-                state = await worker_actor.state.remote()
-                assert state == RayPoolState.INIT
-                break
-            except Exception as e:
-                print(e)
-                time.sleep(1)
+        await kill_and_wait(ray.get_actor(worker))
 
         # duplicated reconstruct worker request can be handled.
-        await asyncio.gather(cluster_state_ref.reconstruct_worker(worker),
-                             cluster_state_ref.reconstruct_worker(worker))
+        await asyncio.gather(cluster_api.reconstruct_worker(worker),
+                             cluster_api.reconstruct_worker(worker))
         worker_actor = ray.get_actor(worker)
         new_worker_pid = await worker_actor.getpid.remote()
         worker_sub_pool_actor = ray.get_actor(worker_sub_pool)
@@ -303,6 +294,59 @@ async def test_reconstruct_worker(ray_large_cluster):
         assert b is a
         result = a.fetch()
         np.testing.assert_array_equal(result, raw.sum(axis=1))
+
+
+@require_ray
+@pytest.mark.asyncio
+@mock.patch('mars.deploy.oscar.ray.stop_worker')
+async def test_reconstruct_worker_during_releasing_worker(fake_stop_worker):
+    stop_worker = asyncio.Event()
+    lock = asyncio.Event()
+
+    async def _stop_worker(*args):
+        stop_worker.set()
+        await lock.wait()
+
+    fake_stop_worker.side_effect = _stop_worker
+    cluster_state = ClusterStateActor()
+    release_task = asyncio.create_task(cluster_state.release_worker('abc'))
+    await stop_worker.wait()
+    with pytest.raises(Exception, match='releasing'):
+        await cluster_state.reconstruct_worker('abc')
+    release_task.cancel()
+
+
+@require_ray
+@pytest.mark.asyncio
+@mock.patch('mars.deploy.oscar.ray.stop_worker')
+@mock.patch('ray.get_actor')
+async def test_release_worker_during_reconstructing_worker(fake_get_actor, fake_stop_worker):
+    get_actor = asyncio.Event()
+    lock = asyncio.Event()
+
+    class FakeActorMethod:
+        async def remote(self):
+            get_actor.set()
+            await lock.wait()
+
+    class FakeActor:
+        state = FakeActorMethod()
+
+    def _get_actor(*args):
+        return FakeActor
+
+    async def _stop_worker(*args):
+        await lock.wait()
+
+    fake_get_actor.side_effect = _get_actor
+    fake_stop_worker.side_effect = _stop_worker
+    cluster_state = ClusterStateActor()
+    reconstruct_task = asyncio.create_task(cluster_state.reconstruct_worker('abc'))
+    await get_actor.wait()
+    release_task = asyncio.create_task(cluster_state.release_worker('abc'))
+    with pytest.raises(asyncio.CancelledError):
+        await reconstruct_task
+    release_task.cancel()
 
 
 @pytest.mark.parametrize('ray_large_cluster', [{'num_nodes': 4, 'num_cpus': 2}], indirect=True)
