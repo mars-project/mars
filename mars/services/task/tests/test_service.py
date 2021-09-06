@@ -495,8 +495,8 @@ async def test_get_subtask_detail(start_test_service):
 
         subtask_ids = set()
         for subtask_id, subtask_detail in subtask_details.items():
-            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1))
-            assert ((subtask_detail.get('progress') >= 0 and subtask_detail.get('progress') <= 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1))
+            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1) or ((subtask_detail.get('status') == -2 and subtask_detail.get('progress') == -2)))
+            assert ((subtask_detail.get('progress') >= 0 and subtask_detail.get('progress') <= 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
             assert subtask_id not in subtask_ids
             subtask_ids.add(subtask_id)
 
@@ -522,8 +522,8 @@ async def test_get_subtask_detail(start_test_service):
 
         subtask_ids = set()
         for subtask_id, subtask_detail in subtask_details.items():
-            assert ((subtask_detail.get('status') == SubtaskStatus.pending.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1))
-            assert ((subtask_detail.get('progress') == 0) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1))
+            assert ((subtask_detail.get('status') == SubtaskStatus.pending.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
+            assert ((subtask_detail.get('progress') == 0) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
             assert subtask_id not in subtask_ids
             subtask_ids.add(subtask_id)
 
@@ -533,8 +533,8 @@ async def test_get_subtask_detail(start_test_service):
     for tileable in tileable_graph.get('tileables'):
         subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
         for subtask_id, subtask_detail in subtask_details.items():
-            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1))
-            assert ((subtask_detail.get('progress') >= 0 and subtask_detail.get('progress') <= 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1))
+            assert ((subtask_detail.get('status') >= 0 and subtask_detail.get('status') <= 4) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
+            assert ((subtask_detail.get('progress') >= 0 and subtask_detail.get('progress') <= 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
 
     await ref.set()
     await asyncio.sleep(1)
@@ -542,8 +542,8 @@ async def test_get_subtask_detail(start_test_service):
     for tileable in tileable_graph.get('tileables'):
         subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
         for subtask_id, subtask_detail in subtask_details.items():
-            assert ((subtask_detail.get('status') == SubtaskStatus.succeeded.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1))
-            assert ((subtask_detail.get('progress') == 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1))
+            assert ((subtask_detail.get('status') == SubtaskStatus.succeeded.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
+            assert ((subtask_detail.get('progress') == 1) or (subtask_detail.get('progress') == -1 and subtask_detail.get('status') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))
 
     r_errored = mr.spawn(f1, kwargs={'raises': 1})
     graph = TileableGraph([r_errored.data])
@@ -555,4 +555,4 @@ async def test_get_subtask_detail(start_test_service):
     for tileable in tileable_graph.get('tileables'):
         subtask_details = await task_api.get_tileable_subtask_detail(task_id, tileable.get('tileableId'))
         for subtask_id, subtask_detail in subtask_details.items():
-            assert ((subtask_detail.get('status') == SubtaskStatus.errored.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1))
+            assert ((subtask_detail.get('status') == SubtaskStatus.errored.value) or (subtask_detail.get('status') == -1 and subtask_detail.get('progress') == -1) or (subtask_detail.get('progress') == -2 and subtask_detail.get('status') == -2))

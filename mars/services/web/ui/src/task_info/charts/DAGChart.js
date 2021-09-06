@@ -59,6 +59,9 @@ export default class DAGChart extends React.Component {
                     color: '#BFC9CA',
                 },
             ],
+
+            inputNodeColor: '#3281a8',
+            outputNodeColor: '#c334eb',
         };
     }
 
@@ -72,6 +75,8 @@ export default class DAGChart extends React.Component {
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
+        console.log(this.props);
+
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
         }
@@ -94,6 +99,14 @@ export default class DAGChart extends React.Component {
                 inner = svg.append('g');
 
             this.g = new dagGraphLib.Graph().setGraph({});
+
+            if (this.props.nodes.length > 500 && this.props.dependencies.length > this.props.nodes.length) {
+                this.g.setGraph({
+                    ranksep: 1000,
+                    edgesep: 200,
+                    ranker: 'longest-path',
+                });
+            }
 
             // Add the nodes to DAG
             this.props.nodes.forEach((node) => {
@@ -127,31 +140,33 @@ export default class DAGChart extends React.Component {
                 const dagNode = this.g.node(node.id);
 
                 /**
-                 * If the status and progress are both -1, this is a
-                 * predecessor node for subtask graph. So we will hide
-                 * the node
+                 * apply the linear gradient and other css properties
+                 * to nodes.
                  */
                 if (nodeDetail === undefined || nodeDetail.status === -1 && nodeDetail.progress === -1) {
-                    dagNode.style = 'visibility: hidden';
-                    dagNode.labelStyle = 'visibility: hidden';
+                    nodeProgressGradient.append('stop')
+                        .attr('id', 'progress-' + node.id + '-stop')
+                        .attr('stop-color', this.state.inputNodeColor)
+                        .attr('offset', 1);
+                } else if (nodeDetail.status === -2 && nodeDetail.progress === -2) {
+                    nodeProgressGradient.append('stop')
+                        .attr('id', 'progress-' + node.id + '-stop')
+                        .attr('stop-color', this.state.outputNodeColor)
+                        .attr('offset', 1);
                 } else {
                     nodeProgressGradient.append('stop')
                         .attr('id', 'progress-' + node.id + '-stop')
                         .attr('stop-color', this.state.nodeStatusMap[nodeDetail.status].color)
                         .attr('offset', nodeDetail.progress);
-
-                    nodeProgressGradient.append('stop')
-                        .attr('stop-color', '#FFFFFF')
-                        .attr('offset', '0');
-
-                    /**
-                     * apply the linear gradient and other css properties
-                     * to nodes.
-                     */
-                    dagNode.shape = this.props.nodeShape;
-                    dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
-                    dagNode.labelStyle = 'cursor: pointer';
                 }
+
+                nodeProgressGradient.append('stop')
+                    .attr('stop-color', '#FFFFFF')
+                    .attr('offset', '0');
+
+                dagNode.shape = this.props.nodeShape;
+                dagNode.style = 'cursor: pointer; stroke: #333; fill: url(#progress-' + node.id + ')';
+                dagNode.labelStyle = 'cursor: pointer';
             });
 
             /**
@@ -206,6 +221,8 @@ export default class DAGChart extends React.Component {
 
             inner.selectAll('g.node').on('click', handleClick);
 
+            console.log(inner);
+            console.log(inner.node());
             // Center the graph
             const bounds = inner.node().getBBox();
             const parent = inner.node().parentElement;
@@ -249,7 +266,7 @@ export default class DAGChart extends React.Component {
             this.props.nodes.forEach((node) => {
                 const nodeDetail = this.props.nodesStatus[node.id];
 
-                if (nodeDetail !== undefined && nodeDetail.status !== -1 && nodeDetail.progress !== -1) {
+                if (nodeDetail !== undefined && nodeDetail.status >= 0 && nodeDetail.progress >= 0) {
                     const dagNode = this.g.node(node.id);
 
                     if (dagNode !== undefined) {

@@ -163,12 +163,12 @@ export default class TaskTileableGraph extends React.Component {
         if (this.interval !== undefined) {
             clearInterval(this.interval);
         }
-        this.interval = setInterval(() => this.fetchTileableDetail(), 5000);
+        this.interval = setInterval(() => this.fetchTileableDetail(), 1000);
         this.fetchTileableDetail();
         this.fetchGraphDetail();
 
         // Create the legend for DAG
-        const legendSVG = d3Select('#legend');
+        const legendSVG = d3Select('#tileables-legend');
         this.state.tileableStatus.forEach((status) => this.generateGraphLegendItem(
             legendSVG,
             status.legendDotXLoc,
@@ -203,7 +203,7 @@ export default class TaskTileableGraph extends React.Component {
         return (
             <React.Fragment>
                 <svg
-                    id='legend'
+                    id='tileables-legend'
                     style={{ marginLeft: '6%', width: '90%', height: '10%' }}
                 />
                 <DAGChart

@@ -16,7 +16,8 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import DAGChart from './charts/DAGChart';
+import { select as d3Select } from 'd3-selection';
+import DAGCanvasChart from './charts/DAGCanvasChart';
 
 
 export default class SubtaskGraph extends React.Component {
@@ -26,7 +27,53 @@ export default class SubtaskGraph extends React.Component {
             subtasks: [],
             dependencies: [],
             subtaskDetails: {},
+            subtaskStatus: [
+                {
+                    text: 'Input Node',
+                    color: '#3281A8',
+                    legendDotXLoc: '10',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '20',
+                    legendTextYLoc: '21',
+                },
+                {
+                    text: 'Output Node',
+                    color: '#C334EB',
+                    legendDotXLoc: '135',
+                    legendDotYLoc: '20',
+                    legendTextXLoc: '145',
+                    legendTextYLoc: '21',
+                },
+            ]
         };
+    }
+
+    /**
+     * Creates one status entry for the legend of DAG
+     *
+     * @param {*} svgContainer - The SVG container that the legend will be placed in
+     * @param {*} dotX - X coordinate of the colored dot for the legend entry
+     * @param {*} dotY - Y coordinate of the colored dot for the legend entry
+     * @param {*} textX - X coordinate of the label for the legend entry
+     * @param {*} textY - Y coordinate of the label for the legend entry
+     * @param {*} color - Status color for the legend entry
+     * @param {*} text - Label for the legend entry
+     */
+     generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
+        svgContainer
+            .append('circle')
+            .attr('cx', dotX)
+            .attr('cy', dotY)
+            .attr('r', 6)
+            .style('fill', color);
+
+        svgContainer
+            .append('text')
+            .attr('x', textX)
+            .attr('y', textY)
+            .text(text)
+            .style('font-size', '15px')
+            .attr('alignment-baseline', 'middle');
     }
 
     fetchGraphDetail() {
@@ -83,9 +130,21 @@ export default class SubtaskGraph extends React.Component {
         if (this.interval !== undefined) {
             clearInterval(this.interval);
         }
-        this.interval = setInterval(() => this.fetchSubtaskDetail(), 5000);
+        this.interval = setInterval(() => this.fetchSubtaskDetail(), 1000);
         this.fetchSubtaskDetail();
         this.fetchGraphDetail();
+
+        // Create the legend for DAG
+        const legendSVG = d3Select('#subtasks-legend');
+        this.state.subtaskStatus.forEach((status) => this.generateGraphLegendItem(
+            legendSVG,
+            status.legendDotXLoc,
+            status.legendDotYLoc,
+            status.legendTextXLoc,
+            status.legendTextYLoc,
+            status.color,
+            status.text
+        ));
     }
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
@@ -105,6 +164,7 @@ export default class SubtaskGraph extends React.Component {
             margin: 15,
             width: '90%',
             height: '80%',
+            minHeight: 200,
         };
 
         if (this.state === undefined ||
@@ -117,14 +177,20 @@ export default class SubtaskGraph extends React.Component {
         }
 
         return (
-            <DAGChart
-                graphName='subtaskGraph'
-                dagStyle={dagStyle}
-                nodes={this.state.subtasks}
-                nodeShape='circle'
-                nodesStatus={this.state.subtaskDetails}
-                dependencies={this.state.dependencies}
-            />
+            <React.Fragment>
+                <svg
+                    id='subtasks-legend'
+                    style={{ marginLeft: '6%', width: '90%', height: 50 }}
+                />
+                <DAGCanvasChart
+                    graphName='subtaskGraph'
+                    dagStyle={dagStyle}
+                    nodes={this.state.subtasks}
+                    nodeShape='circle'
+                    nodesStatus={this.state.subtaskDetails}
+                    dependencies={this.state.dependencies}
+                />
+            </React.Fragment>
         );
     }
 }
