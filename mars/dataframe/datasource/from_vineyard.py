@@ -196,8 +196,8 @@ def from_vineyard(df, vineyard_socket=None):
     if vineyard is not None and isinstance(object_id, vineyard.ObjectID):
         object_id = repr(object_id)
     metaop = DataFrameFromVineyard(vineyard_socket=vineyard_socket, object_id=object_id,
-                                dtype=np.dtype('byte'), gpu=False)
-    meta = metaop(shape=(np.nan,), chunk_size=(np.nan,), dtypes=pd.Series([]),
+                                   dtype=np.dtype('byte'), gpu=False)
+    meta = metaop(shape=(np.nan,), dtypes=pd.Series([]),
                   index_value=parse_index(pd.Index([])),
                   columns_value=parse_index(pd.Index([])))
     op = DataFrameFromVineyardChunk(vineyard_socket=vineyard_socket,
