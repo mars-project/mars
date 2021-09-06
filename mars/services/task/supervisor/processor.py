@@ -725,8 +725,8 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(successor_id)
 
                     subtask_detail[successor_id] = {
-                        'status': -1,
-                        'progress': -1,
+                        'status': -2,
+                        'progress': -2,
                     }
 
         return subtask_detail
