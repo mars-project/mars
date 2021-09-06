@@ -123,6 +123,9 @@ jobs:
             pytest $PYTEST_CONFIG mars/deploy/oscar/tests/test_local.py
             mv .coverage build/.coverage.test_local.file
 
+            pytest $PYTEST_CONFIG --forked mars/deploy/oscar/tests/test_local.py
+            mv .coverage build/.coverage.test_local_forked.file
+
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
