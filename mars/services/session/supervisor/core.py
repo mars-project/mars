@@ -168,7 +168,7 @@ class SessionActor(mo.Actor):
         return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
 
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunksize, name: str = None):
-        from ...mutable import MutableTensorActor
+        from ...mutable.supervisor.service import MutableTensorActor
         if name is None:
             name = 'mut-tensor-%s' % hex(random.randint(0, 99999))
         ref = await mo.create_actor(

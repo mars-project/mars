@@ -1,57 +1,10 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import asyncio
 import sys
 import itertools
 from typing import OrderedDict
 from mars.tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
-import numpy as np
-from ... import oscar as mo
-
-
-class Chunk:
-    def __init__(self, shape,value=None) -> None:
-        self._shape = shape
-        self._tensor = np.ones(shape)
-
-    def write(self, index, value):
-        self._tensor[index] = value
-    
-    def read(self, index):
-        return self._tensor[index]
-
-
-class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict, value=None) -> None:
-        self.idx_chunk = OrderedDict()
-        for k,v in chunklist.items():
-            self.idx_chunk[k] = Chunk(v,value)
-
-    async def __post_create__(self):
-        pass
-
-    async def __on_receive__(self, message):
-        return await super().__on_receive__(message)
-
-    async def write(self, index,relatepos,value):
-        chunk:Chunk = self.idx_chunk[index]
-        chunk.write(tuple(relatepos),value)
-
-    async def read(self, index, relatepos):
-        chunk:Chunk = self.idx_chunk[index]
-        return chunk.read(tuple(relatepos))
+from .... import oscar as mo
+from ..worker.service import MutableTensorChunkActor
 
 class MutableTensorActor(mo.Actor):
     def __init__(self, shape: tuple, dtype: str, chunksize, name: str = None):
@@ -122,6 +75,7 @@ class MutableTensorActor(mo.Actor):
                 v = v.T
                 for nidx in v:
                     val = await chunk_actor.read(idx,nidx)
+                    print(idx,nidx,val)
                     ans.append(val)
         return ans
         
@@ -136,21 +90,3 @@ class MutableTensorActor(mo.Actor):
     @property
     def name(self):
         return self._name
-
-
-class MutableTensor:
-    def __init__(self,
-                 ref: mo.ActorRef,
-                 loop: asyncio.AbstractEventLoop):
-        self._ref = ref
-        self._loop = loop
-
-    def __getattr__(self, attr):
-        func = getattr(self._ref, attr)
-
-        def wrap(*args, **kwargs):
-            coro = func(*args, **kwargs)
-            fut = asyncio.run_coroutine_threadsafe(coro, loop=self._loop)
-            return fut.result()
-
-        return wrap
