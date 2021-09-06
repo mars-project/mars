@@ -18,7 +18,7 @@ import pandas as pd
 from ... import opcodes as OperandDef
 from ...core import OutputType
 from ...core.operand.base import SchedulingHint
-from ...serialization.serializables import TupleField, StringField
+from ...serialization.serializables import StringField
 from ...tensor.datastore.to_vineyard import resolve_vineyard_socket
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
