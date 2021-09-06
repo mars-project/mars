@@ -22,6 +22,11 @@ from ..utils import parse_index, lazy_import
 from .core import IncrementalIndexDatasource, IncrementalIndexDataSourceMixin
 
 ray = lazy_import('ray')
+# Ray Datasets is available in early preview at ray.data with Ray 1.6+
+# (and ray.experimental.data in Ray 1.5)
+ray_dataset = lazy_import('ray.data')
+ray_exp_dataset = lazy_import('ray.experimental.data')
+real_ray_dataset = ray_dataset or ray_exp_dataset
 
 
 class DataFrameReadRayDataset(IncrementalIndexDatasource,
@@ -54,7 +59,7 @@ class DataFrameReadRayDataset(IncrementalIndexDatasource,
         return self._incremental_index
 
     @classmethod
-    def _tile_partitioned(cls, op: "DataFrameReadRayDataset"):
+    def _tile_partitioned(cls, op: 'DataFrameReadRayDataset'):
         out_df = op.outputs[0]
         shape = (np.nan, out_df.shape[1])
         dtypes = out_df.dtypes
@@ -62,9 +67,9 @@ class DataFrameReadRayDataset(IncrementalIndexDatasource,
 
         chunk_index = 0
         out_chunks = []
-        for piece in dataset:
+        for object_ref in dataset:
             chunk_op = op.copy().reset_key()
-            chunk_op._refs = piece
+            chunk_op._refs = [object_ref]
             new_chunk = chunk_op.new_chunk(
                 None, shape=shape, index=(chunk_index, 0),
                 index_value=out_df.index_value,
@@ -85,11 +90,11 @@ class DataFrameReadRayDataset(IncrementalIndexDatasource,
         return cls._tile_partitioned(op)
 
     @classmethod
-    def execute(cls, ctx, op: "DataFrameReadRayDataset"):
+    def execute(cls, ctx, op: 'DataFrameReadRayDataset'):
         out = op.outputs[0]
-        refs = op.refs
+        ref = op.refs[0]
 
-        df = ray.get(refs)
+        df = ray.get(ref)
         ctx[out.key] = df
 
     def __call__(self, index_value=None, columns_value=None, dtypes=None):
@@ -98,10 +103,12 @@ class DataFrameReadRayDataset(IncrementalIndexDatasource,
                                   columns_value=columns_value)
 
 
-def read_raydataset(refs, columns=None,
+def read_raydataset(ds, columns=None,
                     incremental_index=False,
                     **kwargs):
-    dtypes = ray.get(ray.remote(_get_dtypes).remote(refs[0]))
+    assert isinstance(ds, real_ray_dataset.Dataset)
+    refs = ds.to_pandas()
+    dtypes = ds.schema().empty_table().to_pandas().dtypes
     index_value = parse_index(pd.RangeIndex(-1))
     columns_value = parse_index(dtypes.index, store_data=True)
 
@@ -109,7 +116,3 @@ def read_raydataset(refs, columns=None,
                                  incremental_index=incremental_index)
     return op(index_value=index_value, columns_value=columns_value,
               dtypes=dtypes)
-
-
-def _get_dtypes(t):
-    return t.dtypes

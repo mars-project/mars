@@ -441,12 +441,12 @@ def test_read_sql():
 @require_ray
 def test_read_raydataset():
     test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                            'b': [f's{i}' for i in range(10)]})
+                             'b': [f's{i}' for i in range(10)]})
     test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
-                            'b': [f's{i}' for i in range(10)]})
+                             'b': [f's{i}' for i in range(10)]})
     df = pd.concat([test_df1, test_df2])
-    obj_refs = [ray.put(test_df1), ray.put(test_df2)]
-    mdf = read_raydataset(obj_refs)
+    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    mdf = read_raydataset(ds)
 
     assert mdf.shape[1] == 2
     pd.testing.assert_index_equal(df.columns, mdf.columns_value.to_pandas())

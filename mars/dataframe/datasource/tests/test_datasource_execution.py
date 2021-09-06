@@ -917,10 +917,12 @@ def test_read_parquet_fast_parquet(setup):
 
 @require_ray
 def test_read_raydataset(setup):
-    df1 = pd.DataFrame({"one": [1, 2, 3], "two": ["a", "b", "c"]})
-    df2 = pd.DataFrame({"one": [4, 5, 6], "two": ["e", "f", "g"]})
-    df = pd.concat([df1, df2])
-    obj_refs = [ray.put(df1), ray.put(df2)]
-    mdf = md.read_raydataset(obj_refs)
+    test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    df = pd.concat([test_df1, test_df2])
+    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    mdf = md.read_raydataset(ds)
     assert df.equals(mdf.execute().fetch())
     ray.shutdown()
