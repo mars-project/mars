@@ -221,10 +221,21 @@ def test_to_frame_or_series_apply(setup):
     pd_df3 = df2.groupby(['col1']).apply(f).to_pandas()
     assert pd_df3.columns.tolist() == ['col1', 'col2', 'col3']
 
+    pd_df4 = df2.map_chunk(lambda chunk_df: chunk_df.apply(
+        lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1)).to_pandas()
+    assert pd_df4.columns.tolist() == ['c', 'd']
+
     ser1 = Series(pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c']))
     ser2 = ser1.append(Series(pd.Series(dtype=np.int64)))
     pd_ser2 = ser2.apply(lambda v: str(v)).execute()
     assert pd_ser2.dtype == object
+
+    ser3 = ser2.map_chunk(lambda chunk_series: chunk_series.apply(lambda x: float(x))).execute()
+
+    def check_dtype(s):
+        assert s.dtypes == np.float64
+        return s
+    ser3.map_chunk(check_dtype).execute()
 
 
 def test_assign(setup):
