@@ -26,7 +26,7 @@ from ...serialization.serializables import StringField, AnyField, BoolField, \
 from ...utils import enter_current_session, quiet_stdio
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 from ..utils import build_df, build_series, parse_index, validate_axis, \
-    validate_output_types, make_dtypes, make_dtype
+    validate_output_types, make_dtypes, make_dtype, build_empty_df, build_empty_series
 
 
 class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
@@ -86,13 +86,22 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
     @enter_current_session
     def execute(cls, ctx, op):
         input_data = ctx[op.inputs[0].key]
+        out = op.outputs[0]
+        if len(input_data) == 0:
+            if op.output_types[0] == OutputType.dataframe:
+                ctx[out.key] = build_empty_df(out.dtypes)
+            else:
+                ctx[out.key] = build_empty_series(
+                    out.dtype, name=out.name)
+            return
+
         if isinstance(input_data, pd.DataFrame):
             result = input_data.apply(op.func, axis=op.axis, raw=op.raw, result_type=op.result_type,
                                       args=op.args, **op.kwds)
         else:
             result = input_data.apply(op.func, convert_dtype=op.convert_dtype, args=op.args,
                                       **op.kwds)
-        ctx[op.outputs[0].key] = result
+        ctx[out.key] = result
 
     @classmethod
     def _tile_df(cls, op):
@@ -285,7 +294,6 @@ class ApplyOperand(DataFrameOperand, DataFrameOperandMixin):
                     else:
                         raise TypeError('Cannot determine dtypes, '
                                         'please specify `dtypes` as argument')
-
                 columns_value = parse_index(dtypes.index, store_data=True)
 
                 return self.new_dataframe([series], shape=(series.shape[0], len(dtypes)),

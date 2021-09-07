@@ -208,6 +208,25 @@ def test_to_frame_or_series(setup):
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
 
 
+def test_to_frame_or_series_apply(setup):
+    df1 = DataFrame(pd.DataFrame([[0, 1], [2, 3]], columns=['col1', 'col2']))
+    df2 = df1.append(DataFrame(pd.DataFrame(columns=['col1', 'col2'])))
+    pd_df2 = df2.apply(lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1).to_pandas()
+    assert pd_df2.columns.tolist() == ['c', 'd']
+
+    def f(df):
+        df['col3'] = df['col2']
+        return df
+
+    pd_df3 = df2.groupby(['col1']).apply(f).to_pandas()
+    assert pd_df3.columns.tolist() == ['col1', 'col2', 'col3']
+
+    ser1 = Series(pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c']))
+    ser2 = ser1.append(Series(pd.Series(dtype=np.int64)))
+    pd_ser2 = ser2.apply(lambda v: str(v)).execute()
+    assert pd_ser2.dtype == object
+
+
 def test_assign(setup):
     rs = np.random.RandomState(0)
     raw = pd.DataFrame({"A": rs.rand(10), "B": rs.rand(10)})
