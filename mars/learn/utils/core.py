@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pandas as pd
+from sklearn.base import BaseEstimator
 
 from ...tensor import tensor as astensor
 from ...dataframe import DataFrame, Series
@@ -32,3 +33,10 @@ def convert_to_tensor_or_dataframe(item):
 def concat_chunks(chunks):
     tileable = chunks[0].op.create_tileable_from_chunks(chunks)
     return tileable.op.concat_tileable_chunks(tileable).chunks[0]
+
+
+def copy_learned_attributes(from_estimator: BaseEstimator,
+                            to_estimator: BaseEstimator):
+    attrs = {k: v for k, v in vars(from_estimator).items() if k.endswith('_')}
+    for k, v in attrs.items():
+        setattr(to_estimator, k, v)

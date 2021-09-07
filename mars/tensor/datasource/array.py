@@ -265,7 +265,7 @@ def array(x, dtype=None, copy=True, order='K', ndmin=None, chunk_size=None):
         x = x.copy(order=order)
     elif not copy and isinstance(raw_x, TENSOR_TYPE) and raw_x.dtype == x.dtype and \
             raw_x.order == x.order and raw_x.shape == x.shape and \
-            raw_x is not x:
+            raw_x is not x and hasattr(raw_x, 'data'):
         raw_x.data = x.data
 
     return x
