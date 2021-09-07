@@ -19,7 +19,6 @@ import PropTypes from 'prop-types';
 import { select as d3Select } from 'd3-selection';
 import DAGCanvasChart from './charts/DAGCanvasChart';
 
-
 export default class SubtaskGraph extends React.Component {
     constructor(props) {
         super(props);
@@ -44,7 +43,8 @@ export default class SubtaskGraph extends React.Component {
                     legendTextXLoc: '145',
                     legendTextYLoc: '21',
                 },
-            ]
+            ],
+            selectedSubtask: {},
         };
     }
 
@@ -167,6 +167,12 @@ export default class SubtaskGraph extends React.Component {
             minHeight: 200,
         };
 
+        const subtaskClick = (e, subtask) => {
+            this.setState({
+                selectedSubtask: subtask
+            });
+        };
+
         if (this.state === undefined ||
             this.state.subtasks === undefined ||
             this.state.dependencies === undefined ||
@@ -189,7 +195,52 @@ export default class SubtaskGraph extends React.Component {
                     nodeShape='circle'
                     nodesStatus={this.state.subtaskDetails}
                     dependencies={this.state.dependencies}
+                    onNodeClick={subtaskClick}
                 />
+                <h2>Subtask Graph Info:</h2>
+                {
+                    ('nodeType' in this.state.selectedSubtask)
+                    ?
+                    <React.Fragment>
+                        {
+                            this.state.selectedSubtask.nodeType === 'CalculationNode'
+                            ?
+                            <div>Subtask Name: {this.state.selectedSubtask.subtaskName}<br/></div>
+                            :
+                            <div style={{ height: 150, overflow: 'auto' }}>
+                                <div>Connected Nodes: (may need to swap to see full list)</div><br/>
+                                {
+                                    this.state.selectedSubtask.nodeType === 'InputNode'
+                                    ?
+                                    this.state.dependencies.filter((dependency) => {
+                                        return dependency.fromNodeId === this.state.selectedSubtask.id;
+                                    }).map((dependency) => {
+                                        return (
+                                            <div key={dependency.fromNodeId + '' + dependency.toNodeId} style={{ marginBottom: 5 }}>
+                                                Subtask Name: {this.state.subtaskDetails[dependency.toNodeId].name}
+                                            </div>
+                                        )
+                                    })
+                                    :
+                                    this.state.dependencies.filter((dependency) => {
+                                        return dependency.toNodeId === this.state.selectedSubtask.id;
+                                    }).map((dependency) => {
+                                        return (
+                                            <div key={dependency.fromNodeId + '' + dependency.toNodeId} style={{ marginBottom: 5 }}>
+                                                Subtask Name: {this.state.subtaskDetails[dependency.fromNodeId].name}
+                                            </div>
+                                        )
+                                    })
+                                }
+                            </div>
+                        }
+                    </React.Fragment>
+                    :
+                    <React.Fragment>
+                        Select a subtask to view its detail
+                        <br/>
+                    </React.Fragment>
+                }
             </React.Fragment>
         );
     }

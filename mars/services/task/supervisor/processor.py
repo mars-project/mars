@@ -704,6 +704,7 @@ class TaskProcessorActor(mo.Actor):
                 subtask_detail[subtask.subtask_id] = {
                     'status': status,
                     'progress': progress,
+                    'name': subtask.subtask_name,
                 }
 
         for subtask in requested_subtasks:
@@ -716,6 +717,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_detail[predecessor_id] = {
                         'status': -1,
                         'progress': -1,
+                        'name': subtask.subtask_name,
                     }
 
             for successor in stage.subtask_graph.iter_successors(subtask):
@@ -727,6 +729,7 @@ class TaskProcessorActor(mo.Actor):
                     subtask_detail[successor_id] = {
                         'status': -2,
                         'progress': -2,
+                        'name': subtask.subtask_name,
                     }
 
         return subtask_detail
