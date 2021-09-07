@@ -20,9 +20,10 @@ from .runner import SubtaskRunnerActor
 
 
 class SubtaskManagerActor(mo.Actor):
-    def __init__(self, subtask_processor_cls: Type):
+    def __init__(self, worker_address: str, subtask_processor_cls: Type):
         # specify subtask process class
         # for test purpose
+        self._worker_address = worker_address
         self._subtask_processor_cls = subtask_processor_cls
         self._cluster_api = None
 
@@ -43,6 +44,7 @@ class SubtaskManagerActor(mo.Actor):
             self._band_slot_runner_refs[(band_name, slot_id)] = await mo.create_actor(
                 SubtaskRunnerActor,
                 band,
+                worker_address=self._worker_address,
                 subtask_processor_cls=self._subtask_processor_cls,
                 uid=SubtaskRunnerActor.gen_uid(band_name, slot_id),
                 address=self.address,

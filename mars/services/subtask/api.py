@@ -83,7 +83,7 @@ class MockSubtaskAPI(SubtaskAPI):
     async def create(cls, address: str) -> "SubtaskAPI":
         from .worker.manager import SubtaskManagerActor
         await mo.create_actor(
-            SubtaskManagerActor, None,
+            SubtaskManagerActor, address, None,
             uid=SubtaskManagerActor.default_uid(),
             address=address)
         return await super().create(address)
