@@ -265,6 +265,8 @@ MIT License
 - material-ui:4.0.0
 - lodash:4.17.0
 - dagre-d3:0.6.4
+- cytoscape:3.19.1
+- cytoscape-dagre:2.3.2
 
 
 ISC License

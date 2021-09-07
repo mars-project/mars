@@ -55,15 +55,21 @@ export default class DAGChart extends React.Component {
 
             inputNodeColor: 'rgb(50,129,168)',
             outputNodeColor: 'rgb(195,52,235)',
+
+            tileableWidth: 150,
+            tileableHeight: 50,
+
+            subtaskWidth: 60,
+            subtaskHeight: 60,
         };
     }
 
-    getProgressSVG(progress, status) {
+    getProgressSVG(progress, status, width, height) {
         if (progress === -1 && status === -1) {
             const svg = `
-            <svg width="60" height="60" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="60" height="60" style="fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="60" y="0" width="0" height="60" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
+                <rect x="${width}" y="0" width="0" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
             </svg>`;
 
             return encodeURI("data:image/svg+xml;utf-8,"+svg);
@@ -71,21 +77,21 @@ export default class DAGChart extends React.Component {
 
         if (progress === -2 && status === -2) {
             const svg = `
-            <svg width="60" height="60" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="60" height="60" style="fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="60" y="0" width="0" height="60" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
+                <rect x="${width}" y="0" width="0" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
             </svg>`;
 
             return encodeURI("data:image/svg+xml;utf-8,"+svg);
         }
 
-        const mark = 60 * progress;
-        const remain = 60 - mark;
+        const mark = width * progress;
+        const remain = width - mark;
 
         const svg = `
-            <svg width="60" height="60" viewBox="0 0 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="60" height="60" style="fill:${this.state.nodeStatusMap[status].color};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="${mark}" y="0" width="${remain}" height="60" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.nodeStatusMap[status].color};stroke-width:0.3;stroke:rgb(0,0,0)" />
+                <rect x="${mark}" y="0" width="${remain}" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
             </svg>`;
 
         return encodeURI("data:image/svg+xml;utf-8,"+svg);
@@ -110,8 +116,6 @@ export default class DAGChart extends React.Component {
          */
         if (prevProps.nodes !== this.props.nodes
             && prevProps.dependencies !== this.props.dependencies) {
-                console.log(this.props);
-
                 let dagNodes = [], dagEdges = [], dagStyles = [];
 
                 dagStyles.push({
@@ -136,22 +140,57 @@ export default class DAGChart extends React.Component {
                 this.props.nodes.forEach((node) => {
                     const nodeDetail = this.props.nodesStatus[node.id];
 
-                    const nodeElement = {
-                        data: {
-                            id: node.id
-                        },
-                        group: 'nodes',
-                    };
+                    if (this.props.graphName === 'tileableGraph') {
+                        const nameEndIndex = node.name.indexOf('key') - 1;
+                        const nodeLabel = node.name.substring(0, nameEndIndex);
 
-                    const nodeStyle = {
-                        selector: '#' + node.id,
-                        css: {
-                            'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status),
-                        }
-                    };
+                        const nodeElement = {
+                            data: {
+                                id: node.id,
+                                name: nodeLabel,
+                            },
+                            group: 'nodes',
+                            grabbable: false,
+                        };
 
-                    dagNodes.push(nodeElement);
-                    dagStyles.push(nodeStyle);
+                        const nodeStyle = {
+                            selector: '#' + node.id,
+                            css: {
+                                'width': this.state.tileableWidth,
+                                'height': this.state.tileableHeight,
+                                'content': 'data(name)',
+                                'text-valign' : 'center',
+                                'text-halign' : 'center',
+                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.tileableWidth, this.state.tileableHeight),
+                                'border-width': 0.3,
+                                'border-color': 'black',
+                                'shape': this.props.nodeShape,
+                            }
+                        };
+
+                        dagNodes.push(nodeElement);
+                        dagStyles.push(nodeStyle);
+                    } else {
+                        const nodeElement = {
+                            data: {
+                                id: node.id,
+                            },
+                            group: 'nodes',
+                            grabbable: false,
+                        };
+
+                        const nodeStyle = {
+                            selector: '#' + node.id,
+                            css: {
+                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.subtaskWidth, this.state.subtaskHeight),
+                                'border-width': 0.3,
+                                'border-color': 'black',
+                            }
+                        };
+
+                        dagNodes.push(nodeElement);
+                        dagStyles.push(nodeStyle);
+                    }
                 });
 
                 this.props.dependencies.forEach((dependency) => {
@@ -168,7 +207,7 @@ export default class DAGChart extends React.Component {
                     dagEdges.push(dependencyElement);
                 });
 
-                let cy = window.cy = cytoscape({
+                this.cy = window.cy = cytoscape({
                     container: document.getElementById(this.props.graphName),
 
                     boxSelectionEnabled: false,
@@ -185,6 +224,26 @@ export default class DAGChart extends React.Component {
                         edges: dagEdges,
                     }
                 });
+
+                this.cy.on('click', (e) => {
+                    if (e.target[0] !== undefined) {
+                        const selectedNode = this.props.nodes.filter(
+                            (node) => node.id === e.target[0]._private.data.id
+                        )[0];
+
+                        const nodeDetail = this.props.nodesStatus[selectedNode.id];
+                        if (nodeDetail.progress === -1 && nodeDetail.status === -1) {
+                            selectedNode['nodeType'] = 'InputNode';
+                        } else if (nodeDetail.progress === -2 && nodeDetail.status === -2) {
+                            selectedNode['nodeType'] = 'OutputNode';
+                        } else {
+                            selectedNode['nodeType'] = 'CalculationNode';
+                        }
+
+                        console.log(selectedNode);
+                        this.props.onNodeClick(e, selectedNode);
+                    }
+                })
         }
 
         /**
@@ -196,6 +255,25 @@ export default class DAGChart extends React.Component {
         if (prevProps.nodes === this.props.nodes
             && prevProps.dependencies === this.props.dependencies
             && prevProps.nodesStatus !== this.props.nodesStatus) {
+            this.props.nodes.forEach((node) => {
+                const nodeDetail = this.props.nodesStatus[node.id];
+
+                if (nodeDetail !== undefined && nodeDetail.status >= 0 && nodeDetail.progress >= 0) {
+                    let width, height;
+                    if (this.props.graphName === 'tileableGraph') {
+                        width = this.state.tileableWidth;
+                        height = this.state.tileableHeight;
+                    } else {
+                        width = this.state.subtaskWidth;
+                        height = this.state.subtaskHeight;
+                    }
+
+                    this.cy.nodes(`[id = "${node.id}"]`)
+                        .style('background-image', this.getProgressSVG(nodeDetail.progress, nodeDetail.status, width, height))
+                        .style('border-width', 0.3)
+                        .style('border-color', 'black');
+                }
+            })
         }
     }
 

@@ -75,8 +75,6 @@ export default class DAGChart extends React.Component {
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
-        console.log(this.props);
-
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
         }
@@ -100,14 +98,6 @@ export default class DAGChart extends React.Component {
 
             this.g = new dagGraphLib.Graph().setGraph({});
 
-            if (this.props.nodes.length > 500 && this.props.dependencies.length > this.props.nodes.length) {
-                this.g.setGraph({
-                    ranksep: 1000,
-                    edgesep: 200,
-                    ranker: 'longest-path',
-                });
-            }
-
             // Add the nodes to DAG
             this.props.nodes.forEach((node) => {
                 const value = { node };
@@ -120,9 +110,9 @@ export default class DAGChart extends React.Component {
                     value.label = '';
                 }
 
-                if (this.props.nodeShape === 'tileableGraph') {
+                if (this.props.graphName === 'tileableGraph') {
                     value.rx = value.ry = 5;
-                } else if (this.props.nodeShape === 'subtaskGraph') {
+                } else if (this.props.graphName === 'subtaskGraph') {
                     value.r = 20;
                 }
 

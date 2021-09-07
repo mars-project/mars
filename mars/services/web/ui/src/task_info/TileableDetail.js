@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
-import SubtaskGraph from './SubtaskGraph';
-
+const SubtaskGraph = lazy(() => {
+    return import('./SubtaskGraph');
+});
 
 class TileableDetail extends React.Component {
     constructor(props) {
@@ -34,14 +35,16 @@ class TileableDetail extends React.Component {
             this.props.tileable
                 ?
                 <React.Fragment>
+                    <h2>Tileable Graph Info:</h2>
                     <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
-                    <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/>
-                    <div>Subtask Graph:</div><br/>
-                    <SubtaskGraph
-                        sessionId={this.props.sessionId}
-                        taskId={this.props.taskId}
-                        tileableId={this.props.tileable.id}
-                    />
+                    <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
+                    <Suspense fallback={<div>Loading...</div>}>
+                        <SubtaskGraph
+                            sessionId={this.props.sessionId}
+                            taskId={this.props.taskId}
+                            tileableId={this.props.tileable.id}
+                        />
+                    </Suspense>
                 </React.Fragment>
                 :
                 <React.Fragment>
