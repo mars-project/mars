@@ -926,7 +926,7 @@ class MainActorPoolBase(ActorPoolBase):
     async def start_monitor(self):
         if self._monitor_task is None:
             self._monitor_task = asyncio.create_task(self.monitor_sub_pools())
-            await asyncio.sleep(0)
+        return self._monitor_task
 
     @implements(AbstractActorPool.stop)
     async def stop(self):
