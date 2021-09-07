@@ -187,7 +187,7 @@ class DataFrameFromVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
 
 def from_vineyard(df, vineyard_socket=None):
-    if vineyard is not None and isinstance(df, vineyard.Object):
+    if vineyard is not None and isinstance(df, vineyard.Object):  # pragma: no cover
         if 'vineyard::GlobalDataFrame' not in df.typename:
             raise TypeError('The input dataframe %r is not a vineyard\' GlobalDataFrame' % df)
         object_id = df.id

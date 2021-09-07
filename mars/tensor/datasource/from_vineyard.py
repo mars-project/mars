@@ -31,7 +31,7 @@ except ImportError:
 
 
 def resolve_vineyard_socket(ctx, op):
-    if op.vineyard_socket is None:
+    if op.vineyard_socket is None:  # pragma: no cover
         storage_backend = ctx.get_storage_info(level=StorageLevel.MEMORY)
         if storage_backend.get('name', None) == 'vineyard':
             return storage_backend['socket']
@@ -155,7 +155,7 @@ class TensorFromVineyardChunk(TensorOperand, TensorOperandMixin):
 
 
 def fromvineyard(tensor, vineyard_socket=None):
-    if vineyard is not None and isinstance(tensor, vineyard.Object):
+    if vineyard is not None and isinstance(tensor, vineyard.Object):  # pragma: no cover
         if 'vineyard::GlobalTensor' not in tensor.typename:
             raise TypeError('The input tensor %r is not a vineyard\' GlobalTensor' % tensor)
         object_id = tensor.id

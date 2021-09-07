@@ -32,7 +32,7 @@ except ImportError:
 
 def resolve_vineyard_socket(ctx, op) -> Tuple[str, bool]:
     storage_backend = ctx.get_storage_info(level=StorageLevel.MEMORY)
-    if storage_backend.get('name', None) == 'vineyard':
+    if storage_backend.get('name', None) == 'vineyard':  # pragma: no cover
         if op.vineyard_socket is not None and \
                 op.vineyard_socket != storage_backend['socket']:
             return op.vineyard_socket, True
@@ -88,7 +88,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         # some op might be fused and executed twice on different workers
         if not needs_put:
             # might be fused
-            try:
+            try:  # pragma: no cover
                 meta = ctx.get_chunks_meta([op.inputs[0].key])[0]
                 tensor_id = vineyard.ObjectID(meta['object_ref'])
                 if not client.exists(tensor_id):
@@ -98,7 +98,7 @@ class TensorVineyardDataStoreChunk(TensorDataStore):
         if needs_put:
             tensor_id = client.put(ctx[op.inputs[0].key],
                                    partition_index=op.inputs[0].index)
-        else:
+        else:  # pragma: no cover
             meta = client.get_meta(tensor_id)
             new_meta = vineyard.ObjectMeta()
             for k, v in meta.items():

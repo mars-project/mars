@@ -91,7 +91,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         # some op might be fused and executed twice on different workers
         if not needs_put:
             # might be fused
-            try:
+            try:  # pragma: no cover
                 meta = ctx.get_chunks_meta([op.inputs[0].key])[0]
                 df_id = vineyard.ObjectID(meta['object_ref'])
                 if not client.exists(df_id):
@@ -101,7 +101,7 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
         if needs_put:
             df_id = client.put(ctx[op.inputs[0].key],
                                partition_index=op.inputs[0].index)
-        else:
+        else:  # pragma: no cover
             meta = client.get_meta(df_id)
             new_meta = vineyard.ObjectMeta()
             for k, v in meta.items():
