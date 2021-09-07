@@ -39,6 +39,7 @@ class StorageHandlerActor(mo.StatelessActor):
     Storage handler actor, provide methods like `get`, `put`, etc.
     This actor is stateless and created on worker's sub pools.
     """
+
     def __init__(self,
                  storage_init_params: Dict,
                  data_manager_ref: Union[DataManagerActor, mo.ActorRef],
@@ -526,3 +527,6 @@ class StorageHandlerActor(mo.StatelessActor):
         return StorageInfo(storage_level=level,
                            total_size=int(total_size) if total_size else total_size,
                            used_size=int(used_size))
+
+    async def get_storage_backend_info(self, level: StorageLevel) -> dict:
+        return self._clients[level].backend_info

@@ -111,13 +111,14 @@ class VineyardStorage(StorageBackend):
                  vineyard_size: int,
                  vineyard_socket: str = None):
         self._size = vineyard_size
+        self._vineyard_socket = vineyard_socket
         self._client = vineyard.connect(vineyard_socket)
 
     @classmethod
     @implements(StorageBackend.setup)
     async def setup(cls, **kwargs) -> Tuple[Dict, Dict]:
         loop = asyncio.get_running_loop()
-        etcd_endpoints = kwargs.pop('etcd_endpoints', None)
+        etcd_endpoints = kwargs.pop('etcd_endpoints', '127.0.0.1:2379')
         vineyard_size = kwargs.pop('vineyard_size', '1Gi')
         vineyard_socket = kwargs.pop('vineyard_socket', None)
         vineyardd_path = kwargs.pop('vineyardd_path', None)
@@ -154,6 +155,15 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.size)
     def size(self) -> Optional[int]:
         return self._size
+
+    @property
+    @implements(StorageBackend.backend_info)
+    def backend_info(self):
+        return {
+            'name': self.name,
+            'socket': self._vineyard_socket,
+            'instance_id': self._client.instance_id,
+        }
 
     @implements(StorageBackend.get)
     async def get(self, object_id, **kwargs) -> object:

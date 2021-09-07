@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict
 
 from ..typing import BandType, SessionType
+from ..storage.base import StorageLevel
 
 
 class Context(ABC):
@@ -30,6 +31,7 @@ class Context(ABC):
     def __init__(self,
                  session_id: str = None,
                  supervisor_address: str = None,
+                 worker_address: str = None,
                  current_address: str = None,
                  band: BandType = None):
         if session_id is None:
@@ -47,6 +49,7 @@ class Context(ABC):
 
         self.session_id = session_id
         self.supervisor_address = supervisor_address
+        self.worker_address = worker_address
         self.current_address = current_address
         self.band = band
 
@@ -128,6 +131,25 @@ class Context(ABC):
         -------
         meta_list : list
             Meta list.
+        """
+
+    @abstractmethod
+    def get_storage_info(self, address: str, level: StorageLevel):
+        """
+        Get the customized storage backend info of requested storage backend level at given worker.
+
+        Parameters
+        ----------
+        address: str
+            The worker address.
+        level: StorageLevel
+            The storage level to fetch the backend info.
+
+        Returns
+        -------
+        info: dict
+            Customized storage backend info dict of all workers. The key is
+            worker address, the value is the backend info dict.
         """
 
     @abstractmethod

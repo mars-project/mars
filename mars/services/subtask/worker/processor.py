@@ -417,10 +417,12 @@ class SubtaskProcessorActor(mo.Actor):
                  session_id: str,
                  band: BandType,
                  supervisor_address: str,
+                 worker_address: str,
                  subtask_processor_cls: Type[SubtaskProcessor]):
         self._session_id = session_id
         self._band = band
         self._supervisor_address = supervisor_address
+        self._worker_address = worker_address
         self._subtask_processor_cls = subtask_processor_cls
 
         # current processor
@@ -449,8 +451,9 @@ class SubtaskProcessorActor(mo.Actor):
     async def _init_context(self, session_id: str):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
-            session_id, self._supervisor_address,
-            self.address, loop, band=self._band)
+            session_id,
+            self._supervisor_address, self._worker_address, self.address,
+            loop, band=self._band)
         await context.init()
         set_context(context)
 

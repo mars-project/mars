@@ -295,6 +295,22 @@ class StorageAPI(AbstractStorageAPI):
         """
         return await self._storage_handler_ref.get_storage_level_info(level)
 
+    async def get_storage_info(self, level: StorageLevel) -> dict:
+        """
+        Get the customized storage backend info of requested storage backend.
+
+        Parameters
+        ----------
+        level: StorageLevel
+            the storage level to fetch the backend info.
+
+        Returns
+        -------
+        info : dict
+            Customized storage backend info dict.
+        """
+        return await self._storage_handler_ref.get_storage_backend_info(level)
+
 
 class MockStorageAPI(StorageAPI):
     @classmethod
