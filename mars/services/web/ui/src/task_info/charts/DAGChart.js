@@ -79,6 +79,10 @@ export default class DAGChart extends React.Component {
             return;
         }
 
+        if (Object.keys(this.props.nodesStatus).length !== this.props.nodes.length) {
+            return;
+        }
+
         /**
          * If the nodes and dependencies are different, this is a
          * new DAG, so we will erase everything from the canvas and
@@ -129,12 +133,7 @@ export default class DAGChart extends React.Component {
                  * apply the linear gradient and other css properties
                  * to nodes.
                  */
-                if (nodeDetail === undefined) {
-                    nodeProgressGradient.append('stop')
-                        .attr('id', 'progress-' + node.id + '-stop')
-                        .attr('stop-color', '#FFFFFF')
-                        .attr('offset', 1);
-                } else if (nodeDetail.status === -1 && nodeDetail.progress === -1) {
+                if (nodeDetail === undefined || nodeDetail.status === -1 && nodeDetail.progress === -1) {
                     nodeProgressGradient.append('stop')
                         .attr('id', 'progress-' + node.id + '-stop')
                         .attr('stop-color', this.state.inputNodeColor)
