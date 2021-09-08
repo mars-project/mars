@@ -17,7 +17,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-
 class TileableDetail extends React.Component {
     constructor(props) {
         super(props);
@@ -46,8 +45,8 @@ class TileableDetail extends React.Component {
 
 TileableDetail.propTypes = {
     tileable: PropTypes.shape({
-        tileableId: PropTypes.string,
-        tileableName: PropTypes.string,
+        id: PropTypes.string,
+        name: PropTypes.string,
     }),
     sessionId: PropTypes.string.isRequired,
     taskId: PropTypes.string.isRequired,
