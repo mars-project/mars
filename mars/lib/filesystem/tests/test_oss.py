@@ -17,12 +17,12 @@ from io import BytesIO
 
 import pytest
 
-import mars.dataframe as md
-import mars.lib.filesystem._oss_lib.glob as og
-from mars.lib.filesystem import oss
-from mars.lib.filesystem._oss_lib.common import OSSFileEntry
-from mars.lib.filesystem.oss import build_oss_path
-from mars.tests.core import mock
+from .... import dataframe as md
+from ....tests.core import mock
+from .. import oss
+from .._oss_lib import glob as og
+from .._oss_lib.common import OSSFileEntry
+from ..oss import build_oss_path
 
 
 class OSSObjInfo:

@@ -28,13 +28,13 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-import mars.tensor as mt
-import mars.dataframe as md
-import mars.remote as mr
-from mars._version import __version__ as mars_version
-from mars.config import option_context
-from mars.deploy.utils import load_service_config_file
-from mars.session import execute, fetch, fetch_log
+from .. import tensor as mt
+from .. import dataframe as md
+from .. import remote as mr
+from .._version import __version__ as mars_version
+from ..config import option_context
+from ..deploy.utils import load_service_config_file
+from ..session import execute, fetch, fetch_log
 
 
 test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')

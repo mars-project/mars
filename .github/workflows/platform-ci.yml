@@ -83,8 +83,8 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              # Change back to `pip install ray[default]` when ray-1.6.0 is released.
-              pip install https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-2.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
+              # Change back to `pip install ray[default]` when ray-1.7.0 is released.
+              pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/aee7ba2510dd0eeed8f84dba3e9c5d58cb97d49a/ray-2.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
             fi
             if [ -n "$RUN_DASK" ]; then
               pip install dask[complete] mimesis sklearn
@@ -122,6 +122,11 @@ jobs:
 
             pytest $PYTEST_CONFIG mars/deploy/oscar/tests/test_local.py
             mv .coverage build/.coverage.test_local.file
+
+            pytest $PYTEST_CONFIG -k "vineyard" \
+                mars/tensor/datastore/tests/test_datastore_execution.py \
+                mars/dataframe/datastore/tests/test_datastore_execution.py
+            mv .coverage build/.coverage.test_vineyard_op.file
 
             coverage combine build/ && coverage report
           fi

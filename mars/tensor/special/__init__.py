@@ -60,5 +60,11 @@ try:
         hankel2, TensorHankel2,
         hankel2e, TensorHankel2e,
     )
+    from .hypergeometric_funcs import (
+        hyp2f1, TensorHYP2F1,
+        hyp1f1, TensorHYP1F1,
+        hyperu, TensorHYPERU,
+        hyp0f1, TensorHYP0F1,
+    )
 except ImportError:  # pragma: no cover
     pass

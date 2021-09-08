@@ -30,10 +30,11 @@ except ImportError:  # pragma: no cover
     sklearn = None
 import pytest
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars.learn.metrics import roc_curve, auc, accuracy_score
-from mars.learn.metrics._ranking import _binary_roc_auc_score 
+
+from .... import dataframe as md
+from .... import tensor as mt
+from .. import roc_curve, auc, accuracy_score
+from .. import _ranking._binary_roc_auc_score
 
 
 def test_roc_curve(setup):

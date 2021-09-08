@@ -18,13 +18,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars.core import tile
-from mars.deploy.oscar.session import get_default_session
-from mars.learn.utils import shuffle
-from mars.lib.mmh3 import hash as mmh3_hash
-from mars.remote import spawn, ExecutableTuple
+from ... import dataframe as md
+from ... import tensor as mt
+from ...core import tile
+from ...deploy.oscar.session import get_default_session
+from ...learn.utils import shuffle
+from ...lib.mmh3 import hash as mmh3_hash
+from .. import spawn, ExecutableTuple
 
 
 def test_params():

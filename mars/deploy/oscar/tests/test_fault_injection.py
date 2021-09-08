@@ -16,12 +16,10 @@ import os
 import pytest
 import numpy as np
 
-import mars.tensor as mt
-from mars.remote import spawn
-from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.session import get_default_async_session
-from mars.oscar.errors import ServerClosed
-from mars.services.tests.fault_injection_manager import (
+from .... import tensor as mt
+from ....remote import spawn
+from ....oscar.errors import ServerClosed
+from ....services.tests.fault_injection_manager import (
     AbstractFaultInjectionManager,
     ExtraConfigKey,
     FaultInjectionError,
@@ -29,6 +27,8 @@ from mars.services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ..local import new_cluster
+from ..session import get_default_async_session
 
 CONFIG_FILE = os.path.join(
         os.path.dirname(__file__), 'fault_injection_config.yml')

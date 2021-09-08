@@ -16,18 +16,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import opcodes
-from mars.config import options, option_context
-from mars.core import OutputType, tile
-from mars.core.operand import OperandStage
-from mars.dataframe import eval as mars_eval, cut, to_numeric
-from mars.dataframe.base import to_gpu, to_cpu, astype
-from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
+from .... import opcodes
+from ....config import options, option_context
+from ....core import OutputType, tile
+from ....core.operand import OperandStage
+from ....tensor.core import TENSOR_TYPE
+from ... import eval as mars_eval, cut, to_numeric
+from ...core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.tensor.core import TENSOR_TYPE
+from ...datasource.dataframe import from_pandas as from_pandas_df
+from ...datasource.series import from_pandas as from_pandas_series
+from ...datasource.index import from_pandas as from_pandas_index
+from .. import to_gpu, to_cpu, astype
 
 
 def test_to_gpu():
@@ -699,6 +699,19 @@ def test_cut():
     assert isinstance(r, TENSOR_TYPE)
     e = pd.cut([0, 1, 1, 2], bins=4, labels=False)
     assert r.dtype == e.dtype
+
+
+def test_transpose():
+    s = pd.DataFrame({"a": [1, 2, 3], "b": ['5', '-6', '7'], "c": [1, 2, 3]})
+    df = from_pandas_df(s, chunk_size=2)
+
+    r = tile(df.transpose())
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
+
+    r = tile(df.T)
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
 
 
 def test_to_numeric():

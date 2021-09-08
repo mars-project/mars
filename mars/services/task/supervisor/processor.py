@@ -243,6 +243,15 @@ class TaskProcessor:
         if self._preprocessor.chunk_optimization_records_list:
             return self._preprocessor.chunk_optimization_records_list[-1]
 
+    def _get_tileable_id_to_tileable(self) -> Dict[str, TileableType]:
+        tileable_id_to_tileable = dict()
+        tileable_graph = self._preprocessor.tileable_graph
+
+        for tileable in tileable_graph:
+            tileable_id_to_tileable[str(tileable.key)] = tileable
+
+        return tileable_id_to_tileable
+
     def _get_tileable_to_subtasks(self, subtask_graph: SubtaskGraph) \
             -> Dict[TileableType, List[Subtask]]:
         tileable_to_chunks = defaultdict(set)
@@ -295,9 +304,13 @@ class TaskProcessor:
             self._preprocessor.analyze, chunk_graph, available_bands)
         tileable_to_subtasks = await asyncio.to_thread(
             self._get_tileable_to_subtasks, subtask_graph)
+        tileable_id_to_tileable = await asyncio.to_thread(
+            self._get_tileable_id_to_tileable
+        )
         stage_processor = TaskStageProcessor(
             new_task_id(), self._task, chunk_graph, subtask_graph,
             list(available_bands), tileable_to_subtasks,
+            tileable_id_to_tileable,
             self._get_chunk_optimization_records(),
             self._scheduling_api, self._meta_api)
         return stage_processor
@@ -587,6 +600,76 @@ class TaskProcessorActor(mo.Actor):
                 'status': status.value,
             }
         return tileable_infos
+
+    def get_tileable_subtasks(self, tileable_id: str):
+        returned_subtasks = set()
+        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
+
+        subtask_list = []
+        dependency_list = []
+
+        requested_tileable = None
+        requested_subtasks = None
+
+        for processor in self._task_id_to_processor.values():
+            for stage in processor.stage_processors:
+                if tileable_id in stage.tileable_id_to_tileable:
+                    requested_tileable = stage.tileable_id_to_tileable.get(tileable_id)
+                    requested_subtasks = stage.tileable_to_subtasks.get(requested_tileable, None)
+                    break
+            if requested_subtasks is not None:
+                break
+
+        if requested_subtasks is None: # pragma: no cover
+            return {
+                'subtasks': [],
+                'dependencies': []
+            }
+
+        for subtask in requested_subtasks:
+            if subtask.subtask_id not in returned_subtasks:
+                returned_subtasks.add(subtask.subtask_id)
+
+                subtask_result = stage.subtask_results.get(subtask, default_result)
+                progress = subtask_result.progress
+                status = subtask_result.status.value
+
+                subtask_list.append({
+                    'subtaskId': subtask.subtask_id,
+                    'subtaskName': subtask.subtask_name,
+                    'subtaskProgress': progress,
+                    'status': status
+                })
+
+        for subtask in requested_subtasks:
+            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                predecessor_id = predecessor.subtask_id
+
+                # If the predecessor is in other tileable subtasks, create
+                # a special node on the graph and mark it with a special
+                # color to inform the user that the current subtask has
+                # dependencies from other tileables, so users
+                # won't just see a subtask that is rendered isolatedly
+                # on the frontend
+                if predecessor_id not in returned_subtasks:
+                    returned_subtasks.add(predecessor_id)
+                    subtask_list.append({
+                        'subtaskId': predecessor_id,
+                        'subtaskProgress': -1,
+                        'status': -1
+                    })
+
+                dependency_list.append({
+                    'fromSubtaskId': predecessor_id,
+                    'toSubtaskId': subtask.subtask_id,
+                })
+
+        subtask_dict = {
+            'subtasks': subtask_list,
+            'dependencies': dependency_list
+        }
+
+        return subtask_dict
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

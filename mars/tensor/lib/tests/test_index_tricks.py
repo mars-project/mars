@@ -17,9 +17,9 @@
 import numpy as np
 import pytest
 
-from mars import tensor as mt
-from mars.core import tile
-from mars.tensor.lib import nd_grid
+from .... import tensor as mt
+from ....core import tile
+from ...lib import nd_grid
 
 
 def test_index_tricks():

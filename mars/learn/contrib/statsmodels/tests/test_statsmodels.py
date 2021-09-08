@@ -14,11 +14,10 @@
 
 import pytest
 
-import mars.tensor as mt
-
+from ..... import tensor as mt
 try:
     import statsmodels
-    from mars.learn.contrib.statsmodels import MarsDistributedModel, MarsResults
+    from .. import MarsDistributedModel, MarsResults
 except ImportError:  # pragma: no cover
     statsmodels = MarsDistributedModel = MarsResults = None
 

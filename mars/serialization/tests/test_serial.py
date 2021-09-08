@@ -27,10 +27,10 @@ try:
 except ImportError:
     sps = None
 
-from mars.lib.sparse import SparseMatrix
-from mars.serialization import serialize, deserialize
-from mars.tests.core import require_cupy, require_cudf
-from mars.utils import lazy_import
+from ...lib.sparse import SparseMatrix
+from ...tests.core import require_cupy, require_cudf
+from ...utils import lazy_import
+from .. import serialize, deserialize
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())

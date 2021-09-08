@@ -66,8 +66,10 @@ def patch_method(method, *args, **kwargs):
     if hasattr(method, '__qualname__'):
         return mock.patch(method.__module__ + '.' + method.__qualname__, *args, **kwargs)
     elif hasattr(method, 'im_class'):
-        return mock.patch('.'.join([method.im_class.__module__, method.im_class.__name__, method.__name__]),
-                          *args, **kwargs)
+        return mock.patch('.'.join(
+            [method.im_class.__module__, method.im_class.__name__, method.__name__]),
+            *args, **kwargs
+        )
     else:
         return mock.patch(method.__module__ + '.' + method.__name__, *args, **kwargs)
 
@@ -254,7 +256,7 @@ class ObjectCheckMixin:
                                      % (real_dtype, expected_dtype))
 
     def assert_tensor_consistent(self, expected, real):
-        from mars.lib.sparse import SparseNDArray
+        from ..lib.sparse import SparseNDArray
         np_types = (np.generic, np.ndarray, pd.Timestamp, SparseNDArray)
         if cupy is not None:
             np_types += (cupy.ndarray,)
@@ -288,7 +290,9 @@ class ObjectCheckMixin:
         if not isinstance(real, dataframe_types):
             raise AssertionError(f'Type of real value ({type(real)}) not DataFrame')
         self.assert_shape_consistent(expected.shape, real.shape)
-        if not np.isnan(expected.shape[1]):  # ignore when columns length is nan
+        if not np.isnan(expected.shape[1]) \
+                and expected.dtypes is not None:
+            # ignore check when columns length is nan or dtypes undefined
             pd.testing.assert_index_equal(expected.dtypes.index,
                                           self.adapt_index_value(real.dtypes.index))
 
@@ -324,9 +328,9 @@ class ObjectCheckMixin:
 
     def assert_groupby_consistent(self, expected, real):
         from pandas.core.groupby import DataFrameGroupBy, SeriesGroupBy
-        from mars.lib.groupby_wrapper import GroupByWrapper
-        from mars.dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
-        from mars.dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+        from ..lib.groupby_wrapper import GroupByWrapper
+        from ..dataframe.core import DATAFRAME_GROUPBY_TYPE, SERIES_GROUPBY_TYPE
+        from ..dataframe.core import DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
 
         df_groupby_types = (DataFrameGroupBy,)
         series_groupby_types = (SeriesGroupBy,)
@@ -380,12 +384,12 @@ class ObjectCheckMixin:
         self.assert_index_value_consistent(expected.categories_value, real.categories)
 
     def assert_object_consistent(self, expected, real):
-        from mars.tensor.core import TENSOR_TYPE
-        from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
+        from ..tensor.core import TENSOR_TYPE
+        from ..dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, GROUPBY_TYPE, \
             INDEX_TYPE, CATEGORICAL_TYPE
 
-        from mars.tensor.core import TENSOR_CHUNK_TYPE
-        from mars.dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
+        from ..tensor.core import TENSOR_CHUNK_TYPE
+        from ..dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, \
             GROUPBY_CHUNK_TYPE, INDEX_CHUNK_TYPE, CATEGORICAL_CHUNK_TYPE
 
         op = getattr(expected, 'op', None)

@@ -93,6 +93,21 @@ Ensemble Methods
    ensemble.BlockwiseVotingClassifier
    ensemble.BlockwiseVotingRegressor
 
+.. _linear_model_ref:
+
+Linear Models
+=============
+
+Classical linear regressors
+---------------------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   linear_model.LinearRegression
+
 .. _metrics_ref:
 
 Metrics
@@ -112,6 +127,7 @@ Classification metrics
 
    metrics.accuracy_score
    metrics.auc
+   metrics.log_loss
    metrics.roc_curve
 
 Regression metrics
@@ -198,8 +214,10 @@ Preprocessing and Normalization
 .. autosummary::
    :toctree: generated/
 
+   preprocessing.LabelBinarizer
    preprocessing.MinMaxScaler
    preprocessing.minmax_scale
+   preprocessing.label_binarize
    preprocessing.normalize
 
 .. _semi_supervised_ref:
@@ -241,6 +259,22 @@ Utilities
    utils.shuffle
    utils.validation.check_is_fitted
    utils.validation.column_or_1d
+
+.. _learn_misc_ref：
+
+Misc
+====
+
+.. automodule:: mars.learn.wrappers
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   wrappers.ParallelPostFit
 
 .. _lightgbm_ref:
 
@@ -313,6 +347,7 @@ TensorFlow Integration
    :toctree: generated/
 
    contrib.tensorflow.run_tensorflow_script
+   contrib.tensorflow.gen_tensorflow_dataset
 
 .. _xgboost_ref:
 

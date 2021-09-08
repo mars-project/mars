@@ -21,8 +21,8 @@ from sklearn import datasets
 from sklearn.utils._testing import assert_array_almost_equal, \
     assert_almost_equal, assert_raises_regex, assert_raise_message, assert_raises
 
-import mars.tensor as mt
-from mars.learn.decomposition._pca import PCA, _assess_dimension, _infer_dimension
+from .... import tensor as mt
+from .._pca import PCA, _assess_dimension, _infer_dimension
 
 
 iris = mt.tensor(datasets.load_iris().data)

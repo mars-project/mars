@@ -16,9 +16,9 @@ import numpy as np
 import pytest
 import scipy.sparse as sps
 
-from mars.core import tile
-from mars.tensor.datasource import tensor
-from mars.tensor.spatial import distance
+from .....core import tile
+from ....datasource import tensor
+from ... import distance
 
 
 def test_pdist():

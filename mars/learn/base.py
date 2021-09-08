@@ -99,6 +99,7 @@ class RegressorMixin:
         """
 
         from .metrics import r2_score
+
         y_pred = self.predict(X)
         return r2_score(y, y_pred, sample_weight=sample_weight)
 
@@ -145,6 +146,9 @@ class BaseEstimator(SklearnBaseEstimator):
                     f"This {type(self).__name__} estimator requires y to be passed, "
                     "but the target y is None."
                 )
+            X = check_array(X, **check_params)
+            out = X
+        elif isinstance(y, str) and y == 'no_validation':
             X = check_array(X, **check_params)
             out = X
         else:  # pragma: no cover

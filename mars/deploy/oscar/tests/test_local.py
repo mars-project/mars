@@ -27,20 +27,20 @@ try:
 except ImportError:
     vineyard = None
 
-import mars.dataframe as md
-import mars.tensor as mt
-import mars.remote as mr
-from mars.config import option_context
-from mars.deploy.oscar.session import get_default_async_session, \
-    get_default_session, new_session, execute, fetch, fetch_infos, stop_server, \
-    AsyncSession, _IsolatedWebSession
-from mars.deploy.oscar.local import new_cluster
-from mars.deploy.oscar.service import load_config
-from mars.lib.aio import new_isolation
-from mars.storage import StorageLevel
-from mars.services.storage import StorageAPI
-from mars.tensor.arithmetic.add import TensorAdd
-from .modules.utils import ( # noqa: F401; pylint: disable=unused-variable
+from .... import dataframe as md
+from .... import tensor as mt
+from .... import remote as mr
+from ....config import option_context
+from ....lib.aio import new_isolation
+from ....storage import StorageLevel
+from ....services.storage import StorageAPI
+from ....tensor.arithmetic.add import TensorAdd
+from ..local import new_cluster
+from ..service import load_config
+from ..session import get_default_async_session, \
+    get_default_session, new_session, execute, fetch, fetch_infos, \
+    stop_server, AsyncSession, _IsolatedWebSession
+from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
@@ -58,6 +58,7 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
 
 
 params = ['default']
+params = []
 if vineyard is not None:
     params.append('vineyard')
 
@@ -78,7 +79,7 @@ async def create_cluster(request):
     async with client:
         if request.param == 'default':
             assert client.session.client is not None
-        yield client
+        yield client, request.param
 
 
 def _assert_storage_cleaned(session_id: str,
@@ -96,6 +97,46 @@ def _assert_storage_cleaned(session_id: str,
     isolation = new_isolation()
     asyncio.run_coroutine_threadsafe(
         _assert(session_id, addr, level), isolation.loop).result()
+
+
+@pytest.mark.asyncio
+async def test_vineyard_operators(create_cluster):
+    param = create_cluster[1]
+    if param != 'vineyard':
+        pytest.skip("Vineyard is not enabled")
+
+    session = get_default_async_session()
+
+    # tensor
+    raw = np.random.RandomState(0).rand(55, 55)
+    a = mt.tensor(raw, chunk_size=15)
+    info = await session.execute(a)  # n.b.: pre-execute
+    await info
+
+    b = mt.to_vineyard(a)
+    info = await session.execute(b)
+    await info
+    object_id = (await session.fetch(b))[0]
+
+    c = mt.from_vineyard(object_id)
+    info = await session.execute(c)
+    await info
+    tensor = await session.fetch(c)
+    np.testing.assert_allclose(tensor, raw)
+
+    # dataframe
+    raw = pd.DataFrame({'a': np.arange(0, 55), 'b': np.arange(55, 110)})
+    a = md.DataFrame(raw, chunk_size=15)
+    b = a.to_vineyard()  # n.b.: no pre-execute
+    info = await session.execute(b)
+    await info
+    object_id = (await session.fetch(b))[0][0]
+
+    c = md.from_vineyard(object_id)
+    info = await session.execute(c)
+    await info
+    df = await session.fetch(c)
+    pd.testing.assert_frame_equal(df, raw)
 
 
 @pytest.mark.asyncio
@@ -239,14 +280,15 @@ async def _run_web_session_test(web_address):
 
 @pytest.mark.asyncio
 async def test_web_session(create_cluster):
+    client = create_cluster[0]
     session_id = str(uuid.uuid4())
-    web_address = create_cluster.web_address
+    web_address = client.web_address
     session = await AsyncSession.init(web_address, session_id)
     assert await session.get_web_endpoint() == web_address
     session.as_default()
     assert isinstance(session._isolated_session, _IsolatedWebSession)
-    await test_execute(create_cluster)
-    await test_iterative_tiling(create_cluster)
+    await test_execute(client)
+    await test_iterative_tiling(client)
     AsyncSession.reset_default()
     await session.destroy()
     await _run_web_session_test(web_address)

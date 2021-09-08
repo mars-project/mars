@@ -19,10 +19,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.learn.proxima.core import proxima
-from mars.learn.proxima.simple_index import build_index, search_index, recall
+from ..... import dataframe as md
+from ..... import tensor as mt
+from ...core import proxima
+from .. import build_index, search_index, recall
 
 
 def proxima_build_and_query(doc, query, topk, measure_name=None, dimension=None,

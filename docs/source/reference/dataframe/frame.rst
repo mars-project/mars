@@ -188,6 +188,8 @@ Reshaping, sorting, transposing
    DataFrame.sort_values
    DataFrame.sort_index
    DataFrame.stack
+   DataFrame.T
+   DataFrame.transpose
 
 Combining / joining / merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

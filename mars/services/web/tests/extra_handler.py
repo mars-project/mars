@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.services.web.core import MarsRequestHandler
+from ..core import MarsRequestHandler
 
 
 class ExtraTestHandler(MarsRequestHandler):

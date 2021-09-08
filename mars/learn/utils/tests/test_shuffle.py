@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.core import tile
-from mars.learn.utils import shuffle
-from mars.learn.utils.shuffle import LearnShuffle
+from .... import tensor as mt
+from .... import dataframe as md
+from ....core import tile
+from .. import shuffle
+from ..shuffle import LearnShuffle
 
 
 def test_shuffle_expr():

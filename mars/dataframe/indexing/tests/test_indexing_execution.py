@@ -27,11 +27,11 @@ try:
 except ImportError:  # pragma: no cover
     fp = None
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.dataframe.datasource.read_csv import DataFrameReadCSV
-from mars.dataframe.datasource.read_sql import DataFrameReadSQL
-from mars.dataframe.datasource.read_parquet import DataFrameReadParquet
+from .... import dataframe as md
+from .... import tensor as mt
+from ...datasource.read_csv import DataFrameReadCSV
+from ...datasource.read_sql import DataFrameReadSQL
+from ...datasource.read_parquet import DataFrameReadParquet
 
 
 @pytest.mark.parametrize('chunk_size', [2, (2, 3)])

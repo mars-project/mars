@@ -16,8 +16,8 @@ import numpy as np
 import pytest
 from sklearn.metrics.pairwise import haversine_distances as sk_haversine_distances
 
-from mars import tensor as mt
-from mars.learn.metrics.pairwise import haversine_distances
+from ..... import tensor as mt
+from .. import haversine_distances
 
 
 def test_haversine_distances_op():

@@ -39,6 +39,7 @@ class TaskStageProcessor:
                  subtask_graph: SubtaskGraph,
                  bands: List[BandType],
                  tileable_to_subtasks: Dict[TileableType, List[Subtask]],
+                 tileable_id_to_tileable: Dict[str, TileableType],
                  optimization_records: OptimizationRecords,
                  scheduling_api: SchedulingAPI,
                  meta_api: MetaAPI):
@@ -47,6 +48,7 @@ class TaskStageProcessor:
         self.chunk_graph = chunk_graph
         self.subtask_graph = subtask_graph
         self.tileable_to_subtasks = tileable_to_subtasks
+        self.tileable_id_to_tileable = tileable_id_to_tileable
         self._bands = bands
         self._optimization_records = optimization_records
 

@@ -21,13 +21,12 @@ from typing import Tuple, Union
 import pytest
 import pandas as pd
 
-import mars.oscar as mo
-from mars.oscar import ServerClosed
-from mars.oscar.backends.allocate_strategy import IdleLabel
-from mars.services.scheduling.supervisor import GlobalSlotManagerActor
-from mars.services.scheduling.worker import BandSlotManagerActor, \
-    BandSlotControlActor
-from mars.utils import get_next_port
+from ..... import oscar as mo
+from .....oscar import ServerClosed
+from .....oscar.backends.allocate_strategy import IdleLabel
+from .....utils import get_next_port
+from ...supervisor import GlobalSlotManagerActor
+from ...worker import BandSlotManagerActor, BandSlotControlActor
 
 
 class MockGlobalSlotManagerActor(mo.Actor):

@@ -3,6 +3,8 @@
 .git
 .github
 .idea
+.empty
+.readthedocs.yml
 .vscode
 .pytest*
 .dist-coverage
@@ -16,10 +18,13 @@ misc
 .DS_Store
 .flake8
 .gitignore
-.travis.yml
-appveyor.yml
+.codacy.yml
+.codecov.yml
+azure-pipelines.yml
 *.iml
+*.md
 conda-spec.txt
+CODEOWNERS
 CONTRIBUTING.rst
 LICENSE
 MANIFEST.in

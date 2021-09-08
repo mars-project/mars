@@ -20,11 +20,10 @@ from typing import Union
 
 import pytest
 
-import mars.oscar as mo
-from mars.services.scheduling.worker import \
-    QuotaActor, MemQuotaActor, BandSlotManagerActor
-from mars.tests.core import mock
-from mars.utils import get_next_port
+from ..... import oscar as mo
+from .....tests.core import mock
+from .....utils import get_next_port
+from ...worker import QuotaActor, MemQuotaActor, BandSlotManagerActor
 
 QuotaActorRef = Union[QuotaActor, mo.ActorRef]
 
@@ -135,7 +134,7 @@ async def test_batch_quota_allocation(actor_pool):
 @pytest.mark.asyncio
 @pytest.mark.parametrize('enable_kill_slot', [False, True])
 async def test_mem_quota_allocation(actor_pool, enable_kill_slot):
-    from mars.utils import AttributeDict
+    from .....utils import AttributeDict
 
     mock_mem_stat = AttributeDict(dict(total=300, available=50, used=0, free=50))
     mock_band_slot_manager_ref = await mo.create_actor(

@@ -1,4 +1,18 @@
 #!/usr/bin/env python
+# Copyright 1999-2021 Alibaba Group Holding Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import ast
 import os
 import sys
@@ -59,7 +73,7 @@ def _extract_line_block(lines: List, lineno: int, end_lineno: int, indent: str):
 def format_results(results: List[CheckResult], root_path):
     rel_import_count = sum(len(res.absolute_imports) for res in results)
     if rel_import_count > 0:
-        print(f'Do not use absolute imports for mars module in non-test '
+        print(f'Do not use absolute imports for mars module in '
               f'code ({rel_import_count}):', file=sys.stderr)
         for res in results:
             if not res.absolute_imports:
@@ -76,9 +90,10 @@ def main():
     root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     results = []
     for root, _dirs, files in os.walk(os.path.join(root_path, 'mars')):
-        if 'tests' in root:
-            continue
         for fn in files:
+            if '/tests' in root and not fn.startswith('test_'):
+                # allow test auxiliary files to use full imports
+                continue
             abs_path = os.path.join(root, fn)
             rel_path = os.path.relpath(abs_path, root_path)
 

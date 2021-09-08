@@ -17,9 +17,9 @@ import pytest
 from sklearn.datasets import make_classification
 from sklearn.linear_model import LogisticRegression
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars.learn.ensemble import BlockwiseVotingClassifier, BlockwiseVotingRegressor
+from .... import dataframe as md
+from .... import tensor as mt
+from .. import BlockwiseVotingClassifier, BlockwiseVotingRegressor
 
 
 fit_raw_X, fit_raw_y = make_classification()

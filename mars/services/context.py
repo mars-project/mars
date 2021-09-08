@@ -21,6 +21,7 @@ from .. import oscar as mo
 from ..lib.aio import new_isolation
 from ..core.context import Context
 from ..typing import BandType, SessionType
+from ..storage.base import StorageLevel
 from ..utils import implements
 from .cluster import ClusterAPI, NodeRole
 from .session import SessionAPI
@@ -38,11 +39,13 @@ class ThreadedServiceContext(Context):
     def __init__(self,
                  session_id: str,
                  supervisor_address: str,
+                 worker_address: str,
                  current_address: str,
                  loop: asyncio.AbstractEventLoop,
                  band: BandType = None):
         super().__init__(session_id=session_id,
                          supervisor_address=supervisor_address,
+                         worker_address=worker_address,
                          current_address=current_address,
                          band=band)
         self._loop = loop
@@ -144,6 +147,20 @@ class ThreadedServiceContext(Context):
                         fields: List[str] = None,
                         error='raise') -> List[Dict]:
         return self._call(self._get_chunks_meta(data_keys, fields=fields, error=error))
+
+    async def _get_backend_info(self,
+                                address: str = None,
+                                level: StorageLevel = StorageLevel.MEMORY) -> dict:
+        if address is None:
+            address = self.worker_address
+        storage_api = await StorageAPI.create(self.session_id, address)
+        return await storage_api.get_storage_info(level)
+
+    @implements(Context.get_storage_info)
+    def get_storage_info(self,
+                         address: str = None,
+                         level: StorageLevel = StorageLevel.MEMORY):
+        return self._call(self._get_backend_info(address, level))
 
     @implements(Context.create_remote_object)
     def create_remote_object(self,

@@ -20,3 +20,4 @@ from .dstack import dstack
 from .column_stack import column_stack
 from .union1d import union1d
 from .block import block
+from .append import append

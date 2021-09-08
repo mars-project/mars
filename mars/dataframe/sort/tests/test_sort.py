@@ -15,12 +15,12 @@
 import numpy as np
 import pandas as pd
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.dataframe.initializer import DataFrame
-from mars.dataframe.indexing.getitem import DataFrameIndex
-from mars.dataframe.sort.sort_values import dataframe_sort_values, DataFrameSortValues
-from mars.dataframe.sort.sort_index import sort_index, DataFrameSortIndex
+from ....core import tile
+from ....core.operand import OperandStage
+from ...indexing.getitem import DataFrameIndex
+from ...initializer import DataFrame
+from ..sort_index import sort_index, DataFrameSortIndex
+from ..sort_values import dataframe_sort_values, DataFrameSortValues
 
 
 def test_sort_values():

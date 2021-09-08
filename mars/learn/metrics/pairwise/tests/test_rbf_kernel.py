@@ -15,7 +15,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import rbf_kernel as sklearn_rbf_kernel
 
-from mars.learn.metrics.pairwise import rbf_kernel
+from .. import rbf_kernel
 
 
 def test_rbf_kernel(setup):

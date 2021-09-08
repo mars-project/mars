@@ -16,11 +16,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import tile
-from mars.dataframe import cut
-from mars.dataframe.initializer import DataFrame, Series, Index
-from mars.lib.groupby_wrapper import wrapped_groupby
-from mars.lib.version import parse as parse_version
+from ...core import tile
+from ...lib.groupby_wrapper import wrapped_groupby
+from ...lib.version import parse as parse_version
+from .. import cut
+from ..initializer import DataFrame, Series, Index
 
 _with_inclusive_bounds = parse_version(pd.__version__) >= parse_version('1.3.0')
 
@@ -53,6 +53,8 @@ def test_series_params():
     series = tile(series)
     c = series.chunks[0]
 
+    assert series.T is series
+
     assert any(np.isnan(s) for s in c.params['shape'])
     assert np.isnan(c.params['index_value'].min_val)
     c.params = c.get_params_from_data(raw[raw < 2])
@@ -75,6 +77,8 @@ def test_index_params():
     index = series.index
     index = tile(index)
     c = index.chunks[0]
+
+    assert index.T is index
 
     assert any(np.isnan(s) for s in c.params['shape'])
     assert np.isnan(c.params['index_value'].min_val)
@@ -202,6 +206,36 @@ def test_to_frame_or_series(setup):
     r = index.to_series(name='new_name')
     result = r.execute().fetch()
     pd.testing.assert_series_equal(raw.to_series(name='new_name'), result)
+
+
+def test_to_frame_or_series_apply(setup):
+    df1 = DataFrame(pd.DataFrame([[0, 1], [2, 3]], columns=['col1', 'col2']))
+    df2 = df1.append(DataFrame(pd.DataFrame(columns=['col1', 'col2'])))
+    pd_df2 = df2.apply(lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1).to_pandas()
+    assert pd_df2.columns.tolist() == ['c', 'd']
+
+    def f(df):
+        df['col3'] = df['col2']
+        return df
+
+    pd_df3 = df2.groupby(['col1']).apply(f).to_pandas()
+    assert pd_df3.columns.tolist() == ['col1', 'col2', 'col3']
+
+    pd_df4 = df2.map_chunk(lambda chunk_df: chunk_df.apply(
+        lambda row: pd.Series([1, 2], index=['c', 'd']), axis=1)).to_pandas()
+    assert pd_df4.columns.tolist() == ['c', 'd']
+
+    ser1 = Series(pd.Series(data={'a': 1, 'b': 2, 'c': 3}, index=['a', 'b', 'c']))
+    ser2 = ser1.append(Series(pd.Series(dtype=np.int64)))
+    pd_ser2 = ser2.apply(lambda v: str(v)).execute()
+    assert pd_ser2.dtype == object
+
+    ser3 = ser2.map_chunk(lambda chunk_series: chunk_series.apply(lambda x: float(x))).execute()
+
+    def check_dtype(s):
+        assert s.dtypes == np.float64
+        return s
+    ser3.map_chunk(check_dtype).execute()
 
 
 def test_assign(setup):
