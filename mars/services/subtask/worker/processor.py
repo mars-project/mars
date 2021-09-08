@@ -72,6 +72,7 @@ class SubtaskProcessor:
             session_id=subtask.session_id,
             task_id=subtask.task_id,
             status=SubtaskStatus.pending,
+            band=[self._band],
             progress=0.0)
         self.is_done = asyncio.Event()
 
