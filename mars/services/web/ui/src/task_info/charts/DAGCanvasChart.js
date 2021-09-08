@@ -16,6 +16,7 @@
 
 import React from 'react';
 import cytoscape from 'cytoscape';
+import { select as d3Select } from 'd3-selection';
 import dagre from 'cytoscape-dagre';
 import PropTypes from 'prop-types';
 import {
@@ -95,6 +96,19 @@ export default class DAGChart extends React.Component {
             </svg>`;
 
         return encodeURI("data:image/svg+xml;utf-8,"+svg);
+    }
+
+    componentDidMount() {
+        this.tooltip = d3Select('#node-tooltip')
+            .style('opacity', 0)
+            .style('background', 'lightsteelblue')
+            .style('position', 'absolute')
+            .style('width', 'auto')
+            .style('height', '100px')
+            .style('overflow', 'auto')
+            .style('padding', '5px')
+            .style('border', '0px')
+            .style('border-radius', '8px');
     }
 
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
@@ -200,6 +214,8 @@ export default class DAGChart extends React.Component {
                         data: {
                             source: dependency.fromNodeId,
                             target: dependency.toNodeId,
+                            sourceNodeName: this.props.nodesStatus[dependency.fromNodeId].name,
+                            targetNodeName: this.props.nodesStatus[dependency.toNodeId].name,
                         },
                         group: 'edges',
                         classes: dependencyClass
@@ -225,24 +241,76 @@ export default class DAGChart extends React.Component {
                     }
                 });
 
-                this.cy.on('click', (e) => {
-                    if (e.target[0] !== undefined) {
-                        const selectedNode = this.props.nodes.filter(
-                            (node) => node.id === e.target[0]._private.data.id
-                        )[0];
+                this.cy.on('mouseover', 'node', (e) => {
+                    const x = e.originalEvent.clientX;
+                    const y = e.originalEvent.clientY;
 
-                        const nodeDetail = this.props.nodesStatus[selectedNode.id];
-                        if (nodeDetail.progress === -1 && nodeDetail.status === -1) {
-                            selectedNode['nodeType'] = 'InputNode';
-                        } else if (nodeDetail.progress === -2 && nodeDetail.status === -2) {
-                            selectedNode['nodeType'] = 'OutputNode';
+                    const selectedNodeId = e.target[0]._private.data.id;
+                    const paths = e.target[0]._private.edges.map((edge) => {
+                        const dependency = edge._private.data;
+                        if (dependency.fromNodeId === selectedNodeId) {
+                            return dependency.targetNodeName;
                         } else {
-                            selectedNode['nodeType'] = 'CalculationNode';
+                            return dependency.sourceNodeName;
+                        }
+                    });
+
+                    const nodeDetail = this.props.nodesStatus[selectedNodeId];
+
+                    if (nodeDetail.status === -2 && nodeDetail.progress === -2) {
+                        let connectedNodes = '';
+                        for (let i = 0; i < paths.length; i++) {
+                            connectedNodes += "<p>Source Nodes: " + paths[i] + "</p><br />";
                         }
 
-                        console.log(selectedNode);
-                        this.props.onNodeClick(e, selectedNode);
+                        let tooltipInfo = `
+                        <div>
+                            <p>Connected Nodes:</p>
+                            ${connectedNodes}
+                        </div>
+                        `;
+
+                        this.tooltip.html(tooltipInfo)
+                            .style('left', (x) + 'px')
+                            .style('top', (y+5) + 'px');
+                    } else if (nodeDetail.status === -1 && nodeDetail.progress === -1) {
+                        let connectedNodes = '';
+                        for (let i = 0; i < paths.length; i++) {
+                            connectedNodes += "<p>Target Nodes: " + paths[i] + "</p><br />";
+                        }
+
+                        let tooltipInfo = `
+                        <div>
+                            <p>Connected Nodes:</p>
+                            ${connectedNodes}
+                        </div>
+                        `;
+
+                        this.tooltip.html(tooltipInfo)
+                            .style('left', (x) + 'px')
+                            .style('top', (y+5) + 'px');
+                    } else {
+                        let tooltipInfo = `
+                        <div>
+                            <p>Node Name:</p>
+                            ${this.props.nodesStatus[selectedNodeId].name}
+                        </div>
+                        `;
+
+                        this.tooltip.html(tooltipInfo)
+                            .style('left', (x) + 'px')
+                            .style('top', (y+5) + 'px');
                     }
+
+                    this.tooltip.transition()
+                        .duration(200)
+                        .style('opacity', .9);
+                })
+
+                this.cy.on('mouseout', 'node', (e) => {
+                    this.tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0);
                 })
         }
 
@@ -279,10 +347,13 @@ export default class DAGChart extends React.Component {
 
     render() {
         return (
-            <div
-                id={this.props.graphName}
-                style={this.props.dagStyle}
-            />
+            <React.Fragment>
+                <div
+                    id={this.props.graphName}
+                    style={this.props.dagStyle}
+                />
+                <div id='node-tooltip' />
+            </React.Fragment>
         );
     }
 }
