@@ -30,7 +30,7 @@ from ...core.operand import OperandStage
 from ...lib.version import parse as parse_version
 from ...serialization.serializables import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_current_session
-from ..core import INDEX_CHUNK_TYPE
+from ..core import INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_empty_df, build_series, parse_index, validate_axis
@@ -44,13 +44,12 @@ _agg_size_as_series = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 def where_function(cond, var1, var2):
-    if var1.ndim >= 1:
+    if hasattr(var1, 'ndim') and var1.ndim >= 1:
         return var1.where(cond, var2)
+    elif isinstance(var1, ENTITY_TYPE):
+        return mars_tensor.where(cond, var1, var2)
     else:
-        if isinstance(var1, ENTITY_TYPE):
-            return mars_tensor.where(cond, var1, var2)
-        else:
-            return np.where(cond, var1, var2).item()
+        return np.where(cond, var1, var2).item()
 
 
 _agg_functions = {
@@ -733,7 +732,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 xp = cp if op.gpu else np
                 in_obj = op.inputs[0]
-                if isinstance(in_obj, INDEX_CHUNK_TYPE):
+                if isinstance(in_obj, (INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE)):
                     result = op.func[0](ctx[in_obj.key])
                 else:
                     result = ctx[in_obj.key].agg(op.raw_func, axis=op.axis)
