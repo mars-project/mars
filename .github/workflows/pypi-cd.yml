@@ -1,4 +1,4 @@
-name: Mars CD
+name: Mars CD for PyPI
 
 on:
   push:
