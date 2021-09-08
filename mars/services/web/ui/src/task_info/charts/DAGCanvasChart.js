@@ -257,26 +257,12 @@ export default class DAGChart extends React.Component {
 
                     const nodeDetail = this.props.nodesStatus[selectedNodeId];
 
-                    if (nodeDetail.status === -2 && nodeDetail.progress === -2) {
+                    if (nodeDetail.status < 0) {
                         let connectedNodes = '';
-                        for (let i = 0; i < paths.length; i++) {
-                            connectedNodes += "<p>Source Nodes: " + paths[i] + "</p><br />";
-                        }
+                        const title = nodeDetail.status === -2 ? 'Source Nodes: ' : 'Target Nodes: ';
 
-                        let tooltipInfo = `
-                        <div>
-                            <p>Connected Nodes:</p>
-                            ${connectedNodes}
-                        </div>
-                        `;
-
-                        this.tooltip.html(tooltipInfo)
-                            .style('left', (x) + 'px')
-                            .style('top', (y+5) + 'px');
-                    } else if (nodeDetail.status === -1 && nodeDetail.progress === -1) {
-                        let connectedNodes = '';
                         for (let i = 0; i < paths.length; i++) {
-                            connectedNodes += "<p>Target Nodes: " + paths[i] + "</p><br />";
+                            connectedNodes += '<p>' + title + paths[i] + '</p>';
                         }
 
                         let tooltipInfo = `
