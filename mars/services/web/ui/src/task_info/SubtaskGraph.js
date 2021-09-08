@@ -58,7 +58,7 @@ export default class SubtaskGraph extends React.Component {
      * @param {*} color - Status color for the legend entry
      * @param {*} text - Label for the legend entry
      */
-     generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
+    generateGraphLegendItem(svgContainer, dotX, dotY, textX, textY, color, text) {
         svgContainer
             .append('circle')
             .attr('cx', dotX)
@@ -164,12 +164,6 @@ export default class SubtaskGraph extends React.Component {
             width: '90%',
             height: '80%',
             minHeight: 200,
-        };
-
-        const subtaskClick = (e, subtask) => {
-            this.setState({
-                selectedSubtask: subtask
-            });
         };
 
         if (this.state === undefined ||

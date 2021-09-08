@@ -68,34 +68,34 @@ export default class DAGChart extends React.Component {
     getProgressSVG(progress, status, width, height) {
         if (progress === -1 && status === -1) {
             const svg = `
-            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="${width}" y="0" width="0" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
+                <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
+                <rect x='${width}' y='0' width='0' height='${height}' style='fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)' />
             </svg>`;
 
-            return encodeURI("data:image/svg+xml;utf-8,"+svg);
+            return encodeURI('data:image/svg+xml;utf-8,'+svg);
         }
 
         if (progress === -2 && status === -2) {
             const svg = `
-            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="${width}" y="0" width="0" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
+                <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
+                <rect x='${width}' y='0' width='0' height='${height}' style='fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)' />
             </svg>`;
 
-            return encodeURI("data:image/svg+xml;utf-8,"+svg);
+            return encodeURI('data:image/svg+xml;utf-8,'+svg);
         }
 
         const mark = width * progress;
         const remain = width - mark;
 
         const svg = `
-            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                <rect x="0" y="0" width="${width}" height="${height}" style="fill:${this.state.nodeStatusMap[status].color};stroke-width:0.3;stroke:rgb(0,0,0)" />
-                <rect x="${mark}" y="0" width="${remain}" height="${height}" style="fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)" />
+            <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
+                <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.nodeStatusMap[status].color};stroke-width:0.3;stroke:rgb(0,0,0)' />
+                <rect x='${mark}' y='0' width='${remain}' height='${height}' style='fill:rgb(255, 255, 255);stroke-width:0.1;stroke:rgb(0, 0, 0)' />
             </svg>`;
 
-        return encodeURI("data:image/svg+xml;utf-8,"+svg);
+        return encodeURI('data:image/svg+xml;utf-8,'+svg);
     }
 
     componentDidMount() {
@@ -130,174 +130,174 @@ export default class DAGChart extends React.Component {
          */
         if (prevProps.nodes !== this.props.nodes
             && prevProps.dependencies !== this.props.dependencies) {
-                let dagNodes = [], dagEdges = [], dagStyles = [];
+            let dagNodes = [], dagEdges = [], dagStyles = [];
 
-                dagStyles.push({
-                    selector: '.linkType-1',
-                    style: {
-                        'width': 1,
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                        'line-style': 'dashed',
-                    }
-                });
+            dagStyles.push({
+                selector: '.linkType-1',
+                style: {
+                    'width': 1,
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier',
+                    'line-style': 'dashed',
+                }
+            });
 
-                dagStyles.push({
-                    selector: '.linkType-0',
-                    style: {
-                        'width': 1,
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                    }
-                });
+            dagStyles.push({
+                selector: '.linkType-0',
+                style: {
+                    'width': 1,
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier',
+                }
+            });
 
-                this.props.nodes.forEach((node) => {
-                    const nodeDetail = this.props.nodesStatus[node.id];
+            this.props.nodes.forEach((node) => {
+                const nodeDetail = this.props.nodesStatus[node.id];
 
-                    if (this.props.graphName === 'tileableGraph') {
-                        const nameEndIndex = node.name.indexOf('key') - 1;
-                        const nodeLabel = node.name.substring(0, nameEndIndex);
+                if (this.props.graphName === 'tileableGraph') {
+                    const nameEndIndex = node.name.indexOf('key') - 1;
+                    const nodeLabel = node.name.substring(0, nameEndIndex);
 
-                        const nodeElement = {
-                            data: {
-                                id: node.id,
-                                name: nodeLabel,
-                            },
-                            group: 'nodes',
-                            grabbable: false,
-                        };
-
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'width': this.state.tileableWidth,
-                                'height': this.state.tileableHeight,
-                                'content': 'data(name)',
-                                'text-valign' : 'center',
-                                'text-halign' : 'center',
-                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.tileableWidth, this.state.tileableHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                                'shape': this.props.nodeShape,
-                            }
-                        };
-
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    } else {
-                        const nodeElement = {
-                            data: {
-                                id: node.id,
-                            },
-                            group: 'nodes',
-                            grabbable: false,
-                        };
-
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.subtaskWidth, this.state.subtaskHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                            }
-                        };
-
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    }
-                });
-
-                this.props.dependencies.forEach((dependency) => {
-                    const dependencyClass = dependency.linkType === 1 ? 'linkType-1' : 'linkType-0';
-
-                    const dependencyElement = {
+                    const nodeElement = {
                         data: {
-                            source: dependency.fromNodeId,
-                            target: dependency.toNodeId,
-                            sourceNodeName: this.props.nodesStatus[dependency.fromNodeId].name,
-                            targetNodeName: this.props.nodesStatus[dependency.toNodeId].name,
+                            id: node.id,
+                            name: nodeLabel,
                         },
-                        group: 'edges',
-                        classes: dependencyClass
-                    }
-                    dagEdges.push(dependencyElement);
-                });
+                        group: 'nodes',
+                        grabbable: false,
+                    };
 
-                this.cy = window.cy = cytoscape({
-                    container: document.getElementById(this.props.graphName),
+                    const nodeStyle = {
+                        selector: '#' + node.id,
+                        css: {
+                            'width': this.state.tileableWidth,
+                            'height': this.state.tileableHeight,
+                            'content': 'data(name)',
+                            'text-valign' : 'center',
+                            'text-halign' : 'center',
+                            'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.tileableWidth, this.state.tileableHeight),
+                            'border-width': 0.3,
+                            'border-color': 'black',
+                            'shape': this.props.nodeShape,
+                        }
+                    };
 
-                    boxSelectionEnabled: false,
-                    autounselectify: true,
+                    dagNodes.push(nodeElement);
+                    dagStyles.push(nodeStyle);
+                } else {
+                    const nodeElement = {
+                        data: {
+                            id: node.id,
+                        },
+                        group: 'nodes',
+                        grabbable: false,
+                    };
 
-                    layout: {
-                        name: 'dagre'
+                    const nodeStyle = {
+                        selector: '#' + node.id,
+                        css: {
+                            'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.subtaskWidth, this.state.subtaskHeight),
+                            'border-width': 0.3,
+                            'border-color': 'black',
+                        }
+                    };
+
+                    dagNodes.push(nodeElement);
+                    dagStyles.push(nodeStyle);
+                }
+            });
+
+            this.props.dependencies.forEach((dependency) => {
+                const dependencyClass = dependency.linkType === 1 ? 'linkType-1' : 'linkType-0';
+
+                const dependencyElement = {
+                    data: {
+                        source: dependency.fromNodeId,
+                        target: dependency.toNodeId,
+                        sourceNodeName: this.props.nodesStatus[dependency.fromNodeId].name,
+                        targetNodeName: this.props.nodesStatus[dependency.toNodeId].name,
                     },
+                    group: 'edges',
+                    classes: dependencyClass
+                };
+                dagEdges.push(dependencyElement);
+            });
 
-                    style: dagStyles,
+            this.cy = window.cy = cytoscape({
+                container: document.getElementById(this.props.graphName),
 
-                    elements: {
-                        nodes: dagNodes,
-                        edges: dagEdges,
+                boxSelectionEnabled: false,
+                autounselectify: true,
+
+                layout: {
+                    name: 'dagre'
+                },
+
+                style: dagStyles,
+
+                elements: {
+                    nodes: dagNodes,
+                    edges: dagEdges,
+                }
+            });
+
+            this.cy.on('mouseover', 'node', (e) => {
+                const x = e.originalEvent.clientX;
+                const y = e.originalEvent.clientY;
+
+                const selectedNodeId = e.target[0]._private.data.id;
+                const paths = e.target[0]._private.edges.map((edge) => {
+                    const dependency = edge._private.data;
+                    if (dependency.fromNodeId === selectedNodeId) {
+                        return dependency.targetNodeName;
+                    } else {
+                        return dependency.sourceNodeName;
                     }
                 });
 
-                this.cy.on('mouseover', 'node', (e) => {
-                    const x = e.originalEvent.clientX;
-                    const y = e.originalEvent.clientY;
+                const nodeDetail = this.props.nodesStatus[selectedNodeId];
 
-                    const selectedNodeId = e.target[0]._private.data.id;
-                    const paths = e.target[0]._private.edges.map((edge) => {
-                        const dependency = edge._private.data;
-                        if (dependency.fromNodeId === selectedNodeId) {
-                            return dependency.targetNodeName;
-                        } else {
-                            return dependency.sourceNodeName;
-                        }
-                    });
+                if (nodeDetail.status < 0) {
+                    let connectedNodes = '';
+                    const title = nodeDetail.status === -2 ? 'Source Nodes: ' : 'Target Nodes: ';
 
-                    const nodeDetail = this.props.nodesStatus[selectedNodeId];
-
-                    if (nodeDetail.status < 0) {
-                        let connectedNodes = '';
-                        const title = nodeDetail.status === -2 ? 'Source Nodes: ' : 'Target Nodes: ';
-
-                        for (let i = 0; i < paths.length; i++) {
-                            connectedNodes += '<p>' + title + paths[i] + '</p>';
-                        }
-
-                        let tooltipInfo = `
-                        <div>
-                            <p>Connected Nodes:</p>
-                            ${connectedNodes}
-                        </div>
-                        `;
-
-                        this.tooltip.html(tooltipInfo)
-                            .style('left', (x) + 'px')
-                            .style('top', (y+5) + 'px');
-                    } else {
-                        let tooltipInfo = `
-                        <div>
-                            <p>Node Name:</p>
-                            ${this.props.nodesStatus[selectedNodeId].name}
-                        </div>
-                        `;
-
-                        this.tooltip.html(tooltipInfo)
-                            .style('left', (x) + 'px')
-                            .style('top', (y+5) + 'px');
+                    for (let i = 0; i < paths.length; i++) {
+                        connectedNodes += '<p>' + title + paths[i] + '</p>';
                     }
 
-                    this.tooltip.transition()
-                        .duration(200)
-                        .style('opacity', .9);
-                })
+                    let tooltipInfo = `
+                    <div>
+                        <p>Connected Nodes:</p>
+                        ${connectedNodes}
+                    </div>
+                    `;
 
-                this.cy.on('mouseout', 'node', (e) => {
-                    this.tooltip.transition()
-                        .duration(200)
-                        .style('opacity', 0);
-                })
+                    this.tooltip.html(tooltipInfo)
+                        .style('left', (x) + 'px')
+                        .style('top', (y+5) + 'px');
+                } else {
+                    let tooltipInfo = `
+                    <div>
+                        <p>Node Name:</p>
+                        ${this.props.nodesStatus[selectedNodeId].name}
+                    </div>
+                    `;
+
+                    this.tooltip.html(tooltipInfo)
+                        .style('left', (x) + 'px')
+                        .style('top', (y+5) + 'px');
+                }
+
+                this.tooltip.transition()
+                    .duration(200)
+                    .style('opacity', .9);
+            });
+
+            this.cy.on('mouseout', 'node', (e) => {
+                this.tooltip.transition()
+                    .duration(200)
+                    .style('opacity', 0);
+            });
         }
 
         /**
@@ -327,7 +327,7 @@ export default class DAGChart extends React.Component {
                         .style('border-width', 0.3)
                         .style('border-color', 'black');
                 }
-            })
+            });
         }
     }
 
