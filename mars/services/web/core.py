@@ -126,6 +126,9 @@ class MarsServiceWebAPIHandler(MarsRequestHandler):
 
     def _make_handle_http_method(http_method: str):
         async def _handle_http_method(self: "MarsServiceWebAPIHandler", **kwargs):
+            # make sure results from APIs is not stored
+            self.add_header('Cache-Control', 'no-store')
+
             sub_path = kwargs.pop('sub_path', None) or ''
             method, kw = self._route_sub_path(http_method, sub_path)
             kw.update(kwargs)
