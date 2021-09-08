@@ -113,10 +113,15 @@ class SessionAPI(AbstractSessionAPI):
                                     session_id: str,
                                     shape: tuple,
                                     dtype: str,
-                                    chunksize,
-                                    name: str = None):
+                                    chunk_size,
+                                    name: str = None,
+                                    default_value = 0):
         session = await self._get_session_ref(session_id)
-        return await session.create_mutable_tensor(shape, dtype, chunksize,name)
+        return await session.create_mutable_tensor(shape, dtype, chunk_size,name,default_value)
+
+    async def get_mutable_tensor(self, session_id:str,name: str):
+        session = await self._get_session_ref(session_id)
+        return await session.get_mutable_tensor(name)
 
     @alru_cache(cache_exceptions=False)
     async def _get_custom_log_meta_ref(self, session_id: str) -> \
