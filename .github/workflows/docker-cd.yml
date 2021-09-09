@@ -24,5 +24,8 @@ jobs:
           DOCKER_ORG: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           source ./ci/reload-env.sh
+          if [[ "$DOCKER_ORG" == "marsuploader" ]]; then
+            export DOCKER_ORG="marsproject"
+          fi
           bash bin/kube-image-tool.sh -o "$DOCKER_ORG" -t "$GIT_TAG" build
           docker push "$DOCKER_ORG/mars:$GIT_TAG"

@@ -44,13 +44,12 @@ _agg_size_as_series = parse_version(pd.__version__) >= parse_version('1.3.0')
 
 
 def where_function(cond, var1, var2):
-    if var1.ndim >= 1:
+    if hasattr(var1, 'ndim') and var1.ndim >= 1:
         return var1.where(cond, var2)
+    elif isinstance(var1, ENTITY_TYPE):
+        return mars_tensor.where(cond, var1, var2)
     else:
-        if isinstance(var1, ENTITY_TYPE):
-            return mars_tensor.where(cond, var1, var2)
-        else:
-            return np.where(cond, var1, var2).item()
+        return np.where(cond, var1, var2).item()
 
 
 _agg_functions = {
