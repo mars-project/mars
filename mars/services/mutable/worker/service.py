@@ -16,11 +16,12 @@ from typing import OrderedDict
 from .... import oscar as mo
 from .core import Chunk
 
+
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict, value=None) -> None:
+    def __init__(self, chunklist: OrderedDict,default_value=0) -> None:
         self.idx_chunk = OrderedDict()
         for k,v in chunklist.items():
-            self.idx_chunk[k] = Chunk(v,value)
+            self.idx_chunk[k] = Chunk(v,default_value)
 
     async def __post_create__(self):
         pass

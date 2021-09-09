@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-
-
-class Chunk:
-    def __init__(self, shape,value=None) -> None:
-        self._shape = shape
-        self._tensor = np.full(shape,value)
-
-    def write(self, index, value):
-        self._tensor[index] = value
-
-    def read(self, index):
-        return self._tensor[index]
+def normailize_index(index):
+    if isinstance(index,tuple):
+        if not isinstance(index[0],tuple):
+            list = []
+            for i in index:
+                list.append((i,))
+            return tuple(list)
+    return index

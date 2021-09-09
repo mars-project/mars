@@ -112,7 +112,7 @@ class AbstractSessionAPI(ABC):
         """
 
     @abstractmethod
-    async def get_mutable_tensor(self,session_id:str,name:str=None):
+    async def get_mutable_tensor(self,session_id:str,name:str):
         '''
         get a mutable tensor
         '''

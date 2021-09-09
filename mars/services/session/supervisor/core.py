@@ -23,6 +23,7 @@ from ...cluster import ClusterAPI
 from ...core import NodeRole, create_service_session, \
     destroy_service_session
 from ..core import SessionInfo
+from ...mutable.supervisor.service import MutableTensorActor,MutableTensor
 
 
 class SessionManagerActor(mo.Actor):
@@ -172,9 +173,7 @@ class SessionActor(mo.Actor):
         return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
 
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
-        [address] = await self._cluster_api.get_supervisors_by_keys([self._session_id])
         worker_pools:dict = await self._cluster_api.get_all_bands()
-        from ...mutable.supervisor.service import MutableTensorActor,MutableTensor
         if name is None:
             name = str(uuid.uuid1())
         ref = await mo.create_actor(

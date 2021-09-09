@@ -358,7 +358,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
 
     @abstractmethod
     async def get_mutable_tensor(self,
-                                name:str= None):
+                                name:str):
         '''
         Get a mutable tensor
         '''
@@ -526,7 +526,7 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
 
     @abstractmethod
     def get_mutable_tensor(self,
-                            name:str = None):
+                            name:str):
         '''
         get a mutable tensor
         '''
@@ -1148,7 +1148,7 @@ class AsyncSession(AbstractAsyncSession):
     @implements(AbstractAsyncSession.get_mutable_tensor)
     @_delegate_to_isolated_session
     async def get_mutable_tensor(self,
-                                name: str = None):
+                                name: str):
         pass  # pragma: no cover
 
     @implements(AbstractAsyncSession.get_web_endpoint)
@@ -1342,16 +1342,17 @@ class SyncSession(AbstractSyncSession):
     @implements(AbstractSyncSession.create_mutable_tensor)
     @_delegate_to_isolated_session
     def create_mutable_tensor(self,
-                                    shape: tuple,
-                                    dtype: str,
-                                    chunksize,
-                                    name:str = None):
+                              shape: tuple,
+                              dtype: str,
+                              chunk_size,
+                              name: str = None,
+                              default_value = 0):
         pass  # pragma: no cover
 
     @implements(AbstractSyncSession.get_mutable_tensor)
     @_delegate_to_isolated_session
     def get_mutable_tensor(self,
-                            name:str = None):
+                            name:str):
         pass  # pragma: no cover
 
     def destroy(self):
