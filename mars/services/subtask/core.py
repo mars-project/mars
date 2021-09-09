@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import Enum
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from ...core import ChunkGraph, DAG
 from ...serialization.serializables import Serializable, StringField, \
@@ -83,8 +83,15 @@ class SubtaskResult(Serializable):
     status: SubtaskStatus = ReferenceField('status', SubtaskStatus)
     progress: float = Float64Field('progress', default=0.0)
     data_size: int = Int64Field('data_size', default=None)
+    bands: List[BandType] = ListField('band', FieldTypes.tuple)
     error = AnyField('error', default=None)
     traceback = AnyField('traceback', default=None)
+
+    def merge_bands(self, result: Optional['SubtaskResult']):
+        if result and result.bands:
+            bands = self.bands or []
+            self.bands = sorted(set(bands + result.bands))
+        return self
 
 
 class SubtaskGraph(DAG, Iterable[Subtask]):

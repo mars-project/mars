@@ -41,13 +41,13 @@ export function toReadableSize(size, trunc) {
     return Math.floor(res_size) + size_unit;
 }
 
-export function formatTime(refreshTime) {
-    const date = new Date(refreshTime * 1000);
+export function formatTime(time) {
+    const date = new Date(time * 1000);
     const formatDigits = (n, d) => (`0${n}`).slice(-d);
 
     return `${date.getFullYear()
-    }-${formatDigits(date.getMonth(), 2)
-    }-${formatDigits(date.getDay(), 2)
+    }-${formatDigits(date.getMonth() + 1, 2)
+    }-${formatDigits(date.getDate(), 2)
     } ${formatDigits(date.getHours(), 2)
     }:${formatDigits(date.getMinutes(), 2)
     }:${formatDigits(date.getSeconds(), 2)
