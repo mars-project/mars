@@ -30,7 +30,7 @@ from ...core.operand import OperandStage
 from ...lib.version import parse as parse_version
 from ...serialization.serializables import BoolField, AnyField, Int32Field, ListField, DictField
 from ...utils import ceildiv, lazy_import, enter_current_session
-from ..core import INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE
+from ..core import INDEX_CHUNK_TYPE
 from ..merge import DataFrameConcat
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import build_df, build_empty_df, build_series, parse_index, validate_axis
@@ -732,7 +732,7 @@ class DataFrameAggregate(DataFrameOperand, DataFrameOperandMixin):
             else:
                 xp = cp if op.gpu else np
                 in_obj = op.inputs[0]
-                if isinstance(in_obj, (INDEX_CHUNK_TYPE, SERIES_CHUNK_TYPE)):
+                if isinstance(in_obj, INDEX_CHUNK_TYPE):
                     result = op.func[0](ctx[in_obj.key])
                 else:
                     result = ctx[in_obj.key].agg(op.raw_func, axis=op.axis)
