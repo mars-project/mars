@@ -164,3 +164,15 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
         res = await self._request_url('GET', addr, params=params)
         content = await res.read()
         return json.loads(content)
+
+    async def create_mutable_tensor(self,
+                                    session_id: str,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunk_size,
+                                    name: str = None,
+                                    default_value = 0):
+        pass
+
+    async def get_mutable_tensor(self, session_id:str,name: str):
+        pass

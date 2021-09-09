@@ -78,6 +78,7 @@ def normalize_chunk_sizes(shape, chunk_size):
 
     return tuple(chunk_sizes)
 
+
 def broadcast_shape(*shapes):
     if len(shapes) == 1:
         return shapes[0]
@@ -90,6 +91,7 @@ def broadcast_shape(*shapes):
                              'with shape {0}'.format(' '.join(map(str, shapes))))
         out_shapes.append(shape)
     return tuple(reversed(out_shapes))
+
 
 def get_chunk_slices(nsplits, idx):
     return tuple(slice(sum(nsplit[:idx]), sum(nsplit[:idx + 1]))

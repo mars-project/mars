@@ -956,12 +956,7 @@ class _IsolatedSession(AbstractAsyncSession):
                                     name: str):
         return await self._session_api.destroy_remote_object(session_id, name)
 
-    async def create_mutable_tensor(self,
-                                    shape: tuple,
-                                    dtype: str,
-                                    chunk_size,
-                                    name: str = None,
-                                    default_value = 0):
+    async def create_mutable_tensor(self,shape: tuple,dtype: str,chunk_size,name: str = None,default_value = 0):
         return await self._session_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name,default_value)
 
     async def get_mutable_tensor(self, name: str):
