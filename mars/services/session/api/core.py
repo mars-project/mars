@@ -107,12 +107,8 @@ class AbstractSessionAPI(ABC):
                                     chunk_size,
                                     name: str = None,
                                     default_value = 0):
-        """
-        Create a mutable tensor.
-        """
+        pass
 
     @abstractmethod
     async def get_mutable_tensor(self,session_id:str,name:str):
-        '''
-        get a mutable tensor
-        '''
+        pass

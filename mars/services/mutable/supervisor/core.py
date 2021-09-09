@@ -15,8 +15,8 @@
 def normailize_index(index):
     if isinstance(index,tuple):
         if not isinstance(index[0],tuple):
-            list = []
+            index_list = []
             for i in index:
-                list.append((i,))
-            return tuple(list)
+                index_list.append((i,))
+            return tuple(index_list)
     return index

@@ -101,10 +101,6 @@ class MutableTensorActor(mo.Actor):
 
 
 class MutableTensor:
-    """
-    Mutable tensor is a tensor can be changed partially before sealed to a normal tensor.\n
-    Users can read/write some single points of the tensor just like working with numpy 
-    """
     def __init__(self,
                  ref: mo.ActorRef):
         self._ref = ref
