@@ -68,11 +68,11 @@ def test_session_async_execute(setup):
 
     raw_df = pd.DataFrame(raw_a)
 
-    expected = raw_df.sum()
+    expected = raw_df.skew()
     df = md.DataFrame(a)
-    res = df.sum().to_pandas(wait=False).result()
+    res = df.skew().to_pandas(wait=False).result()
     pd.testing.assert_series_equal(expected, res)
-    res = df.sum().execute(wait=False)
+    res = df.skew().execute(wait=False)
     res = res.result().fetch()
     pd.testing.assert_series_equal(expected, res)
 
