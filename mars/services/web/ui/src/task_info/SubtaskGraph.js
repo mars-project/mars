@@ -194,14 +194,14 @@ export default class SubtaskGraph extends React.Component {
                 }
                 {
                     this.state.displayInputOutput
-                    ?
-                    <button onClick={() => this.setState({ displayInputOutput: false })}>
-                        Hide input/output nodes
-                    </button>
-                    :
-                    <button onClick={() => this.setState({ displayInputOutput: true })}>
-                        Display input/output nodes
-                    </button>
+                        ?
+                        <button onClick={() => this.setState({ displayInputOutput: false })}>
+                            Hide input/output nodes
+                        </button>
+                        :
+                        <button onClick={() => this.setState({ displayInputOutput: true })}>
+                            Display input/output nodes
+                        </button>
                 }
                 <svg
                     id='subtasks-legend'
