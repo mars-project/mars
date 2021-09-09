@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .api import SubtaskAPI, MockSubtaskAPI
-from .core import Subtask, SubtaskResult, SubtaskGraph, SubtaskStatus, SubtaskDisplayNodeStatus
-from .errors import SlotOccupiedAlready, SubtaskNotExist
+import pytest
+from sklearn.metrics import r2_score
+
+from .. import get_scorer
+
+
+def test_get_scorer():
+    with pytest.raises(ValueError):
+        get_scorer('unknown')
+
+    assert get_scorer('r2') is not None
+    assert get_scorer(r2_score) is not None

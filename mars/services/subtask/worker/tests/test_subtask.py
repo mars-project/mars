@@ -72,7 +72,7 @@ async def actor_pool():
             uid=FakeTaskManager.gen_uid(session_id),
             address=pool.external_address)
         manager = await mo.create_actor(
-            SubtaskRunnerManagerActor, None,
+            SubtaskRunnerManagerActor, pool.external_address, None,
             uid=SubtaskRunnerManagerActor.default_uid(),
             address=pool.external_address)
         try:
