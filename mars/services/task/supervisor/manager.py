@@ -112,7 +112,7 @@ class TaskManagerActor(mo.Actor):
     async def _init_context(self):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
-            self._session_id, self.address, self.address, loop=loop)
+            self._session_id, self.address, self.address, self.address, loop=loop)
         await context.init()
         set_context(context)
 
