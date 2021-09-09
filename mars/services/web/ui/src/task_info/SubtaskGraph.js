@@ -44,6 +44,7 @@ export default class SubtaskGraph extends React.Component {
                     legendTextYLoc: '21',
                 },
             ],
+            displayInputOutput: false,
         };
     }
 
@@ -83,9 +84,11 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask_graph`)
+        }/${tileableId}/subtask?action=fetch_graph&withInputOutput=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
+                console.log(res);
+
                 this.setState({
                     subtasks: res.subtasks.map(subtask => {
                         return (
@@ -116,7 +119,7 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask_detail`)
+        }/${tileableId}/subtask?action=fetch_detail&withInputOutput=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
                 this.setState({
@@ -152,6 +155,11 @@ export default class SubtaskGraph extends React.Component {
             this.fetchSubtaskDetail();
             this.fetchGraphDetail();
         }
+
+        if (prevStates.displayInputOutput !== this.state.displayInputOutput) {
+            this.fetchSubtaskDetail();
+            this.fetchGraphDetail();
+        }
     }
 
     componentWillUnmount() {
@@ -165,6 +173,8 @@ export default class SubtaskGraph extends React.Component {
             height: '80%',
             minHeight: 200,
         };
+
+        console.log(this.state);
 
         if (this.state === undefined ||
             this.state.subtasks === undefined ||
@@ -181,6 +191,17 @@ export default class SubtaskGraph extends React.Component {
                 {
                     this.state.subtasks.length + this.state.dependencies.length > 2000 &&
                     <div>Warning: this subtask graph contains a lot of elements and may take some time to load</div>
+                }
+                {
+                    this.state.displayInputOutput
+                    ?
+                    <button onClick={() => this.setState({ displayInputOutput: false })}>
+                        Hide input/output nodes
+                    </button>
+                    :
+                    <button onClick={() => this.setState({ displayInputOutput: true })}>
+                        Display input/output nodes
+                    </button>
                 }
                 <svg
                     id='subtasks-legend'

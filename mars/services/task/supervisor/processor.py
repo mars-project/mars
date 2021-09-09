@@ -34,7 +34,7 @@ from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
 from ...scheduling import SchedulingAPI
-from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
+from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskDisplayNodeStatus, SubtaskGraph
 from ..core import Task, TaskResult, TaskStatus, new_task_id
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
@@ -601,7 +601,7 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
-    def get_tileable_subtask_graph(self, tileable_id: str):
+    def get_tileable_subtask_graph(self, tileable_id: str, with_input_output: bool):
         returned_subtasks = set()
 
         subtask_list = []
@@ -638,32 +638,42 @@ class TaskProcessorActor(mo.Actor):
             for predecessor in stage.subtask_graph.iter_predecessors(subtask):
                 predecessor_id = predecessor.subtask_id
 
-                if predecessor_id not in returned_subtasks:
+                if predecessor_id in returned_subtasks:
+                    dependency_list.append({
+                        'fromSubtaskId': predecessor_id,
+                        'toSubtaskId': subtask.subtask_id,
+                    })
+                elif with_input_output is True:
                     returned_subtasks.add(predecessor_id)
                     subtask_list.append({
                         'subtaskId': predecessor_id,
                         'subtaskName': predecessor.subtask_name,
                     })
 
-                dependency_list.append({
-                    'fromSubtaskId': predecessor_id,
-                    'toSubtaskId': subtask.subtask_id,
-                })
+                    dependency_list.append({
+                        'fromSubtaskId': predecessor_id,
+                        'toSubtaskId': subtask.subtask_id,
+                    })
 
             for successor in stage.subtask_graph.iter_successors(subtask):
                 successor_id = successor.subtask_id
 
-                if successor_id not in returned_subtasks:
+                if successor_id in returned_subtasks:
+                    dependency_list.append({
+                        'fromSubtaskId': subtask.subtask_id,
+                        'toSubtaskId': successor_id,
+                    })
+                elif with_input_output is True:
                     returned_subtasks.add(successor_id)
                     subtask_list.append({
                         'subtaskId': successor_id,
                         'subtaskName': successor.subtask_name,
                     })
 
-                dependency_list.append({
-                    'fromSubtaskId': subtask.subtask_id,
-                    'toSubtaskId': successor_id,
-                })
+                    dependency_list.append({
+                        'fromSubtaskId': subtask.subtask_id,
+                        'toSubtaskId': successor_id,
+                    })
 
         subtask_dict = {
             'subtasks': subtask_list,
@@ -672,7 +682,7 @@ class TaskProcessorActor(mo.Actor):
 
         return subtask_dict
 
-    def get_tileable_subtask_detail(self, tileable_id: str):
+    def get_tileable_subtask_detail(self, tileable_id: str, with_input_output: bool):
         returned_subtasks = set()
         default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
@@ -707,6 +717,9 @@ class TaskProcessorActor(mo.Actor):
                     'name': subtask.subtask_name,
                 }
 
+        if with_input_output is False:
+            return subtask_detail
+
         for subtask in requested_subtasks:
             for predecessor in stage.subtask_graph.iter_predecessors(subtask):
                 predecessor_id = predecessor.subtask_id
@@ -715,8 +728,8 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(predecessor_id)
 
                     subtask_detail[predecessor_id] = {
-                        'status': -1,
-                        'progress': -1,
+                        'status': SubtaskDisplayNodeStatus.input_node.value,
+                        'progress': SubtaskDisplayNodeStatus.input_node.value,
                         'name': subtask.subtask_name,
                     }
 
@@ -727,8 +740,8 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(successor_id)
 
                     subtask_detail[successor_id] = {
-                        'status': -2,
-                        'progress': -2,
+                        'status': SubtaskDisplayNodeStatus.output_node.value,
+                        'progress': SubtaskDisplayNodeStatus.output_node.value,
                         'name': subtask.subtask_name,
                     }
 

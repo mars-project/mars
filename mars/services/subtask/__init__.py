@@ -13,5 +13,5 @@
 # limitations under the License.
 
 from .api import SubtaskAPI, MockSubtaskAPI
-from .core import Subtask, SubtaskResult, SubtaskGraph, SubtaskStatus
+from .core import Subtask, SubtaskResult, SubtaskGraph, SubtaskStatus, SubtaskDisplayNodeStatus
 from .errors import SlotOccupiedAlready, SubtaskNotExist
