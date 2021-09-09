@@ -34,6 +34,10 @@ try:
     import fastparquet
 except ImportError:
     fastparquet = None
+try:
+    import vineyard
+except ImportError:
+    vineyard = None
 
 from .... import dataframe as md
 from ... import DataFrame
@@ -195,3 +199,39 @@ def test_to_parquet_fast_parquet_execution():
         # test fastparquet
         path = os.path.join(base_path, 'out-fastparquet-*.parquet')
         df.to_parquet(path, engine='fastparquet', compression='gzip').execute()
+
+
+@pytest.mark.skipif(vineyard is None, reason='vineyard not installed')
+def test_vineyard_execution(setup):
+    raw = np.random.RandomState(0).rand(55, 55)
+
+    extra_config = {
+        'check_dtype': False,
+        'check_nsplits': False,
+        'check_shape': False,
+        'check_dtypes': False,
+        'check_columns_value': False,
+        'check_index_value': False,
+    }
+
+    with vineyard.deploy.local.start_vineyardd() as (_, vineyard_socket):
+        raw = pd.DataFrame({'a': np.arange(0, 55), 'b': np.arange(55, 110)})
+        a = md.DataFrame(raw, chunk_size=15)
+        a.execute()  # n.b.: pre-execute
+
+        b = a.to_vineyard(vineyard_socket=vineyard_socket)
+        object_id = b.execute(extra_config=extra_config).fetch()[0][0]
+
+        c = md.from_vineyard(object_id, vineyard_socket=vineyard_socket)
+        df = c.execute(extra_config=extra_config).fetch()
+        pd.testing.assert_frame_equal(df, raw)
+
+        raw = pd.DataFrame({'a': np.arange(0, 55), 'b': np.arange(55, 110)})
+        a = md.DataFrame(raw, chunk_size=15)  # n.b.: no pre-execute
+
+        b = a.to_vineyard(vineyard_socket=vineyard_socket)
+        object_id = b.execute(extra_config=extra_config).fetch()[0][0]
+
+        c = md.from_vineyard(object_id, vineyard_socket=vineyard_socket)
+        df = c.execute(extra_config=extra_config).fetch()
+        pd.testing.assert_frame_equal(df, raw)

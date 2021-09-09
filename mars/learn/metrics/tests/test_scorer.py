@@ -1,4 +1,4 @@
-# Copyright 1999-2021 Alibaba Group Holding Ltd.
+# Copyright 1999-2020 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# noinspection PyUnresolvedReferences
-from sklearn.utils import gen_batches
+import pytest
+from sklearn.metrics import r2_score
 
-from .collect_ports import collect_ports
-from .core import convert_to_tensor_or_dataframe, \
-    concat_chunks, copy_learned_attributes
-from .validation import check_array, assert_all_finite, \
-    check_consistent_length, column_or_1d, check_X_y
-from .shuffle import shuffle
+from .. import get_scorer
+
+
+def test_get_scorer():
+    with pytest.raises(ValueError):
+        get_scorer('unknown')
+
+    assert get_scorer('r2') is not None
+    assert get_scorer(r2_score) is not None

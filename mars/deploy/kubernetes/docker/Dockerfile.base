@@ -23,3 +23,8 @@ RUN /srv/retry.sh 3 /opt/conda/bin/conda install \
     python-kubernetes \
     uvloop \
   && /opt/conda/bin/conda clean --all -f -y
+
+RUN apt-get -yq update --allow-releaseinfo-change \
+  && apt-get -yq install curl sudo \
+  && apt-get -yq clean \
+  && rm -rf /var/lib/apt/lists/* \
