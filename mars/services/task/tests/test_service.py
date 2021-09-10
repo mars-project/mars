@@ -445,8 +445,6 @@ async def test_get_subtask_graph(start_test_service):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
 
-        assert no_input_output_subtask_size <= with_input_output_subtask_size
-        assert no_input_output_dependency_size <= with_input_output_dependency_size
 
 @pytest.mark.asyncio
 async def test_get_subtask_detail(start_test_service):
@@ -523,7 +521,7 @@ async def test_get_subtask_detail(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
 
     with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_subtask_detail('non_exist', 'non_exist')
+        await task_api.get_tileable_subtask_detail('non_exist', 'non_exist', 'false')
 
     await asyncio.sleep(0.2)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
