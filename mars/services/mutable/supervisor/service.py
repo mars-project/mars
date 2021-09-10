@@ -15,7 +15,8 @@
 from .core import normailize_index
 import sys
 import itertools
-from typing import OrderedDict,Union,List
+from typing import Union,List
+from collections import OrderedDict
 from ....tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
 from .... import oscar as mo
 from ..worker.service import MutableTensorChunkActor

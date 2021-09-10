@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import OrderedDict
+from collections import OrderedDict
 from .... import oscar as mo
 from .core import Chunk
 

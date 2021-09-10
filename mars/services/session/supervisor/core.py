@@ -15,7 +15,8 @@
 import asyncio
 import uuid
 import functools
-from typing import Dict, List, Optional, OrderedDict
+from typing import Dict, List, Optional
+from collections import OrderedDict
 
 from .... import oscar as mo
 from ....utils import to_binary

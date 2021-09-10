@@ -13,10 +13,10 @@
 # limitations under the License.
 
 
-from mars.services.mutable.supervisor.service import MutableTensor
+from ..supervisor.service import MutableTensor
 import pytest
 import numpy as np
-from mars.deploy.oscar.local import new_cluster
+from ....deploy.oscar.local import new_cluster
 
 
 @pytest.mark.asyncio
