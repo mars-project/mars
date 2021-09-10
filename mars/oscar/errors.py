@@ -17,6 +17,10 @@
 from ..core.base import MarsError
 
 
+class ReconstructWorkerError(MarsError):
+    pass
+
+
 class ActorPoolNotStarted(MarsError):
     pass
 

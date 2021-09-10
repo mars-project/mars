@@ -68,8 +68,6 @@ async def create_fault_injection_manager(session_id, address, fault_count, fault
                 return FaultType.NoFault
             if self._fault_count.get(pos, 0) > 0:
                 self._fault_count[pos] -= 1
-                if fault_op_types:
-                    print(f"get_fault {fault_type} {pos} {ctx}")
                 return fault_type
             return FaultType.NoFault
 

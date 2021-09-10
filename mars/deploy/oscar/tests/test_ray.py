@@ -24,6 +24,7 @@ from .... import oscar as mo
 from .... import tensor as mt
 from .... import dataframe as md
 from ....oscar.backends.ray.utils import process_address_to_placement, process_placement_to_address, kill_and_wait
+from ....oscar.errors import ReconstructWorkerError
 from ....serialization.ray import register_ray_serializers
 from ....services.cluster import ClusterAPI
 from ....services.scheduling.supervisor.autoscale import AutoscalerActor
@@ -311,7 +312,7 @@ async def test_reconstruct_worker_during_releasing_worker(fake_stop_worker):
     cluster_state = ClusterStateActor()
     release_task = asyncio.create_task(cluster_state.release_worker('abc'))
     await stop_worker.wait()
-    with pytest.raises(Exception, match='releasing'):
+    with pytest.raises(ReconstructWorkerError, match='releasing'):
         await cluster_state.reconstruct_worker('abc')
     release_task.cancel()
 

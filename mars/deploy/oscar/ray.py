@@ -27,6 +27,7 @@ from ...oscar.backends.ray.utils import (
     process_address_to_placement
 )
 from ...oscar.backends.ray.pool import RayPoolState
+from ...oscar.errors import ReconstructWorkerError
 from ...services.cluster.backends.base import register_cluster_backend, AbstractClusterBackend
 from ...services import NodeRole
 from ...utils import merge_dict, flatten_dict_to_nested_dict
@@ -204,7 +205,7 @@ class ClusterStateActor(mo.StatelessActor):
     async def reconstruct_worker(self, address: str):
         task = self._releasing_tasks.get(address)
         if task is not None:
-            raise Exception(f"Can't reconstruct releasing worker {address}")
+            raise ReconstructWorkerError(f"Can't reconstruct releasing worker {address}")
 
         task = self._reconstructing_tasks.get(address)
         if task is not None:
