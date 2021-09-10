@@ -171,8 +171,8 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
                                     dtype: str,
                                     chunk_size,
                                     name: str = None,
-                                    default_value = 0):
+                                    default_value=0):
         pass #pragma: no cover
 
-    async def get_mutable_tensor(self, session_id:str,name: str):
+    async def get_mutable_tensor(self, session_id: str, name: str):
         pass #pragma: no cover

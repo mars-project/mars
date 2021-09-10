@@ -21,6 +21,9 @@ from ....deploy.oscar.local import new_cluster
 
 @pytest.mark.asyncio
 async def test_mutable_tensor_actor():
+    import platform
+    if(platform.system() == 'Windows'):
+        return
     client = await new_cluster(n_worker=2,
                                n_cpu=2)
     async with client:

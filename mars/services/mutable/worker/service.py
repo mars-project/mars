@@ -18,10 +18,10 @@ from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict,default_value=0) -> None:
+    def __init__(self, chunklist: OrderedDict, default_value=0) -> None:
         self.idx_chunk = OrderedDict()
-        for k,v in chunklist.items():
-            self.idx_chunk[k] = Chunk(v,default_value)
+        for k, v in chunklist.items():
+            self.idx_chunk[k] = Chunk(v, default_value)
 
     async def __post_create__(self):
         pass
@@ -29,10 +29,10 @@ class MutableTensorChunkActor(mo.Actor):
     async def __on_receive__(self, message):
         return await super().__on_receive__(message)
 
-    async def write(self, index,relatepos,value):
-        chunk:Chunk = self.idx_chunk[index]
-        chunk.write(tuple(relatepos),value)
+    async def write(self, index, relatepos, value):
+        chunk: Chunk = self.idx_chunk[index]
+        chunk.write(tuple(relatepos), value)
 
     async def read(self, index, relatepos):
-        chunk:Chunk = self.idx_chunk[index]
+        chunk: Chunk = self.idx_chunk[index]
         return chunk.read(tuple(relatepos))

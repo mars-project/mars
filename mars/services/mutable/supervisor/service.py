@@ -15,15 +15,15 @@
 from .core import normailize_index
 import sys
 import itertools
-from typing import Union,List
+from typing import Union, List
 from collections import OrderedDict
-from ....tensor.utils import split_indexes_into_chunks,decide_chunk_sizes
+from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
 from .... import oscar as mo
 from ..worker.service import MutableTensorChunkActor
 
 
 class MutableTensorActor(mo.Actor):
-    def __init__(self, shape: tuple, dtype: str, chunk_size, worker_pools, name: str = None,default_value = 0):
+    def __init__(self, shape: tuple, dtype: str, chunk_size, worker_pools, name: str = None, default_value=0):
         self._shape = shape
         self._dtype = dtype
         self._work_pools = worker_pools
@@ -33,7 +33,7 @@ class MutableTensorActor(mo.Actor):
         self.default_value = default_value
         self._chunk_to_actors = []
         self._chunkactors_lastindex = []
-        self._nsplits = decide_chunk_sizes(self._shape,self._chunk_size,sys.getsizeof(int))
+        self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
 
     async def __post_create__(self):
         await self.assign_chunks()
@@ -43,60 +43,60 @@ class MutableTensorActor(mo.Actor):
         worker_address = []
         for k in self._work_pools.items():
             worker_address.append(str(k[0][0]))
-        chunknumber = 1;num = 0
+        chunknumber = 1; num = 0
         for nsplit in self._nsplits:
             chunknumber *= len(nsplit)
         leftchunk = chunknumber
         chunk_list = OrderedDict()
         for idx in itertools.product(*(range(len(nsplit)) for nsplit in self._nsplits)):
             chunk_list[idx] = [self._nsplits[i][idx[i]] for i in range(len(idx))]
-            num += 1;leftchunk -= 1
+            num += 1; leftchunk -= 1
             if (num == chunknumber//workernumer and  leftworker != 1  or leftworker == 1 and leftchunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor,chunk_list,self.default_value, address=worker_address[leftworker-1])
-                num = 0;chunk_list = OrderedDict();leftworker -= 1
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self.default_value, address=worker_address[leftworker-1])
+                num = 0; chunk_list = OrderedDict(); leftworker -= 1
                 self._chunk_to_actors.append(chunk_ref)
                 pos = self.calc_index(idx)
                 self._chunkactors_lastindex.append(pos)
 
-    def calc_index(self,idx):
-        pos = 0;acc = 1
-        for it,nsplit in zip(itertools.count(0),reversed(self._nsplits)):
+    def calc_index(self, idx):
+        pos = 0; acc = 1
+        for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
             it = len(idx) - it-1
             pos += acc*(idx[it])
             acc *= len(nsplit)
         return pos
 
-    async def write(self, index,value):
-        result = split_indexes_into_chunks(self._nsplits,index)
-        for idx,v in result[0].items():
+    async def write(self, index, value):
+        result = split_indexes_into_chunks(self._nsplits, index)
+        for idx, v in result[0].items():
             if len(v[0] > 0):
                 target_index = 0
                 pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0),self._chunkactors_lastindex):
+                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
                     if lastindex >= pos:
                         target_index = actor_index
                         break
                 chunk_actor = self._chunk_to_actors[target_index]
                 v = v.T
                 for nidx in v:
-                    await chunk_actor.write(idx,nidx,value)
+                    await chunk_actor.write(idx, nidx, value)
 
     async def read(self, index):
-        result = split_indexes_into_chunks(self._nsplits,index)
+        result = split_indexes_into_chunks(self._nsplits, index)
         ans_list = []
-        for idx,v in result[0].items():
+        for idx, v in result[0].items():
             if len(v[0] > 0):
                 target_index = 0
                 pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0),self._chunkactors_lastindex):
+                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
                     if lastindex >= pos:
                         target_index = actor_index
                         break
                 chunk_actor = self._chunk_to_actors[target_index]
                 v = v.T
                 for nidx in v:
-                    val = await chunk_actor.read(idx,nidx)
-                    print(idx,nidx,val)
+                    val = await chunk_actor.read(idx, nidx)
+                    print(idx, nidx, val)
                     ans_list.append(val)
         return ans_list
 
@@ -106,7 +106,7 @@ class MutableTensor:
                  ref: mo.ActorRef):
         self._ref = ref
 
-    async def __getitem__(self,index: Union[int,List[int]]):
+    async def __getitem__(self, index: Union[int, List[int]]):
         '''
         Function
         ----------
@@ -132,7 +132,7 @@ class MutableTensor:
         result = await self._ref.read(index)
         return result
 
-    async def write(self,index,value):
+    async def write(self, index, value):
         '''
         Function
         ----------
@@ -150,4 +150,4 @@ class MutableTensor:
         Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
         the index should be ((0,10,40),(0,20,50),(0,30,80))
         '''
-        await self._ref.write(index,value)
+        await self._ref.write(index, value)

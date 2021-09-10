@@ -13,8 +13,8 @@
 # limitations under the License.
 
 def normailize_index(index):
-    if isinstance(index,tuple):
-        if not isinstance(index[0],tuple):
+    if isinstance(index, tuple):
+        if not isinstance(index[0], tuple):
             index_list = []
             for i in index:
                 index_list.append((i,))

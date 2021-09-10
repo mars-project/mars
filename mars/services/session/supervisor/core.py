@@ -24,7 +24,7 @@ from ...cluster import ClusterAPI
 from ...core import NodeRole, create_service_session, \
     destroy_service_session
 from ..core import SessionInfo
-from ...mutable.supervisor.service import MutableTensorActor,MutableTensor
+from ...mutable.supervisor.service import MutableTensorActor, MutableTensor
 
 
 class SessionManagerActor(mo.Actor):
@@ -135,7 +135,7 @@ class SessionActor(mo.Actor):
 
     async def __post_create__(self):
         from .custom_log import CustomLogMetaActor
-        print('before clustapi',self.address)
+        print('before clustapi', self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
 
         self._custom_log_meta_ref = await mo.create_actor(
@@ -174,16 +174,16 @@ class SessionActor(mo.Actor):
         return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
 
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
-        worker_pools:dict = await self._cluster_api.get_all_bands()
+        worker_pools: dict = await self._cluster_api.get_all_bands()
         if name is None:
             name = str(uuid.uuid1())
         ref = await mo.create_actor(
-            MutableTensorActor, shape, dtype, chunk_size, worker_pools,name, default_value, address=self.address, uid=to_binary(name))
+            MutableTensorActor, shape, dtype, chunk_size, worker_pools, name, default_value, address=self.address, uid=to_binary(name))
         wrapper = MutableTensor(ref)
         self.mtensor_dict[name] = wrapper
         return wrapper
 
-    async def get_mutable_tensor(self,name:str):
+    async def get_mutable_tensor(self, name: str):
         if name in self.mtensor_dict.keys():
             return self.mtensor_dict[name]
         else:

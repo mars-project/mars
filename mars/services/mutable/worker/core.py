@@ -16,9 +16,9 @@ import numpy as np
 
 
 class Chunk:
-    def __init__(self, shape,value=None) -> None:
+    def __init__(self, shape, value=None) -> None:
         self._shape = shape
-        self._tensor = np.full(shape,value)
+        self._tensor = np.full(shape, value)
 
     def write(self, index, value):
         self._tensor[index] = value

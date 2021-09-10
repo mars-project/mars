@@ -351,14 +351,14 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
                                     dtype: str,
                                     chunk_size,
                                     name: str = None,
-                                    default_value = 0):
+                                    default_value=0):
         """
         Create a mutable tensor.
         """
 
     @abstractmethod
     async def get_mutable_tensor(self,
-                                name:str):
+                                name: str):
         '''
         Get a mutable tensor
         '''
@@ -537,14 +537,13 @@ class AbstractSyncSession(AbstractSession, metaclass=ABCMeta):
                               dtype: str,
                               chunk_size,
                               name: str = None,
-                              default_value = 0):
+                              default_value=0):
         """
         Create a mutable tensor.
         """
 
     @abstractmethod
-    def get_mutable_tensor(self,
-                            name:str):
+    def get_mutable_tensor(self, name: str):
         '''
         get a mutable tensor
         '''
@@ -1049,11 +1048,11 @@ class _IsolatedSession(AbstractAsyncSession):
                                     name: str):
         return await self._session_api.destroy_remote_object(session_id, name)
 
-    async def create_mutable_tensor(self,shape: tuple,dtype: str,chunk_size,name: str = None,default_value = 0):
-        return await self._session_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name,default_value)
+    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
+        return await self._session_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name, default_value)
 
     async def get_mutable_tensor(self, name: str):
-        return await self._session_api.get_mutable_tensor(self._session_id,name)
+        return await self._session_api.get_mutable_tensor(self._session_id, name)
 
     async def stop_server(self):
         if self.client:
@@ -1439,13 +1438,12 @@ class SyncSession(AbstractSyncSession):
                               dtype: str,
                               chunk_size,
                               name: str = None,
-                              default_value = 0):
+                              default_value=0):
         pass  # pragma: no cover
 
     @implements(AbstractSyncSession.get_mutable_tensor)
     @_delegate_to_isolated_session
-    def get_mutable_tensor(self,
-                            name:str):
+    def get_mutable_tensor(self, name: str):
         pass  # pragma: no cover
 
     def destroy(self):
