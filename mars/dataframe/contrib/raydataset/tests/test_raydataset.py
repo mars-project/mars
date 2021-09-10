@@ -26,7 +26,11 @@ from ....contrib import raydataset as mdd
 
 
 ray = lazy_import('ray')
-ml_dataset = lazy_import('ray.util.data')
+# Ray Datasets is available in early preview at ray.data with Ray 1.6+
+# (and ray.experimental.data in Ray 1.5)
+ray_dataset = lazy_import('ray.data')
+ray_exp_dataset = lazy_import('ray.experimental.data')
+real_ray_dataset = ray_dataset or ray_exp_dataset
 try:
     import xgboost_ray
 except ImportError:  # pragma: no cover
@@ -49,29 +53,9 @@ async def create_cluster(request):
 
 @require_ray
 @pytest.mark.asyncio
-async def test_dataset_related_classes(ray_large_cluster):
-    from ..mldataset import ChunkRefBatch
-    # in order to pass checks
-    value1 = np.random.rand(10, 10)
-    value2 = np.random.rand(10, 10)
-    df1 = pd.DataFrame(value1)
-    df2 = pd.DataFrame(value2)
-    if ray:
-        obj_ref1, obj_ref2 = ray.put(df1), ray.put(df2)
-        batch = ChunkRefBatch(shard_id=0,
-                              obj_refs=[obj_ref1, obj_ref2])
-        assert batch.shard_id == 0
-        # the first data in batch
-        batch = iter(batch)
-        pd.testing.assert_frame_equal(next(batch), df1)
-        pd.testing.assert_frame_equal(next(batch), df2)
-
-
-@require_ray
-@pytest.mark.asyncio
 @pytest.mark.parametrize('test_option', [[5, 5], [5, 4],
                                          [None, None]])
-async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_option):
+async def test_convert_to_ray_dataset(ray_large_cluster, create_cluster, test_option):
     assert create_cluster.session
     session = new_session(address=create_cluster.address, backend='oscar', default=True)
     with session:
@@ -80,8 +64,8 @@ async def test_convert_to_ray_mldataset(ray_large_cluster, create_cluster, test_
         df: md.DataFrame = md.DataFrame(value, chunk_size=chunk_size)
         df.execute()
 
-        ds = mdd.to_ray_mldataset(df, num_shards=num_shards)
-        assert isinstance(ds, ml_dataset.MLDataset)
+        ds = mdd.to_ray_dataset(df, num_shards=num_shards)
+        assert isinstance(ds, real_ray_dataset.Dataset)
 
 
 @require_ray
@@ -100,8 +84,8 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         df.execute()
 
         num_shards = 4
-        ds = mdd.to_ray_mldataset(df)
-        assert isinstance(ds, ml_dataset.MLDataset)
+        ds = mdd.to_ray_dataset(df)
+        assert isinstance(ds, real_ray_dataset.Dataset)
 
         # train
         train_set = RayDMatrix(ds, "target")

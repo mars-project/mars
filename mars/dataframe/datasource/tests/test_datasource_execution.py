@@ -35,16 +35,20 @@ try:
 except ImportError:  # pragma: no cover
     sqlalchemy = None
 
+
 from .... import tensor as mt
 from .... import dataframe as md
 from ....config import option_context
-from ....tests.core import require_cudf
-from ....utils import arrow_array_to_objects
+from ....tests.core import require_cudf, require_ray
+from ....utils import arrow_array_to_objects, lazy_import
 from ..dataframe import from_pandas as from_pandas_df
 from ..series import from_pandas as from_pandas_series
 from ..index import from_pandas as from_pandas_index, from_tileable
 from ..from_tensor import dataframe_from_tensor, dataframe_from_1d_tileables
 from ..from_records import from_records
+
+
+ray = lazy_import('ray')
 
 
 def test_from_pandas_dataframe_execution(setup):
@@ -909,3 +913,16 @@ def test_read_parquet_fast_parquet(setup):
         pd.testing.assert_frame_equal(result, test_df)
         # size_res = self.executor.execute_dataframe(df, mock=True)
         # assert sum(s[0] for s in size_res) > test_df.memory_usage(deep=True).sum()
+
+
+@require_ray
+def test_read_raydataset(setup):
+    test_df1 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    test_df2 = pd.DataFrame({'a': np.arange(10).astype(np.int64, copy=False),
+                             'b': [f's{i}' for i in range(10)]})
+    df = pd.concat([test_df1, test_df2])
+    ds = ray.data.from_pandas([ray.put(test_df1), ray.put(test_df2)])
+    mdf = md.read_raydataset(ds)
+    assert df.equals(mdf.execute().fetch())
+    ray.shutdown()
