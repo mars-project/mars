@@ -25,13 +25,16 @@ try:
     from sklearn.exceptions import UndefinedMetricWarning
     from sklearn.utils import check_random_state
     from sklearn.utils._testing import assert_warns
+    from sklearn.metrics._ranking import _binary_roc_auc_score as sk_binary_roc_auc_score
 except ImportError:  # pragma: no cover
     sklearn = None
 import pytest
 
+
 from .... import dataframe as md
 from .... import tensor as mt
 from .. import roc_curve, auc, accuracy_score
+from .._ranking import _binary_roc_auc_score
 
 
 def test_roc_curve(setup):
@@ -147,6 +150,30 @@ def test_roc_curve_one_label(setup):
     np.testing.assert_array_equal(tpr.fetch(), np.full(len(thresholds), np.nan))
     assert fpr.shape == tpr.shape
     assert fpr.shape == thresholds.shape
+
+
+def test_binary_roc_auc_score(setup):
+    # Test the area is equal under binary roc_auc_score
+    rs = np.random.RandomState(0)
+    raw_X = rs.randint(0, 2, size=10)
+    raw_Y = rs.rand(10).astype('float32')
+
+    X = mt.tensor(raw_X)
+    Y = mt.tensor(raw_Y)
+
+    for max_fpr in (np.random.rand(), None):
+        # Calculate the score using both frameworks
+        score = _binary_roc_auc_score(X, Y, max_fpr=max_fpr)
+        expected_score = sk_binary_roc_auc_score(raw_X, raw_Y, max_fpr=max_fpr)
+
+        # Both the scores should be equal
+        np.testing.assert_almost_equal(score, expected_score, decimal=6)
+
+    with pytest.raises(ValueError):
+        _binary_roc_auc_score(mt.tensor([0]), Y)
+
+    with pytest.raises(ValueError):
+        _binary_roc_auc_score(X, Y, max_fpr=0)
 
 
 def test_roc_curve_drop_intermediate(setup):
