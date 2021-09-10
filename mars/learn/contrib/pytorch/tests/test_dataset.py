@@ -125,8 +125,8 @@ def test_sequential_sampler(setup_cluster):
     assert len(train_sampler) == 1000
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
 
     model = torch.nn.Sequential(
         torch.nn.Linear(32, 64),
@@ -168,7 +168,7 @@ def test_random_sampler(setup_cluster):
         train_sampler = RandomSampler(train_dataset, num_samples=900)
     exec_msg = e.value.args[0]
     assert exec_msg == "With replacement=False, num_samples should not " + \
-                        "be specified, since a random permute will be performed."
+        "be specified, since a random permute will be performed."
 
     with pytest.raises(ValueError) as e:
         train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=-1)
@@ -188,8 +188,8 @@ def test_random_sampler(setup_cluster):
     train_sampler = RandomSampler(train_dataset, generator=g_cpu)
     assert len(train_sampler) == 1000
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
@@ -197,8 +197,8 @@ def test_random_sampler(setup_cluster):
     train_sampler = RandomSampler(train_dataset, replacement=True, num_samples=900)
     assert len(train_sampler) == 900
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
@@ -241,8 +241,8 @@ def test_subset_random_sampler(setup_cluster):
 
     assert len(train_sampler) == 1000
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
@@ -266,8 +266,8 @@ def test_distributed_sampler(setup_cluster):
                                        drop_last=True, shuffle=True)
     assert len(train_sampler) == 500
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
@@ -277,8 +277,8 @@ def test_distributed_sampler(setup_cluster):
     train_sampler.set_epoch(10)
     assert len(train_sampler) == 501
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                                batch_size=32,
-                                                sampler=train_sampler)
+                                               batch_size=32,
+                                               sampler=train_sampler)
     for _, (batch_data, batch_labels) in enumerate(train_loader):
         assert len(batch_data[0]) == 32
         assert len(batch_labels[0]) == 10
