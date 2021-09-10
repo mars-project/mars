@@ -349,7 +349,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             finally:
                 logger.debug('Subtask running ended, slot_id=%r', slot_id)
                 if slot_id is not None:
-                    await slot_manager_ref.release_free_slot(slot_id)
+                    await slot_manager_ref.release_free_slot(slot_id, (subtask.session_id, subtask.subtask_id))
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
