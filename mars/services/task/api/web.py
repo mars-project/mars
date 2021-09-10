@@ -248,8 +248,13 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
         res = await self._request_url(path=path, params=params, method='GET')
         return json.loads(res.body.decode())
 
-    async def get_tileable_subtask_detail(self, task_id: str, tileable_id: str, with_input_output: str):
+    async def get_tileable_subtask_detail(self, task_id: str, tileable_id: str, with_input_output: bool = False):
+        if with_input_output:
+            input_output_indicator = 'true'
+        else:
+            input_output_indicator = 'false'
+
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}/{tileable_id}/subtask'
-        params =  {'action': 'fetch_detail', 'withInputOutput': with_input_output}
+        params =  {'action': 'fetch_detail', 'withInputOutput': input_output_indicator}
         res = await self._request_url(path=path, params=params, method='GET')
         return json.loads(res.body.decode())
