@@ -107,8 +107,12 @@ class AbstractSessionAPI(ABC):
                                     chunk_size,
                                     name: str = None,
                                     default_value=0):
-        pass # pragma: no cover
+        '''
+        create mutable tensor
+        '''
 
     @abstractmethod
     async def get_mutable_tensor(self, session_id: str, name: str):
-        pass # pragma: no cover
+        '''
+        get mutable tensor
+        '''

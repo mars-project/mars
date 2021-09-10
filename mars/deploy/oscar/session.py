@@ -357,8 +357,7 @@ class AbstractAsyncSession(AbstractSession, metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def get_mutable_tensor(self,
-                                name: str):
+    async def get_mutable_tensor(self, name: str):
         '''
         Get a mutable tensor
         '''
