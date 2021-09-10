@@ -411,6 +411,7 @@ async def test_get_subtask_graph(start_test_service):
 
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
+    await asyncio.sleep(1)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
         with_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), True)
