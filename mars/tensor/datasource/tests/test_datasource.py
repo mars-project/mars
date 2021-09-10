@@ -297,7 +297,7 @@ def test_diag():
     t = tile(t)
     assert t.nsplits == ((2, 1), (2, 1))
     assert len([c for c in t.chunks
-                          if c.op.__class__.__name__ == 'TensorDiag']) == 2
+               if c.op.__class__.__name__ == 'TensorDiag']) == 2
     assert t.chunks[0].op.sparse is True
 
     # test 2-d, shape[0] != shape[1]

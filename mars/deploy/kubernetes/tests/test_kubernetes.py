@@ -37,6 +37,7 @@ except ImportError:
 
 MARS_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(mt.__file__)))
 TEST_ROOT = os.path.dirname(os.path.abspath(__file__))
+DOCKER_ROOT = os.path.join(os.path.dirname(TEST_ROOT), 'docker')
 
 kube_available = find_executable('kubectl') is not None \
     and find_executable('docker') is not None \
@@ -63,20 +64,28 @@ def _collect_coverage():
         shutil.rmtree(dist_coverage_path)
 
 
-def _build_docker_images():
-    image_name = 'mars-test-image:' + uuid.uuid4().hex
+def _build_docker_images(use_test_docker_file=True):
+    image_name = 'mars-test-image:' + uuid.uuid1().hex
     try:
-        proc = subprocess.Popen(['docker', 'build',
-                                 '-f', 'Dockerfile.test',
-                                 '-t', image_name,
-                                 '.'], cwd=TEST_ROOT)
+        if use_test_docker_file:
+            proc = subprocess.Popen(['docker', 'build',
+                                     '-f', 'Dockerfile.test',
+                                     '-t', image_name,
+                                     '.'], cwd=TEST_ROOT)
+        else:
+            proc = subprocess.Popen(['docker', 'build',
+                                     '-f', os.path.join(DOCKER_ROOT, 'Dockerfile'),
+                                     '-t', image_name,
+                                     '.'], cwd=MARS_ROOT)
         if proc.wait() != 0:
             raise SystemError('Executing docker build failed.')
-        proc = subprocess.Popen(['docker', 'run',
-                                 '-v', MARS_ROOT + ':/mnt/mars',
-                                 image_name, '/srv/build_ext.sh'])
-        if proc.wait() != 0:
-            raise SystemError('Executing docker run failed.')
+
+        if use_test_docker_file:
+            proc = subprocess.Popen(['docker', 'run',
+                                     '-v', MARS_ROOT + ':/mnt/mars',
+                                     image_name, '/srv/build_ext.sh'])
+            if proc.wait() != 0:
+                raise SystemError('Executing docker run failed.')
     except:  # noqa: E722
         _remove_docker_image(image_name)
         raise
@@ -90,8 +99,8 @@ def _remove_docker_image(image_name, raises=True):
 
 
 @contextmanager
-def _start_kube_cluster(**kwargs):
-    image_name = _build_docker_images()
+def _start_kube_cluster(use_test_docker_file=True, **kwargs):
+    image_name = _build_docker_images(use_test_docker_file=use_test_docker_file)
 
     temp_spill_dir = tempfile.mkdtemp(prefix='test-mars-k8s-')
     api_client = k8s_config.new_client_from_config()
@@ -99,11 +108,17 @@ def _start_kube_cluster(**kwargs):
 
     cluster_client = None
     try:
-        extra_vol_config = HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)
+        if use_test_docker_file:
+            extra_volumes = [HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)]
+            pre_stop_command = ['rm', '/tmp/stopping.tmp']
+        else:
+            extra_volumes = []
+            pre_stop_command = None
+
         cluster_client = new_cluster(api_client, image=image_name,
                                      worker_spill_paths=[temp_spill_dir],
-                                     extra_volumes=[extra_vol_config],
-                                     pre_stop_command=['rm', '/tmp/stopping.tmp'],
+                                     extra_volumes=extra_volumes,
+                                     pre_stop_command=pre_stop_command,
                                      timeout=600, log_when_fail=True, **kwargs)
 
         assert cluster_client.endpoint is not None
@@ -118,15 +133,16 @@ def _start_kube_cluster(**kwargs):
 
         yield
 
-        # turn off service processes with grace to get coverage data
-        procs = []
-        pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
-        for item in pod_items['items']:
-            p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
-                                  item['metadata']['name'], '--', '/srv/graceful_stop.sh'])
-            procs.append(p)
-        for p in procs:
-            p.wait()
+        if use_test_docker_file:
+            # turn off service processes with grace to get coverage data
+            procs = []
+            pod_items = kube_api.list_namespaced_pod(cluster_client.namespace).to_dict()
+            for item in pod_items['items']:
+                p = subprocess.Popen(['kubectl', 'exec', '-n', cluster_client.namespace,
+                                      item['metadata']['name'], '--', '/srv/graceful_stop.sh'])
+                procs.append(p)
+            for p in procs:
+                p.wait()
 
         [p.terminate() for p in log_processes]
     finally:
@@ -140,11 +156,14 @@ def _start_kube_cluster(**kwargs):
         _remove_docker_image(image_name, False)
 
 
+@pytest.mark.parametrize('use_test_docker_file', [False, True])
 @pytest.mark.skipif(not kube_available, reason='Cannot run without kubernetes')
-def test_run_in_kubernetes():
+def test_run_in_kubernetes(use_test_docker_file):
     with _start_kube_cluster(
+            worker_mem='1G', worker_cache_mem='128m',
             extra_labels={'mars-test/group': 'test-label-name'},
-            extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'}):
+            extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
+            use_test_docker_file=use_test_docker_file):
         a = mt.ones((100, 100), chunk_size=30) * 2 * 1 + 1
         b = mt.ones((100, 100), chunk_size=20) * 2 * 1 + 1
         c = (a * b * 2 + 1).sum()

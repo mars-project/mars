@@ -86,8 +86,8 @@ def _assert_storage_cleaned(session_id: str,
                             level: StorageLevel):
 
     async def _assert(session_id: str,
-                                addr: str,
-                                level: StorageLevel):
+                      addr: str,
+                      level: StorageLevel):
         storage_api = await StorageAPI.create(session_id, addr)
         assert len(await storage_api.list(level)) == 0
         info = await storage_api.get_storage_level_info(level)

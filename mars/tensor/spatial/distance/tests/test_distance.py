@@ -99,7 +99,7 @@ def test_cdist():
     assert dist.nsplits == (ta.nsplits[0], tb.nsplits[0])
     for c in dist.chunks:
         assert c.shape == (ta.cix[c.index[0], 0].shape[0],
-                                   tb.cix[c.index[1], 0].shape[0])
+                           tb.cix[c.index[1], 0].shape[0])
 
     # XA can only be 2-d
     with pytest.raises(ValueError):

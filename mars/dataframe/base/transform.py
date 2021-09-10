@@ -100,7 +100,7 @@ class TransformOperand(DataFrameOperand, DataFrameOperandMixin):
                     chunk_size = chunk_size[::-1]
                 in_df = yield from recursive_tile(in_df.rechunk(chunk_size))
         elif isinstance(op.func, str) or \
-                 (isinstance(op.func, list) and any(isinstance(e, str) for e in op.func)):
+                (isinstance(op.func, list) and any(isinstance(e, str) for e in op.func)):
             # builtin cols handles whole columns, thus merge is needed
             if in_df.chunk_shape[0] > 1:
                 in_df = yield from recursive_tile(in_df.rechunk((in_df.shape[axis],)))

@@ -52,7 +52,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             return 1
         return 1 + bool(self._return_index) + \
-               bool(self._return_inverse) + bool(self._return_counts)
+            bool(self._return_inverse) + bool(self._return_counts)
 
     @property
     def return_index(self):

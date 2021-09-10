@@ -190,7 +190,7 @@ class DataFrameDescribe(DataFrameOperand, DataFrameOperandMixin):
 
             inputs = [ctx[inp.key] for inp in op.inputs]
             xdf = pd if isinstance(inputs[0], (pd.DataFrame, pd.Series, pd.Index)) \
-                        or cudf is None else cudf
+                or cudf is None else cudf
 
             if len(inputs) == 1:
                 df = inputs[0]

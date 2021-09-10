@@ -62,14 +62,14 @@ class MarsDataset:
             get_shape = lambda t: tuple(()) if isinstance(t, (List, SERIES_TYPE, pd.Series)) \
                                   else t.shape[1:]
             self._output_shapes = get_shape(self._tensors[0]) if len(self._tensors) == 1 else \
-                                  tuple(get_shape(t) for t in self._tensors)
+                tuple(get_shape(t) for t in self._tensors)
 
         if not self._output_types:
             get_type = lambda t: type(t[0]) if isinstance(t, List) else \
-                                 t[0].dtype if isinstance(t, (DATAFRAME_TYPE, pd.DataFrame)) \
-                                 else t.dtype
+                t[0].dtype if isinstance(t, (DATAFRAME_TYPE, pd.DataFrame)) \
+                else t.dtype
             self._output_types = get_type(self._tensors[0]) if len(self._tensors) == 1 else \
-                                 tuple(tf.as_dtype(get_type(t)) for t in self._tensors)
+                tuple(tf.as_dtype(get_type(t)) for t in self._tensors)
 
     def _execute(self):     # pragma: no cover
         execute_data = [t for t in self._tensors if isinstance(t, ACCEPT_TYPE[:3])]
