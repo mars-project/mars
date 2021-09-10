@@ -433,9 +433,6 @@ async def test_get_subtask_graph(start_test_service):
 
         no_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), 'false')
 
-        no_input_output_subtask_size = len(no_input_output_subtask_details.get('subtasks'))
-        no_input_output_dependency_size = len(no_input_output_subtask_details.get('dependencies'))
-
         subtask_ids = set()
         for subtask in no_input_output_subtask_details.get('subtasks'):
             assert subtask.get('subtaskId') not in subtask_ids

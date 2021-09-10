@@ -638,12 +638,12 @@ class TaskProcessorActor(mo.Actor):
             for predecessor in stage.subtask_graph.iter_predecessors(subtask):
                 predecessor_id = predecessor.subtask_id
 
-                if predecessor_id in returned_subtasks:
+                if predecessor_id in returned_subtasks: # pragma: no cover
                     dependency_list.append({
                         'fromSubtaskId': predecessor_id,
                         'toSubtaskId': subtask.subtask_id,
                     })
-                elif with_input_output is True:
+                elif with_input_output:
                     returned_subtasks.add(predecessor_id)
                     subtask_list.append({
                         'subtaskId': predecessor_id,
@@ -658,12 +658,12 @@ class TaskProcessorActor(mo.Actor):
             for successor in stage.subtask_graph.iter_successors(subtask):
                 successor_id = successor.subtask_id
 
-                if successor_id in returned_subtasks:
+                if successor_id in returned_subtasks: # pragma: no cover
                     dependency_list.append({
                         'fromSubtaskId': subtask.subtask_id,
                         'toSubtaskId': successor_id,
                     })
-                elif with_input_output is True:
+                elif with_input_output:
                     returned_subtasks.add(successor_id)
                     subtask_list.append({
                         'subtaskId': successor_id,
@@ -717,7 +717,7 @@ class TaskProcessorActor(mo.Actor):
                     'name': subtask.subtask_name,
                 }
 
-        if with_input_output is False:
+        if not with_input_output:
             return subtask_detail
 
         for subtask in requested_subtasks:
