@@ -3,14 +3,17 @@ SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
 ROOT_PATH=$(dirname "$SCRIPT_PATH")
 
 function usage() {
-  echo "Usage: $0 [-r <repo>] [-t <tag>] (build | push)"
+  echo "Usage: $0 [-r <repo>] [-t <tag>] [-o <organization>] (build | push)"
 }
 
 function image_ref() {
   if [[ -z "$TAG" ]]; then
-    TAG="v$(cd mars || exit 1; python -c "import _version; print(_version.__version__)")"
+    TAG="v$(python -c "import mars; print(mars.__version__)")"
   fi
-  local image_name="marsproject/mars:$TAG"
+  if [[ -z "$ORG" ]]; then
+    ORG="marsproject"
+  fi
+  local image_name="$ORG/mars:$TAG"
   if [[ -n "$REPO" ]]; then
     local image_name="$REPO/$image_name"
   fi
@@ -33,13 +36,16 @@ if [[ "$@" = *--help ]] || [[ "$@" = *-h ]] || [[ "$@" = *-\? ]]; then
   exit 0
 fi
 
-while getopts ":r:t:" option; do
+while getopts ":r:t:o:" option; do
   case "$option" in
     r)
       REPO=$OPTARG
       ;;
     t)
       TAG=$OPTARG
+      ;;
+    o)
+      ORG=$OPTARG
       ;;
     *)
       usage

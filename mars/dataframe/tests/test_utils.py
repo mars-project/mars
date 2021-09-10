@@ -20,18 +20,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.config import option_context
-from mars.core import tile
-from mars.dataframe.initializer import DataFrame, Index
-from mars.dataframe.core import IndexValue
-from mars.dataframe.utils import decide_dataframe_chunk_sizes, \
+from ...config import option_context
+from ...core import tile
+from ...utils import Timer
+from ..core import IndexValue
+from ..initializer import DataFrame, Index
+from ..utils import decide_dataframe_chunk_sizes, \
     decide_series_chunk_size, split_monotonic_index_min_max, \
     build_split_idx_to_origin_idx, parse_index, filter_index_value, \
     infer_dtypes, infer_index_value, validate_axis, fetch_corner_data, \
     make_dtypes, build_concatenated_rows_frame, merge_index_value
-from mars.utils import Timer
 
-    
+
 def test_decide_dataframe_chunks():
     with option_context() as options:
         options.chunk_store_limit = 64

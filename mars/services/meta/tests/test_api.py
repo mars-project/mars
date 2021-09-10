@@ -16,16 +16,16 @@ import sys
 
 import pytest
 
-import mars.dataframe as md
-import mars.oscar as mo
-import mars.remote as mr
-import mars.tensor as mt
-from mars.core import tile
-from mars.services import start_services, NodeRole
-from mars.services.cluster import MockClusterAPI
-from mars.services.session import MockSessionAPI, SessionAPI
-from mars.services.meta import MockMetaAPI, MetaAPI, WebMetaAPI
-from mars.utils import get_next_port
+from .... import dataframe as md
+from .... import oscar as mo
+from .... import remote as mr
+from .... import tensor as mt
+from ....core import tile
+from ....utils import get_next_port
+from ... import start_services, stop_services, NodeRole
+from ...cluster import MockClusterAPI
+from ...session import MockSessionAPI, SessionAPI
+from .. import MockMetaAPI, MetaAPI, WebMetaAPI
 
 
 t = mt.random.rand(10, 10)
@@ -72,14 +72,25 @@ async def test_meta_mock_api(obj):
         assert meta['index'] == chunk.index
         assert meta['bands'] == [(pool.external_address, 'numa-0')]
 
-        await meta_api.add_chunk_bands(chunk.key, [('1.2.3.4:1234', 'numa-0')])
-        meta = await meta_api.get_chunk_meta(chunk.key,
-                                             fields=['bands'])
-        assert ('1.2.3.4:1234', 'numa-0') in meta['bands']
+        for i in range(2):
+            band = (f'1.2.3.{i}:1234', 'numa-0')
+            await meta_api.add_chunk_bands(chunk.key, [band])
+            meta = await meta_api.get_chunk_meta(chunk.key,
+                                                 fields=['bands'])
+            assert band in meta['bands']
+        meta = await meta_api.get_chunk_meta(chunk.key, fields=['bands'])
+        band = meta['bands'][0]
+        chunks = await meta_api.get_band_chunks(band)
+        assert chunk.key in chunks
+        await meta_api.remove_chunk_bands(chunk.key, [band])
+        meta = await meta_api.get_chunk_meta(chunk.key, fields=['bands'])
+        assert band not in meta['bands']
 
         await meta_api.del_chunk_meta(chunk.key)
         with pytest.raises(KeyError):
             await meta_api.get_chunk_meta(chunk.key)
+
+        await MockClusterAPI.cleanup(pool.external_address)
 
 
 @pytest.mark.asyncio
@@ -122,3 +133,6 @@ async def test_meta_web_api():
 
         with pytest.raises(KeyError):
             await web_api.get_chunk_meta('non-exist-key')
+
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=pool.external_address)

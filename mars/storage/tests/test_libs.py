@@ -24,17 +24,17 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sps
 
-from mars.lib.filesystem import LocalFileSystem
-from mars.lib.sparse import SparseNDArray, SparseMatrix
-from mars.serialization import AioSerializer, AioDeserializer
-from mars.storage.base import StorageLevel
-from mars.storage.cuda import CudaStorage
-from mars.storage.filesystem import DiskStorage
-from mars.storage.plasma import PlasmaStorage
-from mars.storage.shared_memory import SharedMemoryStorage
-from mars.storage.vineyard import VineyardStorage
-from mars.storage.ray import RayStorage
-from mars.tests.core import require_ray, require_cudf, require_cupy
+from ...lib.filesystem import LocalFileSystem
+from ...lib.sparse import SparseNDArray, SparseMatrix
+from ...serialization import AioSerializer, AioDeserializer
+from ...tests.core import require_ray, require_cudf, require_cupy
+from ..base import StorageLevel
+from ..cuda import CudaStorage
+from ..filesystem import DiskStorage
+from ..plasma import PlasmaStorage
+from ..shared_memory import SharedMemoryStorage
+from ..vineyard import VineyardStorage
+from ..ray import RayStorage
 
 try:
     import vineyard

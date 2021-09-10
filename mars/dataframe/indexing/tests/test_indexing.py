@@ -16,17 +16,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.core import tile
-from mars.tensor.core import TENSOR_CHUNK_TYPE, TENSOR_TYPE, Tensor
-from mars.dataframe.core import SERIES_CHUNK_TYPE, SERIES_TYPE, Series, \
+from .... import dataframe as md
+from .... import tensor as mt
+from ....core import tile
+from ....tensor.core import TENSOR_CHUNK_TYPE, TENSOR_TYPE, Tensor
+from ...core import SERIES_CHUNK_TYPE, SERIES_TYPE, Series, \
     DATAFRAME_TYPE, DataFrame, DATAFRAME_CHUNK_TYPE
-from mars.dataframe.indexing.iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
+from ..iloc import DataFrameIlocGetItem, DataFrameIlocSetItem, \
     IndexingError, HeadTailOptimizedOperandMixin
-from mars.dataframe.indexing.loc import DataFrameLocGetItem
-    
-    
+from ..loc import DataFrameLocGetItem
+
+
 def test_set_index():
     df1 = pd.DataFrame([[1, 3, 3], [4, 2, 6], [7, 8, 9]],
                        index=['a1', 'a2', 'a3'], columns=['x', 'y', 'z'])
@@ -192,9 +192,9 @@ def test_iloc_getitem():
     assert len(series.chunks) == 2
     assert series.chunks[0].shape == (2,)
     assert series.chunks[0].index == (0,)
-    assert series.chunks[0].op.indexes == [slice(1, 3, 1),]
+    assert series.chunks[0].op.indexes == [slice(1, 3, 1), ]
     assert series.chunks[1].shape == (2,)
-    assert series.chunks[1].op.indexes == [slice(0, 2, 1),]
+    assert series.chunks[1].op.indexes == [slice(0, 2, 1), ]
     assert series.chunks[1].index == (1,)
 
     # fancy index

@@ -21,13 +21,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import tensor as mt
-from mars.dataframe import to_datetime
-from mars.dataframe.datasource.dataframe import from_pandas
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.arithmetic.tests.test_arithmetic import comp_func
-from mars.tensor.datasource import array as from_array
-from mars.utils import dataslots
+from .... import tensor as mt
+from ....tensor.datasource import array as from_array
+from ....utils import dataslots
+from ... import to_datetime
+from ...datasource.dataframe import from_pandas
+from ...datasource.series import from_pandas as from_pandas_series
+from ..tests.test_arithmetic import comp_func
 
 
 @dataslots

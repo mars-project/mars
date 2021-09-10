@@ -14,12 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mars.core import tile
-from mars.tensor.datasource import ones
-from mars.tensor.indexing.slice import TensorSlice
-from mars.tensor.rechunk.rechunk import compute_rechunk
+from ....core import tile
+from ...datasource import ones
+from ...indexing.slice import TensorSlice
+from ..rechunk import compute_rechunk
 
-    
+
 def test_compute_rechunk():
     tensor = ones((12, 8), chunk_size=((4, 4, 3, 1), (3, 3, 2)))
     tensor = tile(tensor)

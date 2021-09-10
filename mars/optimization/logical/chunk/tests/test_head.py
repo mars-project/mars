@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import os
 import tempfile
 
 import pandas as pd
 import pytest
 
-import mars.dataframe as md
-from mars.core import enter_mode, TileableGraph, \
+from ..... import dataframe as md
+from .....core import enter_mode, TileableGraph, \
     TileableGraphBuilder, ChunkGraphBuilder
-from mars.optimization.logical.chunk import optimize
+from .. import optimize
 
 
 @pytest.fixture(scope='module')

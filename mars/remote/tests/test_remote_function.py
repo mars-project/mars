@@ -18,13 +18,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import dataframe as md
-from mars import tensor as mt
-from mars.core import tile
-from mars.deploy.oscar.session import get_default_session
-from mars.learn.utils import shuffle
-from mars.lib.mmh3 import hash as mmh3_hash
-from mars.remote import spawn, ExecutableTuple
+from ... import dataframe as md
+from ... import tensor as mt
+from ...core import tile
+from ...deploy.oscar.session import get_default_session
+from ...learn.utils import shuffle
+from ...lib.mmh3 import hash as mmh3_hash
+from .. import spawn, ExecutableTuple
 
 
 def test_params():
@@ -41,8 +41,8 @@ def test_params():
     params.pop('index', None)
     r.params = params
     r.refresh_params()
-    
-    
+
+
 def test_remote_function(setup):
     session = setup
 
@@ -177,3 +177,15 @@ def test_unknown_shape_inputs(setup):
     result = s.execute().fetch()
     expected = (raw[raw > 0] * 3).sum()
     assert pytest.approx(result) == expected
+
+
+def test_none_outputs(setup):
+    def f(*_args):
+        pass
+
+    r1 = spawn(f, args=(0,))
+    r2 = spawn(f, args=(r1, 1))
+    r3 = spawn(f, args=(r1, 2))
+    r4 = spawn(f, args=(r2, r3))
+
+    assert r4.execute().fetch() is None

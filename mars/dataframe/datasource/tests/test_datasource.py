@@ -21,20 +21,20 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.tensor as mt
-from mars.core import tile
-from mars.dataframe.core import IndexValue, DatetimeIndex, Int64Index, Float64Index
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index, from_tileable
-from mars.dataframe.datasource.from_tensor import dataframe_from_tensor, \
+from .... import tensor as mt
+from ....core import tile
+from ...core import IndexValue, DatetimeIndex, Int64Index, Float64Index
+from ..dataframe import from_pandas as from_pandas_df
+from ..date_range import date_range
+from ..from_records import from_records
+from ..from_tensor import dataframe_from_tensor, \
     series_from_tensor, dataframe_from_1d_tileables
-from mars.dataframe.datasource.from_records import from_records
-from mars.dataframe.datasource.read_csv import read_csv, DataFrameReadCSV
-from mars.dataframe.datasource.read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
-from mars.dataframe.datasource.date_range import date_range
-    
-    
+from ..index import from_pandas as from_pandas_index, from_tileable
+from ..read_csv import read_csv, DataFrameReadCSV
+from ..read_sql import read_sql_table, read_sql_query, DataFrameReadSQL
+from ..series import from_pandas as from_pandas_series
+
+
 def test_from_pandas_dataframe():
     data = pd.DataFrame(np.random.rand(10, 10), columns=['c' + str(i) for i in range(10)])
     df = from_pandas_df(data, chunk_size=4)

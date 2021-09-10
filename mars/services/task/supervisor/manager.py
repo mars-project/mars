@@ -112,7 +112,7 @@ class TaskManagerActor(mo.Actor):
     async def _init_context(self):
         loop = asyncio.get_running_loop()
         context = ThreadedServiceContext(
-            self._session_id, self.address, self.address, loop=loop)
+            self._session_id, self.address, self.address, self.address, loop=loop)
         await context.init()
         set_context(context)
 
@@ -180,6 +180,22 @@ class TaskManagerActor(mo.Actor):
 
         res = await processor_ref.get_tileable_graph_as_dict()
         return res
+
+    async def get_tileable_details(self, task_id):
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:
+            raise TaskNotExist(f'Task {task_id} does not exist')
+
+        return await processor_ref.get_tileable_details()
+
+    async def get_tileable_subtasks(self, task_id, tileable_id):
+        try:
+            processor_ref = self._task_id_to_processor_ref[task_id]
+        except KeyError:
+            raise TaskNotExist(f'Task {task_id} does not exist')
+
+        return await processor_ref.get_tileable_subtasks(tileable_id)
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
             Dict[TileableType, TileableType]:

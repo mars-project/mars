@@ -65,7 +65,7 @@ class Dummy:
 
 
 def test_patch_super():
-    from mars.tests.core import patch_cls, patch_super as super
+    from ...tests.core import patch_cls, patch_super as super
 
     @patch_cls(B)
     class D(B):

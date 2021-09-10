@@ -15,15 +15,15 @@
 import numpy as np
 import pandas as pd
 
-import mars.dataframe as md
-import mars.tensor as mt
-from mars.tests.core import require_cudf, require_cupy
-from mars.utils import lazy_import
+from ... import dataframe as md
+from ... import tensor as mt
+from ...tests.core import require_cudf, require_cupy
+from ...utils import lazy_import
 
 cupy = lazy_import('cupy', globals=globals())
 cudf = lazy_import('cudf', globals=globals())
 
-    
+
 def test_dataframe_initializer(setup):
     # from tensor
     raw = np.random.rand(100, 10)

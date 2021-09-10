@@ -16,20 +16,20 @@ import numpy as np
 import asyncio
 import pytest
 
-import mars.oscar as mo
-from mars.core import ChunkGraph
-from mars.services.cluster import ClusterAPI
-from mars.services.cluster.core import NodeRole, NodeStatus
-from mars.services.cluster.uploader import NodeInfoUploaderActor
-from mars.services.cluster.supervisor.locator import SupervisorPeerLocatorActor
-from mars.services.cluster.supervisor.node_info import NodeInfoCollectorActor
-from mars.services.meta import MockMetaAPI
-from mars.services.session import MockSessionAPI
-from mars.services.scheduling.supervisor import AssignerActor
-from mars.services.scheduling.errors import NoMatchingSlots
-from mars.services.subtask import Subtask
-from mars.tensor.fetch import TensorFetch
-from mars.tensor.arithmetic import TensorTreeAdd
+from ..... import oscar as mo
+from .....core import ChunkGraph
+from .....tensor.fetch import TensorFetch
+from .....tensor.arithmetic import TensorTreeAdd
+from ....cluster import ClusterAPI
+from ....cluster.core import NodeRole, NodeStatus
+from ....cluster.uploader import NodeInfoUploaderActor
+from ....cluster.supervisor.locator import SupervisorPeerLocatorActor
+from ....cluster.supervisor.node_info import NodeInfoCollectorActor
+from ....meta import MockMetaAPI
+from ....session import MockSessionAPI
+from ....subtask import Subtask
+from ...supervisor import AssignerActor
+from ...errors import NoMatchingSlots
 
 
 class MockNodeInfoCollectorActor(NodeInfoCollectorActor):

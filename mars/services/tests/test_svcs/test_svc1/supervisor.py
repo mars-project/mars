@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mars.oscar as mo
-from mars.services.core import AbstractService
+from ..... import oscar as mo
+from ....core import AbstractService
 
 
 class SvcActor1(mo.Actor):

@@ -19,18 +19,18 @@ from collections import defaultdict
 import numpy as np
 import pytest
 
-import mars.oscar as mo
-import mars.remote as mr
-import mars.tensor as mt
-from mars.core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
-from mars.services import start_services, NodeRole
-from mars.services.session import SessionAPI
-from mars.services.scheduling import SchedulingAPI
-from mars.services.scheduling.supervisor import GlobalSlotManagerActor
-from mars.services.storage import StorageAPI, MockStorageAPI
-from mars.services.subtask import Subtask, SubtaskResult, SubtaskStatus
-from mars.services.task import new_task_id
-from mars.services.task.supervisor.manager import TaskManagerActor
+from .... import oscar as mo
+from .... import remote as mr
+from .... import tensor as mt
+from ....core.graph import TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
+from ... import start_services, stop_services, NodeRole
+from ...session import SessionAPI
+from ...storage import StorageAPI, MockStorageAPI
+from ...subtask import Subtask, SubtaskResult, SubtaskStatus
+from ...task import new_task_id
+from ...task.supervisor.manager import TaskManagerActor
+from .. import SchedulingAPI
+from ..supervisor import GlobalSlotManagerActor
 
 
 class FakeTaskManager(TaskManagerActor):
@@ -129,10 +129,17 @@ async def actor_pools():
         address=sv_pool.external_address)
     await MockStorageAPI.create(session_id, worker_pool.external_address)
 
-    yield sv_pool, worker_pool, session_id, task_manager_ref
+    try:
+        yield sv_pool, worker_pool, session_id, task_manager_ref
+    finally:
+        await session_api.delete_session(session_id)
+        await MockStorageAPI.cleanup(worker_pool.external_address)
+        await stop_services(
+            NodeRole.WORKER, config, address=worker_pool.external_address)
+        await stop_services(
+            NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
 
-    await session_api.delete_session(session_id)
-    await asyncio.gather(sv_pool.stop(), worker_pool.stop())
+        await asyncio.gather(sv_pool.stop(), worker_pool.stop())
 
 
 @pytest.mark.asyncio

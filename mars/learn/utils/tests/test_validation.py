@@ -21,10 +21,10 @@ from sklearn.utils.estimator_checks import _NotAnArray
 from sklearn.utils._mocking import MockDataFrame
 from sklearn.utils._testing import assert_raise_message, assert_raises_regex
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.tensor.core import Tensor
-from mars.learn.utils.validation import check_array, check_consistent_length
+from .... import tensor as mt
+from .... import dataframe as md
+from ....tensor.core import Tensor
+from ..validation import check_array, check_consistent_length
 
 
 def test_ordering():

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-
-import aiohttp
 import pytest
+from tornado import httpclient
 
-import mars.oscar as mo
-from mars.services import NodeRole, start_services, stop_services, \
+from ... import oscar as mo
+from ...utils import get_next_port
+from .. import NodeRole, start_services, stop_services, \
     create_service_session, destroy_service_session
-from mars.utils import get_next_port
 
 
 @pytest.fixture
@@ -35,7 +33,7 @@ async def actor_pool_context():
 
 @pytest.mark.asyncio
 async def test_start_service(actor_pool_context):
-    from mars.services.tests.test_svcs.test_svc1.supervisor import SvcSessionActor1
+    from .test_svcs.test_svc1.supervisor import SvcSessionActor1
 
     pool = actor_pool_context
     web_port = get_next_port()
@@ -46,10 +44,9 @@ async def test_start_service(actor_pool_context):
         'test_svc2': {'uid': 'TestActor2', 'arg2': 'val2',  'ref': 'TestActor1'},
         'web': {'port': web_port},
     }
-    with warnings.catch_warnings(record=True) as w:
+    with pytest.warns(RuntimeWarning) as record:
         await start_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
-        assert 'test_warn_svc' in str(w[-1].message)
-        assert issubclass(w[-1].category, RuntimeWarning)
+        assert 'test_warn_svc' in str(record[-1].message)
 
     ref1 = await mo.actor_ref('TestActor1', address=pool.external_address)
     ref2 = await mo.actor_ref('TestActor2', address=pool.external_address)
@@ -70,11 +67,9 @@ async def test_start_service(actor_pool_context):
     assert not await mo.has_actor(mo.create_actor_ref(
         uid=SvcSessionActor1.gen_uid(session_id), address=pool.external_address))
 
-    http_session = aiohttp.ClientSession()
-    resp = await http_session.get(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
-    content = await resp.read()
-    assert content.decode() == 'val1'
-    await http_session.close()
+    client = httpclient.AsyncHTTPClient()
+    resp = await client.fetch(f'http://127.0.0.1:{web_port}/test_actor1/test_api')
+    assert resp.body.decode() == 'val1'
 
     await stop_services(NodeRole.SUPERVISOR, config, address=pool.external_address)
     assert not await mo.has_actor(mo.create_actor_ref(

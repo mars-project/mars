@@ -23,7 +23,7 @@ from ...serialization.serializables import KeyField, FunctionField, \
 from ...utils import enter_current_session, has_unknown_shape, quiet_stdio
 from ..operands import DataFrameOperand, DataFrameOperandMixin, OutputType
 from ..utils import build_df, build_empty_df, build_series, parse_index, \
-    validate_output_types
+    validate_output_types, build_empty_series
 
 
 class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
@@ -175,12 +175,21 @@ class DataFrameMapChunk(DataFrameOperand, DataFrameOperandMixin):
     @enter_current_session
     def execute(cls, ctx, op: "DataFrameMapChunk"):
         inp = ctx[op.input.key]
-        out_chunk = op.outputs[0]
+        out = op.outputs[0]
+        if len(inp) == 0:
+            if op.output_types[0] == OutputType.dataframe:
+                ctx[out.key] = build_empty_df(out.dtypes)
+            elif op.output_types[0] == OutputType.series:
+                ctx[out.key] = build_empty_series(
+                    out.dtype, name=out.name)
+            else:
+                raise ValueError(f'Chunk can not be empty except for dataframe/series.')
+            return
 
         kwargs = op.kwargs or dict()
         if op.with_chunk_index:
-            kwargs['chunk_index'] = out_chunk.index
-        ctx[out_chunk.key] = op.func(inp, *op.args, **kwargs)
+            kwargs['chunk_index'] = out.index
+        ctx[out.key] = op.func(inp, *op.args, **kwargs)
 
 
 def map_chunk(df_or_series, func, args=(), **kwargs):

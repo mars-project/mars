@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mars.oscar as mo
-
 import numpy as np
 import pytest
 
-from mars import tensor as mt
-from mars.core import tile
-from mars.services.cluster import MockClusterAPI
-from mars.services.lifecycle import TileableNotTracked
-from mars.services.lifecycle.supervisor.tracker import LifecycleTrackerActor
-from mars.services.meta import MockMetaAPI
-from mars.services.session import MockSessionAPI
-from mars.services.storage import MockStorageAPI, DataNotExist
+from ..... import oscar as mo
+from ..... import tensor as mt
+from .....core import tile
+from ....cluster import MockClusterAPI
+from ....meta import MockMetaAPI
+from ....session import MockSessionAPI
+from ....storage import MockStorageAPI, DataNotExist
+from ... import TileableNotTracked
+from ...supervisor.tracker import LifecycleTrackerActor
 
 
 @pytest.mark.asyncio
@@ -75,3 +74,4 @@ async def test_tracker():
                 await tracker.decref_tileables(['not_tracked'])
         finally:
             await MockStorageAPI.cleanup(pool.external_address)
+            await MockClusterAPI.cleanup(pool.external_address)

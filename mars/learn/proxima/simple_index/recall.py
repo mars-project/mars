@@ -15,8 +15,9 @@
 import math
 
 import numpy as np
-import mars.remote as mr
-from mars.learn.proxima.simple_index.knn import sample_data, linear_build_and_search
+
+from .... import remote as mr
+from .knn import sample_data, linear_build_and_search
 
 
 def recall_one(linear_score, ann_score, topk_ids, epsilon=1e-6):

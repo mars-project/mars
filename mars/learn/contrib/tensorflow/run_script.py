@@ -79,7 +79,6 @@ class RunTensorFlow(RunScript):
     def tile(cls, op):
         ctx = get_context()
 
-        port = op.port or 2221
         cluster_conf = {'worker': []}
         if op.n_ps > 0:
             cluster_conf['ps'] = []
@@ -88,6 +87,7 @@ class RunTensorFlow(RunScript):
         out_chunks = []
         worker_addresses = ctx.get_worker_addresses()
         picked_workers = pick_workers(worker_addresses, op.n_roles)
+        data, input_chunks = cls._get_chunk_data(op)
 
         ports = yield from recursive_tile(
             collect_ports(worker_addresses))
@@ -98,6 +98,7 @@ class RunTensorFlow(RunScript):
         for worker, port in zip(picked_workers, ports):
             worker_addr = worker.rsplit(':', 1)[0]
             chunk_op = op.copy().reset_key()
+            chunk_op._data = data
             addr = f'{worker_addr}:{port}'
             # tell graph actor that the chunk should be executed on the exact worker
             chunk_op.expect_worker = worker
@@ -108,7 +109,7 @@ class RunTensorFlow(RunScript):
             cluster_conf[tp].append(addr)
             chunk_op._tf_config = {'cluster': cluster_conf,
                                    'task': {'type': tp, 'index': idx}}
-            out_chunks.append(chunk_op.new_chunk(None, index=(i,)))
+            out_chunks.append(chunk_op.new_chunk(input_chunks, index=(i,)))
             i += 1
 
         new_op = op.copy()
@@ -144,8 +145,7 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
                           command_argv: List[str] = None,
                           retry_when_fail: bool = False,
                           session: SessionType = None,
-                          run_kwargs: Dict[str, Any] = None,
-                          port: int = None):
+                          run_kwargs: Dict[str, Any] = None):
     """
     Run TensorFlow script in Mars cluster.
 
@@ -169,8 +169,6 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
         Mars session, if not provided, will use default one.
     run_kwargs : dict
         Extra kwargs for `session.run`.
-    port : int
-        Port of TensorFlow worker or ps, will automatically increase for the same worker
 
     Returns
     -------
@@ -191,5 +189,5 @@ def run_tensorflow_script(script: Union[bytes, str, BinaryIO, TextIO],
     op = RunTensorFlow(data=data, code=to_binary(code),
                        n_workers=int(n_workers), n_ps=int(n_ps),
                        retry_when_fail=retry_when_fail, gpu=gpu,
-                       port=port, command_args=command_argv)
+                       command_args=command_argv)
     return op(inputs).execute(session=session, **(run_kwargs or {}))

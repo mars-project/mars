@@ -16,7 +16,7 @@ import numpy as np
 
 from ... import opcodes
 from ...config import options
-from ...core import OutputType
+from ...core import OutputType, ENTITY_TYPE
 from ...serialization.serializables import BoolField
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
@@ -52,10 +52,14 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
                 + 6 * (x ** 2).mean(skipna=skipna) * mean ** 2 \
                 - 3 * mean ** 4
             var = x.var(skipna=skipna, ddof=0)
-            val = where_function(var > 0, divided / var ** 2, np.nan)
+            if isinstance(var, ENTITY_TYPE) or var > 0:
+                val = where_function(var > 0, divided / var ** 2, np.nan)
+            else:
+                val = np.nan
             if not bias:
                 val = where_function((var > 0) & (cnt > 3),
-                                     (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3), np.nan)
+                                     (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3),
+                                     np.nan)
             if not fisher:
                 val += 3
             return val

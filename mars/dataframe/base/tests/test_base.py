@@ -16,18 +16,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import opcodes
-from mars.config import options, option_context
-from mars.core import OutputType, tile
-from mars.core.operand import OperandStage
-from mars.dataframe import eval as mars_eval, cut, to_numeric
-from mars.dataframe.base import to_gpu, to_cpu, astype
-from mars.dataframe.core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
+from .... import opcodes
+from ....config import options, option_context
+from ....core import OutputType, tile
+from ....core.operand import OperandStage
+from ....tensor.core import TENSOR_TYPE
+from ... import eval as mars_eval, cut, to_numeric
+from ...core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.tensor.core import TENSOR_TYPE
+from ...datasource.dataframe import from_pandas as from_pandas_df
+from ...datasource.series import from_pandas as from_pandas_series
+from ...datasource.index import from_pandas as from_pandas_index
+from .. import to_gpu, to_cpu, astype
 
 
 def test_to_gpu():
@@ -701,8 +701,21 @@ def test_cut():
     assert r.dtype == e.dtype
 
 
+def test_transpose():
+    s = pd.DataFrame({"a": [1, 2, 3], "b": ['5', '-6', '7'], "c": [1, 2, 3]})
+    df = from_pandas_df(s, chunk_size=2)
+
+    r = tile(df.transpose())
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
+
+    r = tile(df.T)
+    assert len(r.chunks) == 4
+    assert isinstance(r, DATAFRAME_TYPE)
+
+
 def test_to_numeric():
-    raw = pd.DataFrame({"a":[1.0, 2, 3, -3]})
+    raw = pd.DataFrame({"a": [1.0, 2, 3, -3]})
     df = from_pandas_df(raw, chunk_size=2)
 
     with pytest.raises(ValueError):
@@ -916,21 +929,23 @@ def test_empty():
     # for DataFrame
     assert from_pandas_df(pd.DataFrame()).empty == pd.DataFrame().empty
     assert from_pandas_df(pd.DataFrame({})).empty == pd.DataFrame({}).empty
-    assert from_pandas_df(pd.DataFrame({'a':[]})).empty == pd.DataFrame({'a':[]}).empty
-    assert from_pandas_df(pd.DataFrame({'a':[1]})).empty == pd.DataFrame({'a':[1]}).empty
-    assert from_pandas_df(pd.DataFrame({'a':[1], 'b':[2]})).empty == pd.DataFrame({'a':[1], 'b':[2]}).empty
-    assert from_pandas_df(pd.DataFrame(np.empty(shape=(4,0)))).empty == pd.DataFrame(np.empty(shape=(4,0))).empty
+    assert from_pandas_df(pd.DataFrame({'a': []})).empty == pd.DataFrame({'a': []}).empty
+    assert from_pandas_df(pd.DataFrame({'a': [1]})).empty == pd.DataFrame({'a': [1]}).empty
+    assert from_pandas_df(
+        pd.DataFrame({'a': [1], 'b': [2]})).empty == pd.DataFrame({'a': [1], 'b': [2]}).empty
+    assert from_pandas_df(
+        pd.DataFrame(np.empty(shape=(4, 0)))).empty == pd.DataFrame(np.empty(shape=(4, 0))).empty
 
     # for Series
     assert from_pandas_series(pd.Series()).empty == pd.Series().empty
     assert from_pandas_series(pd.Series({})).empty == pd.Series({}).empty
-    assert from_pandas_series(pd.Series({'a':[]})).empty == pd.Series({'a':[]}).empty
-    assert from_pandas_series(pd.Series({'a':[1]})).empty == pd.Series({'a':[1]}).empty
+    assert from_pandas_series(pd.Series({'a': []})).empty == pd.Series({'a': []}).empty
+    assert from_pandas_series(pd.Series({'a': [1]})).empty == pd.Series({'a': [1]}).empty
 
     # Maybe fail due to lazy evaluation
     with pytest.raises(ValueError):
         a = from_pandas_df(pd.DataFrame(np.random.rand(10, 2)))
-        assert a[a > 0].empty == True
+        assert a[a > 0].empty
     with pytest.raises(ValueError):
         a = from_pandas_series(pd.Series(np.random.rand(10)))
-        assert a[a > 0].empty == True
+        assert a[a > 0].empty

@@ -126,9 +126,12 @@ class MockSchedulingAPI(SchedulingAPI):
     async def create(cls: Type[APIType],
                      session_id: str,
                      address: str) -> APIType:
-        from .supervisor import GlobalSlotManagerActor
+        from .supervisor import GlobalSlotManagerActor, AutoscalerActor
         await mo.create_actor(GlobalSlotManagerActor,
                               uid=GlobalSlotManagerActor.default_uid(),
+                              address=address)
+        await mo.create_actor(AutoscalerActor, {},
+                              uid=AutoscalerActor.default_uid(),
                               address=address)
 
         from ... import resource as mars_resource

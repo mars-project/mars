@@ -11,19 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import os
 
 import pytest
 
-import mars.oscar as mo
-from mars.oscar.errors import ServerClosed
-from mars.oscar.backends.allocate_strategy import ProcessIndex, MainPool
-from mars.oscar.backends.ray.pool import RayMainPool, RayMainActorPool, create_actor_pool, PoolStatus
-from mars.oscar.backends.ray.utils import process_placement_to_address
-from mars.oscar.context import get_context
-from mars.tests.core import require_ray
-from mars.utils import lazy_import
+from ..... import oscar as mo
+from .....tests.core import require_ray
+from .....utils import lazy_import
+from ....context import get_context
+from ....errors import ServerClosed
+from ...allocate_strategy import ProcessIndex, MainPool
+from ..pool import RayMainPool, RayMainActorPool, create_actor_pool, PoolStatus
+from ..utils import process_placement_to_address
 
 ray = lazy_import('ray')
 

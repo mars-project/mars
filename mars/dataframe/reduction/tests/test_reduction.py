@@ -21,21 +21,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars import dataframe as md
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.tensor import Tensor
-from mars.dataframe.core import DataFrame, IndexValue, Series, OutputType
-from mars.dataframe.reduction import DataFrameSum, DataFrameProd, DataFrameMin, \
+from .... import dataframe as md
+from ....core import tile
+from ....core.operand import OperandStage
+from ....tensor import Tensor
+from ...core import DataFrame, IndexValue, Series, OutputType
+from ...datasource.series import from_pandas as from_pandas_series
+from ...datasource.dataframe import from_pandas as from_pandas_df
+from ...merge import DataFrameConcat
+from .. import DataFrameSum, DataFrameProd, DataFrameMin, \
     DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameAll, \
     DataFrameAny, DataFrameSkew, DataFrameKurtosis, DataFrameSem, \
     DataFrameAggregate, DataFrameCummin, DataFrameCummax, DataFrameCumprod, \
     DataFrameCumsum, DataFrameNunique, CustomReduction
-from mars.dataframe.reduction.aggregation import where_function
-from mars.dataframe.reduction.core import ReductionCompiler
-from mars.dataframe.merge import DataFrameConcat
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
+from ..aggregation import where_function
+from ..core import ReductionCompiler
 
 
 class FunctionOptions(NamedTuple):
@@ -498,7 +498,7 @@ def test_compile_function():
     assert len(result.post_funcs) == 2
     assert set(result.post_funcs[0].columns) == set('ab')
 
-    
+
 def test_custom_aggregation():
     class MockReduction1(CustomReduction):
         def agg(self, v1):

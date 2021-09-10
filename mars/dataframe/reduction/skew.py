@@ -16,7 +16,7 @@ import numpy as np
 
 from ... import opcodes
 from ...config import options
-from ...core import OutputType
+from ...core import OutputType, ENTITY_TYPE
 from ...serialization.serializables import BoolField
 from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
@@ -46,9 +46,14 @@ class DataFrameSkew(DataFrameReductionOperand, DataFrameReductionMixin):
                 - 3 * (x ** 2).mean(skipna=skipna) * mean \
                 + 2 * mean ** 3
             var = x.var(skipna=skipna, ddof=0)
-            val = where_function(var > 0, divided / var ** 1.5, np.nan)
+            if isinstance(var, ENTITY_TYPE) or var > 0:
+                val = where_function(var > 0, divided / var ** 1.5, np.nan)
+            else:
+                val = np.nan
             if not bias:
-                val = where_function((var > 0) & (cnt > 2), val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)), np.nan)
+                val = where_function((var > 0) & (cnt > 2),
+                                     val * ((cnt * (cnt - 1)) ** 0.5 / (cnt - 2)),
+                                     np.nan)
             return val
 
         return skew

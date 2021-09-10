@@ -19,15 +19,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.core import EntityData
-from mars.serialization import serialize, deserialize
-from mars.serialization.serializables import Serializable, FieldTypes, \
-    IdentityField, BoolField, AnyField, Int8Field, Int16Field, Int32Field, Int64Field, \
-    UInt8Field, UInt16Field, UInt32Field, UInt64Field, Float16Field, Float32Field, Float64Field, \
-    Complex64Field, Complex128Field, StringField, BytesField, KeyField, NDArrayField, \
-    Datetime64Field, Timedelta64Field, DataTypeField, IndexField, SeriesField, DataFrameField, \
-    IntervalArrayField, SliceField, FunctionField, NamedTupleField, TZInfoField, \
-    ListField, TupleField, DictField, ReferenceField, OneOfField
+from ....core import EntityData
+from ... import serialize, deserialize
+from .. import Serializable, FieldTypes, IdentityField, BoolField, \
+    AnyField, Int8Field, Int16Field, Int32Field, Int64Field, \
+    UInt8Field, UInt16Field, UInt32Field, UInt64Field, Float16Field, \
+    Float32Field, Float64Field, Complex64Field, Complex128Field, \
+    StringField, BytesField, KeyField, NDArrayField, Datetime64Field, \
+    Timedelta64Field, DataTypeField, IndexField, SeriesField, \
+    DataFrameField, IntervalArrayField, SliceField, FunctionField, \
+    NamedTupleField, TZInfoField, ListField, TupleField, DictField, \
+    ReferenceField, OneOfField
 
 my_namedtuple = namedtuple('my_namedtuple', 'a, b')
 

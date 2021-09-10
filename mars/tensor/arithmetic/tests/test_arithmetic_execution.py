@@ -21,13 +21,13 @@ import numpy as np
 import scipy.sparse as sps
 import pytest
 
-from mars.config import option_context
-from mars.session import execute, fetch
-from mars.tensor.datasource import ones, tensor, zeros
-from mars.tensor.arithmetic import add, cos, truediv, frexp, \
-    modf, clip, isclose, arctan2, tree_add, tree_multiply
-from mars.tests.core import require_cupy
-from mars.utils import ignore_warning
+from ....config import option_context
+from ....session import execute, fetch
+from ....tests.core import require_cupy
+from ....utils import ignore_warning
+from ...datasource import ones, tensor, zeros
+from .. import add, cos, truediv, frexp, modf, clip, isclose, \
+    arctan2, tree_add, tree_multiply
 
 
 def _nan_equal(a, b):
@@ -45,7 +45,7 @@ def _get_func(op):
 
 
 def _get_sparse_func(op):
-    from mars.lib.sparse.core import issparse
+    from ....lib.sparse.core import issparse
 
     if isinstance(op, str):
         op = getattr(np, op)
@@ -101,7 +101,7 @@ def test_base_order_execution(setup):
 
 
 def test_ufunc_execution(setup):
-    from mars.tensor.arithmetic import UNARY_UFUNC, BIN_UFUNC, arccosh, \
+    from .. import UNARY_UFUNC, BIN_UFUNC, arccosh, \
         invert, mod, fmod, bitand, bitor, bitxor, lshift, rshift, ldexp
 
     _sp_unary_ufunc = {arccosh, invert}
@@ -169,7 +169,7 @@ def test_ufunc_execution(setup):
 
 
 def test_sparse_ufunc_execution(setup):
-    from mars.tensor.arithmetic import add, square, arccosh, mod
+    from .. import add, square, arccosh, mod
 
     _normal_unary_ufunc = [square]
     _normal_bin_ufunc = [add]

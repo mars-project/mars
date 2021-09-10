@@ -76,6 +76,37 @@ Matrix Decomposition
    decomposition.PCA
    decomposition.TruncatedSVD
 
+.. _ensemble_ref:
+
+Ensemble Methods
+================
+
+.. automodule:: mars.learn.metrics
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   ensemble.BlockwiseVotingClassifier
+   ensemble.BlockwiseVotingRegressor
+
+.. _linear_model_ref:
+
+Linear Models
+=============
+
+Classical linear regressors
+---------------------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   linear_model.LinearRegression
 
 .. _metrics_ref:
 
@@ -96,7 +127,17 @@ Classification metrics
 
    metrics.accuracy_score
    metrics.auc
+   metrics.log_loss
    metrics.roc_curve
+
+Regression metrics
+------------------
+
+.. autosummary::
+   :toctree: generated/
+
+   metrics.r2_score
+
 
 Pairwise metrics
 ----------------
@@ -117,6 +158,21 @@ Pairwise metrics
    metrics.pairwise.manhattan_distances
    metrics.pairwise.rbf_kernel
    metrics.pairwise_distances
+
+.. _modelselection_ref:
+
+Model Selection
+===============
+
+Splitter Classes
+----------------
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   model_selection.KFold
 
 Splitter Functions
 ------------------
@@ -158,8 +214,10 @@ Preprocessing and Normalization
 .. autosummary::
    :toctree: generated/
 
+   preprocessing.LabelBinarizer
    preprocessing.MinMaxScaler
    preprocessing.minmax_scale
+   preprocessing.label_binarize
    preprocessing.normalize
 
 .. _semi_supervised_ref:
@@ -202,6 +260,22 @@ Utilities
    utils.validation.check_is_fitted
    utils.validation.column_or_1d
 
+.. _learn_misc_ref：
+
+Misc
+====
+
+.. automodule:: mars.learn.wrappers
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: mars.learn
+
+.. autosummary::
+   :toctree: generated/
+
+   wrappers.ParallelPostFit
+
 .. _lightgbm_ref:
 
 LightGBM Integration
@@ -225,7 +299,7 @@ LightGBM Integration
 PyTorch Integration
 ======================
 
-.. automodule:: mars.learn.contrib.tensorflow
+.. automodule:: mars.learn.contrib.pytorch
    :no-members:
    :no-inherited-members:
 
@@ -236,8 +310,10 @@ PyTorch Integration
 
    contrib.pytorch.run_pytorch_script
    contrib.pytorch.MarsDataset
-   contrib.pytorch.MarsDistributedSampler
-   contrib.pytorch.MarsRandomSampler
+   contrib.pytorch.SequentialSampler
+   contrib.pytorch.RandomSampler
+   contrib.pytorch.SubsetRandomSampler
+   contrib.pytorch.DistributedSampler
 
 .. _statsmodels_ref:
 
@@ -271,6 +347,7 @@ TensorFlow Integration
    :toctree: generated/
 
    contrib.tensorflow.run_tensorflow_script
+   contrib.tensorflow.gen_tensorflow_dataset
 
 .. _xgboost_ref:
 

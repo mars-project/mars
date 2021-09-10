@@ -24,6 +24,7 @@ Attributes
 
    Series.dtype
    Series.shape
+   Series.T
    Series.ndim
    Series.name
    Series.memory_usage
@@ -107,6 +108,7 @@ Computations / descriptive stats
    Series.all
    Series.any
    Series.autocorr
+   Series.between
    Series.corr
    Series.count
    Series.cummax

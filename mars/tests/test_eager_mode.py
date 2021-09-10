@@ -18,12 +18,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import mars.tensor as mt
-import mars.dataframe as md
-from mars.config import option_context
-from mars.dataframe.datasource.dataframe import from_pandas
-    
-    
+from .. import tensor as mt
+from .. import dataframe as md
+from ..config import option_context
+from ..dataframe.datasource.dataframe import from_pandas
+
+
 def test_base_execute(setup):
     with option_context({'eager_mode': True}):
         a_data = np.random.rand(10, 10)
@@ -164,7 +164,7 @@ def test_view(setup):
 
 def test_dataframe(setup):
     with option_context({'eager_mode': True}):
-        from mars.dataframe.arithmetic import add
+        from ..dataframe.arithmetic import add
 
         data1 = pd.DataFrame(np.random.rand(10, 10))
         df1 = from_pandas(data1, chunk_size=5)

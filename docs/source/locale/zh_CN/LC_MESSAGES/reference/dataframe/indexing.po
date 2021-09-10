@@ -36,6 +36,14 @@ msgid "Properties"
 msgstr "属性"
 
 #: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
+msgid ":obj:`Index.dtype <Index.dtype>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
+msgid ":obj:`Index.inferred_type <Index.inferred_type>`\\"
+msgstr ""
+
+#: ../../source/reference/dataframe/indexing.rst:28:<autosummary>:1
 msgid ":obj:`Index.is_monotonic <mars.dataframe.Index.is_monotonic>`\\"
 msgstr ""
 

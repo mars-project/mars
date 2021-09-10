@@ -21,13 +21,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mars.lib.aio import AioEvent
-from mars.oscar.backends.communication import \
+from .....lib.aio import AioEvent
+from .....tests.core import require_cudf, require_cupy
+from .....utils import get_next_port
+from .. import \
     SocketChannel, SocketServer, UnixSocketServer, \
     DummyChannel, DummyServer, get_client_type, \
     SocketClient, UnixSocketClient, DummyClient, Server
-from mars.tests.core import require_cudf, require_cupy
-from mars.utils import get_next_port
 
 test_data = np.random.RandomState(0).rand(10, 10)
 port = get_next_port()

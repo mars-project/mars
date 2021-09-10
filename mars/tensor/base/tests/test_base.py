@@ -17,10 +17,10 @@
 import numpy as np
 import pytest
 
-from mars.core import tile
-from mars.core.operand import OperandStage
-from mars.tensor.datasource import ones, tensor, arange
-from mars.tensor.base import transpose, broadcast_to, where, argwhere, array_split, \
+from ....core import tile
+from ....core.operand import OperandStage
+from ...datasource import ones, tensor, arange
+from .. import transpose, broadcast_to, where, argwhere, array_split, \
     split, squeeze, result_type, repeat, copyto, isin, moveaxis, TensorCopyTo, \
     atleast_1d, atleast_2d, atleast_3d, ravel, searchsorted, unique, sort, \
     partition, topk, to_gpu, to_cpu
@@ -298,8 +298,8 @@ def test_split():
     assert splits[2].flags['F_CONTIGUOUS'] is True
     assert splits[0].flags['C_CONTIGUOUS'] is False
 
-    for a in ((1,1,1,2,2,3), [1,1,1,2,2,3]):
-        splits = split(a, (3,5))
+    for a in ((1, 1, 1, 2, 2, 3), [1, 1, 1, 2, 2, 3]):
+        splits = split(a, (3, 5))
         assert len(splits) == 3
 
 

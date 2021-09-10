@@ -23,17 +23,19 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-from mars.config import options, option_context
-from mars.dataframe import eval as mars_eval, cut, qcut
-from mars.dataframe.base import to_gpu, to_cpu
-from mars.dataframe.base.to_numeric import to_numeric
-from mars.dataframe.base.rebalance import DataFrameRebalance
-from mars.dataframe.datasource.dataframe import from_pandas as from_pandas_df
-from mars.dataframe.datasource.series import from_pandas as from_pandas_series
-from mars.dataframe.datasource.index import from_pandas as from_pandas_index
-from mars.tensor import tensor
-from mars.tests.core import require_cudf
-from mars.utils import lazy_import
+from ....config import options, option_context
+from ....dataframe import DataFrame
+from ....tensor import arange, tensor
+from ....tensor.random import rand
+from ....tests.core import require_cudf
+from ....utils import lazy_import
+from ... import eval as mars_eval, cut, qcut
+from ...datasource.dataframe import from_pandas as from_pandas_df
+from ...datasource.series import from_pandas as from_pandas_series
+from ...datasource.index import from_pandas as from_pandas_index
+from .. import to_gpu, to_cpu
+from ..to_numeric import to_numeric
+from ..rebalance import DataFrameRebalance
 
 cudf = lazy_import('cudf', globals=globals())
 
@@ -857,6 +859,48 @@ def test_cut_execution(setup):
     s3[-1] = np.inf
     with pytest.raises(ValueError):
         cut(s3, 3).execute()
+
+
+def test_transpose_execution(setup):
+    raw = pd.DataFrame({"a": ['1', '2', '3'], "b": ['5', '-6', '7'], "c": ['1', '2', '3']})
+
+    # test 1 chunk
+    df = from_pandas_df(raw)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # test multi chunks
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.T.execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # dtypes are varied
+    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": [5, -6, 7], "c": [1, 2, 3]})
+
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": ['5', '-6', '7']})
+
+    df = from_pandas_df(raw, chunk_size=2)
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    # Transposing from results of other operands
+    raw = pd.DataFrame(np.arange(0, 100).reshape(10, 10))
+    df = DataFrame(arange(0, 100, chunk_size=5).reshape(10, 10))
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
+
+    df = DataFrame(rand(100, 100, chunk_size=10))
+    raw = df.to_pandas()
+    result = df.transpose().execute().fetch()
+    pd.testing.assert_frame_equal(result, raw.transpose())
 
 
 def test_to_numeric_execition(setup):

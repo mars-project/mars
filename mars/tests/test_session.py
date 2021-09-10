@@ -28,13 +28,13 @@ try:
 except ImportError:  # pragma: no cover
     pa = None
 
-import mars.tensor as mt
-import mars.dataframe as md
-import mars.remote as mr
-from mars._version import __version__ as mars_version
-from mars.config import option_context
-from mars.deploy.utils import load_service_config_file
-from mars.session import execute, fetch, fetch_log
+from .. import tensor as mt
+from .. import dataframe as md
+from .. import remote as mr
+from .._version import __version__ as mars_version
+from ..config import option_context
+from ..deploy.utils import load_service_config_file
+from ..session import execute, fetch, fetch_log
 
 
 test_namedtuple_type = namedtuple('TestNamedTuple', 'a b')
@@ -53,7 +53,7 @@ def setup():
             yield sess
         finally:
             sess.stop_server()
-    
+
 
 def test_session_async_execute(setup):
     raw_a = np.random.RandomState(0).rand(10, 20)
@@ -68,11 +68,11 @@ def test_session_async_execute(setup):
 
     raw_df = pd.DataFrame(raw_a)
 
-    expected = raw_df.sum()
+    expected = raw_df.skew()
     df = md.DataFrame(a)
-    res = df.sum().to_pandas(wait=False).result()
+    res = df.skew().to_pandas(wait=False).result()
     pd.testing.assert_series_equal(expected, res)
-    res = df.sum().execute(wait=False)
+    res = df.skew().execute(wait=False)
     res = res.result().fetch()
     pd.testing.assert_series_equal(expected, res)
 

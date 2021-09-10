@@ -17,17 +17,17 @@
 import numpy as np
 import pytest
 
-from mars.config import option_context
-from mars.core import tile
-from mars.tensor.base.broadcast_to import TensorBroadcastTo
-from mars.tensor.datasource import ones, tensor, array, empty
-from mars.tensor.datasource.ones import TensorOnes
-from mars.tensor.indexing import choose, unravel_index, nonzero, \
+from ....config import option_context
+from ....core import tile
+from ...base.broadcast_to import TensorBroadcastTo
+from ...datasource import ones, tensor, array, empty
+from ...datasource.ones import TensorOnes
+from ...merge.concatenate import TensorConcatenate
+from .. import choose, unravel_index, nonzero, \
     compress, fill_diagonal
-from mars.tensor.indexing.setitem import TensorIndexSetValue
-from mars.tensor.merge.concatenate import TensorConcatenate
+from ..setitem import TensorIndexSetValue
 
-    
+
 def test_bool_indexing():
     t = ones((100, 200, 300))
     indexed = t[t < 2]

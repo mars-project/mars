@@ -9,7 +9,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-vineyard]
+        python-version: [3.8-kubernetes, 3.8-hadoop, 3.8-ray, 3.8-vineyard, 3.8-dask]
         include:
           - { os: ubuntu-latest, python-version: 3.8-kubernetes, no-common-tests: 1,
               no-deploy: 1, with-kubernetes: "with Kubernetes" }
@@ -19,6 +19,8 @@ jobs:
              no-deploy: 1, with-vineyard: "with vineyard" }
           - { os: ubuntu-latest, python-version: 3.8-ray, no-common-tests: 1,
               no-deploy: 1, with-ray: "with ray" }
+          - { os: ubuntu-latest, python-version: 3.8-dask, no-common-tests: 1,
+              no-deploy: 1, run-dask: "run dask" }
 
     steps:
       - name: Check out code
@@ -40,6 +42,7 @@ jobs:
           WITH_KUBERNETES: ${{ matrix.with-kubernetes }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
           WITH_RAY: ${{ matrix.with-ray }}
+          RUN_DASK: ${{ matrix.run-dask }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
         shell: bash
         run: |
@@ -50,11 +53,6 @@ jobs:
 
           pip install git+https://github.com/mars-project/pytest-asyncio.git
           pip install numpy scipy cython
-
-          # remove if vineyard supports pandas 1.3.
-          if [ -n "$WITH_VINEYARD" ]; then
-            pip install pandas\<1.3
-          fi
 
           pip install -e ".[dev,extra]"
 
@@ -73,7 +71,7 @@ jobs:
               conda install -n test --quiet --yes -c conda-forge python=$PYTHON skein conda-pack
             fi
             if [ -n "$WITH_VINEYARD" ]; then
-              pip install vineyard==0.2.4 -i https://pypi.org/simple
+              pip install vineyard==0.2.7 -i https://pypi.org/simple
 
               mkdir -p /tmp/etcd-download-test
               export ETCD_VER=v3.4.13
@@ -85,8 +83,11 @@ jobs:
               rm -fr /tmp/etcd-$ETCD_VER-linux-amd64.tar.gz /tmp/etcd-download-test
             fi
             if [ -n "$WITH_RAY" ]; then
-              # remove ray version after https://github.com/ray-project/ray/issues/16802 got fixed
-              pip install ray[default]==1.3.0
+              # Change back to `pip install ray[default]` when ray-1.7.0 is released.
+              pip install https://s3-us-west-2.amazonaws.com/ray-wheels/master/aee7ba2510dd0eeed8f84dba3e9c5d58cb97d49a/ray-2.0.0.dev0-cp38-cp38-manylinux2014_x86_64.whl
+            fi
+            if [ -n "$RUN_DASK" ]; then
+              pip install dask[complete] mimesis sklearn
             fi
           fi
           conda list -n test
@@ -98,6 +99,7 @@ jobs:
           WITH_CYTHON: ${{ matrix.with-cython }}
           WITH_VINEYARD: ${{ matrix.with-vineyard }}
           WITH_RAY: ${{ matrix.with-ray }}
+          RUN_DASK: ${{ matrix.run-dask }}
           NO_COMMON_TESTS: ${{ matrix.no-common-tests }}
           NUMPY_EXPERIMENTAL_ARRAY_FUNCTION: 1
           CHANGE_MINIKUBE_NONE_USER: true
@@ -121,10 +123,19 @@ jobs:
             pytest $PYTEST_CONFIG mars/deploy/oscar/tests/test_local.py
             mv .coverage build/.coverage.test_local.file
 
+            pytest $PYTEST_CONFIG -k "vineyard" \
+                mars/tensor/datastore/tests/test_datastore_execution.py \
+                mars/dataframe/datastore/tests/test_datastore_execution.py
+            mv .coverage build/.coverage.test_vineyard_op.file
+
             coverage combine build/ && coverage report
           fi
           if [ -n "$WITH_RAY" ]; then
             pytest $PYTEST_CONFIG --timeout=120 -m ray
+            coverage report
+          fi
+          if [ -n "$RUN_DASK" ]; then
+            pytest $PYTEST_CONFIG mars/contrib/dask/tests/test_dask.py
             coverage report
           fi
           coverage xml
