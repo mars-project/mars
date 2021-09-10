@@ -24,7 +24,7 @@ ray_exp_dataset = lazy_import('ray.experimental.data')
 
 
 def to_ray_dataset(df,
-                     num_shards: int = None):
+                   num_shards: int = None):
     """Create a Ray Dataset from Mars DataFrame
 
     Args:

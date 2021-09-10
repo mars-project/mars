@@ -115,6 +115,7 @@ jobs:
       displayName: 'Install conda'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
@@ -125,6 +126,7 @@ jobs:
       displayName: 'Install dependencies'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
 
         # stop the build if there are Python syntax errors or undefined names
@@ -139,27 +141,32 @@ jobs:
       displayName: 'Lint with flake8'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         codespell
       displayName: 'Check spellings'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         git fetch origin master
         bash ci/modecheck.sh
       displayName: 'Check file mode changes'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         python ci/importcheck.py
       displayName: 'Check imports'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         python ci/copycheck.py
       displayName: 'Check copyright headers'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         pushd mars/services/web/ui
         npm install
@@ -168,6 +175,7 @@ jobs:
       displayName: 'Check JS with ESLint'
 
     - bash: |
+        set -e
         source ./ci/reload-env.sh
         pushd docs
         pip install -r requirements-doc.txt

@@ -91,7 +91,7 @@ class PruneDataSource(OptimizationRule, metaclass=ABCMeta):
             original_all_columns = original_node.dtypes.index.tolist()
             original_pruned_columns = input_node.op.get_columns()
             pruned_columns_set = set(selected_columns) | \
-                                 set(original_pruned_columns)
+                set(original_pruned_columns)
             # pruned before, cannot revert it,
             # so we just return pruned columns
             # even though no columns pruned

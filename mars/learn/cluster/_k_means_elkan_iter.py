@@ -653,4 +653,4 @@ def elkan_iter(X, sample_weight, centers_old, center_half_distances,
         centers_new, center_shift, upper_bounds, lower_bounds = postprocess()
 
     return centers_new, weight_in_clusters, upper_bounds, lower_bounds, \
-           labels, center_shift
+        labels, center_shift

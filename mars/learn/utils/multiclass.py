@@ -432,7 +432,7 @@ def check_classification_targets(y):
 
     def check(t):
         if t not in ['binary', 'multiclass', 'multiclass-multioutput',
-                          'multilabel-indicator', 'multilabel-sequences']:
+                     'multilabel-indicator', 'multilabel-sequences']:
             raise ValueError("Unknown label type: %r" % y_type)
         return t
 

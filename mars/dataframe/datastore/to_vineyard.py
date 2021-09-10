@@ -48,13 +48,13 @@ class DataFrameToVineyardChunk(DataFrameOperand, DataFrameOperandMixin):
 
     @classmethod
     def _process_out_chunks(cls, op, out_chunks):
-        dtypes=pd.Series([np.dtype('O')], index=pd.Index([0]))
+        dtypes = pd.Series([np.dtype('O')], index=pd.Index([0]))
         merge_op = DataFrameToVinyardStoreMeta(
                 vineyard_socket=op.vineyard_socket,
                 chunk_shape=op.inputs[0].chunk_shape,
                 shape=(1, 1), dtypes=dtypes)
         return merge_op.new_chunks(out_chunks, shape=(1, 1), dtypes=dtypes,
-                                   index=(0,0))
+                                   index=(0, 0))
 
     @classmethod
     def tile(cls, op):
@@ -132,16 +132,16 @@ class DataFrameToVinyardStoreMeta(DataFrameOperand, DataFrameOperandMixin):
         dtypes = pd.Series([np.dtype('O')], index=pd.Index([0]))
         chunk_op = op.copy().reset_key()
         out_chunk = chunk_op.new_chunk(op.inputs[0].chunks, shape=(1, 1), dtypes=dtypes,
-                                        index_value=parse_index(pd.Index([0])),
-                                        columns_value=parse_index(pd.Index([0])),
-                                        index=(0, 0))
+                                       index_value=parse_index(pd.Index([-1])),
+                                       columns_value=parse_index(pd.Index([0])),
+                                       index=(0, 0))
         new_op = op.copy().reset_key()
         return new_op.new_dataframes(op.inputs, shape=(1, 1),
                                      dtypes=dtypes,
                                      index_value=parse_index(pd.Index([0])),
                                      columns_value=parse_index(pd.Index([0])),
                                      chunks=[out_chunk],
-                                     nsplits=((1,),(1,)))
+                                     nsplits=((1,), (1,)))
 
     @classmethod
     def execute(cls, ctx, op):
