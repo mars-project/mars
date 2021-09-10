@@ -445,8 +445,6 @@ async def test_get_subtask_graph(start_test_service):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
 
-        assert no_input_output_subtask_size <= with_input_output_subtask_size
-        assert no_input_output_dependency_size <= with_input_output_dependency_size
 
 @pytest.mark.asyncio
 async def test_get_subtask_detail(start_test_service):
