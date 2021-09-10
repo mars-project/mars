@@ -409,8 +409,9 @@ async def test_get_subtask_graph(start_test_service):
     graph = TileableGraph([rc.data])
     next(TileableGraphBuilder(graph).build())
 
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
+    await asyncio.sleep(1)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
         with_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), True)
@@ -433,6 +434,9 @@ async def test_get_subtask_graph(start_test_service):
 
         no_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), False)
 
+        no_input_output_subtask_size = len(no_input_output_subtask_details.get('subtasks'))
+        no_input_output_dependency_size = len(no_input_output_subtask_details.get('dependencies'))
+
         subtask_ids = set()
         for subtask in no_input_output_subtask_details.get('subtasks'):
             assert subtask.get('subtaskId') not in subtask_ids
@@ -441,6 +445,9 @@ async def test_get_subtask_graph(start_test_service):
         for dependency in no_input_output_subtask_details.get('dependencies'):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
+
+        assert with_input_output_subtask_size >= no_input_output_subtask_size
+        assert with_input_output_dependency_size >= no_input_output_dependency_size
 
 
 @pytest.mark.asyncio
