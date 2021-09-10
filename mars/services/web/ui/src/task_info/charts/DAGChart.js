@@ -212,8 +212,6 @@ export default class DAGChart extends React.Component {
 
             inner.selectAll('g.node').on('click', handleClick);
 
-            console.log(inner);
-            console.log(inner.node());
             // Center the graph
             const bounds = inner.node().getBBox();
             const parent = inner.node().parentElement;
