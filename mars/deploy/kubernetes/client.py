@@ -24,6 +24,7 @@ from urllib.parse import urlparse
 from ...lib.aio import new_isolation, stop_isolation
 from ...services.cluster.api import WebClusterAPI
 from ...session import new_session
+from ...utils import calc_size_by_str
 from ..utils import wait_services_ready
 from .config import NamespaceConfig, RoleConfig, RoleBindingConfig, ServiceConfig, \
     MarsSupervisorsConfig, MarsWorkersConfig
@@ -119,7 +120,7 @@ class KubernetesCluster:
 
         self._supervisor_num = supervisor_num
         self._supervisor_cpu = supervisor_cpu
-        self._supervisor_mem = supervisor_mem
+        self._supervisor_mem = calc_size_by_str(supervisor_mem, None)
         self._supervisor_mem_limit_ratio = supervisor_mem_limit_ratio
         self._supervisor_extra_modules = _override_modules(kwargs.pop('supervisor_extra_modules', []))
         self._supervisor_extra_env = _override_envs(kwargs.pop('supervisor_extra_env', None))
@@ -130,7 +131,7 @@ class KubernetesCluster:
 
         self._worker_num = worker_num
         self._worker_cpu = worker_cpu
-        self._worker_mem = worker_mem
+        self._worker_mem = calc_size_by_str(worker_mem, None)
         self._worker_mem_limit_ratio = worker_mem_limit_ratio
         self._worker_spill_paths = worker_spill_paths
         self._worker_cache_mem = worker_cache_mem
