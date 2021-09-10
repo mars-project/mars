@@ -19,7 +19,7 @@ import time
 import uuid
 
 from ...session import new_session
-from ...utils import to_str
+from ...utils import to_str, calc_size_by_str
 from ..utils import wait_services_ready
 from .config import MarsApplicationConfig, MarsSupervisorConfig, MarsWorkerConfig
 
@@ -78,6 +78,8 @@ def new_cluster(environment=None, supervisor_num=1, supervisor_cpu=None, supervi
         return ret
 
     app_name = app_name or f'mars-app-{uuid.uuid4()}'
+    supervisor_mem = calc_size_by_str(supervisor_mem, None)
+    worker_mem = calc_size_by_str(worker_mem, None)
 
     log_when_fail = kwargs.pop('log_when_fail', False)
 

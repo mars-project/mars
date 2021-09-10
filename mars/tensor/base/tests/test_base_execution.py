@@ -277,7 +277,7 @@ def test_where_execution(setup):
     arr = where(cond, x, y)
     res = arr.execute().fetch()
     assert np.array_equal(res.toarray(),
-                                   np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray())) is True
+                          np.where(raw_cond.toarray(), raw_x.toarray(), raw_y.toarray())) is True
 
     # GH 2009
     raw_x = np.arange(9.).reshape(3, 3)

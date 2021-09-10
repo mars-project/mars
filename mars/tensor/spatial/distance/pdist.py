@@ -296,7 +296,7 @@ class TensorPdist(TensorMapReduceOperand, TensorOperandMixin):
             out_row_cum_sizes[0] = 0
             xp.cumsum(out_row_sizes, out=out_row_cum_sizes[1:])
             indices = out_row_cum_sizes[i_indices] + j_indices - \
-                      (op.n - out_row_sizes[i_indices])
+                (op.n - out_row_sizes[i_indices])
 
             # save as much memory as possible
             del i_indices, j_indices, out_row_sizes, out_row_cum_sizes

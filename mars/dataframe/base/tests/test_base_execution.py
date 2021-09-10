@@ -943,7 +943,7 @@ def test_to_numeric_execition(setup):
 
     r = to_numeric(l)
     np.testing.assert_array_equal(r.execute().fetch(),
-                                   pd.to_numeric(l))
+                                  pd.to_numeric(l))
 
 
 def test_q_cut_execution(setup):
@@ -1804,7 +1804,7 @@ def test_stack_execution(setup):
             expected = raw2.stack(level=level, dropna=dropna)
             assert_method = \
                 pd.testing.assert_series_equal if expected.ndim == 1 \
-                    else pd.testing.assert_frame_equal
+                else pd.testing.assert_frame_equal
             assert_method(result, expected)
 
 

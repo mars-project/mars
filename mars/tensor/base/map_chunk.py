@@ -61,7 +61,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         old_inputs = find_objects(self._args, ENTITY_TYPE) + \
-                     find_objects(self._kwargs, ENTITY_TYPE)
+            find_objects(self._kwargs, ENTITY_TYPE)
         mapping = {o: n for o, n in zip(old_inputs, self._inputs[1:])}
         self._args = replace_objects(self._args, mapping)
         self._kwargs = replace_objects(self._kwargs, mapping)
@@ -84,7 +84,7 @@ class TensorMapChunk(TensorOperand, TensorOperandMixin):
         else:
             new_shape = t.shape if self.elementwise else (np.nan,) * t.ndim
         inputs = [t] + find_objects(self.args, ENTITY_TYPE) + \
-                 find_objects(self.kwargs, ENTITY_TYPE)
+            find_objects(self.kwargs, ENTITY_TYPE)
         return self.new_tensor(inputs, dtype=dtype, shape=new_shape)
 
     @classmethod
