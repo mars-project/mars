@@ -277,14 +277,17 @@ async def test_slot_exception(actor_pool: ActorPoolType):
     slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
     await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id'))
 
-    with pytest.raises(psutil.AccessDenied):
-        await slot_manager_ref.register_free_slot(1, 0)
+    if sys.platform == 'win32':
+        with pytest.raises(ValueError):
+            await slot_manager_ref.register_free_slot(1, -1)
+    else:
+        with pytest.raises((psutil.AccessDenied, psutil.NoSuchProcess)):
+            await slot_manager_ref.register_free_slot(1, 0)
 
     dump_data = await slot_manager_ref.dump_data()
     # after the register_free_slot is correctly handled,
     # we can assert 1 not in free slots.
     assert 1 in dump_data.free_slots
-    print(dump_data)
 
     slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
     with pytest.raises(SlotStateError):
@@ -292,7 +295,6 @@ async def test_slot_exception(actor_pool: ActorPoolType):
         await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id1'))
 
     dump_data = await slot_manager_ref.dump_data()
-    print(dump_data)
     # the slot is not released.
     assert slot_id not in dump_data.free_slots
 
