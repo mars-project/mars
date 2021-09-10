@@ -473,7 +473,7 @@ def test_read_csv_execution(setup):
         pd.testing.assert_frame_equal(pdf, mdf)
 
         mdf2 = md.read_csv(file_path, compression='gzip', index_col=0,
-                                                           chunk_bytes='1k').execute().fetch()
+                           chunk_bytes='1k').execute().fetch()
         pd.testing.assert_frame_equal(pdf, mdf2)
 
     # test multiple files

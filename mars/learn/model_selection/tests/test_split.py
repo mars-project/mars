@@ -36,18 +36,18 @@ def test_train_test_split_errors(setup):
     pytest.raises(ValueError, train_test_split, range(3), train_size=1.1)
 
     pytest.raises(ValueError, train_test_split, range(3), test_size=0.6,
-                      train_size=0.6)
+                  train_size=0.6)
     pytest.raises(ValueError, train_test_split, range(3),
-                      test_size=np.float32(0.6), train_size=np.float32(0.6))
+                  test_size=np.float32(0.6), train_size=np.float32(0.6))
     pytest.raises(ValueError, train_test_split, range(3),
-                      test_size="wrong_type")
+                  test_size="wrong_type")
     pytest.raises(ValueError, train_test_split, range(3), test_size=2,
-                      train_size=4)
+                  train_size=4)
     pytest.raises(TypeError, train_test_split, range(3),
-                      some_argument=1.1)
+                  some_argument=1.1)
     pytest.raises(ValueError, train_test_split, range(3), range(42))
     pytest.raises(ValueError, train_test_split, range(10),
-                      shuffle=False, stratify=True)
+                  shuffle=False, stratify=True)
 
     with pytest.raises(ValueError,
                        match=r'train_size=11 should be either positive and '
