@@ -409,7 +409,7 @@ async def test_get_subtask_graph(start_test_service):
     graph = TileableGraph([rc.data])
     next(TileableGraphBuilder(graph).build())
 
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
+    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
