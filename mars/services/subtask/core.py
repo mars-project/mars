@@ -35,6 +35,7 @@ class SubtaskStatus(Enum):
                         SubtaskStatus.errored,
                         SubtaskStatus.cancelled)
 
+
 class SubtaskDisplayNodeStatus(Enum):
     input_node = -1
     output_node = -2

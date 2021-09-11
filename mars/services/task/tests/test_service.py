@@ -32,8 +32,6 @@ from ...web import WebActor
 from ...meta import MetaAPI
 from .. import TaskAPI, TaskStatus, WebTaskAPI
 from ..errors import TaskNotExist
-from mars.services import subtask
-
 
 @pytest.fixture
 async def actor_pools():
@@ -390,8 +388,6 @@ async def test_get_tileable_details(start_test_service):
 async def test_get_subtask_graph(start_test_service):
     sv_pool_address, task_api, storage_api = start_test_service
     session_api = await SessionAPI.create(address=sv_pool_address)
-    ref = await session_api.create_remote_object(
-        task_api._session_id, 'progress_controller', _ProgressController)
 
     def a():
         return md.DataFrame([[1, 2], [3, 4]])
@@ -468,9 +464,9 @@ async def test_get_subtask_detail(start_test_service):
 
     def is_input_or_output(subtask_detail):
         return (subtask_detail.get('status') == SubtaskDisplayNodeStatus.input_node.value \
-                    and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.input_node.value) \
+                and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.input_node.value) \
                 or (subtask_detail.get('status') == SubtaskDisplayNodeStatus.output_node.value \
-                    and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.output_node.value)
+                and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.output_node.value)
 
     ra = mr.spawn(a)
     rb = mr.spawn(b)
