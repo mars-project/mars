@@ -18,9 +18,10 @@ import functools
 import re
 
 from ... import __version__ as mars_version
-from ...utils import parse_readable_size
+from ...utils import parse_readable_size, calc_size_by_str
 
 DEFAULT_IMAGE = 'marsproject/mars:v' + mars_version
+DEFAULT_WORKER_CACHE_MEM = '40%'
 
 
 def _remove_nones(cfg):
@@ -187,10 +188,10 @@ class ResourceConfig:
         return self._memory
 
     def build(self):
-        return {
-            'cpu': f'{int(self._cpu * 1000)}m',
-            'memory': str(int(self._memory)),
-        }
+        return _remove_nones({
+            'cpu': f'{int(self._cpu * 1000)}m' if self._cpu else None,
+            'memory': str(int(self._memory)) if self._memory else None,
+        })
 
 
 class PortConfig:
@@ -245,9 +246,10 @@ class EmptyDirVolumeConfig(VolumeConfig):
     """
     Configuration builder for Kubernetes empty-dir volumes
     """
-    def __init__(self, name, mount_path, use_memory=False):
+    def __init__(self, name, mount_path, use_memory=True, size_limit=None):
         super().__init__(name, mount_path)
         self._medium = 'Memory' if use_memory else None
+        self._size_limit = size_limit
 
     def build(self):
         result = {
@@ -256,6 +258,8 @@ class EmptyDirVolumeConfig(VolumeConfig):
         }
         if self._medium:
             result['emptyDir']['medium'] = self._medium
+        if self._size_limit:
+            result['emptyDir']['sizeLimit'] = str(int(self._size_limit))
         return result
 
 
@@ -536,7 +540,7 @@ class MarsWorkersConfig(MarsReplicationConfig):
         spill_volumes = kwargs.pop('spill_volumes', None) or ()
         mount_shm = kwargs.pop('mount_shm', True)
         self._limit_resources = kwargs['limit_resources'] = kwargs.get('limit_resources', True)
-        worker_cache_mem = kwargs.pop('worker_cache_mem', None)
+        worker_cache_mem = kwargs.pop('worker_cache_mem', None) or DEFAULT_WORKER_CACHE_MEM
         min_cache_mem = kwargs.pop('min_cache_mem', None)
         self._readiness_port = kwargs.pop('readiness_port', self.default_readiness_port)
         supervisor_web_port = kwargs.pop('supervisor_web_port', None)
@@ -555,11 +559,17 @@ class MarsWorkersConfig(MarsReplicationConfig):
         if self._spill_volumes:
             self.add_env('MARS_SPILL_DIRS', ':'.join(self._spill_volumes))
 
-        if mount_shm:
-            self.add_env('MARS_K8S_REMOUNT_SHM', '1')
-
-        if worker_cache_mem:
+        if self._memory:
+            size_limit = calc_size_by_str(worker_cache_mem, self._memory)
             self.add_env('MARS_CACHE_MEM_SIZE', worker_cache_mem)
+        else:
+            size_limit = None
+
+        if mount_shm and size_limit:
+            self.add_volume(EmptyDirVolumeConfig(
+                'mars-shared', '/dev/shm', size_limit=size_limit
+            ))
+
         if min_cache_mem:
             self.add_env('MARS_MIN_CACHE_MEM_SIZE', min_cache_mem)
         if supervisor_web_port:
