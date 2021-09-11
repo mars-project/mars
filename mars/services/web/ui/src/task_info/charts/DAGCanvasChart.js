@@ -54,6 +54,9 @@ export default class DAGChart extends React.Component {
                 },
             ],
 
+            inputNodeVal: -1,
+            outputNodeVal: -2,
+
             inputNodeColor: 'rgb(50,129,168)',
             outputNodeColor: 'rgb(195,52,235)',
 
@@ -66,7 +69,7 @@ export default class DAGChart extends React.Component {
     }
 
     getProgressSVG(progress, status, width, height) {
-        if (progress === -1 && status === -1) {
+        if (progress === this.state.inputNodeVal && status === this.state.inputNodeVal) {
             const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
                 <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
@@ -76,7 +79,7 @@ export default class DAGChart extends React.Component {
             return encodeURI('data:image/svg+xml;utf-8,'+svg);
         }
 
-        if (progress === -2 && status === -2) {
+        if (progress === this.state.outputNodeVal && status === this.state.outputNodeVal) {
             const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
                 <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
@@ -301,7 +304,7 @@ export default class DAGChart extends React.Component {
                 if (nodeDetail !== undefined) {
                     if (nodeDetail.status < 0) {
                         let connectedNodes = '';
-                        const title = nodeDetail.status === -2 ? 'Source Nodes: ' : 'Target Nodes: ';
+                        const title = nodeDetail.status === this.state.outputNodeVal ? 'Source Nodes: ' : 'Target Nodes: ';
 
                         for (let i = 0; i < paths.length; i++) {
                             connectedNodes += '<p>' + title + paths[i] + '</p>';
