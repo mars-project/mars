@@ -34,7 +34,7 @@ from ...cluster.api import ClusterAPI
 from ...lifecycle.api import LifecycleAPI
 from ...meta.api import MetaAPI
 from ...scheduling import SchedulingAPI
-from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskDisplayNodeStatus, SubtaskGraph
+from ...subtask import Subtask, SubtaskResult, SubtaskStatus, SubtaskGraph
 from ..core import Task, TaskResult, TaskStatus, new_task_id
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
@@ -683,6 +683,9 @@ class TaskProcessorActor(mo.Actor):
         return subtask_dict
 
     def get_tileable_subtask_detail(self, tileable_id: str, with_input_output: bool):
+        input_subtask_val = -1
+        output_subtask_val = -2
+
         returned_subtasks = set()
         default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
@@ -728,8 +731,8 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(predecessor_id)
 
                     subtask_detail[predecessor_id] = {
-                        'status': SubtaskDisplayNodeStatus.input_node.value,
-                        'progress': SubtaskDisplayNodeStatus.input_node.value,
+                        'status': input_subtask_val,
+                        'progress': input_subtask_val,
                         'name': subtask.subtask_name,
                     }
 
@@ -740,8 +743,8 @@ class TaskProcessorActor(mo.Actor):
                     returned_subtasks.add(successor_id)
 
                     subtask_detail[successor_id] = {
-                        'status': SubtaskDisplayNodeStatus.output_node.value,
-                        'progress': SubtaskDisplayNodeStatus.output_node.value,
+                        'status': output_subtask_val,
+                        'progress': output_subtask_val,
                         'name': subtask.subtask_name,
                     }
 

@@ -36,11 +36,6 @@ class SubtaskStatus(Enum):
                         SubtaskStatus.cancelled)
 
 
-class SubtaskDisplayNodeStatus(Enum):
-    input_node = -1
-    output_node = -2
-
-
 class Subtask(Serializable):
     subtask_id: str = StringField('subtask_id')
     subtask_name: str = StringField('subtask_name')
