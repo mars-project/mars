@@ -33,6 +33,7 @@ from ...meta import MetaAPI
 from .. import TaskAPI, TaskStatus, WebTaskAPI
 from ..errors import TaskNotExist
 
+
 @pytest.fixture
 async def actor_pools():
     async def start_pool(is_worker: bool):
@@ -387,7 +388,6 @@ async def test_get_tileable_details(start_test_service):
 @pytest.mark.asyncio
 async def test_get_subtask_graph(start_test_service):
     sv_pool_address, task_api, storage_api = start_test_service
-    session_api = await SessionAPI.create(address=sv_pool_address)
 
     def a():
         return md.DataFrame([[1, 2], [3, 4]])
