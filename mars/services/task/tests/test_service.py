@@ -27,7 +27,7 @@ from ....utils import Timer
 from ... import start_services, stop_services, NodeRole
 from ...session import SessionAPI
 from ...storage import MockStorageAPI
-from ...subtask import SubtaskStatus, SubtaskDisplayNodeStatus
+from ...subtask import SubtaskStatus
 from ...web import WebActor
 from ...meta import MetaAPI
 from .. import TaskAPI, TaskStatus, WebTaskAPI
@@ -463,10 +463,13 @@ async def test_get_subtask_detail(start_test_service):
         return a.sum() * b.sum() / (a.product() * a.sum()) * b.product()
 
     def is_input_or_output(subtask_detail):
-        return (subtask_detail.get('status') == SubtaskDisplayNodeStatus.input_node.value \
-                and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.input_node.value) \
-                or (subtask_detail.get('status') == SubtaskDisplayNodeStatus.output_node.value \
-                and subtask_detail.get('progress') == SubtaskDisplayNodeStatus.output_node.value)
+        input_subtask_val = -1
+        output_subtask_val = -2
+
+        return (subtask_detail.get('status') == input_subtask_val \
+                and subtask_detail.get('progress') == input_subtask_val) \
+                or (subtask_detail.get('status') == output_subtask_val \
+                and subtask_detail.get('progress') == output_subtask_val)
 
     ra = mr.spawn(a)
     rb = mr.spawn(b)
