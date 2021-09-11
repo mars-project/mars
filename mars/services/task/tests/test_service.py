@@ -466,10 +466,8 @@ async def test_get_subtask_detail(start_test_service):
         input_subtask_val = -1
         output_subtask_val = -2
 
-        return (subtask_detail.get('status') == input_subtask_val \
-                and subtask_detail.get('progress') == input_subtask_val) \
-                or (subtask_detail.get('status') == output_subtask_val \
-                    and subtask_detail.get('progress') == output_subtask_val)
+        return (subtask_detail.get('status') == input_subtask_val and subtask_detail.get('progress') == input_subtask_val) \
+                    or (subtask_detail.get('status') == output_subtask_val and subtask_detail.get('progress') == output_subtask_val)
 
     ra = mr.spawn(a)
     rb = mr.spawn(b)
