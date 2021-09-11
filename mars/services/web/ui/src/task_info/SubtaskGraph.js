@@ -87,8 +87,6 @@ export default class SubtaskGraph extends React.Component {
         }/${tileableId}/subtask?action=fetch_graph&withInputOutput=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
-                console.log(res);
-
                 this.setState({
                     subtasks: res.subtasks.map(subtask => {
                         return (
@@ -173,8 +171,6 @@ export default class SubtaskGraph extends React.Component {
             height: '80%',
             minHeight: 200,
         };
-
-        console.log(this.state);
 
         if (this.state === undefined ||
             this.state.subtasks === undefined ||
