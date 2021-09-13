@@ -189,21 +189,13 @@ class TaskManagerActor(mo.Actor):
 
         return await processor_ref.get_tileable_details()
 
-    async def get_tileable_subtask_graph(self, task_id, tileable_id, with_input_output):
+    async def get_tileable_subtasks(self, task_id, tileable_id, with_input_output, fetch_info):
         try:
             processor_ref = self._task_id_to_processor_ref[task_id]
         except KeyError:
             raise TaskNotExist(f'Task {task_id} does not exist')
 
-        return await processor_ref.get_tileable_subtask_graph(tileable_id, with_input_output)
-
-    async def get_tileable_subtask_detail(self, task_id, tileable_id, with_input_output):
-        try:
-            processor_ref = self._task_id_to_processor_ref[task_id]
-        except KeyError:
-            raise TaskNotExist(f'Task {task_id} does not exist')
-
-        return await processor_ref.get_tileable_subtask_detail(tileable_id, with_input_output)
+        return await processor_ref.get_tileable_subtasks(tileable_id, with_input_output, fetch_info)
 
     async def _gen_tiled_context(self, graph: TileableGraph) -> \
             Dict[TileableType, TileableType]:

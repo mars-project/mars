@@ -54,22 +54,16 @@ export default class DAGChart extends React.Component {
                 },
             ],
 
-            inputNodeVal: -1,
-            outputNodeVal: -2,
-
             inputNodeColor: 'rgb(50,129,168)',
             outputNodeColor: 'rgb(195,52,235)',
-
-            tileableWidth: 150,
-            tileableHeight: 50,
 
             subtaskWidth: 60,
             subtaskHeight: 60,
         };
     }
 
-    getProgressSVG(progress, status, width, height) {
-        if (progress === this.state.inputNodeVal && status === this.state.inputNodeVal) {
+    getProgressSVG(nodeType, progress, status, width, height) {
+        if (nodeType === 'Input') {
             const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
                 <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.inputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
@@ -79,7 +73,7 @@ export default class DAGChart extends React.Component {
             return encodeURI('data:image/svg+xml;utf-8,'+svg);
         }
 
-        if (progress === this.state.outputNodeVal && status === this.state.outputNodeVal) {
+        if (nodeType === 'Output') {
             const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
                 <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.outputNodeColor};stroke-width:0.3;stroke:rgb(0,0,0)' />
@@ -91,6 +85,9 @@ export default class DAGChart extends React.Component {
 
         const mark = width * progress;
         const remain = width - mark;
+
+        console.log(status);
+        console.log(this.state);
 
         const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
@@ -117,6 +114,8 @@ export default class DAGChart extends React.Component {
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
         cytoscape.use(dagre);
+
+        console.log(this.props);
 
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
@@ -153,98 +152,56 @@ export default class DAGChart extends React.Component {
             this.props.nodes.forEach((node) => {
                 const nodeDetail = this.props.nodesStatus[node.id];
 
-                if (this.props.graphName === 'tileableGraph') {
-                    const nameEndIndex = node.name.indexOf('key') - 1;
-                    const nodeLabel = node.name.substring(0, nameEndIndex);
-
+                if (nodeDetail === undefined) {
                     const nodeElement = {
                         data: {
                             id: node.id,
-                            name: nodeLabel,
                         },
                         group: 'nodes',
                         grabbable: false,
                     };
 
-                    if (nodeDetail === undefined) {
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'width': this.state.tileableWidth,
-                                'height': this.state.tileableHeight,
-                                'content': 'data(name)',
-                                'text-valign' : 'center',
-                                'text-halign' : 'center',
-                                'background-image': this.getProgressSVG(1, 0, this.state.tileableWidth, this.state.tileableHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                                'shape': this.props.nodeShape,
-                            }
-                        };
+                    const nodeStyle = {
+                        selector: '#' + node.id,
+                        css: {
+                            'background-image': this.getProgressSVG(
+                                'Calculation',
+                                1,
+                                0,
+                                this.state.subtaskWidth,
+                                this.state.subtaskHeight),
+                            'border-width': 0.3,
+                            'border-color': 'black',
+                        }
+                    };
 
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    } else {
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'width': this.state.tileableWidth,
-                                'height': this.state.tileableHeight,
-                                'content': 'data(name)',
-                                'text-valign' : 'center',
-                                'text-halign' : 'center',
-                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.tileableWidth, this.state.tileableHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                                'shape': this.props.nodeShape,
-                            }
-                        };
-
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    }
+                    dagNodes.push(nodeElement);
+                    dagStyles.push(nodeStyle);
                 } else {
-                    if (nodeDetail === undefined) {
-                        const nodeElement = {
-                            data: {
-                                id: node.id,
-                            },
-                            group: 'nodes',
-                            grabbable: false,
-                        };
+                    const nodeElement = {
+                        data: {
+                            id: node.id,
+                        },
+                        group: 'nodes',
+                        grabbable: false,
+                    };
 
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'background-image': this.getProgressSVG(1, 0, this.state.subtaskWidth, this.state.subtaskHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                            }
-                        };
+                    const nodeStyle = {
+                        selector: '#' + node.id,
+                        css: {
+                            'background-image': this.getProgressSVG(
+                                nodeDetail.nodeType,
+                                nodeDetail.progress,
+                                nodeDetail.status,
+                                this.state.subtaskWidth,
+                                this.state.subtaskHeight),
+                            'border-width': 0.3,
+                            'border-color': 'black',
+                        }
+                    };
 
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    } else {
-                        const nodeElement = {
-                            data: {
-                                id: node.id,
-                            },
-                            group: 'nodes',
-                            grabbable: false,
-                        };
-
-                        const nodeStyle = {
-                            selector: '#' + node.id,
-                            css: {
-                                'background-image': this.getProgressSVG(nodeDetail.progress, nodeDetail.status, this.state.subtaskWidth, this.state.subtaskHeight),
-                                'border-width': 0.3,
-                                'border-color': 'black',
-                            }
-                        };
-
-                        dagNodes.push(nodeElement);
-                        dagStyles.push(nodeStyle);
-                    }
+                    dagNodes.push(nodeElement);
+                    dagStyles.push(nodeStyle);
                 }
             });
 
@@ -302,9 +259,9 @@ export default class DAGChart extends React.Component {
                 const nodeDetail = this.props.nodesStatus[selectedNodeId];
 
                 if (nodeDetail !== undefined) {
-                    if (nodeDetail.status < 0) {
+                    if (nodeDetail.nodeType !== 'Calculation') {
                         let connectedNodes = '';
-                        const title = nodeDetail.status === this.state.outputNodeVal ? 'Source Nodes: ' : 'Target Nodes: ';
+                        const title = nodeDetail.nodeType === 'Output' ? 'Source Nodes: ' : 'Target Nodes: ';
 
                         for (let i = 0; i < paths.length; i++) {
                             connectedNodes += '<p>' + title + paths[i] + '</p>';
@@ -359,17 +316,13 @@ export default class DAGChart extends React.Component {
                 const nodeDetail = this.props.nodesStatus[node.id];
 
                 if (nodeDetail !== undefined && nodeDetail.status >= 0 && nodeDetail.progress >= 0) {
-                    let width, height;
-                    if (this.props.graphName === 'tileableGraph') {
-                        width = this.state.tileableWidth;
-                        height = this.state.tileableHeight;
-                    } else {
-                        width = this.state.subtaskWidth;
-                        height = this.state.subtaskHeight;
-                    }
-
                     this.cy.nodes(`[id = "${node.id}"]`)
-                        .style('background-image', this.getProgressSVG(nodeDetail.progress, nodeDetail.status, width, height))
+                        .style('background-image', this.getProgressSVG(
+                            nodeDetail.nodeType,
+                            nodeDetail.progress,
+                            nodeDetail.status,
+                            this.state.subtaskWidth,
+                            this.state.subtaskHeight))
                         .style('border-width', 0.3)
                         .style('border-color', 'black');
                 }
