@@ -601,11 +601,8 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
-    def get_tileable_subtask_graph(self, tileable_id: str, with_input_output: bool):
+    def get_tileable_subtasks(self, tileable_id: str, with_input_output: bool, fetch_info: str):
         returned_subtasks = set()
-
-        subtask_list = []
-        dependency_list = []
 
         requested_tileable = None
         requested_subtasks = None
@@ -620,135 +617,120 @@ class TaskProcessorActor(mo.Actor):
                 break
 
         if requested_subtasks is None: # pragma: no cover
-            return {
-                'subtasks': [],
-                'dependencies': []
+            if fetch_info == 'graph':
+                return {
+                    'subtasks': [],
+                    'dependencies': []
+                }
+            elif fetch_info == 'detail':
+                return {}
+
+        if fetch_info == 'graph':
+            subtask_list = []
+            dependency_list = []
+
+            for subtask in requested_subtasks:
+                if subtask.subtask_id not in returned_subtasks:
+                    returned_subtasks.add(subtask.subtask_id)
+
+                    subtask_list.append({
+                        'subtaskId': subtask.subtask_id,
+                        'subtaskName': subtask.subtask_name,
+                    })
+
+            for subtask in requested_subtasks:
+                for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                    predecessor_id = predecessor.subtask_id
+
+                    if predecessor_id in returned_subtasks: # pragma: no cover
+                        dependency_list.append({
+                            'fromSubtaskId': predecessor_id,
+                            'toSubtaskId': subtask.subtask_id,
+                        })
+                    elif with_input_output:
+                        returned_subtasks.add(predecessor_id)
+                        subtask_list.append({
+                            'subtaskId': predecessor_id,
+                            'subtaskName': predecessor.subtask_name,
+                        })
+
+                        dependency_list.append({
+                            'fromSubtaskId': predecessor_id,
+                            'toSubtaskId': subtask.subtask_id,
+                        })
+
+                for successor in stage.subtask_graph.iter_successors(subtask):
+                    successor_id = successor.subtask_id
+
+                    if successor_id in returned_subtasks: # pragma: no cover
+                        dependency_list.append({
+                            'fromSubtaskId': subtask.subtask_id,
+                            'toSubtaskId': successor_id,
+                        })
+                    elif with_input_output:
+                        returned_subtasks.add(successor_id)
+                        subtask_list.append({
+                            'subtaskId': successor_id,
+                            'subtaskName': successor.subtask_name,
+                        })
+
+                        dependency_list.append({
+                            'fromSubtaskId': subtask.subtask_id,
+                            'toSubtaskId': successor_id,
+                        })
+
+            subtask_dict = {
+                'subtasks': subtask_list,
+                'dependencies': dependency_list
             }
 
-        for subtask in requested_subtasks:
-            if subtask.subtask_id not in returned_subtasks:
-                returned_subtasks.add(subtask.subtask_id)
+            return subtask_dict
 
-                subtask_list.append({
-                    'subtaskId': subtask.subtask_id,
-                    'subtaskName': subtask.subtask_name,
-                })
+        elif fetch_info == 'detail':
+            returned_subtasks = set()
+            default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
+            subtask_detail = dict()
 
-        for subtask in requested_subtasks:
-            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                predecessor_id = predecessor.subtask_id
+            for subtask in requested_subtasks:
+                if subtask.subtask_id not in returned_subtasks:
+                    returned_subtasks.add(subtask.subtask_id)
 
-                if predecessor_id in returned_subtasks: # pragma: no cover
-                    dependency_list.append({
-                        'fromSubtaskId': predecessor_id,
-                        'toSubtaskId': subtask.subtask_id,
-                    })
-                elif with_input_output:
-                    returned_subtasks.add(predecessor_id)
-                    subtask_list.append({
-                        'subtaskId': predecessor_id,
-                        'subtaskName': predecessor.subtask_name,
-                    })
+                    subtask_result = stage.subtask_results.get(subtask, default_result)
+                    progress = subtask_result.progress
+                    status = subtask_result.status.value
 
-                    dependency_list.append({
-                        'fromSubtaskId': predecessor_id,
-                        'toSubtaskId': subtask.subtask_id,
-                    })
+                    subtask_detail[subtask.subtask_id] = {
+                        'status': status,
+                        'progress': progress,
+                        'name': subtask.subtask_name,
+                        'nodeType': 'Calculation',
+                    }
 
-            for successor in stage.subtask_graph.iter_successors(subtask):
-                successor_id = successor.subtask_id
+            if not with_input_output:
+                return subtask_detail
 
-                if successor_id in returned_subtasks: # pragma: no cover
-                    dependency_list.append({
-                        'fromSubtaskId': subtask.subtask_id,
-                        'toSubtaskId': successor_id,
-                    })
-                elif with_input_output:
-                    returned_subtasks.add(successor_id)
-                    subtask_list.append({
-                        'subtaskId': successor_id,
-                        'subtaskName': successor.subtask_name,
-                    })
+            for subtask in requested_subtasks:
+                for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                    predecessor_id = predecessor.subtask_id
 
-                    dependency_list.append({
-                        'fromSubtaskId': subtask.subtask_id,
-                        'toSubtaskId': successor_id,
-                    })
+                    if predecessor_id not in returned_subtasks:
+                        returned_subtasks.add(predecessor_id)
 
-        subtask_dict = {
-            'subtasks': subtask_list,
-            'dependencies': dependency_list
-        }
+                        subtask_detail[predecessor_id] = {
+                            'nodeType': 'Input',
+                        }
 
-        return subtask_dict
+                for successor in stage.subtask_graph.iter_successors(subtask):
+                    successor_id = successor.subtask_id
 
-    def get_tileable_subtask_detail(self, tileable_id: str, with_input_output: bool):
-        input_subtask_val = -1
-        output_subtask_val = -2
+                    if successor_id not in returned_subtasks:
+                        returned_subtasks.add(successor_id)
 
-        returned_subtasks = set()
-        default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
+                        subtask_detail[successor_id] = {
+                            'nodeType': 'Output',
+                        }
 
-        subtask_detail = dict()
-
-        requested_tileable = None
-        requested_subtasks = None
-
-        for processor in self._task_id_to_processor.values():
-            for stage in processor.stage_processors:
-                if tileable_id in stage.tileable_id_to_tileable:
-                    requested_tileable = stage.tileable_id_to_tileable.get(tileable_id)
-                    requested_subtasks = stage.tileable_to_subtasks.get(requested_tileable, None)
-                    break
-            if requested_subtasks is not None:
-                break
-
-        if requested_subtasks is None: # pragma: no cover
-            return {}
-
-        for subtask in requested_subtasks:
-            if subtask.subtask_id not in returned_subtasks:
-                returned_subtasks.add(subtask.subtask_id)
-
-                subtask_result = stage.subtask_results.get(subtask, default_result)
-                progress = subtask_result.progress
-                status = subtask_result.status.value
-
-                subtask_detail[subtask.subtask_id] = {
-                    'status': status,
-                    'progress': progress,
-                    'name': subtask.subtask_name,
-                }
-
-        if not with_input_output:
             return subtask_detail
-
-        for subtask in requested_subtasks:
-            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                predecessor_id = predecessor.subtask_id
-
-                if predecessor_id not in returned_subtasks:
-                    returned_subtasks.add(predecessor_id)
-
-                    subtask_detail[predecessor_id] = {
-                        'status': input_subtask_val,
-                        'progress': input_subtask_val,
-                        'name': subtask.subtask_name,
-                    }
-
-            for successor in stage.subtask_graph.iter_successors(subtask):
-                successor_id = successor.subtask_id
-
-                if successor_id not in returned_subtasks:
-                    returned_subtasks.add(successor_id)
-
-                    subtask_detail[successor_id] = {
-                        'status': output_subtask_val,
-                        'progress': output_subtask_val,
-                        'name': subtask.subtask_name,
-                    }
-
-        return subtask_detail
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

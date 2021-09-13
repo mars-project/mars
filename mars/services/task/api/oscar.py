@@ -77,18 +77,12 @@ class TaskAPI(AbstractTaskAPI):
     async def get_tileable_details(self, task_id: str):
         return await self._task_manager_ref.get_tileable_details(task_id)
 
-    async def get_tileable_subtask_graph(self, task_id: str, tileable_id: str, with_input_output: bool):
-        return await self._task_manager_ref.get_tileable_subtask_graph(
+    async def get_tileable_subtasks(self, task_id: str, tileable_id: str, with_input_output: bool, fetch_info: str):
+        return await self._task_manager_ref.get_tileable_subtasks(
             task_id,
             tileable_id,
-            with_input_output
-        )
-
-    async def get_tileable_subtask_detail(self, task_id: str, tileable_id: str, with_input_output: bool):
-        return await self._task_manager_ref.get_tileable_subtask_detail(
-            task_id,
-            tileable_id,
-            with_input_output
+            with_input_output,
+            fetch_info
         )
 
     async def wait_task(self, task_id: str, timeout: float = None):

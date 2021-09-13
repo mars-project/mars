@@ -84,7 +84,7 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?action=fetch_graph&withInputOutput=${this.state.displayInputOutput}`)
+        }/${tileableId}/subtask?fetch_info=graph&withInputOutput=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
                 this.setState({
@@ -117,7 +117,7 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?action=fetch_detail&withInputOutput=${this.state.displayInputOutput}`)
+        }/${tileableId}/subtask?fetch_info=detail&withInputOutput=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
                 this.setState({
