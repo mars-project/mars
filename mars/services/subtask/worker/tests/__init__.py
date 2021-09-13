@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .subtask_processor import CheckedSubtaskProcessor
-
