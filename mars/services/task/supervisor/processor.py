@@ -622,7 +622,7 @@ class TaskProcessorActor(mo.Actor):
                     'subtasks': [],
                     'dependencies': []
                 }
-            elif fetch_info == 'detail':
+            else:
                 return {}
 
         if fetch_info == 'graph':
@@ -686,7 +686,7 @@ class TaskProcessorActor(mo.Actor):
 
             return subtask_dict
 
-        elif fetch_info == 'detail':
+        else:
             returned_subtasks = set()
             default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
             subtask_detail = dict()
@@ -731,8 +731,6 @@ class TaskProcessorActor(mo.Actor):
                         }
 
             return subtask_detail
-
-        return {}
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
