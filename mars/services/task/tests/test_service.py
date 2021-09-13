@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-from mars.config import is_in
 import time
 
 import numpy as np
