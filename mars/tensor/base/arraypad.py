@@ -1,7 +1,5 @@
 import numpy as np
 
-from ...core import ENTITY_TYPE
-# from ... import opcodes as OperandDef
 from ...serialization.serializables import AnyField, KeyField
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -36,11 +34,10 @@ def _as_pairs(x, ndim, as_index=False):
 
 
 class TensorPad(TensorHasInput, TensorOperandMixin):
-    #_op_type = OperandDef.PAD
-
     _pad_width = AnyField('pad_width')
     _mode = AnyField('mode')
     _pad_kwargs = AnyField('pad_kwargs')
+    _output_slice = AnyField('output_slice')
     _input = KeyField('input')
 
     def __init__(self, pad_width=None, mode=None, pad_kwargs=None, **kw):
@@ -58,65 +55,82 @@ class TensorPad(TensorHasInput, TensorOperandMixin):
     def pad_kwargs(self):
         return self._pad_kwargs
 
-    def _set_inputs(self, inputs):
-        super()._set_inputs(inputs)
-        inputs_iter = iter(self._inputs[1:])
-        if isinstance(self._pad_width, ENTITY_TYPE):
-            self._pad_width = next(inputs_iter)
-        if isinstance(self._mode, ENTITY_TYPE):
-            self._mode = next(inputs_iter)
-        if isinstance(self._pad_kwargs, ENTITY_TYPE):
-            self._pad_kwargs = next(inputs_iter)
+    @property
+    def output_slice(self):
+        return self._output_slice
 
     @classmethod
     def tile(cls, op: 'TensorPad'):
         inp = op.inputs[0]
+        pad_width = np.asarray(op.pad_width)
         chunk_shape = inp.chunk_shape
+        nsplits = inp.nsplits
         out_chunks = []
-        pad_width = op.pad_width
+
+        if 'stat_length' in op.pad_kwargs:
+            values_length = _as_pairs(op.pad_kwargs['stat_length'], inp.ndim)
+        elif op.mode in ['reflect']:
+            values_length = pad_width + 1
+        else:
+            values_length = pad_width
+
         for chunk in inp.chunks:
-            chunk_op = op.copy().reset_key()
-            chunk_pad_width = np.asarray(pad_width)
-            for i, shape in enumerate(chunk_shape):
-                if chunk.index[i] != 0:
-                    chunk_pad_width[i][0] = 0
-                if chunk.index[i] != shape - 1:
-                    chunk_pad_width[i][1] = 0
-            shape = [chunk.shape[i] + sum(s) for i, s in enumerate(chunk_pad_width)]
-            chunk_op._pad_width = chunk_pad_width
-            new_chunk = chunk_op.new_chunk([chunk], shape=shape, index=chunk.index)
-            out_chunks.append(new_chunk)
+            if any([chunk.index[axis] in [0, shape-1] for axis, shape in enumerate(chunk_shape)]):
+                chunk_op = op.copy().reset_key()
+                chunk_pad_width = np.zeros_like(pad_width)
+                input_slice = [slice(0, 0)] * inp.ndim
+                output_slice = [slice(None)] * inp.ndim
+                for axis, shape in enumerate(chunk_shape):
+                    if chunk.index[axis] == 0:
+                        pw, vl = pad_width[axis][0], values_length[axis][0]
+                        chunk_pad_width[axis][0] = pw
+                        input_slice[axis] = slice(0, max(vl, chunk.shape[axis]))
+                        output_slice[axis] = slice(0, pw + chunk.shape[axis])
+
+                    elif chunk.index[axis] == shape - 1:
+                        pw, vl = pad_width[axis][1], values_length[axis][1]
+                        chunk_pad_width[axis][1] = pw
+                        input_slice[axis] = slice(- max(vl, chunk.shape[axis]), None)
+                        output_slice[axis] = slice(- pw - chunk.shape[axis], None)
+                    else:
+                        start = np.sum(nsplits[axis][:chunk.index[axis]])
+                        stop = start + chunk.shape[axis]
+                        input_slice[axis] = slice(start, stop)
+                shape = [chunk.shape[i] + sum(s) for i, s in enumerate(chunk_pad_width)]
+                chunk_op._pad_width = chunk_pad_width
+                chunk_op._output_slice = output_slice
+                chunk_input = inp[tuple(input_slice)]
+                new_chunk = chunk_op.new_chunk([chunk_input], shape=shape, index=chunk.index)
+                out_chunks.append(new_chunk)
+            else:
+                out_chunks.append(chunk)
+
         new_op = op.copy()
-        nsplits = np.asarray(inp.nsplits)
-        for i, axis_pad_with in enumerate(pad_width):
-            nsplits[i][0] += axis_pad_with[0]
-            nsplits[i][-1] += axis_pad_with[-1]
+        nsplits = np.asarray(nsplits)
+        for axis, axis_pad_with in enumerate(pad_width):
+            nsplits[axis][0] += axis_pad_with[0]
+            nsplits[axis][-1] += axis_pad_with[-1]
 
         return new_op.new_tensor(op.inputs, chunks=out_chunks, nsplits=nsplits, **op.outputs[0].params)
 
     @classmethod
     def execute(cls, ctx, op: 'TensorPad'):
-        inp = ctx[op.input.key]
+        inp = ctx[op.inputs[0].key]
         pad_width = op.pad_width
-
-        if np.sum(pad_width) > 0:
-            res = np.pad(inp, pad_width, op.mode, **op.pad_kwargs)
-            ctx[op.outputs[0].key] = res
-        else:
-            ctx[op.outputs[0].key] = inp
+        res = np.pad(inp, pad_width, op.mode, **op.pad_kwargs)
+        ctx[op.outputs[0].key] = res[tuple(op.output_slice)]
 
     def __call__(self, array, pad_width, mode, pad_kwargs, shape):
         return self.new_tensor(filter_inputs([array, pad_width, mode, pad_kwargs]), shape=shape)
 
 
 def pad(array, pad_width, mode='constant', **kwagrs):
-    unsupported_modes = ['maximum', 'mean', 'median', 'minimum', 'reflect', 'symmetric', 'wrap']
-    if (mode in unsupported_modes) or callable(mode):
+    if mode == 'wrap' or callable(mode):
         raise NotImplementedError('Input mode has not been supported')
 
     array = astensor(array)
-
     pad_width = np.asarray(pad_width)
+
     if not pad_width.dtype.kind == 'i':
         raise TypeError('`pad_width` must be of integral type.')
     pad_width = _as_pairs(pad_width, array.ndim, as_index=True)

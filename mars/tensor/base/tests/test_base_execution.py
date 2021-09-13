@@ -1882,24 +1882,46 @@ def test_pad_execute(setup):
     raw = np.random.randint(0, 100, size=(20, 20, 20))
     a = tensor(raw, chunk_size=6)
 
-    pad_width = np.random.randint(1, 10, size=(a.ndim, 2))
+    pad_width = np.random.randint(0, 10)
     r1 = mt.pad(a, pad_width)
     result = r1.execute().fetch()
     np.testing.assert_array_equal(np.pad(raw, pad_width), result)
 
+    pad_width = np.random.randint(0, 10, size=(2,))
+    r2 = mt.pad(a, pad_width)
+    result = r2.execute().fetch()
+    np.testing.assert_array_equal(np.pad(raw, pad_width), result)
+
+    pad_width = np.random.randint(0, 10, size=(a.ndim, 2))
+    r3 = mt.pad(a, pad_width)
+    result = r3.execute().fetch()
+    np.testing.assert_array_equal(np.pad(raw, pad_width), result)
+
     constant_values = 100
     mode = 'constant'
-    r2 = mt.pad(a, pad_width, mode, constant_values=constant_values)
-    result = r2.execute().fetch()
+    r4 = mt.pad(a, pad_width, mode, constant_values=constant_values)
+    result = r4.execute().fetch()
     np.testing.assert_array_equal(np.pad(raw, pad_width, mode, constant_values=constant_values), result)
 
     end_values = 100
     mode = 'linear_ramp'
-    r3 = mt.pad(a, pad_width, mode, end_values=end_values)
-    result = r3.execute().fetch()
+    r5 = mt.pad(a, pad_width, mode, end_values=end_values)
+    result = r5.execute().fetch()
     np.testing.assert_array_equal(np.pad(raw, pad_width, mode, end_values=end_values), result)
 
     mode = 'edge'
-    r4 = mt.pad(a, pad_width, mode)
-    result = r4.execute().fetch()
+    r6 = mt.pad(a, pad_width, mode)
+    result = r6.execute().fetch()
     np.testing.assert_array_equal(np.pad(raw, pad_width, mode), result)
+
+    for mode in ['mean', 'median', 'maximum', 'minimum']:
+        stat_length = 10
+        r7 = mt.pad(a, pad_width, mode, stat_length=stat_length)
+        result = r7.execute().fetch()
+        np.testing.assert_array_equal(np.pad(raw, pad_width, mode, stat_length=stat_length), result)
+
+    for mode in ['reflect', 'symmetric']:
+        for reflect_type in ['even', 'odd']:
+            r8 = mt.pad(a, pad_width, mode, reflect_type=reflect_type)
+            result = r8.execute().fetch()
+            np.testing.assert_array_equal(np.pad(raw, pad_width, mode, reflect_type=reflect_type), result)
