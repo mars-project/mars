@@ -412,7 +412,7 @@ async def test_get_tileable_subtasks(start_test_service):
     await asyncio.sleep(1)
     tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
     for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), True, 'graph')
+        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'), True, 'graph')
 
         with_input_output_subtask_size = len(with_input_output_subtask_details.get('subtasks'))
         with_input_output_dependency_size = len(with_input_output_subtask_details.get('dependencies'))
@@ -430,7 +430,7 @@ async def test_get_tileable_subtasks(start_test_service):
             assert dependency.get('fromSubtaskId') in subtask_ids
             assert dependency.get('toSubtaskId') in subtask_ids
 
-        no_input_output_subtask_details = await task_api.get_tileable_subtask_graph(task_id, tileable.get('tileableId'), False, graph)
+        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id, tileable.get('tileableId'), False, 'graph')
 
         no_input_output_subtask_size = len(no_input_output_subtask_details.get('subtasks'))
         no_input_output_dependency_size = len(no_input_output_subtask_details.get('dependencies'))
