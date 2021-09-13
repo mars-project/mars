@@ -86,9 +86,6 @@ export default class DAGChart extends React.Component {
         const mark = width * progress;
         const remain = width - mark;
 
-        console.log(status);
-        console.log(this.state);
-
         const svg = `
             <svg width='${width}' height='${height}' viewBox='0 0 ${width} ${height}' version='1.1' xmlns='http://www.w3.org/2000/svg'>
                 <rect x='0' y='0' width='${width}' height='${height}' style='fill:${this.state.nodeStatusMap[status].color};stroke-width:0.3;stroke:rgb(0,0,0)' />
