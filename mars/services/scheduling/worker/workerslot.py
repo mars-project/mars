@@ -160,7 +160,7 @@ class BandSlotManagerActor(mo.Actor):
             self._free_slots.add(slot_id)
             self._semaphore.release()
 
-    def register_free_slot(self, slot_id: int, pid: int):
+    def register_slot(self, slot_id: int, pid: int):
         try:
             self._fresh_slots.add(slot_id)
             if slot_id in self._slot_kill_events:
@@ -180,7 +180,7 @@ class BandSlotManagerActor(mo.Actor):
         finally:
             # psutil may raises exceptions, but currently we can't handle the register exception,
             # so put it to the finally.
-            # TODO(fyrestone): handle register_free_slot failure.
+            # TODO(fyrestone): handle register_slot failure.
             self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
             # collect initial stats for the process
             proc.cpu_percent(interval=None)
@@ -284,4 +284,4 @@ class BandSlotControlActor(mo.Actor):
             pass
 
         await mo.wait_actor_pool_recovered(self.address)
-        await self._manager_ref.register_free_slot.tell(self._slot_id, os.getpid())
+        await self._manager_ref.register_slot.tell(self._slot_id, os.getpid())

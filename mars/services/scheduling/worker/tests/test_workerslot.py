@@ -83,7 +83,7 @@ class TaskActor(mo.Actor):
     async def __post_create__(self):
         self._dispatch_ref = await mo.actor_ref(
             BandSlotManagerActor.gen_uid('numa-0'), address=self.address)
-        await self._dispatch_ref.register_free_slot.tell(self._slot_id, os.getpid())
+        await self._dispatch_ref.register_slot.tell(self._slot_id, os.getpid())
 
     async def queued_call(self, key, session_stid, delay):
         try:
@@ -244,7 +244,7 @@ async def test_slot_fault_tolerance(actor_pool: ActorPoolType):
     pool, slot_manager_ref = actor_pool
     # acquire -> slot restarted = can't acquire more.
     slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'))
-    await slot_manager_ref.register_free_slot(slot_id, os.getpid())
+    await slot_manager_ref.register_slot(slot_id, os.getpid())
     with pytest.raises(NoFreeSlot):
         await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id'), block=False)
     await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id'))
@@ -252,7 +252,7 @@ async def test_slot_fault_tolerance(actor_pool: ActorPoolType):
     # acquire -> release -> slot restarted = can only acquire once.
     slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'))
     await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id2'))
-    await slot_manager_ref.register_free_slot(slot_id, os.getpid())
+    await slot_manager_ref.register_slot(slot_id, os.getpid())
     await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'))
     with pytest.raises(NoFreeSlot):
         await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id2'), block=False)
@@ -262,7 +262,7 @@ async def test_slot_fault_tolerance(actor_pool: ActorPoolType):
     slot_id = await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'))
     await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id3'))
     await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'))
-    await slot_manager_ref.register_free_slot(slot_id, os.getpid())
+    await slot_manager_ref.register_slot(slot_id, os.getpid())
     with pytest.raises(NoFreeSlot):
         await slot_manager_ref.acquire_free_slot(('session_id', 'subtask_id3'), block=False)
     await slot_manager_ref.release_free_slot(slot_id, ('session_id', 'subtask_id3'))
@@ -279,13 +279,13 @@ async def test_slot_exception(actor_pool: ActorPoolType):
 
     if sys.platform == 'win32':
         with pytest.raises(ValueError):
-            await slot_manager_ref.register_free_slot(1, -1)
+            await slot_manager_ref.register_slot(1, -1)
     else:
         with pytest.raises((psutil.AccessDenied, psutil.NoSuchProcess)):
-            await slot_manager_ref.register_free_slot(1, 0)
+            await slot_manager_ref.register_slot(1, 0)
 
     dump_data = await slot_manager_ref.dump_data()
-    # after the register_free_slot is correctly handled,
+    # after the register_slot is correctly handled,
     # we can assert 1 not in free slots.
     assert 1 in dump_data.free_slots
 
