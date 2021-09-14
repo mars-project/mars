@@ -26,6 +26,7 @@ import {
     dagType,
 } from './DAGPropTypes';
 
+
 export default class DAGChart extends React.Component {
     constructor(props) {
         super(props);
