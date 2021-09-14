@@ -32,25 +32,48 @@ from .core import process_index
 class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INDEXSETVALUE
 
-    _input = KeyField('_input')
-    indexes = TupleField('indexes')
-    value = AnyField('value')
-    is_fancy_index = BoolField('is_fancy_index')
-    index_offset = TupleField('index_offset')
+    _input = KeyField('input')
+    _indexes = TupleField('indexes')
+    _value = AnyField('value')
+    _is_fancy_index = BoolField('is_fancy_index')
+    _index_offset = TupleField('index_offset')
+
+    def __init__(self, indexes=None, value=None,
+                 is_fancy_index=None, index_offset=None, **kw):
+        super().__init__(_indexes=indexes, _value=value,
+                         _is_fancy_index=is_fancy_index,
+                         _index_offset=index_offset,
+                         **kw)
+
+    @property
+    def indexes(self):
+        return self._indexes
+
+    @property
+    def value(self):
+        return self._value
+
+    @property
+    def is_fancy_index(self):
+        return self._is_fancy_index
+
+    @property
+    def index_offset(self):
+        return self._index_offset
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
         inputs_iter = iter(self._inputs[1:])
         new_indexes = [next(inputs_iter) if isinstance(index, ENTITY_TYPE) else index
-                       for index in self.indexes]
-        self.indexes = tuple(new_indexes)
-        if isinstance(self.value, ENTITY_TYPE):
-            self.value = next(inputs_iter)
+                       for index in self._indexes]
+        self._indexes = tuple(new_indexes)
+        if isinstance(self._value, ENTITY_TYPE):
+            self._value = next(inputs_iter)
 
     def __call__(self, a, index, value):
         inputs = filter_inputs([a] + list(index) + [value])
-        self.indexes = tuple(index)
-        self.value = value
+        self._indexes = tuple(index)
+        self._value = value
         return self.new_tensor(inputs, a.shape, order=a.order)
 
     def on_output_modify(self, new_output):
