@@ -23,6 +23,7 @@ from ....services.tests.fault_injection_manager import (
     FaultPosition,
     FaultType,
 )
+from ....tensor.base.psrs import PSRSConcatPivot
 from ....tests.core import require_ray
 from ....utils import lazy_import
 from ..ray import new_cluster, _load_config
@@ -34,8 +35,6 @@ RAY_CONFIG_FILE = os.path.join(
     os.path.dirname(__file__), 'local_test_with_ray_config.yml')
 FAULT_INJECTION_CONFIG = {
     "third_party_modules": ["mars.services.tests.fault_injection_patch"],
-    "subtask": {
-        "subtask_processor_cls": "mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor"}
 }
 SUBTASK_RERUN_CONFIG = {"scheduling": {"subtask_max_retries": 2}}
 
@@ -82,6 +81,20 @@ async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, 
 @pytest.mark.asyncio
 async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
     await test_fault_injection.test_rerun_subtask(fault_cluster, fault_config)
+
+
+@require_ray
+@pytest.mark.parametrize('fault_cluster',
+                         [{'config': SUBTASK_RERUN_CONFIG}],
+                         indirect=True)
+@pytest.mark.parametrize('fault_config',
+                         [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]],
+                          [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
+                           [PSRSConcatPivot]]])
+@pytest.mark.asyncio
+async def test_rerun_subtask_describe(ray_start_regular, fault_cluster, fault_config):
+    await test_fault_injection.test_rerun_subtask_describe(fault_cluster, fault_config)
 
 
 @require_ray

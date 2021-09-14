@@ -537,6 +537,39 @@ async def test_auto_recover(auto_recover):
                 await ctx.has_actor(actor_ref)
 
 
+@pytest.mark.parametrize('exception_config',
+                         [(Exception('recover exception'), False),
+                          (asyncio.CancelledError('cancel monitor'), True)])
+@pytest.mark.asyncio
+async def test_monitor_sub_pool_exception(exception_config):
+    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
+        if sys.platform != 'win32' else None
+    recovered = asyncio.Event()
+    exception, done = exception_config
+
+    def on_process_recover(*_):
+        recovered.set()
+        raise exception
+
+    pool = await create_actor_pool('127.0.0.1', pool_cls=MainActorPool, n_process=2,
+                                   subprocess_start_method=start_method,
+                                   on_process_recover=on_process_recover)
+
+    async with pool:
+        ctx = get_context()
+        task = await pool.start_monitor()
+
+        # create actor
+        actor_ref = await ctx.create_actor(
+            TestActor, address=pool.external_address,
+            allocate_strategy=ProcessIndex(1))
+        # kill_actor will cause kill corresponding process
+        await ctx.kill_actor(actor_ref)
+
+        await recovered.wait()
+        assert task.done() is done
+
+
 @pytest.mark.asyncio
 async def test_two_pools():
     start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \

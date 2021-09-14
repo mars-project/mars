@@ -1,7 +1,8 @@
 "@inherits": '@default'
 third_party_modules:
   - mars.services.tests.fault_injection_patch
-subtask:
-  subtask_processor_cls: mars.services.subtask.worker.tests.FaultInjectionSubtaskProcessor
 scheduling:
   subtask_max_retries: 2
+storage:
+  # shared-memory38 may lose object if the process crash after put success.
+  backends: [plasma]

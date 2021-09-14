@@ -83,9 +83,9 @@ class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
 
 
 class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
-    async def acquire_free_slot(self, session_stid: Tuple[str, str]):
+    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
         async with self._delay_method():
-            return super().acquire_free_slot(session_stid)
+            return super().acquire_free_slot(session_stid, block)
 
 
 class MockTaskManager(mo.Actor):

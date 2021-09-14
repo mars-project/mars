@@ -171,6 +171,9 @@ class K8SClusterBackend(AbstractClusterBackend):
     async def release_worker(self, address: str):
         raise NotImplementedError
 
+    async def reconstruct_worker(self, address: str):
+        raise NotImplementedError
+
 
 class K8SServiceMixin:
     @staticmethod

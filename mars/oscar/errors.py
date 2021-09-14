@@ -17,6 +17,10 @@
 from ..core.base import MarsError
 
 
+class ReconstructWorkerError(MarsError):
+    pass
+
+
 class ActorPoolNotStarted(MarsError):
     pass
 
@@ -30,6 +34,14 @@ class ActorAlreadyExist(MarsError):
 
 
 class NoIdleSlot(MarsError):
+    pass
+
+
+class NoFreeSlot(MarsError):
+    pass
+
+
+class SlotStateError(MarsError):
     pass
 
 

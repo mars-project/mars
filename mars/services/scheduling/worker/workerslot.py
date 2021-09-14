@@ -16,11 +16,12 @@ import asyncio
 import logging
 import os
 import time
-from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, List, NamedTuple, Set, Tuple
 
 import psutil
 
 from .... import oscar as mo
+from ....oscar.errors import NoFreeSlot, SlotStateError
 from ....oscar.backends.allocate_strategy import IdleLabel
 from ....typing import BandType
 from ...cluster import WorkerSlotInfo, ClusterAPI
@@ -122,7 +123,15 @@ class BandSlotManagerActor(mo.Actor):
             GlobalSlotManagerActor.default_uid()])
         return self._global_slots_ref
 
-    async def acquire_free_slot(self, session_stid: Tuple[str, str]):
+    def get_slot_address(self, slot_id: int):
+        return self._slot_control_refs[slot_id].address
+
+    def get_subtask_slot(self, session_stid: Tuple[str, str]):
+        return self._session_stid_to_slot.get(session_stid)
+
+    async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
+        if not block and self._semaphore.locked():
+            raise NoFreeSlot(f"No free slot for {session_stid}")
         yield self._semaphore.acquire()
         if self._restarting:
             yield self._restart_done_event.wait()
@@ -134,30 +143,47 @@ class BandSlotManagerActor(mo.Actor):
         logger.debug('Slot %d acquired for subtask %r', slot_id, session_stid)
         raise mo.Return(slot_id)
 
-    def get_slot_address(self, slot_id: int):
-        return self._slot_control_refs[slot_id].address
+    def release_free_slot(self, slot_id: int, session_stid: Tuple[str, str]):
+        acquired_session_stid = self._slot_to_session_stid.pop(slot_id, None)
+        if acquired_session_stid is None:
+            raise SlotStateError(f'Slot {slot_id} is not acquired.')
+        if acquired_session_stid != session_stid:
+            raise SlotStateError(f'Slot {slot_id} releasing state incorrect, '
+                                 f'the acquired session_stid: {acquired_session_stid}, '
+                                 f'the releasing session_stid: {session_stid}')
+        acquired_slot_id = self._session_stid_to_slot.pop(acquired_session_stid)
+        assert acquired_slot_id == slot_id
 
-    def get_subtask_slot(self, session_stid: Tuple[str, str]):
-        return self._session_stid_to_slot.get(session_stid)
-
-    def release_free_slot(self, slot_id: int, pid: Optional[int] = None):
-        if pid is not None:
-            self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
-            self._fresh_slots.add(slot_id)
-            # collect initial stats for the process
-            proc.cpu_percent(interval=None)
-
-        if slot_id in self._slot_kill_events:
-            event = self._slot_kill_events.pop(slot_id)
-            event.set()
-
-        session_stid = self._slot_to_session_stid.pop(slot_id, None)
-        self._session_stid_to_slot.pop(session_stid, None)
         logger.debug('Slot %d released', slot_id)
 
         if slot_id not in self._free_slots:
             self._free_slots.add(slot_id)
             self._semaphore.release()
+
+    def register_slot(self, slot_id: int, pid: int):
+        try:
+            self._fresh_slots.add(slot_id)
+            if slot_id in self._slot_kill_events:
+                event = self._slot_kill_events.pop(slot_id)
+                event.set()
+            if slot_id in self._slot_to_session_stid:
+                # We should release the slot by one role, if the slot is
+                # acquired by the SubtaskExecutionActor, then the slot
+                # should be released by it, too.
+                session_stid = self._slot_to_session_stid[slot_id]
+                logger.info('Slot %s registered by pid %s, current acquired session_stid is %s',
+                            slot_id, pid, session_stid)
+            else:
+                if slot_id not in self._free_slots:
+                    self._free_slots.add(slot_id)
+                    self._semaphore.release()
+        finally:
+            # psutil may raises exceptions, but currently we can't handle the register exception,
+            # so put it to the finally.
+            # TODO(fyrestone): handle register_slot failure.
+            self._slot_to_proc[slot_id] = proc = psutil.Process(pid)
+            # collect initial stats for the process
+            proc.cpu_percent(interval=None)
 
     async def _kill_slot(self, slot_id: int):
         if slot_id in self._slot_kill_events:
@@ -258,4 +284,4 @@ class BandSlotControlActor(mo.Actor):
             pass
 
         await mo.wait_actor_pool_recovered(self.address)
-        await self._manager_ref.release_free_slot.tell(self._slot_id, os.getpid())
+        await self._manager_ref.register_slot.tell(self._slot_id, os.getpid())

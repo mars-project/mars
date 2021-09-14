@@ -333,10 +333,8 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     logger.debug('Wait for subtask to cancel timed out (%s). '
                                  'Start killing slot %d', subtask_info.kill_timeout, slot_id)
                     await slot_manager_ref.kill_slot(slot_id)
-                    # as slot is restarted, we does not need to trace it
                     sub_pool_address = await slot_manager_ref.get_slot_address(slot_id)
                     await mo.wait_actor_pool_recovered(sub_pool_address, self.address)
-                    slot_id = None
                 except:  # pragma: no cover
                     logger.exception('Unexpected errors raised when handling cancel')
                     raise
@@ -351,7 +349,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             finally:
                 logger.debug('Subtask running ended, slot_id=%r', slot_id)
                 if slot_id is not None:
-                    await slot_manager_ref.release_free_slot(slot_id)
+                    await slot_manager_ref.release_free_slot(slot_id, (subtask.session_id, subtask.subtask_id))
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
         retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
