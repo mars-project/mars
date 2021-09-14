@@ -397,7 +397,7 @@ async def test_get_tileable_subtasks(start_test_service):
         return md.DataFrame([[1, 2, 3, 4], [4, 3, 2, 1]])
 
     def c(a, b):
-        return a.sum() * b.sum() / (a.product() * a.sum()) * b.product()
+        return a.sum() * a.product() * b.sum() * a.sum() / a.sum() * b.product() / a.product()
 
     ra = mr.spawn(a)
     rb = mr.spawn(b)

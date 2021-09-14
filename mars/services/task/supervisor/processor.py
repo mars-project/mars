@@ -630,7 +630,7 @@ class TaskProcessorActor(mo.Actor):
             dependency_list = []
 
             for subtask in requested_subtasks:
-                if subtask.subtask_id not in returned_subtasks:
+                if subtask.subtask_id not in returned_subtasks: # pragma: no cover
                     returned_subtasks.add(subtask.subtask_id)
 
                     subtask_list.append({
@@ -642,7 +642,7 @@ class TaskProcessorActor(mo.Actor):
                 for predecessor in stage.subtask_graph.iter_predecessors(subtask):
                     predecessor_id = predecessor.subtask_id
 
-                    if predecessor_id in returned_subtasks: # pragma: no cover
+                    if predecessor_id in returned_subtasks:
                         dependency_list.append({
                             'fromSubtaskId': predecessor_id,
                             'toSubtaskId': subtask.subtask_id,
@@ -662,7 +662,7 @@ class TaskProcessorActor(mo.Actor):
                 for successor in stage.subtask_graph.iter_successors(subtask):
                     successor_id = successor.subtask_id
 
-                    if successor_id in returned_subtasks: # pragma: no cover
+                    if successor_id in returned_subtasks:
                         dependency_list.append({
                             'fromSubtaskId': subtask.subtask_id,
                             'toSubtaskId': successor_id,
@@ -692,7 +692,7 @@ class TaskProcessorActor(mo.Actor):
             subtask_detail = dict()
 
             for subtask in requested_subtasks:
-                if subtask.subtask_id not in returned_subtasks:
+                if subtask.subtask_id not in returned_subtasks:  # pragma: no cover
                     returned_subtasks.add(subtask.subtask_id)
 
                     subtask_result = stage.subtask_results.get(subtask, default_result)
@@ -723,7 +723,7 @@ class TaskProcessorActor(mo.Actor):
                 for successor in stage.subtask_graph.iter_successors(subtask):
                     successor_id = successor.subtask_id
 
-                    if successor_id not in returned_subtasks:
+                    if successor_id not in returned_subtasks: # pragma: no cover
                         returned_subtasks.add(successor_id)
 
                         subtask_detail[successor_id] = {
