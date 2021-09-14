@@ -299,6 +299,67 @@ def test_mixed_indexing_execution(setup):
     np.testing.assert_array_equal(res, expected)
 
 
+def test_setitem_fancy_index_execution(setup):
+    rs = np.random.RandomState(0)
+
+    raw = rs.randint(0, 10, size=(11, 12))
+
+    # index is a ndarray, value is a scalar
+    arr = tensor(raw.copy(), chunk_size=5)
+    idx = rs.randint(0, 11, (5,))
+    arr[idx] = 20
+    res = arr.execute().fetch()
+    expected = raw.copy()
+    expected[idx] = 20
+    np.testing.assert_array_equal(res, expected)
+
+    # index is a tensor, value is a scalar
+    arr = tensor(raw.copy(), chunk_size=5)
+    raw_index = rs.randint(0, 11, (8,))
+    idx = tensor(raw_index.copy(), chunk_size=5)
+    arr[idx] = 2
+    res = arr.execute().fetch()
+    expected = raw.copy()
+    expected[raw_index] = 2
+    np.testing.assert_array_equal(res, expected)
+
+    # indexes are all tensors
+    arr = tensor(raw.copy(), chunk_size=6)
+    raw_index1 = rs.randint(0, 11, (20,))
+    idx1 = tensor(raw_index1.copy(), chunk_size=8)
+    raw_index2 = rs.randint(0, 12, (20,))
+    idx2 = tensor(raw_index2.copy(), chunk_size=8)
+    arr[idx1, idx2] = 2
+    res = arr.execute().fetch()
+    expected = raw.copy()
+    expected[raw_index1, raw_index2] = 2
+    np.testing.assert_array_equal(res, expected)
+
+    # indexes all tensors, value is also a tensor
+    arr = tensor(raw.copy(), chunk_size=6)
+    raw_index1 = rs.randint(0, 11, (20,))
+    idx1 = tensor(raw_index1.copy(), chunk_size=8)
+    raw_index2 = rs.randint(0, 12, (20,))
+    idx2 = tensor(raw_index2.copy(), chunk_size=8)
+    raw_value = rs.randint(0, 10, (20,))
+    arr[idx1, idx2] = tensor(raw_value, chunk_size=4)
+    res = arr.execute().fetch()
+    expected = raw.copy()
+    expected[raw_index1, raw_index2] = raw_value
+    np.testing.assert_array_equal(res, expected)
+
+    raw = rs.randint(0, 10, size=(20,))
+    arr = tensor(raw.copy(), chunk_size=6)
+    raw_index = rs.randint(0, 11, (9,))
+    raw_value = rs.randint(0, 10, (9,))
+    index = tensor(raw_index, chunk_size=3)
+    arr[index] = tensor(raw_value, chunk_size=4)
+    res = arr.execute().fetch()
+    expected = raw.copy()
+    expected[raw_index] = raw_value
+    np.testing.assert_array_equal(res, expected)
+
+
 def test_setitem_execution(setup):
     rs = np.random.RandomState(0)
 
