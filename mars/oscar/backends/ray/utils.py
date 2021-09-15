@@ -147,7 +147,7 @@ async def kill_and_wait(actor_handle: 'ray.actor.ActorHandle', no_restart=False,
     if 'COV_CORE_SOURCE' in os.environ:  # pragma: no cover
         try:
             # must clean up first, or coverage info lost
-            await actor_handle.collect_coverage.remote()
+            await actor_handle.cleanup.remote()
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
             pass
     r = actor_handle.wait.remote(timeout)

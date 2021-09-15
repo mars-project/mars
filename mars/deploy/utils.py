@@ -144,6 +144,7 @@ def get_third_party_modules_from_config(config: Dict, role: NodeRole, environ=No
         raise TypeError(f'The value type of third_party_modules should be a list '
                         f'or dict, but got a {type(third_party_modules)} instead.')
 
+    # environ overwrites config
     all_modules = []
     for mods in tuple(modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
         all_modules.extend(mods.split(',') if mods else [])

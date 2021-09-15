@@ -112,9 +112,7 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
-                           pytest.raises(ServerClosed)],
-                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
-                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
+                           pytest.raises(ServerClosed)]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config

@@ -189,7 +189,7 @@ class RayPoolBase(ABC):
     async def wait(self, seconds):
         await asyncio.sleep(seconds)
 
-    def collect_coverage(self):
+    def cleanup(self):
         logger.info('Cleaning up %s of process %s now', self, os.getpid())
         try:
             from pytest_cov.embed import cleanup
@@ -224,6 +224,7 @@ class RayMainPool(RayPoolBase):
             results.append(r)
         await asyncio.gather(*results)
         self._state = RayPoolState.SERVICE_READY
+        await self._actor_pool.start_monitor()
 
 
 class RaySubPool(RayPoolBase):
