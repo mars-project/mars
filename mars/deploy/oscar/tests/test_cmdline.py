@@ -182,7 +182,7 @@ def test_cmdline_run(supervisor_args, worker_args, use_web_addr):
         for proc in w_procs + [sv_proc]:
             if not proc:
                 continue
-            proc.send_signal(signal.SIGINT)
+            proc.terminate()
             try:
                 proc.wait(3)
             except subprocess.TimeoutExpired:
