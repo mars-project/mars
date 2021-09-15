@@ -111,6 +111,8 @@ export default class DAGChart extends React.Component {
     componentDidUpdate(prevProps, prevStates, snapshot) {
         cytoscape.use(dagre);
 
+        console.log(this.props);
+
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
         }
