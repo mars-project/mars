@@ -226,10 +226,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
         value = ctx[op.value.key] if hasattr(op.value, 'key') else op.value
         if hasattr(input_, 'flags') and not input_.flags.writeable:
             input_.setflags(write=True)
-        try:
-            input_[tuple(indexes)] = value
-        except:
-            print(indexes)
+
+        input_[tuple(indexes)] = value
         ctx[op.outputs[0].key] = input_
 
 
