@@ -236,7 +236,8 @@ class TensorIndexSetValue(TensorHasInput, TensorOperandMixin):
 def _check_support(indexes):
     if all((isinstance(ix, (TENSOR_TYPE, np.ndarray)) and ix.dtype != np.bool_
            or isinstance(ix, slice) and ix == slice(None)) for ix in indexes):
-        return True
+        if any(isinstance(ix, (TENSOR_TYPE, np.ndarray)) for ix in indexes):
+            return True
     for index in indexes:
         if isinstance(index, (slice, Integral)):
             pass
