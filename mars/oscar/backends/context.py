@@ -188,4 +188,3 @@ class MarsActorContext(BaseActorContext):
         )
         self._process_result_message(
             await self._call(main_address, control_message))
-        print('wait ok:', address, main_address)
