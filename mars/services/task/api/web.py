@@ -216,7 +216,8 @@ class WebTaskAPI(AbstractTaskAPI, MarsWebAPIClientMixin):
     async def wait_task(self, task_id: str, timeout: float = None):
         path = f'{self._address}/api/session/{self._session_id}/task/{task_id}'
         params = {'action': 'wait', 'timeout': str(timeout or '')}
-        res = await self._request_url('GET', path, params=params)
+        res = await self._request_url('GET', path, params=params,
+                                      request_timeout=timeout or 0)
         return _json_deserial_task_result(json.loads(res.body.decode()))
 
     async def cancel_task(self, task_id: str):
