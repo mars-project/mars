@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import math
 import os
 import subprocess  # nosec
 import sys
@@ -48,7 +49,7 @@ if _use_cgroup_stat is not None:
     _cpu_use_cgroup_stat = _mem_use_cgroup_stat = _use_cgroup_stat
 
 if 'MARS_CPU_TOTAL' in os.environ:
-    _cpu_total = int(os.environ['MARS_CPU_TOTAL'])
+    _cpu_total = int(math.ceil(float(os.environ['MARS_CPU_TOTAL'])))
 else:
     _cpu_total = psutil.cpu_count(logical=True)
 

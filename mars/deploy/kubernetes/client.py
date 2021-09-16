@@ -74,7 +74,7 @@ class KubernetesCluster:
     _default_web_port = 7104
 
     def __init__(self, kube_api_client=None, image=None, namespace=None,
-                 supervisor_num=1, supervisor_cpu=None, supervisor_mem=None,
+                 supervisor_num=1, supervisor_cpu=1, supervisor_mem='4G',
                  supervisor_mem_limit_ratio=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
