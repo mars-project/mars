@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import logging
+import math
 import os
 import subprocess  # nosec
 import sys
@@ -24,34 +25,36 @@ from typing import List, Optional
 import psutil
 
 from .lib import nvutils
+from .utils import get_bool_environ
 
 logger = logging.getLogger(__name__)
 
-CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.stat'
+CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.usage'
 CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
 
 _proc = psutil.Process()
 _timer = getattr(time, 'monotonic', time.time)
 
-_cpu_use_process_stat = bool(int(os.environ.get('MARS_CPU_USE_PROCESS_STAT', '0').strip('"')))
-_cpu_use_cgroup_stat = bool(int(os.environ.get('MARS_CPU_USE_CGROUP_STAT', '0').strip('"')))
-_mem_use_process_stat = bool(int(os.environ.get('MARS_MEM_USE_PROCESS_STAT', '0').strip('"')))
-_mem_use_cgroup_stat = bool(int(os.environ.get('MARS_MEM_USE_CGROUP_STAT', '0').strip('"')))
+_use_process_stat = get_bool_environ('MARS_USE_PROCESS_STAT')
+_use_cgroup_stat = get_bool_environ('MARS_USE_CGROUP_STAT')
+_cpu_use_process_stat = get_bool_environ('MARS_CPU_USE_PROCESS_STAT')
+_cpu_use_cgroup_stat = get_bool_environ('MARS_CPU_USE_CGROUP_STAT')
+_mem_use_process_stat = get_bool_environ('MARS_MEM_USE_PROCESS_STAT')
+_mem_use_cgroup_stat = get_bool_environ('MARS_MEM_USE_CGROUP_STAT')
 
-if 'MARS_USE_PROCESS_STAT' in os.environ:
-    _cpu_use_process_stat = _mem_use_process_stat = \
-        bool(int(os.environ['MARS_USE_PROCESS_STAT'].strip('"')))
-if 'MARS_USE_CGROUP_STAT' in os.environ:
-    _cpu_use_cgroup_stat = _mem_use_cgroup_stat = \
-        bool(int(os.environ['MARS_USE_CGROUP_STAT'].strip('"')))
+# if general config exists, overwrite individual ones
+if _use_process_stat is not None:
+    _cpu_use_process_stat = _mem_use_process_stat = _use_process_stat
+if _use_cgroup_stat is not None:
+    _cpu_use_cgroup_stat = _mem_use_cgroup_stat = _use_cgroup_stat
 
 if 'MARS_CPU_TOTAL' in os.environ:
-    _cpu_total = int(os.environ['MARS_CPU_TOTAL'].strip('"'))
+    _cpu_total = int(math.ceil(float(os.environ['MARS_CPU_TOTAL'])))
 else:
     _cpu_total = psutil.cpu_count(logical=True)
 
 if 'MARS_MEMORY_TOTAL' in os.environ:
-    _mem_total = int(os.environ['MARS_MEMORY_TOTAL'].strip('"'))
+    _mem_total = int(os.environ['MARS_MEMORY_TOTAL'])
 else:
     _mem_total = None
 

@@ -85,6 +85,13 @@ class AttributeDict(dict):
                 f"'AttributeDict' object has no attribute {item}")
 
 
+def get_bool_environ(var_name: str) -> Optional[bool]:
+    var_value = os.environ.get(var_name)
+    if not var_value:
+        return None
+    return bool(int(var_value))
+
+
 def on_serialize_shape(shape: Tuple[int]):
     if shape:
         return tuple(s if not np.isnan(s) else -1 for s in shape)
