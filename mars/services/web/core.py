@@ -23,6 +23,7 @@ from collections import defaultdict
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
 
 from tornado import httpclient, web
+from tornado.simple_httpclient import HTTPTimeoutError
 
 from ...utils import serialize_serializable, deserialize_serializable
 
@@ -176,7 +177,12 @@ class MarsWebAPIClientMixin:
             path_connector = '?' if '?' not in path else '&'
             path += path_connector + url_params
 
-        res = await self._client.fetch(path, method=method, raise_error=False, **kwargs)
+        try:
+            res = await self._client.fetch(
+                path, method=method, raise_error=False, **kwargs)
+        except HTTPTimeoutError as ex:
+            raise TimeoutError(str(ex)) from None
+
         if res.code < 400:
             return res
         else:
