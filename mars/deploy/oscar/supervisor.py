@@ -14,6 +14,7 @@
 
 import os
 
+from ...services import NodeRole
 from ...utils import get_next_port
 from .cmdline import OscarCommandRunner
 from .local import start_supervisor, stop_supervisor
@@ -22,6 +23,7 @@ from .pool import create_supervisor_actor_pool
 
 class SupervisorCommandRunner(OscarCommandRunner):
     command_description = 'Mars Supervisor'
+    node_role = NodeRole.SUPERVISOR
 
     def __init__(self):
         super().__init__()

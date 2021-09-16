@@ -25,7 +25,7 @@ from typing import List
 
 import psutil
 
-from ..utils import load_service_config_file
+from ..utils import load_service_config_file, get_third_party_modules_from_config
 
 _is_windows: bool = sys.platform.startswith('win')
 
@@ -151,11 +151,6 @@ class OscarCommandRunner:
             args.endpoint = f'{args.host}:{self.ports[0]}'
             self.ports = None
 
-        load_modules = []
-        for mods in tuple(args.load_modules or ()) + (environ.get('MARS_LOAD_MODULES'),):
-            load_modules.extend(mods.split(',') if mods else [])
-        args.load_modules = tuple(load_modules)
-
         args.use_uvloop = args.use_uvloop or 'auto'
 
         if args.config is not None:
@@ -164,6 +159,12 @@ class OscarCommandRunner:
             if args.config_file is None:
                 args.config_file = self.get_default_config_file()
             self.config = load_service_config_file(args.config_file)
+
+        load_modules = []
+        for mods in list(args.load_modules or ()) \
+                + get_third_party_modules_from_config(self.config, self.node_role, environ):
+            load_modules.extend(mods.split(',') if mods else [])
+        args.load_modules = tuple(load_modules)
 
         if args.supervisors is None:
             args.supervisors = ','.join(self._collect_supervisors_from_dir())
