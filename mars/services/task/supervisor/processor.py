@@ -51,9 +51,8 @@ def _record_error(func: Union[Callable, Coroutine]=None, log_when_error=True):
         try:
             return await func(processor, *args, **kwargs)
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
-            _, err, tb = sys.exc_info()
             if log_when_error:
-                logger.exception('Error happens in %s', func, exc_info=sys.exc_info())
+                logger.exception('Unexpected error happens in %s', func)
             processor._err_infos.append(sys.exc_info())
             raise
 
