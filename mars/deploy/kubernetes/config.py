@@ -565,7 +565,7 @@ class MarsWorkersConfig(MarsReplicationConfig):
         else:
             size_limit = None
 
-        if mount_shm and size_limit:
+        if mount_shm:
             self.add_volume(EmptyDirVolumeConfig(
                 'mars-shared', '/dev/shm', size_limit=size_limit
             ))

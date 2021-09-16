@@ -8,6 +8,8 @@ if [[ "$GITHUB_REF" =~ ^"refs/tags/" ]]; then
   export GITHUB_TAG_REF="$GITHUB_REF"
   unset CYTHON_TRACE
   export GIT_TAG=$(echo "$GITHUB_REF" | sed -e "s/refs\/tags\///g")
+else
+  export GIT_BRANCH=$(echo "$GITHUB_REF" | sed -e "s/refs\/heads\///g")
 fi
 
 if [[ $UNAME == "mingw"* ]] || [[ $UNAME == "msys"* ]]; then

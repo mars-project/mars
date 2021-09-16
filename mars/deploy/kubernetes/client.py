@@ -83,6 +83,9 @@ class KubernetesCluster:
                  timeout=None, **kwargs):
         from kubernetes import client as kube_client
 
+        if worker_cpu is None or worker_mem is None:  # pragma: no cover
+            raise TypeError('`worker_cpu` and `worker_mem` must be specified')
+
         self._api_client = kube_api_client
         self._core_api = kube_client.CoreV1Api(kube_api_client)
 
