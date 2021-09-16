@@ -684,6 +684,9 @@ class _IsolatedSession(AbstractAsyncSession):
                     # cancelled
                     cancelled = True
                     await self._task_api.cancel_task(task_id)
+                except TimeoutError:  # pragma: no cover
+                    # ignore timeout when waiting for subtask progresses
+                    pass
                 finally:
                     if self.timeout is not None and time.time() - start_time > self.timeout:
                         raise TimeoutError(f'Task({task_id}) running time > {self.timeout}')
