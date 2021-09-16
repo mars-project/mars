@@ -144,9 +144,8 @@ class RayStorage(StorageBackend):
     async def get(self, object_id, **kwargs) -> object:
         if kwargs:  # pragma: no cover
             raise NotImplementedError(f'Got unsupported args: {",".join(kwargs)}')
-        with debug_async_timeout(
-            "ray_object_retrieval_timeout", "Storage get object timeout"
-        ):
+        with debug_async_timeout('ray_object_retrieval_timeout',
+            f'Storage get object timeout, ObjectRef: {object_id}'):
             return await object_id
 
     @implements(StorageBackend.put)
