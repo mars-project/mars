@@ -74,7 +74,7 @@ class KubernetesCluster:
     _default_web_port = 7104
 
     def __init__(self, kube_api_client=None, image=None, namespace=None,
-                 supervisor_num=1, supervisor_cpu=None, supervisor_mem=None,
+                 supervisor_num=1, supervisor_cpu=1, supervisor_mem='4G',
                  supervisor_mem_limit_ratio=None,
                  worker_num=1, worker_cpu=None, worker_mem=None,
                  worker_spill_paths=None, worker_cache_mem=None, min_worker_num=None,
@@ -82,6 +82,9 @@ class KubernetesCluster:
                  web_port=None, service_name=None, service_type=None,
                  timeout=None, **kwargs):
         from kubernetes import client as kube_client
+
+        if worker_cpu is None or worker_mem is None:  # pragma: no cover
+            raise TypeError('`worker_cpu` and `worker_mem` must be specified')
 
         self._api_client = kube_api_client
         self._core_api = kube_client.CoreV1Api(kube_api_client)

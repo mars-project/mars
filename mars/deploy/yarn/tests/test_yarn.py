@@ -74,7 +74,8 @@ def _run_yarn_test_with_env(env_path, timeout):
         cmd_tmpl = '"{executable}" -m coverage run --source=%s/mars --rcfile=%s/setup.cfg' \
             % (MARS_ROOT, MARS_ROOT)
         extra_env = {'COVERAGE_FILE': coverage_result, 'COVERAGE_PROCESS_START': f'{MARS_ROOT}/setup.cfg'}
-        cluster = new_cluster(env_path, timeout=timeout, extra_env=extra_env, log_config=log_config_file,
+        cluster = new_cluster(env_path, timeout=timeout, worker_cpu=1, worker_mem='1G',
+                              extra_env=extra_env, log_config=log_config_file,
                               extra_args=f'--config-file {MARS_ROOT}/mars/deploy/yarn/tests/test_yarn_config.yml',
                               log_when_fail=True, cmd_tmpl=cmd_tmpl)
         assert cluster.endpoint is not None
@@ -139,7 +140,9 @@ def test_create_timeout():
         log_config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'yarn-logging.conf')
 
         with pytest.raises(TimeoutError):
-            cluster = new_cluster(env_path, log_config=log_config_file, worker_cache_mem='64m',
+            cluster = new_cluster(env_path, log_config=log_config_file,
+                                  worker_cpu=1, worker_mem='1G',
+                                  worker_cache_mem='64m',
                                   log_when_fail=True, timeout=1)
     finally:
         if cluster is not None:

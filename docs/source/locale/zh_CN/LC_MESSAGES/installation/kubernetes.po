@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: mars 0.5.0a2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-04 17:13+0800\n"
+"POT-Creation-Date: 2021-09-16 16:05+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -169,16 +169,20 @@ msgid "worker_cpu"
 msgstr ""
 
 #: ../../source/installation/kubernetes.rst:107
-msgid "Number of CPUs for every worker"
-msgstr "每个 Worker 的 CPU 数目"
+msgid "Number of CPUs for every worker, required."
+msgstr "每个 Worker 的 CPU 数目，此参数为必需"
 
 #: ../../source/installation/kubernetes.rst:109
 msgid "worker_mem"
 msgstr ""
 
 #: ../../source/installation/kubernetes.rst:109
-msgid "Memory size for workers in the cluster, in bytes or size units like ``1g``"
-msgstr "每个 Worker 的内存大小，可使用字节数或带单位的大小，例如 ``1g``"
+msgid ""
+"Memory size for workers in the cluster, in bytes or size units like "
+"``1g``, required."
+msgstr ""
+"每个 Worker 的内存大小，可使用字节数或带单位的大小，例如 ``1g``，此参数为"
+"必需"
 
 #: ../../source/installation/kubernetes.rst:112
 msgid "worker_spill_paths"
