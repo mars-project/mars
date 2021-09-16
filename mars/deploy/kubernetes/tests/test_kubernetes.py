@@ -160,7 +160,8 @@ def _start_kube_cluster(use_test_docker_file=True, **kwargs):
 @pytest.mark.skipif(not kube_available, reason='Cannot run without kubernetes')
 def test_run_in_kubernetes(use_test_docker_file):
     with _start_kube_cluster(
-            worker_mem='1G', worker_cache_mem='128m',
+            supervisor_cpu=0.5, supervisor_mem='1G',
+            worker_cpu=0.5, worker_mem='1G', worker_cache_mem='64m',
             extra_labels={'mars-test/group': 'test-label-name'},
             extra_env={'MARS_K8S_GROUP_LABELS': 'mars-test/group'},
             use_test_docker_file=use_test_docker_file):
@@ -186,6 +187,8 @@ def test_create_timeout():
         extra_vol_config = HostPathVolumeConfig('mars-src-path', '/mnt/mars', MARS_ROOT)
         with pytest.raises(TimeoutError):
             cluster = new_cluster(api_client, image='pseudo_image',
+                                  supervisor_cpu=0.5, supervisor_mem='1G',
+                                  worker_cpu=0.5, worker_mem='1G',
                                   extra_volumes=[extra_vol_config], timeout=1)
     finally:
         if cluster:
