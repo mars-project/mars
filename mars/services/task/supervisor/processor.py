@@ -14,6 +14,7 @@
 
 import asyncio
 import itertools
+import logging
 import operator
 import sys
 import time
@@ -39,8 +40,10 @@ from ..core import Task, TaskResult, TaskStatus, new_task_id
 from .preprocessor import TaskPreprocessor
 from .stage import TaskStageProcessor
 
+logger = logging.getLogger(__name__)
 
-def _record_error(func: Union[Callable, Coroutine]):
+
+def _record_error(func: Union[Callable, Coroutine]=None, log_when_error=True):
     assert asyncio.iscoroutinefunction(func)
 
     @wraps(func)
@@ -48,6 +51,9 @@ def _record_error(func: Union[Callable, Coroutine]):
         try:
             return await func(processor, *args, **kwargs)
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
+            _, err, tb = sys.exc_info()
+            if log_when_error:
+                logger.exception('Error happens in %s', func, exc_info=sys.exc_info())
             processor._err_infos.append(sys.exc_info())
             raise
 
