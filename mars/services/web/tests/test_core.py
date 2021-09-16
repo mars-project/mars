@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
 import sys
 
@@ -53,6 +54,11 @@ class TestAPIHandler(MarsServiceWebAPIHandler):
     @web_api('subtest_error', method='get')
     def get_with_error(self, test_id):
         raise ValueError
+
+    @web_api('subtest_delay', method='get')
+    async def get_with_timeout(self, test_id):
+        await asyncio.sleep(100)
+        raise ValueError(test_id)
 
 
 @pytest.fixture
@@ -119,6 +125,10 @@ async def test_web_api(actor_pool):
 
     with pytest.raises(ValueError):
         await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_error')
+
+    with pytest.raises(TimeoutError):
+        await client.fetch(f'http://localhost:{web_port}/api/test/test_id/subtest_delay',
+                           request_timeout=0.5)
 
     res = await client.fetch(f'http://localhost:{web_port}/api/extra_test')
     assert 'Test' in res.body.decode()
