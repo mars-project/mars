@@ -16,7 +16,6 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
-from ...services.mutable.api.oscar import MutableAPI
 import random
 import string
 import threading
@@ -42,6 +41,7 @@ from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
+from ...services.mutable.api.oscar import MutableAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.web import OscarWebAPI

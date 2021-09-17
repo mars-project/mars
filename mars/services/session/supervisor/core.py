@@ -179,7 +179,7 @@ class SessionActor(mo.Actor):
             name = str(uuid.uuid1())
         ref = await mo.create_actor(
             MutableTensorActor, shape, dtype, chunk_size, worker_pools, name, default_value, address=self.address, uid=to_binary(name))
-        wrapper = MutableTensor(ref)
+        wrapper = await MutableTensor.create(ref)
         self.mtensor_dict[name] = wrapper
         return wrapper
 

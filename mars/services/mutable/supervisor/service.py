@@ -14,9 +14,11 @@
 
 import sys
 import itertools
+from typing import List, Union
 from collections import OrderedDict
-from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
+
 from .... import oscar as mo
+from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
 from ..worker.service import MutableTensorChunkActor
 
 
@@ -68,36 +70,17 @@ class MutableTensorActor(mo.Actor):
             acc *= len(nsplit)
         return pos
 
-    async def write(self, index, value):
-        result = split_indexes_into_chunks(self._nsplits, index)
-        for idx, v in result[0].items():
-            if len(v[0] > 0):
-                target_index = 0
-                pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
-                    if lastindex >= pos:
-                        target_index = actor_index
-                        break
-                chunk_actor = self._chunk_to_actors[target_index]
-                v = v.T
-                for nidx in v:
-                    await chunk_actor.write(idx, nidx, value)
+    async def chunk_to_actors(self) -> List[MutableTensorChunkActor]:
+        return self._chunk_to_actors
 
-    async def read(self, index):
-        result = split_indexes_into_chunks(self._nsplits, index)
-        ans_list = []
-        for idx, v in result[0].items():
-            if len(v[0] > 0):
-                target_index = 0
-                pos = self.calc_index(idx)
-                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
-                    if lastindex >= pos:
-                        target_index = actor_index
-                        break
-                chunk_actor = self._chunk_to_actors[target_index]
-                v = v.T
-                for nidx in v:
-                    val = await chunk_actor.read(idx, nidx)
-                    print(idx, nidx, val)
-                    ans_list.append(val)
-        return ans_list
+    async def nsplists(self) -> List[tuple]:
+        return self._nsplits
+
+    async def lastindex(self) -> List[tuple]:
+        return self._chunkactors_lastindex
+
+    async def shape(self) -> tuple:
+        return self._shape
+
+    async def chunk_size(self) -> Union[int, tuple]:
+        return self._chunk_size

@@ -12,15 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import itertools
 from typing import List, Union
+
 from .... import oscar as mo
+from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
 from ..utils import normailize_index
 
 
 class MutableTensor:
-    def __init__(self,
-                 ref: mo.ActorRef):
+    def __init__(self, ref, shape, chunk_size, nsplits, chunk_to_actors, lastindex):
         self._ref = ref
+        self._shape = shape
+        self._chunk_size = chunk_size
+        self._nsplits = nsplits
+        self._chunk_to_actors = chunk_to_actors
+        self._chunkactors_lastindex = lastindex
+
+    @classmethod
+    async def create(self, ref: mo.ActorRef) -> "MutableTensor":
+        _shape = await ref.shape()
+        _chunk_size = await ref.chunk_size()
+        _nsplits = decide_chunk_sizes(_shape, _chunk_size, sys.getsizeof(int))
+        _chunk_to_actors = await ref.chunk_to_actors()
+        _chunkactors_lastindex = await ref.lastindex()
+        return MutableTensor(ref, _shape, _chunk_size, _nsplits, _chunk_to_actors, _chunkactors_lastindex)
+
+    def calc_index(self, idx: tuple) -> int:
+        pos = 0; acc = 1
+        for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
+            it = len(idx) - it-1
+            pos += acc*(idx[it])
+            acc *= len(nsplit)
+        return pos
 
     async def __getitem__(self, index: Union[int, List[int]]):
         '''
@@ -45,8 +70,23 @@ class MutableTensor:
         the value of the points
         '''
         index = normailize_index(index)
-        result = await self._ref.read(index)
-        return result
+        result = split_indexes_into_chunks(self._nsplits, index)
+        ans_list = []
+        for idx, v in result[0].items():
+            if len(v[0] > 0):
+                target_index = 0
+                pos = self.calc_index(idx)
+                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
+                    if lastindex >= pos:
+                        target_index = actor_index
+                        break
+                chunk_actor = self._chunk_to_actors[target_index]
+                v = v.T
+                for nidx in v:
+                    val = await chunk_actor.read(idx, nidx)
+                    print(idx, nidx, val)
+                    ans_list.append(val)
+        return ans_list
 
     async def write(self, index, value):
         '''
@@ -66,4 +106,16 @@ class MutableTensor:
         Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
         the index should be ((0,10,40),(0,20,50),(0,30,80))
         '''
-        await self._ref.write(index, value)
+        result = split_indexes_into_chunks(self._nsplits, index)
+        for idx, v in result[0].items():
+            if len(v[0] > 0):
+                target_index = 0
+                pos = self.calc_index(idx)
+                for actor_index, lastindex in zip(itertools.count(0), self._chunkactors_lastindex):
+                    if lastindex >= pos:
+                        target_index = actor_index
+                        break
+                chunk_actor = self._chunk_to_actors[target_index]
+                v = v.T
+                for nidx in v:
+                    await chunk_actor.write(idx, nidx, value)

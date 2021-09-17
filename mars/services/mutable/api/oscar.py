@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import AbstractMutableAPI
-from ....lib.aio import alru_cache
-from ...session.supervisor.core import SessionActor
-from .... import oscar as mo
-from ...session.supervisor.core import SessionManagerActor
 from typing import Union, TypeVar
+
+from ....lib.aio import alru_cache
+from .... import oscar as mo
+from ...session.supervisor.core import SessionActor, SessionManagerActor
+from .core import AbstractMutableAPI
+
 
 APIType = TypeVar('APIType', bound='MutableAPI')
 

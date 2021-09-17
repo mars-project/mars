@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from ..supervisor.core import MutableTensor
 import pytest
 import numpy as np
+
 from ....deploy.oscar.local import new_cluster
+from ..supervisor.core import MutableTensor
 
 
 @pytest.mark.asyncio
