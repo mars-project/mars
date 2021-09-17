@@ -606,16 +606,13 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
-    def get_tileable_subtasks(self, tileable_id: str, with_input_output: bool, with_detail: bool, with_dependencies: bool):
+    def get_tileable_subtasks(self, tileable_id: str, with_input_output: bool):
         requested_tileable = None
         requested_subtasks = None
 
         returned_subtasks = set()
         input_subtask_ids = set()
         output_subtask_ids = set()
-
-        subtask_list = []
-        dependency_list = []
 
         subtask_details = dict()
         default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
@@ -630,13 +627,7 @@ class TaskProcessorActor(mo.Actor):
                 break
 
         if requested_subtasks is None: # pragma: no cover
-            if not with_detail:
-                return {
-                    'subtasks': [],
-                    'dependencies': []
-                }
-            else:
-                return {}
+            return {}
 
         if with_input_output:
             input_subtasks = []
@@ -667,7 +658,7 @@ class TaskProcessorActor(mo.Actor):
         for subtask in requested_subtasks:
             subtask_id = subtask.subtask_id
 
-            if with_detail and subtask_id not in returned_subtasks:
+            if subtask_id not in returned_subtasks:
                 returned_subtasks.add(subtask_id)
 
                 subtask_result = stage.subtask_results.get(subtask, default_result)
@@ -675,7 +666,7 @@ class TaskProcessorActor(mo.Actor):
                 status = subtask_result.status.value
 
                 if subtask_id not in input_subtask_ids and subtask_id not in output_subtask_ids:
-                    subtask_details[subtask.subtask_id] = {
+                    subtask_details[subtask_id] = {
                         'status': status,
                         'progress': progress,
                         'name': subtask.subtask_name,
@@ -690,32 +681,18 @@ class TaskProcessorActor(mo.Actor):
                         'nodeType': 'Output',
                     }
 
-            elif subtask.subtask_id not in returned_subtasks: # pragma: no cover
-                returned_subtasks.add(subtask.subtask_id)
+        for subtask in requested_subtasks:
+            predecessor_list = []
 
-                subtask_list.append({
-                    'subtaskId': subtask.subtask_id,
-                    'subtaskName': subtask.subtask_name,
-                })
+            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
+                predecessor_id = predecessor.subtask_id
 
-        if with_dependencies:
-            for subtask in requested_subtasks:
-                for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                    predecessor_id = predecessor.subtask_id
+                if predecessor_id in returned_subtasks:
+                    predecessor_list.append(predecessor_id)
 
-                    if predecessor_id in returned_subtasks:
-                        dependency_list.append({
-                            'fromSubtaskId': predecessor_id,
-                            'toSubtaskId': subtask.subtask_id,
-                        })
+            subtask_details[subtask.subtask_id]['fromSubtaskIds'] = predecessor_list
 
-        if with_detail:
-            return subtask_details
-        else:
-            return {
-                'subtasks': subtask_list,
-                'dependencies': dependency_list
-            }
+        return subtask_details
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]

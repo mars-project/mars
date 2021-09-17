@@ -26,7 +26,7 @@ import {
     dagType,
 } from './DAGPropTypes';
 
-export default class DAGChart extends React.Component {
+export default class DAGCanvasChart extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -110,8 +110,6 @@ export default class DAGChart extends React.Component {
     /* eslint no-unused-vars: ["error", { "args": "none" }] */
     componentDidUpdate(prevProps, prevStates, snapshot) {
         cytoscape.use(dagre);
-
-        console.log(this.props);
 
         if (this.props === undefined || this.props.nodes === undefined || this.props.nodes.length === 0) {
             return;
@@ -339,7 +337,7 @@ export default class DAGChart extends React.Component {
     }
 }
 
-DAGChart.propTypes = {
+DAGCanvasChart.propTypes = {
     graphName: PropTypes.string.isRequired,
     dagStyle: dagType,
     nodes: nodeType,
