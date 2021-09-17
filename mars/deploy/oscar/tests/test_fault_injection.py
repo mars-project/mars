@@ -112,7 +112,9 @@ async def test_fault_inject_subtask_processor(fault_cluster, fault_and_exception
                          [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
-                           pytest.raises(ServerClosed)]])
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(fault_cluster, fault_config):
     fault_type, fault_count, expect_raises = fault_config
@@ -142,6 +144,7 @@ async def test_rerun_subtask(fault_cluster, fault_config):
 
     # the extra config overwrites the default config.
     extra_config['subtask_max_retries'] = 0
+    extra_config['subtask_max_reschedules'] = 0
     info = await session.execute(b, extra_config=extra_config)
     with expect_raises:
         await info

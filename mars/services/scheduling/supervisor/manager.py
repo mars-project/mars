@@ -18,8 +18,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union
 
+from ...cluster import ClusterAPI
 from .... import oscar as mo
 from ....lib.aio import alru_cache
+from ....oscar.errors import MarsError
 from ....typing import BandType
 from ....utils import dataslots
 from ...subtask import Subtask, SubtaskResult, SubtaskStatus
@@ -29,11 +31,17 @@ from ..utils import redirect_subtask_errors
 logger = logging.getLogger(__name__)
 
 
+# the default times to reschedule subtask.
+DEFAULT_SUBTASK_MAX_RESCHEDULES = 0
+
+
 @dataslots
 @dataclass
 class SubtaskScheduleInfo:
     subtask: Subtask
     band_futures: Dict[BandType, asyncio.Future] = field(default_factory=dict)
+    max_reschedules: int = 0
+    num_reschedules: int = 0
 
 
 class SubtaskManagerActor(mo.Actor):
@@ -43,9 +51,10 @@ class SubtaskManagerActor(mo.Actor):
     def gen_uid(cls, session_id: str):
         return f'{session_id}_subtask_manager'
 
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, subtask_max_reschedules: int = DEFAULT_SUBTASK_MAX_RESCHEDULES):
         self._session_id = session_id
         self._subtask_infos = dict()
+        self._subtask_max_reschedules = subtask_max_reschedules
 
         self._queueing_ref = None
         self._global_slot_ref = None
@@ -62,10 +71,20 @@ class SubtaskManagerActor(mo.Actor):
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
 
+    @alru_cache
+    async def _get_cluster_api(self):
+        return await ClusterAPI.create(self.address)
+
     async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
         async with redirect_subtask_errors(self, subtasks):
             for subtask in subtasks:
-                self._subtask_infos[subtask.subtask_id] = SubtaskScheduleInfo(subtask)
+                # the extra_config may be None. the extra config overwrites the default value.
+                subtask_max_reschedules = (subtask.extra_config.get('subtask_max_reschedules')
+                                           if subtask.extra_config else None)
+                if subtask_max_reschedules is None:
+                    subtask_max_reschedules = self._subtask_max_reschedules
+                self._subtask_infos[subtask.subtask_id] = \
+                    SubtaskScheduleInfo(subtask, max_reschedules=subtask_max_reschedules)
 
             virtual_subtasks = [subtask for subtask in subtasks if subtask.virtual]
             for subtask in virtual_subtasks:
@@ -120,6 +139,26 @@ class SubtaskManagerActor(mo.Actor):
                 result = yield task
                 task_api = await self._get_task_api()
                 await task_api.set_subtask_result(result)
+            except (OSError, MarsError) as ex:
+                # TODO: We should handle ServerClosed Error.
+                if subtask_info.subtask.retryable and subtask_info.num_reschedules < subtask_info.max_reschedules:
+                    logger.error('Reschedule subtask %s due to %s',
+                                 subtask_info.subtask.subtask_id, ex)
+                    subtask_info.num_reschedules += 1
+                    await self._queueing_ref.add_subtasks(
+                            [subtask_info.subtask], [subtask_info.subtask.priority or tuple()])
+                    await self._queueing_ref.submit_subtasks.tell()
+                else:
+                    raise ex
+            except asyncio.CancelledError:
+                raise
+            except Exception as ex:
+                if subtask_info.subtask.retryable and subtask_info.num_reschedules < subtask_info.max_reschedules:
+                    logger.error('Failed to reschedule subtask %s, '
+                                 'num_reschedules: %s, max_reschedules: %s, unhandled exception: %s',
+                                 subtask_info.subtask.subtask_id,
+                                 subtask_info.num_reschedules, subtask_info.max_reschedules, ex)
+                raise ex
             finally:
                 # make sure slot is released before marking tasks as finished
                 await self._global_slot_ref.release_subtask_slots(

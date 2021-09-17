@@ -32,7 +32,6 @@ from ...cluster import ClusterAPI
 from ...meta import MetaAPI
 from ...storage import StorageAPI
 from ...subtask import Subtask, SubtaskAPI, SubtaskResult, SubtaskStatus
-from ..supervisor import GlobalSlotManagerActor
 from .workerslot import BandSlotManagerActor
 from .quota import QuotaActor
 
@@ -321,10 +320,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
                     await slot_manager_ref.release_free_slot(slot_id, (subtask.session_id, subtask.subtask_id))
                 await quota_ref.release_quotas(tuple(batch_quota_req.keys()))
 
-        retryable = all(getattr(chunk.op, 'retryable', True) for chunk in subtask.chunk_graph)
         # TODO(fyrestone): For the retryable op, we should rerun it when
         #  any exceptions occurred.
-        if retryable:
+        if subtask.retryable:
             return await _retry_run(subtask, subtask_info, _run_subtask_once)
         else:
             return await _run_subtask_once()

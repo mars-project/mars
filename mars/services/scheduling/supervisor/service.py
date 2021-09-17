@@ -17,6 +17,7 @@ import asyncio
 from .... import oscar as mo
 from ...core import AbstractService
 from .autoscale import AutoscalerActor
+from .manager import DEFAULT_SUBTASK_MAX_RESCHEDULES
 
 
 class SchedulingSupervisorService(AbstractService):
@@ -63,6 +64,7 @@ class SchedulingSupervisorService(AbstractService):
     async def create_session(self, session_id: str):
         service_config = self._config or dict()
         scheduling_config = service_config.get('scheduling', {})
+        subtask_max_reschedules = scheduling_config.get('subtask_max_reschedules', DEFAULT_SUBTASK_MAX_RESCHEDULES)
 
         from .assigner import AssignerActor
         assigner_coro = mo.create_actor(
@@ -78,7 +80,8 @@ class SchedulingSupervisorService(AbstractService):
 
         from .manager import SubtaskManagerActor
         await mo.create_actor(
-            SubtaskManagerActor, session_id, address=self._address,
+            SubtaskManagerActor, session_id, subtask_max_reschedules,
+            address=self._address,
             uid=SubtaskManagerActor.gen_uid(session_id)
         )
 
