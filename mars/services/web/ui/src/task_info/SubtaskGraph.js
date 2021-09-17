@@ -84,27 +84,41 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?with_info=false&with_input_output=${this.state.displayInputOutput}&with_dependency=true`)
+        }/${tileableId}/subtask?with_input_output=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
-                this.setState({
-                    subtasks: res.subtasks.map(subtask => {
-                        return (
-                            {
-                                id: subtask.subtaskId,
-                                name: subtask.subtaskName,
-                            }
-                        );
-                    }),
+                let subtaskList = [];
+                let dependencyList = [];
 
-                    dependencies: res.dependencies.map(({fromSubtaskId, toSubtaskId}) => {
+                if (Object.keys(res).length > 0) {
+                    subtaskList = Object.keys(res).map((subtaskId) => {
                         return (
                             {
-                                fromNodeId: fromSubtaskId,
-                                toNodeId: toSubtaskId,
+                                id: subtaskId,
+                                name: res[subtaskId].name
                             }
                         );
-                    }),
+                    });
+
+                    Object.keys(res).filter(
+                        subtaskId => res[subtaskId].fromSubtaskIds.length > 0
+                    ).forEach((subtaskId) => {
+                        let fromNodeIds = res[subtaskId].fromSubtaskIds;
+
+                        fromNodeIds.forEach((fromNodeId) => {
+                            dependencyList.push(
+                                {
+                                    fromNodeId,
+                                    toNodeId: subtaskId,
+                                }
+                            );
+                        });
+                    });
+                }
+
+                this.setState({
+                    subtasks: subtaskList,
+                    dependencies: dependencyList,
                 });
             });
     }
@@ -117,7 +131,7 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?with_info=true&with_input_output=${this.state.displayInputOutput}&with_dependency=false`)
+        }/${tileableId}/subtask?with_input_output=${this.state.displayInputOutput}`)
             .then(res => res.json())
             .then((res) => {
                 this.setState({
