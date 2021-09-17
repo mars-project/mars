@@ -17,7 +17,7 @@ from ....lib.aio import alru_cache
 from ...session.supervisor.core import SessionActor
 from .... import oscar as mo
 from ...session.supervisor.core import SessionManagerActor
-from typing import Union, TypeVar, Type
+from typing import Union, TypeVar
 
 APIType = TypeVar('APIType', bound='MutableAPI')
 
@@ -43,7 +43,7 @@ class MutableAPI(AbstractMutableAPI):
     async def _get_session_ref(self, session_id: str) -> Union[SessionActor, mo.ActorRef]:
         return await self._session_manager_ref.get_session_ref(session_id)
 
-    async def create_mutable_tensor(self, session_id: str, shape: tuple, dtype: str, chunk_size, name: str, default_value):
+    async def create_mutable_tensor(self, session_id: str, shape: tuple, dtype: str, chunk_size, name: str=None, default_value=0):
         session = await self._get_session_ref(session_id)
         return await session.create_mutable_tensor(shape, dtype, chunk_size, name, default_value)
 

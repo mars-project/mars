@@ -15,7 +15,6 @@
 from typing import List, Union
 from .... import oscar as mo
 from ..utils import normailize_index
-from ...cluster.api import ClusterAPI
 
 
 class MutableTensor:

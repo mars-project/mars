@@ -136,7 +136,6 @@ class SessionActor(mo.Actor):
 
     async def __post_create__(self):
         from .custom_log import CustomLogMetaActor
-        print('before clustapi', self.address)
         self._cluster_api = await ClusterAPI.create(self.address)
 
         self._custom_log_meta_ref = await mo.create_actor(

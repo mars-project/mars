@@ -51,7 +51,7 @@ class MutableTensorActor(mo.Actor):
             chunk_list[idx] = [self._nsplits[i][idx[i]] for i in range(len(idx))]
             num += 1
             leftchunk -= 1
-            if (num == chunknumber//workernumer and  leftworker != 1  or leftworker == 1 and leftchunk == 0):
+            if (num == chunknumber//workernumer and leftworker != 1 or leftworker == 1 and leftchunk == 0):
                 chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self.default_value, address=worker_address[leftworker-1])
                 num = 0
                 chunk_list = OrderedDict()

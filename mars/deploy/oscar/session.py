@@ -16,7 +16,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
-from mars.services.mutable.api.oscar import MutableAPI
+from ...services.mutable.api.oscar import MutableAPI
 import random
 import string
 import threading
@@ -649,7 +649,6 @@ class _IsolatedSession(AbstractAsyncSession):
                  client: ClientType = None,
                  timeout: float = None):
         super().__init__(address, session_id)
-        testwhere = 1
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
