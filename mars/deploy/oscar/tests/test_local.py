@@ -58,7 +58,6 @@ CONFIG_THIRD_PARTY_MODULES_TEST_FILE = os.path.join(
 
 
 params = ['default']
-params = []
 if vineyard is not None:
     params.append('vineyard')
 

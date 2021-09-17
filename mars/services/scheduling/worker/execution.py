@@ -107,12 +107,6 @@ class SubtaskExecutionActor(mo.StatelessActor):
     async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
         return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
 
-    @staticmethod
-    @alru_cache(cache_exceptions=False)
-    async def _get_task_api(supervisor_address: str, session_id: str):
-        from ...task import TaskAPI
-        return await TaskAPI.create(session_id, supervisor_address)
-
     async def _get_global_slot_ref(self):
         if self._global_slot_ref is not None:
             return self._global_slot_ref
@@ -288,10 +282,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 )
                 logger.debug('Slot released for band %s after subtask %s',
                              band_name, subtask.subtask_id)
-
-            task_api = await self._get_task_api(subtask_info.supervisor_address,
-                                                subtask.session_id)
-            await task_api.set_subtask_result(subtask_info.result)
+            return subtask_info.result
 
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str,
                                  subtask_api: SubtaskAPI, batch_quota_req):
@@ -374,7 +365,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
         self._subtask_info[subtask.subtask_id] = \
             SubtaskExecutionInfo(task, band_name, supervisor_address,
                                  max_retries=subtask_max_retries)
-        return task
+        return await task
 
     async def cancel_subtask(self, subtask_id: str,
                              kill_timeout: Optional[int] = 5):
