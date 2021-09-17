@@ -18,7 +18,6 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Union
 
-from ...cluster import ClusterAPI
 from .... import oscar as mo
 from ....lib.aio import alru_cache
 from ....oscar.errors import MarsError
@@ -70,10 +69,6 @@ class SubtaskManagerActor(mo.Actor):
     @alru_cache
     async def _get_task_api(self):
         return await TaskAPI.create(self._session_id, self.address)
-
-    @alru_cache
-    async def _get_cluster_api(self):
-        return await ClusterAPI.create(self.address)
 
     async def add_subtasks(self, subtasks: List[Subtask], priorities: List[Tuple]):
         async with redirect_subtask_errors(self, subtasks):
