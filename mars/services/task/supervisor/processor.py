@@ -658,7 +658,7 @@ class TaskProcessorActor(mo.Actor):
         for subtask in requested_subtasks:
             subtask_id = subtask.subtask_id
 
-            if subtask_id not in returned_subtasks:
+            if subtask_id not in returned_subtasks: # pragma: no cover
                 returned_subtasks.add(subtask_id)
 
                 subtask_result = stage.subtask_results.get(subtask, default_result)
