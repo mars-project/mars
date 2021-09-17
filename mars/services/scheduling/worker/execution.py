@@ -107,17 +107,6 @@ class SubtaskExecutionActor(mo.StatelessActor):
     async def _get_band_quota_ref(self, band: str) -> Union[mo.ActorRef, QuotaActor]:
         return await mo.actor_ref(QuotaActor.gen_uid(band), address=self.address)
 
-    async def _get_global_slot_ref(self):
-        if self._global_slot_ref is not None:
-            return self._global_slot_ref
-
-        try:
-            [self._global_slot_ref] = await self._cluster_api.get_supervisor_refs(
-                [GlobalSlotManagerActor.default_uid()])
-        except mo.ActorNotExist:
-            self._global_slot_ref = None
-        return self._global_slot_ref
-
     async def _prepare_input_data(self, subtask: Subtask, band_name: str):
         queries = []
         storage_api = await StorageAPI.create(
@@ -243,10 +232,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
                                             session_id=subtask.session_id,
                                             task_id=subtask.task_id,
                                             status=SubtaskStatus.pending)
-        slot_manager_ref = None
         try:
-            slot_manager_ref = await self._get_slot_manager_ref(band_name)
-
             await _retry_run(subtask, subtask_info, self._prepare_input_data, subtask, band_name)
 
             input_sizes = await self._collect_input_sizes(
@@ -271,17 +257,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
             subtask_info.result.traceback = tb
         finally:
             self._subtask_info.pop(subtask.subtask_id, None)
-            global_slot_ref = await self._get_global_slot_ref()
-            if global_slot_ref is not None:
-                await asyncio.gather(
-                    # make sure slot is released before marking tasks as finished
-                    global_slot_ref.release_subtask_slots(
-                            (self.address, band_name), subtask.session_id, subtask.subtask_id),
-                    # make sure new slot usages are uploaded in time
-                    slot_manager_ref.upload_slot_usages(periodical=False),
-                )
-                logger.debug('Slot released for band %s after subtask %s',
-                             band_name, subtask.subtask_id)
+            # make sure new slot usages are uploaded in time
+            slot_manager_ref = await self._get_slot_manager_ref(band_name)
+            slot_manager_ref.upload_slot_usages(periodical=False)
             return subtask_info.result
 
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str,

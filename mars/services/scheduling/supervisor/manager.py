@@ -111,14 +111,21 @@ class SubtaskManagerActor(mo.Actor):
 
     async def submit_subtask_to_band(self, subtask_id: str, band: BandType):
         async with redirect_subtask_errors(self, self._get_subtasks_by_ids([subtask_id])):
-            subtask_info = self._subtask_infos[subtask_id]
-            execution_ref = await self._get_execution_ref(band)
-            task = asyncio.create_task(execution_ref.run_subtask(
-                subtask_info.subtask, band[1], self.address))
-            subtask_info.band_futures[band] = task
-            result = yield task
-            task_api = await self._get_task_api()
-            await task_api.set_subtask_result(result)
+            try:
+                subtask_info = self._subtask_infos[subtask_id]
+                execution_ref = await self._get_execution_ref(band)
+                task = asyncio.create_task(execution_ref.run_subtask(
+                    subtask_info.subtask, band[1], self.address))
+                subtask_info.band_futures[band] = task
+                result = yield task
+                task_api = await self._get_task_api()
+                await task_api.set_subtask_result(result)
+            finally:
+                # make sure slot is released before marking tasks as finished
+                await self._global_slot_ref.release_subtask_slots(
+                            band, subtask_info.subtask.session_id, subtask_info.subtask.subtask_id)
+                logger.debug('Slot released for band %s after subtask %s',
+                             band, subtask_info.subtask.subtask_id)
 
     async def cancel_subtasks(self, subtask_ids: List[str],
                               kill_timeout: Union[float, int] = 5):
