@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .core import normailize_index
 import sys
 import itertools
-from typing import Union, List
 from collections import OrderedDict
 from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
 from .... import oscar as mo
@@ -43,22 +41,26 @@ class MutableTensorActor(mo.Actor):
         worker_address = []
         for k in self._work_pools.items():
             worker_address.append(str(k[0][0]))
-        chunknumber = 1; num = 0
+        chunknumber = 1
+        num = 0
         for nsplit in self._nsplits:
             chunknumber *= len(nsplit)
         leftchunk = chunknumber
         chunk_list = OrderedDict()
         for idx in itertools.product(*(range(len(nsplit)) for nsplit in self._nsplits)):
             chunk_list[idx] = [self._nsplits[i][idx[i]] for i in range(len(idx))]
-            num += 1; leftchunk -= 1
+            num += 1
+            leftchunk -= 1
             if (num == chunknumber//workernumer and  leftworker != 1  or leftworker == 1 and leftchunk == 0):
                 chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self.default_value, address=worker_address[leftworker-1])
-                num = 0; chunk_list = OrderedDict(); leftworker -= 1
+                num = 0
+                chunk_list = OrderedDict()
+                leftworker -= 1
                 self._chunk_to_actors.append(chunk_ref)
                 pos = self.calc_index(idx)
                 self._chunkactors_lastindex.append(pos)
 
-    def calc_index(self, idx):
+    def calc_index(self, idx: tuple):
         pos = 0; acc = 1
         for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
             it = len(idx) - it-1
@@ -99,55 +101,3 @@ class MutableTensorActor(mo.Actor):
                     print(idx, nidx, val)
                     ans_list.append(val)
         return ans_list
-
-
-class MutableTensor:
-    def __init__(self,
-                 ref: mo.ActorRef):
-        self._ref = ref
-
-    async def __getitem__(self, index: Union[int, List[int]]):
-        '''
-        Function
-        ----------
-        read a single point of the tensor.
-
-        Parameters:
-        ----------
-        index: List[int]
-        If there is need to read n points of the tensor, suppose the dimension of the tensor is m.\n
-        for the i_th point, it would be represented by (a[i][0],a[i][1]....a[i][m-1]),i in range(0,n)\n
-        then we extract a[i][j] with the same j and put them together.\n
-        It's the way to get the index for the parameter, its form is like \n
-        [(a[0][0],a[1][0]...a[n-1][0]),(a[0][1],a[1][1]...a[n-1][1])...(a[0][m-1],a[1][m-1]...a[n-1][m-1])]\n
-        e.g.
-        Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
-        the index should be ((0,10,40),(0,20,50),(0,30,80))
-
-        Returns
-        -------
-        the value of the points
-        '''
-        index = normailize_index(index)
-        result = await self._ref.read(index)
-        return result
-
-    async def write(self, index, value):
-        '''
-        Function
-        ----------
-        read a single point of the tensor.
-
-        Parameters:
-        ----------
-        index: List[int]
-        If there is need to read n points of the tensor, suppose the dimension of the tensor is m.\n
-        for the i_th point, it would be represented by (a[i][0],a[i][1]....a[i][m-1]),i in range(0,n)\n
-        then we extract a[i][j] with the same j and put them together.\n
-        It's the way to get the index for the parameter, its form is like \n
-        [(a[0][0],a[1][0]...a[n-1][0]),(a[0][1],a[1][1]...a[n-1][1])...(a[0][m-1],a[1][m-1]...a[n-1][m-1])]\n
-        e.g.
-        Assumed the shape of index is (100,200,300) and we want to read the (0,0,0) (10,20,30) (40,50,80)\n
-        the index should be ((0,10,40),(0,20,50),(0,30,80))
-        '''
-        await self._ref.write(index, value)

@@ -164,15 +164,3 @@ class WebSessionAPI(AbstractSessionAPI, MarsWebAPIClientMixin):
                       sizes=_encode_size(chunk_op_key_to_sizes))
         res = await self._request_url('GET', addr, params=params)
         return json.loads(res.body.decode())
-
-    async def create_mutable_tensor(self,
-                                    session_id: str,
-                                    shape: tuple,
-                                    dtype: str,
-                                    chunk_size,
-                                    name: str = None,
-                                    default_value=0):
-        pass #pragma: no cover
-
-    async def get_mutable_tensor(self, session_id: str, name: str):
-        pass #pragma: no cover

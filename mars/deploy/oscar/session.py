@@ -16,6 +16,7 @@ import asyncio
 import concurrent.futures
 import itertools
 import logging
+from mars.services.mutable.api.oscar import MutableAPI
 import random
 import string
 import threading
@@ -644,15 +645,18 @@ class _IsolatedSession(AbstractAsyncSession):
                  task_api: AbstractTaskAPI,
                  cluster_api: AbstractClusterAPI,
                  web_api: Optional[OscarWebAPI],
+                 mutable_api: MutableAPI,
                  client: ClientType = None,
                  timeout: float = None):
         super().__init__(address, session_id)
+        testwhere = 1
         self._session_api = session_api
         self._task_api = task_api
         self._meta_api = meta_api
         self._lifecycle_api = lifecycle_api
         self._cluster_api = cluster_api
         self._web_api = web_api
+        self._mutable_api = mutable_api
         self.client = client
         self.timeout = timeout
 
@@ -675,6 +679,7 @@ class _IsolatedSession(AbstractAsyncSession):
         lifecycle_api = await LifecycleAPI.create(session_id, session_address)
         meta_api = await MetaAPI.create(session_id, session_address)
         task_api = await TaskAPI.create(session_id, session_address)
+        mutable_api = await MutableAPI.create(session_address)
         cluster_api = await ClusterAPI.create(session_address)
         try:
             web_api = await OscarWebAPI.create(session_address)
@@ -683,7 +688,7 @@ class _IsolatedSession(AbstractAsyncSession):
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, web_api,
+                   cluster_api, web_api, mutable_api,
                    timeout=timeout)
 
     @classmethod
@@ -1048,10 +1053,10 @@ class _IsolatedSession(AbstractAsyncSession):
         return await self._session_api.destroy_remote_object(session_id, name)
 
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
-        return await self._session_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name, default_value)
+        return await self._mutable_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name, default_value)
 
     async def get_mutable_tensor(self, name: str):
-        return await self._session_api.get_mutable_tensor(self._session_id, name)
+        return await self._mutable_api.get_mutable_tensor(self._session_id, name)
 
     async def stop_server(self):
         if self.client:

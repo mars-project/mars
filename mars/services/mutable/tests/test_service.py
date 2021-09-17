@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from ..supervisor.service import MutableTensor
+from ..supervisor.core import MutableTensor
 import pytest
 import numpy as np
 from ....deploy.oscar.local import new_cluster
