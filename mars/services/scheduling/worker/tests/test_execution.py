@@ -324,8 +324,8 @@ async def test_cancel_without_kill(actor_pool):
         execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
         timeout=30,
     )
-    with pytest.raises(asyncio.CancelledError):
-        await asyncio.wait_for(aiotask, timeout=30)
+    r = await asyncio.wait_for(aiotask, timeout=30)
+    assert r.status == SubtaskStatus.cancelled
 
     remote_result = RemoteFunction(function=check_fun, function_args=[],
                                    function_kwargs={}).new_chunk([])
