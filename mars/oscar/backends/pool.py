@@ -21,7 +21,6 @@ import os
 import threading
 import multiprocessing
 from abc import ABC, ABCMeta, abstractmethod
-from enum import Enum
 from typing import Dict, List, Type, TypeVar, Coroutine, Callable, Union, Optional
 
 from ...utils import implements, to_binary
