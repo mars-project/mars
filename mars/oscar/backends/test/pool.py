@@ -48,7 +48,7 @@ class TestMainActorPool(MainActorPool):
     @classmethod
     async def wait_sub_pools_ready(cls,
                                    create_pool_tasks: List[asyncio.Task]):
-        return [(await t)[0] for t in create_pool_tasks]
+        return [await t for t in create_pool_tasks]
 
     @classmethod
     async def _create_sub_pool(
