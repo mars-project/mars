@@ -19,10 +19,11 @@ import multiprocessing
 import os
 import signal
 import sys
-from enum import Enum
+from dataclasses import dataclass
+from types import TracebackType
 from typing import List
 
-from ....utils import get_next_port
+from ....utils import get_next_port, dataslots
 from ..config import ActorPoolConfig
 from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
@@ -59,9 +60,13 @@ elif sys.version_info[:2] == (3, 6):  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-class SubpoolStatus(Enum):
-    succeeded = 0
-    failed = 1
+@dataslots
+@dataclass
+class SubpoolStatus:
+    # for status, 0 is succeeded, 1 is failed
+    status: int = None
+    error: BaseException = None
+    traceback: TracebackType = None
 
 
 @_register_message_handler
@@ -136,8 +141,9 @@ class MainActorPool(MainActorPoolBase):
         processes = []
         for task in create_pool_tasks:
             process, status = await task
-            if status == SubpoolStatus.failed:
-                raise RuntimeError('Start sub pool failed.')
+            if status.status == 1:
+                # start sub pool failed
+                raise status.error.with_traceback(status.traceback)
             processes.append(process)
         return processes
 
@@ -185,7 +191,7 @@ class MainActorPool(MainActorPoolBase):
             actor_config: ActorPoolConfig,
             process_index: int,
             status: multiprocessing.Queue):
-        process_status = SubpoolStatus.succeeded
+        process_status = None
         try:
             env = actor_config.get_pool_config(process_index)['env']
             if env:
@@ -194,9 +200,11 @@ class MainActorPool(MainActorPoolBase):
                 'actor_pool_config': actor_config,
                 'process_index': process_index
             })
+            process_status = SubpoolStatus(status=0)
             await pool.start()
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
-            process_status = SubpoolStatus.failed
+            _, error, tb = sys.exc_info()
+            process_status = SubpoolStatus(status=1, error=error, traceback=tb)
             raise
         finally:
             status.put(process_status)

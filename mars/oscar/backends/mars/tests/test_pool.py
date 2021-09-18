@@ -238,7 +238,7 @@ async def test_fail_when_create_subpool():
                    env={'my_env': '1'})
     _add_pool_conf(config, 2, my_label, 'unixsocket:///2', f'127.0.0.1:{port}')
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(OSError):
         await MainActorPool.create({'actor_pool_config': config})
 
 

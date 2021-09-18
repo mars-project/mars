@@ -585,11 +585,6 @@ MainActorPoolType = TypeVar('MainActorPoolType', bound='MainActorPoolBase')
 SubProcessHandle = Union[multiprocessing.Process, 'ray.actor.ActorHandle']
 
 
-class SubpoolStatus(Enum):
-    succeeded = 0
-    failed = 1
-
-
 class SubActorPoolBase(ActorPoolBase):
     __slots__ = '_main_address',
 

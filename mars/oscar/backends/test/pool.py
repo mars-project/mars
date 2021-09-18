@@ -61,7 +61,7 @@ class TestMainActorPool(MainActorPool):
             'process_index': process_index
         })
         await pool.start()
-        status.put(SubpoolStatus.succeeded)
+        status.put(SubpoolStatus(0))
         await pool.join()
 
     async def kill_sub_pool(self, process: multiprocessing.Process,
