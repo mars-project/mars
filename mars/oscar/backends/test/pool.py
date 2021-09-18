@@ -18,7 +18,7 @@ from typing import List, Dict
 
 from ..config import ActorPoolConfig
 from ..communication import gen_local_address, get_server_type, DummyServer
-from ..mars.pool import MainActorPool, SubActorPool
+from ..mars.pool import MainActorPool, SubActorPool, SubpoolStatus
 from ..pool import ActorPoolType
 
 
@@ -41,22 +41,27 @@ class TestMainActorPool(MainActorPool):
             actor_pool_config: ActorPoolConfig,
             process_index: int,
             start_method: str = None):
-        started = multiprocessing.Event()
+        status_queue = multiprocessing.Queue()
         return asyncio.create_task(
-            cls._create_sub_pool(actor_pool_config, process_index, started))
+            cls._create_sub_pool(actor_pool_config, process_index, status_queue))
+
+    @classmethod
+    async def wait_sub_pools_ready(cls,
+                                   create_pool_tasks: List[asyncio.Task]):
+        return [await t for t in create_pool_tasks]
 
     @classmethod
     async def _create_sub_pool(
             cls,
             actor_config: ActorPoolConfig,
             process_index: int,
-            started: multiprocessing.Event):
+            status_queue: multiprocessing.Queue):
         pool = await TestSubActorPool.create({
             'actor_pool_config': actor_config,
             'process_index': process_index
         })
         await pool.start()
-        started.set()
+        status_queue.put(SubpoolStatus(0))
         await pool.join()
 
     async def kill_sub_pool(self, process: multiprocessing.Process,
