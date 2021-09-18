@@ -14,16 +14,22 @@
 
 import sys
 import itertools
-from typing import List, Union
+from typing import List, Union, Dict, Tuple
 from collections import OrderedDict
 
 from .... import oscar as mo
-from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
+from ....tensor.utils import decide_chunk_sizes
 from ..worker.service import MutableTensorChunkActor
 
 
 class MutableTensorActor(mo.Actor):
-    def __init__(self, shape: tuple, dtype: str, chunk_size, worker_pools, name: str = None, default_value=0):
+    def __init__(self,
+                shape: tuple,
+                dtype: str,
+                chunk_size: Union[int, tuple],
+                worker_pools: Dict[Tuple[str, str], int],
+                name: str,
+                default_value : Union[int, float]=0):
         self._shape = shape
         self._dtype = dtype
         self._work_pools = worker_pools
@@ -54,7 +60,7 @@ class MutableTensorActor(mo.Actor):
             num += 1
             leftchunk -= 1
             if (num == chunknumber//workernumer and leftworker != 1 or leftworker == 1 and leftchunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self.default_value, address=worker_address[leftworker-1])
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self.default_value, address=worker_address[leftworker-1])
                 num = 0
                 chunk_list = OrderedDict()
                 leftworker -= 1
@@ -62,7 +68,7 @@ class MutableTensorActor(mo.Actor):
                 pos = self.calc_index(idx)
                 self._chunkactors_lastindex.append(pos)
 
-    def calc_index(self, idx: tuple):
+    def calc_index(self, idx: tuple) -> int:
         pos = 0; acc = 1
         for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
             it = len(idx) - it-1

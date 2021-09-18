@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from mars.oscar.api import Actor
 from typing import Union, TypeVar
 
 from ....lib.aio import alru_cache
@@ -48,6 +49,6 @@ class MutableAPI(AbstractMutableAPI):
         session = await self._get_session_ref(session_id)
         return await session.create_mutable_tensor(shape, dtype, chunk_size, name, default_value)
 
-    async def get_mutable_tensor(self, session_id: str, name: str):
+    async def get_mutable_tensor(self, session_id: str, name: str) -> mo.ActorRef:
         session = await self._get_session_ref(session_id)
         return await session.get_mutable_tensor(name)

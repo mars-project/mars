@@ -13,26 +13,35 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from mars.core.graph.builder import chunk
+
 from .... import oscar as mo
 from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict, default_value=0) -> None:
+    def __init__(self, chunklist: OrderedDict, name:str, default_value=0) -> None:
         self.idx_chunk = OrderedDict()
-        for k, v in chunklist.items():
-            self.idx_chunk[k] = Chunk(v, default_value)
+        self._chunk_list = chunklist
+        self._name = name
+        self._default_value = default_value
 
     async def __post_create__(self):
-        pass
+        from ...storage import StorageAPI
+        self.storage_api = await StorageAPI.create(self._name, self.address)
+        for k, v in self._chunk_list.items():
+            _chunk = Chunk(k, v, self.address, self.storage_api, self._default_value)
+            await _chunk.initstorage()
+            self.idx_chunk[k] = _chunk
 
     async def __on_receive__(self, message):
         return await super().__on_receive__(message)
 
     async def write(self, index, relatepos, value):
         chunk: Chunk = self.idx_chunk[index]
-        chunk.write(tuple(relatepos), value)
+        await chunk.write(tuple(relatepos), value)
 
     async def read(self, index, relatepos):
         chunk: Chunk = self.idx_chunk[index]
-        return chunk.read(tuple(relatepos))
+        result = await chunk.read(tuple(relatepos))
+        return result

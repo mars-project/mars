@@ -12,16 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Tuple, Union
 import numpy as np
 
 
 class Chunk:
-    def __init__(self, shape, value=None) -> None:
+    def __init__(self,
+                idx: int,
+                shape: Tuple,
+                worker_adress,
+                storage_api,
+                value=None) -> None:
+        self._idx = idx
         self._shape = shape
-        self._tensor = np.full(shape, value)
+        self._worker_address = worker_adress
+        self._storage_api = storage_api
+        self._value = value
 
-    def write(self, index, value):
-        self._tensor[index] = value
+    async def initstorage(self):
+        await self._storage_api.put('data'+str(self._idx), np.full(self._shape, self._value))
 
-    def read(self, index):
-        return self._tensor[index]
+    async def write(self, index, value):
+        tensordata = await self._storage_api.get('data'+str(self._idx))
+        tensordata[index] = value
+        await self._storage_api.put('data'+str(self._idx), tensordata)
+
+    async def read(self, index):
+        tensordata = await self._storage_api.get('data'+str(self._idx))
+        return tensordata[index]
