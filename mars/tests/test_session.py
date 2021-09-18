@@ -474,7 +474,7 @@ def test_fetch_log(fetch_log_setup):
     assert logs == 'inner\nafter'
 
 
-def test_dataframe(setup):
+def test_align_series(setup):
     t = np.random.rand(10, 3)
     pdf = pd.DataFrame(t)
     df = md.DataFrame(pdf, chunk_size=(5, 3))
