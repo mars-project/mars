@@ -261,7 +261,7 @@ class SubtaskExecutionActor(mo.StatelessActor):
             self._subtask_info.pop(subtask.subtask_id, None)
             # make sure new slot usages are uploaded in time
             slot_manager_ref = await self._get_slot_manager_ref(band_name)
-            slot_manager_ref.upload_slot_usages(periodical=False)
+            await slot_manager_ref.upload_slot_usages(periodical=False)
         return subtask_info.result
 
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str,
