@@ -472,10 +472,11 @@ def test_fetch_log(fetch_log_setup):
     rm.execute()
     logs = str(rm.fetch_log()).strip()
     assert logs == 'inner\nafter'
+
+
 def test_dataframe(setup):
     t = np.random.rand(10, 3)
     pdf = pd.DataFrame(t)
-
     df = md.DataFrame(pdf, chunk_size=(5, 3))
     r = df[0] != df.sort_index()[0].shift(-1)
     expected = pdf[0] != pdf.sort_index()[0].shift(-1)
