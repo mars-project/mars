@@ -41,9 +41,9 @@ class TestMainActorPool(MainActorPool):
             actor_pool_config: ActorPoolConfig,
             process_index: int,
             start_method: str = None):
-        status = multiprocessing.Queue()
+        status_queue = multiprocessing.Queue()
         return asyncio.create_task(
-            cls._create_sub_pool(actor_pool_config, process_index, status))
+            cls._create_sub_pool(actor_pool_config, process_index, status_queue))
 
     @classmethod
     async def wait_sub_pools_ready(cls,
@@ -55,13 +55,13 @@ class TestMainActorPool(MainActorPool):
             cls,
             actor_config: ActorPoolConfig,
             process_index: int,
-            status: multiprocessing.Queue):
+            status_queue: multiprocessing.Queue):
         pool = await TestSubActorPool.create({
             'actor_pool_config': actor_config,
             'process_index': process_index
         })
         await pool.start()
-        status.put(SubpoolStatus(0))
+        status_queue.put(SubpoolStatus(0))
         await pool.join()
 
     async def kill_sub_pool(self, process: multiprocessing.Process,

@@ -118,16 +118,16 @@ class MainActorPool(MainActorPoolBase):
 
         def start_pool_in_process():
             ctx = multiprocessing.get_context(method=start_method)
-            status = ctx.Queue()
+            status_queue = ctx.Queue()
             process = ctx.Process(
                 target=cls._start_sub_pool,
-                args=(actor_pool_config, process_index, status),
+                args=(actor_pool_config, process_index, status_queue),
                 name=f'MarsActorPool{process_index}',
             )
             process.daemon = True
             process.start()
             # wait for sub actor pool to finish starting
-            process_status = status.get()
+            process_status = status_queue.get()
             return process, process_status
 
         loop = asyncio.get_running_loop()
@@ -152,7 +152,7 @@ class MainActorPool(MainActorPoolBase):
             cls,
             actor_config: ActorPoolConfig,
             process_index: int,
-            status: multiprocessing.Queue):
+            status_queue: multiprocessing.Queue):
         if not _is_windows:
             try:
                 # register coverage hooks on SIGTERM
@@ -182,7 +182,7 @@ class MainActorPool(MainActorPoolBase):
         else:
             asyncio.set_event_loop(asyncio.new_event_loop())
 
-        coro = cls._create_sub_pool(actor_config, process_index, status)
+        coro = cls._create_sub_pool(actor_config, process_index, status_queue)
         asyncio.run(coro)
 
     @classmethod
@@ -190,7 +190,7 @@ class MainActorPool(MainActorPoolBase):
             cls,
             actor_config: ActorPoolConfig,
             process_index: int,
-            status: multiprocessing.Queue):
+            status_queue: multiprocessing.Queue):
         process_status = None
         try:
             env = actor_config.get_pool_config(process_index)['env']
@@ -207,7 +207,7 @@ class MainActorPool(MainActorPoolBase):
             process_status = SubpoolStatus(status=1, error=error, traceback=tb)
             raise
         finally:
-            status.put(process_status)
+            status_queue.put(process_status)
         await pool.join()
 
     async def kill_sub_pool(self, process: multiprocessing.Process,
@@ -232,7 +232,7 @@ class MainActorPool(MainActorPoolBase):
         process_index = self._config.get_process_index(address)
         # process dead, restart it
         # remember always use spawn to recover sub pool
-        task = asyncio.create_task(self.__class__.start_sub_pool(
+        task = asyncio.create_task(self.start_sub_pool(
             self._config, process_index, 'spawn'))
         self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0]
 
