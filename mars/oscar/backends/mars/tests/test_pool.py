@@ -228,6 +228,23 @@ async def test_sub_actor_pool(notify_main_pool):
 
 
 @pytest.mark.asyncio
+async def test_fail_when_create_subpool():
+    config = ActorPoolConfig()
+    my_label = 'computation'
+    main_address = f'127.0.0.1:{get_next_port()}'
+    port = get_next_port()
+    _add_pool_conf(config, 0, 'main', 'unixsocket:///0', main_address)
+
+    # use the same port for sub pools, will raise `OSError` with "address already in use"
+    _add_pool_conf(config, 1, my_label, 'unixsocket:///1', f'127.0.0.1:{port}',
+                   env={'my_env': '1'})
+    _add_pool_conf(config, 2, my_label, 'unixsocket:///2', f'127.0.0.1:{port}')
+
+    with pytest.raises(OSError):
+        await MainActorPool.create({'actor_pool_config': config})
+
+
+@pytest.mark.asyncio
 async def test_main_actor_pool():
     config = ActorPoolConfig()
     my_label = 'computation'

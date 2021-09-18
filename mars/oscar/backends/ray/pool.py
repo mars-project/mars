@@ -91,6 +91,11 @@ class RayMainActorPool(MainActorPoolBase):
         await actor_handle.start.remote()
         return actor_handle
 
+    @classmethod
+    async def wait_sub_pools_ready(cls,
+                                   create_pool_tasks: List[asyncio.Task]):
+        return [await t for t in create_pool_tasks]
+
     async def recover_sub_pool(self, address: str):
         process = self.sub_processes[address]
         await process.start.remote()
