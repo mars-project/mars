@@ -243,10 +243,13 @@ class SubtaskExecutionActor(mo.StatelessActor):
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req)
-        except asyncio.CancelledError as ex:
+        except asyncio.CancelledError:
+            _, exc, tb = sys.exc_info()
+            logger.exception('Cancel run subtask %s on band %s', subtask.subtask_id, band_name)
             subtask_info.result.status = SubtaskStatus.cancelled
             subtask_info.result.progress = 1.0
-            raise ex
+            subtask_info.result.error = exc
+            subtask_info.result.traceback = tb
         except:  # noqa: E722  # pylint: disable=bare-except
             logger.exception('Failed to run subtask %s on band %s', subtask.subtask_id, band_name)
             _, exc, tb = sys.exc_info()
@@ -356,7 +359,4 @@ class SubtaskExecutionActor(mo.StatelessActor):
             subtask_info.cancelling = True
             subtask_info.aio_task.cancel()
 
-        try:
-            await subtask_info.aio_task
-        except asyncio.CancelledError:
-            pass
+        await subtask_info.aio_task

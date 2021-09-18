@@ -37,7 +37,7 @@ from ....meta import MockMetaAPI
 from ....session import MockSessionAPI
 from ....storage import MockStorageAPI
 from ....storage.handler import StorageHandlerActor
-from ....subtask import MockSubtaskAPI, Subtask
+from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, \
     BandSlotManagerActor
@@ -46,17 +46,21 @@ from ...worker import SubtaskExecutionActor, QuotaActor, \
 class CancelDetectActorMixin:
     @asynccontextmanager
     async def _delay_method(self):
-        delay_fetch_time = getattr(self, '_delay_fetch_time', None)
+        delay_fetch_event = getattr(self, '_delay_fetch_event', None)
+        delay_wait_event = getattr(self, '_delay_wait_event', None)
         try:
-            if delay_fetch_time is not None:
-                await asyncio.sleep(delay_fetch_time)
+            if delay_fetch_event is not None:
+                delay_fetch_event.set()
+            if delay_wait_event is not None:
+                await delay_wait_event.wait()
             yield
         except asyncio.CancelledError:
             self._is_cancelled = True
             raise
 
-    def set_delay_fetch_time(self, delay: float):
-        setattr(self, '_delay_fetch_time', delay)
+    def set_delay_fetch_event(self, fetch_event: asyncio.Event, wait_event: asyncio.Event):
+        setattr(self, '_delay_fetch_event', fetch_event)
+        setattr(self, '_delay_wait_event', wait_event)
 
     def get_is_cancelled(self):
         return getattr(self, '_is_cancelled', False)
@@ -200,6 +204,7 @@ _cancel_phases = [
     'quota',
     'slot',
     'execute',
+    'immediately',
 ]
 
 
@@ -209,6 +214,8 @@ _cancel_phases = [
                          indirect=['actor_pool'])
 async def test_execute_with_cancel(actor_pool, cancel_phase):
     pool, session_id, meta_api, storage_api, execution_ref = actor_pool
+    delay_fetch_event = asyncio.Event()
+    delay_wait_event = asyncio.Event()
 
     # config for different phases
     ref_to_delay = None
@@ -223,7 +230,9 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
         ref_to_delay = await mo.actor_ref(
             BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
     if ref_to_delay:
-        await ref_to_delay.set_delay_fetch_time(100)
+        await ref_to_delay.set_delay_fetch_event(delay_fetch_event, delay_wait_event)
+    else:
+        delay_fetch_event.set()
 
     def delay_fun(delay, _inp1):
         time.sleep(delay)
@@ -248,21 +257,25 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
                       chunk_graph=chunk_graph)
     aiotask = asyncio.create_task(execution_ref.run_subtask(
         subtask, 'numa-0', pool.external_address))
-    await asyncio.sleep(1)
+    if ref_to_delay:
+        await delay_fetch_event.wait()
+    else:
+        if cancel_phase != 'immediately':
+            await asyncio.sleep(1)
 
     with Timer() as timer:
         await asyncio.wait_for(
             execution_ref.cancel_subtask(subtask.subtask_id, kill_timeout=1),
             timeout=30,
         )
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(aiotask, timeout=30)
+        r = await asyncio.wait_for(aiotask, timeout=30)
+        assert r.status == SubtaskStatus.cancelled
     assert timer.duration < 15
 
     # check for different phases
     if ref_to_delay is not None:
         assert await ref_to_delay.get_is_cancelled()
-        await ref_to_delay.set_delay_fetch_time(0)
+        delay_wait_event.set()
 
     # test if slot is restored
     remote_tileable = mr.spawn(delay_fun, args=(0.5, None))
