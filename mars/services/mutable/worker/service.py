@@ -13,14 +13,13 @@
 # limitations under the License.
 
 from collections import OrderedDict
-from mars.core.graph.builder import chunk
 
 from .... import oscar as mo
 from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict, name:str, default_value=0) -> None:
+    def __init__(self, chunklist: OrderedDict, name: str, default_value=0) -> None:
         self.idx_chunk = OrderedDict()
         self._chunk_list = chunklist
         self._name = name
