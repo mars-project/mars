@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from typing import Tuple
+from collections import OrderedDict
 import numpy as np
+import time
 
 
 class Chunk:
@@ -32,11 +34,26 @@ class Chunk:
     async def initstorage(self):
         await self._storage_api.put('data'+str(self._idx), np.full(self._shape, self._value))
 
-    async def write(self, index, value):
-        tensordata = await self._storage_api.get('data'+str(self._idx))
-        tensordata[index] = value
-        await self._storage_api.put('data'+str(self._idx), tensordata)
+    async def write(self, index, value, version_time):
+        try:
+            index_data: OrderedDict = await self._storage_api.get('data'+str(self._idx)+str(index))
+            await self._storage_api.delete('data'+str(self._idx)+str(index))
+            flag = 1
+        except Exception:
+            index_data = OrderedDict()
+            flag = 0
+        index_data[version_time] = value
+        await self._storage_api.put('data'+str(self._idx)+str(index), index_data)
 
-    async def read(self, index):
-        tensordata = await self._storage_api.get('data'+str(self._idx))
-        return tensordata[index]
+    async def read(self, index, version_time):
+        try:
+            index_data: OrderedDict = await self._storage_api.get('data'+str(self._idx)+str(index))
+        except Exception:
+            index_data = OrderedDict()
+        result = self._value
+        for k, v in index_data.items():
+            if k <= version_time:
+                result = v
+            else:
+                break
+        return result

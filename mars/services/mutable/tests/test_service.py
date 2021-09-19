@@ -41,7 +41,7 @@ async def test_mutable_tensor_actor():
 
         await tensor.write(((11, 2, 3), (14, 5, 6), (17, 8, 9)), 1)
         await tensor1.write(((12, 2, 3), (15, 5, 6), (16, 8, 9)), 10)
-        await tensor_useless.write(((0,), (0,), (0,)), 1)
+        await tensor_useless.write(((0,), (0,), (0,)), 1, 1)
         [t] = await tensor1[0, 0, 0]
         assert t == 100
         [t] = await tensor1[11, 14, 17]

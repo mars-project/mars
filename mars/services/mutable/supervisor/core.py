@@ -14,6 +14,7 @@
 
 import sys
 import itertools
+import time
 from typing import List, Union
 
 from .... import oscar as mo
@@ -83,12 +84,11 @@ class MutableTensor:
                 chunk_actor = self._chunk_to_actors[target_index]
                 v = v.T
                 for nidx in v:
-                    val = await chunk_actor.read(idx, nidx)
-                    print(idx, nidx, val)
+                    val = await chunk_actor.read(idx, nidx, time.time())
                     ans_list.append(val)
         return ans_list
 
-    async def write(self, index, value):
+    async def write(self, index, value, version_time=time.time()):
         '''
         Function
         ----------
@@ -118,4 +118,4 @@ class MutableTensor:
                 chunk_actor = self._chunk_to_actors[target_index]
                 v = v.T
                 for nidx in v:
-                    await chunk_actor.write(idx, nidx, value)
+                    await chunk_actor.write(idx, nidx, value, version_time)

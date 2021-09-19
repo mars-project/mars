@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
+import time
 
 from .... import oscar as mo
 from .core import Chunk
@@ -36,11 +37,11 @@ class MutableTensorChunkActor(mo.Actor):
     async def __on_receive__(self, message):
         return await super().__on_receive__(message)
 
-    async def write(self, index, relatepos, value):
+    async def write(self, index, relatepos, value, version_time=time.time()):
         chunk: Chunk = self.idx_chunk[index]
-        await chunk.write(tuple(relatepos), value)
+        await chunk.write(tuple(relatepos), value, version_time)
 
-    async def read(self, index, relatepos):
+    async def read(self, index, relatepos, version_time=None):
         chunk: Chunk = self.idx_chunk[index]
-        result = await chunk.read(tuple(relatepos))
+        result = await chunk.read(tuple(relatepos), version_time)
         return result
