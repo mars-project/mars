@@ -44,7 +44,6 @@ export default class SubtaskGraph extends React.Component {
                     legendTextYLoc: '21',
                 },
             ],
-            displayInputOutput: false,
         };
     }
 
@@ -84,27 +83,41 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?with_info=false&with_input_output=${this.state.displayInputOutput}&with_dependency=true`)
+        }/${tileableId}/subtask?with_input_output=true`)
             .then(res => res.json())
             .then((res) => {
-                this.setState({
-                    subtasks: res.subtasks.map(subtask => {
-                        return (
-                            {
-                                id: subtask.subtaskId,
-                                name: subtask.subtaskName,
-                            }
-                        );
-                    }),
+                let subtaskList = [];
+                let dependencyList = [];
 
-                    dependencies: res.dependencies.map(({fromSubtaskId, toSubtaskId}) => {
+                if (Object.keys(res).length > 0) {
+                    subtaskList = Object.keys(res).map((subtaskId) => {
                         return (
                             {
-                                fromNodeId: fromSubtaskId,
-                                toNodeId: toSubtaskId,
+                                id: subtaskId,
+                                name: res[subtaskId].name
                             }
                         );
-                    }),
+                    });
+
+                    Object.keys(res).filter(
+                        subtaskId => res[subtaskId].fromSubtaskIds.length > 0
+                    ).forEach((subtaskId) => {
+                        let fromNodeIds = res[subtaskId].fromSubtaskIds;
+
+                        fromNodeIds.forEach((fromNodeId) => {
+                            dependencyList.push(
+                                {
+                                    fromNodeId,
+                                    toNodeId: subtaskId,
+                                }
+                            );
+                        });
+                    });
+                }
+
+                this.setState({
+                    subtasks: subtaskList,
+                    dependencies: dependencyList,
                 });
             });
     }
@@ -117,7 +130,7 @@ export default class SubtaskGraph extends React.Component {
         }
 
         fetch(`api/session/${sessionId}/task/${taskId
-        }/${tileableId}/subtask?with_info=true&with_input_output=${this.state.displayInputOutput}&with_dependency=false`)
+        }/${tileableId}/subtask?with_input_output=true`)
             .then(res => res.json())
             .then((res) => {
                 this.setState({
@@ -153,11 +166,6 @@ export default class SubtaskGraph extends React.Component {
             this.fetchSubtaskDetail();
             this.fetchGraphDetail();
         }
-
-        if (prevStates.displayInputOutput !== this.state.displayInputOutput) {
-            this.fetchSubtaskDetail();
-            this.fetchGraphDetail();
-        }
     }
 
     componentWillUnmount() {
@@ -187,17 +195,6 @@ export default class SubtaskGraph extends React.Component {
                 {
                     this.state.subtasks.length + this.state.dependencies.length > 2000 &&
                     <div>Warning: this subtask graph contains a lot of elements and may take some time to load</div>
-                }
-                {
-                    this.state.displayInputOutput
-                        ?
-                        <button onClick={() => this.setState({ displayInputOutput: false })}>
-                            Hide input/output nodes
-                        </button>
-                        :
-                        <button onClick={() => this.setState({ displayInputOutput: true })}>
-                            Display input/output nodes
-                        </button>
                 }
                 <svg
                     id='subtasks-legend'

@@ -386,10 +386,10 @@ async def test_get_tileable_details(start_test_service):
 
 
 @pytest.mark.asyncio
-async def test_get_tileable_subtasks(start_test_service):
+@pytest.mark.parametrize('with_input_output', [False, True])
+async def test_get_tileable_subtasks(start_test_service, with_input_output):
     sv_pool_address, task_api, storage_api = start_test_service
 
-    # Test get graph
     def a():
         return md.DataFrame([[1, 2], [3, 4]])
 
@@ -409,241 +409,28 @@ async def test_get_tileable_subtasks(start_test_service):
     task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
 
     await asyncio.sleep(1)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 False,
-                                                                                 True)
+    tileable_graph_json = await task_api.get_tileable_graph_as_json(task_id)
+    for tileable_json in tileable_graph_json['tileables']:
+        tileable_id = tileable_json['tileableId']
+        subtask_details = await task_api.get_tileable_subtasks(
+            task_id, tileable_id, True)
 
-        with_input_output_subtask_size = len(with_input_output_subtask_details.get('subtasks'))
-        with_input_output_dependency_size = len(with_input_output_subtask_details.get('dependencies'))
-        assert with_input_output_subtask_size >= 0
-        assert with_input_output_dependency_size <= (with_input_output_subtask_size / 2) * (with_input_output_subtask_size / 2)
-        assert ((with_input_output_subtask_size == 0 or with_input_output_subtask_size == 1) and with_input_output_dependency_size == 0) \
-            or (with_input_output_subtask_size > 1 and with_input_output_dependency_size > 0)
+        subtask_deps = []
+        for subtask_id, subtask_detail in subtask_details.items():
+            for from_subtask_id in subtask_detail.get('fromSubtaskIds', ()):
+                subtask_deps.append((from_subtask_id, subtask_id))
+        assert len(subtask_details) > 0
 
-        subtask_ids = set()
-        for subtask in with_input_output_subtask_details.get('subtasks'):
-            assert subtask.get('subtaskId') not in subtask_ids
-            subtask_ids.add(subtask.get('subtaskId'))
+        for from_id, to_id in subtask_deps:
+            assert from_id in subtask_details
+            assert to_id in subtask_details
 
-        for dependency in with_input_output_subtask_details.get('dependencies'):
-            assert dependency.get('fromSubtaskId') in subtask_ids
-            assert dependency.get('toSubtaskId') in subtask_ids
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               False,
-                                                                               True)
-
-        no_input_output_subtask_size = len(no_input_output_subtask_details.get('subtasks'))
-        no_input_output_dependency_size = len(no_input_output_subtask_details.get('dependencies'))
-
-        subtask_ids = set()
-        for subtask in no_input_output_subtask_details.get('subtasks'):
-            assert subtask.get('subtaskId') not in subtask_ids
-            subtask_ids.add(subtask.get('subtaskId'))
-
-        for dependency in no_input_output_subtask_details.get('dependencies'):
-            assert dependency.get('fromSubtaskId') in subtask_ids
-            assert dependency.get('toSubtaskId') in subtask_ids
-
-        assert with_input_output_subtask_size >= no_input_output_subtask_size
-        assert with_input_output_dependency_size >= no_input_output_dependency_size
-
-    # Test get detail
-    session_api = await SessionAPI.create(address=sv_pool_address)
-    ref = await session_api.create_remote_object(
-        task_api._session_id, 'progress_controller', _ProgressController)
-
-    def is_input_or_output(node_type):
-        return node_type == 'Input' or node_type == 'Output'
-
-    graph = TileableGraph([rc.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 True,
-                                                                                 False)
-
-        subtask_ids = set()
-        for subtask_id, subtask_detail in with_input_output_subtask_details.items():
-            subtask_node_type = subtask_detail.get('nodeType')
-            subtask_status = subtask_detail.get('status', -1)
-            subtask_progress = subtask_detail.get('progress', -1)
-
-            assert is_input_or_output(subtask_node_type) \
-                or (subtask_status >= SubtaskStatus.pending.value and subtask_status <= SubtaskStatus.cancelled.value)
-
-            assert is_input_or_output(subtask_node_type) \
-                or (subtask_progress >= 0 and subtask_progress <= 1)
-
-            assert subtask_id not in subtask_ids
-            subtask_ids.add(subtask_id)
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               True,
-                                                                               False)
-
-        subtask_ids = set()
-        for subtask_id, subtask_detail in no_input_output_subtask_details.items():
-            subtask_status = subtask_detail.get('status')
-            subtask_progress = subtask_detail.get('progress')
-
-            assert subtask_status >= SubtaskStatus.pending.value and subtask_status <= SubtaskStatus.cancelled.value
-
-            assert subtask_progress >= 0 and subtask_progress <= 1
-
-            assert subtask_id not in subtask_ids
-            subtask_ids.add(subtask_id)
-
-    def f1(count: int):
-        progress_controller = get_context().get_remote_object('progress_controller')
-        for idx in range(count):
-            progress_controller.wait()
-            get_context().set_progress((1 + idx) * 1.0 / count)
-
-    r = mr.spawn(f1, args=(2,))
-    graph = TileableGraph([r.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-
-    with pytest.raises(TaskNotExist):
-        await task_api.get_tileable_subtasks('non_exist', 'non_exist', False, False, False)
-
-    await asyncio.sleep(0.2)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 True,
-                                                                                 False)
-
-        subtask_ids = set()
-        for subtask_id, subtask_detail in with_input_output_subtask_details.items():
-            subtask_node_type = subtask_detail.get('nodeType')
-
-            assert is_input_or_output(subtask_node_type) or (subtask_detail.get('status') == SubtaskStatus.pending.value)
-
-            assert is_input_or_output(subtask_node_type) or (subtask_detail.get('progress') == 0)
-
-            assert subtask_id not in subtask_ids
-            subtask_ids.add(subtask_id)
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               True,
-                                                                               False)
-
-        subtask_ids = set()
-        for subtask_id, subtask_detail in no_input_output_subtask_details.items():
-            assert subtask_detail.get('status') == SubtaskStatus.pending.value
-
-            assert subtask_detail.get('progress') == 0
-
-            assert subtask_id not in subtask_ids
-            subtask_ids.add(subtask_id)
-
-    await ref.set()
-    await asyncio.sleep(1)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 True,
-                                                                                 False)
-
-        for subtask_id, subtask_detail in with_input_output_subtask_details.items():
-            subtask_node_type = subtask_detail.get('nodeType')
-            subtask_status = subtask_detail.get('status', -1)
-            subtask_progress = subtask_detail.get('progress', -1)
-
-            assert is_input_or_output(subtask_node_type) or \
-                (subtask_status >= SubtaskStatus.pending.value and subtask_status <= SubtaskStatus.cancelled.value)
-
-            assert is_input_or_output(subtask_node_type) or (subtask_progress >= 0 and subtask_progress <= 1)
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               True,
-                                                                               False)
-
-        for subtask_id, subtask_detail in no_input_output_subtask_details.items():
-            subtask_status = subtask_detail.get('status')
-            subtask_progress = subtask_detail.get('progress')
-
-            assert (subtask_status >= SubtaskStatus.pending.value and subtask_status <= SubtaskStatus.cancelled.value)
-
-            assert (subtask_progress >= 0 and subtask_progress <= 1)
-
-    await ref.set()
-    await asyncio.sleep(1)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 True,
-                                                                                 False)
-
-        for subtask_id, subtask_detail in with_input_output_subtask_details.items():
-            subtask_node_type = subtask_detail.get('nodeType')
-
-            assert is_input_or_output(subtask_node_type) \
-                or (subtask_detail.get('status') == SubtaskStatus.succeeded.value)
-
-            assert is_input_or_output(subtask_node_type) \
-                or (subtask_detail.get('progress') == 1)
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               True,
-                                                                               False)
-
-        for subtask_id, subtask_detail in no_input_output_subtask_details.items():
-            assert (subtask_detail.get('status') == SubtaskStatus.succeeded.value)
-            assert (subtask_detail.get('progress') == 1)
-
-    r_errored = mr.spawn(f1, kwargs={'raises': 1})
-    graph = TileableGraph([r_errored.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=True)
-    await task_api.wait_task(task_id)
-    tileable_graph = await task_api.get_tileable_graph_as_json(task_id)
-    for tileable in tileable_graph.get('tileables'):
-        with_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                                 tileable.get('tileableId'),
-                                                                                 True,
-                                                                                 True,
-                                                                                 False)
-
-        for subtask_id, subtask_detail in with_input_output_subtask_details.items():
-            assert is_input_or_output(subtask_detail.get('nodeType')) or \
-                (subtask_detail.get('status') == SubtaskStatus.errored.value)
-
-        no_input_output_subtask_details = await task_api.get_tileable_subtasks(task_id,
-                                                                               tileable.get('tileableId'),
-                                                                               False,
-                                                                               True,
-                                                                               False)
-
-        for subtask_id, subtask_detail in no_input_output_subtask_details.items():
-            assert (subtask_detail.get('status') == SubtaskStatus.errored.value)
+        if with_input_output:
+            tileable_inputs = [dep['fromTileableId'] for dep in tileable_graph_json['dependencies']
+                               if dep['toTileableId'] == tileable_id]
+            tileable_outputs = [dep['toTileableId'] for dep in tileable_graph_json['dependencies']
+                                if dep['fromTileableId'] == tileable_id]
+            if tileable_inputs:
+                assert any(detail['nodeType'] == 'Input' for detail in subtask_details.values())
+            if tileable_outputs:
+                assert any(detail['nodeType'] == 'Output' for detail in subtask_details.values())
