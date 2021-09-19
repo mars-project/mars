@@ -15,7 +15,6 @@
 from typing import Tuple
 from collections import OrderedDict
 import numpy as np
-import time
 
 
 class Chunk:
@@ -38,10 +37,8 @@ class Chunk:
         try:
             index_data: OrderedDict = await self._storage_api.get('data'+str(self._idx)+str(index))
             await self._storage_api.delete('data'+str(self._idx)+str(index))
-            flag = 1
         except Exception:
             index_data = OrderedDict()
-            flag = 0
         index_data[version_time] = value
         await self._storage_api.put('data'+str(self._idx)+str(index), index_data)
 
