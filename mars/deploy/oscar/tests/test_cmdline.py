@@ -15,6 +15,7 @@
 import argparse
 import asyncio
 import glob
+import json
 import os
 import subprocess
 import sys
@@ -35,6 +36,7 @@ from ....tests import flaky
 from ....utils import get_next_port, kill_process_tree
 from ..cmdline import OscarCommandRunner
 from ..worker import WorkerCommandRunner
+from ..supervisor import SupervisorCommandRunner
 
 
 class _ProcessExitedException(Exception):
@@ -230,3 +232,29 @@ def test_parse_args():
     assert app.config['storage']['disk'] == {
             'root_dirs': '/tmp',
     }
+
+
+def test_parse_third_party_modules():
+    config = {'third_party_modules': {
+        'supervisor': ['supervisor.module'],
+        'worker': ['worker.module'],
+    }}
+    env = {
+        'MARS_LOAD_MODULES': 'extra.module'
+    }
+
+    parser = argparse.ArgumentParser(description='TestService')
+    app = WorkerCommandRunner()
+    app.config_args(parser)
+    args = app.parse_args(parser,
+                          ['-c', json.dumps(config), '-p', '10324', '-s', 'sv1,sv2', '--load-modules', 'load.module'],
+                          env)
+    assert args.load_modules == ('load.module', 'worker.module', 'extra.module')
+
+    parser = argparse.ArgumentParser(description='TestService')
+    app = SupervisorCommandRunner()
+    app.config_args(parser)
+    args = app.parse_args(parser,
+                          ['-c', json.dumps(config), '-p', '10324', '-s', 'sv1,sv2', '--load-modules', 'load.module'],
+                          env)
+    assert args.load_modules == ('load.module', 'supervisor.module', 'extra.module')
