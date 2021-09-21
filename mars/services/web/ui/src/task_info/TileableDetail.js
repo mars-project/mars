@@ -63,11 +63,11 @@ class TileableDetail extends React.Component {
                                 </React.Fragment>
                                 :
                                 <Suspense fallback={<div>Loading...</div>}>
-                                <SubtaskGraph
-                                    sessionId={this.props.sessionId}
-                                    taskId={this.props.taskId}
-                                    tileableId={this.props.tileable.id}
-                                />
+                                    <SubtaskGraph
+                                        sessionId={this.props.sessionId}
+                                        taskId={this.props.taskId}
+                                        tileableId={this.props.tileable.id}
+                                    />
                                 </Suspense>
                         }
                     </div>
