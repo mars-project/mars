@@ -98,6 +98,10 @@ jobs:
       displayName: 'Run tests'
 
     - bash: |
+        GIT_ORIGIN="$(git config --get remote.origin.url)"
+        if [[ "$GIT_ORIGIN" == *"mars-project/mars"* ]]; then
+          export CODECOV_TOKEN="f578555e-b4f4-49a8-8d33-b21a305299ee"
+        fi
         bash <(curl -s https://codecov.io/bash)
       displayName: 'Upload coverage'
 
