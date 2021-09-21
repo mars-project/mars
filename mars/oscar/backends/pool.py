@@ -912,7 +912,7 @@ class MainActorPoolBase(ActorPoolBase):
                 # await create_pool_task
                 tasks.append(create_pool_task)
 
-        processes = [await t for t in tasks]
+        processes = await cls.wait_sub_pools_ready(tasks)
         # create main actor pool
         pool: MainActorPoolType = await super().create(config)
         addresses = actor_pool_config.get_external_addresses()[1:]
@@ -949,6 +949,12 @@ class MainActorPoolBase(ActorPoolBase):
             process_index: int,
             start_method: str = None):
         """Start a sub actor pool"""
+
+    @classmethod
+    @abstractmethod
+    async def wait_sub_pools_ready(cls,
+                                   create_pool_tasks: List[asyncio.Task]):
+        """Wait all sub pools ready """
 
     def attach_sub_process(self,
                            external_address: str,
