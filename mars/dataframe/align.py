@@ -154,7 +154,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             if kw.get('dtype', None) is None and getattr(inputs[0], 'dtype', None) is not None:
                 kw['dtype'] = inputs[0].dtype
             if kw.get('name', None) is None and getattr(inputs[0], 'name', None) is not None:
-                kw['name'] = inputs[0].dtype
+                kw['name'] = inputs[0].name
         return kw
 
     def build_reduce_chunk_kw(self, inputs, index, **kw):
@@ -192,7 +192,7 @@ class DataFrameIndexAlign(MapReduceOperand, DataFrameOperandMixin):
             if kw.get('dtype', None) is None and getattr(inputs[0].inputs[0], 'dtype', None) is not None:
                 kw['dtype'] = inputs[0].inputs[0].dtype
             if kw.get('name', None) is None and getattr(inputs[0].inputs[0], 'name', None) is not None:
-                kw['name'] = inputs[0].inputs[0].dtype
+                kw['name'] = inputs[0].inputs[0].name
         return kw
 
     @classmethod
