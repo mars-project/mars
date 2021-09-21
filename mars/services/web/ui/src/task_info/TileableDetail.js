@@ -16,6 +16,7 @@
 
 import React, { lazy, Suspense } from 'react';
 import PropTypes from 'prop-types';
+import { Tabs, Tab } from '@material-ui/core';
 const SubtaskGraph = lazy(() => {
     return import('./SubtaskGraph');
 });
@@ -24,7 +25,17 @@ const SubtaskGraph = lazy(() => {
 class TileableDetail extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {};
+        this.state = {
+            displayedTileableDetail: 0,
+        };
+
+        this.handleDetailTabChange = this.handleDetailTabChange.bind(this);
+    }
+
+    handleDetailTabChange(e, newDetailKey) {
+        this.setState({
+            displayedTileableDetail: newDetailKey
+        });
     }
 
     render() {
@@ -36,16 +47,30 @@ class TileableDetail extends React.Component {
             this.props.tileable
                 ?
                 <React.Fragment>
-                    <h2>Tileable Graph Info:</h2>
-                    <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
-                    <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
-                    <Suspense fallback={<div>Loading...</div>}>
-                        <SubtaskGraph
-                            sessionId={this.props.sessionId}
-                            taskId={this.props.taskId}
-                            tileableId={this.props.tileable.id}
-                        />
-                    </Suspense>
+                    <Tabs value={this.state.displayedTileableDetail} onChange={this.handleDetailTabChange}>
+                        <Tab label='Tileable Info' />
+                        <Tab label='Subtask Info' />
+                    </Tabs><br />
+
+                    <div>
+                        {
+                            this.state.displayedTileableDetail === 0
+                                ?
+                                <React.Fragment>
+                                    <h2>Tileable Graph Info:</h2>
+                                    <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
+                                    <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
+                                </React.Fragment>
+                                :
+                                <Suspense fallback={<div>Loading...</div>}>
+                                <SubtaskGraph
+                                    sessionId={this.props.sessionId}
+                                    taskId={this.props.taskId}
+                                    tileableId={this.props.tileable.id}
+                                />
+                                </Suspense>
+                        }
+                    </div>
                 </React.Fragment>
                 :
                 <React.Fragment>
