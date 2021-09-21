@@ -606,75 +606,63 @@ class TaskProcessorActor(mo.Actor):
             }
         return tileable_infos
 
-    def get_tileable_subtasks(self, tileable_id: str):
-        returned_subtasks = set()
+    def get_tileable_subtasks(self, tileable_id: str, with_input_output: bool):
+        returned_subtasks = dict()
+        subtask_id_to_types = dict()
+
+        subtask_details = dict()
         default_result = SubtaskResult(progress=0.0, status=SubtaskStatus.pending)
 
-        subtask_list = []
-        dependency_list = []
-
-        requested_tileable = None
-        requested_subtasks = None
-
+        subtask_graph = subtask_results = subtask_snapshots = None
         for processor in self._task_id_to_processor.values():
             for stage in processor.stage_processors:
                 if tileable_id in stage.tileable_id_to_tileable:
-                    requested_tileable = stage.tileable_id_to_tileable.get(tileable_id)
-                    requested_subtasks = stage.tileable_to_subtasks.get(requested_tileable, None)
+                    tileable = stage.tileable_id_to_tileable[tileable_id]
+                    returned_subtasks = {
+                        subtask.subtask_id: subtask
+                        for subtask in stage.tileable_to_subtasks[tileable]
+                    }
+                    subtask_graph = stage.subtask_graph
+                    subtask_results = stage.subtask_results
+                    subtask_snapshots = stage.subtask_snapshots
                     break
-            if requested_subtasks is not None:
+            if returned_subtasks:
                 break
 
-        if requested_subtasks is None: # pragma: no cover
-            return {
-                'subtasks': [],
-                'dependencies': []
+        if subtask_graph is None:  # pragma: no cover
+            return {}
+
+        if with_input_output:
+            for subtask in list(returned_subtasks.values()):
+                for pred in subtask_graph.iter_predecessors(subtask):
+                    if pred.subtask_id in returned_subtasks:  # pragma: no cover
+                        continue
+                    returned_subtasks[pred.subtask_id] = pred
+                    subtask_id_to_types[pred.subtask_id] = 'Input'
+                for succ in subtask_graph.iter_successors(subtask):
+                    if succ.subtask_id in returned_subtasks:  # pragma: no cover
+                        continue
+                    returned_subtasks[succ.subtask_id] = succ
+                    subtask_id_to_types[succ.subtask_id] = 'Output'
+
+        for subtask in returned_subtasks.values():
+            subtask_result = subtask_results.get(
+                subtask, subtask_snapshots.get(subtask, default_result)
+            )
+            subtask_details[subtask.subtask_id] = {
+                'name': subtask.subtask_name,
+                'status': subtask_result.status.value,
+                'progress': subtask_result.progress,
+                'nodeType': subtask_id_to_types.get(subtask.subtask_id, 'Calculation'),
             }
 
-        for subtask in requested_subtasks:
-            if subtask.subtask_id not in returned_subtasks:
-                returned_subtasks.add(subtask.subtask_id)
-
-                subtask_result = stage.subtask_results.get(subtask, default_result)
-                progress = subtask_result.progress
-                status = subtask_result.status.value
-
-                subtask_list.append({
-                    'subtaskId': subtask.subtask_id,
-                    'subtaskName': subtask.subtask_name,
-                    'subtaskProgress': progress,
-                    'status': status
-                })
-
-        for subtask in requested_subtasks:
-            for predecessor in stage.subtask_graph.iter_predecessors(subtask):
-                predecessor_id = predecessor.subtask_id
-
-                # If the predecessor is in other tileable subtasks, create
-                # a special node on the graph and mark it with a special
-                # color to inform the user that the current subtask has
-                # dependencies from other tileables, so users
-                # won't just see a subtask that is rendered isolatedly
-                # on the frontend
-                if predecessor_id not in returned_subtasks:
-                    returned_subtasks.add(predecessor_id)
-                    subtask_list.append({
-                        'subtaskId': predecessor_id,
-                        'subtaskProgress': -1,
-                        'status': -1
-                    })
-
-                dependency_list.append({
-                    'fromSubtaskId': predecessor_id,
-                    'toSubtaskId': subtask.subtask_id,
-                })
-
-        subtask_dict = {
-            'subtasks': subtask_list,
-            'dependencies': dependency_list
-        }
-
-        return subtask_dict
+        for subtask in returned_subtasks.values():
+            pred_ids = []
+            for pred in subtask_graph.iter_predecessors(subtask):
+                if pred.subtask_id in returned_subtasks:
+                    pred_ids.append(pred.subtask_id)
+            subtask_details[subtask.subtask_id]['fromSubtaskIds'] = pred_ids
+        return subtask_details
 
     def get_result_tileable(self, tileable_key: str):
         processor = list(self._task_id_to_processor.values())[-1]
