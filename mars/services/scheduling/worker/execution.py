@@ -83,6 +83,21 @@ async def _retry_run(subtask: Subtask,
             raise ex
 
 
+def _fill_subtask_result_with_exception(subtask: Subtask, subtask_info: SubtaskExecutionInfo):
+    _, exc, tb = sys.exc_info()
+    if isinstance(exc, asyncio.CancelledError):
+        status = SubtaskStatus.cancelled
+        log_str = 'Cancel'
+    else:
+        status = SubtaskStatus.errored
+        log_str = 'Failed to'
+    logger.exception('%s run subtask %s on band %s', log_str, subtask.subtask_id, subtask_info.band_name)
+    subtask_info.result.status = status
+    subtask_info.result.progress = 1.0
+    subtask_info.result.error = exc
+    subtask_info.result.traceback = tb
+
+
 class SubtaskExecutionActor(mo.StatelessActor):
     _subtask_info: Dict[str, SubtaskExecutionInfo]
 
@@ -243,25 +258,17 @@ class SubtaskExecutionActor(mo.StatelessActor):
             batch_quota_req = {(subtask.session_id, subtask.subtask_id): calc_size}
             subtask_info.result = await self._retry_run_subtask(
                 subtask, band_name, subtask_api, batch_quota_req)
-        except asyncio.CancelledError:
-            _, exc, tb = sys.exc_info()
-            logger.exception('Cancel run subtask %s on band %s', subtask.subtask_id, band_name)
-            subtask_info.result.status = SubtaskStatus.cancelled
-            subtask_info.result.progress = 1.0
-            subtask_info.result.error = exc
-            subtask_info.result.traceback = tb
         except:  # noqa: E722  # pylint: disable=bare-except
-            logger.exception('Failed to run subtask %s on band %s', subtask.subtask_id, band_name)
-            _, exc, tb = sys.exc_info()
-            subtask_info.result.status = SubtaskStatus.errored
-            subtask_info.result.progress = 1.0
-            subtask_info.result.error = exc
-            subtask_info.result.traceback = tb
+            _fill_subtask_result_with_exception(subtask, subtask_info)
         finally:
-            self._subtask_info.pop(subtask.subtask_id, None)
             # make sure new slot usages are uploaded in time
-            slot_manager_ref = await self._get_slot_manager_ref(band_name)
-            await slot_manager_ref.upload_slot_usages(periodical=False)
+            try:
+                slot_manager_ref = await self._get_slot_manager_ref(band_name)
+                await slot_manager_ref.upload_slot_usages(periodical=False)
+            except:  # noqa: E722  # pylint: disable=bare-except
+                _fill_subtask_result_with_exception(subtask, subtask_info)
+            # pop the subtask info at the end is to cancel the job.
+            self._subtask_info.pop(subtask.subtask_id, None)
         return subtask_info.result
 
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str,

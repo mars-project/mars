@@ -41,6 +41,7 @@ from ....subtask import MockSubtaskAPI, Subtask, SubtaskStatus
 from ....task.supervisor.manager import TaskManagerActor
 from ...worker import SubtaskExecutionActor, QuotaActor, \
     BandSlotManagerActor
+from ...supervisor import GlobalSlotManagerActor
 
 
 class CancelDetectActorMixin:
@@ -88,8 +89,32 @@ class MockQuotaActor(QuotaActor, CancelDetectActorMixin):
 
 class MockBandSlotManagerActor(BandSlotManagerActor, CancelDetectActorMixin):
     async def acquire_free_slot(self, session_stid: Tuple[str, str], block=True):
-        async with self._delay_method():
+        if getattr(self, '_delay_function', None) != 'acquire_free_slot':
             return super().acquire_free_slot(session_stid, block)
+        else:
+            async with self._delay_method():
+                return super().acquire_free_slot(session_stid, block)
+
+    async def upload_slot_usages(self, periodical: bool = False):
+        if getattr(self, '_delay_function', None) != 'upload_slot_usages' or periodical is True:
+            return super().upload_slot_usages(periodical)
+        else:
+            async with self._delay_method():
+                return super().upload_slot_usages(periodical)
+
+    def set_delay_function(self, name):
+        self._delay_function = name
+
+
+class MockGlobalSlotManagerActor(GlobalSlotManagerActor, CancelDetectActorMixin):
+    async def __post_create__(self):
+        pass
+
+    async def __pre_destroy__(self):
+        pass
+
+    async def update_subtask_slots(self, band, session_id: str, subtask_id: str, slots: int):
+        pass
 
 
 class MockTaskManager(mo.Actor):
@@ -135,6 +160,12 @@ async def actor_pool(request):
                                               (pool.external_address, 'numa-0'), n_slots,
                                               uid=BandSlotManagerActor.gen_uid('numa-0'),
                                               address=pool.external_address)
+
+        # create global slot manager actor
+        global_slot_ref = await mo.create_actor(MockGlobalSlotManagerActor,
+                                                uid=GlobalSlotManagerActor.default_uid(),
+                                                address=pool.external_address)
+
         # create mock task manager actor
         task_manager_ref = await mo.create_actor(MockTaskManager,
                                                  uid=TaskManagerActor.gen_uid(session_id),
@@ -145,6 +176,7 @@ async def actor_pool(request):
         finally:
             await mo.destroy_actor(task_manager_ref)
             await mo.destroy_actor(band_slot_ref)
+            await mo.destroy_actor(global_slot_ref)
             await mo.destroy_actor(quota_ref)
             await mo.destroy_actor(execution_ref)
             await MockStorageAPI.cleanup(pool.external_address)
@@ -204,6 +236,7 @@ _cancel_phases = [
     'quota',
     'slot',
     'execute',
+    'finally',
     'immediately',
 ]
 
@@ -229,14 +262,20 @@ async def test_execute_with_cancel(actor_pool, cancel_phase):
     elif cancel_phase == 'slot':
         ref_to_delay = await mo.actor_ref(
             BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
+        await ref_to_delay.set_delay_function('acquire_free_slot')
+    elif cancel_phase == 'finally':
+        ref_to_delay = await mo.actor_ref(
+            BandSlotManagerActor.gen_uid('numa-0'), address=pool.external_address)
+        await ref_to_delay.set_delay_function('upload_slot_usages')
     if ref_to_delay:
         await ref_to_delay.set_delay_fetch_event(delay_fetch_event, delay_wait_event)
     else:
         delay_fetch_event.set()
 
     def delay_fun(delay, _inp1):
-        time.sleep(delay)
-        return delay
+        if not ref_to_delay:
+            time.sleep(delay)
+        return delay,
 
     input1 = TensorFetch(key='input1', source_key='input1', dtype=np.dtype(int)).new_chunk([])
     remote_result = RemoteFunction(function=delay_fun, function_args=[100, input1],
