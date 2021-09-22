@@ -1074,6 +1074,7 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
         from ...services.cluster import WebClusterAPI
+        from ...services.mutable.api.web import WebMutableAPI
 
         session_api = WebSessionAPI(address)
         if new:
@@ -1085,11 +1086,12 @@ class _IsolatedWebSession(_IsolatedSession):
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
         cluster_api = WebClusterAPI(address)
+        mutable_api = WebMutableAPI(address)
 
         return cls(address, session_id,
                    session_api, meta_api,
                    lifecycle_api, task_api,
-                   cluster_api, None, timeout=timeout)
+                   cluster_api, mutable_api, None, timeout=timeout)
 
     async def get_web_endpoint(self) -> Optional[str]:
         return self.address
