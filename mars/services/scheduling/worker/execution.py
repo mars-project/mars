@@ -267,8 +267,9 @@ class SubtaskExecutionActor(mo.StatelessActor):
                 await slot_manager_ref.upload_slot_usages(periodical=False)
             except:  # noqa: E722  # pylint: disable=bare-except
                 _fill_subtask_result_with_exception(subtask, subtask_info)
-            # pop the subtask info at the end is to cancel the job.
-            self._subtask_info.pop(subtask.subtask_id, None)
+            finally:
+                # pop the subtask info at the end is to cancel the job.
+                self._subtask_info.pop(subtask.subtask_id, None)
         return subtask_info.result
 
     async def _retry_run_subtask(self, subtask: Subtask, band_name: str,
