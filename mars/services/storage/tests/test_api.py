@@ -66,7 +66,6 @@ if ray is not None:
 if vineyard is not None:
     storage_configs.append({'vineyard': dict(
         vineyard_size='256M',
-        vineyard_socket='/tmp/vineyard.sock'
     )})
 
 # shared_memory

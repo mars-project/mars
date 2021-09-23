@@ -127,14 +127,17 @@ class VineyardStorage(StorageBackend):
             raise TypeError(f'VineyardStorage got unexpected config: {",".join(kwargs)}')
 
         vineyard_size = calc_size_by_str(vineyard_size, virtual_memory().total)
-        vineyard_store = vineyard.deploy.local.start_vineyardd(
-            etcd_endpoints,
-            vineyardd_path,
-            vineyard_size,
-            vineyard_socket,
-            rpc=False)
-        vineyard_socket = (await loop.run_in_executor(
-            None, vineyard_store.__enter__))[1]
+        if vineyard_socket is not None:  # pragma: no cover
+            vineyard_store = None
+        else:
+            vineyard_store = vineyard.deploy.local.start_vineyardd(
+                etcd_endpoints,
+                vineyardd_path,
+                vineyard_size,
+                vineyard_socket,
+                rpc=False)
+            vineyard_socket = (await loop.run_in_executor(
+                None, vineyard_store.__enter__))[1]
         init_params = dict(vineyard_size=vineyard_size,
                            vineyard_socket=vineyard_socket)
         teardown_params = dict(vineyard_store=vineyard_store)
@@ -144,7 +147,8 @@ class VineyardStorage(StorageBackend):
     @implements(StorageBackend.teardown)
     async def teardown(**kwargs):
         vineyard_store = kwargs.get('vineyard_store')
-        vineyard_store.__exit__(None, None, None)
+        if vineyard_store is not None:
+            vineyard_store.__exit__(None, None, None)
 
     @property
     @implements(StorageBackend.level)
