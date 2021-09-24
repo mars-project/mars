@@ -29,7 +29,7 @@ from ....tensor import arange, tensor
 from ....tensor.random import rand
 from ....tests.core import require_cudf
 from ....utils import lazy_import
-from ... import eval as mars_eval, cut, qcut
+from ... import eval as mars_eval, cut, qcut, get_dummies
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.index import from_pandas as from_pandas_index
@@ -903,7 +903,62 @@ def test_transpose_execution(setup):
     pd.testing.assert_frame_equal(result, raw.transpose())
 
 
-def test_to_numeric_execition(setup):
+def test_get_dummies_execution(setup):
+    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    # test 1 chunk
+    df = from_pandas_df(raw)
+    r = get_dummies(df)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
+    # test multi chunks
+    df = from_pandas_df(raw, chunk_size=2)
+    r = get_dummies(df)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw))
+
+    # test prefix and prefix_sep
+    df = from_pandas_df(raw, chunk_size=2)
+    r = get_dummies(df, prefix=["col1", "col2"], prefix_sep="_")
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, prefix=["col1", "col2"], prefix_sep="_"))
+
+    r = get_dummies(df, prefix={'b': 'col1', 'd': 'col2'}, prefix_sep="_")
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, prefix={'b': 'col1', 'd': 'col2'}, prefix_sep="_"))
+
+    # test dummy_na
+    raw = pd.Series(['a', 'b', 'c', np.nan])
+    df = from_pandas_series(raw)
+    r = get_dummies(df, dummy_na=False)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, dummy_na=False))
+
+    # test columns
+    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    df = from_pandas_df(raw, chunk_size=2)
+    r = get_dummies(df, columns=['c'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, columns=['c']))
+
+    r = get_dummies(df, columns=['c', 'd'], prefix=['col1', 'col2'])
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, columns=['c', 'd'], prefix=['col1', 'col2']))
+
+    # test drop_first
+    df = from_pandas_df(raw, chunk_size=2)
+    r = get_dummies(df, drop_first=True)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, drop_first=True))
+
+    # test dtype
+    df = from_pandas_df(raw, chunk_size=2)
+    r = get_dummies(df, dtype=float)
+    pd.testing.assert_frame_equal(r.execute().fetch(),
+                                  pd.get_dummies(raw, dtype=float))
+
+
+def test_to_numeric_execution(setup):
     rs = np.random.RandomState(0)
     s = pd.Series(rs.randint(5, size=100))
     s[rs.randint(100)] = np.nan

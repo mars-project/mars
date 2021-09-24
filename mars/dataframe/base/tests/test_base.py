@@ -21,7 +21,7 @@ from ....config import options, option_context
 from ....core import OutputType, tile
 from ....core.operand import OperandStage
 from ....tensor.core import TENSOR_TYPE
-from ... import eval as mars_eval, cut, to_numeric
+from ... import eval as mars_eval, cut, get_dummies, to_numeric
 from ...core import DATAFRAME_TYPE, SERIES_TYPE, SERIES_CHUNK_TYPE, \
     INDEX_TYPE, CATEGORICAL_TYPE, CATEGORICAL_CHUNK_TYPE
 from ...datasource.dataframe import from_pandas as from_pandas_df
@@ -746,6 +746,26 @@ def test_astype():
 
     with pytest.raises(KeyError):
         astype(df, {'c': 'str', 'a': 'str'})
+
+
+def test_get_dummies():
+    raw = pd.DataFrame({"a": [1.1, 2.1, 3.1], "b": ['5', '-6', '-7'], "c": [1, 2, 3], "d": ['2', '3', '4']})
+    df = from_pandas_df(raw, chunk_size=2)
+
+    with pytest.raises(TypeError):
+        _ = get_dummies(df, columns='a')
+
+    with pytest.raises(ValueError):
+        _ = get_dummies(df, prefix=['col1'])
+
+    with pytest.raises(ValueError):
+        _ = get_dummies(df, columns=['a'], prefix={'a': 'col1', 'c': 'col2'})
+
+    with pytest.raises(KeyError):
+        _ = get_dummies(df, columns=['a', 'b'], prefix={'a': 'col1', 'c': 'col2'})
+
+    r = tile(get_dummies(df))
+    assert isinstance(r, DATAFRAME_TYPE)
 
 
 def test_drop():
