@@ -224,6 +224,7 @@ class GraphAnalyzer:
             expect_bands=[band] if band is not None else None,
             virtual=virtual,
             priority=priority,
+            retryable=all(getattr(chunk.op, 'retryable', True) for chunk in subtask_chunk_graph),
             extra_config=self._extra_config)
         return subtask
 

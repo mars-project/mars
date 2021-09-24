@@ -36,7 +36,12 @@ RAY_CONFIG_FILE = os.path.join(
 FAULT_INJECTION_CONFIG = {
     "third_party_modules": ["mars.services.tests.fault_injection_patch"],
 }
-SUBTASK_RERUN_CONFIG = {"scheduling": {"subtask_max_retries": 2}}
+SUBTASK_RERUN_CONFIG = {
+    "scheduling": {
+        "subtask_max_retries": 2,
+        "subtask_max_reschedules": 2,
+    }
+}
 
 
 @pytest.fixture
@@ -77,7 +82,9 @@ async def test_fault_inject_subtask_processor(ray_start_regular, fault_cluster, 
                          [[FaultType.Exception, {FaultPosition.ON_EXECUTE_OPERAND: 1},
                            pytest.raises(FaultInjectionError, match='Fault Injection')],
                           [FaultType.ProcessExit, {FaultPosition.ON_EXECUTE_OPERAND: 1},
-                           pytest.raises(ServerClosed)]])
+                           pytest.raises(ServerClosed)],
+                          [FaultType.Exception, {FaultPosition.ON_RUN_SUBTASK: 1},
+                           pytest.raises(FaultInjectionError, match='Fault Injection')]])
 @pytest.mark.asyncio
 async def test_rerun_subtask(ray_start_regular, fault_cluster, fault_config):
     await test_fault_injection.test_rerun_subtask(fault_cluster, fault_config)
