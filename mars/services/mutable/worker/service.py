@@ -30,8 +30,7 @@ class MutableTensorChunkActor(mo.Actor):
         from ...storage import StorageAPI
         self.storage_api = await StorageAPI.create(self._name, self.address)
         for k, v in self._chunk_list.items():
-            _chunk = Chunk(k, v, self.address, self.storage_api, self._default_value)
-            await _chunk.initstorage()
+            _chunk = Chunk(k, *v, self.address, self.storage_api, self._default_value)
             self.idx_chunk[k] = _chunk
 
     async def __on_receive__(self, message):

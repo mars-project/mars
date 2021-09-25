@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union, TypeVar
+import uuid
+from typing import TypeVar
+from collections import OrderedDict
 
 from ....lib.aio import alru_cache
 from .... import oscar as mo
-from ...session.supervisor.core import SessionActor, SessionManagerActor
+from ....utils import to_binary
+from ...core import NodeRole
+from ...cluster.api.oscar import ClusterAPI
+from ..supervisor.service import MutableTensorActor
+from ..supervisor.core import MutableTensor
 from .core import AbstractMutableAPI
 
 
@@ -26,28 +32,29 @@ APIType = TypeVar('APIType', bound='MutableAPI')
 class MutableAPI(AbstractMutableAPI):
     def __init__(self,
                  address: str,
-                 session_manager: Union[SessionManagerActor, mo.ActorRef]):
+                 cluster_api):
         self._address = address
-        self._session_manager_ref = session_manager
+        self._cluster_api = cluster_api
+        self._tensor_check = OrderedDict()
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls, address: str, **kwargs) -> "MutableAPI":
-        if kwargs:  # pragma: no cover
-            raise TypeError(f'SessionAPI.create '
-                            f'got unknown arguments: {list(kwargs)}')
-        session_manager = await mo.actor_ref(
-            address, SessionManagerActor.default_uid())
-        return MutableAPI(address, session_manager)
+    async def create(cls, address: str) -> "MutableAPI":
+        cluster_api = await ClusterAPI.create(address)
+        return MutableAPI(address, cluster_api)
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_session_ref(self, session_id: str) -> Union[SessionActor, mo.ActorRef]:
-        return await self._session_manager_ref.get_session_ref(session_id)
+    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str=None, default_value=0):
+        worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
+        if name is None:
+            name = str(uuid.uuid1())
+        ref = await mo.create_actor(
+            MutableTensorActor, shape, dtype, chunk_size, worker_pools, name, default_value, address=self._address, uid=to_binary(name))
+        wrapper = await MutableTensor.create(ref)
+        self._tensor_check[name] = wrapper
+        return wrapper
 
-    async def create_mutable_tensor(self, session_id: str, shape: tuple, dtype: str, chunk_size, name: str=None, default_value=0):
-        session = await self._get_session_ref(session_id)
-        return await session.create_mutable_tensor(shape, dtype, chunk_size, name, default_value)
-
-    async def get_mutable_tensor(self, session_id: str, name: str) -> mo.ActorRef:
-        session = await self._get_session_ref(session_id)
-        return await session.get_mutable_tensor(name)
+    async def get_mutable_tensor(self, name: str) -> mo.ActorRef:
+        if name in self._tensor_check.keys():
+            return self._tensor_check[name]
+        else:
+            raise ValueError('invalid name!')

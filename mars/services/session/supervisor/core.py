@@ -128,15 +128,12 @@ class SessionActor(mo.Actor):
 
         self._custom_log_meta_ref = None
 
-        self.mtensor_dict = OrderedDict()
-
     @classmethod
     def gen_uid(cls, session_id):
         return f'{session_id}_session_actor'
 
     async def __post_create__(self):
         from .custom_log import CustomLogMetaActor
-        self._cluster_api = await ClusterAPI.create(self.address)
 
         self._custom_log_meta_ref = await mo.create_actor(
             CustomLogMetaActor, self._session_id,
@@ -172,22 +169,6 @@ class SessionActor(mo.Actor):
 
     async def destroy_remote_object(self, name: str):
         return await mo.destroy_actor(mo.ActorRef(self.address, to_binary(name)))
-
-    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
-        worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
-        if name is None:
-            name = str(uuid.uuid1())
-        ref = await mo.create_actor(
-            MutableTensorActor, shape, dtype, chunk_size, worker_pools, name, default_value, address=self.address, uid=to_binary(name))
-        wrapper = await MutableTensor.create(ref)
-        self.mtensor_dict[name] = wrapper
-        return wrapper
-
-    async def get_mutable_tensor(self, name: str):
-        if name in self.mtensor_dict.keys():
-            return self.mtensor_dict[name]
-        else:
-            raise ValueError('invalid name!')
 
 
 class RemoteObjectActor(mo.Actor):

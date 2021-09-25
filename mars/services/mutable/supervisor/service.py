@@ -18,6 +18,9 @@ from typing import List, Union, Dict, Tuple
 from collections import OrderedDict
 
 from .... import oscar as mo
+from .... import tensor as mt
+from ....utils import build_fetch
+from ....core import tile
 from ....tensor.utils import decide_chunk_sizes
 from ..worker.service import MutableTensorChunkActor
 
@@ -45,31 +48,42 @@ class MutableTensorActor(mo.Actor):
         await self.assign_chunks()
 
     async def assign_chunks(self):
-        leftworker = workernumer = len(self._work_pools)
         worker_address = []
         for k in self._work_pools.items():
             worker_address.append(str(k[0][0]))
-        chunknumber = 1
-        num = 0
+
+        tensor = build_fetch(tile(mt.random.rand(*self._shape, chunk_size=self._chunk_size, dtype='int')))
+
+        worker_number = len(self._work_pools)
+        left_worker = worker_number
+
+        chunk_number = 1
         for nsplit in self._nsplits:
-            chunknumber *= len(nsplit)
-        leftchunk = chunknumber
+            chunk_number *= len(nsplit)
+        left_chunk = chunk_number
+
+        chunks_in_list = 0
         chunk_list = OrderedDict()
-        for idx in itertools.product(*(range(len(nsplit)) for nsplit in self._nsplits)):
-            chunk_list[idx] = [self._nsplits[i][idx[i]] for i in range(len(idx))]
-            num += 1
-            leftchunk -= 1
-            if (num == chunknumber//workernumer and leftworker != 1 or leftworker == 1 and leftchunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self.default_value, address=worker_address[leftworker-1])
-                num = 0
+
+        for _chunk in tensor.chunks:
+            chunk_list[_chunk.index] = ([self._nsplits[i][_chunk.index[i]] for i in range(len(_chunk.index))], _chunk.key)
+            chunks_in_list += 1
+            left_chunk -= 1
+
+            if (chunks_in_list == chunk_number//worker_number and left_worker != 1 or left_worker == 1 and left_chunk == 0):
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self.default_value, address=worker_address[left_worker-1])
+
                 chunk_list = OrderedDict()
-                leftworker -= 1
+                chunks_in_list = 0
+
+                left_worker -= 1
+
                 self._chunk_to_actors.append(chunk_ref)
-                pos = self.calc_index(idx)
-                self._chunkactors_lastindex.append(pos)
+                self._chunkactors_lastindex.append(self.calc_index(_chunk.index))
 
     def calc_index(self, idx: tuple) -> int:
-        pos = 0; acc = 1
+        pos = 0
+        acc = 1
         for it, nsplit in zip(itertools.count(0), reversed(self._nsplits)):
             it = len(idx) - it-1
             pos += acc*(idx[it])

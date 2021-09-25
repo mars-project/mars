@@ -41,7 +41,7 @@ from ...services.cluster import AbstractClusterAPI, ClusterAPI
 from ...services.lifecycle import AbstractLifecycleAPI, LifecycleAPI
 from ...services.meta import MetaAPI, AbstractMetaAPI
 from ...services.session import AbstractSessionAPI, SessionAPI
-from ...services.mutable.api.oscar import MutableAPI
+from ...services.mutable import MutableAPI
 from ...services.storage import StorageAPI
 from ...services.task import AbstractTaskAPI, TaskAPI, TaskResult
 from ...services.web import OscarWebAPI
@@ -1052,10 +1052,10 @@ class _IsolatedSession(AbstractAsyncSession):
         return await self._session_api.destroy_remote_object(session_id, name)
 
     async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
-        return await self._mutable_api.create_mutable_tensor(self._session_id, shape, dtype, chunk_size, name, default_value)
+        return await self._mutable_api.create_mutable_tensor(shape, dtype, chunk_size, name, default_value)
 
     async def get_mutable_tensor(self, name: str):
-        return await self._mutable_api.get_mutable_tensor(self._session_id, name)
+        return await self._mutable_api.get_mutable_tensor(name)
 
     async def stop_server(self):
         if self.client:
@@ -1074,7 +1074,7 @@ class _IsolatedWebSession(_IsolatedSession):
         from ...services.meta import WebMetaAPI
         from ...services.task import WebTaskAPI
         from ...services.cluster import WebClusterAPI
-        from ...services.mutable.api.web import WebMutableAPI
+        from ...services.mutable import WebMutableAPI
 
         session_api = WebSessionAPI(address)
         if new:

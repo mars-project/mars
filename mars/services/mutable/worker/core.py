@@ -14,37 +14,35 @@
 
 from typing import Tuple
 from collections import OrderedDict
-import numpy as np
 
 
 class Chunk:
     def __init__(self,
                 idx: int,
                 shape: Tuple,
+                storage_key,
                 worker_adress,
                 storage_api,
                 value=None) -> None:
         self._idx = idx
         self._shape = shape
+        self._storage_key = storage_key
         self._worker_address = worker_adress
         self._storage_api = storage_api
         self._value = value
-
-    async def initstorage(self):
-        await self._storage_api.put('data'+str(self._idx), np.full(self._shape, self._value))
+        self._ops = OrderedDict()
 
     async def write(self, index, value, version_time):
         try:
-            index_data: OrderedDict = await self._storage_api.get('data'+str(self._idx)+str(index))
-            await self._storage_api.delete('data'+str(self._idx)+str(index))
+            index_data: OrderedDict = self._ops[index]
         except Exception:
             index_data = OrderedDict()
         index_data[version_time] = value
-        await self._storage_api.put('data'+str(self._idx)+str(index), index_data)
+        self._ops[index] = index_data
 
     async def read(self, index, version_time):
         try:
-            index_data: OrderedDict = await self._storage_api.get('data'+str(self._idx)+str(index))
+            index_data: OrderedDict = self._ops[index]
         except Exception:
             index_data = OrderedDict()
         result = self._value

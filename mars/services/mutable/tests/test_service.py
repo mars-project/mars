@@ -39,7 +39,7 @@ async def test_mutable_tensor_actor():
         except Exception as e:
             assert str(e) == 'invalid name!'
 
-        await tensor.write(((11, 2, 3), (14, 5, 6), (17, 8, 9)), 1)
+        await tensor.write(((11, 2, 3, 50), (14, 5, 6, 50), (17, 8, 9, 50)), 1)
         await tensor1.write(((12, 2, 3), (15, 5, 6), (16, 8, 9)), 10)
         await tensor_useless.write(((0,), (0,), (0,)), 1, 1)
         [t] = await tensor1[0, 0, 0]
@@ -48,3 +48,5 @@ async def test_mutable_tensor_actor():
         assert t == 1
         [t] = await tensor1[(3,), (6,), (9,)]
         assert t == 10
+        [t] = await tensor[50, 50, 50]
+        assert t == 1
