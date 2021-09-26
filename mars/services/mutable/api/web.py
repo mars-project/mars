@@ -21,8 +21,8 @@ class WebMutableAPI(AbstractMutableAPI):
     def __init__(self, address: str):
         self._address = address.rstrip('/')
 
-    async def create_mutable_tensor(self, session_id: str, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
+    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
         pass
 
-    async def get_mutable_tensor(self, session_id: str, name: str):
+    async def get_mutable_tensor(self, name: str):
         pass
