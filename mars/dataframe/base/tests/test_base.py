@@ -764,7 +764,7 @@ def test_get_dummies():
     with pytest.raises(KeyError):
         _ = get_dummies(df, columns=['a', 'b'], prefix={'a': 'col1', 'c': 'col2'})
 
-    r = tile(get_dummies(df))
+    r = get_dummies(df)
     assert isinstance(r, DATAFRAME_TYPE)
 
 
