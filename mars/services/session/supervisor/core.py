@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import asyncio
-import uuid
 import functools
 from typing import Dict, List, Optional
-from collections import OrderedDict
 
 from .... import oscar as mo
 from ....utils import to_binary
@@ -24,8 +22,6 @@ from ...cluster import ClusterAPI
 from ...core import NodeRole, create_service_session, \
     destroy_service_session
 from ..core import SessionInfo
-from ...mutable.supervisor.service import MutableTensorActor
-from ...mutable.supervisor.core import MutableTensor
 
 
 class SessionManagerActor(mo.Actor):

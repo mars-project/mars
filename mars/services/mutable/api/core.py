@@ -19,7 +19,6 @@ class AbstractMutableAPI(ABC):
 
     @abstractmethod
     async def create_mutable_tensor(self,
-                                    session_id: str,
                                     shape: tuple,
                                     dtype: str,
                                     chunk_size,
@@ -30,7 +29,7 @@ class AbstractMutableAPI(ABC):
         '''
 
     @abstractmethod
-    async def get_mutable_tensor(self, session_id: str, name: str):
+    async def get_mutable_tensor(self, name: str):
         '''
         get mutable tensor
         '''

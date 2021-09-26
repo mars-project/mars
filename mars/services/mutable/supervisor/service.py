@@ -39,7 +39,7 @@ class MutableTensorActor(mo.Actor):
         self._name = name
         self._chunk_size = chunk_size
         self._chunks = []
-        self.default_value = default_value
+        self._default_value = default_value
         self._chunk_to_actors = []
         self._chunkactors_lastindex = []
         self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
@@ -53,6 +53,7 @@ class MutableTensorActor(mo.Actor):
             worker_address.append(str(k[0][0]))
 
         tensor = build_fetch(tile(mt.random.rand(*self._shape, chunk_size=self._chunk_size, dtype='int')))
+        self.sealed = tensor
 
         worker_number = len(self._work_pools)
         left_worker = worker_number
@@ -71,7 +72,7 @@ class MutableTensorActor(mo.Actor):
             left_chunk -= 1
 
             if (chunks_in_list == chunk_number//worker_number and left_worker != 1 or left_worker == 1 and left_chunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self.default_value, address=worker_address[left_worker-1])
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
 
                 chunk_list = OrderedDict()
                 chunks_in_list = 0
