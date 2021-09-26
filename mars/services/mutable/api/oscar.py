@@ -43,17 +43,23 @@ class MutableAPI(AbstractMutableAPI):
         cluster_api = await ClusterAPI.create(address)
         return MutableAPI(address, cluster_api)
 
-    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str=None, default_value=0):
+    async def create_mutable_tensor(self,
+                                    session_id: str,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunk_size,
+                                    name: str=None,
+                                    default_value=0):
         worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
         if name is None:
             name = str(uuid.uuid1())
         ref = await mo.create_actor(
-            MutableTensorActor, shape, dtype, chunk_size, worker_pools, name, default_value, address=self._address, uid=to_binary(name))
+            MutableTensorActor, session_id, shape, dtype, chunk_size, worker_pools, name, default_value, address=self._address, uid=to_binary(name))
         wrapper = await MutableTensor.create(ref)
         self._tensor_check[name] = wrapper
         return wrapper
 
-    async def get_mutable_tensor(self, name: str) -> mo.ActorRef:
+    async def get_mutable_tensor(self, name: str):
         if name in self._tensor_check.keys():
             return self._tensor_check[name]
         else:

@@ -21,12 +21,14 @@ from .... import oscar as mo
 from .... import tensor as mt
 from ....utils import build_fetch
 from ....core import tile
+from ...meta import MetaAPI
 from ....tensor.utils import decide_chunk_sizes
 from ..worker.service import MutableTensorChunkActor
 
 
 class MutableTensorActor(mo.Actor):
     def __init__(self,
+                session_id: str,
                 shape: tuple,
                 dtype: str,
                 chunk_size: Union[int, tuple],
@@ -34,6 +36,7 @@ class MutableTensorActor(mo.Actor):
                 name: str,
                 default_value : Union[int, float]=0):
         self._shape = shape
+        self._session_id = session_id
         self._dtype = dtype
         self._work_pools = worker_pools
         self._name = name
@@ -43,8 +46,10 @@ class MutableTensorActor(mo.Actor):
         self._chunk_to_actors = []
         self._chunkactors_lastindex = []
         self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
+        self._sealed = None
 
     async def __post_create__(self):
+        self._meta_api = await MetaAPI.create(self._session_id, self.address)
         await self.assign_chunks()
 
     async def assign_chunks(self):
@@ -53,7 +58,7 @@ class MutableTensorActor(mo.Actor):
             worker_address.append(str(k[0][0]))
 
         tensor = build_fetch(tile(mt.random.rand(*self._shape, chunk_size=self._chunk_size, dtype='int')))
-        self.sealed = tensor
+        self._sealed = tensor
 
         worker_number = len(self._work_pools)
         left_worker = worker_number
@@ -67,12 +72,12 @@ class MutableTensorActor(mo.Actor):
         chunk_list = OrderedDict()
 
         for _chunk in tensor.chunks:
-            chunk_list[_chunk.index] = ([self._nsplits[i][_chunk.index[i]] for i in range(len(_chunk.index))], _chunk.key)
+            chunk_list[_chunk.index] = ([self._nsplits[i][_chunk.index[i]] for i in range(len(_chunk.index))], _chunk)
             chunks_in_list += 1
             left_chunk -= 1
 
             if (chunks_in_list == chunk_number//worker_number and left_worker != 1 or left_worker == 1 and left_chunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, self._meta_api, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
 
                 chunk_list = OrderedDict()
                 chunks_in_list = 0
@@ -105,3 +110,19 @@ class MutableTensorActor(mo.Actor):
 
     async def chunk_size(self) -> Union[int, tuple]:
         return self._chunk_size
+
+    async def seal(self):
+        '''
+        现在的做法：
+        在tensor actor上调用seal()
+        对所有的chunk actor调用seal()， 
+        chunk_acotr.seal()会执行 await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address,'numa-0')])
+        await self.storage_api.put(chunk_key.key, chunkdata)
+        回到 acotr.seal() ,返回之前创建的tensor=build_fetch(tile(np.random....))
+        client拿到的tensor是一个 Tensor(op=TensorFetch, shape=(100, 100, 100))
+        我尝试执行 tensor.execute() 但是程序无响应，不结束
+
+        '''
+        for chunk_acotr in self._chunk_to_actors:
+            await chunk_acotr.seal()
+        return self._sealed

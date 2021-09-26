@@ -119,3 +119,7 @@ class MutableTensor:
                 v = v.T
                 for nidx in v:
                     await chunk_actor.write(idx, nidx, value, version_time)
+
+    async def seal(self):
+        result = await self._ref.seal()
+        return result

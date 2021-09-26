@@ -14,19 +14,23 @@
 
 from typing import Tuple
 from collections import OrderedDict
+import numpy as np
+
+
+from ...meta.api.oscar import MetaAPI
 
 
 class Chunk:
     def __init__(self,
                 idx: int,
                 shape: Tuple,
-                storage_key,
+                chunk_key,
                 worker_adress,
                 storage_api,
                 value=None) -> None:
         self._idx = idx
         self._shape = shape
-        self._storage_key = storage_key
+        self._chunk_key = chunk_key
         self._worker_address = worker_adress
         self._storage_api = storage_api
         self._value = value
@@ -52,3 +56,14 @@ class Chunk:
             else:
                 break
         return result
+
+    async def seal(self):
+        _tensor = np.full(self._shape, self._value)
+        for k, v in self._ops.items():
+            earlist = 0
+            result = self._value
+            for version_t, val in v.items():
+                if version_t > earlist:
+                    result = val
+            _tensor[k] = result
+        return _tensor

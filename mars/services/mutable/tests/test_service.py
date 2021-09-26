@@ -50,3 +50,4 @@ async def test_mutable_tensor_actor():
         assert t == 10
         [t] = await tensor[50, 50, 50]
         assert t == 1
+        tensor1 = await tensor1.seal()

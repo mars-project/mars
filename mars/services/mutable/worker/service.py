@@ -20,14 +20,16 @@ from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, chunklist: OrderedDict, name: str, default_value=0) -> None:
+    def __init__(self, meta_api, chunklist: OrderedDict, name: str, default_value=0) -> None:
         self.idx_chunk = OrderedDict()
+        self._meta_api = meta_api
         self._chunk_list = chunklist
         self._name = name
         self._default_value = default_value
 
     async def __post_create__(self):
         from ...storage import StorageAPI
+        from ...meta import MetaAPI
         self.storage_api = await StorageAPI.create(self._name, self.address)
         for k, v in self._chunk_list.items():
             _chunk = Chunk(k, *v, self.address, self.storage_api, self._default_value)
@@ -44,3 +46,11 @@ class MutableTensorChunkActor(mo.Actor):
         chunk: Chunk = self.idx_chunk[index]
         result = await chunk.read(tuple(relatepos), version_time)
         return result
+
+    async def seal(self):
+        for k, v in self._chunk_list.items():
+            chunk_key = v[1]
+            await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address, 'numa-0')])
+            chunk: Chunk = self.idx_chunk[k]
+            chunkdata = await chunk.seal()
+            await self.storage_api.put(chunk_key.key, chunkdata)
