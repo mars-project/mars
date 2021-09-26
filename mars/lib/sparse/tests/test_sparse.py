@@ -263,6 +263,8 @@ def test_sparse_dot():
     assertArrayEqual(s1.dot(d1), s1.dot(d1))
     assertArrayEqual(d1.dot(s1.T), d1.dot(s1.T.toarray()))
 
+    assertArrayEqual(s1 @ s2.T, s1_data @ s2_data.T)
+
     assertArrayEqual(mls.tensordot(s1, s2.T, axes=(1, 0)), s1.dot(s2.T))
     assertArrayEqual(mls.tensordot(s1, d1, axes=(1, -1)), s1.dot(d1))
     assertArrayEqual(mls.tensordot(d1, s1.T, axes=(0, 0)), d1.dot(s1.T.toarray()))
