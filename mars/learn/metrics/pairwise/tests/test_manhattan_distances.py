@@ -73,7 +73,7 @@ def test_manhattan_distances_execution(setup, x, y, is_sparse):
         d = manhattan_distances(x, y, sum_over_features)
 
         result = d.execute().fetch()
-        expected = sk_manhattan_distances(rx, ry, sum_over_features)
+        expected = sk_manhattan_distances(rx, ry, sum_over_features=sum_over_features)
 
         np.testing.assert_almost_equal(result, expected)
 
