@@ -22,7 +22,7 @@ from ..extmath import softmax
 def test_softmax(setup, copy):
     x = [
         [1, 2, 3],
-        [2 ,3, 4]
+        [2, 3, 4]
     ]
     ref = [
         [0.09003057, 0.24472847, 0.66524096],

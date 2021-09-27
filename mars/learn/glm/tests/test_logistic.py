@@ -103,7 +103,7 @@ def test_logistic_regression_no_converge(setup, fit_intercept):
     model.predict_log_proba(X)
 
     error_msg = (re.escape("X has %d features per sample; expecting %d"
-                             % (X.shape[1], model.coef_.shape[1] - 1)))
-    model.coef_ = model.coef_[:,:-1]
+                           % (X.shape[1], model.coef_.shape[1] - 1)))
+    model.coef_ = model.coef_[:, :-1]
     with pytest.raises(ValueError, match=error_msg):
         model.predict(X)
