@@ -101,7 +101,7 @@ def softmax(X, copy=True):
         X = mt.copy(X)
     max_prob = mt.max(X, axis=1).reshape((-1, 1))
     X = X - max_prob
-    mt.exp(X, X)
+    X = mt.exp(X)
     sum_prob = mt.sum(X, axis=1).reshape((-1, 1))
     X = X / sum_prob
     return X

@@ -271,7 +271,7 @@ class LogisticRegression(LinearClassifierMixin,
         check_is_fitted(self)
         decision = self.decision_function(X)
 
-        return softmax(decision, copy=False)
+        return softmax(decision, copy=False).execute()
 
     def predict_log_proba(self, X):
         """
@@ -292,4 +292,4 @@ class LogisticRegression(LinearClassifierMixin,
             Returns the log-probability of the sample for each class in the
             model, where classes are ordered as they are in ``self.classes_``.
         """
-        return mt.log(self.predict_proba(X))
+        return mt.log(self.predict_proba(X)).execute()
