@@ -66,7 +66,7 @@ def gradient_descent(X, y, learning_rate=1e-3,
         X = astensor(X)
         W = 0.001 * mt.random.randn(dim, num_classes).execute()
 
-    for epoch in range(max_epochs):
+    for _ in range(max_epochs):
         # perform mini-batch SGD update
         perm_idx = np.random.permutation(num_train)
         for it in range(num_iters_per_epoch):
@@ -76,7 +76,7 @@ def gradient_descent(X, y, learning_rate=1e-3,
             batch_y = y[idx]
 
             # evaluate loss and gradient
-            loss, grad = softmax_loss_and_grad(W, batch_x, batch_y, reg)
+            _, grad = softmax_loss_and_grad(W, batch_x, batch_y, reg)
 
             # update parameters
             W = W - learning_rate * grad
