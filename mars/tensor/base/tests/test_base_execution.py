@@ -1879,6 +1879,14 @@ def test_in1d_execute(setup, chunk_size, invert):
 
 
 def test_pad_execute(setup):
+    raw = np.random.randint(0, 100, size=(40,))
+    a = tensor(raw, chunk_size=6)
+
+    pad_width = np.random.randint(0, 10)
+    r1 = mt.pad(a, pad_width)
+    result = r1.execute().fetch()
+    np.testing.assert_array_equal(np.pad(raw, pad_width), result)
+
     raw = np.random.randint(0, 100, size=(20, 20, 20))
     a = tensor(raw, chunk_size=6)
 
