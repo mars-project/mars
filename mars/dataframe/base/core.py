@@ -18,7 +18,7 @@ from ..core import DATAFRAME_TYPE, SERIES_TYPE
 
 
 class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
-    _input = KeyField('input')
+    _input = KeyField("input")
 
     @property
     def input(self):
@@ -30,13 +30,22 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, obj):
         if isinstance(obj, DATAFRAME_TYPE):
-            return self.new_dataframe([obj], shape=obj.shape, dtypes=obj.dtypes,
-                                      index_value=obj.index_value,
-                                      columns_value=obj.columns_value)
+            return self.new_dataframe(
+                [obj],
+                shape=obj.shape,
+                dtypes=obj.dtypes,
+                index_value=obj.index_value,
+                columns_value=obj.columns_value,
+            )
         else:
             assert isinstance(obj, SERIES_TYPE)
-            return self.new_series([obj], shape=obj.shape, dtype=obj.dtype,
-                                   index_value=obj.index_value, name=obj.name)
+            return self.new_series(
+                [obj],
+                shape=obj.shape,
+                dtype=obj.dtype,
+                index_value=obj.index_value,
+                name=obj.name,
+            )
 
     @classmethod
     def tile(cls, op):
@@ -48,6 +57,6 @@ class DataFrameDeviceConversionBase(DataFrameOperand, DataFrameOperandMixin):
 
         new_op = op.copy().reset_key()
         out = op.outputs[0]
-        return new_op.new_tileables(op.inputs, chunks=out_chunks,
-                                    nsplits=op.inputs[0].nsplits,
-                                    **out.params)
+        return new_op.new_tileables(
+            op.inputs, chunks=out_chunks, nsplits=op.inputs[0].nsplits, **out.params
+        )

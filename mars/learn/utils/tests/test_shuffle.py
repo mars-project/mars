@@ -150,8 +150,9 @@ def test_shuffle_execution(setup):
     for axes in [(0,), (1,), (0, 1), (1, 2), [0, 1, 2]]:
         ret = shuffle(t5, df, series, axes=axes, random_state=0)
         # skip check nsplits because it's updated
-        res5, res_df, res_series = ret.execute(extra_config={'check_nsplits': False}).fetch(
-            extra_config={'check_nsplits': False})
+        res5, res_df, res_series = ret.execute(
+            extra_config={"check_nsplits": False}
+        ).fetch(extra_config={"check_nsplits": False})
 
         assert res5.shape == raw5.shape
         assert res_df.shape == df.shape

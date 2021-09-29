@@ -24,44 +24,63 @@ from ..communication import RayServer
 from ..pool import RayMainPool
 from ..utils import process_placement_to_address
 
-ray = lazy_import('ray')
+ray = lazy_import("ray")
 
-pg_name, n_process = 'ray_cluster', 2
+pg_name, n_process = "ray_cluster", 2
 
 
 @pytest.fixture
 def actor_pool_context():
-    from .....serialization.ray import register_ray_serializers, \
-        unregister_ray_serializers
+    from .....serialization.ray import (
+        register_ray_serializers,
+        unregister_ray_serializers,
+    )
+
     register_ray_serializers()
     address = process_placement_to_address(pg_name, 0, process_index=0)
     # Hold actor_handle to avoid actor being freed.
     if hasattr(ray.util, "get_placement_group"):
-        pg = ray.util.placement_group(name=pg_name, bundles=[{'CPU': n_process}], strategy="SPREAD")
+        pg = ray.util.placement_group(
+            name=pg_name, bundles=[{"CPU": n_process}], strategy="SPREAD"
+        )
         ray.get(pg.ready())
         pg, bundle_index = ray.util.get_placement_group(pg_name), 0
     else:
         pg, bundle_index = None, -1
-    actor_handle = ray.remote(RayMainPool).options(
-        name=address, placement_group=pg, placement_group_bundle_index=bundle_index).remote(
-            address, n_process)
+    actor_handle = (
+        ray.remote(RayMainPool)
+        .options(
+            name=address, placement_group=pg, placement_group_bundle_index=bundle_index
+        )
+        .remote(address, n_process)
+    )
     ray.get(actor_handle.start.remote())
 
     class ProxyPool:
-
         def __init__(self, ray_pool_actor_handle):
             self.ray_pool_actor_handle = ray_pool_actor_handle
 
         def __getattr__(self, item):
-            if hasattr(RayMainPool, item) and inspect.isfunction(getattr(RayMainPool, item)):
+            if hasattr(RayMainPool, item) and inspect.isfunction(
+                getattr(RayMainPool, item)
+            ):
+
                 def call(*args, **kwargs):
-                    ray.get(self.ray_pool_actor_handle.actor_pool.remote(item, *args, **kwargs))
+                    ray.get(
+                        self.ray_pool_actor_handle.actor_pool.remote(
+                            item, *args, **kwargs
+                        )
+                    )
+
                 return call
 
             return ray.get(self.ray_pool_actor_handle.actor_pool.remote(item))
 
     yield ProxyPool(actor_handle)
-    for addr in [process_placement_to_address(pg_name, 0, process_index=i) for i in range(n_process)]:
+    for addr in [
+        process_placement_to_address(pg_name, 0, process_index=i)
+        for i in range(n_process)
+    ]:
         try:
             # kill main pool first to avoid main pool monitor task recreate sub pool
             ray.kill(ray.get_actor(addr))

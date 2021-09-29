@@ -19,15 +19,13 @@ from typing import Dict, Iterable, List, Tuple
 
 from ....utils import ceildiv, lazy_import
 
-ray = lazy_import('ray')
-parallel_it = lazy_import('ray.util.iter')
-ml_dataset = lazy_import('ray.util.data')
+ray = lazy_import("ray")
+parallel_it = lazy_import("ray.util.iter")
+ml_dataset = lazy_import("ray.util.data")
 
 
 class ChunkRefBatch:
-    def __init__(self,
-                 shard_id: int,
-                 obj_refs: 'ray.ObjectRef'):
+    def __init__(self, shard_id: int, obj_refs: "ray.ObjectRef"):
         """Iterable batch holding a list of ray.ObjectRefs.
 
         Args:
@@ -48,8 +46,9 @@ class ChunkRefBatch:
             yield ray.get(obj_ref)
 
 
-def _group_chunk_refs(chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']],
-                      num_shards: int):
+def _group_chunk_refs(
+    chunk_addr_refs: List[Tuple[Tuple, "ray.ObjectRef"]], num_shards: int
+):
     """Group fetched ray.ObjectRefs into a dict for later use.
 
     Args:
@@ -66,24 +65,22 @@ def _group_chunk_refs(chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']],
         for addr, obj_ref in chunk_addr_refs:
             group_to_obj_refs[addr].append(obj_ref)
     else:
-        splits = np.array_split([ref for _, ref in chunk_addr_refs],
-                                num_shards)
+        splits = np.array_split([ref for _, ref in chunk_addr_refs], num_shards)
         for idx, split in enumerate(splits):
-            group_to_obj_refs['group-' + str(idx)] = list(split)
+            group_to_obj_refs["group-" + str(idx)] = list(split)
     return group_to_obj_refs
 
 
-def _create_ml_dataset(name: str,
-                       group_to_obj_refs: Dict[str, List['ray.ObjectRef']]):
+def _create_ml_dataset(name: str, group_to_obj_refs: Dict[str, List["ray.ObjectRef"]]):
     record_batches = []
     for rank, obj_refs in enumerate(group_to_obj_refs.values()):
-        record_batches.append(ChunkRefBatch(shard_id=rank,
-                                            obj_refs=obj_refs))
+        record_batches.append(ChunkRefBatch(shard_id=rank, obj_refs=obj_refs))
     worker_cls = ray.remote(num_cpus=0)(parallel_it.ParallelIteratorWorker)
     actors = [worker_cls.remote(g, False) for g in record_batches]
     it = parallel_it.from_actors(actors, name)
     ds = ml_dataset.from_parallel_iter(
-        it, need_convert=False, batch_size=0, repeated=False)
+        it, need_convert=False, batch_size=0, repeated=False
+    )
     return ds
 
 
@@ -113,8 +110,7 @@ def _rechunk_if_needed(df, num_shards: int = None):
     return df
 
 
-def to_ray_mldataset(df,
-                     num_shards: int = None):
+def to_ray_mldataset(df, num_shards: int = None):
     """Create a MLDataset from Mars DataFrame
 
     Args:
@@ -135,9 +131,12 @@ def to_ray_mldataset(df,
     #       chunk1 for addr1,
     #       chunk2 & chunk3 for addr2,
     #       chunk4 for addr1
-    fetched_infos: Dict[str, List] = df.fetch_infos(fields=['band', 'object_id'])
-    chunk_addr_refs: List[Tuple[Tuple, 'ray.ObjectRef']] = [(band, object_id) for band, object_id in
-                                                            zip(fetched_infos['band'],
-                                                                fetched_infos['object_id'])]
-    group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(chunk_addr_refs, num_shards)
+    fetched_infos: Dict[str, List] = df.fetch_infos(fields=["band", "object_id"])
+    chunk_addr_refs: List[Tuple[Tuple, "ray.ObjectRef"]] = [
+        (band, object_id)
+        for band, object_id in zip(fetched_infos["band"], fetched_infos["object_id"])
+    ]
+    group_to_obj_refs: Dict[str, List[ray.ObjectRef]] = _group_chunk_refs(
+        chunk_addr_refs, num_shards
+    )
     return _create_ml_dataset("from_mars", group_to_obj_refs)

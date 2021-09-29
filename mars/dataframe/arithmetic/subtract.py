@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameSubtract(DataFrameBinopUfunc):
     _op_type_ = OperandDef.SUB
 
-    _func_name = 'sub'
-    _rfunc_name = 'rsub'
+    _func_name = "sub"
+    _rfunc_name = "rsub"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameSubtract(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorSubtract
+
         return TensorSubtract
 
 
@@ -47,13 +48,17 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Subtraction', equiv='-', series_example=_sub_example)
-def subtract(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+@bin_arithmetic_doc("Subtraction", equiv="-", series_example=_sub_example)
+def subtract(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameSubtract(
+        axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other
+    )
     return op(df, other)
 
 
-@bin_arithmetic_doc('Subtraction', equiv='-', series_example=_sub_example)
-def rsubtract(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameSubtract(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+@bin_arithmetic_doc("Subtraction", equiv="-", series_example=_sub_example)
+def rsubtract(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameSubtract(
+        axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df
+    )
     return op.rcall(df, other)

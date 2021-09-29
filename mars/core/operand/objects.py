@@ -43,18 +43,18 @@ class ObjectFetch(FetchMixin, ObjectOperandMixin, Fetch):
     _output_type_ = OutputType.object
 
     def __init__(self, **kw):
-        kw.pop('output_types', None)
-        kw.pop('_output_types', None)
+        kw.pop("output_types", None)
+        kw.pop("_output_types", None)
         super().__init__(**kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     def _new_tileables(self, inputs, kws=None, **kw):
-        if '_key' in kw and self.source_key is None:
-            self.source_key = kw['_key']
+        if "_key" in kw and self.source_key is None:
+            self.source_key = kw["_key"]
         return super()._new_tileables(inputs, kws=kws, **kw)
 
 
@@ -62,7 +62,7 @@ register_fetch_class(OutputType.object, ObjectFetch, None)
 
 
 class MergeDictOperand(ObjectOperand, ObjectOperandMixin):
-    _merge = BoolField('merge')
+    _merge = BoolField("merge")
 
     def __init__(self, merge=None, **kw):
         super().__init__(_merge=merge, **kw)

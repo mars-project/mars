@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from typing import List
 
 import numpy as np
+
 try:
     from scipy.sparse.base import spmatrix
 except ImportError:  # pragma: no cover
@@ -35,50 +36,51 @@ from .validation import check_array
 
 
 def _unique_multiclass(y):
-    if hasattr(y, '__array__') or hasattr(y, '__mars_tensor__'):
+    if hasattr(y, "__array__") or hasattr(y, "__mars_tensor__"):
         return mt.unique(mt.asarray(y))
     else:
         return set(y)
 
 
 def _unique_indicator(y):
-    return mt.arange(
-        check_array(y, accept_sparse=True).shape[1]
-    )
+    return mt.arange(check_array(y, accept_sparse=True).shape[1])
 
 
 _FN_UNIQUE_LABELS = {
-    'binary': _unique_multiclass,
-    'multiclass': _unique_multiclass,
-    'multilabel-indicator': _unique_indicator,
+    "binary": _unique_multiclass,
+    "multiclass": _unique_multiclass,
+    "multilabel-indicator": _unique_indicator,
 }
 
 
 class UniqueLabels(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.UNIQUE_LABELS
 
-    ys = ListField('ys')
+    ys = ListField("ys")
 
     def __call__(self, ys: List[TileableType]):
         self._output_types = [OutputType.tensor]
         inputs = [y for y in ys if isinstance(y, TILEABLE_TYPE)]
-        return self.new_tileable(inputs, shape=(np.nan,),
-                                 dtype=mt.tensor(ys[0]).dtype,
-                                 order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            inputs,
+            shape=(np.nan,),
+            dtype=mt.tensor(ys[0]).dtype,
+            order=TensorOrder.C_ORDER,
+        )
 
     @classmethod
     def tile(cls, op: "UniqueLabels"):
         ys = op.ys
         ctx = get_context()
 
-        target_types = yield from recursive_tile(
-            [type_of_target(x) for x in ys])
+        target_types = yield from recursive_tile([type_of_target(x) for x in ys])
         # yield chunks of target_types for execution
         chunks = list(itertools.chain(*(t.chunks for t in target_types)))
         yield chunks
 
-        ys_types = set([it.item() for it in
-                        ctx.get_chunks_result([c.key for c in chunks])])
+        ys_types = set(
+            [it.item() for it in ctx.get_chunks_result([c.key for c in chunks])]
+        )
         if ys_types == {"binary", "multiclass"}:
             ys_types = {"multiclass"}
 
@@ -92,14 +94,15 @@ class UniqueLabels(LearnOperand, LearnOperandMixin):
             check_arrays = []
             chunks = []
             for y in ys:
-                arr = yield from recursive_tile(
-                    check_array(y, accept_sparse=True))
+                arr = yield from recursive_tile(check_array(y, accept_sparse=True))
                 check_arrays.append(arr)
                 chunks.extend(arr.chunks)
             yield check_arrays + chunks
             if len(set(arr.shape[1] for arr in check_arrays)) > 1:
-                raise ValueError("Multi-label binary indicator input with "
-                                 "different numbers of labels")
+                raise ValueError(
+                    "Multi-label binary indicator input with "
+                    "different numbers of labels"
+                )
 
         # Get the unique set of labels
         _unique_labels = _FN_UNIQUE_LABELS.get(label_type, None)
@@ -116,11 +119,14 @@ class UniqueLabels(LearnOperand, LearnOperandMixin):
             else:
                 ys_labels.update(label)
         yield labels_chunks
-        ys_labels.update(itertools.chain.from_iterable(
-            ctx.get_chunks_result([c.key for c in labels_chunks])))
+        ys_labels.update(
+            itertools.chain.from_iterable(
+                ctx.get_chunks_result([c.key for c in labels_chunks])
+            )
+        )
 
         # Check that we don't mix string type with number type
-        if (len(set(isinstance(label, str) for label in ys_labels)) > 1):
+        if len(set(isinstance(label, str) for label in ys_labels)) > 1:
             raise ValueError("Mix of label input types (string and number)")
 
         return (yield from recursive_tile(mt.array(sorted(ys_labels))))
@@ -159,7 +165,7 @@ def unique_labels(*ys):
     array([ 1,  2,  5, 10, 11])
     """
     if not ys:
-        raise ValueError('No argument has been passed.')
+        raise ValueError("No argument has been passed.")
 
     ys = list(ys)
     op = UniqueLabels(ys=ys)
@@ -169,13 +175,14 @@ def unique_labels(*ys):
 class IsMultilabel(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.IS_MULTILABEL
 
-    y = AnyField('y')
+    y = AnyField("y")
 
     def __call__(self, y):
         self._output_types = [OutputType.tensor]
         inputs = [y] if isinstance(y, ENTITY_TYPE) else []
-        return self.new_tileable(inputs, shape=(), dtype=np.dtype(bool),
-                                 order=TensorOrder.C_ORDER)
+        return self.new_tileable(
+            inputs, shape=(), dtype=np.dtype(bool), order=TensorOrder.C_ORDER
+        )
 
     @classmethod
     def _tile(cls, op: "IsMultilabel"):
@@ -193,14 +200,16 @@ class IsMultilabel(LearnOperand, LearnOperandMixin):
         yield labels.chunks + [labels]
 
         if len(labels) < 3:
-            if y.dtype.kind in 'biu':
+            if y.dtype.kind in "biu":
                 return True
-            if y.dtype.kind == 'f':
+            if y.dtype.kind == "f":
                 is_integral_float = yield from recursive_tile(
-                    mt.all(mt.equal(y.astype(int), y)))
+                    mt.all(mt.equal(y.astype(int), y))
+                )
                 yield is_integral_float.chunks
                 is_integral_float = ctx.get_chunks_result(
-                    [is_integral_float.chunks[0].key])[0]
+                    [is_integral_float.chunks[0].key]
+                )[0]
                 if is_integral_float:
                     return True
 
@@ -242,9 +251,9 @@ def is_multilabel(y):
     True
     """
     if not isinstance(y, ENTITY_TYPE):
-        if hasattr(y, '__array__') or isinstance(y, Sequence):
+        if hasattr(y, "__array__") or isinstance(y, Sequence):
             y = np.asarray(y)
-        if hasattr(y, 'shape'):
+        if hasattr(y, "shape"):
             yt = y = mt.asarray(y)
         else:
             yt = None
@@ -258,13 +267,14 @@ def is_multilabel(y):
 class TypeOfTarget(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.TYPE_OF_TARGET
 
-    y = AnyField('y')
+    y = AnyField("y")
 
     def __call__(self, y: TileableType):
         self._output_types = [OutputType.tensor]
         inputs = [y] if isinstance(y, ENTITY_TYPE) else []
-        return self.new_tileable(inputs, shape=(), order=TensorOrder.C_ORDER,
-                                 dtype=np.dtype(object))
+        return self.new_tileable(
+            inputs, shape=(), order=TensorOrder.C_ORDER, dtype=np.dtype(object)
+        )
 
     @classmethod
     def _tile(cls, op: "TypeOfTarget"):
@@ -275,7 +285,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
         yield multilabel.chunks
         multilabel = ctx.get_chunks_result([multilabel.chunks[0].key])[0]
         if multilabel:
-            return 'multilabel-indicator'
+            return "multilabel-indicator"
 
         y = yield from recursive_tile(mt.tensor(y))
         executed = False
@@ -286,7 +296,7 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
 
         # Invalid inputs
         if y.ndim > 2:
-            return 'unknown'
+            return "unknown"
         if y.dtype == object and len(y):
             # [[[1, 2]]] or [obj_1] and not ["label_1"]
             if isinstance(y, ENTITY_TYPE):
@@ -296,34 +306,34 @@ class TypeOfTarget(LearnOperand, LearnOperandMixin):
             else:
                 first_val = y.flat[0]
             if not isinstance(first_val, str):
-                return 'unknown'
+                return "unknown"
 
         if y.ndim == 2 and y.shape[1] == 0:
-            return 'unknown'  # [[]]
+            return "unknown"  # [[]]
 
         if y.ndim == 2 and y.shape[1] > 1:
             suffix = "-multioutput"  # [[1, 2], [1, 2]]
         else:
             suffix = ""  # [1, 2, 3] or [[1], [2], [3]]
 
-        if y.dtype.kind == 'f':
+        if y.dtype.kind == "f":
             # check float and contains non-integer float values
-            contain_float_values = yield from recursive_tile(
-                mt.any(y != y.astype(int)))
+            contain_float_values = yield from recursive_tile(mt.any(y != y.astype(int)))
             yield contain_float_values.chunks
             contain_float_values = ctx.get_chunks_result(
-                [contain_float_values.chunks[0].key])[0]
+                [contain_float_values.chunks[0].key]
+            )[0]
             # [.1, .2, 3] or [[.1, .2, 3]] or [[1., .2]] and not [1., 2., 3.]
             if contain_float_values:
                 yield from recursive_tile(assert_all_finite(y))
-                return 'continuous' + suffix
+                return "continuous" + suffix
 
         unique_y = yield from recursive_tile(mt.unique(y))
         yield unique_y.chunks + [unique_y]
         if (len(unique_y) > 2) or (y.ndim >= 2 and len(y[0]) > 1):
-            return 'multiclass' + suffix  # [1, 2, 3] or [[1., 2., 3]] or [[1, 2]]
+            return "multiclass" + suffix  # [1, 2, 3] or [[1., 2., 3]] or [[1, 2]]
         else:
-            return 'binary'  # [1, 2] or [["a"], ["b"]]
+            return "binary"  # [1, 2] or [["a"], ["b"]]
 
     @classmethod
     def tile(cls, op: "TypeOfTarget"):
@@ -398,14 +408,16 @@ def type_of_target(y):
     'multilabel-indicator'
     """
     valid_types = (Sequence, spmatrix) if spmatrix is not None else (Sequence,)
-    valid = ((isinstance(y, valid_types) or
-              hasattr(y, '__array__') or hasattr(y, '__mars_tensor__'))
-             and not isinstance(y, str))
+    valid = (
+        isinstance(y, valid_types)
+        or hasattr(y, "__array__")
+        or hasattr(y, "__mars_tensor__")
+    ) and not isinstance(y, str)
 
     if not valid:
-        raise ValueError(f'Expected array-like (array or non-string sequence), got {y}')
+        raise ValueError(f"Expected array-like (array or non-string sequence), got {y}")
 
-    sparse_pandas = (y.__class__.__name__ in ['SparseSeries', 'SparseArray'])
+    sparse_pandas = y.__class__.__name__ in ["SparseSeries", "SparseArray"]
     if sparse_pandas:  # pragma: no cover
         raise ValueError("y cannot be class 'SparseSeries' or 'SparseArray'")
 
@@ -431,8 +443,13 @@ def check_classification_targets(y):
     y_type = type_of_target(y)
 
     def check(t):
-        if t not in ['binary', 'multiclass', 'multiclass-multioutput',
-                     'multilabel-indicator', 'multilabel-sequences']:
+        if t not in [
+            "binary",
+            "multiclass",
+            "multiclass-multioutput",
+            "multilabel-indicator",
+            "multilabel-sequences",
+        ]:
             raise ValueError("Unknown label type: %r" % y_type)
         return t
 

@@ -137,8 +137,7 @@ def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
     from ..linalg import dot
 
     if ddof is not None and ddof != int(ddof):
-        raise ValueError(
-            "ddof must be integer")
+        raise ValueError("ddof must be integer")
 
     m = astensor(m)
     if m.ndim > 2:
@@ -172,26 +171,20 @@ def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
     if fweights is not None:
         fweights = astensor(fweights, dtype=float)
         if fweights.ndim > 1:
-            raise RuntimeError(
-                "cannot handle multidimensional fweights")
+            raise RuntimeError("cannot handle multidimensional fweights")
         if fweights.shape[0] != X.shape[1]:
-            raise RuntimeError(
-                "incompatible numbers of samples and fweights")
+            raise RuntimeError("incompatible numbers of samples and fweights")
         if any(fweights < 0):
-            raise ValueError(
-                "fweights cannot be negative")
+            raise ValueError("fweights cannot be negative")
         w = fweights
     if aweights is not None:
         aweights = astensor(aweights, dtype=float)
         if aweights.ndim > 1:
-            raise RuntimeError(
-                "cannot handle multidimensional aweights")
+            raise RuntimeError("cannot handle multidimensional aweights")
         if aweights.shape[0] != X.shape[1]:
-            raise RuntimeError(
-                "incompatible numbers of samples and aweights")
+            raise RuntimeError("incompatible numbers of samples and aweights")
         if any(aweights < 0):
-            raise ValueError(
-                "aweights cannot be negative")
+            raise ValueError("aweights cannot be negative")
         if w is None:
             w = aweights
         else:
@@ -221,9 +214,10 @@ def cov(m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=N
         fact = fact.astype(float)
     else:
         if fact <= 0:
-            warnings.warn("Degrees of freedom <= 0 for slice",
-                          RuntimeWarning, stacklevel=2)
+            warnings.warn(
+                "Degrees of freedom <= 0 for slice", RuntimeWarning, stacklevel=2
+            )
             fact = 0.0
         fact = np.float64(fact)
-    c = c * (1. / fact)
+    c = c * (1.0 / fact)
     return squeeze(c)

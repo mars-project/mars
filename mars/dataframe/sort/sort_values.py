@@ -27,7 +27,7 @@ from .psrs import DataFramePSRSOperandMixin, execute_sort_values
 class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
     _op_type_ = OperandDef.SORT_VALUES
 
-    _by = ListField('by')
+    _by = ListField("by")
 
     def __init__(self, by=None, output_types=None, **kw):
         super().__init__(_by=by, _output_types=output_types, **kw)
@@ -44,17 +44,24 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             out_chunks = []
             for chunk in df.chunks:
                 chunk_op = op.copy().reset_key()
-                out_chunks.append(chunk_op.new_chunk(
-                    [chunk], shape=chunk.shape, index=chunk.index, index_value=op.outputs[0].index_value,
-                    columns_value=chunk.columns_value, dtypes=chunk.dtypes))
+                out_chunks.append(
+                    chunk_op.new_chunk(
+                        [chunk],
+                        shape=chunk.shape,
+                        index=chunk.index,
+                        index_value=op.outputs[0].index_value,
+                        columns_value=chunk.columns_value,
+                        dtypes=chunk.dtypes,
+                    )
+                )
             new_op = op.copy()
             kws = op.outputs[0].params.copy()
-            kws['nsplits'] = df.nsplits
-            kws['chunks'] = out_chunks
+            kws["nsplits"] = df.nsplits
+            kws["chunks"] = out_chunks
             return new_op.new_dataframes(op.inputs, **kws)
         else:
-            if op.na_position != 'last':  # pragma: no cover
-                raise NotImplementedError('Only support puts NaNs at the end.')
+            if op.na_position != "last":  # pragma: no cover
+                raise NotImplementedError("Only support puts NaNs at the end.")
             # use parallel sorting by regular sampling
             return (yield from cls._tile_psrs(op, df))
 
@@ -64,17 +71,24 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
         if len(series.chunks) == 1:
             chunk = series.chunks[0]
             chunk_op = op.copy().reset_key()
-            out_chunks = [chunk_op.new_chunk(series.chunks, shape=chunk.shape, index=chunk.index,
-                                             index_value=op.outputs[0].index_value, dtype=chunk.dtype,
-                                             name=chunk.name)]
+            out_chunks = [
+                chunk_op.new_chunk(
+                    series.chunks,
+                    shape=chunk.shape,
+                    index=chunk.index,
+                    index_value=op.outputs[0].index_value,
+                    dtype=chunk.dtype,
+                    name=chunk.name,
+                )
+            ]
             new_op = op.copy()
             kws = op.outputs[0].params.copy()
-            kws['nsplits'] = series.nsplits
-            kws['chunks'] = out_chunks
+            kws["nsplits"] = series.nsplits
+            kws["chunks"] = out_chunks
             return new_op.new_seriess(op.inputs, **kws)
         else:
-            if op.na_position != 'last':  # pragma: no cover
-                raise NotImplementedError('Only support puts NaNs at the end.')
+            if op.na_position != "last":  # pragma: no cover
+                raise NotImplementedError("Only support puts NaNs at the end.")
             # use parallel sorting by regular sampling
             return (yield from cls._tile_psrs(op, series))
 
@@ -103,16 +117,31 @@ class DataFrameSortValues(DataFrameSortOperand, DataFramePSRSOperandMixin):
             else:
                 index_value = a.index_value
         if a.ndim == 2:
-            return self.new_dataframe([a], shape=a.shape, dtypes=a.dtypes,
-                                      index_value=index_value,
-                                      columns_value=a.columns_value)
+            return self.new_dataframe(
+                [a],
+                shape=a.shape,
+                dtypes=a.dtypes,
+                index_value=index_value,
+                columns_value=a.columns_value,
+            )
         else:
-            return self.new_series([a], shape=a.shape, dtype=a.dtype,
-                                   index_value=index_value, name=a.name)
+            return self.new_series(
+                [a], shape=a.shape, dtype=a.dtype, index_value=index_value, name=a.name
+            )
 
 
-def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='quicksort',
-                          na_position='last', ignore_index=False, parallel_kind='PSRS', psrs_kinds=None):
+def dataframe_sort_values(
+    df,
+    by,
+    axis=0,
+    ascending=True,
+    inplace=False,
+    kind="quicksort",
+    na_position="last",
+    ignore_index=False,
+    parallel_kind="PSRS",
+    psrs_kinds=None,
+):
     """
     Sort by the values along either axis.
 
@@ -211,16 +240,26 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
     1   A    1    1
     """
 
-    if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError(f'invalid na_position: {na_position}')
+    if na_position not in ["last", "first"]:  # pragma: no cover
+        raise TypeError(f"invalid na_position: {na_position}")
     axis = validate_axis(axis, df)
     if axis != 0:
-        raise NotImplementedError('Only support sort on axis 0')
+        raise NotImplementedError("Only support sort on axis 0")
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
     by = by if isinstance(by, (list, tuple)) else [by]
-    op = DataFrameSortValues(by=by, axis=axis, ascending=ascending, inplace=inplace, kind=kind,
-                             na_position=na_position, ignore_index=ignore_index, parallel_kind=parallel_kind,
-                             psrs_kinds=psrs_kinds, gpu=df.op.is_gpu(), output_types=[OutputType.dataframe])
+    op = DataFrameSortValues(
+        by=by,
+        axis=axis,
+        ascending=ascending,
+        inplace=inplace,
+        kind=kind,
+        na_position=na_position,
+        ignore_index=ignore_index,
+        parallel_kind=parallel_kind,
+        psrs_kinds=psrs_kinds,
+        gpu=df.op.is_gpu(),
+        output_types=[OutputType.dataframe],
+    )
     sorted_df = op(df)
     if inplace:
         df.data = sorted_df.data
@@ -228,8 +267,17 @@ def dataframe_sort_values(df, by, axis=0, ascending=True, inplace=False, kind='q
         return sorted_df
 
 
-def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quicksort',
-                       na_position='last', ignore_index=False, parallel_kind='PSRS', psrs_kinds=None):
+def series_sort_values(
+    series,
+    axis=0,
+    ascending=True,
+    inplace=False,
+    kind="quicksort",
+    na_position="last",
+    ignore_index=False,
+    parallel_kind="PSRS",
+    psrs_kinds=None,
+):
     """
     Sort by the values.
 
@@ -306,16 +354,24 @@ def series_sort_values(series, axis=0, ascending=True, inplace=False, kind='quic
 
     Sort values putting NAs first
     """
-    if na_position not in ['last', 'first']:  # pragma: no cover
-        raise TypeError(f'invalid na_position: {na_position}')
+    if na_position not in ["last", "first"]:  # pragma: no cover
+        raise TypeError(f"invalid na_position: {na_position}")
     axis = validate_axis(axis, series)
     if axis != 0:
-        raise NotImplementedError('Only support sort on axis 0')
+        raise NotImplementedError("Only support sort on axis 0")
     psrs_kinds = _validate_sort_psrs_kinds(psrs_kinds)
-    op = DataFrameSortValues(axis=axis, ascending=ascending, inplace=inplace, kind=kind,
-                             na_position=na_position, ignore_index=ignore_index,
-                             parallel_kind=parallel_kind, psrs_kinds=psrs_kinds,
-                             output_types=[OutputType.series], gpu=series.op.is_gpu())
+    op = DataFrameSortValues(
+        axis=axis,
+        ascending=ascending,
+        inplace=inplace,
+        kind=kind,
+        na_position=na_position,
+        ignore_index=ignore_index,
+        parallel_kind=parallel_kind,
+        psrs_kinds=psrs_kinds,
+        output_types=[OutputType.series],
+        gpu=series.op.is_gpu(),
+    )
     sorted_series = op(series)
     if inplace:
         series.data = sorted_series.data

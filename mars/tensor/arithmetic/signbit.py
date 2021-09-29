@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorSignbit(TensorUnaryOp):
     _op_type_ = OperandDef.SIGNBIT
-    _func_name = 'signbit'
+    _func_name = "signbit"
 
 
 @inject_dtype(np.bool_)

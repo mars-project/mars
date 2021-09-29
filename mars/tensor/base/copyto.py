@@ -31,10 +31,10 @@ from ..array_utils import as_same_device, device
 class TensorCopyTo(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.COPYTO
 
-    _src = KeyField('src')
-    _dst = KeyField('dest')
-    _casting = StringField('casting')
-    _where = KeyField('where')
+    _src = KeyField("src")
+    _dst = KeyField("dest")
+    _casting = StringField("casting")
+    _where = KeyField("where")
 
     def __init__(self, casting=None, **kw):
         super().__init__(_casting=casting, **kw)
@@ -86,27 +86,33 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         src, dst, where = self._extract_inputs(inputs)
 
         if not isinstance(dst, Tensor):
-            raise TypeError('dst has to be a Tensor')
+            raise TypeError("dst has to be a Tensor")
 
         self.dtype = dst.dtype
         self.gpu = dst.op.gpu
         self.sparse = dst.issparse()
 
         if not np.can_cast(src.dtype, dst.dtype, casting=self.casting):
-            raise TypeError(f'Cannot cast array from {src.dtype!r} to {dst.dtype!r} '
-                            f'according to the rule {self.casting!s}')
+            raise TypeError(
+                f"Cannot cast array from {src.dtype!r} to {dst.dtype!r} "
+                f"according to the rule {self.casting!s}"
+            )
 
         try:
             broadcast_to(src, dst.shape)
         except ValueError:
-            raise ValueError('could not broadcast input array '
-                             f'from shape {src.shape!r} into shape {dst.shape!r}')
+            raise ValueError(
+                "could not broadcast input array "
+                f"from shape {src.shape!r} into shape {dst.shape!r}"
+            )
         if where:
             try:
                 broadcast_to(where, dst.shape)
             except ValueError:
-                raise ValueError('could not broadcast where mask '
-                                 f'from shape {src.shape!r} into shape {dst.shape!r}')
+                raise ValueError(
+                    "could not broadcast where mask "
+                    f"from shape {src.shape!r} into shape {dst.shape!r}"
+                )
 
         inps = [src, dst]
         if where is not None:
@@ -119,34 +125,53 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
         if has_unknown_shape(*op.inputs):
             yield
         inputs = yield from unify_chunks(
-            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs])
+            *[(input, list(range(input.ndim))[::-1]) for input in op.inputs]
+        )
         output = op.outputs[0]
 
-        chunk_shapes = [t.chunk_shape if hasattr(t, 'chunk_shape') else t
-                        for t in inputs]
+        chunk_shapes = [
+            t.chunk_shape if hasattr(t, "chunk_shape") else t for t in inputs
+        ]
         out_chunk_shape = broadcast_shape(*chunk_shapes)
 
         out_chunks = []
         nsplits = [[np.nan] * shape for shape in out_chunk_shape]
-        get_index = lambda idx, t: tuple(0 if t.nsplits[i] == (1,) else ix
-                                         for i, ix in enumerate(idx))
+        get_index = lambda idx, t: tuple(
+            0 if t.nsplits[i] == (1,) else ix for i, ix in enumerate(idx)
+        )
         for out_idx in itertools.product(*(map(range, out_chunk_shape))):
-            in_chunks = [t.cix[get_index(out_idx[-t.ndim:], t)] if t.ndim != 0 else t.chunks[0]
-                         for t in inputs]
-            out_chunk = op.copy().reset_key().new_chunk(
-                in_chunks, shape=in_chunks[1].shape, order=output.order, index=out_idx)
+            in_chunks = [
+                t.cix[get_index(out_idx[-t.ndim :], t)] if t.ndim != 0 else t.chunks[0]
+                for t in inputs
+            ]
+            out_chunk = (
+                op.copy()
+                .reset_key()
+                .new_chunk(
+                    in_chunks,
+                    shape=in_chunks[1].shape,
+                    order=output.order,
+                    index=out_idx,
+                )
+            )
             out_chunks.append(out_chunk)
             for i, idx, s in zip(itertools.count(0), out_idx, out_chunk.shape):
                 nsplits[i][idx] = s
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            output.shape,
+            order=output.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             dst = inputs[1].copy()
@@ -157,7 +182,7 @@ class TensorCopyTo(TensorOperand, TensorOperandMixin):
             ctx[op.outputs[0].key] = dst
 
 
-def copyto(dst, src, casting='same_kind', where=True):
+def copyto(dst, src, casting="same_kind", where=True):
     """
     Copies values from one array to another, broadcasting as necessary.
 

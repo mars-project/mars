@@ -21,28 +21,34 @@ class ChunkData(EntityData):
     __slots__ = ()
 
     # optional fields
-    _index = TupleField('index', FieldTypes.uint32)
+    _index = TupleField("index", FieldTypes.uint32)
 
     def __repr__(self):
         if self.op.stage is None:
-            return f'Chunk <op={type(self.op).__name__}, ' \
-                   f'key={self.key}>'
+            return f"Chunk <op={type(self.op).__name__}, " f"key={self.key}>"
         else:
-            return f'Chunk <op={type(self.op).__name__}, ' \
-                   f'stage={self.op.stage.name}, key={self.key}>'
+            return (
+                f"Chunk <op={type(self.op).__name__}, "
+                f"stage={self.op.stage.name}, key={self.key}>"
+            )
 
     @property
     def index(self):
-        return getattr(self, '_index', None)
+        return getattr(self, "_index", None)
 
     @property
     def device(self):
         return self.op.device
 
     def _update_key(self):
-        object.__setattr__(self, '_key', tokenize(
-            type(self).__name__, *(getattr(self, k, None) for k in self._keys_
-                                   if k != '_index')))
+        object.__setattr__(
+            self,
+            "_key",
+            tokenize(
+                type(self).__name__,
+                *(getattr(self, k, None) for k in self._keys_ if k != "_index"),
+            ),
+        )
 
 
 class Chunk(Entity):

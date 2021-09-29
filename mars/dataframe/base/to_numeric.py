@@ -36,16 +36,20 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
         elif not isinstance(arg, ENTITY_TYPE):
             arg = astensor(arg)
         if arg.ndim != 1:
-            raise ValueError('Input array must be 1 dimensional')
+            raise ValueError("Input array must be 1 dimensional")
         if arg.size == 0:
-            raise ValueError('Input array can not be empty')
+            raise ValueError("Input array can not be empty")
 
         if isinstance(arg, asseries):
             series = arg
             self.output_types = [OutputType.series]
-            return self.new_series([series], shape=series.shape, name=series.name,
-                                   index_value=series.index_value,
-                                   dtype=series.dtype)
+            return self.new_series(
+                [series],
+                shape=series.shape,
+                name=series.name,
+                index_value=series.index_value,
+                dtype=series.dtype,
+            )
         else:
             tensor = arg
             self.output_types = [OutputType.tensor]
@@ -64,26 +68,30 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
             out_op = op.copy().reset_key()
             chunk_kws = []
             if isinstance(out_df, SERIES_TYPE):
-                chunk_kws.append({
-                    "dtype": out_df.dtype,
-                    "shape": in_chunk.shape,
-                    "index": in_chunk.index,
-                    "index_value": in_chunk.index_value,
-                    "name": in_chunk.name
-                })
+                chunk_kws.append(
+                    {
+                        "dtype": out_df.dtype,
+                        "shape": in_chunk.shape,
+                        "index": in_chunk.index,
+                        "index_value": in_chunk.index_value,
+                        "name": in_chunk.name,
+                    }
+                )
             elif isinstance(out_df, TENSOR_TYPE):
-                chunk_kws.append({
-                    'dtype': out_df.dtype,
-                    'shape': in_chunk.shape,
-                    'order': TensorOrder.C_ORDER,
-                    'index': in_chunk.index,
-                })
+                chunk_kws.append(
+                    {
+                        "dtype": out_df.dtype,
+                        "shape": in_chunk.shape,
+                        "order": TensorOrder.C_ORDER,
+                        "index": in_chunk.index,
+                    }
+                )
             out_chunks.append(out_op.new_chunk([in_chunk], kws=chunk_kws))
 
         new_op = op.copy()
         kw = out_df.params
-        kw['nsplits'] = in_df.nsplits
-        kw['chunks'] = out_chunks
+        kw["nsplits"] = in_df.nsplits
+        kw["chunks"] = out_chunks
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
@@ -91,7 +99,9 @@ class DataFrameToNumeric(DataFrameOperand, DataFrameOperandMixin):
         input_data = ctx[op.inputs[0].key]
         errors_ = op.errors
         downcast_ = op.downcast
-        ctx[op.outputs[0].key] = pd.to_numeric(input_data, errors=errors_, downcast=downcast_)
+        ctx[op.outputs[0].key] = pd.to_numeric(
+            input_data, errors=errors_, downcast=downcast_
+        )
 
 
 def to_numeric(arg, errors="raise", downcast=None):

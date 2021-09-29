@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorIsFinite(TensorUnaryOp):
     _op_type_ = OperandDef.ISFINITE
-    _func_name = 'isfinite'
+    _func_name = "isfinite"
 
 
 @inject_dtype(np.bool_)

@@ -39,30 +39,30 @@ class GitInfo(NamedTuple):
 
 def get_git_info() -> Optional[GitInfo]:
     pkg_root = os.path.dirname(os.path.abspath(__file__))
-    git_root = os.path.join(os.path.dirname(pkg_root), '.git')
+    git_root = os.path.join(os.path.dirname(pkg_root), ".git")
 
     if os.path.exists(git_root):
-        commit_hash = _get_cmd_results(pkg_root, ['git', 'rev-parse', 'HEAD']).strip()
+        commit_hash = _get_cmd_results(pkg_root, ["git", "rev-parse", "HEAD"]).strip()
         if not commit_hash:
             return
-        branches = _get_cmd_results(pkg_root, ['git', 'branch']).splitlines(False)
+        branches = _get_cmd_results(pkg_root, ["git", "branch"]).splitlines(False)
         commit_ref = None
         for branch in branches:
-            if not branch.startswith('*'):
+            if not branch.startswith("*"):
                 continue
             striped = branch[1:].strip()
-            if not striped.startswith('('):
+            if not striped.startswith("("):
                 commit_ref = striped
             else:
-                _, commit_ref = striped.rsplit(' ', 1)
-                commit_ref = commit_ref.rstrip(')')
+                _, commit_ref = striped.rsplit(" ", 1)
+                commit_ref = commit_ref.rstrip(")")
         if commit_ref is None:
             return
         return GitInfo(commit_hash, commit_ref)
     else:
-        branch_file = os.path.join(pkg_root, '.git-branch')
+        branch_file = os.path.join(pkg_root, ".git-branch")
         if not os.path.exists(branch_file):
             return
-        with open(branch_file, 'r') as bf:
+        with open(branch_file, "r") as bf:
             bf_content = bf.read().strip()
             return GitInfo(*bf_content.split(None, 1))

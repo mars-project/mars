@@ -16,6 +16,7 @@ import sys
 from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
 import numpy as np
+
 try:
     from numpy.core._exceptions import UFuncTypeError
 except ImportError:  # pragma: no cover
@@ -25,9 +26,15 @@ from ...typing import TileableType, ChunkType, OperandType
 from ...utils import calc_data_size
 from ..context import Context
 from ..mode import is_eager_mode
-from ..entity import OutputType, TILEABLE_TYPE, ExecutableTuple, \
-    get_chunk_types, get_tileable_types, \
-    get_output_types, get_fetch_class
+from ..entity import (
+    OutputType,
+    TILEABLE_TYPE,
+    ExecutableTuple,
+    get_chunk_types,
+    get_tileable_types,
+    get_output_types,
+    get_fetch_class,
+)
 
 _op_type_to_executor: Dict[Type[OperandType], Callable] = dict()
 _op_type_to_size_estimator: Dict[Type[OperandType], Callable] = dict()
@@ -41,61 +48,66 @@ class TileableOperandMixin:
             return
         for inp in inputs:
             if isinstance(inp, TILEABLE_TYPE):
-                i = inp.extra_params['_i']
+                i = inp.extra_params["_i"]
                 if not inp.op.output_types:
                     continue
                 if inp.op.output_types[i] != OutputType.dataframe:
                     continue
-                dtypes = getattr(inp, 'dtypes', None)
+                dtypes = getattr(inp, "dtypes", None)
                 if dtypes is None:
                     raise ValueError(
-                        f'{inp} has unknown dtypes, '
-                        f'it must be executed first before {str(type(self))}')
+                        f"{inp} has unknown dtypes, "
+                        f"it must be executed first before {str(type(self))}"
+                    )
 
     @classmethod
     def _check_if_gpu(cls, inputs: List[TileableType]):
-        if inputs is not None and \
-                len([inp for inp in inputs
-                     if inp is not None and getattr(inp, 'op', None) is not None]) > 0:
+        if (
+            inputs is not None
+            and len(
+                [
+                    inp
+                    for inp in inputs
+                    if inp is not None and getattr(inp, "op", None) is not None
+                ]
+            )
+            > 0
+        ):
             if all(inp.op.gpu is True for inp in inputs):
                 return True
             elif all(inp.op.gpu is False for inp in inputs):
                 return False
 
-    def _create_chunk(self,
-                      output_idx: int,
-                      index: Tuple[int],
-                      **kw) -> ChunkType:
-        output_type = kw.pop('output_type', self._get_output_type(output_idx))
+    def _create_chunk(self, output_idx: int, index: Tuple[int], **kw) -> ChunkType:
+        output_type = kw.pop("output_type", self._get_output_type(output_idx))
         if not output_type:
-            raise ValueError('output_type should be specified')
+            raise ValueError("output_type should be specified")
 
         if isinstance(output_type, (list, tuple)):
             output_type = output_type[output_idx]
         chunk_type, chunk_data_type = get_chunk_types(output_type)
-        kw['_i'] = output_idx
-        kw['op'] = self
-        kw['index'] = index
+        kw["_i"] = output_idx
+        kw["op"] = self
+        kw["index"] = index
         if output_type == OutputType.scalar:
             # tensor
-            kw['order'] = 'C_ORDER'
+            kw["order"] = "C_ORDER"
         data = chunk_data_type(**kw)
         return chunk_type(data)
 
-    def _new_chunks(self,
-                    inputs: List[ChunkType],
-                    kws: dict = None,
-                    **kw) -> List[ChunkType]:
-        output_limit = kw.pop('output_limit', None)
+    def _new_chunks(
+        self, inputs: List[ChunkType], kws: dict = None, **kw
+    ) -> List[ChunkType]:
+        output_limit = kw.pop("output_limit", None)
         if output_limit is None:
-            output_limit = getattr(self, 'output_limit')
+            output_limit = getattr(self, "output_limit")
 
         self.check_inputs(inputs)
-        getattr(self, '_set_inputs')(inputs)
-        if getattr(self, 'gpu', None) is None:
+        getattr(self, "_set_inputs")(inputs)
+        if getattr(self, "gpu", None) is None:
             self.gpu = self._check_if_gpu(self._inputs)
-        if getattr(self, '_key', None) is None:
-            getattr(self, '_update_key')()
+        if getattr(self, "_key", None) is None:
+            getattr(self, "_update_key")()
 
         chunks = []
         if isinstance(output_limit, float) and kws:
@@ -104,22 +116,21 @@ class TileableOperandMixin:
             create_chunk_kw = kw.copy()
             if kws:
                 create_chunk_kw.update(kws[j])
-            index = create_chunk_kw.pop('index', None)
+            index = create_chunk_kw.pop("index", None)
             chunk = self._create_chunk(j, index, **create_chunk_kw)
             chunks.append(chunk)
 
-        setattr(self, 'outputs', chunks)
+        setattr(self, "outputs", chunks)
         if len(chunks) > 1:
             # for each output chunk, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for j, t in enumerate(chunks):
-                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1:]]
+                t.data._siblings = [c.data for c in chunks[:j] + chunks[j + 1 :]]
         return chunks
 
-    def new_chunks(self,
-                   inputs: List[ChunkType],
-                   kws: dict = None,
-                   **kwargs) -> List[ChunkType]:
+    def new_chunks(
+        self, inputs: List[ChunkType], kws: dict = None, **kwargs
+    ) -> List[ChunkType]:
         """
         Create chunks.
 
@@ -148,19 +159,16 @@ class TileableOperandMixin:
         """
         return self._new_chunks(inputs, kws=kws, **kwargs)
 
-    def new_chunk(self,
-                  inputs: List[ChunkType],
-                  kws: dict = None,
-                  **kw) -> ChunkType:
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
+    def new_chunk(self, inputs: List[ChunkType], kws: dict = None, **kw) -> ChunkType:
+        if getattr(self, "output_limit") != 1:
+            raise TypeError("cannot new chunk with more than 1 outputs")
 
         return self.new_chunks(inputs, kws=kws, **kw)[0]
 
     @staticmethod
     def _fill_nan_shape(kw: dict):
-        nsplits = kw.get('nsplits')
-        shape = kw.get('shape')
+        nsplits = kw.get("nsplits")
+        shape = kw.get("shape")
         if nsplits is not None and shape is not None:
             nsplits = tuple(nsplits)
             shape = list(shape)
@@ -170,44 +178,41 @@ class TileableOperandMixin:
                 s = sum(sp)
                 if not np.isnan(s):
                     shape[idx] = s
-            kw['shape'] = tuple(shape)
-            kw['nsplits'] = nsplits
+            kw["shape"] = tuple(shape)
+            kw["nsplits"] = nsplits
         return kw
 
-    def _create_tileable(self,
-                         output_idx: int,
-                         **kw) -> TileableType:
-        output_type = kw.pop('output_type', self._get_output_type(output_idx))
+    def _create_tileable(self, output_idx: int, **kw) -> TileableType:
+        output_type = kw.pop("output_type", self._get_output_type(output_idx))
         if output_type is None:
-            raise ValueError('output_type should be specified')
+            raise ValueError("output_type should be specified")
 
         if isinstance(output_type, (list, tuple)):
             output_type = output_type[output_idx]
         tileable_type, tileable_data_type = get_tileable_types(output_type)
-        kw['_i'] = output_idx
-        kw['op'] = self
+        kw["_i"] = output_idx
+        kw["op"] = self
         if output_type == OutputType.scalar:
             # tensor
-            kw['order'] = 'C_ORDER'
+            kw["order"] = "C_ORDER"
 
         kw = self._fill_nan_shape(kw)
         data = tileable_data_type(**kw)
         return tileable_type(data)
 
-    def _new_tileables(self,
-                       inputs: List[TileableType],
-                       kws: dict = None,
-                       **kw) -> List[TileableType]:
-        output_limit = kw.pop('output_limit', None)
+    def _new_tileables(
+        self, inputs: List[TileableType], kws: dict = None, **kw
+    ) -> List[TileableType]:
+        output_limit = kw.pop("output_limit", None)
         if output_limit is None:
-            output_limit = getattr(self, 'output_limit')
+            output_limit = getattr(self, "output_limit")
 
         self.check_inputs(inputs)
-        getattr(self, '_set_inputs')(inputs)
-        if getattr(self, 'gpu', None) is None:
+        getattr(self, "_set_inputs")(inputs)
+        if getattr(self, "gpu", None) is None:
             self.gpu = self._check_if_gpu(self._inputs)
-        if getattr(self, '_key', None) is None:
-            getattr(self, '_update_key')()  # update key when inputs are set
+        if getattr(self, "_key", None) is None:
+            getattr(self, "_update_key")()  # update key when inputs are set
 
         tileables = []
         for j in range(output_limit):
@@ -217,18 +222,19 @@ class TileableOperandMixin:
             tileable = self._create_tileable(j, **create_tensor_kw)
             tileables.append(tileable)
 
-        setattr(self, 'outputs', tileables)
+        setattr(self, "outputs", tileables)
         if len(tileables) > 1:
             # for each output tileable, hold the reference to the other outputs
             # so that either no one or everyone are gc collected
             for j, t in enumerate(tileables):
-                t.data._siblings = [tileable.data for tileable in tileables[:j] + tileables[j + 1:]]
+                t.data._siblings = [
+                    tileable.data for tileable in tileables[:j] + tileables[j + 1 :]
+                ]
         return tileables
 
-    def new_tileables(self,
-                      inputs: List[TileableType],
-                      kws=None,
-                      **kw) -> List[TileableType]:
+    def new_tileables(
+        self, inputs: List[TileableType], kws=None, **kw
+    ) -> List[TileableType]:
         """
         Create tileable objects(Tensors or DataFrames).
 
@@ -259,12 +265,11 @@ class TileableOperandMixin:
             ExecutableTuple(tileables).execute()
         return tileables
 
-    def new_tileable(self,
-                     inputs: List[TileableType],
-                     kws: dict = None,
-                     **kw) -> TileableType:
-        if getattr(self, 'output_limit') != 1:
-            raise TypeError('cannot new chunk with more than 1 outputs')
+    def new_tileable(
+        self, inputs: List[TileableType], kws: dict = None, **kw
+    ) -> TileableType:
+        if getattr(self, "output_limit") != 1:
+            raise TypeError("cannot new chunk with more than 1 outputs")
 
         return self.new_tileables(inputs, kws=kws, **kw)[0]
 
@@ -284,9 +289,7 @@ class TileableOperandMixin:
         raise NotImplementedError
 
     @classmethod
-    def post_tile(cls,
-                  op: OperandType,
-                  results: List[TileableType]):
+    def post_tile(cls, op: OperandType, results: List[TileableType]):
         """
         Operation after tile.
 
@@ -299,9 +302,7 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def pre_execute(cls,
-                    ctx: Union[dict, Context],
-                    op: OperandType):
+    def pre_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operation before execute.
 
@@ -314,15 +315,11 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: OperandType):
+    def execute(cls, ctx: Union[dict, Context], op: OperandType):
         raise NotImplementedError
 
     @classmethod
-    def post_execute(cls,
-                     ctx: Union[dict, Context],
-                     op: OperandType):
+    def post_execute(cls, ctx: Union[dict, Context], op: OperandType):
         """
         Operand before execute.
 
@@ -335,17 +332,20 @@ class TileableOperandMixin:
         """
 
     @classmethod
-    def estimate_size(cls,
-                      ctx: dict,
-                      op: OperandType):
+    def estimate_size(cls, ctx: dict, op: OperandType):
         from .fetch import FetchShuffle
 
         exec_size = 0
         outputs = op.outputs
-        pure_dep_keys = \
-            set(inp.key for inp, is_dep in zip(op.inputs or (), op.pure_depends or ()) if is_dep)
-        if all(not c.is_sparse() and hasattr(c, 'nbytes') and
-               not np.isnan(c.nbytes) for c in outputs):
+        pure_dep_keys = set(
+            inp.key
+            for inp, is_dep in zip(op.inputs or (), op.pure_depends or ())
+            if is_dep
+        )
+        if all(
+            not c.is_sparse() and hasattr(c, "nbytes") and not np.isnan(c.nbytes)
+            for c in outputs
+        ):
             for out in outputs:
                 ctx[out.key] = (out.nbytes, out.nbytes)
 
@@ -354,9 +354,9 @@ class TileableOperandMixin:
                 continue
             try:
                 if isinstance(inp.op, FetchShuffle):
-                    keys_and_shapes = inp.extra_params.get('_shapes', dict()).items()
+                    keys_and_shapes = inp.extra_params.get("_shapes", dict()).items()
                 else:
-                    keys_and_shapes = [(inp.key, getattr(inp, 'shape', None))]
+                    keys_and_shapes = [(inp.key, getattr(inp, "shape", None))]
 
                 # execution size of a specific data chunk may be
                 # larger than stored type due to objects
@@ -392,11 +392,16 @@ class TileableOperandMixin:
             if out.key in chunk_sizes:
                 result_size = chunk_sizes[out.key]
             else:
-                result_size = max(exec_size // len(outputs),
-                                  total_out_size // max(len(chunk_sizes), 1))
+                result_size = max(
+                    exec_size // len(outputs),
+                    total_out_size // max(len(chunk_sizes), 1),
+                )
             try:
-                if getattr(out, 'dtype', None) is not None and out.is_sparse():
-                    max_sparse_size = out.nbytes + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+                if getattr(out, "dtype", None) is not None and out.is_sparse():
+                    max_sparse_size = (
+                        out.nbytes
+                        + np.dtype(np.int64).itemsize * np.prod(out.shape) * out.ndim
+                    )
                 else:
                     max_sparse_size = np.nan
             except TypeError:  # pragma: no cover
@@ -406,19 +411,16 @@ class TileableOperandMixin:
             ctx[out.key] = (result_size, exec_size * memory_scale // len(outputs))
 
     @classmethod
-    def concat_tileable_chunks(cls,
-                               tileable: TileableType):
+    def concat_tileable_chunks(cls, tileable: TileableType):
         raise NotImplementedError
 
     @classmethod
-    def create_tileable_from_chunks(cls,
-                                    chunks: List[ChunkType],
-                                    inputs: List[TileableType] = None,
-                                    **kw) -> TileableType:
+    def create_tileable_from_chunks(
+        cls, chunks: List[ChunkType], inputs: List[TileableType] = None, **kw
+    ) -> TileableType:
         raise NotImplementedError
 
-    def get_fetch_op_cls(self,
-                         obj: ChunkType):
+    def get_fetch_op_cls(self, obj: ChunkType):
         from .shuffle import ShuffleProxy
 
         output_types = get_output_types(obj, unknown_as=OutputType.object)
@@ -433,8 +435,7 @@ class TileableOperandMixin:
 
         return _inner
 
-    def get_fuse_op_cls(self,
-                        obj: ChunkType):
+    def get_fuse_op_cls(self, obj: ChunkType):
         raise NotImplementedError
 
     @classmethod
@@ -483,7 +484,7 @@ def execute(results: Dict[str, Any], op: OperandType):
                 result = executor(results, op)
                 succeeded = True
                 return result
-        raise KeyError(f'No handler found for op: {op}')
+        raise KeyError(f"No handler found for op: {op}")
     finally:
         if succeeded:
             op.post_execute(results, op)
@@ -503,5 +504,4 @@ def estimate_size(results: Dict[str, Any], op: OperandType):
                 size_estimator = _op_type_to_size_estimator[op_cls]
                 _op_type_to_size_estimator[type(op)] = size_estimator
                 return size_estimator(results, op)
-        raise KeyError(f'No handler found for op: '
-                       f'{op} to estimate size')
+        raise KeyError(f"No handler found for op: " f"{op} to estimate size")

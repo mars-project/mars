@@ -29,7 +29,7 @@ from .meshgrid import meshgrid
 class TensorIndices(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_INDICES
 
-    _dimensions = ListField('dimensions', FieldTypes.uint64)
+    _dimensions = ListField("dimensions", FieldTypes.uint64)
 
     def __init__(self, dimensions=None, **kw):
         super().__init__(_dimensions=dimensions, **kw)
@@ -117,7 +117,7 @@ def indices(dimensions, dtype=int, chunk_size=None):
 
     grid = None
     if np.prod(dimensions):
-        grid = meshgrid(*xi, indexing='ij')
+        grid = meshgrid(*xi, indexing="ij")
 
     if grid:
         grid = stack(grid)
@@ -126,6 +126,8 @@ def indices(dimensions, dtype=int, chunk_size=None):
             empty_chunk_size = None
         else:
             empty_chunk_size = (1,) + chunk_size
-        grid = empty((len(dimensions),) + dimensions, dtype=dtype, chunk_size=empty_chunk_size)
+        grid = empty(
+            (len(dimensions),) + dimensions, dtype=dtype, chunk_size=empty_chunk_size
+        )
 
     return grid

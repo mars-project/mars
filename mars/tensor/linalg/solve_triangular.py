@@ -31,10 +31,10 @@ from ..core import TensorOrder
 class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.SOLVE_TRIANGULAR
 
-    _a = KeyField('a')
-    _b = KeyField('b')
-    _lower = BoolField('lower')
-    _strict = BoolField('strict')
+    _a = KeyField("a")
+    _b = KeyField("b")
+    _lower = BoolField("lower")
+    _strict = BoolField("strict")
 
     def __init__(self, lower=None, strict=None, **kw):
         super().__init__(_lower=lower, _strict=strict, **kw)
@@ -104,30 +104,54 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
                     else:
                         k_range = range(i + 1, a.chunk_shape[0])
                     for k in k_range:
-                        a_chunk, b_chunk = a.cix[i, k], out_chunks[(k, j) if b_multi_dim else (k,)]
-                        prev_chunk = TensorDot(dtype=op.dtype, sparse=a_chunk.issparse()).new_chunk(
-                            [a_chunk, b_chunk], shape=_dot_shape(a_chunk.shape, b_chunk.shape))
+                        a_chunk, b_chunk = (
+                            a.cix[i, k],
+                            out_chunks[(k, j) if b_multi_dim else (k,)],
+                        )
+                        prev_chunk = TensorDot(
+                            dtype=op.dtype, sparse=a_chunk.issparse()
+                        ).new_chunk(
+                            [a_chunk, b_chunk],
+                            shape=_dot_shape(a_chunk.shape, b_chunk.shape),
+                        )
                         prev_chunks.append(prev_chunk)
                     if len(prev_chunks) == 1:
                         s = prev_chunks[0]
                     else:
-                        s = chunk_tree_add(prev_chunks[0].dtype, prev_chunks,
-                                           None, prev_chunks[0].shape, sparse=op.sparse)
-                    target_b = TensorSubtract(dtype=op.dtype, lhs=target_b, rhs=s).new_chunk(
-                        [target_b, s], shape=target_b.shape)
-                out_chunk = TensorSolveTriangular(lower=lower, sparse=op.sparse, dtype=op.dtype).new_chunk(
-                    [target_a, target_b], shape=_x_shape(target_a.shape, target_b.shape),
-                    index=idx, order=op.outputs[0].order)
+                        s = chunk_tree_add(
+                            prev_chunks[0].dtype,
+                            prev_chunks,
+                            None,
+                            prev_chunks[0].shape,
+                            sparse=op.sparse,
+                        )
+                    target_b = TensorSubtract(
+                        dtype=op.dtype, lhs=target_b, rhs=s
+                    ).new_chunk([target_b, s], shape=target_b.shape)
+                out_chunk = TensorSolveTriangular(
+                    lower=lower, sparse=op.sparse, dtype=op.dtype
+                ).new_chunk(
+                    [target_a, target_b],
+                    shape=_x_shape(target_a.shape, target_b.shape),
+                    index=idx,
+                    order=op.outputs[0].order,
+                )
                 out_chunks[out_chunk.index] = out_chunk
 
         new_op = op.copy()
         nsplits = (a.nsplits[0],) if b.ndim == 1 else (a.nsplits[0], b.nsplits[1])
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, chunks=list(out_chunks.values()), nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            op.outputs[0].shape,
+            chunks=list(out_chunks.values()),
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (a, b), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         chunk = op.outputs[0]
         with device(device_id):
@@ -143,9 +167,13 @@ class TensorSolveTriangular(TensorOperand, TensorOperandMixin):
             elif xp is cp:
                 import cupyx
 
-                ctx[chunk.key] = cupyx.scipy.linalg.solve_triangular(a, b, lower=op.lower)
+                ctx[chunk.key] = cupyx.scipy.linalg.solve_triangular(
+                    a, b, lower=op.lower
+                )
             else:
-                ctx[chunk.key] = xp.solve_triangular(a, b, lower=op.lower, sparse=op.sparse)
+                ctx[chunk.key] = xp.solve_triangular(
+                    a, b, lower=op.lower, sparse=op.sparse
+                )
 
 
 def solve_triangular(a, b, lower=False, sparse=None):
@@ -193,15 +221,16 @@ def solve_triangular(a, b, lower=False, sparse=None):
     b = astensor(b)
 
     if a.ndim != 2:
-        raise LinAlgError('a must be 2 dimensional')
+        raise LinAlgError("a must be 2 dimensional")
     if b.ndim <= 2:
         if a.shape[1] != b.shape[0]:
-            raise LinAlgError('a.shape[1] and b.shape[0] must be equal')
+            raise LinAlgError("a.shape[1] and b.shape[0] must be equal")
     else:
-        raise LinAlgError('b must be 1 or 2 dimensional')
+        raise LinAlgError("b must be 1 or 2 dimensional")
 
-    tiny_x = scipy.linalg.solve_triangular(np.array([[2, 0], [2, 1]], dtype=a.dtype),
-                                           np.array([[2], [3]], dtype=b.dtype))
+    tiny_x = scipy.linalg.solve_triangular(
+        np.array([[2, 0], [2, 1]], dtype=a.dtype), np.array([[2], [3]], dtype=b.dtype)
+    )
     sparse = sparse if sparse is not None else a.issparse()
     op = TensorSolveTriangular(lower=lower, dtype=tiny_x.dtype, sparse=sparse)
     return op(a, b)

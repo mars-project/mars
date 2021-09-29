@@ -34,21 +34,25 @@ def _reorder(x, axes):
 class TensorTranspose(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.TRANSPOSE
 
-    _input = KeyField('input')
-    _axes = ListField('axes', FieldTypes.int32)
+    _input = KeyField("input")
+    _axes = ListField("axes", FieldTypes.int32)
 
     def __init__(self, axes=None, **kw):
-        super().__init__(_axes=axes,
-                         # transpose will create a view
-                         create_view=True, **kw)
+        super().__init__(
+            _axes=axes,
+            # transpose will create a view
+            create_view=True,
+            **kw
+        )
 
     @property
     def axes(self):
-        return getattr(self, '_axes', None)
+        return getattr(self, "_axes", None)
 
     def __call__(self, a):
-        shape = tuple(s if np.isnan(s) else int(s)
-                      for s in _reorder(a.shape, self._axes))
+        shape = tuple(
+            s if np.isnan(s) else int(s) for s in _reorder(a.shape, self._axes)
+        )
         if self._axes == list(reversed(range(a.ndim))):
             # order reversed
             tensor_order = reverse_order(a.order)
@@ -75,22 +79,30 @@ class TensorTranspose(TensorHasInput, TensorOperandMixin):
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
-            chunk_shape = tuple(s if np.isnan(s) else int(s)
-                                for s in _reorder(c.shape, op.axes))
+            chunk_shape = tuple(
+                s if np.isnan(s) else int(s) for s in _reorder(c.shape, op.axes)
+            )
             chunk_idx = _reorder(c.index, op.axes)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           index=chunk_idx, order=tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=chunk_shape, index=chunk_idx, order=tensor.order
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         nsplits = _reorder(op.inputs[0].nsplits, op.axes)
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            op.outputs[0].shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         (x,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         axes = op.axes
         with device(device_id):

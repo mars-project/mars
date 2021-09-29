@@ -17,8 +17,8 @@ import os
 import tempfile
 import time
 
-_cpu_stat_first = '8678870951786'
-_cpu_stat_last = '8679429771672'
+_cpu_stat_first = "8678870951786"
+_cpu_stat_last = "8679429771672"
 
 # just a fragment of real memory.stat
 _memory_stat_content = """
@@ -36,6 +36,7 @@ hierarchical_memory_limit 1073741824
 
 def test_stats():
     from mars import resource
+
     resource = importlib.reload(resource)
     resource.cpu_percent()
 
@@ -77,9 +78,9 @@ def test_use_process_stats():
     cpu_total = resource.cpu_count()
     mem_total = resource.virtual_memory().total
     try:
-        os.environ['MARS_USE_PROCESS_STAT'] = '1'
-        os.environ['MARS_CPU_TOTAL'] = str(cpu_total)
-        os.environ['MARS_MEMORY_TOTAL'] = str(mem_total)
+        os.environ["MARS_USE_PROCESS_STAT"] = "1"
+        os.environ["MARS_CPU_TOTAL"] = str(cpu_total)
+        os.environ["MARS_MEMORY_TOTAL"] = str(mem_total)
 
         resource = importlib.reload(resource)
         resource.cpu_percent()
@@ -97,26 +98,27 @@ def test_use_process_stats():
         cpu_usage = resource.cpu_percent()
         assert cpu_usage >= 0
     finally:
-        del os.environ['MARS_USE_PROCESS_STAT']
-        del os.environ['MARS_CPU_TOTAL']
-        del os.environ['MARS_MEMORY_TOTAL']
+        del os.environ["MARS_USE_PROCESS_STAT"]
+        del os.environ["MARS_CPU_TOTAL"]
+        del os.environ["MARS_MEMORY_TOTAL"]
         importlib.reload(resource)
 
 
 def test_use_c_group_stats():
     from mars import resource
-    fd, cpu_stat_path = tempfile.mkstemp(prefix='test-mars-res-cpu-')
-    with os.fdopen(fd, 'w') as f:
+
+    fd, cpu_stat_path = tempfile.mkstemp(prefix="test-mars-res-cpu-")
+    with os.fdopen(fd, "w") as f:
         f.write(_cpu_stat_first)
-    fd, mem_stat_path = tempfile.mkstemp(prefix='test-mars-res-mem-')
-    with os.fdopen(fd, 'w') as f:
+    fd, mem_stat_path = tempfile.mkstemp(prefix="test-mars-res-mem-")
+    with os.fdopen(fd, "w") as f:
         f.write(_memory_stat_content)
 
     old_cpu_stat_file = resource.CGROUP_CPU_STAT_FILE
     old_mem_stat_file = resource.CGROUP_MEM_STAT_FILE
     old_shm_path = resource._shm_path
     try:
-        os.environ['MARS_USE_CGROUP_STAT'] = '1'
+        os.environ["MARS_USE_CGROUP_STAT"] = "1"
 
         resource = importlib.reload(resource)
         resource.CGROUP_CPU_STAT_FILE = cpu_stat_path
@@ -125,7 +127,7 @@ def test_use_c_group_stats():
 
         assert resource.cpu_percent() is None
         time.sleep(0.5)
-        with open(cpu_stat_path, 'w') as f:
+        with open(cpu_stat_path, "w") as f:
             f.write(_cpu_stat_last)
         assert resource.cpu_percent() > 50
         assert resource.cpu_percent() < 150
@@ -137,7 +139,7 @@ def test_use_c_group_stats():
         resource.CGROUP_CPU_STAT_FILE = old_cpu_stat_file
         resource.CGROUP_MEM_STAT_FILE = old_mem_stat_file
         resource._shm_path = old_shm_path
-        del os.environ['MARS_USE_CGROUP_STAT']
+        del os.environ["MARS_USE_CGROUP_STAT"]
         os.unlink(cpu_stat_path)
         os.unlink(mem_stat_path)
         importlib.reload(resource)

@@ -120,12 +120,12 @@ def _check_arg(arg):
 
 
 def _array_ufunc(_, ufunc, method, *inputs, **kwargs):
-    out = kwargs.get('out', tuple())
+    out = kwargs.get("out", tuple())
     for x in inputs + out:
         if not _check_arg(x):
             return NotImplemented
 
-    if method == '__call__':
+    if method == "__call__":
         if ufunc.signature is not None:
             return NotImplemented
         if ufunc not in UFUNC_TO_TENSOR_FUNC:

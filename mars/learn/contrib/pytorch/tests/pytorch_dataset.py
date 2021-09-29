@@ -17,6 +17,7 @@ import sys
 
 def get_model():
     import torch.nn as nn
+
     return nn.Sequential(
         nn.Linear(32, 64),
         nn.ReLU(),
@@ -34,7 +35,7 @@ def main(feature_data, labels):
     import torch.utils.data
     from mars.learn.contrib.pytorch import MarsDataset, DistributedSampler
 
-    dist.init_process_group(backend='gloo')
+    dist.init_process_group(backend="gloo")
     torch.manual_seed(42)
 
     data = feature_data
@@ -44,14 +45,15 @@ def main(feature_data, labels):
     assert len(train_dataset) == 1000
 
     train_sampler = DistributedSampler(train_dataset, shuffle=True)
-    train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
-                                               batch_size=32,
-                                               shuffle=(train_sampler is None),
-                                               sampler=train_sampler)
+    train_loader = torch.utils.data.DataLoader(
+        dataset=train_dataset,
+        batch_size=32,
+        shuffle=(train_sampler is None),
+        sampler=train_sampler,
+    )
 
     model = nn.parallel.DistributedDataParallel(get_model())
-    optimizer = optim.SGD(model.parameters(),
-                          lr=0.01, momentum=0.5)
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
     criterion = nn.BCELoss()
 
     for i in range(2):
@@ -72,7 +74,7 @@ def main(feature_data, labels):
 
 if __name__ == "__main__":
     assert len(sys.argv) == 2
-    assert sys.argv[1] == 'multiple'
-    feature_data = globals()['feature_data']
-    labels = globals()['labels']
+    assert sys.argv[1] == "multiple"
+    feature_data = globals()["feature_data"]
+    labels = globals()["labels"]
     main(feature_data, labels)

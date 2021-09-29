@@ -16,4 +16,4 @@ from ...serialization.serializables import Serializable, StringField
 
 
 class SessionInfo(Serializable):
-    session_id: str = StringField('session_id')
+    session_id: str = StringField("session_id")

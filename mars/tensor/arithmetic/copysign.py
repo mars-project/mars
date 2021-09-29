@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='always_false')
+@arithmetic_operand(sparse_mode="always_false")
 class TensorCopysign(TensorBinOp):
     _op_type_ = OperandDef.COPYSIGN
-    _func_name = 'copysign'
+    _func_name = "copysign"
 
 
 @infer_dtype(np.copysign)

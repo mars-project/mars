@@ -24,7 +24,7 @@ class YarnWorkerCommandRunner(YarnServiceMixin, WorkerCommandRunner):
     service_name = MarsWorkerConfig.service_name
 
     def __call__(self, *args, **kwargs):
-        os.environ['MARS_CONTAINER_IP'] = self.get_container_ip()
+        os.environ["MARS_CONTAINER_IP"] = self.get_container_ip()
         return super().__call__(*args, **kwargs)
 
     async def start_services(self):
@@ -34,9 +34,13 @@ class YarnWorkerCommandRunner(YarnServiceMixin, WorkerCommandRunner):
         self.register_endpoint()
 
         await start_worker(
-            self.pool.external_address, self.args.supervisors,
-            self.band_to_slot, list(self.args.load_modules), self.config,
-            mark_ready=False)
+            self.pool.external_address,
+            self.args.supervisors,
+            self.band_to_slot,
+            list(self.args.load_modules),
+            self.config,
+            mark_ready=False,
+        )
         await self.wait_all_supervisors_ready()
 
         cluster_api = await ClusterAPI.create(self.args.endpoint)
@@ -45,5 +49,5 @@ class YarnWorkerCommandRunner(YarnServiceMixin, WorkerCommandRunner):
 
 main = YarnWorkerCommandRunner()
 
-if __name__ == '__main__':   # pragma: no branch
+if __name__ == "__main__":  # pragma: no branch
     main()

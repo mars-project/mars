@@ -18,21 +18,21 @@ from ...utils import lazy_import
 from .core import RuntimeOptimizer, register_optimizer
 
 
-cp = lazy_import('cupy', globals=globals(), rename='cp')
+cp = lazy_import("cupy", globals=globals(), rename="cp")
 CP_INSTALLED = cp is not None
 
 CP_ELEMENTWISE_OP = {
     arithmetic.TensorSubtract,
     arithmetic.TensorMultiply,
     arithmetic.TensorTrueDiv,
-    arithmetic.TensorSqrt
+    arithmetic.TensorSqrt,
 }
 CP_OP = CP_ELEMENTWISE_OP
 
 
 @register_optimizer
 class CupyRuntimeOptimizer(RuntimeOptimizer):
-    engine = 'cupy'
+    engine = "cupy"
 
     @classmethod
     def is_available(cls) -> bool:
@@ -56,11 +56,11 @@ class CupyRuntimeOptimizer(RuntimeOptimizer):
             selected = [node]
             # add successors
             cur_node = graph.successors(node)[0]
-            while graph.count_predecessors(cur_node) == 1 and \
-                    type(cur_node.op) in CP_OP:
+            while (
+                graph.count_predecessors(cur_node) == 1 and type(cur_node.op) in CP_OP
+            ):
                 selected.append(cur_node)
-                if graph.count_successors(cur_node) != 1 or \
-                        cur_node in graph.results:
+                if graph.count_successors(cur_node) != 1 or cur_node in graph.results:
                     break
                 else:
                     cur_node = graph.successors(cur_node)[0]

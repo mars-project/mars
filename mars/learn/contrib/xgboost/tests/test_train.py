@@ -37,21 +37,21 @@ x_sparse[np.arange(n_rows), np.random.randint(n_columns, size=n_rows)] = np.nan
 X_sparse = mt.tensor(x_sparse, chunk_size=chunk_size).tosparse(missing=np.nan)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_tensor(setup):
     dtrain = MarsDMatrix(X, y)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_sparse_tensor(setup):
     dtrain = MarsDMatrix(X_sparse, y)
     booster = train({}, dtrain, num_boost_round=2)
     assert isinstance(booster, Booster)
 
 
-@pytest.mark.skipif(xgboost is None, reason='XGBoost not installed')
+@pytest.mark.skipif(xgboost is None, reason="XGBoost not installed")
 def test_local_train_dataframe(setup):
     dtrain = MarsDMatrix(X_df, y_series)
     booster = train({}, dtrain, num_boost_round=2)

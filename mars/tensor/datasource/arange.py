@@ -28,17 +28,20 @@ from ..array_utils import create_array
 class TensorArange(TensorNoInput):
     _op_type_ = OperandDef.TENSOR_ARANGE
 
-    _start = AnyField('start')
-    _stop = AnyField('stop')
-    _step = AnyField('step')
+    _start = AnyField("start")
+    _stop = AnyField("stop")
+    _step = AnyField("step")
 
     def __init__(self, start=None, stop=None, step=None, dtype=None, **kw):
         if dtype is not None:
             dtype = np.dtype(dtype)
         elif stop is not None and step is not None:
-            dtype = np.dtype(dtype) if dtype is not None else np.arange(0, type(stop)(1), step).dtype
-        super().__init__(_start=start, _stop=stop, _step=step,
-                         dtype=dtype, **kw)
+            dtype = (
+                np.dtype(dtype)
+                if dtype is not None
+                else np.arange(0, type(stop)(1), step).dtype
+            )
+        super().__init__(_start=start, _stop=stop, _step=step, dtype=dtype, **kw)
 
     @property
     def start(self):
@@ -65,7 +68,9 @@ class TensorArange(TensorNoInput):
         tensor = op.outputs[0]
 
         chunk_length = tensor.extra_params.raw_chunk_size or options.chunk_size
-        chunk_length = decide_chunk_sizes(tensor.shape, chunk_length, tensor.dtype.itemsize)
+        chunk_length = decide_chunk_sizes(
+            tensor.shape, chunk_length, tensor.dtype.itemsize
+        )
 
         start, stop, step = op.start, op.stop, op.step  # noqa: F841
 
@@ -85,13 +90,19 @@ class TensorArange(TensorNoInput):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape, order=tensor.order,
-                                  chunks=out_chunks, nsplits=chunk_length)
+        return new_op.new_tensors(
+            op.inputs,
+            tensor.shape,
+            order=tensor.order,
+            chunks=out_chunks,
+            nsplits=chunk_length,
+        )
 
     @classmethod
     def execute(cls, ctx, op):
         ctx[op.outputs[0].key] = create_array(op)(
-            'arange', op.start, op.stop, op.step, dtype=op.dtype)
+            "arange", op.start, op.stop, op.step, dtype=op.dtype
+        )
 
 
 def arange(*args, **kwargs):
@@ -156,7 +167,7 @@ def arange(*args, **kwargs):
     >>> mt.arange(3,7,2).execute()
     array([3, 5])
     """
-    kw_args = [kwargs.get('start'), kwargs.get('stop'), kwargs.get('step')]
+    kw_args = [kwargs.get("start"), kwargs.get("stop"), kwargs.get("step")]
     kw_def = any(arg is not None for arg in kw_args)
     dtype = None
     if not kw_def:
@@ -176,22 +187,26 @@ def arange(*args, **kwargs):
         else:
             raise TypeError("Required argument 'start' (pos 1) not found")
     else:
-        names = 'start', 'stop', 'step'
+        names = "start", "stop", "step"
         for i, arg in enumerate(args):
             if kw_args[i] is not None:
-                raise TypeError(f"Argument given by name ('{names[i]}') and position ({i})")
+                raise TypeError(
+                    f"Argument given by name ('{names[i]}') and position ({i})"
+                )
             kw_args[i] = arg
         start, stop, step = kw_args
 
     if dtype is None:
-        if 'dtype' in kwargs:
-            dtype = np.dtype(kwargs['dtype'])
+        if "dtype" in kwargs:
+            dtype = np.dtype(kwargs["dtype"])
         else:
             dtype = np.arange(0, type(stop)(1), step).dtype
 
     start, stop = dtype.type(start), dtype.type(stop)
     if dtype == np.datetime64 and not start:
-        raise ValueError('arange requires both a start and a stop for Mars datetime64 ranges')
+        raise ValueError(
+            "arange requires both a start and a stop for Mars datetime64 ranges"
+        )
     if dtype == np.datetime64:
         span = np.array([stop - start])
         span[0] = step
@@ -201,6 +216,6 @@ def arange(*args, **kwargs):
         step = dtype.type(step)
     size = max(int(np.ceil(np.true_divide(stop - start, step))), 0)
 
-    op = TensorArange(start, stop, step, dtype=dtype, gpu=kwargs.get('gpu', False))
+    op = TensorArange(start, stop, step, dtype=dtype, gpu=kwargs.get("gpu", False))
     shape = (size,)
-    return op(shape, chunk_size=kwargs.pop('chunk_size', None))
+    return op(shape, chunk_size=kwargs.pop("chunk_size", None))

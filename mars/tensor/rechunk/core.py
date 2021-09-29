@@ -47,26 +47,38 @@ def _chunk_number(nsplits):
 
 
 def _estimate_graph_size(old_chunk_size, new_chunk_size):
-    return reduce(operator.mul,
-                  (len(oc) + len(nc) for oc, nc in zip(old_chunk_size, new_chunk_size)))
+    return reduce(
+        operator.mul,
+        (len(oc) + len(nc) for oc, nc in zip(old_chunk_size, new_chunk_size)),
+    )
 
 
-def plan_rechunks(tileable, new_chunk_size, itemsize, threshold=None, chunk_size_limit=None):
+def plan_rechunks(
+    tileable, new_chunk_size, itemsize, threshold=None, chunk_size_limit=None
+):
     threshold = threshold or options.rechunk.threshold
     chunk_size_limit = chunk_size_limit or options.rechunk.chunk_size_limit
 
     if len(new_chunk_size) != tileable.ndim:
-        raise ValueError(f'Provided chunks should have {tileable.ndim} dimensions, got {len(new_chunk_size)}')
+        raise ValueError(
+            f"Provided chunks should have {tileable.ndim} dimensions, got {len(new_chunk_size)}"
+        )
 
     steps = []
 
     if itemsize > 0:
         chunk_size_limit /= itemsize
-    chunk_size_limit = max([int(chunk_size_limit),
-                            _largest_chunk_size(tileable.nsplits),
-                            _largest_chunk_size(new_chunk_size)])
+    chunk_size_limit = max(
+        [
+            int(chunk_size_limit),
+            _largest_chunk_size(tileable.nsplits),
+            _largest_chunk_size(new_chunk_size),
+        ]
+    )
 
-    graph_size_threshold = threshold * (_chunk_number(tileable.nsplits) + _chunk_number(new_chunk_size))
+    graph_size_threshold = threshold * (
+        _chunk_number(tileable.nsplits) + _chunk_number(new_chunk_size)
+    )
 
     chunk_size = curr_chunk_size = tileable.nsplits
     first_run = True
@@ -75,8 +87,12 @@ def plan_rechunks(tileable, new_chunk_size, itemsize, threshold=None, chunk_size
         if graph_size < graph_size_threshold:
             break
         if not first_run:
-            chunk_size = _find_split_rechunk(curr_chunk_size, new_chunk_size, graph_size * threshold)
-        chunks_size, memory_limit_hit = _find_merge_rechunk(chunk_size, new_chunk_size, chunk_size_limit)
+            chunk_size = _find_split_rechunk(
+                curr_chunk_size, new_chunk_size, graph_size * threshold
+            )
+        chunks_size, memory_limit_hit = _find_merge_rechunk(
+            chunk_size, new_chunk_size, chunk_size_limit
+        )
         if chunk_size == curr_chunk_size or chunk_size == new_chunk_size:
             break
         steps.append(chunk_size)
@@ -105,15 +121,13 @@ def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
     }
 
     block_size_effect = {
-        dim: new_largest_width[dim] / old_largest_width[dim]
-        for dim in range(ndim)
+        dim: new_largest_width[dim] / old_largest_width[dim] for dim in range(ndim)
     }
 
     # Our goal is to reduce the number of nodes in the rechunk graph
     # by merging some adjacent chunks, so consider dimensions where we can
     # reduce the # of chunks
-    merge_candidates = [dim for dim in range(ndim)
-                        if graph_size_effect[dim] <= 1.0]
+    merge_candidates = [dim for dim in range(ndim) if graph_size_effect[dim] <= 1.0]
 
     # Merging along each dimension reduces the graph size by a certain factor
     # and increases memory largest block size by a certain factor.
@@ -138,7 +152,8 @@ def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
     for dim in sorted_candidates:
         # Examine this dimension for possible graph reduction
         new_largest_block_size = (
-            largest_block_size * new_largest_width[dim] // old_largest_width[dim])
+            largest_block_size * new_largest_width[dim] // old_largest_width[dim]
+        )
         if new_largest_block_size <= graph_size_limit:
             # Full replacement by new chunks is possible
             chunk_size[dim] = new_chunk_size[dim]
@@ -193,15 +208,13 @@ def _find_merge_rechunk(old_chunk_size, new_chunk_size, chunk_size_limit):
     }
 
     block_size_effect = {
-        dim: new_largest_width[dim] / old_largest_width[dim]
-        for dim in range(ndim)
+        dim: new_largest_width[dim] / old_largest_width[dim] for dim in range(ndim)
     }
 
     # Our goal is to reduce the number of nodes in the rechunk graph
     # by merging some adjacent chunks, so consider dimensions where we can
     # reduce the # of chunks
-    merge_candidates = [dim for dim in range(ndim)
-                        if graph_size_effect[dim] <= 1.0]
+    merge_candidates = [dim for dim in range(ndim) if graph_size_effect[dim] <= 1.0]
 
     # Merging along each dimension reduces the graph size by a certain factor
     # and increases memory largest block size by a certain factor.
@@ -226,7 +239,8 @@ def _find_merge_rechunk(old_chunk_size, new_chunk_size, chunk_size_limit):
     for dim in sorted_candidates:
         # Examine this dimension for possible graph reduction
         new_largest_block_size = (
-            largest_block_size * new_largest_width[dim] // old_largest_width[dim])
+            largest_block_size * new_largest_width[dim] // old_largest_width[dim]
+        )
         if new_largest_block_size <= chunk_size_limit:
             # Full replacement by new chunks is possible
             chunk_size[dim] = new_chunk_size[dim]
@@ -253,7 +267,9 @@ def compute_rechunk_slices(tileable, chunk_size):
     nsplits = tileable.nsplits
     truncated = [[0, None] for _ in range(tileable.ndim)]
     result_slices = []
-    for dim, old_chunk_size, new_chunk_size in zip(itertools.count(0), nsplits, chunk_size):
+    for dim, old_chunk_size, new_chunk_size in zip(
+        itertools.count(0), nsplits, chunk_size
+    ):
         slices = []
         for rest in new_chunk_size:
             dim_slices = []

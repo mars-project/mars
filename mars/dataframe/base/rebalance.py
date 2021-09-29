@@ -24,15 +24,28 @@ from ..utils import validate_axis
 class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand):
     _op_type_ = opcodes.REBALANCE
 
-    _input = KeyField('input')
-    _factor = Float64Field('factor')
-    _axis = Int64Field('axis')
-    _num_partitions = Int64Field('num_partitions')
+    _input = KeyField("input")
+    _factor = Float64Field("factor")
+    _axis = Int64Field("axis")
+    _num_partitions = Int64Field("num_partitions")
 
-    def __init__(self, input=None, factor=None, axis=None,  # pylint: disable=redefined-builtin
-                 num_partitions=None, output_types=None, **kw):
-        super().__init__(_input=input, _factor=factor, _axis=axis, _num_partitions=num_partitions,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        input=None,
+        factor=None,
+        axis=None,  # pylint: disable=redefined-builtin
+        num_partitions=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _input=input,
+            _factor=factor,
+            _axis=axis,
+            _num_partitions=num_partitions,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def input(self):
@@ -59,7 +72,9 @@ class DataFrameRebalance(RebalanceMixin, DataFrameOperandMixin, DataFrameOperand
         return convert(in_obj)
 
 
-def rebalance(df_or_series, factor=None, axis=0, num_partitions=None, reassign_worker=True):
+def rebalance(
+    df_or_series, factor=None, axis=0, num_partitions=None, reassign_worker=True
+):
     """
     Make Data more balanced across entire cluster.
 
@@ -85,6 +100,11 @@ def rebalance(df_or_series, factor=None, axis=0, num_partitions=None, reassign_w
     if num_partitions is None:
         factor = factor if factor is not None else 1.2
 
-    op = DataFrameRebalance(input=df_or_series, factor=factor, axis=axis,
-                            num_partitions=num_partitions, reassign_worker=reassign_worker)
+    op = DataFrameRebalance(
+        input=df_or_series,
+        factor=factor,
+        axis=axis,
+        num_partitions=num_partitions,
+        reassign_worker=reassign_worker,
+    )
     return op(df_or_series)

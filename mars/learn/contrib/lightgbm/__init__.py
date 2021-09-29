@@ -24,8 +24,11 @@ def register_op():
 
 from ..utils import config_mod_getattr as _config_mod_getattr
 
-_config_mod_getattr({
-    'LGBMClassifier': '.classifier.LGBMClassifier',
-    'LGBMRegressor': '.regressor.LGBMRegressor',
-    'LGBMRanker': '.ranker.LGBMRanker',
-}, globals())
+_config_mod_getattr(
+    {
+        "LGBMClassifier": ".classifier.LGBMClassifier",
+        "LGBMRegressor": ".regressor.LGBMRegressor",
+        "LGBMRanker": ".ranker.LGBMRanker",
+    },
+    globals(),
+)

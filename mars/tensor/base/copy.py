@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-def copy(a, order='K'):
+def copy(a, order="K"):
     """
     Return a tensor copy of the given object.
 

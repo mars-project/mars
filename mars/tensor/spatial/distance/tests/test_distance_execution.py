@@ -20,7 +20,7 @@ from ....datasource import tensor
 from ... import distance
 
 
-@pytest.mark.skipif(distance.pdist is None, reason='scipy not installed')
+@pytest.mark.skipif(distance.pdist is None, reason="scipy not installed")
 def test_pdist_execution(setup):
     from scipy.spatial.distance import pdist as sp_pdist
 
@@ -34,12 +34,12 @@ def test_pdist_execution(setup):
     expected = sp_pdist(raw)
     np.testing.assert_array_equal(result, expected)
 
-    dist = distance.pdist(x, metric='hamming')
+    dist = distance.pdist(x, metric="hamming")
     result = dist.execute().fetch()
-    expected = sp_pdist(raw, metric='hamming')
+    expected = sp_pdist(raw, metric="hamming")
     np.testing.assert_array_equal(result, expected)
 
-    f = lambda u, v: np.sqrt(((u-v)**2).sum())
+    f = lambda u, v: np.sqrt(((u - v) ** 2).sum())
     dist = distance.pdist(x, metric=f)
     result = dist.execute().fetch()
     expected = sp_pdist(raw, metric=f)
@@ -62,14 +62,14 @@ def test_pdist_execution(setup):
     expected = sp_pdist(raw)
     np.testing.assert_array_equal(result, expected)
 
-    dist = distance.pdist(x, metric='hamming', aggregate_size=2)
+    dist = distance.pdist(x, metric="hamming", aggregate_size=2)
     tdist = tile(dist)
     assert len(tdist.chunks) == 2
     result = dist.execute().fetch()
-    expected = sp_pdist(raw, metric='hamming')
+    expected = sp_pdist(raw, metric="hamming")
     np.testing.assert_array_equal(result, expected)
 
-    f = lambda u, v: np.sqrt(((u-v)**2).sum())
+    f = lambda u, v: np.sqrt(((u - v) ** 2).sum())
     dist = distance.pdist(x, metric=f, aggregate_size=2)
     result = dist.execute().fetch()
     expected = sp_pdist(raw, metric=f)
@@ -79,29 +79,29 @@ def test_pdist_execution(setup):
         # test w
         weight = np.random.rand(10)
         w = tensor(weight, chunk_size=7)
-        dist = distance.pdist(x, metric='wminkowski', p=3, w=w)
+        dist = distance.pdist(x, metric="wminkowski", p=3, w=w)
         result = dist.execute().fetch()
-        expected = sp_pdist(raw, metric='wminkowski', p=3, w=weight)
+        expected = sp_pdist(raw, metric="wminkowski", p=3, w=weight)
         np.testing.assert_array_equal(result, expected)
 
         # test V
         v = np.random.rand(10)
         V = tensor(v, chunk_size=7)
-        dist = distance.pdist(x, metric='seuclidean', V=V)
+        dist = distance.pdist(x, metric="seuclidean", V=V)
         result = dist.execute().fetch()
-        expected = sp_pdist(raw, metric='seuclidean', V=v)
+        expected = sp_pdist(raw, metric="seuclidean", V=v)
         np.testing.assert_array_equal(result, expected)
 
         # test VI
         vi = np.random.rand(10, 10)
         VI = tensor(vi, chunk_size=8)
-        dist = distance.pdist(x, metric='mahalanobis', VI=VI)
+        dist = distance.pdist(x, metric="mahalanobis", VI=VI)
         result = dist.execute().fetch()
-        expected = sp_pdist(raw, metric='mahalanobis', VI=vi)
+        expected = sp_pdist(raw, metric="mahalanobis", VI=vi)
         np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.skipif(distance.cdist is None, reason='scipy not installed')
+@pytest.mark.skipif(distance.cdist is None, reason="scipy not installed")
 def test_cdist_execution(setup):
     from scipy.spatial.distance import cdist as sp_cdist
 
@@ -117,12 +117,12 @@ def test_cdist_execution(setup):
     expected = sp_cdist(raw_a, raw_b)
     np.testing.assert_array_equal(result, expected)
 
-    dist = distance.cdist(xa, xb, metric='hamming')
+    dist = distance.cdist(xa, xb, metric="hamming")
     result = dist.execute().fetch()
-    expected = sp_cdist(raw_a, raw_b, metric='hamming')
+    expected = sp_cdist(raw_a, raw_b, metric="hamming")
     np.testing.assert_array_equal(result, expected)
 
-    f = lambda u, v: np.sqrt(((u-v)**2).sum())
+    f = lambda u, v: np.sqrt(((u - v) ** 2).sum())
     dist = distance.cdist(xa, xb, metric=f)
     result = dist.execute().fetch()
     expected = sp_cdist(raw_a, raw_b, metric=f)
@@ -137,48 +137,49 @@ def test_cdist_execution(setup):
     expected = sp_cdist(raw_a, raw_b)
     np.testing.assert_array_equal(result, expected)
 
-    dist = distance.cdist(xa, xb, metric='hamming')
+    dist = distance.cdist(xa, xb, metric="hamming")
     result = dist.execute().fetch()
-    expected = sp_cdist(raw_a, raw_b, metric='hamming')
+    expected = sp_cdist(raw_a, raw_b, metric="hamming")
     np.testing.assert_array_equal(result, expected)
 
-    f = lambda u, v: np.sqrt(((u-v)**2).sum())
+    f = lambda u, v: np.sqrt(((u - v) ** 2).sum())
     dist = distance.cdist(xa, xb, metric=f)
     result = dist.execute().fetch()
     expected = sp_cdist(raw_a, raw_b, metric=f)
     np.testing.assert_array_equal(result, expected)
 
-    for xa, xb in [(tensor(raw_a), tensor(raw_b)),
-                   (tensor(raw_a, chunk_size=12), tensor(raw_b, chunk_size=13))]:
+    for xa, xb in [
+        (tensor(raw_a), tensor(raw_b)),
+        (tensor(raw_a, chunk_size=12), tensor(raw_b, chunk_size=13)),
+    ]:
         # test w
         weight = np.random.rand(10)
         w = tensor(weight, chunk_size=7)
-        dist = distance.cdist(xa, xb, metric='wminkowski', p=3, w=w)
+        dist = distance.cdist(xa, xb, metric="wminkowski", p=3, w=w)
         result = dist.execute().fetch()
-        expected = sp_cdist(raw_a, raw_b, metric='wminkowski', p=3, w=weight)
+        expected = sp_cdist(raw_a, raw_b, metric="wminkowski", p=3, w=weight)
         np.testing.assert_array_equal(result, expected)
 
         # test V
         v = np.random.rand(10)
         V = tensor(v, chunk_size=7)
-        dist = distance.cdist(xa, xb, metric='seuclidean', V=V)
+        dist = distance.cdist(xa, xb, metric="seuclidean", V=V)
         result = dist.execute().fetch()
-        expected = sp_cdist(raw_a, raw_b, metric='seuclidean', V=v)
+        expected = sp_cdist(raw_a, raw_b, metric="seuclidean", V=v)
         np.testing.assert_array_equal(result, expected)
 
         # test VI
         vi = np.random.rand(10, 10)
         VI = tensor(vi, chunk_size=8)
-        dist = distance.cdist(xa, xb, metric='mahalanobis', VI=VI)
+        dist = distance.cdist(xa, xb, metric="mahalanobis", VI=VI)
         result = dist.execute().fetch()
-        expected = sp_cdist(raw_a, raw_b, metric='mahalanobis', VI=vi)
+        expected = sp_cdist(raw_a, raw_b, metric="mahalanobis", VI=vi)
         np.testing.assert_array_equal(result, expected)
 
 
-@pytest.mark.skipif(distance.cdist is None, reason='scipy not installed')
+@pytest.mark.skipif(distance.cdist is None, reason="scipy not installed")
 def test_squareform_execution(setup):
-    from scipy.spatial.distance import pdist as sp_pdist, \
-        squareform as sp_squareform
+    from scipy.spatial.distance import pdist as sp_pdist, squareform as sp_squareform
 
     raw_a = np.random.rand(80, 10)
     raw_pdsit = sp_pdist(raw_a)

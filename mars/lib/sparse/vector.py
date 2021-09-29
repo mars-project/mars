@@ -19,11 +19,11 @@ from .core import get_array_module, get_sparse_module, naked, issparse, np, is_c
 
 
 class SparseVector(SparseArray):
-    __slots__ = 'spmatrix',
+    __slots__ = ("spmatrix",)
 
     def __init__(self, spvector, shape=()):
         if shape and len(shape) != 1:
-            raise ValueError('Only accept 1-d array')
+            raise ValueError("Only accept 1-d array")
         if isinstance(spvector, SparseVector):
             self.spmatrix = spvector.spmatrix
         else:
@@ -32,7 +32,7 @@ class SparseVector(SparseArray):
 
     @property
     def shape(self):
-        return self.spmatrix.shape[1],
+        return (self.spmatrix.shape[1],)
 
     def transpose(self, axes=None):
         assert axes is None or tuple(axes) == (0,)
@@ -97,7 +97,7 @@ class SparseVector(SparseArray):
 
     def concatenate(self, other, axis=0):
         if other.ndim != 1:
-            raise ValueError('all the input arrays must have same number of dimensions')
+            raise ValueError("all the input arrays must have same number of dimensions")
 
         try:
             other = naked(other)
@@ -107,23 +107,27 @@ class SparseVector(SparseArray):
         if issparse(other):
             xps = get_sparse_module(self.spmatrix)
             if axis != 0:
-                raise ValueError('axis can only be 0')
+                raise ValueError("axis can only be 0")
             other = other.reshape(1, other.shape[0]) if other.shape[0] != 1 else other
             x = xps.hstack((self.spmatrix.reshape(1, self.shape[0]), other))
         else:
             xp = get_array_module(self.spmatrix)
-            x = xp.concatenate((self.spmatrix.toarray().reshape(self.shape), other), axis=axis)
+            x = xp.concatenate(
+                (self.spmatrix.toarray().reshape(self.shape), other), axis=axis
+            )
 
         if issparse(x):
             return SparseNDArray(x, shape=(x.shape[1],))
         return get_array_module(x).asarray(x)
 
-    def _reduction(self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw):
+    def _reduction(
+        self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw
+    ):
         if not todense:
             assert keepdims is None or keepdims is False
 
         if isinstance(axis, tuple):
-            assert axis == (0, )
+            assert axis == (0,)
             axis = None
 
         if todense:
@@ -140,7 +144,7 @@ class SparseVector(SparseArray):
             return NotImplemented
         else:
             x = self.spmatrix.tolil()
-            key = (0,) + (key, )
+            key = (0,) + (key,)
             x[key] = value
             x = x.tocsr()
         self.spmatrix = x

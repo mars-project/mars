@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+
 try:
     import tiledb
 except (ImportError, OSError):  # pragma: no cover
@@ -29,24 +30,38 @@ def get_tiledb_schema_from_tensor(tensor, tiledb_ctx, nsplits, **kw):
         extent = tensor.shape[d]
         domain = (0, extent - 1)
         tile = max(nsplits[d])
-        dims.append(tiledb.Dim(name="", domain=domain, tile=tile, dtype=np.int64, ctx=ctx))
+        dims.append(
+            tiledb.Dim(name="", domain=domain, tile=tile, dtype=np.int64, ctx=ctx)
+        )
     dom = tiledb.Domain(*dims, ctx=ctx)
     att = tiledb.Attr(ctx=ctx, dtype=tensor.dtype)
-    cell_order = 'C' if tensor.order == TensorOrder.C_ORDER else 'F'
-    return tiledb.ArraySchema(ctx=ctx, domain=dom, attrs=(att,),
-                              sparse=tensor.issparse(), cell_order=cell_order, **kw)
+    cell_order = "C" if tensor.order == TensorOrder.C_ORDER else "F"
+    return tiledb.ArraySchema(
+        ctx=ctx,
+        domain=dom,
+        attrs=(att,),
+        sparse=tensor.issparse(),
+        cell_order=cell_order,
+        **kw,
+    )
 
 
 def check_tiledb_array_with_tensor(tensor, tiledb_array):
     if tensor.ndim != tiledb_array.ndim:
         # ndim
-        raise ValueError('ndim of TileDB Array to store is different to tensor, '
-                         f'expect {tensor.ndim}, got {tiledb_array.ndim}')
+        raise ValueError(
+            "ndim of TileDB Array to store is different to tensor, "
+            f"expect {tensor.ndim}, got {tiledb_array.ndim}"
+        )
     if tensor.shape != tiledb_array.shape:
         # shape
-        raise ValueError('shape of TileDB Array to store is different to tensor, '
-                         f'expect {tensor.shape}, got {tiledb_array.shape}')
+        raise ValueError(
+            "shape of TileDB Array to store is different to tensor, "
+            f"expect {tensor.shape}, got {tiledb_array.shape}"
+        )
     if tensor.dtype != tiledb_array.attr(0).dtype:
         # dtype
-        raise ValueError('dtype of TileDB Array to store is different to tensor, '
-                         f'expect {tensor.dtype}, got {tiledb_array.domain.dtype}')
+        raise ValueError(
+            "dtype of TileDB Array to store is different to tensor, "
+            f"expect {tensor.dtype}, got {tiledb_array.domain.dtype}"
+        )

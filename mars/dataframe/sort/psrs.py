@@ -24,13 +24,12 @@ from ...serialization.serializables import Int32Field, ListField, StringField, B
 from ...tensor.base.psrs import PSRSOperandMixin
 from ..core import IndexValue, OutputType
 from ..utils import standardize_range_index, parse_index, is_cudf
-from ..operands import DataFrameOperandMixin, DataFrameOperand, \
-    DataFrameShuffleProxy
+from ..operands import DataFrameOperandMixin, DataFrameOperand, DataFrameShuffleProxy
 
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
-_PSRS_DISTINCT_COL = '__PSRS_TMP_DISTINCT_COL'
+_PSRS_DISTINCT_COL = "__PSRS_TMP_DISTINCT_COL"
 
 
 class _Largest:
@@ -38,6 +37,7 @@ class _Largest:
     This util class resolve TypeError when
     comparing strings with None values
     """
+
     def __lt__(self, other):
         return False
 
@@ -52,46 +52,82 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
     @classmethod
     def _collect_op_properties(cls, op):
         from .sort_values import DataFrameSortValues
+
         if isinstance(op, DataFrameSortValues):
-            properties = dict(sort_type='sort_values', axis=op.axis, by=op.by, ascending=op.ascending,
-                              inplace=op.inplace, na_position=op.na_position, gpu=op.is_gpu())
+            properties = dict(
+                sort_type="sort_values",
+                axis=op.axis,
+                by=op.by,
+                ascending=op.ascending,
+                inplace=op.inplace,
+                na_position=op.na_position,
+                gpu=op.is_gpu(),
+            )
         else:
-            properties = dict(sort_type='sort_index', axis=op.axis, level=op.level, ascending=op.ascending,
-                              inplace=op.inplace, na_position=op.na_position, sort_remaining=op.sort_remaining,
-                              gpu=op.is_gpu())
+            properties = dict(
+                sort_type="sort_index",
+                axis=op.axis,
+                level=op.level,
+                ascending=op.ascending,
+                inplace=op.inplace,
+                na_position=op.na_position,
+                sort_remaining=op.sort_remaining,
+                gpu=op.is_gpu(),
+            )
         return properties
 
     @classmethod
-    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
+    def local_sort_and_regular_sample(
+        cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx
+    ):
         # stage 1: local sort and regular samples collected
         sorted_chunks, indices_chunks, sampled_chunks = [], [], []
         for i in range(axis_chunk_shape):
             in_chunk = in_data.chunks[i]
             kind = None if op.psrs_kinds is None else op.psrs_kinds[0]
-            chunk_op = DataFramePSRSSortRegularSample(kind=kind, n_partition=axis_chunk_shape,
-                                                      output_types=op.output_types,
-                                                      **cls._collect_op_properties(op))
+            chunk_op = DataFramePSRSSortRegularSample(
+                kind=kind,
+                n_partition=axis_chunk_shape,
+                output_types=op.output_types,
+                **cls._collect_op_properties(op)
+            )
             kws = []
             sort_shape = in_chunk.shape
-            kws.append({'shape': sort_shape,
-                        'index_value': in_chunk.index_value,
-                        'index': in_chunk.index})
-            if chunk_op.sort_type == 'sort_values':
-                sampled_shape = (axis_chunk_shape, len(op.by)) if \
-                    op.by else (axis_chunk_shape,)
+            kws.append(
+                {
+                    "shape": sort_shape,
+                    "index_value": in_chunk.index_value,
+                    "index": in_chunk.index,
+                }
+            )
+            if chunk_op.sort_type == "sort_values":
+                sampled_shape = (
+                    (axis_chunk_shape, len(op.by)) if op.by else (axis_chunk_shape,)
+                )
             else:
-                sampled_shape = (axis_chunk_shape, sort_shape[1]) if\
-                    len(sort_shape) == 2 else (axis_chunk_shape,)
-            kws.append({'shape': sampled_shape,
-                        'index_value': in_chunk.index_value,
-                        'index': (i,),
-                        'type': 'regular_sampled'})
+                sampled_shape = (
+                    (axis_chunk_shape, sort_shape[1])
+                    if len(sort_shape) == 2
+                    else (axis_chunk_shape,)
+                )
+            kws.append(
+                {
+                    "shape": sampled_shape,
+                    "index_value": in_chunk.index_value,
+                    "index": (i,),
+                    "type": "regular_sampled",
+                }
+            )
             if op.outputs[0].ndim == 2:
-                kws[0].update({'columns_value': in_chunk.columns_value, 'dtypes': in_chunk.dtypes})
-                kws[1].update({'columns_value': in_chunk.columns_value, 'dtypes': in_chunk.dtypes})
+                kws[0].update(
+                    {"columns_value": in_chunk.columns_value, "dtypes": in_chunk.dtypes}
+                )
+                kws[1].update(
+                    {"columns_value": in_chunk.columns_value, "dtypes": in_chunk.dtypes}
+                )
             else:
-                kws[0].update(({'dtype': in_chunk.dtype, 'name': in_chunk.name}))
-                kws[1].update({'dtype': in_chunk.dtype})
+                kws[0].update(({"dtype": in_chunk.dtype, "name": in_chunk.name}))
+                kws[1].update({"dtype": in_chunk.dtype})
 
             chunks = chunk_op.new_chunks([in_chunk], kws=kws, output_limit=len(kws))
             sort_chunk, sampled_chunk = chunks
@@ -100,7 +136,9 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         return sorted_chunks, indices_chunks, sampled_chunks
 
     @classmethod
-    def concat_and_pivot(cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks):
+    def concat_and_pivot(
+        cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks
+    ):
         from .sort_values import DataFrameSortValues
 
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
@@ -109,41 +147,57 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
             output_types = op.output_types
         else:
             output_types = [OutputType.index]
-        concat_pivot_op = DataFramePSRSConcatPivot(kind=kind, n_partition=axis_chunk_shape,
-                                                   output_types=output_types,
-                                                   **cls._collect_op_properties(op))
-        concat_pivot_shape = \
-            sorted_chunks[0].shape[:op.axis] + (axis_chunk_shape - 1,) + \
-            sorted_chunks[0].shape[op.axis + 1:]
-        concat_pivot_index = out_idx[:op.axis] + (0,) + out_idx[op.axis:]
-        concat_pivot_chunk = concat_pivot_op.new_chunk(sampled_chunks,
-                                                       shape=concat_pivot_shape,
-                                                       index=concat_pivot_index,
-                                                       output_type=output_types[0])
+        concat_pivot_op = DataFramePSRSConcatPivot(
+            kind=kind,
+            n_partition=axis_chunk_shape,
+            output_types=output_types,
+            **cls._collect_op_properties(op)
+        )
+        concat_pivot_shape = (
+            sorted_chunks[0].shape[: op.axis]
+            + (axis_chunk_shape - 1,)
+            + sorted_chunks[0].shape[op.axis + 1 :]
+        )
+        concat_pivot_index = out_idx[: op.axis] + (0,) + out_idx[op.axis :]
+        concat_pivot_chunk = concat_pivot_op.new_chunk(
+            sampled_chunks,
+            shape=concat_pivot_shape,
+            index=concat_pivot_index,
+            output_type=output_types[0],
+        )
         return concat_pivot_chunk
 
     @classmethod
-    def partition_local_data(cls, op, axis_chunk_shape, sorted_chunks,
-                             indices_chunks, concat_pivot_chunk):
+    def partition_local_data(
+        cls, op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk
+    ):
         # stage 3: Local data is partitioned
         partition_chunks = []
         length = len(sorted_chunks)
         for i in range(length):
             chunk_inputs = [sorted_chunks[i], concat_pivot_chunk]
-            partition_shuffle_map = DataFramePSRSShuffle(n_partition=axis_chunk_shape,
-                                                         stage=OperandStage.map,
-                                                         output_types=op.output_types,
-                                                         **cls._collect_op_properties(op))
+            partition_shuffle_map = DataFramePSRSShuffle(
+                n_partition=axis_chunk_shape,
+                stage=OperandStage.map,
+                output_types=op.output_types,
+                **cls._collect_op_properties(op)
+            )
             if isinstance(chunk_inputs[0].index_value.value, IndexValue.RangeIndex):
                 index_value = parse_index(pd.Int64Index([]))
             else:
                 index_value = chunk_inputs[0].index_value
-            kw = dict(shape=chunk_inputs[0].shape,
-                      index=chunk_inputs[0].index,
-                      index_value=index_value)
+            kw = dict(
+                shape=chunk_inputs[0].shape,
+                index=chunk_inputs[0].index,
+                index_value=index_value,
+            )
             if op.outputs[0].ndim == 2:
-                kw.update(dict(columns_value=chunk_inputs[0].columns_value,
-                               dtypes=chunk_inputs[0].dtypes))
+                kw.update(
+                    dict(
+                        columns_value=chunk_inputs[0].columns_value,
+                        dtypes=chunk_inputs[0].dtypes,
+                    )
+                )
             else:
                 kw.update(dict(dtype=chunk_inputs[0].dtype, name=chunk_inputs[0].name))
             partition_chunk = partition_shuffle_map.new_chunk(chunk_inputs, **kw)
@@ -151,22 +205,35 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         return partition_chunks
 
     @classmethod
-    def partition_merge_data(cls, op, need_align, return_value, partition_chunks, proxy_chunk):
+    def partition_merge_data(
+        cls, op, need_align, return_value, partition_chunks, proxy_chunk
+    ):
         # stage 4: all *ith* classes are gathered and merged
         partition_sort_chunks, partition_indices_chunks, sort_info_chunks = [], [], []
         for i, partition_chunk in enumerate(partition_chunks):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
             partition_shuffle_reduce = DataFramePSRSShuffle(
-                stage=OperandStage.reduce, kind=kind, reducer_index=(i,),
-                output_types=op.output_types, **cls._collect_op_properties(op))
+                stage=OperandStage.reduce,
+                kind=kind,
+                reducer_index=(i,),
+                output_types=op.output_types,
+                **cls._collect_op_properties(op)
+            )
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
 
-            kw = dict(shape=tuple(chunk_shape), index=partition_chunk.index,
-                      index_value=partition_chunk.index_value)
+            kw = dict(
+                shape=tuple(chunk_shape),
+                index=partition_chunk.index,
+                index_value=partition_chunk.index_value,
+            )
             if op.outputs[0].ndim == 2:
-                kw.update(dict(columns_value=partition_chunk.columns_value,
-                               dtypes=partition_chunk.dtypes))
+                kw.update(
+                    dict(
+                        columns_value=partition_chunk.columns_value,
+                        dtypes=partition_chunk.dtypes,
+                    )
+                )
             else:
                 kw.update(dict(dtype=partition_chunk.dtype, name=partition_chunk.name))
             cs = partition_shuffle_reduce.new_chunks([proxy_chunk], **kw)
@@ -181,22 +248,27 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
 
         # stage 1: local sort and regular samples collected
         sorted_chunks, _, sampled_chunks = cls.local_sort_and_regular_sample(
-            op, in_df, axis_chunk_shape, None, None)
+            op, in_df, axis_chunk_shape, None, None
+        )
 
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
         concat_pivot_chunk = cls.concat_and_pivot(
-            op, axis_chunk_shape, (), sorted_chunks, sampled_chunks)
+            op, axis_chunk_shape, (), sorted_chunks, sampled_chunks
+        )
 
         # stage 3: Local data is partitioned
         partition_chunks = cls.partition_local_data(
-            op, axis_chunk_shape, sorted_chunks, None, concat_pivot_chunk)
+            op, axis_chunk_shape, sorted_chunks, None, concat_pivot_chunk
+        )
 
         proxy_chunk = DataFrameShuffleProxy(output_types=op.output_types).new_chunk(
-            partition_chunks, shape=())
+            partition_chunks, shape=()
+        )
 
         # stage 4: all *ith* classes are gathered and merged
         partition_sort_chunks = cls.partition_merge_data(
-            op, False, None, partition_chunks, proxy_chunk)[0]
+            op, False, None, partition_chunks, proxy_chunk
+        )[0]
 
         if op.ignore_index:
             chunks = standardize_range_index(partition_sort_chunks, axis=op.axis)
@@ -206,73 +278,96 @@ class DataFramePSRSOperandMixin(DataFrameOperandMixin, PSRSOperandMixin):
         if op.outputs[0].ndim == 2:
             nsplits = ((np.nan,) * len(chunks), (out.shape[1],))
             new_op = op.copy()
-            return new_op.new_dataframes(op.inputs, shape=out.shape, chunks=chunks,
-                                         nsplits=nsplits, index_value=out.index_value,
-                                         columns_value=out.columns_value, dtypes=out.dtypes)
+            return new_op.new_dataframes(
+                op.inputs,
+                shape=out.shape,
+                chunks=chunks,
+                nsplits=nsplits,
+                index_value=out.index_value,
+                columns_value=out.columns_value,
+                dtypes=out.dtypes,
+            )
         else:
-            nsplits = ((np.nan,) * len(chunks), )
+            nsplits = ((np.nan,) * len(chunks),)
             new_op = op.copy()
-            return new_op.new_seriess(op.inputs, shape=out.shape, chunks=chunks,
-                                      nsplits=nsplits, index_value=out.index_value,
-                                      dtype=out.dtype, name=out.name)
+            return new_op.new_seriess(
+                op.inputs,
+                shape=out.shape,
+                chunks=chunks,
+                nsplits=nsplits,
+                index_value=out.index_value,
+                dtype=out.dtype,
+                name=out.name,
+            )
 
 
 def execute_sort_values(data, op, inplace=None, by=None):
     if inplace is None:
         inplace = op.inplace
     # ignore_index is new in Pandas version 1.0.0.
-    ignore_index = getattr(op, 'ignore_index', False)
+    ignore_index = getattr(op, "ignore_index", False)
     if isinstance(data, (pd.DataFrame, pd.Series)):
-        kwargs = dict(axis=op.axis, ascending=op.ascending, ignore_index=ignore_index,
-                      na_position=op.na_position, kind=op.kind)
+        kwargs = dict(
+            axis=op.axis,
+            ascending=op.ascending,
+            ignore_index=ignore_index,
+            na_position=op.na_position,
+            kind=op.kind,
+        )
         if isinstance(data, pd.DataFrame):
-            kwargs['by'] = by if by is not None else op.by
+            kwargs["by"] = by if by is not None else op.by
         if inplace:
-            kwargs['inplace'] = True
+            kwargs["inplace"] = True
             try:
                 data.sort_values(**kwargs)
             except TypeError:  # pragma: no cover
-                kwargs.pop('ignore_index', None)
+                kwargs.pop("ignore_index", None)
                 data.sort_values(**kwargs)
             return data
         else:
             try:
                 return data.sort_values(**kwargs)
             except TypeError:  # pragma: no cover
-                kwargs.pop('ignore_index', None)
+                kwargs.pop("ignore_index", None)
                 return data.sort_values(**kwargs)
 
     else:  # pragma: no cover
         # cudf doesn't support axis and kind
         if isinstance(data, cudf.DataFrame):
             return data.sort_values(
-                op.by, ascending=op.ascending, na_position=op.na_position)
+                op.by, ascending=op.ascending, na_position=op.na_position
+            )
         else:
-            return data.sort_values(
-                ascending=op.ascending, na_position=op.na_position)
+            return data.sort_values(ascending=op.ascending, na_position=op.na_position)
 
 
 def execute_sort_index(data, op, inplace=None):
     if inplace is None:
         inplace = op.inplace
     # ignore_index is new in Pandas version 1.0.0.
-    ignore_index = getattr(op, 'ignore_index', False)
+    ignore_index = getattr(op, "ignore_index", False)
     if isinstance(data, (pd.DataFrame, pd.Series)):
-        kwargs = dict(level=op.level, ascending=op.ascending, ignore_index=ignore_index,
-                      na_position=op.na_position, kind=op.kind, sort_remaining=op.sort_remaining)
+        kwargs = dict(
+            level=op.level,
+            ascending=op.ascending,
+            ignore_index=ignore_index,
+            na_position=op.na_position,
+            kind=op.kind,
+            sort_remaining=op.sort_remaining,
+        )
         if inplace:
-            kwargs['inplace'] = True
+            kwargs["inplace"] = True
             try:
                 data.sort_index(**kwargs)
             except TypeError:  # pragma: no cover
-                kwargs.pop('ignore_index', None)
+                kwargs.pop("ignore_index", None)
                 data.sort_index(**kwargs)
             return data
         else:
             try:
                 return data.sort_index(**kwargs)
             except TypeError:  # pragma: no cover
-                kwargs.pop('ignore_index', None)
+                kwargs.pop("ignore_index", None)
                 return data.sort_index(**kwargs)
 
     else:  # pragma: no cover
@@ -282,28 +377,50 @@ def execute_sort_index(data, op, inplace=None):
 
 class DataFramePSRSChunkOperand(DataFrameOperand):
     # sort type could be 'sort_values' or 'sort_index'
-    _sort_type = StringField('sort_type')
+    _sort_type = StringField("sort_type")
 
-    _axis = Int32Field('axis')
-    _by = ListField('by')
-    _ascending = BoolField('ascending')
-    _inplace = BoolField('inplace')
-    _kind = StringField('kind')
-    _na_position = StringField('na_position')
+    _axis = Int32Field("axis")
+    _by = ListField("by")
+    _ascending = BoolField("ascending")
+    _inplace = BoolField("inplace")
+    _kind = StringField("kind")
+    _na_position = StringField("na_position")
 
     # for sort_index
-    _level = ListField('level')
-    _sort_remaining = BoolField('sort_remaining')
+    _level = ListField("level")
+    _sort_remaining = BoolField("sort_remaining")
 
-    _n_partition = Int32Field('n_partition')
+    _n_partition = Int32Field("n_partition")
 
-    def __init__(self, sort_type=None, by=None, axis=None, ascending=None, inplace=None, kind=None,
-                 na_position=None, level=None, sort_remaining=None, n_partition=None,
-                 output_types=None, **kw):
-        super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
-                         _inplace=inplace, _kind=kind, _na_position=na_position,
-                         _level=level, _sort_remaining=sort_remaining, _n_partition=n_partition,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        sort_type=None,
+        by=None,
+        axis=None,
+        ascending=None,
+        inplace=None,
+        kind=None,
+        na_position=None,
+        level=None,
+        sort_remaining=None,
+        n_partition=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _sort_type=sort_type,
+            _by=by,
+            _axis=axis,
+            _ascending=ascending,
+            _inplace=inplace,
+            _kind=kind,
+            _na_position=na_position,
+            _level=level,
+            _sort_remaining=sort_remaining,
+            _n_partition=n_partition,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def sort_type(self):
@@ -363,33 +480,43 @@ class DataFramePSRSSortRegularSample(DataFramePSRSChunkOperand, DataFrameOperand
             ctx[op.outputs[0].key] = ctx[op.outputs[-1].key] = a
             return
 
-        if op.sort_type == 'sort_values':
+        if op.sort_type == "sort_values":
             ctx[op.outputs[0].key] = res = execute_sort_values(a, op)
         else:
             ctx[op.outputs[0].key] = res = execute_sort_index(a, op)
 
         by = op.by
-        add_distinct_col = bool(int(os.environ.get('PSRS_DISTINCT_COL', '0')))
-        if add_distinct_col and isinstance(a, xdf.DataFrame) and op.sort_type == 'sort_values':
+        add_distinct_col = bool(int(os.environ.get("PSRS_DISTINCT_COL", "0")))
+        if (
+            add_distinct_col
+            and isinstance(a, xdf.DataFrame)
+            and op.sort_type == "sort_values"
+        ):
             # when running under distributed mode, we introduce an extra column
             # to make sure pivots are distinct
             chunk_idx = op.inputs[0].index[0]
-            distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
-                else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
-            res[distinct_col] = np.arange(chunk_idx << 32, (chunk_idx << 32) + len(a), dtype=np.int64)
+            distinct_col = (
+                _PSRS_DISTINCT_COL
+                if a.columns.nlevels == 1
+                else (_PSRS_DISTINCT_COL,) + ("",) * (a.columns.nlevels - 1)
+            )
+            res[distinct_col] = np.arange(
+                chunk_idx << 32, (chunk_idx << 32) + len(a), dtype=np.int64
+            )
             by = list(by) + [distinct_col]
 
         n = op.n_partition
-        if op.sort_type == 'sort_values' and a.shape[op.axis] < n:
+        if op.sort_type == "sort_values" and a.shape[op.axis] < n:
             num = n // a.shape[op.axis] + 1
             res = execute_sort_values(xdf.concat([res] * num), op, by=by)
 
         w = res.shape[op.axis] * 1.0 / (n + 1)
-        slc = np.linspace(max(w - 1, 0), res.shape[op.axis] - 1,
-                          num=n, endpoint=False).astype(int)
+        slc = np.linspace(
+            max(w - 1, 0), res.shape[op.axis] - 1, num=n, endpoint=False
+        ).astype(int)
         if op.axis == 1:
             slc = (slice(None), slc)
-        if op.sort_type == 'sort_values':
+        if op.sort_type == "sort_values":
             # do regular sample
             if op.by is not None:
                 ctx[op.outputs[-1].key] = res[by].iloc[slc]
@@ -421,11 +548,12 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
         p = len(inputs)
         assert a.shape[op.axis] == p * len(op.inputs)
 
-        slc = np.linspace(p - 1, a.shape[op.axis] - 1,
-                          num=len(op.inputs) - 1, endpoint=False).astype(int)
+        slc = np.linspace(
+            p - 1, a.shape[op.axis] - 1, num=len(op.inputs) - 1, endpoint=False
+        ).astype(int)
         if op.axis == 1:
             slc = (slice(None), slc)
-        if op.sort_type == 'sort_values':
+        if op.sort_type == "sort_values":
             a = execute_sort_values(a, op, inplace=False)
             ctx[op.outputs[-1].key] = a.iloc[slc]
         else:
@@ -436,30 +564,52 @@ class DataFramePSRSConcatPivot(DataFramePSRSChunkOperand, DataFrameOperandMixin)
 class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.PSRS_SHUFFLE
 
-    _sort_type = StringField('sort_type')
+    _sort_type = StringField("sort_type")
 
     # for shuffle map
-    _axis = Int32Field('axis')
-    _by = ListField('by')
-    _ascending = BoolField('ascending')
-    _inplace = BoolField('inplace')
-    _na_position = StringField('na_position')
-    _n_partition = Int32Field('n_partition')
+    _axis = Int32Field("axis")
+    _by = ListField("by")
+    _ascending = BoolField("ascending")
+    _inplace = BoolField("inplace")
+    _na_position = StringField("na_position")
+    _n_partition = Int32Field("n_partition")
 
     # for sort_index
-    _level = ListField('level')
-    _sort_remaining = BoolField('sort_remaining')
+    _level = ListField("level")
+    _sort_remaining = BoolField("sort_remaining")
 
     # for shuffle reduce
-    _kind = StringField('kind')
+    _kind = StringField("kind")
 
-    def __init__(self, sort_type=None, by=None, axis=None, ascending=None, n_partition=None,
-                 na_position=None, inplace=None, kind=None, level=None, sort_remaining=None,
-                 output_types=None, **kw):
-        super().__init__(_sort_type=sort_type, _by=by, _axis=axis, _ascending=ascending,
-                         _n_partition=n_partition, _na_position=na_position, _inplace=inplace,
-                         _kind=kind, _level=level, _sort_remaining=sort_remaining,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        sort_type=None,
+        by=None,
+        axis=None,
+        ascending=None,
+        n_partition=None,
+        na_position=None,
+        inplace=None,
+        kind=None,
+        level=None,
+        sort_remaining=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _sort_type=sort_type,
+            _by=by,
+            _axis=axis,
+            _ascending=ascending,
+            _n_partition=n_partition,
+            _na_position=na_position,
+            _inplace=inplace,
+            _kind=kind,
+            _level=level,
+            _sort_remaining=sort_remaining,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def sort_type(self):
@@ -510,9 +660,9 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         records = src_cols.to_records(index=False)
         p_records = pivots.to_records(index=False)
         if ascending:
-            poses = records.searchsorted(p_records, side='right')
+            poses = records.searchsorted(p_records, side="right")
         else:
-            poses = len(records) - records[::-1].searchsorted(p_records, side='right')
+            poses = len(records) - records[::-1].searchsorted(p_records, side="right")
         del records, p_records
         return poses
 
@@ -530,8 +680,11 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         # use numpy.searchsorted to find split positions.
         by = op.by
 
-        distinct_col = _PSRS_DISTINCT_COL if a.columns.nlevels == 1 \
-            else (_PSRS_DISTINCT_COL,) + ('',) * (a.columns.nlevels - 1)
+        distinct_col = (
+            _PSRS_DISTINCT_COL
+            if a.columns.nlevels == 1
+            else (_PSRS_DISTINCT_COL,) + ("",) * (a.columns.nlevels - 1)
+        )
         if distinct_col in a.columns:
             by = list(by) + [distinct_col]
 
@@ -539,11 +692,12 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             poses = cls._calc_poses(a[by], pivots, op.ascending)
         except TypeError:
             poses = cls._calc_poses(
-                a[by].fillna(_largest), pivots.fillna(_largest), op.ascending)
+                a[by].fillna(_largest), pivots.fillna(_largest), op.ascending
+            )
 
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
-            values = a.iloc[poses[i]: poses[i + 1]]
+            values = a.iloc[poses[i] : poses[i + 1]]
             if is_cudf(values):  # pragma: no cover
                 values = values.copy()
             ctx[out.key, (i,)] = values
@@ -551,9 +705,9 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
     @classmethod
     def _calc_series_poses(cls, s, pivots, ascending=True):
         if ascending:
-            poses = s.searchsorted(pivots, side='right')
+            poses = s.searchsorted(pivots, side="right")
         else:
-            poses = len(s) - s.iloc[::-1].searchsorted(pivots, side='right')
+            poses = len(s) - s.iloc[::-1].searchsorted(pivots, side="right")
         return poses
 
     @classmethod
@@ -573,10 +727,12 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
             except TypeError:
                 filled_a = a.fillna(_largest)
                 filled_pivots = pivots.fillna(_largest)
-                poses = cls._calc_series_poses(filled_a, filled_pivots, ascending=op.ascending)
+                poses = cls._calc_series_poses(
+                    filled_a, filled_pivots, ascending=op.ascending
+                )
             poses = (None,) + tuple(poses) + (None,)
             for i in range(op.n_partition):
-                values = a.iloc[poses[i]: poses[i + 1]]
+                values = a.iloc[poses[i] : poses[i + 1]]
                 ctx[out.key, (i,)] = values
 
     @classmethod
@@ -585,18 +741,18 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         out = op.outputs[0]
 
         if op.ascending:
-            poses = a.index.searchsorted(list(pivots), side='right')
+            poses = a.index.searchsorted(list(pivots), side="right")
         else:
-            poses = len(a) - a.index[::-1].searchsorted(list(pivots), side='right')
+            poses = len(a) - a.index[::-1].searchsorted(list(pivots), side="right")
         poses = (None,) + tuple(poses) + (None,)
         for i in range(op.n_partition):
-            values = a.iloc[poses[i]: poses[i + 1]]
+            values = a.iloc[poses[i] : poses[i + 1]]
             ctx[out.key, (i,)] = values
 
     @classmethod
     def _execute_map(cls, ctx, op):
         a = [ctx[c.key] for c in op.inputs][0]
-        if op.sort_type == 'sort_values':
+        if op.sort_type == "sort_values":
             if len(a.shape) == 2:
                 # DataFrame type
                 cls._execute_dataframe_map(ctx, op)
@@ -619,13 +775,15 @@ class DataFramePSRSShuffle(MapReduceOperand, DataFrameOperandMixin):
         del raw_inputs[:]
 
         if isinstance(concat_values, xdf.DataFrame):
-            concat_values.drop(_PSRS_DISTINCT_COL, axis=1, inplace=True, errors='ignore')
+            concat_values.drop(
+                _PSRS_DISTINCT_COL, axis=1, inplace=True, errors="ignore"
+            )
 
             col_index_dtype = out_chunk.columns_value.to_pandas().dtype
             if concat_values.columns.dtype != col_index_dtype:
                 concat_values.columns = concat_values.columns.astype(col_index_dtype)
 
-        if op.sort_type == 'sort_values':
+        if op.sort_type == "sort_values":
             ctx[op.outputs[0].key] = execute_sort_values(concat_values, op)
         else:
             ctx[op.outputs[0].key] = execute_sort_index(concat_values, op)

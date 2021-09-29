@@ -28,18 +28,24 @@ from ..utils import filter_inputs, validate_axis, calc_object_length
 class TensorInsert(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.INSERT
 
-    _index_obj = AnyField('index_obj')
-    _values = AnyField('values')
-    _axis = Int32Field('axis')
-    _input = KeyField('input')
+    _index_obj = AnyField("index_obj")
+    _values = AnyField("values")
+    _axis = Int32Field("axis")
+    _input = KeyField("input")
 
     # for chunk
-    _range_on_axis = TupleField('range_on_axis')
+    _range_on_axis = TupleField("range_on_axis")
 
-    def __init__(self, index_obj=None, values=None, axis=None,
-                 range_on_axis=None, **kw):
-        super().__init__(_index_obj=index_obj, _values=values,
-                         _axis=axis, _range_on_axis=range_on_axis, **kw)
+    def __init__(
+        self, index_obj=None, values=None, axis=None, range_on_axis=None, **kw
+    ):
+        super().__init__(
+            _index_obj=index_obj,
+            _values=values,
+            _axis=axis,
+            _range_on_axis=range_on_axis,
+            **kw
+        )
 
     @property
     def index_obj(self):
@@ -66,15 +72,14 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
             self._values = next(inputs_iter)
 
     @classmethod
-    def tile(cls, op: 'TensorInsert'):
+    def tile(cls, op: "TensorInsert"):
         inp = op.inputs[0]
         axis = op.axis
         if axis is None:
             inp = yield from recursive_tile(inp.flatten())
             axis = 0
         else:
-            new_splits = [s if i == axis else sum(s)
-                          for i, s in enumerate(inp.nsplits)]
+            new_splits = [s if i == axis else sum(s) for i, s in enumerate(inp.nsplits)]
             inp = yield from recursive_tile(inp.rechunk(new_splits))
 
         if has_unknown_shape(inp):
@@ -93,7 +98,7 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
             cum_splits = np.cumsum([0] + list(splits))
             # add 1 for last split
             cum_splits[-1] = cum_splits[-1] + 1
-            in_idx = cum_splits.searchsorted(index_obj, side='right') - 1
+            in_idx = cum_splits.searchsorted(index_obj, side="right") - 1
             out_chunks = []
             for chunk in inp.chunks:
                 if chunk.index[axis] == in_idx:
@@ -104,10 +109,13 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     else:
                         chunk_values = values
                     inputs = filter_inputs([chunk, chunk_values])
-                    shape = tuple(s + calc_object_length(index_obj) if i == axis else s
-                                  for i, s in enumerate(chunk.shape))
-                    out_chunks.append(chunk_op.new_chunk(inputs, shape=shape,
-                                                         index=chunk.index))
+                    shape = tuple(
+                        s + calc_object_length(index_obj) if i == axis else s
+                        for i, s in enumerate(chunk.shape)
+                    )
+                    out_chunks.append(
+                        chunk_op.new_chunk(inputs, shape=shape, index=chunk.index)
+                    )
                     nsplits_on_axis.append(shape[axis])
                 else:
                     out_chunks.append(chunk)
@@ -129,26 +137,28 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                     chunk_op._range_on_axis = (offset, offset + chunk.shape[axis] + 1)
                 else:
                     chunk_op._range_on_axis = (offset, offset + chunk.shape[axis])
-                shape = tuple(np.nan if j == axis else s
-                              for j, s in enumerate(chunk.shape))
-                inputs = filter_inputs([chunk, index_obj.chunks[0],
-                                        chunk_values])
-                out_chunks.append(chunk_op.new_chunk(inputs, shape=shape,
-                                                     index=chunk.index))
+                shape = tuple(
+                    np.nan if j == axis else s for j, s in enumerate(chunk.shape)
+                )
+                inputs = filter_inputs([chunk, index_obj.chunks[0], chunk_values])
+                out_chunks.append(
+                    chunk_op.new_chunk(inputs, shape=shape, index=chunk.index)
+                )
                 offset += chunk.shape[axis]
                 nsplits_on_axis.append(np.nan)
         else:
             # index object is slice or sequence of ints
             if isinstance(index_obj, slice):
-                index_obj = range(index_obj.start or 0, index_obj.stop,
-                                  index_obj.step or 1)
+                index_obj = range(
+                    index_obj.start or 0, index_obj.stop, index_obj.step or 1
+                )
             splits = inp.nsplits[axis]
             cum_splits = np.cumsum([0] + list(splits))
             # add 1 for last split
             cum_splits[-1] = cum_splits[-1] + 1
             chunk_idx_params = [[[], []] for _ in splits]
             for i, int_idx in enumerate(index_obj):
-                in_idx = cum_splits.searchsorted(int_idx, side='right') - 1
+                in_idx = cum_splits.searchsorted(int_idx, side="right") - 1
                 chunk_idx_params[in_idx][0].append(int_idx - cum_splits[in_idx])
                 chunk_idx_params[in_idx][1].append(i)
 
@@ -159,81 +169,123 @@ class TensorInsert(TensorHasInput, TensorOperandMixin):
                 if len(chunk_idx_params[idx_on_axis][0]) > 0:
                     chunk_op = op.copy().reset_key()
                     chunk_index_obj = chunk_idx_params[idx_on_axis][0]
-                    shape = tuple(s + len(chunk_index_obj) if j == axis else s
-                                  for j, s in enumerate(chunk.shape))
+                    shape = tuple(
+                        s + len(chunk_index_obj) if j == axis else s
+                        for j, s in enumerate(chunk.shape)
+                    )
                     if isinstance(values, int):
                         chunk_op._index_obj = chunk_index_obj
-                        out_chunks.append(chunk_op.new_chunk([chunk], shape=shape,
-                                                             index=chunk.index))
+                        out_chunks.append(
+                            chunk_op.new_chunk([chunk], shape=shape, index=chunk.index)
+                        )
                     elif isinstance(values, ENTITY_TYPE):
                         chunk_op._values = values.chunks[0]
                         if chunk.index[axis] + 1 == len(inp.nsplits[axis]):
-                            chunk_op._range_on_axis = (offset, offset + chunk.shape[axis] + 1)
+                            chunk_op._range_on_axis = (
+                                offset,
+                                offset + chunk.shape[axis] + 1,
+                            )
                         else:
-                            chunk_op._range_on_axis = (offset, offset + chunk.shape[axis])
-                        out_chunks.append(chunk_op.new_chunk([chunk, values.chunks[0]],
-                                                             shape=shape,
-                                                             index=chunk.index))
+                            chunk_op._range_on_axis = (
+                                offset,
+                                offset + chunk.shape[axis],
+                            )
+                        out_chunks.append(
+                            chunk_op.new_chunk(
+                                [chunk, values.chunks[0]],
+                                shape=shape,
+                                index=chunk.index,
+                            )
+                        )
                         offset += chunk.shape[axis]
                     else:
                         chunk_op._index_obj = chunk_index_obj
                         values = np.asarray(values)
-                        to_shape = [calc_object_length(index_obj, chunk.shape[axis])] + \
-                                   [s for j, s in enumerate(inp.shape) if j != axis]
+                        to_shape = [
+                            calc_object_length(index_obj, chunk.shape[axis])
+                        ] + [s for j, s in enumerate(inp.shape) if j != axis]
                         if all(j == k for j, k in zip(to_shape, values.shape)):
-                            chunk_values = np.asarray(values)[chunk_idx_params[idx_on_axis][1]]
+                            chunk_values = np.asarray(values)[
+                                chunk_idx_params[idx_on_axis][1]
+                            ]
                             chunk_op._values = chunk_values
-                            out_chunks.append(chunk_op.new_chunk([chunk], shape=shape,
-                                                                 index=chunk.index))
+                            out_chunks.append(
+                                chunk_op.new_chunk(
+                                    [chunk], shape=shape, index=chunk.index
+                                )
+                            )
                         else:
-                            out_chunks.append(chunk_op.new_chunk([chunk],
-                                                                 shape=shape,
-                                                                 index=chunk.index))
+                            out_chunks.append(
+                                chunk_op.new_chunk(
+                                    [chunk], shape=shape, index=chunk.index
+                                )
+                            )
 
                     nsplits_on_axis.append(shape[axis])
                 else:
                     out_chunks.append(chunk)
                     nsplits_on_axis.append(chunk.shape[axis])
 
-        nsplits = tuple(s if i != axis else tuple(nsplits_on_axis)
-                        for i, s in enumerate(inp.nsplits))
+        nsplits = tuple(
+            s if i != axis else tuple(nsplits_on_axis)
+            for i, s in enumerate(inp.nsplits)
+        )
         out = op.outputs[0]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, shape=out.shape, order=out.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            shape=out.shape,
+            order=out.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'TensorInsert'):
+    def execute(cls, ctx, op: "TensorInsert"):
         inp = ctx[op.input.key]
-        index_obj = ctx[op.index_obj.key] if hasattr(op.index_obj, 'key') else op.index_obj
-        values = ctx[op.values.key] if hasattr(op.values, 'key') else op.values
+        index_obj = (
+            ctx[op.index_obj.key] if hasattr(op.index_obj, "key") else op.index_obj
+        )
+        values = ctx[op.values.key] if hasattr(op.values, "key") else op.values
         if op.range_on_axis is None:
             ctx[op.outputs[0].key] = np.insert(inp, index_obj, values, axis=op.axis)
         else:
             if isinstance(index_obj, slice):
-                index_obj = np.arange(index_obj.step or 0,
-                                      index_obj.stop,
-                                      index_obj.step or 1)
+                index_obj = np.arange(
+                    index_obj.step or 0, index_obj.stop, index_obj.step or 1
+                )
             else:
                 index_obj = np.array(index_obj)
             values = np.asarray(values)
 
-            part_index = [i for i, idx in enumerate(index_obj) if (
-                    (idx >= op.range_on_axis[0]) and idx < op.range_on_axis[1])]
-            if (values.ndim > 0) and \
-                    len(index_obj) == len(values) and \
-                    (values[0].ndim > 0 or inp.ndim == 1):
+            part_index = [
+                i
+                for i, idx in enumerate(index_obj)
+                if ((idx >= op.range_on_axis[0]) and idx < op.range_on_axis[1])
+            ]
+            if (
+                (values.ndim > 0)
+                and len(index_obj) == len(values)
+                and (values[0].ndim > 0 or inp.ndim == 1)
+            ):
                 ctx[op.outputs[0].key] = np.insert(
-                    inp, index_obj[part_index] - op.range_on_axis[0],
-                    values[part_index], axis=op.axis)
+                    inp,
+                    index_obj[part_index] - op.range_on_axis[0],
+                    values[part_index],
+                    axis=op.axis,
+                )
             else:
                 ctx[op.outputs[0].key] = np.insert(
-                    inp, index_obj[part_index] - op.range_on_axis[0],
-                    values, axis=op.axis)
+                    inp,
+                    index_obj[part_index] - op.range_on_axis[0],
+                    values,
+                    axis=op.axis,
+                )
 
     def __call__(self, arr, obj, values, shape):
-        return self.new_tensor(filter_inputs([arr, obj, values]),
-                               shape=shape, order=arr.order)
+        return self.new_tensor(
+            filter_inputs([arr, obj, values]), shape=shape, order=arr.order
+        )
 
 
 def insert(arr, obj, values, axis=None):
@@ -306,9 +358,10 @@ def insert(arr, obj, values, axis=None):
            [  4, 999,   5,   6, 999,   7]])
     """
     arr = astensor(arr)
-    if getattr(obj, 'ndim', 0) > 1:  # pragma: no cover
-        raise ValueError('index array argument obj to insert must be '
-                         'one dimensional or scalar')
+    if getattr(obj, "ndim", 0) > 1:  # pragma: no cover
+        raise ValueError(
+            "index array argument obj to insert must be " "one dimensional or scalar"
+        )
 
     if axis is None:
         # if axis is None, array will be flatten
@@ -318,8 +371,9 @@ def insert(arr, obj, values, axis=None):
     else:
         validate_axis(arr.ndim, axis)
         idx_length = calc_object_length(obj, size=arr.shape[axis])
-        shape = tuple(s + idx_length if i == axis else s
-                      for i, s in enumerate(arr.shape))
+        shape = tuple(
+            s + idx_length if i == axis else s for i, s in enumerate(arr.shape)
+        )
 
     op = TensorInsert(index_obj=obj, values=values, axis=axis, dtype=arr.dtype)
     return op(arr, obj, values, shape)

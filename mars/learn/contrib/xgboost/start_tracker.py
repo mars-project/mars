@@ -23,13 +23,17 @@ from ...operands import LearnOperand, LearnOperandMixin, OutputType
 
 class StartTracker(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.START_TRACKER
-    _op_module_ = 'learn.contrib.xgboost'
+    _op_module_ = "learn.contrib.xgboost"
 
-    _n_workers = Int32Field('n_workers')
+    _n_workers = Int32Field("n_workers")
 
     def __init__(self, n_workers=None, output_types=None, pure_depends=None, **kw):
-        super().__init__(_n_workers=n_workers, _output_types=output_types,
-                         _pure_depends=pure_depends, **kw)
+        super().__init__(
+            _n_workers=n_workers,
+            _output_types=output_types,
+            _pure_depends=pure_depends,
+            **kw,
+        )
         if self.output_types is None:
             self.output_types = [OutputType.object]
 
@@ -39,16 +43,17 @@ class StartTracker(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def tile(cls, op):
-        raise NotSupportTile('StartTracker is a chunk op')
+        raise NotSupportTile("StartTracker is a chunk op")
 
     @classmethod
     def execute(cls, ctx, op):
         """Start Rabit tracker"""
         from .tracker import RabitTracker
 
-        env = {'DMLC_NUM_WORKER': op.n_workers}
-        rabit_context = RabitTracker(hostIP=ctx.current_address.split(':', 1)[0],
-                                     nslave=op.n_workers)
+        env = {"DMLC_NUM_WORKER": op.n_workers}
+        rabit_context = RabitTracker(
+            hostIP=ctx.current_address.split(":", 1)[0], nslave=op.n_workers
+        )
         env.update(rabit_context.slave_envs())
 
         rabit_context.start(op.n_workers)
@@ -56,5 +61,5 @@ class StartTracker(LearnOperand, LearnOperandMixin):
         thread.daemon = True
         thread.start()
 
-        rabit_args = [to_binary(f'{k}={v}') for k, v in env.items()]
+        rabit_args = [to_binary(f"{k}={v}") for k, v in env.items()]
         ctx[op.outputs[0].key] = rabit_args

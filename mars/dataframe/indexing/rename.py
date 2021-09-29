@@ -25,17 +25,31 @@ from ..utils import build_df, build_series, validate_axis, parse_index
 class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.RENAME
 
-    _columns_mapper = AnyField('columns_mapper')
-    _index_mapper = AnyField('index_mapper')
-    _new_name = AnyField('new_name')
-    _level = AnyField('level')
-    _errors = StringField('errors')
+    _columns_mapper = AnyField("columns_mapper")
+    _index_mapper = AnyField("index_mapper")
+    _new_name = AnyField("new_name")
+    _level = AnyField("level")
+    _errors = StringField("errors")
 
-    def __init__(self, columns_mapper=None, index_mapper=None, new_name=None, level=None,
-                 errors=None, output_types=None, **kw):
-        super().__init__(_columns_mapper=columns_mapper, _index_mapper=index_mapper,
-                         _new_name=new_name, _level=level, _errors=errors,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        columns_mapper=None,
+        index_mapper=None,
+        new_name=None,
+        level=None,
+        errors=None,
+        output_types=None,
+        **kw
+    ):
+        super().__init__(
+            _columns_mapper=columns_mapper,
+            _index_mapper=index_mapper,
+            _new_name=new_name,
+            _level=level,
+            _errors=errors,
+            _output_types=output_types,
+            **kw
+        )
 
     @property
     def columns_mapper(self):
@@ -57,14 +71,20 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
     def errors(self) -> str:
         return self._errors
 
-    def _calc_renamed_df(self, df, errors='ignore'):
+    def _calc_renamed_df(self, df, errors="ignore"):
         empty_df = build_df(df)
-        return empty_df.rename(columns=self._columns_mapper, index=self._index_mapper,
-                               level=self._level, errors=errors)
+        return empty_df.rename(
+            columns=self._columns_mapper,
+            index=self._index_mapper,
+            level=self._level,
+            errors=errors,
+        )
 
-    def _calc_renamed_series(self, df, errors='ignore'):
+    def _calc_renamed_series(self, df, errors="ignore"):
         empty_series = build_series(df, name=df.name)
-        new_series = empty_series.rename(index=self._index_mapper, level=self._level, errors=errors)
+        new_series = empty_series.rename(
+            index=self._index_mapper, level=self._level, errors=errors
+        )
         if self._new_name:
             new_series.name = self._new_name
         return new_series
@@ -79,20 +99,21 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
             new_df = self._calc_renamed_series(df, errors=self.errors)
             new_index = new_df.index
         else:
-            new_df = new_index = raw_index.set_names(self._index_mapper or self._new_name,
-                                                     level=self._level)
+            new_df = new_index = raw_index.set_names(
+                self._index_mapper or self._new_name, level=self._level
+            )
 
         if self._columns_mapper is not None:
-            params['columns_value'] = parse_index(new_df.columns, store_data=True)
-            params['dtypes'] = new_df.dtypes
+            params["columns_value"] = parse_index(new_df.columns, store_data=True)
+            params["dtypes"] = new_df.dtypes
         if self._index_mapper is not None:
-            params['index_value'] = parse_index(new_index)
+            params["index_value"] = parse_index(new_index)
         if df.ndim == 1:
-            params['name'] = new_df.name
+            params["name"] = new_df.name
         return self.new_tileable([df], **params)
 
     @classmethod
-    def tile(cls, op: 'DataFrameRename'):
+    def tile(cls, op: "DataFrameRename"):
         inp = op.inputs[0]
         out = op.outputs[0]
         chunks = []
@@ -106,49 +127,70 @@ class DataFrameRename(DataFrameOperand, DataFrameOperandMixin):
                 try:
                     new_dtypes = dtypes_cache[c.index[1]]
                 except KeyError:
-                    new_dtypes = dtypes_cache[c.index[1]] = op._calc_renamed_df(c).dtypes
+                    new_dtypes = dtypes_cache[c.index[1]] = op._calc_renamed_df(
+                        c
+                    ).dtypes
 
-                params['columns_value'] = parse_index(new_dtypes.index, store_data=True)
-                params['dtypes'] = new_dtypes
+                params["columns_value"] = parse_index(new_dtypes.index, store_data=True)
+                params["dtypes"] = new_dtypes
             if op.index_mapper is not None:
-                params['index_value'] = out.index_value
+                params["index_value"] = out.index_value
             if out.ndim == 1:
-                params['name'] = out.name
+                params["name"] = out.name
 
             if isinstance(op.columns_mapper, dict):
-                idx = params['dtypes'].index
+                idx = params["dtypes"].index
                 if op._level is not None:
                     idx = idx.get_level_values(op._level)
-                new_op._columns_mapper = {k: v for k, v in op.columns_mapper.items()
-                                          if v in idx}
+                new_op._columns_mapper = {
+                    k: v for k, v in op.columns_mapper.items() if v in idx
+                }
             chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables([inp], chunks=chunks, nsplits=inp.nsplits, **out.params)
+        return new_op.new_tileables(
+            [inp], chunks=chunks, nsplits=inp.nsplits, **out.params
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameRename'):
+    def execute(cls, ctx, op: "DataFrameRename"):
         input_ = ctx[op.inputs[0].key]
         if input_.ndim == 2:
-            ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper, columns=op.columns_mapper,
-                                                   level=op.level)
+            ctx[op.outputs[0].key] = input_.rename(
+                index=op.index_mapper, columns=op.columns_mapper, level=op.level
+            )
         elif op.output_types[0] == OutputType.series:
-            ctx[op.outputs[0].key] = input_.rename(index=op.index_mapper or op.new_name, level=op.level)
+            ctx[op.outputs[0].key] = input_.rename(
+                index=op.index_mapper or op.new_name, level=op.level
+            )
         else:
-            ctx[op.outputs[0].key] = input_.set_names(op.index_mapper or op.new_name,
-                                                      level=op.level)
+            ctx[op.outputs[0].key] = input_.set_names(
+                op.index_mapper or op.new_name, level=op.level
+            )
 
 
-def _rename(df_obj, index_mapper=None, columns_mapper=None, copy=True, inplace=False,
-            level=None, errors='ignore'):
+def _rename(
+    df_obj,
+    index_mapper=None,
+    columns_mapper=None,
+    copy=True,
+    inplace=False,
+    level=None,
+    errors="ignore",
+):
     if not copy:
-        raise NotImplementedError('`copy=False` not implemented')
+        raise NotImplementedError("`copy=False` not implemented")
 
-    if index_mapper is not None and errors == 'raise' and not inplace:
-        warnings.warn('Errors will not raise for non-existing indices')
+    if index_mapper is not None and errors == "raise" and not inplace:
+        warnings.warn("Errors will not raise for non-existing indices")
 
-    op = DataFrameRename(columns_mapper=columns_mapper, index_mapper=index_mapper,
-                         level=level, errors=errors, output_types=get_output_types(df_obj))
+    op = DataFrameRename(
+        columns_mapper=columns_mapper,
+        index_mapper=index_mapper,
+        level=level,
+        errors=errors,
+        output_types=get_output_types(df_obj),
+    )
     ret = op(df_obj)
     if inplace:
         df_obj.data = ret.data
@@ -156,8 +198,17 @@ def _rename(df_obj, index_mapper=None, columns_mapper=None, copy=True, inplace=F
         return ret
 
 
-def df_rename(df, mapper=None, index=None, columns=None, axis='index', copy=True,
-              inplace=False, level=None, errors='ignore'):
+def df_rename(
+    df,
+    mapper=None,
+    index=None,
+    columns=None,
+    axis="index",
+    copy=True,
+    inplace=False,
+    level=None,
+    errors="ignore",
+):
     """
     Alter axes labels.
 
@@ -274,15 +325,30 @@ def df_rename(df, mapper=None, index=None, columns=None, axis='index', copy=True
         columns_mapper = columns if columns is not None else mapper
         index_mapper = index
 
-    if index_mapper is not None and errors == 'raise' and not inplace:
-        warnings.warn('Errors will not raise for non-existing indices')
+    if index_mapper is not None and errors == "raise" and not inplace:
+        warnings.warn("Errors will not raise for non-existing indices")
 
-    return _rename(df, index_mapper=index_mapper, columns_mapper=columns_mapper, copy=copy,
-                   inplace=inplace, level=level, errors=errors)
+    return _rename(
+        df,
+        index_mapper=index_mapper,
+        columns_mapper=columns_mapper,
+        copy=copy,
+        inplace=inplace,
+        level=level,
+        errors=errors,
+    )
 
 
-def series_rename(series, index=None, *, axis='index', copy=True, inplace=False, level=None,
-                  errors='ignore'):
+def series_rename(
+    series,
+    index=None,
+    *,
+    axis="index",
+    copy=True,
+    inplace=False,
+    level=None,
+    errors="ignore"
+):
     """
     Alter Series index labels or name.
 
@@ -342,8 +408,14 @@ def series_rename(series, index=None, *, axis='index', copy=True, inplace=False,
     dtype: int64
     """
     validate_axis(axis)
-    return _rename(series, index_mapper=index, copy=copy, inplace=inplace, level=level,
-                   errors=errors)
+    return _rename(
+        series,
+        index_mapper=index,
+        copy=copy,
+        inplace=inplace,
+        level=level,
+        errors=errors,
+    )
 
 
 def index_rename(index, name, inplace=False):
@@ -463,16 +535,19 @@ def index_set_names(index, names, level=None, inplace=False):
                 ( 'cobra', 2019)],
                names=['species', 'year'])
     """
-    op = DataFrameRename(index_mapper=names, level=level,
-                         output_types=get_output_types(index))
+    op = DataFrameRename(
+        index_mapper=names, level=level, output_types=get_output_types(index)
+    )
     ret = op(index)
 
     if inplace:
-        df_or_series = getattr(index, '_get_df_or_series', lambda: None)()
+        df_or_series = getattr(index, "_get_df_or_series", lambda: None)()
         if df_or_series is not None:
             from .rename_axis import rename_axis_with_level
-            rename_axis_with_level(df_or_series, names, axis=index._axis,
-                                   level=level, inplace=True)
+
+            rename_axis_with_level(
+                df_or_series, names, axis=index._axis, level=level, inplace=True
+            )
             index.data = df_or_series.axes[index._axis].data
         else:
             index.data = ret.data

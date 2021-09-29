@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameFloorDiv(DataFrameBinopUfunc):
     _op_type_ = OperandDef.FLOORDIV
 
-    _func_name = 'floordiv'
-    _rfunc_name = 'rfloordiv'
+    _func_name = "floordiv"
+    _rfunc_name = "rfloordiv"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameFloorDiv(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorFloorDiv
+
         return TensorFloorDiv
 
 
@@ -47,13 +48,17 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Integer division', equiv='//', series_example=_floordiv_example)
-def floordiv(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+@bin_arithmetic_doc("Integer division", equiv="//", series_example=_floordiv_example)
+def floordiv(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameFloorDiv(
+        axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other
+    )
     return op(df, other)
 
 
-@bin_arithmetic_doc('Integer division', equiv='//', series_example=_floordiv_example)
-def rfloordiv(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameFloorDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+@bin_arithmetic_doc("Integer division", equiv="//", series_example=_floordiv_example)
+def rfloordiv(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameFloorDiv(
+        axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df
+    )
     return op.rcall(df, other)

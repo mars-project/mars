@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_or')
+@arithmetic_operand(sparse_mode="binary_or")
 class TensorMod(TensorBinOp):
     _op_type_ = OperandDef.MOD
-    _func_name = 'mod'
+    _func_name = "mod"
 
 
 @infer_dtype(np.mod)

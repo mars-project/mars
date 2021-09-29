@@ -17,6 +17,7 @@ import tempfile
 
 import numpy as np
 import pytest
+
 try:
     from PIL import Image
 except ImportError:
@@ -25,7 +26,7 @@ except ImportError:
 from ...images import imread
 
 
-@pytest.mark.skipif(not Image, reason='Pillow not installed')
+@pytest.mark.skipif(not Image, reason="Pillow not installed")
 def test_imread_execution(setup):
     with tempfile.TemporaryDirectory() as tempdir:
         raws = []
@@ -33,20 +34,20 @@ def test_imread_execution(setup):
             array = np.random.randint(0, 256, 2500, dtype=np.uint8).reshape((50, 50))
             raws.append(array)
             im = Image.fromarray(array)
-            im.save(os.path.join(tempdir, f'random_{i}.png'))
+            im.save(os.path.join(tempdir, f"random_{i}.png"))
         # Single image
-        t = imread(os.path.join(tempdir, 'random_0.png'))
+        t = imread(os.path.join(tempdir, "random_0.png"))
         res = t.execute().fetch()
         np.testing.assert_array_equal(res, raws[0])
 
-        t2 = imread(os.path.join(tempdir, 'random_*.png'))
+        t2 = imread(os.path.join(tempdir, "random_*.png"))
         res = t2.execute().fetch()
         np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
-        t3 = imread(os.path.join(tempdir, 'random_*.png'), chunk_size=4)
+        t3 = imread(os.path.join(tempdir, "random_*.png"), chunk_size=4)
         res = t3.execute().fetch()
         np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))
 
-        t4 = imread(os.path.join(tempdir, 'random_*.png'), chunk_size=4)
+        t4 = imread(os.path.join(tempdir, "random_*.png"), chunk_size=4)
         res = t4.execute().fetch()
         np.testing.assert_array_equal(np.sort(res, axis=0), np.sort(raws, axis=0))

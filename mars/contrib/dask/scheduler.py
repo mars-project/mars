@@ -70,7 +70,9 @@ def mars_dask_get(dsk: dict, keys: List[List]):
                 a = dsk[a]
             return _execute_task(a)
         elif not isinstance(a, str) and hasattr(a, "__getitem__"):
-            if istask(a):  # TODO:Handle `SubgraphCallable`, which may contains dsk in it
+            if istask(
+                a
+            ):  # TODO:Handle `SubgraphCallable`, which may contains dsk in it
                 return spawn(a[0], args=tuple(_get_arg(i) for i in a[1:]))
             elif isinstance(a, dict):
                 return {k: _get_arg(v) for k, v in a.items()}

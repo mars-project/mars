@@ -31,31 +31,43 @@ def test_comp(setup):
         assert not df1.data == df2.data
         assert df1.data == df1.data
 
-    for op in [operator.eq, operator.ne, operator.lt, operator.gt,
-               operator.le, operator.ge]:
+    for op in [
+        operator.eq,
+        operator.ne,
+        operator.lt,
+        operator.gt,
+        operator.le,
+        operator.ge,
+    ]:
         eq_df = op(df1, df2)
-        pd.testing.assert_index_equal(eq_df.index_value.to_pandas(),
-                                      df1.index_value.to_pandas())
+        pd.testing.assert_index_equal(
+            eq_df.index_value.to_pandas(), df1.index_value.to_pandas()
+        )
 
         # index not identical
-        df3 = DataFrame(pd.DataFrame(np.random.rand(4, 3),
-                                     index=[1, 2, 3, 4]))
+        df3 = DataFrame(pd.DataFrame(np.random.rand(4, 3), index=[1, 2, 3, 4]))
         with pytest.raises(ValueError):
             op(df1, df3)
 
         # columns not identical
-        df4 = DataFrame(pd.DataFrame(np.random.rand(4, 3),
-                                     columns=['a', 'b', 'c']))
+        df4 = DataFrame(pd.DataFrame(np.random.rand(4, 3), columns=["a", "b", "c"]))
         with pytest.raises(ValueError):
             op(df1, df4)
 
     # test datetime
-    df = DataFrame(pd.DataFrame(pd.date_range('20130101', periods=6)))
-    for op in [operator.eq, operator.ne, operator.lt, operator.gt,
-               operator.le, operator.ge]:
+    df = DataFrame(pd.DataFrame(pd.date_range("20130101", periods=6)))
+    for op in [
+        operator.eq,
+        operator.ne,
+        operator.lt,
+        operator.gt,
+        operator.le,
+        operator.ge,
+    ]:
         r_df = op(df, datetime(2013, 1, 2))
-        pd.testing.assert_index_equal(r_df.index_value.to_pandas(),
-                                      df.index_value.to_pandas())
+        pd.testing.assert_index_equal(
+            r_df.index_value.to_pandas(), df.index_value.to_pandas()
+        )
 
     # test period type
     raw = pd.period_range("2000-01-01", periods=10, freq="D")

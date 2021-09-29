@@ -19,8 +19,12 @@ from sklearn.exceptions import UndefinedMetricWarning
 
 from ... import execute
 from ... import tensor as mt
-from ..utils.validation import check_array, check_consistent_length, \
-    column_or_1d, _num_samples
+from ..utils.validation import (
+    check_array,
+    check_consistent_length,
+    column_or_1d,
+    _num_samples,
+)
 
 
 def _check_reg_targets(y_true, y_pred, multioutput, dtype="numeric"):
@@ -68,35 +72,44 @@ def _check_reg_targets(y_true, y_pred, multioutput, dtype="numeric"):
         y_pred = y_pred.reshape((-1, 1))
 
     if y_true.shape[1] != y_pred.shape[1]:
-        raise ValueError("y_true and y_pred have different number of output "
-                         "({0}!={1})".format(y_true.shape[1], y_pred.shape[1]))
+        raise ValueError(
+            "y_true and y_pred have different number of output "
+            "({0}!={1})".format(y_true.shape[1], y_pred.shape[1])
+        )
 
     n_outputs = y_true.shape[1]
-    allowed_multioutput_str = ('raw_values', 'uniform_average',
-                               'variance_weighted')
+    allowed_multioutput_str = ("raw_values", "uniform_average", "variance_weighted")
     if isinstance(multioutput, str):
         if multioutput not in allowed_multioutput_str:
-            raise ValueError("Allowed 'multioutput' string values are {}. "
-                             "You provided multioutput={!r}".format(
-                allowed_multioutput_str,
-                multioutput))
+            raise ValueError(
+                "Allowed 'multioutput' string values are {}. "
+                "You provided multioutput={!r}".format(
+                    allowed_multioutput_str, multioutput
+                )
+            )
     elif multioutput is not None:
         multioutput = check_array(multioutput, ensure_2d=False)
         if n_outputs == 1:
-            raise ValueError("Custom weights are useful only in "
-                             "multi-output cases.")
+            raise ValueError("Custom weights are useful only in " "multi-output cases.")
         elif n_outputs != len(multioutput):
-            raise ValueError(("There must be equally many custom weights "
-                              "(%d) as outputs (%d).") %
-                             (len(multioutput), n_outputs))
-    y_type = 'continuous' if n_outputs == 1 else 'continuous-multioutput'
+            raise ValueError(
+                ("There must be equally many custom weights " "(%d) as outputs (%d).")
+                % (len(multioutput), n_outputs)
+            )
+    y_type = "continuous" if n_outputs == 1 else "continuous-multioutput"
 
     return y_type, y_true, y_pred, multioutput
 
 
-def r2_score(y_true, y_pred, *, sample_weight=None,
-             multioutput="uniform_average",
-             session=None, run_kwargs=None):
+def r2_score(
+    y_true,
+    y_pred,
+    *,
+    sample_weight=None,
+    multioutput="uniform_average",
+    session=None,
+    run_kwargs=None
+):
     """:math:`R^2` (coefficient of determination) regression score function.
 
     Best possible score is 1.0 and it can be negative (because the
@@ -180,51 +193,50 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
     >>> r2_score(y_true, y_pred)
     -3.0
     """
-    _, y_true, y_pred, multioutput = _check_reg_targets(
-        y_true, y_pred, multioutput)
+    _, y_true, y_pred, multioutput = _check_reg_targets(y_true, y_pred, multioutput)
     check_consistent_length(y_true, y_pred, sample_weight)
 
     if _num_samples(y_pred) < 2:
         msg = "R^2 score is not well-defined with less than two samples."
         warnings.warn(msg, UndefinedMetricWarning)
-        return float('nan')
+        return float("nan")
 
     if sample_weight is not None:
         sample_weight = column_or_1d(sample_weight)
         weight = sample_weight[:, np.newaxis]
     else:
-        weight = 1.
+        weight = 1.0
 
-    numerator = (weight * (y_true - y_pred) ** 2).sum(axis=0,
-                                                      dtype=np.float64)
-    denominator = (weight * (y_true - mt.average(
-        y_true, axis=0, weights=sample_weight)) ** 2).sum(axis=0,
-                                                          dtype=np.float64)
+    numerator = (weight * (y_true - y_pred) ** 2).sum(axis=0, dtype=np.float64)
+    denominator = (
+        weight * (y_true - mt.average(y_true, axis=0, weights=sample_weight)) ** 2
+    ).sum(axis=0, dtype=np.float64)
     nonzero_denominator = denominator != 0
     nonzero_numerator = numerator != 0
     valid_score = nonzero_denominator & nonzero_numerator
     output_scores = mt.ones([y_true.shape[1]])
-    output_scores[valid_score] = 1 - (numerator[valid_score] /
-                                      denominator[valid_score])
+    output_scores[valid_score] = 1 - (numerator[valid_score] / denominator[valid_score])
     # arbitrary set to zero to avoid -inf scores, having a constant
     # y_true is not interesting for scoring a regression anyway
-    output_scores[nonzero_numerator & ~nonzero_denominator] = 0.
+    output_scores[nonzero_numerator & ~nonzero_denominator] = 0.0
     if isinstance(multioutput, str):
-        if multioutput == 'raw_values':
+        if multioutput == "raw_values":
             # return scores individually
             return output_scores
-        elif multioutput == 'uniform_average':
+        elif multioutput == "uniform_average":
             # passing None as weights results is uniform mean
             avg_weights = None
-        elif multioutput == 'variance_weighted':
+        elif multioutput == "variance_weighted":
             avg_weights = denominator
             # avoid fail on constant y or one-element arrays
             cond1 = mt.any(nonzero_denominator)
-            execute(cond1, nonzero_denominator,
-                    session=session, **(run_kwargs or dict()))
+            execute(
+                cond1, nonzero_denominator, session=session, **(run_kwargs or dict())
+            )
             if not cond1.fetch():
                 if not mt.any(nonzero_numerator).to_numpy(
-                        session=session, **(run_kwargs or dict())):
+                    session=session, **(run_kwargs or dict())
+                ):
                     return 1.0
                 else:
                     return 0.0
@@ -232,4 +244,5 @@ def r2_score(y_true, y_pred, *, sample_weight=None,
         avg_weights = multioutput
 
     return mt.average(output_scores, weights=avg_weights).execute(
-        session=session, **(run_kwargs or dict()))
+        session=session, **(run_kwargs or dict())
+    )

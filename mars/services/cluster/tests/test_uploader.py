@@ -25,7 +25,7 @@ from ..uploader import NodeInfoUploaderActor
 
 @pytest.fixture
 async def actor_pool():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
     await pool.start()
     yield pool
     await pool.stop()
@@ -35,15 +35,25 @@ async def actor_pool():
 async def test_uploader(actor_pool):
     pool_addr = actor_pool.external_address
     await mo.create_actor(
-        SupervisorPeerLocatorActor, 'fixed', pool_addr,
-        uid=SupervisorPeerLocatorActor.default_uid(), address=pool_addr)
+        SupervisorPeerLocatorActor,
+        "fixed",
+        pool_addr,
+        uid=SupervisorPeerLocatorActor.default_uid(),
+        address=pool_addr,
+    )
     node_info_ref = await mo.create_actor(
-        NodeInfoCollectorActor, timeout=0.5, check_interval=0.1,
-        uid=NodeInfoCollectorActor.default_uid(), address=pool_addr
+        NodeInfoCollectorActor,
+        timeout=0.5,
+        check_interval=0.1,
+        uid=NodeInfoCollectorActor.default_uid(),
+        address=pool_addr,
     )
     uploader_ref = await mo.create_actor(
-        NodeInfoUploaderActor, role=NodeRole.WORKER, interval=0.1,
-        uid=NodeInfoUploaderActor.default_uid(), address=pool_addr
+        NodeInfoUploaderActor,
+        role=NodeRole.WORKER,
+        interval=0.1,
+        uid=NodeInfoUploaderActor.default_uid(),
+        address=pool_addr,
     )
     wait_ready_task = asyncio.create_task(uploader_ref.wait_node_ready())
     await uploader_ref.mark_node_ready()
@@ -52,20 +62,22 @@ async def test_uploader(actor_pool):
     # test empty result
     result = await node_info_ref.get_nodes_info(role=NodeRole.WORKER)
     assert pool_addr in result
-    assert all(result[pool_addr].get(k) is None
-               for k in ('env', 'resource', 'detail'))
+    assert all(result[pool_addr].get(k) is None for k in ("env", "resource", "detail"))
 
     result = await node_info_ref.get_nodes_info(
-        role=NodeRole.WORKER, env=True, resource=True, detail=True)
+        role=NodeRole.WORKER, env=True, resource=True, detail=True
+    )
     assert pool_addr in result
-    assert all(result[pool_addr].get(k) is not None
-               for k in ('env', 'resource', 'detail'))
+    assert all(
+        result[pool_addr].get(k) is not None for k in ("env", "resource", "detail")
+    )
 
     async def watcher():
         version = None
         while True:
             version, infos = await node_info_ref.watch_nodes(
-                NodeRole.WORKER, version=version)
+                NodeRole.WORKER, version=version
+            )
             if not infos:
                 break
 

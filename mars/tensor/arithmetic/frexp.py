@@ -23,9 +23,9 @@ from .core import TensorOutBinOp
 
 class TensorFrexp(TensorOutBinOp):
     _op_type_ = OperandDef.FREXP
-    _func_name = 'frexp'
+    _func_name = "frexp"
 
-    def __init__(self, casting='same_kind', dtype=None, sparse=False, **kw):
+    def __init__(self, casting="same_kind", dtype=None, sparse=False, **kw):
         super().__init__(_casting=casting, _dtype=dtype, _sparse=sparse, **kw)
 
     @property
@@ -35,10 +35,11 @@ class TensorFrexp(TensorOutBinOp):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
-            kw = {'casting': op.casting}
+            kw = {"casting": op.casting}
 
             inputs_iter = iter(inputs)
             input = next(inputs_iter)
@@ -51,10 +52,10 @@ class TensorFrexp(TensorOutBinOp):
             else:
                 out2 = None
             if op.where is not None:
-                where = kw['where'] = next(inputs_iter)
+                where = kw["where"] = next(inputs_iter)
             else:
                 where = None
-            kw['order'] = op.order
+            kw["order"] = op.order
 
             try:
                 args = [input]
@@ -67,7 +68,10 @@ class TensorFrexp(TensorOutBinOp):
                 if where is None:
                     raise
                 mantissa, exponent = xp.frexp(input)
-                mantissa, exponent = xp.where(where, mantissa, out1), xp.where(where, exponent, out2)
+                mantissa, exponent = (
+                    xp.where(where, mantissa, out1),
+                    xp.where(where, exponent, out2),
+                )
 
             for c, res in zip(op.outputs, (mantissa, exponent)):
                 ctx[c.key] = res

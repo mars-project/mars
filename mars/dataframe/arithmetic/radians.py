@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameRadians(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.RADIANS
-    _func_name = 'radians'
+    _func_name = "radians"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorRadians
+
         return TensorRadians

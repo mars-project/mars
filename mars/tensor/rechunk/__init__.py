@@ -18,8 +18,8 @@ from .rechunk import rechunk
 def _install():
     from ..core import Tensor, TensorData
 
-    setattr(Tensor, 'rechunk', rechunk)
-    setattr(TensorData, 'rechunk', rechunk)
+    setattr(Tensor, "rechunk", rechunk)
+    setattr(TensorData, "rechunk", rechunk)
 
 
 _install()

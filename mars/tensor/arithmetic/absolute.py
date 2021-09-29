@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorAbsolute(TensorUnaryOp):
     _op_type_ = OperandDef.ABSOLUTE
-    _func_name = 'absolute'
+    _func_name = "absolute"
 
 
 @infer_dtype(np.absolute)

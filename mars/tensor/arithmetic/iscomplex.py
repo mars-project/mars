@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorIsComplex(TensorUnaryOp):
     _op_type_ = OperandDef.ISCOMPLEX
-    _func_name = 'iscomplex'
+    _func_name = "iscomplex"
 
 
 @inject_dtype(np.bool_)

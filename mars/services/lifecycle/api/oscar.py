@@ -21,17 +21,17 @@ from .core import AbstractLifecycleAPI
 
 
 class LifecycleAPI(AbstractLifecycleAPI):
-    def __init__(self,
-                 session_id: str,
-                 lifecycle_tracker_ref: Union[LifecycleTrackerActor, mo.ActorRef]):
+    def __init__(
+        self,
+        session_id: str,
+        lifecycle_tracker_ref: Union[LifecycleTrackerActor, mo.ActorRef],
+    ):
         self._session_id = session_id
         self._lifecycle_tracker_ref = lifecycle_tracker_ref
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls,
-                     session_id: str,
-                     address: str) -> "LifecycleAPI":
+    async def create(cls, session_id: str, address: str) -> "LifecycleAPI":
         """
         Create Lifecycle API.
 
@@ -48,13 +48,12 @@ class LifecycleAPI(AbstractLifecycleAPI):
             Lifecycle API.
         """
         lifecycle_tracker_ref = await mo.actor_ref(
-            address, LifecycleTrackerActor.gen_uid(session_id))
+            address, LifecycleTrackerActor.gen_uid(session_id)
+        )
         return LifecycleAPI(session_id, lifecycle_tracker_ref)
 
     @mo.extensible
-    async def track(self,
-                    tileable_key: str,
-                    chunk_keys: List[str]):
+    async def track(self, tileable_key: str, chunk_keys: List[str]):
         """
         Track tileable.
 
@@ -163,10 +162,9 @@ class LifecycleAPI(AbstractLifecycleAPI):
 
 class MockLifecycleAPI(LifecycleAPI):
     @classmethod
-    async def create(cls,
-                     session_id: str,
-                     address: str) -> "LifecycleAPI":
+    async def create(cls, session_id: str, address: str) -> "LifecycleAPI":
         from ..supervisor.service import LifecycleSupervisorService
+
         service = LifecycleSupervisorService({}, address)
         await service.create_session(session_id)
         return await super().create(session_id=session_id, address=address)

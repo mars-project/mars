@@ -80,5 +80,6 @@ def median(a, axis=None, out=None, overwrite_input=False, keepdims=False):
     >>> m.execute()
     array([6.5,  4.5,  2.5])
     """
-    return quantile(a, 0.5, axis=axis, out=out,
-                    overwrite_input=overwrite_input, keepdims=keepdims)
+    return quantile(
+        a, 0.5, axis=axis, out=out, overwrite_input=overwrite_input, keepdims=keepdims
+    )

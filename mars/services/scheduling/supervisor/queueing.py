@@ -49,7 +49,7 @@ class SubtaskQueueingActor(mo.Actor):
 
     @classmethod
     def gen_uid(cls, session_id: str):
-        return f'{session_id}_subtask_queueing'
+        return f"{session_id}_subtask_queueing"
 
     def __init__(self, session_id: str, submit_period: Union[float, int] = None):
         self._session_id = session_id
@@ -72,6 +72,7 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def __post_create__(self):
         from ...cluster import ClusterAPI
+
         self._cluster_api = await ClusterAPI.create(self.address)
         self._band_slot_nums = {}
 
@@ -99,23 +100,29 @@ class SubtaskQueueingActor(mo.Actor):
                         # band will get at least one subtask submitted successfully.
                         # Later subtasks submit on the band will be triggered by the
                         # success of previous subtasks on the same band.
-                        logger.info('Bands changed with delta %s, submit all bands.', bands_delta)
+                        logger.info(
+                            "Bands changed with delta %s, submit all bands.",
+                            bands_delta,
+                        )
                         await self.ref().submit_subtasks()
 
         self._band_watch_task = asyncio.create_task(watch_bands())
 
         from .globalslot import GlobalSlotManagerActor
+
         [self._slots_ref] = await self._cluster_api.get_supervisor_refs(
             [GlobalSlotManagerActor.default_uid()]
         )
         from .assigner import AssignerActor
+
         self._assigner_ref = await mo.actor_ref(
             AssignerActor.gen_uid(self._session_id), address=self.address
         )
 
         if self._submit_period > 0:
-            self._periodical_submit_task = \
-                self.ref().periodical_submit.tell_delay(delay=self._submit_period)
+            self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
+                delay=self._submit_period
+            )
 
     async def __pre_destroy__(self):
         self._band_watch_task.cancel()
@@ -124,8 +131,9 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def periodical_submit(self):
         await self.ref().submit_subtasks.tell()
-        self._periodical_submit_task = \
-            self.ref().periodical_submit.tell_delay(delay=self._submit_period)
+        self._periodical_submit_task = self.ref().periodical_submit.tell_delay(
+            delay=self._submit_period
+        )
 
     @alru_cache
     async def _get_task_api(self):
@@ -134,6 +142,7 @@ class SubtaskQueueingActor(mo.Actor):
     @alru_cache(cache_exceptions=False)
     async def _get_manager_ref(self):
         from .manager import SubtaskManagerActor
+
         return await mo.actor_ref(
             SubtaskManagerActor.gen_uid(self._session_id), address=self.address
         )
@@ -143,14 +152,15 @@ class SubtaskQueueingActor(mo.Actor):
         for subtask, band, priority in zip(subtasks, bands, priorities):
             assert band is not None
             self._stid_to_bands[subtask.subtask_id].append(band)
-            heap_item = self._stid_to_items[subtask.subtask_id] = \
-                HeapItem(subtask, priority + (self._max_enqueue_id,))
+            heap_item = self._stid_to_items[subtask.subtask_id] = HeapItem(
+                subtask, priority + (self._max_enqueue_id,)
+            )
             self._max_enqueue_id += 1
             heapq.heappush(self._band_queues[band], heap_item)
-        logger.debug('%d subtasks enqueued', len(subtasks))
+        logger.debug("%d subtasks enqueued", len(subtasks))
 
     async def submit_subtasks(self, band: Tuple = None, limit: Optional[int] = None):
-        logger.debug('Submitting subtasks with limit %s', limit)
+        logger.debug("Submitting subtasks with limit %s", limit)
 
         if not limit and band not in self._band_slot_nums:
             self._band_slot_nums = await self._cluster_api.get_all_bands()
@@ -174,23 +184,36 @@ class SubtaskQueueingActor(mo.Actor):
             # todo it is possible to provide slot data with more accuracy
             subtask_slots = [1] * len(subtask_ids)
 
-            async with redirect_subtask_errors(self, [item.subtask for item in submit_items.values()]):
-                submitted_ids = set(await self._slots_ref.apply_subtask_slots(
-                    band, self._session_id, subtask_ids, subtask_slots
-                ))
+            async with redirect_subtask_errors(
+                self, [item.subtask for item in submit_items.values()]
+            ):
+                submitted_ids = set(
+                    await self._slots_ref.apply_subtask_slots(
+                        band, self._session_id, subtask_ids, subtask_slots
+                    )
+                )
                 non_submitted_ids = [k for k in submit_items if k not in submitted_ids]
                 if submitted_ids:
                     for stid in subtask_ids:
                         if stid not in submitted_ids:
                             continue
                         item = submit_items[stid]
-                        logger.debug('Submit subtask %s to band %r', item.subtask.subtask_id, band)
-                        submit_aio_tasks.append(asyncio.create_task(
-                            manager_ref.submit_subtask_to_band.tell(item.subtask.subtask_id, band)))
+                        logger.debug(
+                            "Submit subtask %s to band %r",
+                            item.subtask.subtask_id,
+                            band,
+                        )
+                        submit_aio_tasks.append(
+                            asyncio.create_task(
+                                manager_ref.submit_subtask_to_band.tell(
+                                    item.subtask.subtask_id, band
+                                )
+                            )
+                        )
                         await asyncio.sleep(0)
                         self.remove_queued_subtasks([item.subtask.subtask_id])
                 else:
-                    logger.debug('No slots available')
+                    logger.debug("No slots available")
 
             for stid in non_submitted_ids:
                 heapq.heappush(task_queue, submit_items[stid])
@@ -200,7 +223,9 @@ class SubtaskQueueingActor(mo.Actor):
 
     def _ensure_top_item_valid(self, task_queue):
         """Clean invalid subtask item from queue to ensure that """
-        while task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items:
+        while (
+            task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items
+        ):
             #  skip removed items (as they may be re-pushed into the queue)
             heapq.heappop(task_queue)
 
@@ -230,8 +255,12 @@ class SubtaskQueueingActor(mo.Actor):
 
     async def balance_queued_subtasks(self):
         # record length of band queues
-        band_num_queued_subtasks = {band: len(queue) for band, queue in self._band_queues.items()}
-        move_queued_subtasks = await self._assigner_ref.reassign_subtasks(band_num_queued_subtasks)
+        band_num_queued_subtasks = {
+            band: len(queue) for band, queue in self._band_queues.items()
+        }
+        move_queued_subtasks = await self._assigner_ref.reassign_subtasks(
+            band_num_queued_subtasks
+        )
         items = []
         # rewrite band queues according to feedbacks from assigner
         for band, move in move_queued_subtasks.items():

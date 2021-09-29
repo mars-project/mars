@@ -567,7 +567,9 @@ for _var_name, _var_val in globals().copy().items():
     if not isinstance(_var_val, int):
         continue
     if _var_val in _val_to_dict:  # pragma: no cover
-        raise ImportError(f'Cannot import opcode: {_var_name} and '
-                          f'{_val_to_dict[_var_val]} collides with value {_var_val}')
+        raise ImportError(
+            f"Cannot import opcode: {_var_name} and "
+            f"{_val_to_dict[_var_val]} collides with value {_var_val}"
+        )
     _val_to_dict[_var_val] = _var_name
 del _val_to_dict, _var_name, _var_val

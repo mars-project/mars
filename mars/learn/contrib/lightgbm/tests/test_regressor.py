@@ -16,6 +16,7 @@ import pandas as pd
 import pytest
 
 from ..... import tensor as mt
+
 try:
     import lightgbm
     from .. import LGBMRegressor
@@ -31,7 +32,7 @@ X = rs.rand(n_rows, n_columns, chunk_size=chunk_size)
 y = rs.randint(0, 10, n_rows, chunk_size=chunk_size)
 
 
-@pytest.mark.skipif(lightgbm is None, reason='LightGBM not installed')
+@pytest.mark.skipif(lightgbm is None, reason="LightGBM not installed")
 def test_local_regressor(setup):
     regressor = LGBMRegressor(n_estimators=2)
     regressor.fit(X, y, verbose=True)
@@ -58,6 +59,7 @@ def test_local_regressor(setup):
     # test numpy tensor
     try:
         from sklearn.datasets import make_classification
+
         X_array, y_array = make_classification()
         regressor = LGBMRegressor(n_estimators=2)
         regressor.fit(X_array, y_array, verbose=True)

@@ -34,17 +34,29 @@ from .utils import calc_columns_index
 
 
 class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
-    _op_module_ = 'series'
+    _op_module_ = "series"
     _op_type_ = OperandDef.INDEX
 
-    _labels = AnyField('labels')
+    _labels = AnyField("labels")
 
-    _combine_size = Int32Field('combine_size')
-    _is_intermediate = BoolField('is_intermediate')
+    _combine_size = Int32Field("combine_size")
+    _is_intermediate = BoolField("is_intermediate")
 
-    def __init__(self, labels=None, combine_size=None, is_intermediate=None, output_types=None, **kw):
-        super().__init__(_labels=labels, _combine_size=combine_size, _is_intermediate=is_intermediate,
-                         _output_types=output_types, **kw)
+    def __init__(
+        self,
+        labels=None,
+        combine_size=None,
+        is_intermediate=None,
+        output_types=None,
+        **kw,
+    ):
+        super().__init__(
+            _labels=labels,
+            _combine_size=combine_size,
+            _is_intermediate=is_intermediate,
+            _output_types=output_types,
+            **kw,
+        )
 
     @property
     def labels(self):
@@ -65,38 +77,42 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         # Override this method to automatically decide the output type,
         # when `labels` is a list, we will set `output_types` as series,
         # otherwise it will be a scalar.
-        output_types = getattr(self, '_output_types', None)
-        shape = kw.pop('shape', None)
+        output_types = getattr(self, "_output_types", None)
+        shape = kw.pop("shape", None)
         is_scalar = not isinstance(self._labels, list)
         if not output_types:
             output_types = [OutputType.scalar] if is_scalar else [OutputType.series]
             self.output_types = output_types
         if shape is None:
             shape = () if is_scalar else ((len(self._labels)),)
-            kw['shape'] = shape
+            kw["shape"] = shape
         if not is_scalar:
-            index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
-            kw['index_value'] = index_value
+            index_value = kw.pop("index_value", None) or parse_index(
+                pd.Index(self._labels)
+            )
+            kw["index_value"] = index_value
         return super()._new_tileables(inputs, kws=kws, **kw)
 
     def _new_chunks(self, inputs, kws=None, **kw):
         # Override this method to automatically decide the output type,
         # when `labels` is a list, we will set `output_types` as series,
         # otherwise it will be a scalar.
-        output_types = getattr(self, '_output_types', None)
+        output_types = getattr(self, "_output_types", None)
         is_scalar = not isinstance(self._labels, list)
         if not output_types:
             output_types = [OutputType.scalar] if is_scalar else [OutputType.series]
             self.output_types = output_types
-        if kw.get('shape', None) is None:
+        if kw.get("shape", None) is None:
             shape = () if is_scalar else ((len(self._labels)),)
-            kw['shape'] = shape
+            kw["shape"] = shape
         if not is_scalar:
-            index_value = kw.pop('index_value', None) or parse_index(pd.Index(self._labels))
-            kw['index_value'] = index_value
+            index_value = kw.pop("index_value", None) or parse_index(
+                pd.Index(self._labels)
+            )
+            kw["index_value"] = index_value
         else:
             # tensor chunk cannot accept index_value
-            kw.pop('index_value', None)
+            kw.pop("index_value", None)
         return super()._new_chunks(inputs, kws=kws, **kw)
 
     @classmethod
@@ -114,12 +130,13 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         out_series = op.outputs[0]
 
         index_op = SeriesIndex(labels=op.labels)
-        kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
+        kw = {"name": out_series.name} if hasattr(out_series, "name") else {}
         index_chunk = index_op.new_chunk(in_series.chunks, dtype=out_series.dtype, **kw)
         new_op = op.copy()
         nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
-        return new_op.new_tileables(op.inputs, chunks=[index_chunk], nsplits=nsplits,
-                                    dtype=out_series.dtype)
+        return new_op.new_tileables(
+            op.inputs, chunks=[index_chunk], nsplits=nsplits, dtype=out_series.dtype
+        )
 
     @classmethod
     def _tree_getitem(cls, op):
@@ -133,30 +150,35 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
         while len(chunks) > combine_size:
             new_chunks = []
             for i in range(0, len(chunks), combine_size):
-                chks = chunks[i: i + combine_size]
+                chks = chunks[i : i + combine_size]
                 if len(chks) == 1:
                     chk = chks[0]
                 else:
                     concat_op = DataFrameConcat(output_types=[OutputType.series])
                     chk = concat_op.new_chunk(chks, dtype=chks[0].dtype)
                 chk_op = SeriesIndex(labels=op.labels, is_intermediate=True)
-                kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
-                chk = chk_op.new_chunk([chk], shape=(np.nan,), dtype=chk.dtype,
-                                       index_value=parse_index(pd.RangeIndex(-1)), **kw)
+                kw = {"name": out_series.name} if hasattr(out_series, "name") else {}
+                chk = chk_op.new_chunk(
+                    [chk],
+                    shape=(np.nan,),
+                    dtype=chk.dtype,
+                    index_value=parse_index(pd.RangeIndex(-1)),
+                    **kw,
+                )
                 new_chunks.append(chk)
             chunks = new_chunks
 
         concat_op = DataFrameConcat(output_types=[OutputType.series])
-        kw = {'name': out_series.name} if hasattr(out_series, 'name') else {}
-        kw['index'] = (0,)
+        kw = {"name": out_series.name} if hasattr(out_series, "name") else {}
+        kw["index"] = (0,)
         chk = concat_op.new_chunk(chunks, dtype=chunks[0].dtype, **kw)
         index_op = SeriesIndex(labels=op.labels)
         chunk = index_op.new_chunk([chk], dtype=chk.dtype, **kw)
         new_op = op.copy()
         nsplits = ((len(op.labels),),) if isinstance(op.labels, list) else ()
         kw = out_series.params
-        kw['nsplits'] = nsplits
-        kw['chunks'] = [chunk]
+        kw["nsplits"] = nsplits
+        kw["chunks"] = [chunk]
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @classmethod
@@ -171,16 +193,24 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 
         chunk_indexes = [c.index_value.to_pandas() for c in in_series.chunks]
         if not isinstance(op.labels, list):
-            selected_chunk = in_series.chunks[cls._calc_chunk_index(op.labels, chunk_indexes)]
+            selected_chunk = in_series.chunks[
+                cls._calc_chunk_index(op.labels, chunk_indexes)
+            ]
             index_op = op.copy().reset_key()
-            out_chunk = index_op.new_chunk([selected_chunk], shape=(), dtype=selected_chunk.dtype)
+            out_chunk = index_op.new_chunk(
+                [selected_chunk], shape=(), dtype=selected_chunk.dtype
+            )
             new_op = op.copy()
-            return new_op.new_scalars(op.inputs, dtype=out_series.dtype, chunks=[out_chunk])
+            return new_op.new_scalars(
+                op.inputs, dtype=out_series.dtype, chunks=[out_chunk]
+            )
         else:
             # When input series's index is RangeIndex(5), chunk_size is 3, and labels is [4, 2, 3, 4],
             # Combine the labels in the same chunk, so the splits will be [[4], [2], [3, 4]],
             # the corresponding chunk index is [1, 0, 1].
-            selected_index = [cls._calc_chunk_index(label, chunk_indexes) for label in op.labels]
+            selected_index = [
+                cls._calc_chunk_index(label, chunk_indexes) for label in op.labels
+            ]
             condition = np.where(np.diff(selected_index))[0] + 1
             column_splits = np.split(op.labels, condition)
             column_indexes = np.split(selected_index, condition)
@@ -191,15 +221,29 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
                 index_op = SeriesIndex(labels=list(labels))
                 c = in_series.chunks[idx[0]]
                 nsplits.append(len(labels))
-                index_value = parse_index(pd.Index([], dtype=c.index_value.to_pandas().dtype),
-                                          c, labels)
-                out_chunks.append(index_op.new_chunk([c], shape=(len(labels),), dtype=c.dtype,
-                                                     index_value=index_value,
-                                                     name=c.name, index=(i,)))
+                index_value = parse_index(
+                    pd.Index([], dtype=c.index_value.to_pandas().dtype), c, labels
+                )
+                out_chunks.append(
+                    index_op.new_chunk(
+                        [c],
+                        shape=(len(labels),),
+                        dtype=c.dtype,
+                        index_value=index_value,
+                        name=c.name,
+                        index=(i,),
+                    )
+                )
             new_op = op.copy()
-            return new_op.new_seriess(op.inputs, shape=out_series.shape, dtype=out_series.dtype,
-                                      index_value=out_series.index_value, nsplits=(tuple(nsplits),),
-                                      chunks=out_chunks, name=out_series.name)
+            return new_op.new_seriess(
+                op.inputs,
+                shape=out_series.shape,
+                dtype=out_series.dtype,
+                index_value=out_series.index_value,
+                nsplits=(tuple(nsplits),),
+                chunks=out_chunks,
+                name=out_series.name,
+            )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -215,11 +259,13 @@ class SeriesIndex(DataFrameOperand, DataFrameOperandMixin):
 class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = OperandDef.INDEX
 
-    _col_names = AnyField('col_names')
-    _mask = AnyField('mask')
+    _col_names = AnyField("col_names")
+    _mask = AnyField("mask")
 
     def __init__(self, col_names=None, mask=None, output_types=None, **kw):
-        super().__init__(_col_names=col_names, _mask=mask, _output_types=output_types, **kw)
+        super().__init__(
+            _col_names=col_names, _mask=mask, _output_types=output_types, **kw
+        )
         if not self.output_types:
             self.output_types = [OutputType.series]
 
@@ -244,25 +290,57 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             if isinstance(self._col_names, list):
                 dtypes = df.dtypes[self._col_names]
                 columns = parse_index(pd.Index(self._col_names), store_data=True)
-                return self.new_dataframe([df], shape=(df.shape[0], len(self._col_names)), dtypes=dtypes,
-                                          index_value=df.index_value, columns_value=columns)
+                return self.new_dataframe(
+                    [df],
+                    shape=(df.shape[0], len(self._col_names)),
+                    dtypes=dtypes,
+                    index_value=df.index_value,
+                    columns_value=columns,
+                )
             else:
                 dtype = df.dtypes[self._col_names]
-                return self.new_series([df], shape=(df.shape[0],), dtype=dtype, index_value=df.index_value,
-                                       name=self._col_names)
+                return self.new_series(
+                    [df],
+                    shape=(df.shape[0],),
+                    dtype=dtype,
+                    index_value=df.index_value,
+                    name=self._col_names,
+                )
         else:
             if isinstance(self.mask, (SERIES_TYPE, DATAFRAME_TYPE, TENSOR_TYPE)):
-                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype,
-                                                   name=df.index_value.name),
-                                          df, self._mask)
-                return self.new_dataframe([df, self._mask], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=index_value, columns_value=df.columns_value)
+                index_value = parse_index(
+                    pd.Index(
+                        [],
+                        dtype=df.index_value.to_pandas().dtype,
+                        name=df.index_value.name,
+                    ),
+                    df,
+                    self._mask,
+                )
+                return self.new_dataframe(
+                    [df, self._mask],
+                    shape=(np.nan, df.shape[1]),
+                    dtypes=df.dtypes,
+                    index_value=index_value,
+                    columns_value=df.columns_value,
+                )
             else:
-                index_value = parse_index(pd.Index([], dtype=df.index_value.to_pandas().dtype,
-                                                   name=df.index_value.name),
-                                          df, self._mask)
-                return self.new_dataframe([df], shape=(np.nan, df.shape[1]), dtypes=df.dtypes,
-                                          index_value=index_value, columns_value=df.columns_value)
+                index_value = parse_index(
+                    pd.Index(
+                        [],
+                        dtype=df.index_value.to_pandas().dtype,
+                        name=df.index_value.name,
+                    ),
+                    df,
+                    self._mask,
+                )
+                return self.new_dataframe(
+                    [df],
+                    shape=(np.nan, df.shape[1]),
+                    dtypes=df.dtypes,
+                    index_value=index_value,
+                    columns_value=df.columns_value,
+                )
 
     @classmethod
     def tile(cls, op):
@@ -282,33 +360,43 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             mask = op.inputs[1]
 
             if isinstance(op.mask, SERIES_TYPE):
-                nsplits, out_shape, df_chunks, mask_chunks = \
-                    align_dataframe_series(in_df, mask, axis='index')
+                nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_series(
+                    in_df, mask, axis="index"
+                )
             elif isinstance(op.mask, DATAFRAME_TYPE):
-                nsplits, out_shape, df_chunks, mask_chunks = \
-                    align_dataframe_dataframe(in_df, mask)
+                nsplits, out_shape, df_chunks, mask_chunks = align_dataframe_dataframe(
+                    in_df, mask
+                )
             else:
                 # tensor
                 nsplits = in_df.nsplits
-                mask = yield from recursive_tile(
-                    mask.rechunk(nsplits[:mask.ndim]))
+                mask = yield from recursive_tile(mask.rechunk(nsplits[: mask.ndim]))
                 out_shape = in_df.chunk_shape
                 df_chunks = in_df.chunks
                 mask_chunks = mask.chunks
             out_chunk_indexes = itertools.product(*(range(s) for s in out_shape))
 
             out_chunks = []
-            for i, idx, df_chunk in zip(itertools.count(), out_chunk_indexes, df_chunks):
+            for i, idx, df_chunk in zip(
+                itertools.count(), out_chunk_indexes, df_chunks
+            ):
                 if op.mask.ndim == 1:
                     mask_chunk = mask_chunks[df_chunk.index[0]]
                 else:
                     mask_chunk = mask_chunks[i]
                 index_value = parse_index(out_df.index_value.to_pandas(), df_chunk)
-                out_chunk = op.copy().reset_key().new_chunk([df_chunk, mask_chunk], index=idx,
-                                                            shape=(np.nan, df_chunk.shape[1]),
-                                                            dtypes=df_chunk.dtypes,
-                                                            index_value=index_value,
-                                                            columns_value=df_chunk.columns_value)
+                out_chunk = (
+                    op.copy()
+                    .reset_key()
+                    .new_chunk(
+                        [df_chunk, mask_chunk],
+                        index=idx,
+                        shape=(np.nan, df_chunk.shape[1]),
+                        dtypes=df_chunk.dtypes,
+                        index_value=index_value,
+                        columns_value=df_chunk.columns_value,
+                    )
+                )
                 out_chunks.append(out_chunk)
         else:
             if has_unknown_shape(in_df):
@@ -318,12 +406,17 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
                 for idxj in range(in_df.chunk_shape[1]):
                     in_chunk = in_df.cix[idx, idxj]
                     chunk_op = op.copy().reset_key()
-                    chunk_op._mask = op.mask.iloc[nsplits_acc[idx]:nsplits_acc[idx+1]]
-                    out_chunk = chunk_op.new_chunk([in_chunk], index=in_chunk.index,
-                                                   shape=(np.nan, in_chunk.shape[1]),
-                                                   dtypes=in_chunk.dtypes,
-                                                   index_value=in_df.index_value,
-                                                   columns_value=in_chunk.columns_value)
+                    chunk_op._mask = op.mask.iloc[
+                        nsplits_acc[idx] : nsplits_acc[idx + 1]
+                    ]
+                    out_chunk = chunk_op.new_chunk(
+                        [in_chunk],
+                        index=in_chunk.index,
+                        shape=(np.nan, in_chunk.shape[1]),
+                        dtypes=in_chunk.dtypes,
+                        index_value=in_df.index_value,
+                        columns_value=in_chunk.columns_value,
+                    )
                     out_chunks.append(out_chunk)
 
         nsplits_on_columns = tuple(c.shape[1] for c in out_chunks if c.index[0] == 0)
@@ -331,9 +424,15 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
         nsplits = ((np.nan,) * row_chunk_num, nsplits_on_columns)
 
         new_op = op.copy()
-        return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
-                                     index_value=out_df.index_value, columns_value=out_df.columns_value,
-                                     chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_dataframes(
+            op.inputs,
+            shape=out_df.shape,
+            dtypes=out_df.dtypes,
+            index_value=out_df.index_value,
+            columns_value=out_df.columns_value,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     @classmethod
     def tile_with_columns(cls, op):
@@ -347,12 +446,26 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             for i in range(in_df.chunk_shape[0]):
                 c = in_df.cix[(i, column_index)]
                 chunk_op = DataFrameIndex(col_names=col_names)
-                out_chunks.append(chunk_op.new_chunk([c], shape=(c.shape[0],), index=(i,), dtype=dtype,
-                                                     index_value=c.index_value, name=col_names))
+                out_chunks.append(
+                    chunk_op.new_chunk(
+                        [c],
+                        shape=(c.shape[0],),
+                        index=(i,),
+                        dtype=dtype,
+                        index_value=c.index_value,
+                        name=col_names,
+                    )
+                )
             new_op = op.copy()
-            return new_op.new_seriess(op.inputs, shape=out_df.shape, dtype=out_df.dtype,
-                                      index_value=out_df.index_value, name=out_df.name,
-                                      nsplits=(in_df.nsplits[0],), chunks=out_chunks)
+            return new_op.new_seriess(
+                op.inputs,
+                shape=out_df.shape,
+                dtype=out_df.dtype,
+                index_value=out_df.index_value,
+                name=out_df.name,
+                nsplits=(in_df.nsplits[0],),
+                chunks=out_chunks,
+            )
         else:
             # combine columns into one chunk and keep the columns order at the same time.
             # When chunk columns are ['c1', 'c2', 'c3'], ['c4', 'c5'],
@@ -365,24 +478,37 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
 
             out_chunks = [[] for _ in range(in_df.chunk_shape[0])]
             column_nsplits = []
-            for i, (columns, column_idx) in enumerate(zip(column_splits, column_indexes)):
+            for i, (columns, column_idx) in enumerate(
+                zip(column_splits, column_indexes)
+            ):
                 dtypes = in_df.dtypes[columns]
                 column_nsplits.append(len(columns))
                 for j in range(in_df.chunk_shape[0]):
                     c = in_df.cix[(j, column_idx[0])]
-                    index_op = DataFrameIndex(col_names=list(columns), output_types=[OutputType.dataframe])
-                    out_chunk = index_op.new_chunk([c], shape=(c.shape[0], len(columns)), index=(j, i),
-                                                   dtypes=dtypes, index_value=c.index_value,
-                                                   columns_value=parse_index(pd.Index(columns),
-                                                                             store_data=True))
+                    index_op = DataFrameIndex(
+                        col_names=list(columns), output_types=[OutputType.dataframe]
+                    )
+                    out_chunk = index_op.new_chunk(
+                        [c],
+                        shape=(c.shape[0], len(columns)),
+                        index=(j, i),
+                        dtypes=dtypes,
+                        index_value=c.index_value,
+                        columns_value=parse_index(pd.Index(columns), store_data=True),
+                    )
                     out_chunks[j].append(out_chunk)
             out_chunks = [item for cl in out_chunks for item in cl]
             new_op = op.copy()
             nsplits = (in_df.nsplits[0], tuple(column_nsplits))
-            return new_op.new_dataframes(op.inputs, shape=out_df.shape, dtypes=out_df.dtypes,
-                                         index_value=out_df.index_value,
-                                         columns_value=out_df.columns_value,
-                                         chunks=out_chunks, nsplits=nsplits)
+            return new_op.new_dataframes(
+                op.inputs,
+                shape=out_df.shape,
+                dtypes=out_df.dtypes,
+                index_value=out_df.index_value,
+                columns_value=out_df.columns_value,
+                chunks=out_chunks,
+                nsplits=nsplits,
+            )
 
     @classmethod
     def execute(cls, ctx, op):
@@ -391,12 +517,13 @@ class DataFrameIndex(DataFrameOperand, DataFrameOperandMixin):
             ctx[op.outputs[0].key] = df[op.col_names]
         else:
             df = ctx[op.inputs[0].key]
-            if isinstance(op.mask, (SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE,
-                                    TENSOR_CHUNK_TYPE)):
+            if isinstance(
+                op.mask, (SERIES_CHUNK_TYPE, DATAFRAME_CHUNK_TYPE, TENSOR_CHUNK_TYPE)
+            ):
                 mask = ctx[op.inputs[1].key]
             else:
                 mask = op.mask
-            if hasattr(mask, 'reindex_like'):
+            if hasattr(mask, "reindex_like"):
                 mask = mask.reindex_like(df).fillna(False)
             if mask.ndim == 2:
                 mask = mask[df.columns.tolist()]
@@ -427,14 +554,14 @@ def dataframe_getitem(df, item):
     elif isinstance(item, list):
         for col_name in item:
             if col_name not in columns:
-                raise KeyError(f'{col_name} not in columns')
+                raise KeyError(f"{col_name} not in columns")
         op = DataFrameIndex(col_names=item, output_types=[OutputType.dataframe])
-    elif isinstance(item, _list_like_types) or hasattr(item, 'dtypes'):
+    elif isinstance(item, _list_like_types) or hasattr(item, "dtypes"):
         # NB: don't enforce the dtype of `item` to be `bool` since it may be unknown
         op = DataFrameIndex(mask=item, output_types=[OutputType.dataframe])
     else:
         if item not in columns:
-            raise KeyError(f'{item} not in columns')
+            raise KeyError(f"{item} not in columns")
         op = DataFrameIndex(col_names=item)
     return op(df)
 
@@ -452,4 +579,4 @@ def series_getitem(series, labels, combine_size=None):
         else:
             return series.loc[labels]
     else:
-        raise NotImplementedError(f'type {type(labels)} is not support for getitem')
+        raise NotImplementedError(f"type {type(labels)} is not support for getitem")

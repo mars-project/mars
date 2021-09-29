@@ -20,12 +20,22 @@ import numpy as np
 from ... import opcodes as OperandDef
 from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialization.serializables import FieldTypes, Int32Field, \
-    ListField, StringField, BoolField, AnyField
+from ...serialization.serializables import (
+    FieldTypes,
+    Int32Field,
+    ListField,
+    StringField,
+    BoolField,
+    AnyField,
+)
 from ...utils import flatten, stack_back
 from ..core import TensorOrder
-from ..operands import TensorOperand, TensorMapReduceOperand, \
-    TensorShuffleProxy, TensorOperandMixin
+from ..operands import (
+    TensorOperand,
+    TensorMapReduceOperand,
+    TensorShuffleProxy,
+    TensorOperandMixin,
+)
 from ..array_utils import as_same_device, device, cp
 
 
@@ -46,17 +56,22 @@ class PSRSOperandMixin:
 
         if not has_unknown_shape:
             axis_chunk_shape = min(axis_chunk_shape, int(np.sqrt(axis_shape)))
-            if np.isnan(axis_shape) or any(np.isnan(s) for s in in_data.nsplits[op.axis]):
+            if np.isnan(axis_shape) or any(
+                np.isnan(s) for s in in_data.nsplits[op.axis]
+            ):
                 yield
             chunk_size = int(axis_shape / axis_chunk_shape)
             chunk_sizes = [chunk_size for _ in range(int(axis_shape // chunk_size))]
             if axis_shape % chunk_size > 0:
                 chunk_sizes[-1] += axis_shape % chunk_size
             in_data = yield from recursive_tile(
-                in_data.rechunk({op.axis: tuple(chunk_sizes)}))
+                in_data.rechunk({op.axis: tuple(chunk_sizes)})
+            )
             axis_chunk_shape = in_data.chunk_shape[op.axis]
 
-        left_chunk_shape = in_data.chunk_shape[:op.axis] + in_data.chunk_shape[op.axis + 1:]
+        left_chunk_shape = (
+            in_data.chunk_shape[: op.axis] + in_data.chunk_shape[op.axis + 1 :]
+        )
         if len(left_chunk_shape) > 0:
             out_idxes = itertools.product(*(range(s) for s in left_chunk_shape))
         else:
@@ -65,7 +80,7 @@ class PSRSOperandMixin:
         # another shuffle would be required to make sure each axis except to sort
         # has elements with identical size
         extra_shape = [s for i, s in enumerate(in_data.shape) if i != op.axis]
-        if getattr(op, 'need_align', None) is None:
+        if getattr(op, "need_align", None) is None:
             need_align = bool(np.prod(extra_shape, dtype=int) != 1)
         else:
             need_align = op.need_align
@@ -73,64 +88,99 @@ class PSRSOperandMixin:
         return in_data, axis_chunk_shape, out_idxes, need_align
 
     @classmethod
-    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
+    def local_sort_and_regular_sample(
+        cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx
+    ):
         raise NotImplementedError
 
     @classmethod
-    def concat_and_pivot(cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks):
+    def concat_and_pivot(
+        cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks
+    ):
         raise NotImplementedError
 
     @classmethod
-    def partition_local_data(cls, op, axis_chunk_shape, sorted_chunks,
-                             indices_chunks, concat_pivot_chunk):
+    def partition_local_data(
+        cls, op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk
+    ):
         raise NotImplementedError
 
     @classmethod
-    def partition_merge_data(cls, op, need_align, return_value, partition_chunks, proxy_chunk):
+    def partition_merge_data(
+        cls, op, need_align, return_value, partition_chunks, proxy_chunk
+    ):
         raise NotImplementedError
 
     @classmethod
-    def align_partitions_data(cls, op, out_idx, in_data,
-                              partition_sort_chunks, partition_indices_chunks, sort_info_chunks):
+    def align_partitions_data(
+        cls,
+        op,
+        out_idx,
+        in_data,
+        partition_sort_chunks,
+        partition_indices_chunks,
+        sort_info_chunks,
+    ):
         raise NotImplementedError
 
 
 class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
     @classmethod
-    def local_sort_and_regular_sample(cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx):
+    def local_sort_and_regular_sample(
+        cls, op, in_data, axis_chunk_shape, axis_offsets, out_idx
+    ):
         # stage 1: local sort and regular samples collected
         sorted_chunks, indices_chunks, sampled_chunks = [], [], []
-        sampled_dtype = np.dtype([(o, in_data.dtype[o]) for o in op.order]) \
-            if op.order is not None else in_data.dtype
+        sampled_dtype = (
+            np.dtype([(o, in_data.dtype[o]) for o in op.order])
+            if op.order is not None
+            else in_data.dtype
+        )
         for i in range(axis_chunk_shape):
             idx = list(out_idx)
             idx.insert(op.axis, i)
             in_chunk = in_data.cix[tuple(idx)]
             kind = None if op.psrs_kinds is None else op.psrs_kinds[0]
-            chunk_op = PSRSSortRegularSample(axis=op.axis, order=op.order, kind=kind,
-                                             return_indices=op.return_indices,
-                                             n_partition=axis_chunk_shape,
-                                             axis_offset=axis_offsets[i],
-                                             gpu=op.gpu)
+            chunk_op = PSRSSortRegularSample(
+                axis=op.axis,
+                order=op.order,
+                kind=kind,
+                return_indices=op.return_indices,
+                n_partition=axis_chunk_shape,
+                axis_offset=axis_offsets[i],
+                gpu=op.gpu,
+            )
             kws = []
             sort_shape = in_chunk.shape
-            kws.append({'shape': sort_shape,
-                        'order': in_chunk.order,
-                        'dtype': in_chunk.dtype,
-                        'index': in_chunk.index,
-                        'type': 'sorted'})
+            kws.append(
+                {
+                    "shape": sort_shape,
+                    "order": in_chunk.order,
+                    "dtype": in_chunk.dtype,
+                    "index": in_chunk.index,
+                    "type": "sorted",
+                }
+            )
             if op.return_indices:
-                kws.append({'shape': sort_shape,
-                            'order': TensorOrder.C_ORDER,
-                            'dtype': np.dtype(np.int64),
-                            'index': in_chunk.index,
-                            'type': 'argsort'})
+                kws.append(
+                    {
+                        "shape": sort_shape,
+                        "order": TensorOrder.C_ORDER,
+                        "dtype": np.dtype(np.int64),
+                        "index": in_chunk.index,
+                        "type": "argsort",
+                    }
+                )
             sampled_shape = (axis_chunk_shape,)
-            kws.append({'shape': sampled_shape,
-                        'order': in_chunk.order,
-                        'dtype': sampled_dtype,
-                        'index': (i,),
-                        'type': 'regular_sampled'})
+            kws.append(
+                {
+                    "shape": sampled_shape,
+                    "order": in_chunk.order,
+                    "dtype": sampled_dtype,
+                    "index": (i,),
+                    "type": "regular_sampled",
+                }
+            )
             chunks = chunk_op.new_chunks([in_chunk], kws=kws, output_limit=len(kws))
             if len(chunks) == 2:
                 sort_chunk, sampled_chunk = chunks
@@ -145,25 +195,32 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
         return sorted_chunks, indices_chunks, sampled_chunks
 
     @classmethod
-    def concat_and_pivot(cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks):
+    def concat_and_pivot(
+        cls, op, axis_chunk_shape, out_idx, sorted_chunks, sampled_chunks
+    ):
         # stage 2: gather and merge samples, choose and broadcast p-1 pivots
-        concat_pivot_op = PSRSConcatPivot(axis=op.axis,
-                                          order=op.order,
-                                          kind=None if op.psrs_kinds is None else op.psrs_kinds[1],
-                                          dtype=sampled_chunks[0].dtype,
-                                          gpu=op.gpu)
-        concat_pivot_shape = \
-            sorted_chunks[0].shape[:op.axis] + (axis_chunk_shape - 1,) + \
-            sorted_chunks[0].shape[op.axis + 1:]
-        concat_pivot_index = out_idx[:op.axis] + (0,) + out_idx[op.axis:]
-        concat_pivot_chunk = concat_pivot_op.new_chunk(sampled_chunks,
-                                                       shape=concat_pivot_shape,
-                                                       index=concat_pivot_index)
+        concat_pivot_op = PSRSConcatPivot(
+            axis=op.axis,
+            order=op.order,
+            kind=None if op.psrs_kinds is None else op.psrs_kinds[1],
+            dtype=sampled_chunks[0].dtype,
+            gpu=op.gpu,
+        )
+        concat_pivot_shape = (
+            sorted_chunks[0].shape[: op.axis]
+            + (axis_chunk_shape - 1,)
+            + sorted_chunks[0].shape[op.axis + 1 :]
+        )
+        concat_pivot_index = out_idx[: op.axis] + (0,) + out_idx[op.axis :]
+        concat_pivot_chunk = concat_pivot_op.new_chunk(
+            sampled_chunks, shape=concat_pivot_shape, index=concat_pivot_index
+        )
         return concat_pivot_chunk
 
     @classmethod
-    def partition_local_data(cls, op, axis_chunk_shape, sorted_chunks,
-                             indices_chunks, concat_pivot_chunk):
+    def partition_local_data(
+        cls, op, axis_chunk_shape, sorted_chunks, indices_chunks, concat_pivot_chunk
+    ):
         # stage 3: Local data is partitioned
         return_value = op.return_value
         return_indices = op.return_indices
@@ -182,66 +239,83 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
             if indices_chunks:
                 chunk_inputs.append(indices_chunks[i])
             chunk_inputs.append(concat_pivot_chunk)
-            partition_shuffle_map = PSRSShuffle(return_value=map_return_value,
-                                                return_indices=return_indices,
-                                                stage=OperandStage.map, axis=op.axis,
-                                                n_partition=axis_chunk_shape,
-                                                input_sorted=op.psrs_kinds[0] is not None,
-                                                order=op.order, dtype=chunk_inputs[0].dtype,
-                                                gpu=chunk_inputs[0].op.gpu)
-            partition_chunk = partition_shuffle_map.new_chunk(chunk_inputs,
-                                                              shape=chunk_inputs[0].shape,
-                                                              index=chunk_inputs[0].index,
-                                                              order=chunk_inputs[0].order)
+            partition_shuffle_map = PSRSShuffle(
+                return_value=map_return_value,
+                return_indices=return_indices,
+                stage=OperandStage.map,
+                axis=op.axis,
+                n_partition=axis_chunk_shape,
+                input_sorted=op.psrs_kinds[0] is not None,
+                order=op.order,
+                dtype=chunk_inputs[0].dtype,
+                gpu=chunk_inputs[0].op.gpu,
+            )
+            partition_chunk = partition_shuffle_map.new_chunk(
+                chunk_inputs,
+                shape=chunk_inputs[0].shape,
+                index=chunk_inputs[0].index,
+                order=chunk_inputs[0].order,
+            )
             partition_chunks.append(partition_chunk)
         return partition_chunks
 
     @classmethod
-    def partition_merge_data(cls, op, need_align, return_value, partition_chunks, proxy_chunk):
+    def partition_merge_data(
+        cls, op, need_align, return_value, partition_chunks, proxy_chunk
+    ):
         # stage 4: all *ith* classes are gathered and merged
         return_value = return_value if return_value is not None else op.return_value
         return_indices = op.return_indices
         partition_sort_chunks, partition_indices_chunks, sort_info_chunks = [], [], []
         for i, partition_chunk in enumerate(partition_chunks):
             kind = None if op.psrs_kinds is None else op.psrs_kinds[2]
-            partition_shuffle_reduce = PSRSShuffle(return_value=return_value,
-                                                   return_indices=return_indices,
-                                                   stage=OperandStage.reduce,
-                                                   axis=op.axis, order=op.order,
-                                                   kind=kind,
-                                                   reducer_index=(i,),
-                                                   dtype=partition_chunk.dtype,
-                                                   gpu=partition_chunk.op.gpu,
-                                                   need_align=need_align)
+            partition_shuffle_reduce = PSRSShuffle(
+                return_value=return_value,
+                return_indices=return_indices,
+                stage=OperandStage.reduce,
+                axis=op.axis,
+                order=op.order,
+                kind=kind,
+                reducer_index=(i,),
+                dtype=partition_chunk.dtype,
+                gpu=partition_chunk.op.gpu,
+                need_align=need_align,
+            )
             kws = []
             chunk_shape = list(partition_chunk.shape)
             chunk_shape[op.axis] = np.nan
             if return_value:
-                kws.append({
-                    'shape': tuple(chunk_shape),
-                    'order': partition_chunk.order,
-                    'index': partition_chunk.index,
-                    'dtype': partition_chunk.dtype,
-                    'type': 'sorted',
-                })
+                kws.append(
+                    {
+                        "shape": tuple(chunk_shape),
+                        "order": partition_chunk.order,
+                        "index": partition_chunk.index,
+                        "dtype": partition_chunk.dtype,
+                        "type": "sorted",
+                    }
+                )
             if return_indices:
-                kws.append({
-                    'shape': tuple(chunk_shape),
-                    'order': TensorOrder.C_ORDER,
-                    'index': partition_chunk.index,
-                    'dtype': np.dtype(np.int64),
-                    'type': 'argsort'
-                })
+                kws.append(
+                    {
+                        "shape": tuple(chunk_shape),
+                        "order": TensorOrder.C_ORDER,
+                        "index": partition_chunk.index,
+                        "dtype": np.dtype(np.int64),
+                        "type": "argsort",
+                    }
+                )
             if need_align:
                 s = list(chunk_shape)
                 s.pop(op.axis)
-                kws.append({
-                    'shape': tuple(s),
-                    'order': TensorOrder.C_ORDER,
-                    'index': partition_chunk.index,
-                    'dtype': np.dtype(np.int32),
-                    'type': 'sort_info',
-                })
+                kws.append(
+                    {
+                        "shape": tuple(s),
+                        "order": TensorOrder.C_ORDER,
+                        "index": partition_chunk.index,
+                        "dtype": np.dtype(np.int32),
+                        "type": "sort_info",
+                    }
+                )
             cs = partition_shuffle_reduce.new_chunks([proxy_chunk], kws=kws)
             i = 0
             if return_value:
@@ -255,8 +329,15 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
         return partition_sort_chunks, partition_indices_chunks, sort_info_chunks
 
     @classmethod
-    def align_partitions_data(cls, op, out_idx, in_tensor,
-                              partition_sort_chunks, partition_indices_chunks, sort_info_chunks):
+    def align_partitions_data(
+        cls,
+        op,
+        out_idx,
+        in_tensor,
+        partition_sort_chunks,
+        partition_indices_chunks,
+        sort_info_chunks,
+    ):
         return_value, return_indices = op.return_value, op.return_indices
         align_map_chunks = []
         length = len(partition_sort_chunks or partition_indices_chunks)
@@ -267,44 +348,60 @@ class TensorPSRSOperandMixin(TensorOperandMixin, PSRSOperandMixin):
             if return_indices:
                 chunk_inputs.append(partition_indices_chunks[i])
             chunk_inputs.extend(sort_info_chunks)
-            align_map_op = PSRSAlign(return_value=return_value, return_indices=return_indices,
-                                     stage=OperandStage.map, axis=op.axis,
-                                     output_sizes=list(in_tensor.nsplits[op.axis]),
-                                     dtype=chunk_inputs[0].dtype,
-                                     gpu=chunk_inputs[0].op.gpu)
-            align_map_chunk = align_map_op.new_chunk(chunk_inputs,
-                                                     shape=chunk_inputs[0].shape,
-                                                     index=chunk_inputs[0].index,
-                                                     order=TensorOrder.C_ORDER)
+            align_map_op = PSRSAlign(
+                return_value=return_value,
+                return_indices=return_indices,
+                stage=OperandStage.map,
+                axis=op.axis,
+                output_sizes=list(in_tensor.nsplits[op.axis]),
+                dtype=chunk_inputs[0].dtype,
+                gpu=chunk_inputs[0].op.gpu,
+            )
+            align_map_chunk = align_map_op.new_chunk(
+                chunk_inputs,
+                shape=chunk_inputs[0].shape,
+                index=chunk_inputs[0].index,
+                order=TensorOrder.C_ORDER,
+            )
             align_map_chunks.append(align_map_chunk)
         proxy_chunk = TensorShuffleProxy(dtype=align_map_chunks[0].dtype).new_chunk(
-            align_map_chunks, shape=())
+            align_map_chunks, shape=()
+        )
         align_reduce_value_chunks, align_reduce_indices_chunks = [], []
         for i, align_map_chunk in enumerate(align_map_chunks):
-            align_reduce_op = PSRSAlign(return_value=return_value, return_indices=return_indices,
-                                        stage=OperandStage.reduce, axis=op.axis,
-                                        reducer_index=(i,), dtype=align_map_chunk.dtype,
-                                        gpu=align_map_chunk.op.gpu)
+            align_reduce_op = PSRSAlign(
+                return_value=return_value,
+                return_indices=return_indices,
+                stage=OperandStage.reduce,
+                axis=op.axis,
+                reducer_index=(i,),
+                dtype=align_map_chunk.dtype,
+                gpu=align_map_chunk.op.gpu,
+            )
             idx = list(out_idx)
             idx.insert(op.axis, i)
             in_chunk = in_tensor.cix[tuple(idx)]
             kws = []
             if return_value:
-                kws.append({
-                    'shape': in_chunk.shape,
-                    'index': in_chunk.index,
-                    'order': in_chunk.order,
-                    'dtype': in_chunk.dtype,
-                    'type': 'sorted'
-                })
+                kws.append(
+                    {
+                        "shape": in_chunk.shape,
+                        "index": in_chunk.index,
+                        "order": in_chunk.order,
+                        "dtype": in_chunk.dtype,
+                        "type": "sorted",
+                    }
+                )
             if return_indices:
-                kws.append({
-                    'shape': in_chunk.shape,
-                    'index': in_chunk.index,
-                    'order': TensorOrder.C_ORDER,
-                    'dtype': np.dtype(np.int64),
-                    'type': 'argsort'
-                })
+                kws.append(
+                    {
+                        "shape": in_chunk.shape,
+                        "index": in_chunk.index,
+                        "order": TensorOrder.C_ORDER,
+                        "dtype": np.dtype(np.int64),
+                        "type": "argsort",
+                    }
+                )
             align_reduce_chunks = align_reduce_op.new_chunks([proxy_chunk], kws=kws)
             if return_value:
                 align_reduce_value_chunks.append(align_reduce_chunks[0])
@@ -346,18 +443,36 @@ def _argsort(a, op, xp, axis=None, kind=None, order=None):
 class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_SORT_REGULAR_SMAPLE
 
-    _axis = Int32Field('axis')
-    _order = ListField('order', FieldTypes.string)
-    _kind = StringField('kind')
-    _return_indices = BoolField('return_indices')
-    _n_partition = Int32Field('n_partition')
-    _axis_offset = AnyField('axis_offset')
+    _axis = Int32Field("axis")
+    _order = ListField("order", FieldTypes.string)
+    _kind = StringField("kind")
+    _return_indices = BoolField("return_indices")
+    _n_partition = Int32Field("n_partition")
+    _axis_offset = AnyField("axis_offset")
 
-    def __init__(self, axis=None, order=None, kind=None, return_indices=None,
-                 n_partition=None, axis_offset=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order, _kind=kind, _return_indices=return_indices,
-                         _n_partition=n_partition, _axis_offset=axis_offset,
-                         _dtype=dtype, _gpu=gpu, **kw)
+    def __init__(
+        self,
+        axis=None,
+        order=None,
+        kind=None,
+        return_indices=None,
+        n_partition=None,
+        axis_offset=None,
+        dtype=None,
+        gpu=None,
+        **kw
+    ):
+        super().__init__(
+            _axis=axis,
+            _order=order,
+            _kind=kind,
+            _return_indices=return_indices,
+            _n_partition=n_partition,
+            _axis_offset=axis_offset,
+            _dtype=dtype,
+            _gpu=gpu,
+            **kw
+        )
 
     @property
     def axis(self):
@@ -391,7 +506,8 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         (a,), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         if len(a) == 0:
             # when chunk is empty, return the empty chunk itself
@@ -407,28 +523,31 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
                     res = ctx[op.outputs[0].key] = _sort(a, op, xp)
                 else:
                     # do not sort, prepare for sample by `xp.partition`
-                    kth = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
-                                      num=n, endpoint=False).astype(int)
+                    kth = xp.linspace(
+                        max(w - 1, 0), a.shape[op.axis] - 1, num=n, endpoint=False
+                    ).astype(int)
                     ctx[op.outputs[0].key] = res = xp.partition(
-                        a, kth, axis=op.axis, order=op.order)
+                        a, kth, axis=op.axis, order=op.order
+                    )
             else:
                 if op.kind is not None:
                     # argsort
                     indices = _argsort(a, op, xp)
                 else:
                     # do not sort, use `xp.argpartition`
-                    kth = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
-                                      num=n, endpoint=False).astype(int)
-                    indices = xp.argpartition(
-                        a, kth, axis=op.axis, order=op.order)
+                    kth = xp.linspace(
+                        max(w - 1, 0), a.shape[op.axis] - 1, num=n, endpoint=False
+                    ).astype(int)
+                    indices = xp.argpartition(a, kth, axis=op.axis, order=op.order)
                 ctx[op.outputs[0].key] = res = xp.take_along_axis(a, indices, op.axis)
                 ctx[op.outputs[1].key] = op.axis_offset + indices
 
             # do regular sample
             if op.order is not None:
                 res = res[op.order]
-            slc = xp.linspace(max(w - 1, 0), a.shape[op.axis] - 1,
-                              num=n, endpoint=False).astype(int)
+            slc = xp.linspace(
+                max(w - 1, 0), a.shape[op.axis] - 1, num=n, endpoint=False
+            ).astype(int)
             slc = (slice(None),) * op.axis + (slc,)
             ctx[op.outputs[-1].key] = res[slc]
 
@@ -436,12 +555,14 @@ class PSRSSortRegularSample(TensorOperand, TensorOperandMixin):
 class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_CONCAT_PIVOT
 
-    _axis = Int32Field('axis')
-    _order = ListField('order', FieldTypes.string)
-    _kind = StringField('kind')
+    _axis = Int32Field("axis")
+    _order = ListField("order", FieldTypes.string)
+    _kind = StringField("kind")
 
     def __init__(self, axis=None, order=None, kind=None, dtype=None, gpu=None, **kw):
-        super().__init__(_axis=axis, _order=order, _kind=kind, _dtype=dtype, _gpu=gpu, **kw)
+        super().__init__(
+            _axis=axis, _order=order, _kind=kind, _dtype=dtype, _gpu=gpu, **kw
+        )
 
     @property
     def axis(self):
@@ -458,7 +579,10 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs if len(ctx[c.key]) > 0],
+            device=op.device,
+            ret_extra=True,
+        )
 
         with device(device_id):
             a = xp.concatenate(inputs, axis=op.axis)
@@ -470,12 +594,14 @@ class PSRSConcatPivot(TensorOperand, TensorOperandMixin):
                 _sort(a, op, xp, inplace=True)
             else:
                 # prepare for sampling via `partition`
-                kth = xp.linspace(p - 1, a.shape[op.axis] - 1,
-                                  num=p - 1, endpoint=False).astype(int)
+                kth = xp.linspace(
+                    p - 1, a.shape[op.axis] - 1, num=p - 1, endpoint=False
+                ).astype(int)
                 a.partition(kth, axis=op.axis)
 
-            select = xp.linspace(p - 1, a.shape[op.axis] - 1,
-                                 num=len(op.inputs) - 1, endpoint=False).astype(int)
+            select = xp.linspace(
+                p - 1, a.shape[op.axis] - 1, num=len(op.inputs) - 1, endpoint=False
+            ).astype(int)
             slc = (slice(None),) * op.axis + (select,)
             ctx[op.outputs[0].key] = a[slc]
 
@@ -484,26 +610,42 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_SHUFFLE
 
     # public
-    _return_value = BoolField('return_value')
-    _return_indices = BoolField('return_indices')
+    _return_value = BoolField("return_value")
+    _return_indices = BoolField("return_indices")
 
     # for shuffle map
-    _axis = Int32Field('axis')
-    _order = ListField('order', FieldTypes.string)
-    _n_partition = Int32Field('n_partition')
-    _input_sorted = BoolField('input_sorted')
+    _axis = Int32Field("axis")
+    _order = ListField("order", FieldTypes.string)
+    _n_partition = Int32Field("n_partition")
+    _input_sorted = BoolField("input_sorted")
 
     # for shuffle reduce
-    _kind = StringField('kind')
-    _need_align = BoolField('need_align')
+    _kind = StringField("kind")
+    _need_align = BoolField("need_align")
 
-    def __init__(self, return_value=None, return_indices=None,
-                 axis=None, order=None, n_partition=None, input_sorted=None,
-                 kind=None, need_align=None, **kw):
-        super().__init__(_return_value=return_value, _return_indices=return_indices,
-                         _axis=axis, _order=order, _n_partition=n_partition,
-                         _input_sorted=input_sorted, _kind=kind,
-                         _need_align=need_align, **kw)
+    def __init__(
+        self,
+        return_value=None,
+        return_indices=None,
+        axis=None,
+        order=None,
+        n_partition=None,
+        input_sorted=None,
+        kind=None,
+        need_align=None,
+        **kw
+    ):
+        super().__init__(
+            _return_value=return_value,
+            _return_indices=return_indices,
+            _axis=axis,
+            _order=order,
+            _n_partition=n_partition,
+            _input_sorted=input_sorted,
+            _kind=kind,
+            _need_align=need_align,
+            **kw
+        )
 
     @property
     def return_value(self):
@@ -542,8 +684,7 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
         if self.stage == OperandStage.map:
             return 1
         else:
-            limit = int(bool(self._return_value)) + \
-                    int(bool(self._return_indices))
+            limit = int(bool(self._return_value)) + int(bool(self._return_indices))
             if self._need_align:
                 limit += 1
             return limit
@@ -553,8 +694,9 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
         return_value = op.return_value
         return_indices = op.return_indices
 
-        inputs, device_id, xp = as_same_device([ctx[c.key] for c in op.inputs],
-                                               device=op.device, ret_extra=True)
+        inputs, device_id, xp = as_same_device(
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
         out = op.outputs[0]
         a = inputs[0]
         pivots = inputs[-1]
@@ -564,7 +706,9 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 
         with device(device_id):
             shape = tuple(s for i, s in enumerate(a.shape) if i != op.axis)
-            reduce_outputs = [np.empty(shape, dtype=object) for _ in range(op.n_partition)]
+            reduce_outputs = [
+                np.empty(shape, dtype=object) for _ in range(op.n_partition)
+            ]
             for idx in itertools.product(*(range(s) for s in shape)):
                 slc = list(idx)
                 slc.insert(op.axis, slice(None))
@@ -576,20 +720,20 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
                     a_1d = a_1d[op.order]
                 if op.input_sorted:
                     # a is sorted already
-                    poses = xp.searchsorted(a_1d, pivots_1d, side='right')
+                    poses = xp.searchsorted(a_1d, pivots_1d, side="right")
                     poses = (None,) + tuple(poses) + (None,)
                     for i in range(op.n_partition):
                         reduce_out = []
                         if return_value:
-                            values = raw_a_1d[poses[i]: poses[i + 1]]
+                            values = raw_a_1d[poses[i] : poses[i + 1]]
                             reduce_out.append(values)
                         if return_indices:
-                            indices = a_indices_1d[poses[i]: poses[i + 1]]
+                            indices = a_indices_1d[poses[i] : poses[i + 1]]
                             reduce_out.append(indices)
                         reduce_outputs[i][idx] = tuple(reduce_out)
                 else:
                     # a is not sorted, search every element in pivots
-                    out_idxes = xp.searchsorted(pivots_1d, a_1d, side='right')
+                    out_idxes = xp.searchsorted(pivots_1d, a_1d, side="right")
                     for i in range(op.n_partition):
                         cond = out_idxes == i
                         reduce_out = []
@@ -608,7 +752,9 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
         raw_inputs = list(op.iter_mapper_data(ctx))
         # flatten inputs
         flatten_inputs = flatten(raw_inputs)
-        inputs, device_id, xp = as_same_device(flatten_inputs, device=op.device, ret_extra=True)
+        inputs, device_id, xp = as_same_device(
+            flatten_inputs, device=op.device, ret_extra=True
+        )
         # organize back inputs
         inputs = stack_back(inputs, raw_inputs)
 
@@ -686,15 +832,21 @@ class PSRSShuffle(TensorMapReduceOperand, TensorOperandMixin):
 class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
     _op_type_ = OperandDef.PSRS_ALIGN
 
-    _return_value = BoolField('return_value')
-    _return_indices = BoolField('return_indices')
-    _axis = Int32Field('axis')
-    _output_sizes = ListField('output_sizes', FieldTypes.int32)
+    _return_value = BoolField("return_value")
+    _return_indices = BoolField("return_indices")
+    _axis = Int32Field("axis")
+    _output_sizes = ListField("output_sizes", FieldTypes.int32)
 
-    def __init__(self, return_value=None, return_indices=None, axis=None,
-                 output_sizes=None, **kw):
-        super().__init__(_return_value=return_value, _return_indices=return_indices,
-                         _axis=axis, _output_sizes=output_sizes, **kw)
+    def __init__(
+        self, return_value=None, return_indices=None, axis=None, output_sizes=None, **kw
+    ):
+        super().__init__(
+            _return_value=return_value,
+            _return_indices=return_indices,
+            _axis=axis,
+            _output_sizes=output_sizes,
+            **kw
+        )
 
     @property
     def return_value(self):
@@ -722,7 +874,8 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
     @classmethod
     def _execute_map(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
         sort_res, sort_indices = None, None
         i = 0
         if op.return_value:
@@ -747,7 +900,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                 j = out.index[op.axis]
                 start_pos = cum_sort_lengths[j]
                 end_pos = cum_sort_lengths[j + 1]
-                out_idx_start, out_idx_end = np.searchsorted(cum_out_sizes, [start_pos, end_pos])
+                out_idx_start, out_idx_end = np.searchsorted(
+                    cum_out_sizes, [start_pos, end_pos]
+                )
                 out_idx_start = max(out_idx_start - 1, 0)
                 for out_idx in range(out_idx_start, out_idx_end):
                     out_start_pos = cum_out_sizes[out_idx]
@@ -757,9 +912,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                     s = max(0, s - start_pos)
                     ret = []
                     if sort_1d is not None:
-                        ret.append(sort_1d[s: s + size])
+                        ret.append(sort_1d[s : s + size])
                     if indices_1d is not None:
-                        ret.append(indices_1d[s: s + size])
+                        ret.append(indices_1d[s : s + size])
                     outs[out_idx, i] = tuple(ret)
 
             for idx in range(len(op.output_sizes)):
@@ -781,7 +936,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
         axis = op.axis
         raw_inputs = list(op.iter_mapper_data(ctx))
         flatten_inputs = flatten(raw_inputs)
-        inputs, device_id, xp = as_same_device(flatten_inputs, device=op.device, ret_extra=True)
+        inputs, device_id, xp = as_same_device(
+            flatten_inputs, device=op.device, ret_extra=True
+        )
         inputs = stack_back(flatten_inputs, raw_inputs)
 
         out = op.outputs[0]
@@ -800,7 +957,9 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
                 indices_res = xp.empty(out.shape, dtype=np.dtype(np.int64))
             else:
                 indices_res = None
-            it = itertools.product(*(range(s) for i, s in enumerate(out.shape) if i != axis))
+            it = itertools.product(
+                *(range(s) for i, s in enumerate(out.shape) if i != axis)
+            )
             for inps in zip(*inputs):
                 slc = list(next(it))
                 slc.insert(op.axis, slice(None))
@@ -815,12 +974,14 @@ class PSRSAlign(TensorMapReduceOperand, TensorOperandMixin):
 
             i = 0
             if return_value:
-                ctx[op.outputs[0].key] = values_res.astype(values_res.dtype,
-                                                           order=op.outputs[0].order.value)
+                ctx[op.outputs[0].key] = values_res.astype(
+                    values_res.dtype, order=op.outputs[0].order.value
+                )
                 i += 1
             if return_indices:
-                ctx[op.outputs[i].key] = indices_res.astype(indices_res.dtype,
-                                                            order=op.outputs[i].order.value)
+                ctx[op.outputs[i].key] = indices_res.astype(
+                    indices_res.dtype, order=op.outputs[i].order.value
+                )
 
     @classmethod
     def execute(cls, ctx, op):

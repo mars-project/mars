@@ -40,7 +40,9 @@ def concat(objs: List):
     """
     if is_arraylike(objs[0]):
         res = array_concat(objs, axes=[0])  # TODO: Add concat with args support
-    elif any((is_dataframe_like(objs[0]), is_series_like(objs[0]), is_index_like(objs[0]))):
+    elif any(
+        (is_dataframe_like(objs[0]), is_series_like(objs[0]), is_index_like(objs[0]))
+    ):
         res = df_concat(objs)
     else:
         res = objs
@@ -61,7 +63,4 @@ def reduce(objs: List[List]):
     obj:
         The spawning concat task.
     """
-    return spawn(
-        concat,
-        args=([spawn(concat, args=(objs_d,)) for objs_d in objs],),
-    )
+    return spawn(concat, args=([spawn(concat, args=(objs_d,)) for objs_d in objs],),)

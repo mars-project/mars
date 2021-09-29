@@ -71,9 +71,7 @@ class EmptyService(AbstractService):
         pass
 
 
-def _find_service_entries(node_role: NodeRole,
-                          services: List,
-                          modules: List):
+def _find_service_entries(node_role: NodeRole, services: List, modules: List):
     svc_entries_list = []
 
     web_handlers = {}
@@ -85,16 +83,18 @@ def _find_service_entries(node_role: NodeRole,
             svc_mod = None
             for mod_name in modules:
                 try:
-                    full_mod_name = f'{mod_name}.{svc_name}.{node_role.name.lower()}'
+                    full_mod_name = f"{mod_name}.{svc_name}.{node_role.name.lower()}"
                     svc_mod = importlib.import_module(full_mod_name)
 
                     abstract_derivatives = []
                     valid_derivatives = []
                     for attr_name in dir(svc_mod):
                         obj = getattr(svc_mod, attr_name)
-                        if obj is not AbstractService \
-                                and isinstance(obj, type) \
-                                and issubclass(obj, AbstractService):
+                        if (
+                            obj is not AbstractService
+                            and isinstance(obj, type)
+                            and issubclass(obj, AbstractService)
+                        ):
                             if inspect.isabstract(obj):
                                 abstract_derivatives.append(obj)
                             else:
@@ -102,20 +102,24 @@ def _find_service_entries(node_role: NodeRole,
 
                     svc_entries.extend(valid_derivatives)
                     if not valid_derivatives and abstract_derivatives:
-                        warnings.warn(f'Module {full_mod_name} does not have non-abstract '
-                                      f'service classes, but abstract classes '
-                                      f'{abstract_derivatives} found.', RuntimeWarning)
+                        warnings.warn(
+                            f"Module {full_mod_name} does not have non-abstract "
+                            f"service classes, but abstract classes "
+                            f"{abstract_derivatives} found.",
+                            RuntimeWarning,
+                        )
 
                     try:
                         web_mod = importlib.import_module(
-                            mod_name + '.' + svc_name + '.api.web')
-                        web_handlers.update(getattr(web_mod, 'web_handlers', {}))
+                            mod_name + "." + svc_name + ".api.web"
+                        )
+                        web_handlers.update(getattr(web_mod, "web_handlers", {}))
                     except ImportError:
                         pass
                 except ImportError:
                     pass
             if svc_mod is None:
-                raise ImportError(f'Cannot discover {node_role} for service {svc_name}')
+                raise ImportError(f"Cannot discover {node_role} for service {svc_name}")
         svc_entries_list.append(svc_entries)
 
     return svc_entries_list, web_handlers
@@ -128,76 +132,70 @@ def _normalize_modules(modules: _ModulesType):
         modules = [modules]
     else:
         modules = list(modules)
-    modules = ['mars.services'] + modules
+    modules = ["mars.services"] + modules
     return modules
 
 
-def _iter_service_instances(node_role: NodeRole,
-                            config: Dict,
-                            address: str = None,
-                            reverse: bool = False) -> Iterable[List[AbstractService]]:
-    modules = _normalize_modules(config.get('modules'))
-    service_names = config['services']
+def _iter_service_instances(
+    node_role: NodeRole, config: Dict, address: str = None, reverse: bool = False
+) -> Iterable[List[AbstractService]]:
+    modules = _normalize_modules(config.get("modules"))
+    service_names = config["services"]
     if reverse:
         service_names = service_names[::-1]
 
-    svc_entries_list, _ = _find_service_entries(
-        node_role, service_names, modules)
+    svc_entries_list, _ = _find_service_entries(node_role, service_names, modules)
     for entries in svc_entries_list:
         yield [svc_entry.get_instance(address, config) for svc_entry in entries]
 
 
-async def start_services(node_role: NodeRole, config: Dict,
-                         address: str = None,
-                         mark_ready: bool = True):
-    modules = _normalize_modules(config.get('modules'))
+async def start_services(
+    node_role: NodeRole, config: Dict, address: str = None, mark_ready: bool = True
+):
+    modules = _normalize_modules(config.get("modules"))
 
     # discover services
-    service_names = config['services']
+    service_names = config["services"]
 
     svc_entries_list, web_handlers = _find_service_entries(
-        node_role, service_names, modules)
+        node_role, service_names, modules
+    )
 
-    if 'web' in service_names:
+    if "web" in service_names:
         try:
-            web_config = config['web']
+            web_config = config["web"]
         except KeyError:
-            web_config = config['web'] = dict()
+            web_config = config["web"] = dict()
 
-        web_config['web_handlers'] = web_handlers
+        web_config["web_handlers"] = web_handlers
 
     for entries in svc_entries_list:
         instances = [svc_entry.get_instance(address, config) for svc_entry in entries]
         await asyncio.gather(*[inst.start() for inst in instances])
 
-    if mark_ready and 'cluster' in service_names:
+    if mark_ready and "cluster" in service_names:
         from .cluster import ClusterAPI
+
         cluster_api = await ClusterAPI.create(address)
         await cluster_api.mark_node_ready()
 
 
-async def stop_services(node_role: NodeRole,
-                        config: Dict,
-                        address: str = None):
+async def stop_services(node_role: NodeRole, config: Dict, address: str = None):
     for instances in _iter_service_instances(node_role, config, address, reverse=True):
         await asyncio.gather(*[inst.stop() for inst in instances])
 
     AbstractService.clear()
 
 
-async def create_service_session(node_role: NodeRole,
-                                 config: Dict,
-                                 session_id: str = None,
-                                 address: str = None):
+async def create_service_session(
+    node_role: NodeRole, config: Dict, session_id: str = None, address: str = None
+):
     for instances in _iter_service_instances(node_role, config, address):
-        await asyncio.gather(*[inst.create_session(session_id)
-                               for inst in instances])
+        await asyncio.gather(*[inst.create_session(session_id) for inst in instances])
 
 
-async def destroy_service_session(node_role: NodeRole,
-                                  config: Dict,
-                                  session_id: str = None,
-                                  address: str = None):
+async def destroy_service_session(
+    node_role: NodeRole, config: Dict, session_id: str = None, address: str = None
+):
     for instances in _iter_service_instances(node_role, config, address, reverse=True):
-        await asyncio.gather(*[inst.destroy_session(session_id)
-                               for inst in instances])
+        await asyncio.gather(*[inst.destroy_session(session_id) for inst in instances])

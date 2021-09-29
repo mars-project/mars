@@ -17,6 +17,7 @@ import numbers
 
 import numpy as np
 from numpy.core.numeric import ComplexWarning
+
 try:
     from sklearn.utils.validation import check_is_fitted
     from sklearn.exceptions import DataConversionWarning
@@ -29,8 +30,11 @@ from ... import tensor as mt
 from ...core import ExecutableTuple
 from ...lib.sparse import issparse
 from ...tensor import Tensor
-from .checks import check_non_negative_then_return_value, \
-    assert_all_finite, AssertAllFinite
+from .checks import (
+    check_non_negative_then_return_value,
+    assert_all_finite,
+    AssertAllFinite,
+)
 
 FLOAT_DTYPES = (mt.float64, mt.float32, mt.float16)
 
@@ -43,22 +47,23 @@ assert_all_finite = _assert_all_finite = assert_all_finite
 
 def _num_samples(x):
     """Return number of samples in array-like x."""
-    if hasattr(x, 'fit') and callable(x.fit):
+    if hasattr(x, "fit") and callable(x.fit):
         # Don't get num_samples from an ensembles length!
-        raise TypeError(f'Expected sequence or array-like, got estimator {x}')
-    if not hasattr(x, '__len__') and not hasattr(x, 'shape'):
-        if hasattr(x, '__array__'):
+        raise TypeError(f"Expected sequence or array-like, got estimator {x}")
+    if not hasattr(x, "__len__") and not hasattr(x, "shape"):
+        if hasattr(x, "__array__"):
             x = mt.asarray(x)
         else:
             raise TypeError(f"Expected sequence or array-like, got {type(x)}")
-    if hasattr(x, 'shape'):
+    if hasattr(x, "shape"):
         if len(x.shape) == 0:
             if isinstance(x.op, AssertAllFinite):
                 x = x.op.x
-            if hasattr(x.op, 'data') and x.op.data is not None:
+            if hasattr(x.op, "data") and x.op.data is not None:
                 x = np.asarray(x.op.data)
-            raise TypeError(f"Singleton array {x!r} cannot be considered"
-                            " a valid collection.")
+            raise TypeError(
+                f"Singleton array {x!r} cannot be considered" " a valid collection."
+            )
         # Check that shape is returning an integer or default to len
         if isinstance(x.shape[0], numbers.Integral):
             return x.shape[0]
@@ -94,15 +99,16 @@ def check_consistent_length(*arrays, session=None, run_kwargs=None):
     # unknown length exists
     if len(to_execute) > 0:
         # update shape
-        ExecutableTuple(to_execute).execute(session=session,
-                                            **(run_kwargs or dict()))
+        ExecutableTuple(to_execute).execute(session=session, **(run_kwargs or dict()))
         # get length again
         lengths = [_num_samples(X) for X in new_arrays]
 
     uniques = np.unique(lengths)
     if len(uniques) > 1:
-        raise ValueError("Found input variables with inconsistent numbers of"
-                         f" samples: {[int(length) for length in lengths]}")
+        raise ValueError(
+            "Found input variables with inconsistent numbers of"
+            f" samples: {[int(length) for length in lengths]}"
+        )
 
 
 def _make_indexable(iterable):
@@ -143,19 +149,23 @@ def indexable(*iterables, session=None, run_kwargs=None):
         List of objects to ensure sliceability.
     """
     result = [_make_indexable(X) for X in iterables]
-    check_consistent_length(*result, session=session,
-                            run_kwargs=run_kwargs)
+    check_consistent_length(*result, session=session, run_kwargs=run_kwargs)
     return result
 
 
 def _ensure_no_complex_data(array):
-    if hasattr(array, 'dtype') and array.dtype is not None \
-            and hasattr(array.dtype, 'kind') and array.dtype.kind == "c":
+    if (
+        hasattr(array, "dtype")
+        and array.dtype is not None
+        and hasattr(array.dtype, "kind")
+        and array.dtype.kind == "c"
+    ):
         raise ValueError(f"Complex data not supported\n{array}\n")
 
 
-def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
-                          force_all_finite, accept_large_sparse):
+def _ensure_sparse_format(
+    spmatrix, accept_sparse, dtype, copy, force_all_finite, accept_large_sparse
+):
     """Convert a sparse matrix to a given format.
 
     Checks the sparse format of spmatrix and converts if necessary.
@@ -205,14 +215,18 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
     # _check_large_sparse(spmatrix, accept_large_sparse)
 
     if accept_sparse is False:
-        raise TypeError('A sparse tensor was passed, but dense '
-                        'data is required. Use X.todense() to '
-                        'convert to a dense tensor.')
+        raise TypeError(
+            "A sparse tensor was passed, but dense "
+            "data is required. Use X.todense() to "
+            "convert to a dense tensor."
+        )
     elif isinstance(accept_sparse, (list, tuple)):
         if len(accept_sparse) == 0:
-            raise ValueError("When providing 'accept_sparse' "
-                             "as a tuple or list, it must contain at "
-                             "least one string value.")
+            raise ValueError(
+                "When providing 'accept_sparse' "
+                "as a tuple or list, it must contain at "
+                "least one string value."
+            )
         # # ensure correct sparse format
         # if spmatrix.format not in accept_sparse:
         #     # create new with correct sparse
@@ -220,9 +234,11 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
         #     changed_format = True
     elif accept_sparse is not True:
         # any other type
-        raise ValueError("Parameter 'accept_sparse' should be a string, "
-                         "boolean or list of strings. You provided "
-                         f"'accept_sparse={accept_sparse}'.")
+        raise ValueError(
+            "Parameter 'accept_sparse' should be a string, "
+            "boolean or list of strings. You provided "
+            f"'accept_sparse={accept_sparse}'."
+        )
 
     if dtype != spmatrix.dtype:
         # convert dtype
@@ -233,15 +249,26 @@ def _ensure_sparse_format(spmatrix, accept_sparse, dtype, copy,
 
     if force_all_finite:
         spmatrix = assert_all_finite(
-            spmatrix, allow_nan=force_all_finite == 'allow-nan', check_only=False)
+            spmatrix, allow_nan=force_all_finite == "allow-nan", check_only=False
+        )
 
     return spmatrix
 
 
-def check_array(array, accept_sparse=False, accept_large_sparse=True,
-                dtype="numeric", order=None, copy=False, force_all_finite=True,
-                ensure_2d=True, allow_nd=False, ensure_min_samples=1,
-                ensure_min_features=1, estimator=None) -> Tensor:
+def check_array(
+    array,
+    accept_sparse=False,
+    accept_large_sparse=True,
+    dtype="numeric",
+    order=None,
+    copy=False,
+    force_all_finite=True,
+    ensure_2d=True,
+    allow_nd=False,
+    ensure_min_samples=1,
+    ensure_min_features=1,
+    estimator=None,
+) -> Tensor:
 
     """Input validation on a tensor, list, sparse matrix or similar.
 
@@ -324,7 +351,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
     dtype_numeric = isinstance(dtype, str) and dtype == "numeric"
 
     dtype_orig = getattr(array, "dtype", None)
-    if not hasattr(dtype_orig, 'kind'):
+    if not hasattr(dtype_orig, "kind"):
         # not a data type (e.g. a column named dtype in a pandas DataFrame)
         dtype_orig = None
 
@@ -344,9 +371,11 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
             # list of accepted types.
             dtype = dtype[0]
 
-    if force_all_finite not in (True, False, 'allow-nan'):
-        raise ValueError('force_all_finite should be a bool or "allow-nan"'
-                         f'. Got {force_all_finite!r} instead')
+    if force_all_finite not in (True, False, "allow-nan"):
+        raise ValueError(
+            'force_all_finite should be a bool or "allow-nan"'
+            f". Got {force_all_finite!r} instead"
+        )
 
     if estimator is not None:
         if isinstance(estimator, str):
@@ -357,13 +386,17 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
         estimator_name = "Estimator"
     context = f" by {estimator_name}" if estimator is not None else ""
 
-    if (hasattr(array, 'issparse') and array.issparse()) or issparse(array):
+    if (hasattr(array, "issparse") and array.issparse()) or issparse(array):
         _ensure_no_complex_data(array)
         array = mt.asarray(array)
-        array = _ensure_sparse_format(array, accept_sparse=accept_sparse,
-                                      dtype=dtype, copy=copy,
-                                      force_all_finite=force_all_finite,
-                                      accept_large_sparse=accept_large_sparse)
+        array = _ensure_sparse_format(
+            array,
+            accept_sparse=accept_sparse,
+            dtype=dtype,
+            copy=copy,
+            force_all_finite=force_all_finite,
+            accept_large_sparse=accept_large_sparse,
+        )
     else:
         # If np.array(..) gives ComplexWarning, then we convert the warning
         # to an error. This is needed because specifying a non complex
@@ -372,7 +405,7 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
         # of warnings context manager.
         with warnings.catch_warnings():
             try:
-                warnings.simplefilter('error', ComplexWarning)
+                warnings.simplefilter("error", ComplexWarning)
                 array = mt.asarray(array, dtype=dtype, order=order)
             except ComplexWarning:
                 raise ValueError(f"Complex data not supported\n{array}\n")
@@ -390,14 +423,16 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
                     f"Expected 2D array, got scalar array instead:\narray={array}.\n"
                     "Reshape your data either using array.reshape(-1, 1) if "
                     "your data has a single feature or array.reshape(1, -1) "
-                    "if it contains a single sample.")
+                    "if it contains a single sample."
+                )
             # If input is 1D raise error
             if array.ndim == 1:
                 raise ValueError(
                     f"Expected 2D array, got 1D array instead:\narray={array}.\n"
                     "Reshape your data either using array.reshape(-1, 1) if "
                     "your data has a single feature or array.reshape(1, -1) "
-                    "if it contains a single sample.")
+                    "if it contains a single sample."
+                )
 
         # in the future np.flexible dtypes will be handled like object dtypes
         if dtype_numeric and np.issubdtype(array.dtype, np.flexible):
@@ -408,33 +443,39 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
                 "a float dtype before using it in scikit-learn, "
                 "for example by using "
                 "your_array = your_array.astype(np.float64).",
-                FutureWarning)
+                FutureWarning,
+            )
 
         # make sure we actually converted to numeric:
         if dtype_numeric and array.dtype.kind == "O":
             array = array.astype(np.float64)
         if not allow_nd and array.ndim >= 3:
-            raise ValueError("Found array with dim %d. %s expected <= 2."
-                             % (array.ndim, estimator_name))
+            raise ValueError(
+                "Found array with dim %d. %s expected <= 2."
+                % (array.ndim, estimator_name)
+            )
         if force_all_finite:
             array = _assert_all_finite(
-                array, allow_nan=force_all_finite == 'allow-nan', check_only=False)
+                array, allow_nan=force_all_finite == "allow-nan", check_only=False
+            )
 
     if ensure_min_samples > 0:
         n_samples = _num_samples(array)
         if n_samples < ensure_min_samples:
-            raise ValueError("Found array with %d sample(s) (shape=%s) while a"
-                             " minimum of %d is required%s."
-                             % (n_samples, array.shape, ensure_min_samples,
-                                context))
+            raise ValueError(
+                "Found array with %d sample(s) (shape=%s) while a"
+                " minimum of %d is required%s."
+                % (n_samples, array.shape, ensure_min_samples, context)
+            )
 
     if ensure_min_features > 0 and array.ndim == 2:
         n_features = array.shape[1]
         if n_features < ensure_min_features:
-            raise ValueError("Found array with %d feature(s) (shape=%s) while"
-                             " a minimum of %d is required%s."
-                             % (n_features, array.shape, ensure_min_features,
-                                context))
+            raise ValueError(
+                "Found array with %d feature(s) (shape=%s) while"
+                " a minimum of %d is required%s."
+                % (n_features, array.shape, ensure_min_features, context)
+            )
 
     if copy:
         array = mt.array(array, dtype=dtype, order=order)
@@ -442,11 +483,23 @@ def check_array(array, accept_sparse=False, accept_large_sparse=True,
     return array
 
 
-def check_X_y(X, y, accept_sparse=False, accept_large_sparse=True,
-              dtype="numeric", order=None, copy=False, force_all_finite=True,
-              ensure_2d=True, allow_nd=False, multi_output=False,
-              ensure_min_samples=1, ensure_min_features=1, y_numeric=False,
-              estimator=None):
+def check_X_y(
+    X,
+    y,
+    accept_sparse=False,
+    accept_large_sparse=True,
+    dtype="numeric",
+    order=None,
+    copy=False,
+    force_all_finite=True,
+    ensure_2d=True,
+    allow_nd=False,
+    multi_output=False,
+    ensure_min_samples=1,
+    ensure_min_features=1,
+    y_numeric=False,
+    estimator=None,
+):
     """Input validation for standard estimators.
 
     Checks X and y for consistent length, enforces X to be 2D and y 1D. By
@@ -538,23 +591,28 @@ def check_X_y(X, y, accept_sparse=False, accept_large_sparse=True,
         The converted and validated y.
     """
     if y is None:
-        raise ValueError('y cannot be None')
+        raise ValueError("y cannot be None")
 
-    X = check_array(X, accept_sparse=accept_sparse,
-                    accept_large_sparse=accept_large_sparse,
-                    dtype=dtype, order=order, copy=copy,
-                    force_all_finite=force_all_finite,
-                    ensure_2d=ensure_2d, allow_nd=allow_nd,
-                    ensure_min_samples=ensure_min_samples,
-                    ensure_min_features=ensure_min_features,
-                    estimator=estimator)
+    X = check_array(
+        X,
+        accept_sparse=accept_sparse,
+        accept_large_sparse=accept_large_sparse,
+        dtype=dtype,
+        order=order,
+        copy=copy,
+        force_all_finite=force_all_finite,
+        ensure_2d=ensure_2d,
+        allow_nd=allow_nd,
+        ensure_min_samples=ensure_min_samples,
+        ensure_min_features=ensure_min_features,
+        estimator=estimator,
+    )
     if multi_output:
-        y = check_array(y, True, force_all_finite=True, ensure_2d=False,
-                        dtype=None)
+        y = check_array(y, True, force_all_finite=True, ensure_2d=False, dtype=None)
     else:
         y = column_or_1d(y, warn=True)
         y = _assert_all_finite(y, check_only=False)
-    if y_numeric and y.dtype.kind == 'O':
+    if y_numeric and y.dtype.kind == "O":
         y = y.astype(np.float64)
 
     check_consistent_length(X, y)
@@ -598,10 +656,13 @@ def column_or_1d(y, warn=False):
         return mt.ravel(y)
     if len(shape) == 2 and shape[1] == 1:
         if warn:
-            warnings.warn("A column-vector y was passed when a 1d array was"
-                          " expected. Please change the shape of y to "
-                          "(n_samples, ), for example using ravel().",
-                          DataConversionWarning, stacklevel=2)
+            warnings.warn(
+                "A column-vector y was passed when a 1d array was"
+                " expected. Please change the shape of y to "
+                "(n_samples, ), for example using ravel().",
+                DataConversionWarning,
+                stacklevel=2,
+            )
         return mt.ravel(y)
 
     raise ValueError(f"bad input shape {shape}")
@@ -647,19 +708,19 @@ def _check_sample_weight(sample_weight, X, dtype=None):
         if sample_weight is None:
             sample_weight = mt.ones(n_samples, dtype=dtype)
         else:
-            sample_weight = mt.full(n_samples, sample_weight,
-                                    dtype=dtype)
+            sample_weight = mt.full(n_samples, sample_weight, dtype=dtype)
     else:
         if dtype is None:
             dtype = [np.float64, np.float32]
         sample_weight = check_array(
-            sample_weight, accept_sparse=False, ensure_2d=False, dtype=dtype,
-            order="C"
+            sample_weight, accept_sparse=False, ensure_2d=False, dtype=dtype, order="C"
         )
         if sample_weight.ndim != 1:
             raise ValueError("Sample weights must be 1D array or scalar")
 
         if sample_weight.shape != (n_samples,):
-            raise ValueError(f"sample_weight.shape == {sample_weight.shape}, "
-                             f"expected {(n_samples,)}!")
+            raise ValueError(
+                f"sample_weight.shape == {sample_weight.shape}, "
+                f"expected {(n_samples,)}!"
+            )
     return sample_weight

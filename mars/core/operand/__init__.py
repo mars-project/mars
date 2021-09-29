@@ -16,6 +16,12 @@ from .base import Operand, OperandStage, HasInput, VirtualOperand
 from .core import TileableOperandMixin, execute, estimate_size
 from .fetch import Fetch, FetchMixin, FetchShuffle
 from .fuse import Fuse, FuseChunkMixin
-from .objects import ObjectOperand, ObjectOperandMixin, ObjectFetch, \
-    ObjectFuseChunk, ObjectFuseChunkMixin, MergeDictOperand
+from .objects import (
+    ObjectOperand,
+    ObjectOperandMixin,
+    ObjectFetch,
+    ObjectFuseChunk,
+    ObjectFuseChunkMixin,
+    MergeDictOperand,
+)
 from .shuffle import ShuffleProxy, MapReduceOperand

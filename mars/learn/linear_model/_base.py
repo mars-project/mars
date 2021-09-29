@@ -16,8 +16,7 @@ import numbers
 from abc import ABCMeta, abstractmethod
 
 from numpy.linalg import LinAlgError
-from sklearn.utils.validation import (check_is_fitted,
-                                      _deprecate_positional_args)
+from sklearn.utils.validation import check_is_fitted, _deprecate_positional_args
 from sklearn.base import MultiOutputMixin
 
 from ... import execute
@@ -65,32 +64,28 @@ def _preprocess_data(
     y = astensor(y, dtype=X.dtype)
 
     if check_input:
-        X = check_array(X, copy=copy, accept_sparse=['csr', 'csc'],
-                        dtype=FLOAT_DTYPES)
+        X = check_array(X, copy=copy, accept_sparse=["csr", "csc"], dtype=FLOAT_DTYPES)
     elif copy:
         if X.issparse():
             X = X.copy()
         else:
-            X = X.copy(order='K')
+            X = X.copy(order="K")
 
     if fit_intercept:
         if X.issparse():
-            raise NotImplementedError(
-                "Does not support sparse input!")
+            raise NotImplementedError("Does not support sparse input!")
         else:
             X_offset = mt.average(X, axis=0, weights=sample_weight)
             X = X - X_offset
             if normalize:
-                X, X_scale = f_normalize(X, axis=0, copy=False,
-                                         return_norm=True)
+                X, X_scale = f_normalize(X, axis=0, copy=False, return_norm=True)
             else:
                 X_scale = mt.ones(X.shape[1], dtype=X.dtype)
         y_offset = mt.average(y, axis=0, weights=sample_weight)
         y = y - y_offset
     else:
         if X.issparse():
-            raise NotImplementedError(
-                "Does not support sparse input!")
+            raise NotImplementedError("Does not support sparse input!")
         X_offset = mt.zeros(X.shape[1], dtype=X.dtype)
         X_scale = mt.ones(X.shape[1], dtype=X.dtype)
         if y.ndim == 1:
@@ -115,13 +110,9 @@ def _rescale_data(X, y, sample_weight):
     n_samples = X.shape[0]
     sample_weight = mt.asarray(sample_weight)
     if sample_weight.ndim == 0:
-        sample_weight = mt.full(
-            n_samples,
-            sample_weight,
-            dtype=sample_weight.dtype)
+        sample_weight = mt.full(n_samples, sample_weight, dtype=sample_weight.dtype)
     sample_weight = mt.sqrt(sample_weight)
-    sw_matrix = mt.diag(sample_weight,
-                        sparse=True)
+    sw_matrix = mt.diag(sample_weight, sparse=True)
     X = mt.dot(sw_matrix, X)
     y = mt.dot(sw_matrix, y)
     return X, y
@@ -137,12 +128,10 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
     def _decision_function(self, X):
         check_is_fitted(self)
 
-        X = self._validate_data(X,
-                                y="no_validation",
-                                accept_sparse=["csr", "csc", "coo"],
-                                reset=False)
-        return mt.dot(X,
-                      self.coef_.T) + self.intercept_
+        X = self._validate_data(
+            X, y="no_validation", accept_sparse=["csr", "csc", "coo"], reset=False
+        )
+        return mt.dot(X, self.coef_.T) + self.intercept_
 
     def predict(self, X):
         """
@@ -166,9 +155,7 @@ class LinearModel(BaseEstimator, metaclass=ABCMeta):
         """Set the intercept_"""
         if self.fit_intercept:
             self.coef_ = self.coef_ / X_scale
-            self.intercept_ = (
-                y_offset - mt.dot(X_offset, self.coef_.T)
-            )
+            self.intercept_ = y_offset - mt.dot(X_offset, self.coef_.T)
             execute(self.coef_, self.intercept_)
         else:
             self.intercept_ = mt.tensor(0.0)
@@ -240,14 +227,10 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         model trained with both l1 and l2 -norm regularization of the
         coefficients.
     """
+
     @_deprecate_positional_args
     def __init__(
-        self,
-        *,
-        fit_intercept=True,
-        normalize=False,
-        copy_X=True,
-        positive=False,
+        self, *, fit_intercept=True, normalize=False, copy_X=True, positive=False,
     ):
         self.fit_intercept = fit_intercept
         self.normalize = normalize
@@ -274,19 +257,24 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
         self : object
             Fitted Estimator.
         """
-        accept_sparse = False if self.positive else ['csr', 'csc', 'coo']
+        accept_sparse = False if self.positive else ["csr", "csc", "coo"]
 
-        X, y = self._validate_data(X, y, accept_sparse=accept_sparse,
-                                   y_numeric=True, multi_output=True)
+        X, y = self._validate_data(
+            X, y, accept_sparse=accept_sparse, y_numeric=True, multi_output=True
+        )
 
         if sample_weight is not None:
-            sample_weight = _check_sample_weight(sample_weight, X,
-                                                 dtype=X.dtype)
+            sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
 
         X, y, X_offset, y_offset, X_scale = self._preprocess_data(
-            X, y, fit_intercept=self.fit_intercept, normalize=self.normalize,
-            copy=self.copy_X, sample_weight=sample_weight,
-            return_mean=True)
+            X,
+            y,
+            fit_intercept=self.fit_intercept,
+            normalize=self.normalize,
+            copy=self.copy_X,
+            sample_weight=sample_weight,
+            return_mean=True,
+        )
 
         if sample_weight is not None:
             # Sample weight can be implemented via a simple rescaling.
@@ -294,12 +282,10 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
 
         if self.positive:
             # TODO: implement optimize.nnls first
-            raise NotImplementedError(
-                "Does not support positive coefficients!")
+            raise NotImplementedError("Does not support positive coefficients!")
         elif X.issparse():
             # TODO: implement sparse.linalg.lsqr first
-            raise NotImplementedError(
-                "Does not support sparse input!")
+            raise NotImplementedError("Does not support sparse input!")
         else:
             try:
                 # In numpy:
@@ -310,8 +296,7 @@ class LinearRegression(MultiOutputMixin, RegressorMixin, LinearModel):
                 self.coef_.execute()
             except LinAlgError:
                 # TODO: implement linalg.lstsq first
-                raise NotImplementedError(
-                    "Does not support sigular matrix!")
+                raise NotImplementedError("Does not support sigular matrix!")
 
         if y.ndim == 1:
             self.coef_ = mt.ravel(self.coef_)

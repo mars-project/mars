@@ -27,7 +27,7 @@ from ...core import ExecutableTuple
 from ...typing import TileableType
 
 
-KstestResult = namedtuple('KstestResult', ('statistic', 'pvalue'))
+KstestResult = namedtuple("KstestResult", ("statistic", "pvalue"))
 Ks_2sampResult = KstestResult
 
 
@@ -106,11 +106,11 @@ def _compute_prob_inside_method(m, n, g, h):  # pragma: no cover
         if maxj <= minj:
             return 0
         # Now fill in the values
-        A[0:maxj - minj] = np.cumsum(A[minj - lastminj:maxj - lastminj])
+        A[0 : maxj - minj] = np.cumsum(A[minj - lastminj : maxj - lastminj])
         curlen = maxj - minj
         if lastlen > curlen:
             # Set some carried-over elements to 0
-            A[maxj - minj:maxj - minj + (lastlen - curlen)] = 0
+            A[maxj - minj : maxj - minj + (lastlen - curlen)] = 0
         # Rescale if the right most value is over 2**900
         val = A[maxj - minj - 1]
         _, valexpt = math.frexp(val)
@@ -223,8 +223,8 @@ def _count_paths_outside_method(m, n, g, h):  # pragma: no cover
     # Not every x needs to be considered.
     # xj holds the list of x values to be checked.
     # Wherever n*x/m + ng*h crosses an integer
-    lxj = n + (mg-h)//mg
-    xj = [(h + mg * j + ng-1)//ng for j in range(lxj)]
+    lxj = n + (mg - h) // mg
+    xj = [(h + mg * j + ng - 1) // ng for j in range(lxj)]
     # B is an array just holding a few values of B(x,y), the ones needed.
     # B[j] == B(x_j, j)
     if lxj == 0:
@@ -239,7 +239,9 @@ def _count_paths_outside_method(m, n, g, h):  # pragma: no cover
         if not np.isfinite(Bj):
             raise FloatingPointError()
         for i in range(j):
-            bin = np.round(special.binom(xj[j] - xj[i] + j - i, j-i))  # pylint: disable=redefined-builtin
+            bin = np.round(
+                special.binom(xj[j] - xj[i] + j - i, j - i)
+            )  # pylint: disable=redefined-builtin
             Bj -= bin * B[i]
         B[j] = Bj
         if not np.isfinite(Bj):
@@ -247,7 +249,7 @@ def _count_paths_outside_method(m, n, g, h):  # pragma: no cover
     # Compute the number of path extensions...
     num_paths = 0
     for j in range(lxj):
-        bin = np.round(special.binom((m-xj[j]) + (n - j), n-j))
+        bin = np.round(special.binom((m - xj[j]) + (n - j), n - j))
         term = B[j] * bin
         if not np.isfinite(term):
             raise FloatingPointError()
@@ -271,7 +273,7 @@ def _attempt_exact_2kssamp(n1, n2, g, d, alternative):  # pragma: no cover
         return True, d, 1.0
     saw_fp_error, prob = False, np.nan
     try:
-        if alternative == 'two-sided':
+        if alternative == "two-sided":
             if n1 == n2:
                 prob = _compute_prob_outside_square(n1, h)
             else:
@@ -286,7 +288,11 @@ def _attempt_exact_2kssamp(n1, n2, g, d, alternative):  # pragma: no cover
             else:
                 num_paths = _count_paths_outside_method(n1, n2, g, h)
                 bin = special.binom(n1 + n2, n1)  # pylint: disable=redefined-builtin
-                if not np.isfinite(bin) or not np.isfinite(num_paths) or num_paths > bin:
+                if (
+                    not np.isfinite(bin)
+                    or not np.isfinite(num_paths)
+                    or num_paths > bin
+                ):
                     saw_fp_error = True
                 else:
                     prob = num_paths / bin
@@ -309,37 +315,42 @@ def _calc_prob_2samp(d, n1, n2, alternative, mode):  # pragma: no cover
     n2g = n2 // g
     prob = -mt.inf
     original_mode = mode
-    if mode == 'auto':
-        mode = 'exact' if max(n1, n2) <= MAX_AUTO_N else 'asymp'
-    elif mode == 'exact':
+    if mode == "auto":
+        mode = "exact" if max(n1, n2) <= MAX_AUTO_N else "asymp"
+    elif mode == "exact":
         # If lcm(n1, n2) is too big, switch from exact to asymp
         if n1g >= np.iinfo(np.int_).max / n2g:
-            mode = 'asymp'
+            mode = "asymp"
             warnings.warn(
                 f"Exact ks_2samp calculation not possible with samples sizes "
-                f"{n1} and {n2}. Switching to 'asymp'.", RuntimeWarning)
+                f"{n1} and {n2}. Switching to 'asymp'.",
+                RuntimeWarning,
+            )
 
-    if mode == 'exact':
+    if mode == "exact":
         success, d, prob = _attempt_exact_2kssamp(n1, n2, g, d, alternative)
         if not success:
-            mode = 'asymp'
-            if original_mode == 'exact':
-                warnings.warn(f"ks_2samp: Exact calculation unsuccessful. "
-                              f"Switching to mode={mode}.", RuntimeWarning)
+            mode = "asymp"
+            if original_mode == "exact":
+                warnings.warn(
+                    f"ks_2samp: Exact calculation unsuccessful. "
+                    f"Switching to mode={mode}.",
+                    RuntimeWarning,
+                )
 
-    if mode == 'asymp':
+    if mode == "asymp":
         # The product n1*n2 is large.  Use Smirnov's asymptotic formula.
         # Ensure float to avoid overflow in multiplication
         # sorted because the one-sided formula is not symmetric in n1, n2
         m, n = sorted([float(n1), float(n2)], reverse=True)
         en = m * n / (m + n)
-        if alternative == 'two-sided':
+        if alternative == "two-sided":
             prob = distributions.kstwo.sf(d, np.round(en))
         else:
             z = np.sqrt(en) * d
             # Use Hodges' suggested approximation Eqn 5.3
             # Requires m to be the larger of (n1, n2)
-            expt = -2 * z**2 - 2 * z * (m + 2*n)/np.sqrt(m*n*(m+n))/3.0
+            expt = -2 * z ** 2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
             prob = np.exp(expt)
 
     return np.clip(prob, 0, 1)
@@ -375,11 +386,13 @@ def _compute_dminus(cdfvals, n):
     return (cdfvals - mt.arange(0.0, n) / n).max()
 
 
-def ks_1samp(x: Union[np.ndarray, list, TileableType],
-             cdf: Callable,
-             args: Tuple = (),
-             alternative: str = 'two-sided',
-             mode: str = 'auto'):
+def ks_1samp(
+    x: Union[np.ndarray, list, TileableType],
+    cdf: Callable,
+    args: Tuple = (),
+    alternative: str = "two-sided",
+    mode: str = "auto",
+):
     """
     Performs the one-sample Kolmogorov-Smirnov test for goodness of fit.
 
@@ -491,9 +504,10 @@ def ks_1samp(x: Union[np.ndarray, list, TileableType],
     >>> ks_1samp(stats.t.rvs(3, size=100), stats.norm.cdf).execute()
     KstestResult(statistic=0.118967105356..., pvalue=0.108627114578...)
     """
-    alternative = {'t': 'two-sided', 'g': 'greater', 'l': 'less'}.get(
-       alternative.lower()[0], alternative)
-    if alternative not in ['two-sided', 'greater', 'less']:
+    alternative = {"t": "two-sided", "g": "greater", "l": "less"}.get(
+        alternative.lower()[0], alternative
+    )
+    if alternative not in ["two-sided", "greater", "less"]:
         raise ValueError("Unexpected alternative %s" % alternative)
 
     x = mt.asarray(x)
@@ -501,40 +515,41 @@ def ks_1samp(x: Union[np.ndarray, list, TileableType],
     x = mt.sort(x)
     cdfvals = x.map_chunk(cdf, args=args, elementwise=True)
 
-    if alternative == 'greater':
+    if alternative == "greater":
         Dplus = _compute_dplus(cdfvals, N)
-        return ExecutableTuple(KstestResult(
-            Dplus, Dplus.map_chunk(distributions.ksone.sf, args=(N,))))
+        return ExecutableTuple(
+            KstestResult(Dplus, Dplus.map_chunk(distributions.ksone.sf, args=(N,)))
+        )
 
-    if alternative == 'less':
+    if alternative == "less":
         Dminus = _compute_dminus(cdfvals, N)
-        return ExecutableTuple(KstestResult(
-            Dminus, Dminus.map_chunk(distributions.ksone.sf, args=(N,))))
+        return ExecutableTuple(
+            KstestResult(Dminus, Dminus.map_chunk(distributions.ksone.sf, args=(N,)))
+        )
 
     # alternative == 'two-sided':
     Dplus = _compute_dplus(cdfvals, N)
     Dminus = _compute_dminus(cdfvals, N)
     D = mt.stack([Dplus, Dminus]).max()
-    if mode == 'auto':  # Always select exact
-        mode = 'exact'
-    if mode == 'exact':
-        prob = D.map_chunk(distributions.kstwo.sf, args=(N,),
-                           elementwise=True)
-    elif mode == 'asymp':
-        prob = (D * np.sqrt(N)).map_chunk(distributions.kstwobign.sf,
-                                          elementwise=True)
+    if mode == "auto":  # Always select exact
+        mode = "exact"
+    if mode == "exact":
+        prob = D.map_chunk(distributions.kstwo.sf, args=(N,), elementwise=True)
+    elif mode == "asymp":
+        prob = (D * np.sqrt(N)).map_chunk(distributions.kstwobign.sf, elementwise=True)
     else:
         # mode == 'approx'
-        prob = 2 * D.map_chunk(distributions.ksone.sf, args=(N,),
-                               elementwise=True)
+        prob = 2 * D.map_chunk(distributions.ksone.sf, args=(N,), elementwise=True)
     prob = mt.clip(prob, 0, 1)
     return ExecutableTuple(KstestResult(D, prob))
 
 
-def ks_2samp(data1: Union[np.ndarray, list, TileableType],
-             data2: Union[np.ndarray, list, TileableType],
-             alternative: str = 'two-sided',
-             mode: str = 'auto'):
+def ks_2samp(
+    data1: Union[np.ndarray, list, TileableType],
+    data2: Union[np.ndarray, list, TileableType],
+    alternative: str = "two-sided",
+    mode: str = "auto",
+):
     """
     Compute the Kolmogorov-Smirnov statistic on 2 samples.
 
@@ -640,12 +655,13 @@ def ks_2samp(data1: Union[np.ndarray, list, TileableType],
 
     """
 
-    if mode not in ['auto', 'exact', 'asymp']:
-        raise ValueError(f'Invalid value for mode: {mode}')
-    alternative = {'t': 'two-sided', 'g': 'greater', 'l': 'less'}.get(
-        alternative.lower()[0], alternative)
-    if alternative not in ['two-sided', 'less', 'greater']:
-        raise ValueError(f'Invalid value for alternative: {alternative}')
+    if mode not in ["auto", "exact", "asymp"]:
+        raise ValueError(f"Invalid value for mode: {mode}")
+    alternative = {"t": "two-sided", "g": "greater", "l": "less"}.get(
+        alternative.lower()[0], alternative
+    )
+    if alternative not in ["two-sided", "less", "greater"]:
+        raise ValueError(f"Invalid value for alternative: {alternative}")
     data1 = mt.asarray(data1)
     data2 = mt.asarray(data2)
     data1 = mt.sort(data1)
@@ -653,18 +669,22 @@ def ks_2samp(data1: Union[np.ndarray, list, TileableType],
     n1 = data1.shape[0]
     n2 = data2.shape[0]
     if min(n1, n2) == 0:
-        raise ValueError('Data passed to ks_2samp must not be empty')
+        raise ValueError("Data passed to ks_2samp must not be empty")
 
     data_all = mt.concatenate([data1, data2])
     # using searchsorted solves equal data problem
-    cdf1 = mt.searchsorted(data1, data_all, side='right') / n1
-    cdf2 = mt.searchsorted(data2, data_all, side='right') / n2
+    cdf1 = mt.searchsorted(data1, data_all, side="right") / n1
+    cdf2 = mt.searchsorted(data2, data_all, side="right") / n2
     cddiffs = cdf1 - cdf2
     minS = mt.clip(-mt.min(cddiffs), 0, 1)  # Ensure sign of minS is not negative.
     maxS = mt.max(cddiffs)
-    alt2Dvalue = {'less': minS, 'greater': maxS, 'two-sided': mt.maximum(minS, maxS)}
+    alt2Dvalue = {"less": minS, "greater": maxS, "two-sided": mt.maximum(minS, maxS)}
     d = alt2Dvalue[alternative]
-    prob = d.map_chunk(_calc_prob_2samp, args=(n1, n2, alternative, mode),
-                       elementwise=True, dtype=d.dtype)
+    prob = d.map_chunk(
+        _calc_prob_2samp,
+        args=(n1, n2, alternative, mode),
+        elementwise=True,
+        dtype=d.dtype,
+    )
 
     return ExecutableTuple(Ks_2sampResult(d, prob))

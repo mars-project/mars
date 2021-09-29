@@ -23,6 +23,7 @@ import pandas as pd
 from ..utils import TypeDispatcher
 
 import cloudpickle
+
 if sys.version_info[:2] < (3, 8):
     try:
         import pickle5 as pickle  # nosec  # pylint: disable=import_pickle
@@ -33,7 +34,7 @@ else:
 
 HAS_PICKLE_BUFFER = pickle.HIGHEST_PROTOCOL >= 5
 BUFFER_PICKLE_PROTOCOL = max(pickle.DEFAULT_PROTOCOL, 5)
-_PANDAS_HAS_MGR = hasattr(pd.Series([0]), '_mgr')
+_PANDAS_HAS_MGR = hasattr(pd.Series([0]), "_mgr")
 
 
 _serial_dispatcher = TypeDispatcher()
@@ -65,20 +66,18 @@ def buffered(func):
     @wraps(func)
     def wrapped(self, obj: Any, context: Dict):
         if id(obj) in context:
-            return {
-                       'id': id(obj),
-                       'serializer': 'ref',
-                       'buf_num': 0,
-                   }, []
+            return {"id": id(obj), "serializer": "ref", "buf_num": 0,}, []
         else:
             context[id(obj)] = obj
             return func(self, obj, context)
+
     return wrapped
 
 
 def pickle_buffers(obj):
     buffers = [None]
     if HAS_PICKLE_BUFFER:
+
         def buffer_cb(x):
             x = x.raw()
             if x.ndim > 1:
@@ -87,9 +86,7 @@ def pickle_buffers(obj):
             buffers.append(memoryview(x))
 
         buffers[0] = cloudpickle.dumps(
-            obj,
-            buffer_callback=buffer_cb,
-            protocol=BUFFER_PICKLE_PROTOCOL,
+            obj, buffer_callback=buffer_cb, protocol=BUFFER_PICKLE_PROTOCOL,
         )
     else:  # pragma: no cover
         buffers[0] = cloudpickle.dumps(obj)
@@ -105,38 +102,38 @@ def unpickle_buffers(buffers):
     if _PANDAS_HAS_MGR:
         return result
     else:  # pragma: no cover
-        if hasattr(result, '_mgr') and isinstance(result, (pd.DataFrame, pd.Series)):
-            result._data = getattr(result, '_mgr')
-            delattr(result, '_mgr')
+        if hasattr(result, "_mgr") and isinstance(result, (pd.DataFrame, pd.Series)):
+            result._data = getattr(result, "_mgr")
+            delattr(result, "_mgr")
         return result
 
 
 class ScalarSerializer(Serializer):
-    serializer_name = 'scalar'
+    serializer_name = "scalar"
 
     def serialize(self, obj: Any, context: Dict):
-        header = {'val': obj}
+        header = {"val": obj}
         return header, []
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        return header['val']
+        return header["val"]
 
 
 class StrSerializer(Serializer):
-    serializer_name = 'str'
+    serializer_name = "str"
 
     @buffered
     def serialize(self, obj, context: Dict):
         header = {}
         if isinstance(obj, str):
-            header['unicode'] = True
+            header["unicode"] = True
             bytes_data = obj.encode()
         else:
             bytes_data = obj
         return header, [bytes_data]
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        if header.get('unicode'):
+        if header.get("unicode"):
             buffer = buffers[0]
             if isinstance(buffer, memoryview):
                 buffer = buffer.tobytes()
@@ -145,7 +142,7 @@ class StrSerializer(Serializer):
 
 
 class PickleSerializer(Serializer):
-    serializer_name = 'pickle'
+    serializer_name = "pickle"
 
     @buffered
     def serialize(self, obj, context: Dict):
@@ -174,9 +171,9 @@ class CollectionSerializer(Serializer):
         headers_list, buffers_list = yield from self._serialize(obj)
         for b in buffers_list:
             buffers.extend(b)
-        headers = {'headers': headers_list}
+        headers = {"headers": headers_list}
         if type(obj) is not self.obj_type:
-            headers['obj_type'] = pickle.dumps(type(obj))
+            headers["obj_type"] = pickle.dumps(type(obj))
         return headers, buffers
 
     @staticmethod
@@ -184,25 +181,29 @@ class CollectionSerializer(Serializer):
         pos = 0
         ret = [None] * len(headers)
         for idx, sub_header in enumerate(headers):
-            buf_num = sub_header['buf_num']
-            sub_buffers = buffers[pos:pos + buf_num]
+            buf_num = sub_header["buf_num"]
+            sub_buffers = buffers[pos : pos + buf_num]
             ret[idx] = yield sub_header, sub_buffers
             pos += buf_num
         return ret
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
         obj_type = self.obj_type
-        if 'obj_type' in header:
-            obj_type = pickle.loads(header['obj_type'])
-        if hasattr(obj_type, '_fields'):
+        if "obj_type" in header:
+            obj_type = pickle.loads(header["obj_type"])
+        if hasattr(obj_type, "_fields"):
             # namedtuple
-            return obj_type(*(yield from self._list_deserial(header['headers'], buffers)))
+            return obj_type(
+                *(yield from self._list_deserial(header["headers"], buffers))
+            )
         else:
-            return obj_type((yield from self._list_deserial(header['headers'], buffers)))
+            return obj_type(
+                (yield from self._list_deserial(header["headers"], buffers))
+            )
 
 
 class ListSerializer(CollectionSerializer):
-    serializer_name = 'list'
+    serializer_name = "list"
     obj_type = list
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
@@ -214,7 +215,7 @@ class ListSerializer(CollectionSerializer):
 
 
 class TupleSerializer(CollectionSerializer):
-    serializer_name = 'tuple'
+    serializer_name = "tuple"
     obj_type = tuple
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
@@ -224,7 +225,7 @@ class TupleSerializer(CollectionSerializer):
 
 
 class DictSerializer(CollectionSerializer):
-    serializer_name = 'dict'
+    serializer_name = "dict"
     _inspected_inherits = set()
 
     @buffered
@@ -232,8 +233,11 @@ class DictSerializer(CollectionSerializer):
         obj_type = type(obj)
         if obj_type is not dict and obj_type not in self._inspected_inherits:
             inspect_init = inspect.getfullargspec(obj_type.__init__)
-            if inspect_init.args == ['self'] and not inspect_init.varargs \
-                    and not inspect_init.varkw:
+            if (
+                inspect_init.args == ["self"]
+                and not inspect_init.varargs
+                and not inspect_init.varkw
+            ):
                 # dict inheritance
                 # remove context to generate real serialized result
                 context.pop(id(obj))
@@ -253,23 +257,26 @@ class DictSerializer(CollectionSerializer):
         for b in value_buffers_list:
             buffers.extend(b)
 
-        header = {'key_headers': key_headers, 'key_buf_num': key_buf_num,
-                  'value_headers': value_headers}
+        header = {
+            "key_headers": key_headers,
+            "key_buf_num": key_buf_num,
+            "value_headers": value_headers,
+        }
         if type(obj) is not dict:
-            header['obj_type'] = pickle.dumps(type(obj))
+            header["obj_type"] = pickle.dumps(type(obj))
 
         return header, buffers
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        key_buffers = buffers[:header['key_buf_num']]
-        value_buffers = buffers[header['key_buf_num']:]
+        key_buffers = buffers[: header["key_buf_num"]]
+        value_buffers = buffers[header["key_buf_num"] :]
 
         obj_type = dict
-        if 'obj_type' in header:
-            obj_type = pickle.loads(header['obj_type'])
+        if "obj_type" in header:
+            obj_type = pickle.loads(header["obj_type"])
 
-        keys = yield from self._list_deserial(header['key_headers'], key_buffers)
-        values = yield from self._list_deserial(header['value_headers'], value_buffers)
+        keys = yield from self._list_deserial(header["key_headers"], key_buffers)
+        values = yield from self._list_deserial(header["value_headers"], value_buffers)
 
         def _key_replacer(key, real_key):
             ret[real_key] = ret.pop(key)
@@ -325,12 +332,12 @@ class Placeholder:
 
 def serialize(obj, context: Dict = None):
     def _wrap_headers(_obj, _serializer_name, _header, _buffers):
-        if _header.get('serializer') == 'ref':
+        if _header.get("serializer") == "ref":
             return _header, _buffers
         # if serializer already defined, do not change
-        _header['serializer'] = _header.get('serializer', _serializer_name)
-        _header['buf_num'] = len(_buffers)
-        _header['id'] = id(_obj)
+        _header["serializer"] = _header.get("serializer", _serializer_name)
+        _header["buf_num"] = len(_buffers)
+        _header["id"] = id(_obj)
         return _header, _buffers
 
     context = context if context is not None else dict()
@@ -364,7 +371,8 @@ def serialize(obj, context: Dict = None):
                     # when intermediate result is not generator, pass it
                     # to the generator again
                     last_serial = _wrap_headers(
-                        gen_to_serial, gen_serializer.serializer_name, *gen_result)
+                        gen_to_serial, gen_serializer.serializer_name, *gen_result
+                    )
             except StopIteration as si:
                 # when current generator finishes, jump to the previous one
                 # and pass final result to it
@@ -376,9 +384,9 @@ def serialize(obj, context: Dict = None):
 
 def deserialize(header: Dict, buffers: List, context: Dict = None):
     def _deserialize(_header, _buffers):
-        serializer_name = _header['serializer']
-        obj_id = _header['id']
-        if serializer_name == 'ref':
+        serializer_name = _header["serializer"]
+        obj_id = _header["id"]
+        if serializer_name == "ref":
             try:
                 result = context[obj_id]
             except KeyError:
@@ -414,9 +422,7 @@ def deserialize(header: Dict, buffers: List, context: Dict = None):
                 if isinstance(gen_deserialized, types.GeneratorType):
                     # when intermediate result still generator, push its contexts
                     # into stack and handle it first
-                    gen_stack.append(
-                        (gen_deserialized, gen_to_deserial)
-                    )
+                    gen_stack.append((gen_deserialized, gen_to_deserial))
                     # result need to be emptied to run the generator
                     last_deserial = None
                 else:
@@ -429,5 +435,5 @@ def deserialize(header: Dict, buffers: List, context: Dict = None):
                 gen_stack.pop()
                 last_deserial = si.value
                 # remember to fill Placeholders when some result is generated
-                _fill_context(to_deserial[0]['id'], last_deserial)
+                _fill_context(to_deserial[0]["id"], last_deserial)
         return last_deserial

@@ -29,18 +29,18 @@ from .utils import get_bool_environ
 
 logger = logging.getLogger(__name__)
 
-CGROUP_CPU_STAT_FILE = '/sys/fs/cgroup/cpuacct/cpuacct.usage'
-CGROUP_MEM_STAT_FILE = '/sys/fs/cgroup/memory/memory.stat'
+CGROUP_CPU_STAT_FILE = "/sys/fs/cgroup/cpuacct/cpuacct.usage"
+CGROUP_MEM_STAT_FILE = "/sys/fs/cgroup/memory/memory.stat"
 
 _proc = psutil.Process()
-_timer = getattr(time, 'monotonic', time.time)
+_timer = getattr(time, "monotonic", time.time)
 
-_use_process_stat = get_bool_environ('MARS_USE_PROCESS_STAT')
-_use_cgroup_stat = get_bool_environ('MARS_USE_CGROUP_STAT')
-_cpu_use_process_stat = get_bool_environ('MARS_CPU_USE_PROCESS_STAT')
-_cpu_use_cgroup_stat = get_bool_environ('MARS_CPU_USE_CGROUP_STAT')
-_mem_use_process_stat = get_bool_environ('MARS_MEM_USE_PROCESS_STAT')
-_mem_use_cgroup_stat = get_bool_environ('MARS_MEM_USE_CGROUP_STAT')
+_use_process_stat = get_bool_environ("MARS_USE_PROCESS_STAT")
+_use_cgroup_stat = get_bool_environ("MARS_USE_CGROUP_STAT")
+_cpu_use_process_stat = get_bool_environ("MARS_CPU_USE_PROCESS_STAT")
+_cpu_use_cgroup_stat = get_bool_environ("MARS_CPU_USE_CGROUP_STAT")
+_mem_use_process_stat = get_bool_environ("MARS_MEM_USE_PROCESS_STAT")
+_mem_use_cgroup_stat = get_bool_environ("MARS_MEM_USE_CGROUP_STAT")
 
 # if general config exists, overwrite individual ones
 if _use_process_stat is not None:
@@ -48,20 +48,23 @@ if _use_process_stat is not None:
 if _use_cgroup_stat is not None:
     _cpu_use_cgroup_stat = _mem_use_cgroup_stat = _use_cgroup_stat
 
-if 'MARS_CPU_TOTAL' in os.environ:
-    _cpu_total = int(math.ceil(float(os.environ['MARS_CPU_TOTAL'])))
+if "MARS_CPU_TOTAL" in os.environ:
+    _cpu_total = int(math.ceil(float(os.environ["MARS_CPU_TOTAL"])))
 else:
     _cpu_total = psutil.cpu_count(logical=True)
 
-if 'MARS_MEMORY_TOTAL' in os.environ:
-    _mem_total = int(os.environ['MARS_MEMORY_TOTAL'])
+if "MARS_MEMORY_TOTAL" in os.environ:
+    _mem_total = int(os.environ["MARS_MEMORY_TOTAL"])
 else:
     _mem_total = None
 
-_virt_memory_stat = namedtuple('virtual_memory', 'total available percent used free')
+_virt_memory_stat = namedtuple("virtual_memory", "total available percent used free")
 
-_shm_path = [pt.mountpoint for pt in psutil.disk_partitions(all=True)
-             if pt.mountpoint in ('/tmp', '/dev/shm') and pt.fstype == 'tmpfs']
+_shm_path = [
+    pt.mountpoint
+    for pt in psutil.disk_partitions(all=True)
+    if pt.mountpoint in ("/tmp", "/dev/shm") and pt.fstype == "tmpfs"
+]
 if not _shm_path:
     _shm_path = None
 else:
@@ -69,11 +72,11 @@ else:
 
 
 def _read_cgroup_stat_file():
-    with open(CGROUP_MEM_STAT_FILE, 'r') as cg_file:
+    with open(CGROUP_MEM_STAT_FILE, "r") as cg_file:
         contents = cg_file.read()
     kvs = dict()
     for line in contents.splitlines():
-        parts = line.split(' ')
+        parts = line.split(" ")
         if len(parts) == 2:
             kvs[parts[0]] = int(parts[1])
     return kvs
@@ -89,9 +92,9 @@ def virtual_memory() -> _virt_memory_stat:
     if _mem_use_cgroup_stat:
         # see section 5.5 in https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt
         cgroup_mem_info = _read_cgroup_stat_file()
-        total = cgroup_mem_info['hierarchical_memory_limit']
+        total = cgroup_mem_info["hierarchical_memory_limit"]
         total = min(_mem_total or total, total)
-        used = cgroup_mem_info['rss'] + cgroup_mem_info.get('swap', 0)
+        used = cgroup_mem_info["rss"] + cgroup_mem_info.get("swap", 0)
         if _shm_path:
             shm_stats = psutil.disk_usage(_shm_path)
             used += shm_stats.used
@@ -100,7 +103,7 @@ def virtual_memory() -> _virt_memory_stat:
         return _virt_memory_stat(total, available, percent, used, free)
     elif not _mem_use_process_stat:
         total = min(_mem_total or sys_mem.total, sys_mem.total)
-        used = sys_mem.used + getattr(sys_mem, 'shared', 0)
+        used = sys_mem.used + getattr(sys_mem, "shared", 0)
         available = sys_mem.available
         free = sys_mem.free
         percent = 100.0 * (total - available) / total
@@ -115,7 +118,7 @@ def virtual_memory() -> _virt_memory_stat:
                     break
                 try:
                     cmd = par_proc.cmdline()
-                    if 'python' not in ' '.join(cmd).lower():
+                    if "python" not in " ".join(cmd).lower():
                         break
                     cur_proc = par_proc
                 except:  # noqa: E722  # nosec  # pylint: disable=bare-except  # pragma: no cover
@@ -167,7 +170,7 @@ def cpu_percent():
     global _last_cgroup_cpu_measure, _last_proc_cpu_measure, _last_cpu_percent
     if _cpu_use_cgroup_stat:
         # see https://www.kernel.org/doc/Documentation/cgroup-v1/cpuacct.txt
-        with open(CGROUP_CPU_STAT_FILE, 'r') as cgroup_file:
+        with open(CGROUP_CPU_STAT_FILE, "r") as cgroup_file:
             cpu_acct = int(cgroup_file.read())
             sample_time = _timer()
         if _last_cgroup_cpu_measure is None:
@@ -181,7 +184,9 @@ def cpu_percent():
 
         _last_cgroup_cpu_measure = (cpu_acct, sample_time)
         # nanoseconds / seconds * 100, we shall divide 1e7.
-        _last_cpu_percent = round((cpu_acct - last_cpu_acct) / (sample_time - last_sample_time) / 1e7, 1)
+        _last_cpu_percent = round(
+            (cpu_acct - last_cpu_acct) / (sample_time - last_sample_time) / 1e7, 1
+        )
         return _last_cpu_percent
     elif _cpu_use_process_stat:
         pts, sts = _take_process_cpu_snapshot()
@@ -241,13 +246,13 @@ def _get_path_device(path: str):
 
     for part in psutil.disk_partitions(all=True):
         if path.startswith(part.mountpoint):
-            dev_name = _path_to_device[path] = part.device.replace('/dev/', '')
+            dev_name = _path_to_device[path] = part.device.replace("/dev/", "")
             return dev_name
     _path_to_device[path] = None
     return None
 
 
-_disk_io_usage_type = namedtuple('_disk_io_usage_type', 'reads writes')
+_disk_io_usage_type = namedtuple("_disk_io_usage_type", "reads writes")
 
 
 def disk_io_usage(path=None) -> Optional[_disk_io_usage_type]:
@@ -255,11 +260,12 @@ def disk_io_usage(path=None) -> Optional[_disk_io_usage_type]:
 
     # Needed by psutil.disk_io_counters() under newer version of Windows.
     # diskperf -y need to be called or no disk information can be found.
-    if sys.platform == 'win32' and not _win_diskperf_called:
+    if sys.platform == "win32" and not _win_diskperf_called:
         CREATE_NO_WINDOW = 0x08000000
         try:
-            proc = subprocess.Popen(['diskperf', '-y'], shell=False,
-                                    creationflags=CREATE_NO_WINDOW)  # nosec
+            proc = subprocess.Popen(
+                ["diskperf", "-y"], shell=False, creationflags=CREATE_NO_WINDOW
+            )  # nosec
             proc.wait()
         except (subprocess.CalledProcessError, OSError):  # pragma: no cover
             pass
@@ -319,8 +325,10 @@ def net_io_usage():
     return recv_speed, send_speed
 
 
-_cuda_info = namedtuple('cuda_info', 'driver_version cuda_version products gpu_count')
-_cuda_card_stat = namedtuple('cuda_card_stat', 'index product_name gpu_usage temperature fb_mem_info')
+_cuda_info = namedtuple("cuda_info", "driver_version cuda_version products gpu_count")
+_cuda_card_stat = namedtuple(
+    "cuda_card_stat", "index product_name gpu_usage temperature fb_mem_info"
+)
 
 
 def cuda_info():  # pragma: no cover
@@ -349,15 +357,19 @@ def cuda_card_stats() -> List[_cuda_card_stat]:  # pragma: no cover
         device_info = nvutils.get_device_info(device_idx)
         device_status = nvutils.get_device_status(device_idx)
 
-        infos.append(_cuda_card_stat(
-            index=device_info.index,
-            product_name=device_info.name,
-            gpu_usage=device_status.gpu_util,
-            temperature=device_status.temperature,
-            fb_mem_info=_virt_memory_stat(
-                total=device_status.fb_total_mem, used=device_status.fb_used_mem,
-                free=device_status.fb_free_mem, available=device_status.fb_free_mem,
-                percent=device_status.mem_util,
+        infos.append(
+            _cuda_card_stat(
+                index=device_info.index,
+                product_name=device_info.name,
+                gpu_usage=device_status.gpu_util,
+                temperature=device_status.temperature,
+                fb_mem_info=_virt_memory_stat(
+                    total=device_status.fb_total_mem,
+                    used=device_status.fb_used_mem,
+                    free=device_status.fb_free_mem,
+                    available=device_status.fb_free_mem,
+                    percent=device_status.mem_util,
+                ),
             )
-        ))
+        )
     return infos

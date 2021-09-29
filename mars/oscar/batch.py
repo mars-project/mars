@@ -35,29 +35,31 @@ def build_args_binder(func, remove_self: bool = True) -> Optional[Callable]:
         args_list = args_list[1:]
 
     if spec.varargs:
-        sig_list.append(f'*{spec.varargs}')
+        sig_list.append(f"*{spec.varargs}")
         args_list.append(spec.varargs)
     elif spec.kwonlyargs:
-        sig_list.append('*')
+        sig_list.append("*")
 
     sig_list.extend(spec.kwonlyargs)
     args_list.extend(spec.kwonlyargs)
 
     if spec.varkw:
-        sig_list.append(f'**{spec.varkw}')
+        sig_list.append(f"**{spec.varkw}")
         args_list.append(spec.varkw)
 
-    if getattr(func, '__name__', None).isidentifier():
-        ret_func_name = f'{func.__name__}_binder'
-        ret_type_name = f'_Args_{func.__name__}'
+    if getattr(func, "__name__", None).isidentifier():
+        ret_func_name = f"{func.__name__}_binder"
+        ret_type_name = f"_Args_{func.__name__}"
     else:
-        ret_func_name = f'anon_{id(func)}_binder'
-        ret_type_name = f'_ArgsAnon_{id(func)}'
+        ret_func_name = f"anon_{id(func)}_binder"
+        ret_type_name = f"_ArgsAnon_{id(func)}"
 
-    func_str = textwrap.dedent(f"""
+    func_str = textwrap.dedent(
+        f"""
     def {ret_func_name}({', '.join(sig_list)}):
         return {ret_type_name}({', '.join(args_list)})
-    """)
+    """
+    )
 
     glob_vars = globals().copy()
     glob_vars[ret_type_name] = namedtuple(ret_type_name, args_list)
@@ -106,11 +108,13 @@ class _ExtensibleCallable:
 
 
 class _ExtensibleWrapper(_ExtensibleCallable):
-    def __init__(self,
-                 func: Callable,
-                 batch_func: Optional[Callable] = None,
-                 bind_func: Optional[Callable] = None,
-                 is_async: bool = False):
+    def __init__(
+        self,
+        func: Callable,
+        batch_func: Optional[Callable] = None,
+        bind_func: Optional[Callable] = None,
+        is_async: bool = False,
+    ):
         self.func = func
         self.batch_func = batch_func
         self.bind_func = bind_func
@@ -136,8 +140,9 @@ class _ExtensibleWrapper(_ExtensibleCallable):
         else:
             # this function has no batch implementation
             # call it separately
-            tasks = [asyncio.create_task(self.func(*d.args, **d.kwargs))
-                     for d in delays]
+            tasks = [
+                asyncio.create_task(self.func(*d.args, **d.kwargs)) for d in delays
+            ]
             try:
                 return await asyncio.gather(*tasks)
             except asyncio.CancelledError:
@@ -161,7 +166,7 @@ class _ExtensibleWrapper(_ExtensibleCallable):
 
     def bind(self, *args, **kwargs):
         if self.bind_func is None:
-            raise TypeError(f'bind function not exist for method {self.func.__name__}')
+            raise TypeError(f"bind function not exist for method {self.func.__name__}")
         return self.bind_func(*args, **kwargs)
 
 
@@ -186,14 +191,20 @@ class _ExtensibleAccessor(_ExtensibleCallable):
             return self.func
 
         func = self.func.__get__(instance, owner)
-        batch_func = self.batch_func.__get__(instance, owner) \
-            if self.batch_func is not None else None
-        bind_func = self.bind_func.__get__(instance, owner) \
-            if self.bind_func is not None else None
+        batch_func = (
+            self.batch_func.__get__(instance, owner)
+            if self.batch_func is not None
+            else None
+        )
+        bind_func = (
+            self.bind_func.__get__(instance, owner)
+            if self.bind_func is not None
+            else None
+        )
 
-        return _ExtensibleWrapper(func, batch_func=batch_func,
-                                  bind_func=bind_func,
-                                  is_async=self.is_async)
+        return _ExtensibleWrapper(
+            func, batch_func=batch_func, bind_func=bind_func, is_async=self.is_async
+        )
 
 
 def extensible(func: Callable):

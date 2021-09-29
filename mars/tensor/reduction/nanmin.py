@@ -21,12 +21,17 @@ from .core import TensorReduction, TensorReductionMixin
 
 class TensorNanMin(TensorReduction, TensorReductionMixin):
     _op_type_ = OperandDef.NANMIN
-    _func_name = 'nanmin'
+    _func_name = "nanmin"
 
     def __init__(self, axis=None, keepdims=None, combine_size=None, stage=None, **kw):
         stage = self._rewrite_stage(stage)
-        super().__init__(_axis=axis, _keepdims=keepdims,
-                         _combine_size=combine_size, stage=stage, **kw)
+        super().__init__(
+            _axis=axis,
+            _keepdims=keepdims,
+            _combine_size=combine_size,
+            stage=stage,
+            **kw
+        )
 
 
 def nanmin(a, axis=None, out=None, keepdims=None, combine_size=None):
@@ -114,5 +119,7 @@ def nanmin(a, axis=None, out=None, keepdims=None, combine_size=None):
 
     """
     a = astensor(a)
-    op = TensorNanMin(axis=axis, dtype=a.dtype, keepdims=keepdims, combine_size=combine_size)
+    op = TensorNanMin(
+        axis=axis, dtype=a.dtype, keepdims=keepdims, combine_size=combine_size
+    )
     return op(a, out=out)

@@ -23,12 +23,12 @@ from .core import TensorRandomOperandMixin, handle_array, TensorDistribution
 
 
 class TensorStandardT(TensorDistribution, TensorRandomOperandMixin):
-    _input_fields_ = ['_df']
+    _input_fields_ = ["_df"]
     _op_type_ = OperandDef.RAND_STANDARD_T
 
-    _fields_ = '_df', '_size'
-    _df = AnyField('df')
-    _func_name = 'standard_t'
+    _fields_ = "_df", "_size"
+    _df = AnyField("df")
+    _func_name = "standard_t"
 
     def __init__(self, size=None, state=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -136,8 +136,7 @@ def standard_t(random_state, df, size=None, chunk_size=None, gpu=None, dtype=Non
     probability of about 99% of being true.
     """
     if dtype is None:
-        dtype = np.random.RandomState().standard_t(
-            handle_array(df), size=(0,)).dtype
+        dtype = np.random.RandomState().standard_t(handle_array(df), size=(0,)).dtype
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
     op = TensorStandardT(size=size, seed=seed, gpu=gpu, dtype=dtype)

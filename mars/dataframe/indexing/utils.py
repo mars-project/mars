@@ -43,6 +43,5 @@ def convert_labels_into_positions(pandas_index, labels):
             result.append(loc)
         else:
             # slice or boolean array
-            result.extend(
-                pd.RangeIndex(len(pandas_index))[loc].tolist())
+            result.extend(pd.RangeIndex(len(pandas_index))[loc].tolist())
     return np.asarray(result)

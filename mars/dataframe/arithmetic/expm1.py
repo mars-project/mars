@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameExpm1(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.EXPM1
-    _func_name = 'expm1'
+    _func_name = "expm1"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorExpm1
+
         return TensorExpm1

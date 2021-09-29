@@ -22,18 +22,19 @@ from ...utils import lazy_import
 from ..utils import parse_index, build_empty_df, build_empty_series, validate_axis
 from ..operands import DataFrameOperandMixin, DataFrameOperand
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
-    _op_module_ = 'dataframe.groupby'
+    _op_module_ = "dataframe.groupby"
 
-    _axis = AnyField('axis')
-    _ascending = BoolField('ascending')
+    _axis = AnyField("axis")
+    _ascending = BoolField("ascending")
 
     def __init__(self, axis=None, ascending=None, output_types=None, **kw):
-        super().__init__(_axis=axis, _ascending=ascending,
-                         _output_types=output_types, **kw)
+        super().__init__(
+            _axis=axis, _ascending=ascending, _output_types=output_types, **kw
+        )
 
     @property
     def axis(self) -> int:
@@ -45,9 +46,9 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
 
     def _calc_out_dtypes(self, in_groupby):
         mock_groupby = in_groupby.op.build_mock_groupby()
-        func_name = getattr(self, '_func_name')
+        func_name = getattr(self, "_func_name")
 
-        if func_name == 'cumcount':
+        if func_name == "cumcount":
             result_df = mock_groupby.cumcount(ascending=self.ascending)
         else:
             result_df = getattr(mock_groupby, func_name)(axis=self.axis)
@@ -69,10 +70,15 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         out_dtypes = self._calc_out_dtypes(groupby)
 
         kw = in_df.params.copy()
-        kw['index_value'] = parse_index(pd.RangeIndex(-1), groupby.key)
+        kw["index_value"] = parse_index(pd.RangeIndex(-1), groupby.key)
         if self.output_types[0] == OutputType.dataframe:
-            kw.update(dict(columns_value=parse_index(out_dtypes.index, store_data=True),
-                           dtypes=out_dtypes, shape=(groupby.shape[0], len(out_dtypes))))
+            kw.update(
+                dict(
+                    columns_value=parse_index(out_dtypes.index, store_data=True),
+                    dtypes=out_dtypes,
+                    shape=(groupby.shape[0], len(out_dtypes)),
+                )
+            )
         else:
             name, dtype = out_dtypes
             kw.update(dtype=dtype, name=name, shape=(groupby.shape[0],))
@@ -89,21 +95,35 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
 
             new_index = parse_index(pd.RangeIndex(-1), c.key)
             if op.output_types[0] == OutputType.dataframe:
-                chunks.append(new_op.new_chunk(
-                    [c], index=c.index, shape=(np.nan, len(out_df.dtypes)), dtypes=out_df.dtypes,
-                    columns_value=out_df.columns_value, index_value=new_index))
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        index=c.index,
+                        shape=(np.nan, len(out_df.dtypes)),
+                        dtypes=out_df.dtypes,
+                        columns_value=out_df.columns_value,
+                        index_value=new_index,
+                    )
+                )
             else:
-                chunks.append(new_op.new_chunk(
-                    [c], index=(c.index[0],), shape=(np.nan,), dtype=out_df.dtype,
-                    index_value=new_index, name=out_df.name))
+                chunks.append(
+                    new_op.new_chunk(
+                        [c],
+                        index=(c.index[0],),
+                        shape=(np.nan,),
+                        dtype=out_df.dtype,
+                        index_value=new_index,
+                        name=out_df.name,
+                    )
+                )
 
         new_op = op.copy().reset_key()
         kw = out_df.params.copy()
-        kw['chunks'] = chunks
+        kw["chunks"] = chunks
         if op.output_types[0] == OutputType.dataframe:
-            kw['nsplits'] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
+            kw["nsplits"] = ((np.nan,) * len(chunks), (len(out_df.dtypes),))
         else:
-            kw['nsplits'] = ((np.nan,) * len(chunks),)
+            kw["nsplits"] = ((np.nan,) * len(chunks),)
         return new_op.new_tileables([in_groupby], **kw)
 
     @classmethod
@@ -112,13 +132,15 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
         out_chunk = op.outputs[0]
 
         if not in_data or in_data.empty:
-            ctx[out_chunk.key] = build_empty_df(out_chunk.dtypes) \
-                if op.output_types[0] == OutputType.dataframe \
+            ctx[out_chunk.key] = (
+                build_empty_df(out_chunk.dtypes)
+                if op.output_types[0] == OutputType.dataframe
                 else build_empty_series(out_chunk.dtype, name=out_chunk.name)
+            )
             return
 
-        func_name = getattr(op, '_func_name')
-        if func_name == 'cumcount':
+        func_name = getattr(op, "_func_name")
+        if func_name == "cumcount":
             ctx[out_chunk.key] = in_data.cumcount(ascending=op.ascending)
         else:
             result = getattr(in_data, func_name)(axis=op.axis)
@@ -130,27 +152,27 @@ class GroupByCumReductionOperand(DataFrameOperandMixin, DataFrameOperand):
 
 class GroupByCummin(GroupByCumReductionOperand):
     _op_type_ = opcodes.CUMMIN
-    _func_name = 'cummin'
+    _func_name = "cummin"
 
 
 class GroupByCummax(GroupByCumReductionOperand):
     _op_type_ = opcodes.CUMMAX
-    _func_name = 'cummax'
+    _func_name = "cummax"
 
 
 class GroupByCumsum(GroupByCumReductionOperand):
     _op_type_ = opcodes.CUMSUM
-    _func_name = 'cumsum'
+    _func_name = "cumsum"
 
 
 class GroupByCumprod(GroupByCumReductionOperand):
     _op_type_ = opcodes.CUMPROD
-    _func_name = 'cumprod'
+    _func_name = "cumprod"
 
 
 class GroupByCumcount(GroupByCumReductionOperand):
     _op_type_ = opcodes.CUMCOUNT
-    _func_name = 'cumcount'
+    _func_name = "cumcount"
 
 
 def cumcount(groupby, ascending: bool = True):

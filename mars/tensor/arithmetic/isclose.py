@@ -25,15 +25,30 @@ from .core import TensorBinOp
 class TensorIsclose(TensorBinOp):
     _op_type_ = OperandDef.ISCLOSE
 
-    _rtol = Float64Field('rtol')
-    _atol = Float64Field('atol')
-    _equal_nan = BoolField('equal_nan')
+    _rtol = Float64Field("rtol")
+    _atol = Float64Field("atol")
+    _equal_nan = BoolField("equal_nan")
 
-    def __init__(self, rtol=None, atol=None, equal_nan=None,
-                 casting='same_kind', err=None, sparse=False, **kw):
+    def __init__(
+        self,
+        rtol=None,
+        atol=None,
+        equal_nan=None,
+        casting="same_kind",
+        err=None,
+        sparse=False,
+        **kw
+    ):
         err = err if err is not None else np.geterr()
-        super().__init__(_rtol=rtol, _atol=atol, _equal_nan=equal_nan,
-                         _casting=casting, _err=err, sparse=sparse, **kw)
+        super().__init__(
+            _rtol=rtol,
+            _atol=atol,
+            _equal_nan=equal_nan,
+            _casting=casting,
+            _err=err,
+            sparse=sparse,
+            **kw
+        )
 
     @property
     def rtol(self):
@@ -49,25 +64,35 @@ class TensorIsclose(TensorBinOp):
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse() and \
-                np.isscalar(x2) and not np.isclose(x2, 0):
+        if (
+            hasattr(x1, "issparse")
+            and x1.issparse()
+            and np.isscalar(x2)
+            and not np.isclose(x2, 0)
+        ):
             return True
-        if hasattr(x2, 'issparse') and x2.issparse() and \
-                np.isscalar(x1) and not np.isclose(x1, 0):
+        if (
+            hasattr(x2, "issparse")
+            and x2.issparse()
+            and np.isscalar(x1)
+            and not np.isclose(x1, 0)
+        ):
             return True
         return False
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             a = op.lhs if np.isscalar(op.lhs) else inputs[0]
             b = op.rhs if np.isscalar(op.rhs) else inputs[-1]
 
-            ctx[op.outputs[0].key] = xp.isclose(a, b, atol=op.atol, rtol=op.rtol,
-                                                equal_nan=op.equal_nan)
+            ctx[op.outputs[0].key] = xp.isclose(
+                a, b, atol=op.atol, rtol=op.rtol, equal_nan=op.equal_nan
+            )
 
 
 def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):

@@ -43,8 +43,17 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
 
-from ._utils import to_binary, to_str, to_text, TypeDispatcher, \
-    tokenize, tokenize_int, register_tokenizer, insert_reversed_tuple, ceildiv
+from ._utils import (
+    to_binary,
+    to_str,
+    to_text,
+    TypeDispatcher,
+    tokenize,
+    tokenize_int,
+    register_tokenizer,
+    insert_reversed_tuple,
+    ceildiv,
+)
 from .typing import ChunkType, TileableType, EntityType, OperandType
 
 logger = logging.getLogger(__name__)
@@ -61,10 +70,11 @@ ceildiv = ceildiv
 
 
 # fix encoding conversion problem under windows
-if sys.platform == 'win32':  # pragma: no cover
+if sys.platform == "win32":  # pragma: no cover
+
     def _replace_default_encoding(func):
         def _fun(s, encoding=None):
-            encoding = encoding or getattr(sys.stdout, 'encoding', None) or 'mbcs'
+            encoding = encoding or getattr(sys.stdout, "encoding", None) or "mbcs"
             return func(s, encoding=encoding)
 
         _fun.__name__ = func.__name__
@@ -81,8 +91,7 @@ class AttributeDict(dict):
         try:
             return self[item]
         except KeyError:
-            raise AttributeError(
-                f"'AttributeDict' object has no attribute {item}")
+            raise AttributeError(f"'AttributeDict' object has no attribute {item}")
 
 
 def get_bool_environ(var_name: str) -> Optional[bool]:
@@ -119,11 +128,12 @@ def on_serialize_nsplits(value: Tuple[Tuple[int]]):
     return tuple(new_nsplits)
 
 
-_memory_size_indices = {'': 0, 'k': 1, 'm': 2, 'g': 3, 't': 4}
+_memory_size_indices = {"": 0, "k": 1, "m": 2, "g": 3, "t": 4}
 
 
-def calc_size_by_str(value: Union[str, int, None],
-                     total: Union[int, None]) -> Optional[int]:
+def calc_size_by_str(
+    value: Union[str, int, None], total: Union[int, None]
+) -> Optional[int]:
     if value is None:
         return None
     if isinstance(value, int):
@@ -141,41 +151,41 @@ def parse_readable_size(value: Union[str, int, float]) -> Tuple[float, bool]:
 
     value = value.strip().lower()
     num_pos = 0
-    while num_pos < len(value) and value[num_pos] in '0123456789.-':
+    while num_pos < len(value) and value[num_pos] in "0123456789.-":
         num_pos += 1
 
     value, suffix = value[:num_pos], value[num_pos:]
     suffix = suffix.strip()
-    if suffix.endswith('%'):
+    if suffix.endswith("%"):
         return float(value) / 100, True
 
     try:
         return float(value) * (1024 ** _memory_size_indices[suffix[:1]]), False
     except (ValueError, KeyError):
-        raise ValueError(f'Unknown limitation value: {value}')
+        raise ValueError(f"Unknown limitation value: {value}")
 
 
 def readable_size(size: int, trunc: bool = False) -> str:
     if size < 1024:
         ret_size = size
-        size_unit = ''
+        size_unit = ""
     elif 1024 <= size < 1024 ** 2:
         ret_size = size * 1.0 / 1024
-        size_unit = 'K'
+        size_unit = "K"
     elif 1024 ** 2 <= size < 1024 ** 3:
         ret_size = size * 1.0 / (1024 ** 2)
-        size_unit = 'M'
+        size_unit = "M"
     elif 1024 ** 3 <= size < 1024 ** 4:
         ret_size = size * 1.0 / (1024 ** 3)
-        size_unit = 'G'
+        size_unit = "G"
     else:
         ret_size = size * 1.0 / (1024 ** 4)
-        size_unit = 'T'
+        size_unit = "T"
 
     if not trunc:
-        return '{0:.2f}{1}'.format(ret_size, size_unit)
+        return "{0:.2f}{1}".format(ret_size, size_unit)
     else:
-        return f'{int(ret_size)}{size_unit}'
+        return f"{int(ret_size)}{size_unit}"
 
 
 _git_info = None
@@ -186,14 +196,14 @@ def git_info():
 
     global _git_info
     if _git_info is not None:
-        if _git_info == ':INVALID:':
+        if _git_info == ":INVALID:":
             return None
         else:
             return _git_info
 
     git_tuple = get_git_info()
     if git_tuple is None:
-        _git_info = ':INVALID:'
+        _git_info = ":INVALID:"
         return None
     else:
         _git_info = git_tuple
@@ -207,22 +217,23 @@ _local_occupied_ports = set()
 
 def _get_ports_from_netstat() -> Set[int]:
     import subprocess
+
     while True:
-        p = subprocess.Popen('netstat -a -n -p tcp'.split(), stdout=subprocess.PIPE)
+        p = subprocess.Popen("netstat -a -n -p tcp".split(), stdout=subprocess.PIPE)
         try:
             outs, _ = p.communicate(timeout=5)
             outs = outs.split(to_binary(os.linesep))
             occupied = set()
             for line in outs:
-                if b'.' not in line:
+                if b"." not in line:
                     continue
                 line = to_str(line)
                 for part in line.split():
                     # in windows, netstat uses ':' to separate host and port
-                    part = part.replace(':', '.')
-                    if '.' in part:
-                        _, port_str = part.rsplit('.', 1)
-                        if port_str == '*':
+                    part = part.replace(":", ".")
+                    if "." in part:
+                        _, port_str = part.rsplit(".", 1)
+                        if port_str == "*":
                             continue
                         port = int(port_str)
                         if LOW_PORT_BOUND <= port <= HIGH_PORT_BOUND:
@@ -234,22 +245,25 @@ def _get_ports_from_netstat() -> Set[int]:
             continue
 
 
-def get_next_port(typ: int = None,
-                  occupy: bool = True) -> int:
+def get_next_port(typ: int = None, occupy: bool = True) -> int:
     import psutil
-    if sys.platform.lower().startswith('win'):
+
+    if sys.platform.lower().startswith("win"):
         occupied = _get_ports_from_netstat()
     else:
         try:
             conns = psutil.net_connections()
             typ = typ or socket.SOCK_STREAM
-            occupied = set(sc.laddr.port for sc in conns
-                           if sc.type == typ and LOW_PORT_BOUND <= sc.laddr.port <= HIGH_PORT_BOUND)
+            occupied = set(
+                sc.laddr.port
+                for sc in conns
+                if sc.type == typ and LOW_PORT_BOUND <= sc.laddr.port <= HIGH_PORT_BOUND
+            )
         except psutil.AccessDenied:
             occupied = _get_ports_from_netstat()
 
     occupied.update(_local_occupied_ports)
-    randn = struct.unpack('<Q', os.urandom(8))[0]
+    randn = struct.unpack("<Q", os.urandom(8))[0]
     random.seed(int(time.time() * 1000000) | randn)
     randn = random.randint(0, 100000000)
 
@@ -262,7 +276,7 @@ def get_next_port(typ: int = None,
                 _local_occupied_ports.add(i)
             return i
         idx -= 1
-    raise SystemError('No ports available.')
+    raise SystemError("No ports available.")
 
 
 @functools.lru_cache(200)
@@ -278,17 +292,19 @@ class classproperty:
         return self.f(owner)
 
 
-def lazy_import(name: str,
-                package: str = None,
-                globals: Dict = None,  # pylint: disable=redefined-builtin
-                locals: Dict = None,  # pylint: disable=redefined-builtin
-                rename: str = None):
+def lazy_import(
+    name: str,
+    package: str = None,
+    globals: Dict = None,  # pylint: disable=redefined-builtin
+    locals: Dict = None,  # pylint: disable=redefined-builtin
+    rename: str = None,
+):
     rename = rename or name
-    prefix_name = name.split('.', 1)[0]
+    prefix_name = name.split(".", 1)[0]
 
     class LazyModule(object):
         def __getattr__(self, item):
-            if item.startswith('_pytest') or item in ('__bases__', '__test__'):
+            if item.startswith("_pytest") or item in ("__bases__", "__test__"):
                 raise AttributeError(item)
 
             real_mod = importlib.import_module(name, package=package)
@@ -309,10 +325,9 @@ def serialize_serializable(serializable, compress: bool = False):
 
     bio = io.BytesIO()
     header, buffers = serialize(serializable)
-    header['buf_sizes'] = [getattr(buf, 'nbytes', len(buf))
-                           for buf in buffers]
+    header["buf_sizes"] = [getattr(buf, "nbytes", len(buf)) for buf in buffers]
     s_header = pickle.dumps(header)
-    bio.write(struct.pack('<Q', len(s_header)))
+    bio.write(struct.pack("<Q", len(s_header)))
     bio.write(s_header)
     for buf in buffers:
         bio.write(buf)
@@ -327,9 +342,9 @@ def deserialize_serializable(ser_serializable: bytes):
     from .serialization import deserialize
 
     bio = io.BytesIO(ser_serializable)
-    s_header_length = struct.unpack('Q', bio.read(8))[0]
+    s_header_length = struct.unpack("Q", bio.read(8))[0]
     header2 = pickle.loads(bio.read(s_header_length))
-    buffers2 = [bio.read(s) for s in header2['buf_sizes']]
+    buffers2 = [bio.read(s) for s in header2["buf_sizes"]]
     return deserialize(header2, buffers2)
 
 
@@ -338,7 +353,8 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
     if ray:
         try:
             ray.register_custom_serializer(
-                obj_type, serializer=serializer, deserializer=deserializer)
+                obj_type, serializer=serializer, deserializer=deserializer
+            )
         except AttributeError:  # ray >= 1.0
             try:
                 from ray.worker import global_worker
@@ -346,10 +362,12 @@ def register_ray_serializer(obj_type, serializer=None, deserializer=None):
                 global_worker.check_connected()
                 context = global_worker.get_serialization_context()
                 context.register_custom_serializer(
-                    obj_type, serializer=serializer, deserializer=deserializer)
+                    obj_type, serializer=serializer, deserializer=deserializer
+                )
             except AttributeError:  # ray >= 1.2.0
                 ray.util.register_serializer(
-                    obj_type, serializer=serializer, deserializer=deserializer)
+                    obj_type, serializer=serializer, deserializer=deserializer
+                )
 
 
 def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
@@ -361,33 +379,34 @@ def calc_data_size(dt: Any, shape: Tuple[int] = None) -> int:
     if isinstance(dt, tuple):
         return sum(calc_data_size(c) for c in dt)
 
-    shape = getattr(dt, 'shape', None) or shape
-    if hasattr(dt, 'memory_usage') or hasattr(dt, 'groupby_obj'):
+    shape = getattr(dt, "shape", None) or shape
+    if hasattr(dt, "memory_usage") or hasattr(dt, "groupby_obj"):
         return sys.getsizeof(dt)
-    if hasattr(dt, 'nbytes'):
+    if hasattr(dt, "nbytes"):
         return max(sys.getsizeof(dt), dt.nbytes)
-    if hasattr(dt, 'shape') and len(dt.shape) == 0:
+    if hasattr(dt, "shape") and len(dt.shape) == 0:
         return 0
-    if hasattr(dt, 'dtypes') and shape is not None:
+    if hasattr(dt, "dtypes") and shape is not None:
         size = shape[0] * sum(dtype.itemsize for dtype in dt.dtypes)
         try:
             index_value_value = dt.index_value.value
-            if hasattr(index_value_value, 'dtype') \
-                    and not isinstance(index_value_value, IndexValue.RangeIndex):
+            if hasattr(index_value_value, "dtype") and not isinstance(
+                index_value_value, IndexValue.RangeIndex
+            ):
                 size += calc_data_size(index_value_value, shape=shape)
         except AttributeError:
             pass
         return size
-    if hasattr(dt, 'dtype') and shape is not None:
+    if hasattr(dt, "dtype") and shape is not None:
         return shape[0] * dt.dtype.itemsize
 
     # object chunk
     return sys.getsizeof(dt)
 
 
-def build_fetch_chunk(chunk: ChunkType,
-                      input_chunk_keys: List[str] = None,
-                      **kwargs) -> ChunkType:
+def build_fetch_chunk(
+    chunk: ChunkType, input_chunk_keys: List[str] = None, **kwargs
+) -> ChunkType:
     from .core.operand import ShuffleProxy
 
     chunk_op = chunk.op
@@ -404,8 +423,11 @@ def build_fetch_chunk(chunk: ChunkType,
             source_idxes.append(pinp.index)
             source_mappers.append(get_chunk_mapper_id(pinp))
         op = chunk_op.get_fetch_op_cls(chunk)(
-            source_keys=source_keys, source_idxes=source_idxes,
-            source_mappers=source_mappers, gpu=chunk.op.gpu)
+            source_keys=source_keys,
+            source_idxes=source_idxes,
+            source_mappers=source_mappers,
+            gpu=chunk.op.gpu,
+        )
     else:
         # for non-shuffle nodes, we build Fetch chunks
         # to replace original chunk
@@ -426,18 +448,25 @@ def build_fetch_tileable(tileable: TileableType) -> TileableType:
     params = tileable.params.copy()
 
     new_op = tileable_op.get_fetch_op_cls(tileable)(_id=tileable_op.id)
-    return new_op.new_tileables(None, chunks=chunks, nsplits=tileable.nsplits,
-                                _key=tileable.key, _id=tileable.id, **params)[0]
+    return new_op.new_tileables(
+        None,
+        chunks=chunks,
+        nsplits=tileable.nsplits,
+        _key=tileable.key,
+        _id=tileable.id,
+        **params,
+    )[0]
 
 
 def build_fetch(entity: EntityType) -> EntityType:
     from .core import CHUNK_TYPE, ENTITY_TYPE
+
     if isinstance(entity, CHUNK_TYPE):
         return build_fetch_chunk(entity)
     elif isinstance(entity, ENTITY_TYPE):
         return build_fetch_tileable(entity)
     else:
-        raise TypeError(f'Type {type(entity)} not supported')
+        raise TypeError(f"Type {type(entity)} not supported")
 
 
 def get_chunk_mapper_id(chunk: ChunkType) -> str:
@@ -446,6 +475,7 @@ def get_chunk_mapper_id(chunk: ChunkType) -> str:
         return op.mapper_id
     except AttributeError:
         from .core.operand import Fuse
+
         if isinstance(op, Fuse):
             return chunk.composed[-1].op.mapper_id
         else:  # pragma: no cover
@@ -458,6 +488,7 @@ def get_chunk_reducer_index(chunk: ChunkType) -> Tuple[int]:
         return op.reducer_index
     except AttributeError:
         from .core.operand import Fuse
+
         if isinstance(op, Fuse):
             return chunk.composed[0].op.reducer_index
         else:  # pragma: no cover
@@ -490,7 +521,9 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
         for i in range(ndim - 1):
             new_chunks = []
             for idx, cs in itertools.groupby(chunk_results, key=lambda t: t[0][:-1]):
-                new_chunks.append((idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1)))
+                new_chunks.append(
+                    (idx, xp.concatenate([c[1] for c in cs], axis=ndim - i - 1))
+                )
             chunk_results = new_chunks
         to_concat = [c[1] for c in chunk_results]
         if len(to_concat) == 1:
@@ -501,22 +534,22 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
         xdf = get_xdf(v)
         concats = []
         for _, cs in itertools.groupby(chunk_results, key=lambda t: t[0][0]):
-            concats.append(xdf.concat([c[1] for c in cs], axis='columns'))
-        return xdf.concat(concats, axis='index')
+            concats.append(xdf.concat([c[1] for c in cs], axis="columns"))
+        return xdf.concat(concats, axis="index")
     elif is_series(v):
         xdf = get_xdf(v)
         return xdf.concat([c[1] for c in chunk_results])
     elif is_index(v):
         xdf = get_xdf(v)
-        df = xdf.concat([xdf.DataFrame(index=r[1])
-                        for r in chunk_results])
+        df = xdf.concat([xdf.DataFrame(index=r[1]) for r in chunk_results])
         return df.index
     elif isinstance(v, pd.Categorical):
         categories = [r[1] for r in chunk_results]
         arrays = [np.asarray(r) for r in categories]
         array = np.concatenate(arrays)
-        return pd.Categorical(array, categories=categories[0].categories,
-                              ordered=categories[0].ordered)
+        return pd.Categorical(
+            array, categories=categories[0].categories, ordered=categories[0].ordered
+        )
     elif isinstance(v, GroupByWrapper):
         df = pd.concat([r[1].obj for r in chunk_results], axis=0)
         if not isinstance(v.keys, list):
@@ -528,11 +561,21 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
                     keys.append(pd.concat([r[1].keys[idx] for r in chunk_results]))
                 else:
                     keys.append(k)
-        grouped = GroupByWrapper(df, None, keys=keys, axis=v.axis, level=v.level,
-                                 exclusions=v.exclusions, selection=v.selection,
-                                 as_index=v.as_index, sort=v.sort,
-                                 group_keys=v.group_keys, squeeze=v.squeeze,
-                                 observed=v.observed, mutated=v.mutated)
+        grouped = GroupByWrapper(
+            df,
+            None,
+            keys=keys,
+            axis=v.axis,
+            level=v.level,
+            exclusions=v.exclusions,
+            selection=v.selection,
+            as_index=v.as_index,
+            sort=v.sort,
+            group_keys=v.group_keys,
+            squeeze=v.squeeze,
+            observed=v.observed,
+            mutated=v.mutated,
+        )
         return grouped.groupby_obj
     elif isinstance(v, (str, bytes, memoryview, BaseEstimator)):
         result = [r[1] for r in chunk_results]
@@ -548,9 +591,9 @@ def merge_chunks(chunk_results: List[Tuple[Tuple[int], Any]]) -> Any:
                 continue
             if result is None:
                 result = cr[1]
-                result = result.item() if hasattr(result, 'item') else result
+                result = result.item() if hasattr(result, "item") else result
             else:
-                raise TypeError(f'unsupported type {type(v)}')
+                raise TypeError(f"unsupported type {type(v)}")
         return result
 
 
@@ -580,15 +623,15 @@ def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tupl
 
 def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
     """ sort DataFrame on client according to `should_be_monotonic` attribute """
-    if hasattr(df, 'index_value'):
-        if getattr(df.index_value, 'should_be_monotonic', False):
+    if hasattr(df, "index_value"):
+        if getattr(df.index_value, "should_be_monotonic", False):
             try:
                 result.sort_index(inplace=True)
             except TypeError:  # pragma: no cover
                 # cudf doesn't support inplace
                 result = result.sort_index()
-        if hasattr(df, 'columns_value'):
-            if getattr(df.columns_value, 'should_be_monotonic', False):
+        if hasattr(df, "columns_value"):
+            if getattr(df.columns_value, "should_be_monotonic", False):
                 try:
                     result.sort_index(axis=1, inplace=True)
                 except TypeError:  # pragma: no cover
@@ -599,7 +642,7 @@ def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
 
 def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
     for tileable in tiled_tileables:
-        if getattr(tileable, 'shape', None) is None:
+        if getattr(tileable, "shape", None) is None:
             continue
         if any(pd.isnull(s) for s in tileable.shape):
             return True
@@ -611,19 +654,20 @@ def has_unknown_shape(*tiled_tileables: TileableType) -> bool:
 def sbytes(x: Any) -> bytes:
     # NB: bytes() in Python 3 has different semantic with Python 2, see: help(bytes)
     from numbers import Number
+
     if x is None or isinstance(x, Number):
-        return bytes(str(x), encoding='ascii')
+        return bytes(str(x), encoding="ascii")
     elif isinstance(x, list):
-        return bytes('[' + ', '.join([str(k) for k in x]) + ']', encoding='utf-8')
+        return bytes("[" + ", ".join([str(k) for k in x]) + "]", encoding="utf-8")
     elif isinstance(x, tuple):
-        return bytes('(' + ', '.join([str(k) for k in x]) + ')', encoding='utf-8')
+        return bytes("(" + ", ".join([str(k) for k in x]) + ")", encoding="utf-8")
     elif isinstance(x, str):
-        return bytes(x, encoding='utf-8')
+        return bytes(x, encoding="utf-8")
     else:
         return bytes(x)
 
 
-def kill_process_tree(pid: int , include_parent: bool = True):
+def kill_process_tree(pid: int, include_parent: bool = True):
     try:
         import psutil
     except ImportError:  # pragma: no cover
@@ -643,10 +687,16 @@ def kill_process_tree(pid: int , include_parent: bool = True):
         children.append(proc)
     for p in children:
         try:
-            if 'plasma' in p.name():
+            if "plasma" in p.name():
                 try:
-                    plasma_sock_dir = next((conn.laddr for conn in p.connections('unix')
-                                            if 'plasma' in conn.laddr), None)
+                    plasma_sock_dir = next(
+                        (
+                            conn.laddr
+                            for conn in p.connections("unix")
+                            if "plasma" in conn.laddr
+                        ),
+                        None,
+                    )
                 except psutil.AccessDenied:
                     pass
             p.kill()
@@ -657,9 +707,9 @@ def kill_process_tree(pid: int , include_parent: bool = True):
 
 
 def copy_tileables(tileables: List[TileableType], **kwargs):
-    inputs = kwargs.pop('inputs', None)
-    copy_key = kwargs.pop('copy_key', True)
-    copy_id = kwargs.pop('copy_id', True)
+    inputs = kwargs.pop("inputs", None)
+    copy_key = kwargs.pop("copy_key", True)
+    copy_id = kwargs.pop("copy_id", True)
     if kwargs:
         raise TypeError(f"got un unexpected keyword argument '{next(iter(kwargs))}'")
     if len(tileables) > 1:
@@ -675,9 +725,9 @@ def copy_tileables(tileables: List[TileableType], **kwargs):
     for t in tileables:
         params = t.params.copy()
         if copy_key:
-            params['_key'] = t.key
+            params["_key"] = t.key
         if copy_id:
-            params['_id'] = t.id
+            params["_id"] = t.id
         params.update(t.extra_params)
         kws.append(params)
     inputs = inputs or op.inputs
@@ -690,6 +740,7 @@ def require_not_none(obj: Any):
             return func
         else:
             return
+
     return wrap
 
 
@@ -701,9 +752,11 @@ def require_module(module: str):
             @functools.wraps(func)
             def inner(*args, **kwargs):
                 return func(*args, **kwargs)
+
             return inner
         except ImportError:
             return
+
     return wrap
 
 
@@ -711,8 +764,9 @@ def ignore_warning(func: Callable):
     @functools.wraps(func)
     def inner(*args, **kwargs):
         with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
+            warnings.simplefilter("ignore")
             return func(*args, **kwargs)
+
     return inner
 
 
@@ -748,8 +802,7 @@ def flatten(nested_iterable: Union[List, Tuple]) -> List:
     return flattened
 
 
-def stack_back(flattened: List,
-               raw: Union[List, Tuple]) -> Union[List, Tuple]:
+def stack_back(flattened: List, raw: Union[List, Tuple]) -> Union[List, Tuple]:
     """
     Organize a new iterable from a flattened list according to raw iterable.
 
@@ -793,10 +846,12 @@ def stack_back(flattened: List,
     return _stack(result, raw)
 
 
-def build_fuse_chunk(fused_chunks: List[ChunkType],
-                     fuse_op_cls: Type[OperandType],
-                     op_kw: Dict = None,
-                     chunk_kw: Dict = None) -> ChunkType:
+def build_fuse_chunk(
+    fused_chunks: List[ChunkType],
+    fuse_op_cls: Type[OperandType],
+    op_kw: Dict = None,
+    chunk_kw: Dict = None,
+) -> ChunkType:
     from .core.graph import ChunkGraph
 
     fuse_graph = ChunkGraph(fused_chunks)
@@ -808,12 +863,20 @@ def build_fuse_chunk(fused_chunks: List[ChunkType],
     head_chunk = fused_chunks[0]
     tail_chunk = fused_chunks[-1]
     tail_chunk_op = tail_chunk.op
-    fuse_op = fuse_op_cls(sparse=tail_chunk_op.sparse, gpu=tail_chunk_op.gpu,
-                          _key=tail_chunk_op.key, fuse_graph=fuse_graph,
-                          **(op_kw or dict()))
+    fuse_op = fuse_op_cls(
+        sparse=tail_chunk_op.sparse,
+        gpu=tail_chunk_op.gpu,
+        _key=tail_chunk_op.key,
+        fuse_graph=fuse_graph,
+        **(op_kw or dict()),
+    )
     return fuse_op.new_chunk(
-        head_chunk.inputs, kws=[tail_chunk.params], _key=tail_chunk.key,
-        _chunk=tail_chunk, **(chunk_kw or dict()))
+        head_chunk.inputs,
+        kws=[tail_chunk.params],
+        _key=tail_chunk.key,
+        _chunk=tail_chunk,
+        **(chunk_kw or dict()),
+    )
 
 
 def adapt_mars_docstring(doc: str) -> str:
@@ -829,27 +892,27 @@ def adapt_mars_docstring(doc: str) -> str:
     lines = []
     first_prompt = True
     prev_prompt = False
-    has_numpy = 'np.' in doc
-    has_pandas = 'pd.' in doc
+    has_numpy = "np." in doc
+    has_pandas = "pd." in doc
 
     for line in doc.splitlines():
         sp = line.strip()
-        if sp.startswith('>>>') or sp.startswith('...'):
+        if sp.startswith(">>>") or sp.startswith("..."):
             prev_prompt = True
             if first_prompt:
                 first_prompt = False
-                indent = ''.join(itertools.takewhile(lambda x: x in (' ', '\t'), line))
+                indent = "".join(itertools.takewhile(lambda x: x in (" ", "\t"), line))
                 if has_numpy:
-                    lines.extend([indent + '>>> import mars.tensor as mt'])
+                    lines.extend([indent + ">>> import mars.tensor as mt"])
                 if has_pandas:
-                    lines.extend([indent + '>>> import mars.dataframe as md'])
-            line = line.replace('np.', 'mt.').replace('pd.', 'md.')
+                    lines.extend([indent + ">>> import mars.dataframe as md"])
+            line = line.replace("np.", "mt.").replace("pd.", "md.")
         elif prev_prompt:
             prev_prompt = False
             if sp:
-                lines[-1] += '.execute()'
+                lines[-1] += ".execute()"
         lines.append(line)
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 class FixedSizeFileObject:
@@ -912,9 +975,11 @@ class FixedSizeFileObject:
 
 def is_object_dtype(dtype: np.dtype) -> bool:
     try:
-        return np.issubdtype(dtype, np.object_) \
-               or np.issubdtype(dtype, np.unicode_) \
-               or np.issubdtype(dtype, np.bytes_)
+        return (
+            np.issubdtype(dtype, np.object_)
+            or np.issubdtype(dtype, np.unicode_)
+            or np.issubdtype(dtype, np.bytes_)
+        )
     except TypeError:  # pragma: no cover
         return False
 
@@ -926,35 +991,38 @@ def get_dtype(dtype: Union[np.dtype, pd.api.extensions.ExtensionDtype]):
         return np.dtype(dtype)
 
 
-def calc_object_overhead(chunk: ChunkType,
-                         shape: Tuple[int]) -> int:
-    from .dataframe.core import DATAFRAME_CHUNK_TYPE, SERIES_CHUNK_TYPE, INDEX_CHUNK_TYPE
+def calc_object_overhead(chunk: ChunkType, shape: Tuple[int]) -> int:
+    from .dataframe.core import (
+        DATAFRAME_CHUNK_TYPE,
+        SERIES_CHUNK_TYPE,
+        INDEX_CHUNK_TYPE,
+    )
 
-    if not shape or np.isnan(shape[0]) or getattr(chunk, 'dtypes', None) is None:
+    if not shape or np.isnan(shape[0]) or getattr(chunk, "dtypes", None) is None:
         return 0
 
-    if isinstance(chunk, DATAFRAME_CHUNK_TYPE) \
-            and chunk.dtypes is not None:
+    if isinstance(chunk, DATAFRAME_CHUNK_TYPE) and chunk.dtypes is not None:
         n_strings = len([dt for dt in chunk.dtypes if is_object_dtype(dt)])
-        if chunk.index_value \
-                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value and is_object_dtype(
+            getattr(chunk.index_value.value, "dtype", None)
+        ):
             n_strings += 1
-    elif isinstance(chunk, SERIES_CHUNK_TYPE) \
-            and chunk.dtype is not None:
+    elif isinstance(chunk, SERIES_CHUNK_TYPE) and chunk.dtype is not None:
         n_strings = 1 if is_object_dtype(chunk.dtype) else 0
-        if chunk.index_value \
-                and is_object_dtype(getattr(chunk.index_value.value, 'dtype', None)):
+        if chunk.index_value and is_object_dtype(
+            getattr(chunk.index_value.value, "dtype", None)
+        ):
             n_strings += 1
-    elif isinstance(chunk, INDEX_CHUNK_TYPE) \
-            and chunk.dtype is not None:
+    elif isinstance(chunk, INDEX_CHUNK_TYPE) and chunk.dtype is not None:
         n_strings = 1 if is_object_dtype(chunk.dtype) else 0
     else:
         n_strings = 0
     return n_strings * shape[0] * OBJECT_FIELD_OVERHEAD
 
 
-def arrow_array_to_objects(obj: Union[pd.DataFrame, pd.Series]) \
-        -> Union[pd.DataFrame, pd.Series]:
+def arrow_array_to_objects(
+    obj: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.DataFrame, pd.Series]:
     from .dataframe.arrays import ArrowDtype
 
     if isinstance(obj, pd.DataFrame):
@@ -963,8 +1031,9 @@ def arrow_array_to_objects(obj: Union[pd.DataFrame, pd.Series]) \
             result = pd.DataFrame(columns=obj.columns)
             for i, dtype in enumerate(obj.dtypes):
                 if isinstance(dtype, ArrowDtype):
-                    result.iloc[:, i] = pd.Series(obj.iloc[:, i].to_numpy(),
-                                                  index=obj.index)
+                    result.iloc[:, i] = pd.Series(
+                        obj.iloc[:, i].to_numpy(), index=obj.index
+                    )
                 else:
                     result.iloc[:, i] = obj.iloc[:, i]
             obj = result
@@ -980,7 +1049,7 @@ def enter_current_session(func: Callable):
         from .deploy.oscar.session import AbstractSession, get_default_session
 
         # skip in some test cases
-        if not hasattr(ctx, 'get_current_session'):
+        if not hasattr(ctx, "get_current_session"):
             return func(cls, ctx, op)
 
         session = ctx.get_current_session()
@@ -1022,7 +1091,7 @@ class _QuietIOWrapper:
         return getattr(self.wrapped, item)
 
     def write(self, d):
-        if getattr(_io_quiet_local, 'is_wrapped', False):
+        if getattr(_io_quiet_local, "is_wrapped", False):
             return 0
         return self.wrapped.write(d)
 
@@ -1067,8 +1136,7 @@ def stringify_path(path: Union[str, os.PathLike]) -> str:
         raise TypeError("not a path-like object")
 
 
-def find_objects(nested: Union[List, Dict],
-                 types: Union[Type, Tuple[Type]]) -> List:
+def find_objects(nested: Union[List, Dict], types: Union[Type, Tuple[Type]]) -> List:
     found = []
     stack = [nested]
 
@@ -1086,8 +1154,7 @@ def find_objects(nested: Union[List, Dict],
     return found
 
 
-def replace_objects(nested: Union[List, Dict],
-                    mapping: Dict) -> Union[List, Dict]:
+def replace_objects(nested: Union[List, Dict], mapping: Dict) -> Union[List, Dict]:
     if not mapping:
         return nested
 
@@ -1120,21 +1187,21 @@ def dataslots(cls):
     #  after a class has been created.
 
     # Make sure __slots__ isn't already set.
-    if '__slots__' in cls.__dict__:  # pragma: no cover
-        raise TypeError(f'{cls.__name__} already specifies __slots__')
+    if "__slots__" in cls.__dict__:  # pragma: no cover
+        raise TypeError(f"{cls.__name__} already specifies __slots__")
 
     # Create a new dict for our new class.
     cls_dict = dict(cls.__dict__)
     field_names = tuple(f.name for f in dataclasses.fields(cls))
-    cls_dict['__slots__'] = field_names
+    cls_dict["__slots__"] = field_names
     for field_name in field_names:
         # Remove our attributes, if present. They'll still be
         #  available in _MARKER.
         cls_dict.pop(field_name, None)
     # Remove __dict__ itself.
-    cls_dict.pop('__dict__', None)
+    cls_dict.pop("__dict__", None)
     # And finally create the class.
-    qualname = getattr(cls, '__qualname__', None)
+    qualname = getattr(cls, "__qualname__", None)
     cls = type(cls)(cls.__name__, cls.__bases__, cls_dict)
     if qualname is not None:
         cls.__qualname__ = qualname
@@ -1142,27 +1209,32 @@ def dataslots(cls):
 
 
 def get_params_fields(chunk):
-    from .dataframe.core import DATAFRAME_CHUNK_TYPE, \
-        DATAFRAME_GROUPBY_CHUNK_TYPE, SERIES_GROUPBY_CHUNK_TYPE
+    from .dataframe.core import (
+        DATAFRAME_CHUNK_TYPE,
+        DATAFRAME_GROUPBY_CHUNK_TYPE,
+        SERIES_GROUPBY_CHUNK_TYPE,
+    )
 
     fields = list(chunk.params)
     if isinstance(chunk, DATAFRAME_CHUNK_TYPE):
-        fields.remove('dtypes')
-        fields.remove('columns_value')
+        fields.remove("dtypes")
+        fields.remove("columns_value")
     elif isinstance(chunk, DATAFRAME_GROUPBY_CHUNK_TYPE):
-        fields.remove('dtypes')
-        fields.remove('key_dtypes')
-        fields.remove('columns_value')
+        fields.remove("dtypes")
+        fields.remove("key_dtypes")
+        fields.remove("columns_value")
     elif isinstance(chunk, SERIES_GROUPBY_CHUNK_TYPE):
-        fields.remove('key_dtypes')
+        fields.remove("key_dtypes")
 
     return fields
 
 
 # Please refer to https://bugs.python.org/issue41451
 try:
+
     class _Dummy(ABC):
-        __slots__ = ('__weakref__',)
+        __slots__ = ("__weakref__",)
+
     abc_type_require_weakref_slot = True
 except TypeError:
     abc_type_require_weakref_slot = False
@@ -1177,7 +1249,9 @@ def patch_asyncio_task_create_time():  # pragma: no cover
         new_loop = True
     loop_class = loop.__class__
     # Save raw loop_class.create_task and make multiple apply idempotent
-    loop_create_task = getattr(patch_asyncio_task_create_time, 'loop_create_task', loop_class.create_task)
+    loop_create_task = getattr(
+        patch_asyncio_task_create_time, "loop_create_task", loop_class.create_task
+    )
     patch_asyncio_task_create_time.loop_create_task = loop_create_task
 
     def new_loop_create_task(*args, **kwargs):
@@ -1192,47 +1266,76 @@ def patch_asyncio_task_create_time():  # pragma: no cover
 
 
 async def asyncio_task_timeout_detector(
-        check_interval: int, task_timeout_seconds: int, task_exclude_filters: List[str]):
-    task_exclude_filters.append('asyncio_task_timeout_detector')
+    check_interval: int, task_timeout_seconds: int, task_exclude_filters: List[str]
+):
+    task_exclude_filters.append("asyncio_task_timeout_detector")
     while True:  # pragma: no cover
         await asyncio.sleep(check_interval)
         loop = asyncio.get_running_loop()
-        current_time = time.time()  # avoid invoke `time.time()` frequently if we have plenty of unfinished tasks.
+        current_time = (
+            time.time()
+        )  # avoid invoke `time.time()` frequently if we have plenty of unfinished tasks.
         for task in asyncio.all_tasks(loop=loop):
             # Some task may be create before `patch_asyncio_task_create_time` applied, take them as never timeout.
-            create_time = getattr(task, '__mars_asyncio_task_create_time__', current_time)
+            create_time = getattr(
+                task, "__mars_asyncio_task_create_time__", current_time
+            )
             if current_time - create_time >= task_timeout_seconds:
                 stack = io.StringIO()
                 task.print_stack(file=stack)
                 task_str = str(task)
-                if any(excluded_task in task_str for excluded_task in task_exclude_filters):
+                if any(
+                    excluded_task in task_str for excluded_task in task_exclude_filters
+                ):
                     continue
-                logger.warning('''Task %s in event loop %s doesn't finish in %s seconds. %s''',
-                               task, loop, time.time() - create_time, stack.getvalue())
+                logger.warning(
+                    """Task %s in event loop %s doesn't finish in %s seconds. %s""",
+                    task,
+                    loop,
+                    time.time() - create_time,
+                    stack.getvalue(),
+                )
 
 
 def register_asyncio_task_timeout_detector(
-        check_interval: int = None,
-        task_timeout_seconds: int = None,
-        task_exclude_filters: List[str] = None) -> Optional[asyncio.Task]:  # pragma: no cover
+    check_interval: int = None,
+    task_timeout_seconds: int = None,
+    task_exclude_filters: List[str] = None,
+) -> Optional[asyncio.Task]:  # pragma: no cover
     """Register a asyncio task which print timeout task periodically."""
-    check_interval = check_interval or int(os.environ.get('MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_CHECK_INTERVAL', -1))
+    check_interval = check_interval or int(
+        os.environ.get("MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_CHECK_INTERVAL", -1)
+    )
     if check_interval > 0:
         patch_asyncio_task_create_time()
         task_timeout_seconds = task_timeout_seconds or int(
-            os.environ.get('MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_SECONDS', check_interval))
+            os.environ.get("MARS_DEBUG_ASYNCIO_TASK_TIMEOUT_SECONDS", check_interval)
+        )
         if not task_exclude_filters:
             # Ignore mars/oscar by default since it has some long-running coroutines.
-            task_exclude_filters = os.environ.get('MARS_DEBUG_ASYNCIO_TASK_EXCLUDE_FILTERS', 'mars/oscar')
-            task_exclude_filters = task_exclude_filters.split(';')
+            task_exclude_filters = os.environ.get(
+                "MARS_DEBUG_ASYNCIO_TASK_EXCLUDE_FILTERS", "mars/oscar"
+            )
+            task_exclude_filters = task_exclude_filters.split(";")
         if sys.version_info[:2] < (3, 7):
-            logger.warning('asyncio tasks timeout detector is not supported under python %s', sys.version)
+            logger.warning(
+                "asyncio tasks timeout detector is not supported under python %s",
+                sys.version,
+            )
         else:
             loop = asyncio.get_running_loop()
-            logger.info('Create asyncio tasks timeout detector with check_interval %s task_timeout_seconds %s '
-                        'task_exclude_filters %s', check_interval, task_timeout_seconds, task_exclude_filters)
-            return loop.create_task(asyncio_task_timeout_detector(
-                check_interval, task_timeout_seconds, task_exclude_filters))
+            logger.info(
+                "Create asyncio tasks timeout detector with check_interval %s task_timeout_seconds %s "
+                "task_exclude_filters %s",
+                check_interval,
+                task_timeout_seconds,
+                task_exclude_filters,
+            )
+            return loop.create_task(
+                asyncio_task_timeout_detector(
+                    check_interval, task_timeout_seconds, task_exclude_filters
+                )
+            )
     else:
         return None
 
@@ -1240,7 +1343,7 @@ def register_asyncio_task_timeout_detector(
 def ensure_own_data(data: np.ndarray) -> np.ndarray:
     if not isinstance(data, np.ndarray):
         return data
-    if not data.flags['OWNDATA']:
+    if not data.flags["OWNDATA"]:
         return data.copy()
     else:
         return data
@@ -1258,8 +1361,10 @@ def get_chunk_key_to_data_keys(chunk_graph):
         else:
             keys = []
             for succ in chunk_graph.iter_successors(chunk):
-                if isinstance(succ.op, MapReduceOperand) and \
-                        succ.op.stage == OperandStage.reduce:
+                if (
+                    isinstance(succ.op, MapReduceOperand)
+                    and succ.op.stage == OperandStage.reduce
+                ):
                     for key in succ.op.get_dependent_data_keys():
                         if key not in keys:
                             keys.append(key)
@@ -1272,7 +1377,7 @@ class ModulePlaceholder:
         self._mod_name = mod_name
 
     def _raises(self):
-        raise AttributeError(f'{self._mod_name} is required but not installed.')
+        raise AttributeError(f"{self._mod_name} is required but not installed.")
 
     def __getattr__(self, key):
         self._raises()
@@ -1311,13 +1416,13 @@ def merge_dict(dest: Dict, src: Dict, path=None, overwrite=True):
             elif overwrite:
                 dest[key] = src[key]
             else:
-                raise ValueError('Conflict at %s' % '.'.join(path + [str(key)]))
+                raise ValueError("Conflict at %s" % ".".join(path + [str(key)]))
         else:
             dest[key] = src[key]
     return dest
 
 
-def flatten_dict_to_nested_dict(flatten_dict: Dict, sep='.') -> Dict:
+def flatten_dict_to_nested_dict(flatten_dict: Dict, sep=".") -> Dict:
     """
     Return nested dict from flatten dict.
 
@@ -1343,7 +1448,7 @@ def flatten_dict_to_nested_dict(flatten_dict: Dict, sep='.') -> Dict:
         for i, sub_key in enumerate(sub_keys):
             if i == len(sub_keys) - 1:
                 if sub_key in sub_nested_dict:
-                    raise ValueError(f'Key {k} conflict in sub key {sub_key}.')
+                    raise ValueError(f"Key {k} conflict in sub key {sub_key}.")
                 sub_nested_dict[sub_key] = flatten_dict[k]
             else:
                 if sub_key not in sub_nested_dict:

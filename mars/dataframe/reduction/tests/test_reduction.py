@@ -29,11 +29,27 @@ from ...core import DataFrame, IndexValue, Series, OutputType
 from ...datasource.series import from_pandas as from_pandas_series
 from ...datasource.dataframe import from_pandas as from_pandas_df
 from ...merge import DataFrameConcat
-from .. import DataFrameSum, DataFrameProd, DataFrameMin, \
-    DataFrameMax, DataFrameCount, DataFrameMean, DataFrameVar, DataFrameAll, \
-    DataFrameAny, DataFrameSkew, DataFrameKurtosis, DataFrameSem, \
-    DataFrameAggregate, DataFrameCummin, DataFrameCummax, DataFrameCumprod, \
-    DataFrameCumsum, DataFrameNunique, CustomReduction
+from .. import (
+    DataFrameSum,
+    DataFrameProd,
+    DataFrameMin,
+    DataFrameMax,
+    DataFrameCount,
+    DataFrameMean,
+    DataFrameVar,
+    DataFrameAll,
+    DataFrameAny,
+    DataFrameSkew,
+    DataFrameKurtosis,
+    DataFrameSem,
+    DataFrameAggregate,
+    DataFrameCummin,
+    DataFrameCummax,
+    DataFrameCumprod,
+    DataFrameCumsum,
+    DataFrameNunique,
+    CustomReduction,
+)
 from ..aggregation import where_function
 from ..core import ReductionCompiler
 
@@ -45,22 +61,22 @@ class FunctionOptions(NamedTuple):
 
 
 reduction_functions = [
-    ('sum', DataFrameSum, FunctionOptions()),
-    ('prod', DataFrameProd, FunctionOptions()),
-    ('min', DataFrameMin, FunctionOptions()),
-    ('max', DataFrameMax, FunctionOptions()),
-    ('count', DataFrameCount, FunctionOptions(has_skipna=False)),
-    ('mean', DataFrameMean, FunctionOptions()),
-    ('var', DataFrameVar, FunctionOptions()),
-    ('skew', DataFrameSkew, FunctionOptions()),
-    ('kurt', DataFrameKurtosis, FunctionOptions()),
-    ('sem', DataFrameSem, FunctionOptions()),
-    ('all', DataFrameAll, FunctionOptions(has_numeric_only=False, has_bool_only=True)),
-    ('any', DataFrameAny, FunctionOptions(has_numeric_only=False, has_bool_only=True)),
+    ("sum", DataFrameSum, FunctionOptions()),
+    ("prod", DataFrameProd, FunctionOptions()),
+    ("min", DataFrameMin, FunctionOptions()),
+    ("max", DataFrameMax, FunctionOptions()),
+    ("count", DataFrameCount, FunctionOptions(has_skipna=False)),
+    ("mean", DataFrameMean, FunctionOptions()),
+    ("var", DataFrameVar, FunctionOptions()),
+    ("skew", DataFrameSkew, FunctionOptions()),
+    ("kurt", DataFrameKurtosis, FunctionOptions()),
+    ("sem", DataFrameSem, FunctionOptions()),
+    ("all", DataFrameAll, FunctionOptions(has_numeric_only=False, has_bool_only=True)),
+    ("any", DataFrameAny, FunctionOptions(has_numeric_only=False, has_bool_only=True)),
 ]
 
 
-@pytest.mark.parametrize('func_name,op,func_opts', reduction_functions)
+@pytest.mark.parametrize("func_name,op,func_opts", reduction_functions)
 def test_series_reduction(func_name, op, func_opts: FunctionOptions):
     data = pd.Series(range(20), index=[str(i) for i in range(20)])
     series = getattr(from_pandas_series(data, chunk_size=3), func_name)()
@@ -76,9 +92,9 @@ def test_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert isinstance(series.chunks[0].inputs[0].op, DataFrameConcat)
     assert len(series.chunks[0].inputs[0].inputs) == 2
 
-    data = pd.Series(np.random.rand(25), name='a')
+    data = pd.Series(np.random.rand(25), name="a")
     if func_opts.has_skipna:
-        kwargs = dict(axis='index', skipna=False)
+        kwargs = dict(axis="index", skipna=False)
     else:
         kwargs = dict()
     series = getattr(from_pandas_series(data, chunk_size=7), func_name)(**kwargs)
@@ -94,10 +110,12 @@ def test_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert len(series.chunks[0].inputs[0].inputs) == 4
 
 
-@pytest.mark.parametrize('func_name,op,func_opts', reduction_functions)
+@pytest.mark.parametrize("func_name,op,func_opts", reduction_functions)
 def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
-    data = pd.DataFrame({'a': list(range(20)), 'b': list(range(20, 0, -1))},
-                        index=[str(i) for i in range(20)])
+    data = pd.DataFrame(
+        {"a": list(range(20)), "b": list(range(20, 0, -1))},
+        index=[str(i) for i in range(20)],
+    )
     reduction_df = getattr(from_pandas_df(data, chunk_size=3), func_name)()
 
     assert isinstance(reduction_df, Series)
@@ -116,8 +134,10 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
     reduction_df = getattr(from_pandas_df(data, chunk_size=3), func_name)()
 
     assert isinstance(reduction_df, Series)
-    assert isinstance(reduction_df.index_value._index_value,
-                      (IndexValue.RangeIndex, IndexValue.Int64Index))
+    assert isinstance(
+        reduction_df.index_value._index_value,
+        (IndexValue.RangeIndex, IndexValue.Int64Index),
+    )
     assert reduction_df.shape == (10,)
 
     reduction_df = tile(reduction_df)
@@ -129,7 +149,9 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
     assert len(reduction_df.chunks[0].inputs[0].inputs) == 2
 
     data = pd.DataFrame(np.random.rand(20, 20), index=[str(i) for i in range(20)])
-    reduction_df = getattr(from_pandas_df(data, chunk_size=4), func_name)(axis='columns')
+    reduction_df = getattr(from_pandas_df(data, chunk_size=4), func_name)(
+        axis="columns"
+    )
 
     assert reduction_df.shape == (20,)
 
@@ -146,16 +168,16 @@ def test_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
 
 
 cum_reduction_functions = [
-    ('cummin', DataFrameCummin, FunctionOptions()),
-    ('cummax', DataFrameCummax, FunctionOptions()),
-    ('cumprod', DataFrameCumprod, FunctionOptions()),
-    ('cumsum', DataFrameCumsum, FunctionOptions()),
+    ("cummin", DataFrameCummin, FunctionOptions()),
+    ("cummax", DataFrameCummax, FunctionOptions()),
+    ("cumprod", DataFrameCumprod, FunctionOptions()),
+    ("cumsum", DataFrameCumsum, FunctionOptions()),
 ]
 
 
-@pytest.mark.parametrize('func_name,op,func_opts', cum_reduction_functions)
+@pytest.mark.parametrize("func_name,op,func_opts", cum_reduction_functions)
 def test_cum_series_reduction(func_name, op, func_opts: FunctionOptions):
-    data = pd.Series({'a': list(range(20))}, index=[str(i) for i in range(20)])
+    data = pd.Series({"a": list(range(20))}, index=[str(i) for i in range(20)])
     series = getattr(from_pandas_series(data, chunk_size=3), func_name)()
 
     assert isinstance(series, Series)
@@ -170,9 +192,9 @@ def test_cum_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert series.chunks[-1].inputs[-1].op.stage == OperandStage.map
     assert len(series.chunks[-1].inputs) == 7
 
-    data = pd.Series(np.random.rand(25), name='a')
+    data = pd.Series(np.random.rand(25), name="a")
     if func_opts.has_skipna:
-        kwargs = dict(axis='index', skipna=False)
+        kwargs = dict(axis="index", skipna=False)
     else:
         kwargs = dict()
     series = getattr(from_pandas_series(data, chunk_size=7), func_name)(**kwargs)
@@ -190,10 +212,12 @@ def test_cum_series_reduction(func_name, op, func_opts: FunctionOptions):
     assert len(series.chunks[-1].inputs) == 4
 
 
-@pytest.mark.parametrize('func_name,op,func_opts', cum_reduction_functions)
+@pytest.mark.parametrize("func_name,op,func_opts", cum_reduction_functions)
 def test_cum_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
-    data = pd.DataFrame({'a': list(range(20)), 'b': list(range(20, 0, -1))},
-                        index=[str(i) for i in range(20)])
+    data = pd.DataFrame(
+        {"a": list(range(20)), "b": list(range(20, 0, -1))},
+        index=[str(i) for i in range(20)],
+    )
     reduction_df = getattr(from_pandas_df(data, chunk_size=3), func_name)()
 
     assert isinstance(reduction_df, DataFrame)
@@ -227,8 +251,10 @@ def test_cum_dataframe_reduction(func_name, op, func_opts: FunctionOptions):
 
 
 def test_nunique():
-    data = pd.DataFrame(np.random.randint(0, 6, size=(20, 10)),
-                        columns=['c' + str(i) for i in range(10)])
+    data = pd.DataFrame(
+        np.random.randint(0, 6, size=(20, 10)),
+        columns=["c" + str(i) for i in range(10)],
+    )
     df = from_pandas_df(data, chunk_size=3)
     result = df.nunique()
 
@@ -261,8 +287,19 @@ def test_nunique():
 
 def test_dataframe_aggregate():
     data = pd.DataFrame(np.random.rand(20, 19))
-    agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any',
-                 'skew', 'kurt', 'sem']
+    agg_funcs = [
+        "sum",
+        "min",
+        "max",
+        "mean",
+        "var",
+        "std",
+        "all",
+        "any",
+        "skew",
+        "kurt",
+        "sem",
+    ]
 
     df = from_pandas_df(data)
     result = tile(df.agg(agg_funcs))
@@ -275,18 +312,18 @@ def test_dataframe_aggregate():
 
     df = from_pandas_df(data, chunk_size=(3, 4))
 
-    result = tile(df.agg('sum'))
+    result = tile(df.agg("sum"))
     assert len(result.chunks) == 5
     assert result.shape == (data.shape[1],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[1]))
     assert result.op.output_types[0] == OutputType.series
-    assert result.op.func == ['sum']
+    assert result.op.func == ["sum"]
     agg_chunk = result.chunks[0]
     assert agg_chunk.shape == (4,)
     assert list(agg_chunk.index_value.to_pandas()) == list(range(4))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = tile(df.agg('sum', axis=1))
+    result = tile(df.agg("sum", axis=1))
     assert len(result.chunks) == 7
     assert result.shape == (data.shape[0],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[0]))
@@ -296,12 +333,12 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == list(range(3))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    result = tile(df.agg('var', axis=1))
+    result = tile(df.agg("var", axis=1))
     assert len(result.chunks) == 7
     assert result.shape == (data.shape[0],)
     assert list(result.index_value.to_pandas()) == list(range(data.shape[0]))
     assert result.op.output_types[0] == OutputType.series
-    assert result.op.func == ['var']
+    assert result.op.func == ["var"]
     agg_chunk = result.chunks[0]
     assert agg_chunk.shape == (3,)
     assert list(agg_chunk.index_value.to_pandas()) == list(range(3))
@@ -333,8 +370,12 @@ def test_dataframe_aggregate():
     assert list(agg_chunk.index_value.to_pandas()) == list(range(3))
     assert agg_chunk.op.stage == OperandStage.agg
 
-    dict_fun = {0: 'sum', 2: ['var', 'max'], 9: ['mean', 'var', 'std']}
-    all_cols = set(reduce(operator.add, [[v] if isinstance(v, str) else v for v in dict_fun.values()]))
+    dict_fun = {0: "sum", 2: ["var", "max"], 9: ["mean", "var", "std"]}
+    all_cols = set(
+        reduce(
+            operator.add, [[v] if isinstance(v, str) else v for v in dict_fun.values()]
+        )
+    )
     result = tile(df.agg(dict_fun))
     assert len(result.chunks) == 2
     assert result.shape == (len(all_cols), len(dict_fun))
@@ -350,15 +391,26 @@ def test_dataframe_aggregate():
     assert agg_chunk.op.stage == OperandStage.agg
 
     with pytest.raises(TypeError):
-        df.agg(sum_0='sum', mean_0='mean')
+        df.agg(sum_0="sum", mean_0="mean")
     with pytest.raises(NotImplementedError):
-        df.agg({0: ['sum', 'min', 'var'], 9: ['mean', 'var', 'std']}, axis=1)
+        df.agg({0: ["sum", "min", "var"], 9: ["mean", "var", "std"]}, axis=1)
 
 
 def test_series_aggregate():
-    data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name='a')
-    agg_funcs = ['sum', 'min', 'max', 'mean', 'var', 'std', 'all', 'any',
-                 'skew', 'kurt', 'sem']
+    data = pd.Series(np.random.rand(20), index=[str(i) for i in range(20)], name="a")
+    agg_funcs = [
+        "sum",
+        "min",
+        "max",
+        "mean",
+        "var",
+        "std",
+        "all",
+        "any",
+        "skew",
+        "kurt",
+        "sem",
+    ]
 
     series = from_pandas_series(data)
 
@@ -371,7 +423,7 @@ def test_series_aggregate():
 
     series = from_pandas_series(data, chunk_size=3)
 
-    result = tile(series.agg('sum'))
+    result = tile(series.agg("sum"))
     assert len(result.chunks) == 1
     assert result.shape == ()
     assert result.op.output_types[0] == OutputType.scalar
@@ -391,7 +443,7 @@ def test_series_aggregate():
     assert agg_chunk.op.stage == OperandStage.agg
 
     with pytest.raises(TypeError):
-        series.agg(sum_0=(0, 'sum'), mean_0=(0, 'mean'))
+        series.agg(sum_0=(0, "sum"), mean_0=(0, "mean"))
 
 
 def test_compile_function():
@@ -419,84 +471,107 @@ def test_compile_function():
         result = compiler.compile()
         # check pre_funcs
         assert len(result.pre_funcs) == 1
-        assert 'pow' in result.pre_funcs[0].func.__source__
+        assert "pow" in result.pre_funcs[0].func.__source__
         # check agg_funcs
         assert len(result.agg_funcs) == 1
-        assert result.agg_funcs[0].map_func_name == 'count'
-        assert result.agg_funcs[0].agg_func_name == 'sum'
+        assert result.agg_funcs[0].map_func_name == "count"
+        assert result.agg_funcs[0].agg_func_name == "sum"
         # check post_funcs
         assert len(result.post_funcs) == 1
-        assert result.post_funcs[0].func_name == '<lambda_0>'
-        assert 'add' in result.post_funcs[0].func.__source__
+        assert result.post_funcs[0].func_name == "<lambda_0>"
+        assert "add" in result.post_funcs[0].func.__source__
 
-        compiler.add_function(lambda x: -x.prod() ** 2 + (1 + (x ** 2).count()), ndim=ndim)
+        compiler.add_function(
+            lambda x: -x.prod() ** 2 + (1 + (x ** 2).count()), ndim=ndim
+        )
         result = compiler.compile()
         # check pre_funcs
         assert len(result.pre_funcs) == 2
-        assert 'pow' in result.pre_funcs[0].func.__source__ \
-            or 'pow' in result.pre_funcs[1].func.__source__
-        assert 'pow' not in result.pre_funcs[0].func.__source__ \
-            or 'pow' not in result.pre_funcs[1].func.__source__
+        assert (
+            "pow" in result.pre_funcs[0].func.__source__
+            or "pow" in result.pre_funcs[1].func.__source__
+        )
+        assert (
+            "pow" not in result.pre_funcs[0].func.__source__
+            or "pow" not in result.pre_funcs[1].func.__source__
+        )
         # check agg_funcs
         assert len(result.agg_funcs) == 2
-        assert set(result.agg_funcs[i].map_func_name for i in range(2)) == {'count', 'prod'}
-        assert set(result.agg_funcs[i].agg_func_name for i in range(2)) == {'sum', 'prod'}
+        assert set(result.agg_funcs[i].map_func_name for i in range(2)) == {
+            "count",
+            "prod",
+        }
+        assert set(result.agg_funcs[i].agg_func_name for i in range(2)) == {
+            "sum",
+            "prod",
+        }
         # check post_funcs
         assert len(result.post_funcs) == 2
-        assert result.post_funcs[0].func_name == '<lambda_0>'
-        assert 'add' in result.post_funcs[0].func.__source__
-        assert 'add' in result.post_funcs[1].func.__source__
+        assert result.post_funcs[0].func_name == "<lambda_0>"
+        assert "add" in result.post_funcs[0].func.__source__
+        assert "add" in result.post_funcs[1].func.__source__
 
         compiler = ReductionCompiler(store_source=True)
-        compiler.add_function(lambda x: where_function(x.all(), x.count(), 0), ndim=ndim)
+        compiler.add_function(
+            lambda x: where_function(x.all(), x.count(), 0), ndim=ndim
+        )
         result = compiler.compile()
         # check pre_funcs
         assert len(result.pre_funcs) == 1
         assert result.pre_funcs[0].input_key == result.pre_funcs[0].output_key
         # check agg_funcs
         assert len(result.agg_funcs) == 2
-        assert set(result.agg_funcs[i].map_func_name for i in range(2)) == {'all', 'count'}
-        assert set(result.agg_funcs[i].agg_func_name for i in range(2)) == {'sum', 'all'}
+        assert set(result.agg_funcs[i].map_func_name for i in range(2)) == {
+            "all",
+            "count",
+        }
+        assert set(result.agg_funcs[i].agg_func_name for i in range(2)) == {
+            "sum",
+            "all",
+        }
         # check post_funcs
         assert len(result.post_funcs) == 1
         if ndim == 1:
-            assert 'np.where' in result.post_funcs[0].func.__source__
+            assert "np.where" in result.post_funcs[0].func.__source__
         else:
-            assert 'np.where' not in result.post_funcs[0].func.__source__
-            assert '.where' in result.post_funcs[0].func.__source__
+            assert "np.where" not in result.post_funcs[0].func.__source__
+            assert ".where" in result.post_funcs[0].func.__source__
 
     # test agg for specific columns
     compiler = ReductionCompiler(store_source=True)
-    compiler.add_function(lambda x: 1 + x.sum(), ndim=2, cols=['a', 'b'])
-    compiler.add_function(lambda x: -1 + x.sum(), ndim=2, cols=['b', 'c'])
+    compiler.add_function(lambda x: 1 + x.sum(), ndim=2, cols=["a", "b"])
+    compiler.add_function(lambda x: -1 + x.sum(), ndim=2, cols=["b", "c"])
     result = compiler.compile()
     # check pre_funcs
     assert len(result.pre_funcs) == 1
-    assert set(result.pre_funcs[0].columns) == set('abc')
+    assert set(result.pre_funcs[0].columns) == set("abc")
     # check agg_funcs
     assert len(result.agg_funcs) == 1
-    assert result.agg_funcs[0].map_func_name == 'sum'
-    assert result.agg_funcs[0].agg_func_name == 'sum'
+    assert result.agg_funcs[0].map_func_name == "sum"
+    assert result.agg_funcs[0].agg_func_name == "sum"
     # check post_funcs
     assert len(result.post_funcs) == 2
-    assert set(''.join(sorted(result.post_funcs[i].columns)) for i in range(2)) == {'ab', 'bc'}
+    assert set("".join(sorted(result.post_funcs[i].columns)) for i in range(2)) == {
+        "ab",
+        "bc",
+    }
 
     # test agg for multiple columns
     compiler = ReductionCompiler(store_source=True)
-    compiler.add_function(lambda x: x.sum(), ndim=2, cols=['a'])
-    compiler.add_function(lambda x: x.sum(), ndim=2, cols=['b'])
-    compiler.add_function(lambda x: x.min(), ndim=2, cols=['c'])
+    compiler.add_function(lambda x: x.sum(), ndim=2, cols=["a"])
+    compiler.add_function(lambda x: x.sum(), ndim=2, cols=["b"])
+    compiler.add_function(lambda x: x.min(), ndim=2, cols=["c"])
     result = compiler.compile()
     # check pre_funcs
     assert len(result.pre_funcs) == 1
-    assert set(result.pre_funcs[0].columns) == set('abc')
+    assert set(result.pre_funcs[0].columns) == set("abc")
     # check agg_funcs
     assert len(result.agg_funcs) == 2
-    assert result.agg_funcs[0].map_func_name == 'sum'
-    assert result.agg_funcs[0].agg_func_name == 'sum'
+    assert result.agg_funcs[0].map_func_name == "sum"
+    assert result.agg_funcs[0].agg_func_name == "sum"
     # check post_funcs
     assert len(result.post_funcs) == 2
-    assert set(result.post_funcs[0].columns) == set('ab')
+    assert set(result.post_funcs[0].columns) == set("ab")
 
 
 def test_custom_aggregation():
@@ -520,8 +595,8 @@ def test_custom_aggregation():
         result = compiler.compile()
         # check agg_funcs
         assert len(result.agg_funcs) == 1
-        assert result.agg_funcs[0].map_func_name == 'custom_reduction'
-        assert result.agg_funcs[0].agg_func_name == 'custom_reduction'
+        assert result.agg_funcs[0].map_func_name == "custom_reduction"
+        assert result.agg_funcs[0].agg_func_name == "custom_reduction"
         assert isinstance(result.agg_funcs[0].custom_reduction, MockReduction1)
         assert result.agg_funcs[0].output_limit == 1
 
@@ -530,7 +605,7 @@ def test_custom_aggregation():
         result = compiler.compile()
         # check agg_funcs
         assert len(result.agg_funcs) == 1
-        assert result.agg_funcs[0].map_func_name == 'custom_reduction'
-        assert result.agg_funcs[0].agg_func_name == 'custom_reduction'
+        assert result.agg_funcs[0].map_func_name == "custom_reduction"
+        assert result.agg_funcs[0].agg_func_name == "custom_reduction"
         assert isinstance(result.agg_funcs[0].custom_reduction, MockReduction2)
         assert result.agg_funcs[0].output_limit == 2

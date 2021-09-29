@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from .... import tensor as mt
-from ....core import enter_mode, TileableGraph, \
-    TileableGraphBuilder, ChunkGraphBuilder
+from ....core import enter_mode, TileableGraph, TileableGraphBuilder, ChunkGraphBuilder
 from ..cupy import CupyRuntimeOptimizer
 
 
@@ -27,11 +26,10 @@ def test_cupy():
     graph = TileableGraph([t.data])
     next(TileableGraphBuilder(graph).build())
     context = dict()
-    chunk_graph_builder = ChunkGraphBuilder(graph,
-                                            fuse_enabled=False,
-                                            tile_context=context)
+    chunk_graph_builder = ChunkGraphBuilder(
+        graph, fuse_enabled=False, tile_context=context
+    )
     chunk_graph = next(chunk_graph_builder.build())
 
     CupyRuntimeOptimizer(chunk_graph).optimize()
-    assert any(n.op.__class__.__name__ == 'TensorCpFuseChunk'
-               for n in chunk_graph)
+    assert any(n.op.__class__.__name__ == "TensorCpFuseChunk" for n in chunk_graph)

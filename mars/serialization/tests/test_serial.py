@@ -32,8 +32,8 @@ from ...tests.core import require_cupy, require_cudf
 from ...utils import lazy_import
 from .. import serialize, deserialize
 
-cupy = lazy_import('cupy', globals=globals())
-cudf = lazy_import('cudf', globals=globals())
+cupy = lazy_import("cupy", globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class CustomList(list):
@@ -41,13 +41,19 @@ class CustomList(list):
 
 
 @pytest.mark.parametrize(
-    'val', [
-        False, 123, 3.567, 3.5 + 4.3j, b'abcd', 'abcd',
-        ['uvw', ('mno', 'sdaf'), 4, 6.7],
+    "val",
+    [
+        False,
+        123,
+        3.567,
+        3.5 + 4.3j,
+        b"abcd",
+        "abcd",
+        ["uvw", ("mno", "sdaf"), 4, 6.7],
         CustomList([3, 4, CustomList([5, 6])]),
-        {'abc': 5.6, 'def': [3.4]},
-        OrderedDict([('abcd', 5.6)])
-    ]
+        {"abc": 5.6, "def": [3.4]},
+        OrderedDict([("abcd", 5.6)]),
+    ],
 )
 def test_core(val):
     deserialized = deserialize(*serialize(val))
@@ -56,7 +62,7 @@ def test_core(val):
 
 
 def test_nested_list():
-    val = ['a' * 100] * 100
+    val = ["a" * 100] * 100
     val[0] = val
     deserialized = deserialize(*serialize(val))
     assert deserialized[0] is deserialized
@@ -70,17 +76,17 @@ class KeyedDict(dict):
     def __hash__(self):
         return hash(frozenset(self._skeys()))
 
-    def __eq__(self, other: 'KeyedDict'):
+    def __eq__(self, other: "KeyedDict"):
         return self._skeys() == other._skeys()
 
 
 def test_nested_dict():
-    val = {i: 'b' * 100 for i in range(10)}
+    val = {i: "b" * 100 for i in range(10)}
     val[0] = val
     deserialized = deserialize(*serialize(val))
     assert deserialized[0] is deserialized
 
-    val = KeyedDict(abcd='efgh')
+    val = KeyedDict(abcd="efgh")
     val[val] = val
     deserialized = deserialize(*serialize(val))
     assert deserialized[val] is deserialized
@@ -94,17 +100,18 @@ class DictWithoutInitArgs(dict):
 
 def test_dict_without_init_args():
     val = DictWithoutInitArgs()
-    val['a'] = 'b'
+    val["a"] = "b"
     deserialized = deserialize(*serialize(val))
     assert deserialized == val
 
 
 @pytest.mark.parametrize(
-    'val', [
+    "val",
+    [
         np.array(np.random.rand(100, 100)),
         np.array(np.random.rand(100, 100).T),
-        np.array(['a', 'bcd', None]),
-    ]
+        np.array(["a", "bcd", None]),
+    ],
 )
 def test_numpy(val):
     deserialized = deserialize(*serialize(val))
@@ -118,21 +125,25 @@ def test_pandas():
     val = pd.Series([1, 2, 3, 4])
     pd.testing.assert_series_equal(val, deserialize(*serialize(val)))
 
-    val = pd.DataFrame({
-        'a': np.random.rand(1000),
-        'b': np.random.choice(list('abcd'), size=(1000,)),
-        'c': np.random.randint(0, 100, size=(1000,)),
-    })
+    val = pd.DataFrame(
+        {
+            "a": np.random.rand(1000),
+            "b": np.random.choice(list("abcd"), size=(1000,)),
+            "c": np.random.randint(0, 100, size=(1000,)),
+        }
+    )
     pd.testing.assert_frame_equal(val, deserialize(*serialize(val)))
 
 
-@pytest.mark.skipif(pa is None, reason='need pyarrow to run the cases')
+@pytest.mark.skipif(pa is None, reason="need pyarrow to run the cases")
 def test_arrow():
-    test_df = pd.DataFrame({
-        'a': np.random.rand(1000),
-        'b': np.random.choice(list('abcd'), size=(1000,)),
-        'c': np.random.randint(0, 100, size=(1000,)),
-    })
+    test_df = pd.DataFrame(
+        {
+            "a": np.random.rand(1000),
+            "b": np.random.choice(list("abcd"), size=(1000,)),
+            "c": np.random.randint(0, 100, size=(1000,)),
+        }
+    )
     test_vals = [
         pa.RecordBatch.from_pandas(test_df),
         pa.Table.from_pandas(test_df),
@@ -144,10 +155,7 @@ def test_arrow():
 
 
 @pytest.mark.parametrize(
-    'np_val', [
-        np.random.rand(100, 100),
-        np.random.rand(100, 100).T,
-    ]
+    "np_val", [np.random.rand(100, 100), np.random.rand(100, 100).T,]
 )
 @require_cupy
 def test_cupy(np_val):
@@ -159,23 +167,27 @@ def test_cupy(np_val):
 
 @require_cudf
 def test_cudf():
-    test_df = cudf.DataFrame(pd.DataFrame({
-        'a': np.random.rand(1000),
-        'b': np.random.choice(list('abcd'), size=(1000,)),
-        'c': np.random.randint(0, 100, size=(1000,)),
-    }))
+    test_df = cudf.DataFrame(
+        pd.DataFrame(
+            {
+                "a": np.random.rand(1000),
+                "b": np.random.choice(list("abcd"), size=(1000,)),
+                "c": np.random.randint(0, 100, size=(1000,)),
+            }
+        )
+    )
     cudf.testing.assert_frame_equal(test_df, deserialize(*serialize(test_df)))
 
 
-@pytest.mark.skipif(sps is None, reason='need scipy to run the test')
+@pytest.mark.skipif(sps is None, reason="need scipy to run the test")
 def test_scipy_sparse():
-    val = sps.random(100, 100, 0.1, format='csr')
+    val = sps.random(100, 100, 0.1, format="csr")
     deserial = deserialize(*serialize(val))
     assert (val != deserial).nnz == 0
 
 
-@pytest.mark.skipif(sps is None, reason='need scipy to run the test')
+@pytest.mark.skipif(sps is None, reason="need scipy to run the test")
 def test_mars_sparse():
-    val = SparseMatrix(sps.random(100, 100, 0.1, format='csr'))
+    val = SparseMatrix(sps.random(100, 100, 0.1, format="csr"))
     deserial = deserialize(*serialize(val))
     assert (val.spmatrix != deserial.spmatrix).nnz == 0

@@ -17,8 +17,7 @@ from ..common.head import HeadPushDown
 from .core import register_chunk_optimization_rule
 
 
-@register_chunk_optimization_rule(
-    [DataFrameIlocGetItem, SeriesIlocGetItem])
+@register_chunk_optimization_rule([DataFrameIlocGetItem, SeriesIlocGetItem])
 class ChunkHeadPushDown(HeadPushDown):
     """
     Head push down.

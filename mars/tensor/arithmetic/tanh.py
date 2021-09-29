@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorTanh(TensorUnaryOp):
     _op_type_ = OperandDef.TANH
-    _func_name = 'tanh'
+    _func_name = "tanh"
 
 
 @infer_dtype(np.tanh)

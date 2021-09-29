@@ -123,8 +123,15 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
     class to data once, then keep the instance around to do transformations.
 
     """
-    def __init__(self, n_components=2, algorithm="randomized", n_iter=5,
-                 random_state=None, tol=0.):
+
+    def __init__(
+        self,
+        n_components=2,
+        algorithm="randomized",
+        n_iter=5,
+        random_state=None,
+        tol=0.0,
+    ):
         self.algorithm = algorithm
         self.n_components = n_components
         self.n_iter = n_iter
@@ -166,8 +173,7 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         X_new : array, shape (n_samples, n_components)
             Reduced version of X. This will always be a dense array.
         """
-        X = check_array(X, accept_sparse=['csr', 'csc'],
-                        ensure_min_features=2)
+        X = check_array(X, accept_sparse=["csr", "csc"], ensure_min_features=2)
         random_state = check_random_state(self.random_state)
 
         if self.algorithm == "arpack":
@@ -176,17 +182,18 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
             # # conventions, so reverse its outputs.
             # Sigma = Sigma[::-1]
             # U, VT = svd_flip(U[:, ::-1], VT[::-1])
-            raise NotImplementedError('Does not support arpack for truncated_svd')
+            raise NotImplementedError("Does not support arpack for truncated_svd")
 
         elif self.algorithm == "randomized":
             k = self.n_components
             n_features = X.shape[1]
             if k >= n_features:
-                raise ValueError("n_components must be < n_features; "
-                                 f"got {k} >= {n_features}")
-            U, Sigma, VT = randomized_svd(X, self.n_components,
-                                          n_iter=self.n_iter,
-                                          random_state=random_state)
+                raise ValueError(
+                    "n_components must be < n_features; " f"got {k} >= {n_features}"
+                )
+            U, Sigma, VT = randomized_svd(
+                X, self.n_components, n_iter=self.n_iter, random_state=random_state
+            )
         else:
             raise ValueError(f"unknown algorithm {self.algorithm!r}")
 
@@ -199,8 +206,13 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         self.explained_variance_ratio_ = exp_var / full_var
         self.singular_values_ = Sigma  # Store the singular values.
 
-        to_run_tensors = [X_transformed, self.components_, self.explained_variance_,
-                          self.explained_variance_ratio_, self.singular_values_]
+        to_run_tensors = [
+            X_transformed,
+            self.components_,
+            self.explained_variance_,
+            self.explained_variance_ratio_,
+            self.singular_values_,
+        ]
 
         ExecutableTuple(to_run_tensors).execute(session=session)
         return X_transformed
@@ -219,7 +231,7 @@ class TruncatedSVD(BaseEstimator, TransformerMixin):
         X_new : array, shape (n_samples, n_components)
             Reduced version of X. This will always be a dense array.
         """
-        X = check_array(X, accept_sparse='csr')
+        X = check_array(X, accept_sparse="csr")
         ret = mt.dot(X, self.components_.T)
         ret.execute(session=session)
         return ret

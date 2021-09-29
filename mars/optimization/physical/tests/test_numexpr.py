@@ -30,8 +30,9 @@ def test_numexpr():
 
         fuse stopped at S, because numexpr don't support Slice op
         """
-    chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
-              for n in range(6)]
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(6)
+    ]
     chunk_slice = TensorSlice().new_chunk([None], None).data
     graph = ChunkGraph([chunks[4], chunks[5]])
     list(map(graph.add_node, chunks[:6]))
@@ -54,8 +55,9 @@ def test_numexpr():
 
         fuse stopped at S, because numexpr don't support Slice op
         """
-    chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
-              for n in range(4)]
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(4)
+    ]
     graph = ChunkGraph([chunks[2]])
     list(map(graph.add_node, chunks[:3]))
     graph.add_node(chunk_slice)
@@ -75,8 +77,9 @@ def test_numexpr():
 
     fuse stopped at S, because numexpr don't support Slice op
     """
-    chunks = [TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data
-              for n in range(4)]
+    chunks = [
+        TensorTreeAdd(args=[], _key=str(n)).new_chunk(None, None).data for n in range(4)
+    ]
     graph = ChunkGraph([chunks[3]])
     list(map(graph.add_node, chunks[:4]))
     graph.add_node(chunk_slice)

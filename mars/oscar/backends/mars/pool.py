@@ -29,19 +29,21 @@ from ..message import CreateActorMessage
 from ..pool import MainActorPoolBase, SubActorPoolBase, _register_message_handler
 
 
-_is_windows: bool = sys.platform.startswith('win')
+_is_windows: bool = sys.platform.startswith("win")
 
 if sys.version_info[:2] == (3, 9):
     # fix for Python 3.9, see https://bugs.python.org/issue43517
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         from multiprocessing import popen_spawn_win32 as popen_spawn
     else:
         from multiprocessing import popen_spawn_posix as popen_spawn
     from multiprocessing import popen_forkserver, popen_fork, synchronize
+
     _ = popen_spawn, popen_forkserver, popen_fork, synchronize
 elif sys.version_info[:2] == (3, 6):  # pragma: no cover
     # define kill method for multiprocessing
     if not _is_windows:
+
         def _mp_kill(self):
             try:
                 os.kill(self.pid, signal.SIGKILL)
@@ -50,11 +52,14 @@ elif sys.version_info[:2] == (3, 6):  # pragma: no cover
             except OSError:
                 if self.wait(timeout=0.1) is None:
                     raise
+
     else:
+
         def _mp_kill(self):
             self.terminate()
 
     from multiprocessing.process import BaseProcess
+
     BaseProcess.kill = _mp_kill
 
 logger = logging.getLogger(__name__)
@@ -71,20 +76,22 @@ class SubpoolStatus:
 
 @_register_message_handler
 class MainActorPool(MainActorPoolBase):
-
     @classmethod
     def get_external_addresses(
-            cls, address: str, n_process: int = None, ports: List[int] = None):
+        cls, address: str, n_process: int = None, ports: List[int] = None
+    ):
         """Get socket address for every process"""
-        if ':' in address:
-            host, port = address.split(':', 1)
+        if ":" in address:
+            host, port = address.split(":", 1)
             port = int(port)
             if ports:
                 if len(ports) != n_process:
-                    raise ValueError(f'`ports` specified, but its count '
-                                     f'is not equal to `n_process`, '
-                                     f'number of ports: {len(ports)}, '
-                                     f'n_process: {n_process}')
+                    raise ValueError(
+                        f"`ports` specified, but its count "
+                        f"is not equal to `n_process`, "
+                        f"number of ports: {len(ports)}, "
+                        f"n_process: {n_process}"
+                    )
                 sub_ports = ports
             else:
                 sub_ports = [get_next_port() for _ in range(n_process)]
@@ -92,37 +99,41 @@ class MainActorPool(MainActorPoolBase):
             host = address
             if ports and len(ports) != n_process + 1:
                 # ports specified, the first of which should be main port
-                raise ValueError(f'`ports` specified, but its count '
-                                 f'is not equal to `n_process` + 1, '
-                                 f'number of ports: {len(ports)}, '
-                                 f'n_process + 1: {n_process + 1}')
+                raise ValueError(
+                    f"`ports` specified, but its count "
+                    f"is not equal to `n_process` + 1, "
+                    f"number of ports: {len(ports)}, "
+                    f"n_process + 1: {n_process + 1}"
+                )
             elif not ports:
                 ports = [get_next_port() for _ in range(n_process + 1)]
             port = ports[0]
             sub_ports = ports[1:]
-        return [f'{host}:{port}' for port in [port] + sub_ports]
+        return [f"{host}:{port}" for port in [port] + sub_ports]
 
     @classmethod
-    def gen_internal_address(cls, process_index: int, external_address: str = None) -> str:
-        if hasattr(asyncio, 'start_unix_server'):
-            return f'unixsocket:///{process_index}'
+    def gen_internal_address(
+        cls, process_index: int, external_address: str = None
+    ) -> str:
+        if hasattr(asyncio, "start_unix_server"):
+            return f"unixsocket:///{process_index}"
         else:
             return external_address
 
     @classmethod
     async def start_sub_pool(
-            cls,
-            actor_pool_config: ActorPoolConfig,
-            process_index: int,
-            start_method: str = None):
-
+        cls,
+        actor_pool_config: ActorPoolConfig,
+        process_index: int,
+        start_method: str = None,
+    ):
         def start_pool_in_process():
             ctx = multiprocessing.get_context(method=start_method)
             status_queue = ctx.Queue()
             process = ctx.Process(
                 target=cls._start_sub_pool,
                 args=(actor_pool_config, process_index, status_queue),
-                name=f'MarsActorPool{process_index}',
+                name=f"MarsActorPool{process_index}",
             )
             process.daemon = True
             process.start()
@@ -136,8 +147,7 @@ class MainActorPool(MainActorPoolBase):
         return await create_pool_task
 
     @classmethod
-    async def wait_sub_pools_ready(cls,
-                                   create_pool_tasks: List[asyncio.Task]):
+    async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
         processes = []
         for task in create_pool_tasks:
             process, status = await task
@@ -149,35 +159,38 @@ class MainActorPool(MainActorPoolBase):
 
     @classmethod
     def _start_sub_pool(
-            cls,
-            actor_config: ActorPoolConfig,
-            process_index: int,
-            status_queue: multiprocessing.Queue):
+        cls,
+        actor_config: ActorPoolConfig,
+        process_index: int,
+        status_queue: multiprocessing.Queue,
+    ):
         if not _is_windows:
             try:
                 # register coverage hooks on SIGTERM
                 from pytest_cov.embed import cleanup_on_sigterm
-                if 'COV_CORE_SOURCE' in os.environ:  # pragma: no branch
+
+                if "COV_CORE_SOURCE" in os.environ:  # pragma: no branch
                     cleanup_on_sigterm()
             except ImportError:  # pragma: no cover
                 pass
 
         conf = actor_config.get_pool_config(process_index)
-        suspend_sigint = conf['suspend_sigint']
+        suspend_sigint = conf["suspend_sigint"]
         if suspend_sigint:
             signal.signal(signal.SIGINT, lambda *_: None)
 
-        logging_conf = conf['logging_conf'] or {}
-        if logging_conf.get('file'):
-            logging.config.fileConfig(logging_conf['file'])
-        elif logging_conf.get('level'):
+        logging_conf = conf["logging_conf"] or {}
+        if logging_conf.get("file"):
+            logging.config.fileConfig(logging_conf["file"])
+        elif logging_conf.get("level"):
             logging.basicConfig(
-                level=logging_conf['level'], format=logging_conf.get('format')
+                level=logging_conf["level"], format=logging_conf.get("format")
             )
 
-        use_uvloop = conf['use_uvloop']
+        use_uvloop = conf["use_uvloop"]
         if use_uvloop:
             import uvloop
+
             asyncio.set_event_loop(uvloop.new_event_loop())
         else:
             asyncio.set_event_loop(asyncio.new_event_loop())
@@ -187,19 +200,19 @@ class MainActorPool(MainActorPoolBase):
 
     @classmethod
     async def _create_sub_pool(
-            cls,
-            actor_config: ActorPoolConfig,
-            process_index: int,
-            status_queue: multiprocessing.Queue):
+        cls,
+        actor_config: ActorPoolConfig,
+        process_index: int,
+        status_queue: multiprocessing.Queue,
+    ):
         process_status = None
         try:
-            env = actor_config.get_pool_config(process_index)['env']
+            env = actor_config.get_pool_config(process_index)["env"]
             if env:
                 os.environ.update(env)
-            pool = await SubActorPool.create({
-                'actor_pool_config': actor_config,
-                'process_index': process_index
-            })
+            pool = await SubActorPool.create(
+                {"actor_pool_config": actor_config, "process_index": process_index}
+            )
             process_status = SubpoolStatus(status=0)
             await pool.start()
         except:  # noqa: E722  # nosec  # pylint: disable=bare-except
@@ -210,9 +223,12 @@ class MainActorPool(MainActorPoolBase):
             status_queue.put(process_status)
         await pool.join()
 
-    async def kill_sub_pool(self, process: multiprocessing.Process,
-                            force: bool = False):
-        if 'COV_CORE_SOURCE' in os.environ and not force and not _is_windows:  # pragma: no cover
+    async def kill_sub_pool(
+        self, process: multiprocessing.Process, force: bool = False
+    ):
+        if (
+            "COV_CORE_SOURCE" in os.environ and not force and not _is_windows
+        ):  # pragma: no cover
             # must shutdown gracefully, or coverage info lost
             try:
                 os.kill(process.pid, signal.SIGINT)
@@ -232,11 +248,12 @@ class MainActorPool(MainActorPoolBase):
         process_index = self._config.get_process_index(address)
         # process dead, restart it
         # remember always use spawn to recover sub pool
-        task = asyncio.create_task(self.start_sub_pool(
-            self._config, process_index, 'spawn'))
+        task = asyncio.create_task(
+            self.start_sub_pool(self._config, process_index, "spawn")
+        )
         self.sub_processes[address] = (await self.wait_sub_pools_ready([task]))[0]
 
-        if self._auto_recover == 'actor':
+        if self._auto_recover == "actor":
             # need to recover all created actors
             for _, message in self._allocated_actors[address].values():
                 create_actor_message: CreateActorMessage = message

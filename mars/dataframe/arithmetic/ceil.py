@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameCeil(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.CEIL
-    _func_name = 'ceil'
+    _func_name = "ceil"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorCeil
+
         return TensorCeil

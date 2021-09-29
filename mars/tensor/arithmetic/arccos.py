@@ -22,11 +22,11 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorArccos(TensorUnaryOp):
     _op_type_ = OperandDef.ARCCOS
 
-    _func_name = 'arccos'
+    _func_name = "arccos"
 
 
 @infer_dtype(np.arccos)

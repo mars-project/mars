@@ -26,17 +26,17 @@ from .core import TensorRandomOperandMixin, TensorSimpleRandomData
 class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_RANDINT
 
-    _fields_ = '_low', '_high', '_density', '_size'
-    _low = Int64Field('low')
-    _high = Int64Field('high')
-    _density = Float64Field('density')
-    _func_name = 'randint'
+    _fields_ = "_low", "_high", "_density", "_size"
+    _low = Int64Field("low")
+    _high = Int64Field("high")
+    _density = Float64Field("density")
+    _func_name = "randint"
 
-    def __init__(self, size=None, dtype=None,
-                 low=None, high=None, density=None, **kw):
+    def __init__(self, size=None, dtype=None, low=None, high=None, density=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
-        super().__init__(_size=size, _low=low, _high=high,
-                         _density=density, dtype=dtype, **kw)
+        super().__init__(
+            _size=size, _low=low, _high=high, _density=density, dtype=dtype, **kw
+        )
 
     @property
     def low(self):
@@ -97,16 +97,24 @@ class TensorRandint(TensorSimpleRandomData, TensorRandomOperandMixin):
     @classmethod
     def estimate_size(cls, ctx, op):
         chunk = op.outputs[0]
-        if not op.sparse or not getattr(op, '_density', None):
+        if not op.sparse or not getattr(op, "_density", None):
             super().estimate_size(ctx, op)
         else:
             # use density to estimate real memory usage
-            nbytes = int(chunk.nbytes * getattr(chunk.op, '_density'))
+            nbytes = int(chunk.nbytes * getattr(chunk.op, "_density"))
             ctx[chunk.key] = (nbytes, nbytes)
 
 
-def randint(random_state, low, high=None, size=None, dtype='l', density=None,
-            chunk_size=None, gpu=None):
+def randint(
+    random_state,
+    low,
+    high=None,
+    size=None,
+    dtype="l",
+    density=None,
+    chunk_size=None,
+    gpu=None,
+):
     """
     Return random integers from `low` (inclusive) to `high` (exclusive).
 
@@ -172,6 +180,14 @@ def randint(random_state, low, high=None, size=None, dtype='l', density=None,
     sparse = bool(density)
     size = random_state._handle_size(size)
     seed = gen_random_seeds(1, random_state.to_numpy())[0]
-    op = TensorRandint(seed=seed, low=low, high=high, size=size, dtype=dtype,
-                       gpu=gpu, sparse=sparse, density=density)
+    op = TensorRandint(
+        seed=seed,
+        low=low,
+        high=high,
+        size=size,
+        dtype=dtype,
+        gpu=gpu,
+        sparse=sparse,
+        density=density,
+    )
     return op(chunk_size=chunk_size)

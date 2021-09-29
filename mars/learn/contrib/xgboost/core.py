@@ -24,12 +24,21 @@ from .dmatrix import MarsDMatrix
 
 XGBScikitLearnBase = None
 if xgboost:
+
     class XGBScikitLearnBase(xgboost.XGBModel):
         """
         Base class for implementing scikit-learn interface
         """
 
-        def fit(self, X, y, sample_weights=None, eval_set=None, sample_weight_eval_set=None, **kw):
+        def fit(
+            self,
+            X,
+            y,
+            sample_weights=None,
+            eval_set=None,
+            sample_weight_eval_set=None,
+            **kw,
+        ):
             """
             Fit the regressor.
             Parameters

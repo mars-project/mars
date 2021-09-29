@@ -16,16 +16,22 @@ import re
 
 import numpy as np
 import pandas as pd
+
 try:
     import sklearn
     from sklearn.metrics import roc_auc_score
-    from sklearn.metrics import roc_curve as sklearn_roc_curve, auc as sklearn_auc, \
-        accuracy_score as sklearn_accuracy_score
+    from sklearn.metrics import (
+        roc_curve as sklearn_roc_curve,
+        auc as sklearn_auc,
+        accuracy_score as sklearn_accuracy_score,
+    )
     from sklearn.metrics.tests.test_ranking import make_prediction, _auc
     from sklearn.exceptions import UndefinedMetricWarning
     from sklearn.utils import check_random_state
     from sklearn.utils._testing import assert_warns
-    from sklearn.metrics._ranking import _binary_roc_auc_score as sk_binary_roc_auc_score
+    from sklearn.metrics._ranking import (
+        _binary_roc_auc_score as sk_binary_roc_auc_score,
+    )
 except ImportError:  # pragma: no cover
     sklearn = None
 import pytest
@@ -43,8 +49,9 @@ def test_roc_curve(setup):
         y_true, _, probas_pred = make_prediction(binary=True)
         expected_auc = _auc(y_true, probas_pred)
 
-        fpr, tpr, thresholds = roc_curve(y_true, probas_pred,
-                                         drop_intermediate=drop).execute().fetch()
+        fpr, tpr, thresholds = (
+            roc_curve(y_true, probas_pred, drop_intermediate=drop).execute().fetch()
+        )
         roc_auc = auc(fpr, tpr).to_numpy()
         np.testing.assert_array_almost_equal(roc_auc, expected_auc, decimal=2)
         np.testing.assert_almost_equal(roc_auc, roc_auc_score(y_true, probas_pred))
@@ -143,9 +150,7 @@ def test_roc_curve_one_label(setup):
     assert fpr.shape == thresholds.shape
 
     # assert there are warnings
-    fpr, tpr, thresholds = assert_warns(w, roc_curve,
-                                        [1 - x for x in y_true],
-                                        y_pred)
+    fpr, tpr, thresholds = assert_warns(w, roc_curve, [1 - x for x in y_true], y_pred)
     # all negative labels, all tpr should be nan
     np.testing.assert_array_equal(tpr.fetch(), np.full(len(thresholds), np.nan))
     assert fpr.shape == tpr.shape
@@ -156,7 +161,7 @@ def test_binary_roc_auc_score(setup):
     # Test the area is equal under binary roc_auc_score
     rs = np.random.RandomState(0)
     raw_X = rs.randint(0, 2, size=10)
-    raw_Y = rs.rand(10).astype('float32')
+    raw_Y = rs.rand(10).astype("float32")
 
     X = mt.tensor(raw_X)
     Y = mt.tensor(raw_Y)
@@ -179,18 +184,17 @@ def test_binary_roc_auc_score(setup):
 def test_roc_curve_drop_intermediate(setup):
     # Test that drop_intermediate drops the correct thresholds
     y_true = [0, 0, 0, 0, 1, 1]
-    y_score = [0., 0.2, 0.5, 0.6, 0.7, 1.0]
+    y_score = [0.0, 0.2, 0.5, 0.6, 0.7, 1.0]
     tpr, fpr, thresholds = roc_curve(y_true, y_score, drop_intermediate=True)
-    np.testing.assert_array_almost_equal(thresholds.fetch(), [2., 1., 0.7, 0.])
+    np.testing.assert_array_almost_equal(thresholds.fetch(), [2.0, 1.0, 0.7, 0.0])
 
     # Test dropping thresholds with repeating scores
-    y_true = [0, 0, 0, 0, 0, 0, 0,
-              1, 1, 1, 1, 1, 1]
-    y_score = [0., 0.1, 0.6, 0.6, 0.7, 0.8, 0.9,
-               0.6, 0.7, 0.8, 0.9, 0.9, 1.0]
+    y_true = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]
+    y_score = [0.0, 0.1, 0.6, 0.6, 0.7, 0.8, 0.9, 0.6, 0.7, 0.8, 0.9, 0.9, 1.0]
     tpr, fpr, thresholds = roc_curve(y_true, y_score, drop_intermediate=True)
-    np.testing.assert_array_almost_equal(thresholds.fetch(),
-                                         [2.0, 1.0, 0.9, 0.7, 0.6, 0.])
+    np.testing.assert_array_almost_equal(
+        thresholds.fetch(), [2.0, 1.0, 0.9, 0.7, 0.6, 0.0]
+    )
 
 
 def test_roc_curve_fpr_tpr_increasing(setup):
@@ -253,32 +257,33 @@ def test_binary_clf_curve_multiclass_error(setup):
 
 def test_dataframe_roc_curve_auc(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame({'a': rs.randint(0, 10, (10,)),
-                        'b': rs.rand(10)})
+    raw = pd.DataFrame({"a": rs.randint(0, 10, (10,)), "b": rs.rand(10)})
 
     df = md.DataFrame(raw)
-    y = df['a'].to_tensor().astype('int')
-    pred = df['b'].to_tensor().astype('float')
+    y = df["a"].to_tensor().astype("int")
+    pred = df["b"].to_tensor().astype("float")
     fpr, tpr, thresholds = roc_curve(y, pred, pos_label=2)
     m = auc(fpr, tpr)
 
-    sk_fpr, sk_tpr, sk_threshod = sklearn_roc_curve(raw['a'].to_numpy().astype('int'),
-                                                    raw['b'].to_numpy().astype('float'),
-                                                    pos_label=2)
+    sk_fpr, sk_tpr, sk_threshod = sklearn_roc_curve(
+        raw["a"].to_numpy().astype("int"),
+        raw["b"].to_numpy().astype("float"),
+        pos_label=2,
+    )
     expect_m = sklearn_auc(sk_fpr, sk_tpr)
     assert pytest.approx(m.fetch()) == expect_m
 
 
 def test_dataframe_accuracy_score(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame({'a': rs.randint(0, 10, (10,)),
-                        'b': rs.randint(0, 10, (10,))})
+    raw = pd.DataFrame({"a": rs.randint(0, 10, (10,)), "b": rs.randint(0, 10, (10,))})
 
     df = md.DataFrame(raw)
-    y = df['a'].to_tensor().astype('int')
-    pred = df['b'].astype('int')
+    y = df["a"].to_tensor().astype("int")
+    pred = df["b"].astype("int")
 
     score = accuracy_score(y, pred)
-    expect = sklearn_accuracy_score(raw['a'].to_numpy().astype('int'),
-                                    raw['b'].to_numpy().astype('int'))
+    expect = sklearn_accuracy_score(
+        raw["a"].to_numpy().astype("int"), raw["b"].to_numpy().astype("int")
+    )
     assert pytest.approx(score.fetch()) == expect

@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorSubtract(TensorBinOp):
     _op_type_ = OperandDef.SUB
-    _func_name = 'subtract'
+    _func_name = "subtract"
 
 
 @infer_dtype(np.subtract)

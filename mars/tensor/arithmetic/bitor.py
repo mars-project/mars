@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_or')
+@arithmetic_operand(sparse_mode="binary_or")
 class TensorBitor(TensorBinOp):
     _op_type_ = OperandDef.BITOR
-    _func_name = 'bitwise_or'
+    _func_name = "bitwise_or"
 
 
 @infer_dtype(np.bitwise_or)

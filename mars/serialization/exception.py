@@ -23,13 +23,15 @@ class UnpickleableError(Exception):
         if isinstance(raw_error, str):
             super().__init__(raw_error)
         else:
-            super().__init__(f'Error cannot be pickled, '
-                             f'error type: {type(raw_error)}, '
-                             f'raw error:\n{raw_error}')
+            super().__init__(
+                f"Error cannot be pickled, "
+                f"error type: {type(raw_error)}, "
+                f"raw error:\n{raw_error}"
+            )
 
 
 class ExceptionSerializer(Serializer):
-    serializer_name = 'pickle'
+    serializer_name = "pickle"
 
     @buffered
     def serialize(self, obj: Exception, context: Dict):

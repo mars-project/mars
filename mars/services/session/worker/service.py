@@ -28,12 +28,18 @@ class SessionWorkerService(AbstractService):
         }
     }
     """
+
     async def start(self):
-        session_config = self._config.get('session', dict())
-        custom_log_dir = session_config.get('custom_log_dir')
-        await mo.create_actor(CustomLogActor, custom_log_dir,
-                              address=self._address, uid=CustomLogActor.default_uid())
+        session_config = self._config.get("session", dict())
+        custom_log_dir = session_config.get("custom_log_dir")
+        await mo.create_actor(
+            CustomLogActor,
+            custom_log_dir,
+            address=self._address,
+            uid=CustomLogActor.default_uid(),
+        )
 
     async def stop(self):
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=CustomLogActor.default_uid(), address=self._address))
+        await mo.destroy_actor(
+            mo.create_actor_ref(uid=CustomLogActor.default_uid(), address=self._address)
+        )

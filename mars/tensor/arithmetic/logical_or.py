@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorOr(TensorBinOp):
     _op_type_ = OperandDef.OR
-    _func_name = 'logical_or'
+    _func_name = "logical_or"
 
 
 @infer_dtype(np.logical_or)

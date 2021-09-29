@@ -43,6 +43,7 @@ class GlobalSlotManagerActor(mo.Actor):
 
     async def __post_create__(self):
         from ...cluster.api import ClusterAPI
+
         self._cluster_api = await ClusterAPI.create(self.address)
 
         async def watch_bands():
@@ -61,8 +62,13 @@ class GlobalSlotManagerActor(mo.Actor):
     async def refresh_bands(self):
         self._band_total_slots = await self._cluster_api.get_all_bands()
 
-    async def apply_subtask_slots(self, band: BandType, session_id: str,
-                                  subtask_ids: List[str], subtask_slots: List[int]) -> List[str]:
+    async def apply_subtask_slots(
+        self,
+        band: BandType,
+        session_id: str,
+        subtask_ids: List[str],
+        subtask_slots: List[int],
+    ) -> List[str]:
         if not self._band_total_slots or band not in self._band_total_slots:
             self._band_total_slots = await self._cluster_api.get_all_bands()
 
@@ -77,12 +83,17 @@ class GlobalSlotManagerActor(mo.Actor):
                 self._update_slot_usage(band, slots)
                 idx += 1
         if idx == 0:
-            logger.debug('No slots available, status: %r, request: %r',
-                         self._band_used_slots, subtask_slots)
+            logger.debug(
+                "No slots available, status: %r, request: %r",
+                self._band_used_slots,
+                subtask_slots,
+            )
         return subtask_ids[:idx]
 
     @mo.extensible
-    def update_subtask_slots(self, band: BandType, session_id: str, subtask_id: str, slots: int):
+    def update_subtask_slots(
+        self, band: BandType, session_id: str, subtask_id: str, slots: int
+    ):
         session_subtask_id = (session_id, subtask_id)
         subtask_slots = self._band_stid_slots[band]
 

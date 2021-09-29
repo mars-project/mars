@@ -18,11 +18,11 @@ class HashRing(object):
         :param vnodes: default number of vnodes per node.
         :param weight_fn: use this function to calculate the node's weight.
         """
-        hash_fn = kwargs.get('hash_fn', None)
-        vnodes = kwargs.get('vnodes', None)
-        weight_fn = kwargs.get('weight_fn', None)
+        hash_fn = kwargs.get("hash_fn", None)
+        vnodes = kwargs.get("vnodes", None)
+        weight_fn = kwargs.get("weight_fn", None)
 
-        if hash_fn == 'ketama':
+        if hash_fn == "ketama":
             if vnodes is None:
                 vnodes = 40
             self.runtime = KetamaRing()
@@ -34,8 +34,8 @@ class HashRing(object):
         self._default_vnodes = vnodes
         self.hashi = self.runtime.hashi
 
-        if weight_fn and not hasattr(weight_fn, '__call__'):
-            raise TypeError('weight_fn should be a callable function')
+        if weight_fn and not hasattr(weight_fn, "__call__"):
+            raise TypeError("weight_fn should be a callable function")
         self._weight_fn = weight_fn
 
         if self._configure_nodes(nodes):
@@ -50,18 +50,18 @@ class HashRing(object):
             nodes = [nodes]
         elif not isinstance(nodes, (dict, list)):
             raise ValueError(
-                'nodes configuration should be a list or a dict,'
-                f' got {type(nodes)}')
+                "nodes configuration should be a list or a dict," f" got {type(nodes)}"
+            )
 
         conf_changed = False
         for node in nodes:
             conf = {
-                'hostname': node,
-                'instance': None,
-                'nodename': node,
-                'port': None,
-                'vnodes': self._default_vnodes,
-                'weight': 1
+                "hostname": node,
+                "instance": None,
+                "nodename": node,
+                "port": None,
+                "vnodes": self._default_vnodes,
+                "weight": 1,
             }
             current_conf = self.runtime._nodes.get(node, {})
             nodename = node
@@ -72,23 +72,24 @@ class HashRing(object):
             if isinstance(nodes, dict):
                 node_conf = nodes[node]
                 if isinstance(node_conf, int):
-                    conf['weight'] = node_conf
+                    conf["weight"] = node_conf
                 elif isinstance(node_conf, dict):
                     for k, v in node_conf.items():
                         if k in conf:
                             conf[k] = v
                             # changing those config trigger a ring update
-                            if k in ['nodename', 'vnodes', 'weight']:
+                            if k in ["nodename", "vnodes", "weight"]:
                                 if current_conf.get(k) != v:
                                     conf_changed = True
                 else:
                     raise ValueError(
-                        'node configuration should be a dict or an int,'
-                        f' got {type(node_conf)}')
+                        "node configuration should be a dict or an int,"
+                        f" got {type(node_conf)}"
+                    )
             if self._weight_fn:
-                conf['weight'] = self._weight_fn(**conf)
+                conf["weight"] = self._weight_fn(**conf)
             # changing the weight of a node trigger a ring update
-            if current_conf.get('weight') != conf['weight']:
+            if current_conf.get("weight") != conf["weight"]:
                 conf_changed = True
             self.runtime._nodes[nodename] = conf
         return conf_changed
@@ -107,11 +108,11 @@ class HashRing(object):
 
         :param key: the key to look for.
         """
-        return self._get(key, 'instance')
+        return self._get(key, "instance")
 
     get_node_instance = __getitem__
 
-    def __setitem__(self, nodename, conf={'weight': 1}):
+    def __setitem__(self, nodename, conf={"weight": 1}):
         """Add the given node with its associated configuration.
 
         :param nodename: the node name.
@@ -154,17 +155,17 @@ class HashRing(object):
             return None
 
         pos = self._get_pos(key)
-        if what == 'pos':
+        if what == "pos":
             return pos
 
         nodename = self.runtime._ring[self.runtime._keys[pos]]
-        if what in ['hostname', 'instance', 'port', 'weight']:
+        if what in ["hostname", "instance", "port", "weight"]:
             return self.runtime._nodes[nodename][what]
-        elif what == 'dict':
+        elif what == "dict":
             return self.runtime._nodes[nodename]
-        elif what == 'nodename':
+        elif what == "nodename":
             return nodename
-        elif what == 'tuple':
+        elif what == "tuple":
             return (self.runtime._keys[pos], nodename)
 
     def get(self, key):
@@ -172,13 +173,14 @@ class HashRing(object):
 
         :param key: the key to look for.
         """
-        return self._get(key, 'dict')
+        return self._get(key, "dict")
 
     def get_instances(self):
         """Returns a list of the instances of all the configured nodes.
         """
-        return [c.get('instance') for c in self.runtime._nodes.values()
-                if c.get('instance')]
+        return [
+            c.get("instance") for c in self.runtime._nodes.values() if c.get("instance")
+        ]
 
     def get_key(self, key):
         """Alias of ketama hashi method, returns the hash of the given key.
@@ -194,35 +196,35 @@ class HashRing(object):
 
         :param key: the key to look for.
         """
-        return self._get(key, 'nodename')
+        return self._get(key, "nodename")
 
     def get_node_hostname(self, key):
         """Returns the hostname of the node matching the hashed key.
 
         :param key: the key to look for.
         """
-        return self._get(key, 'hostname')
+        return self._get(key, "hostname")
 
     def get_node_port(self, key):
         """Returns the port of the node matching the hashed key.
 
         :param key: the key to look for.
         """
-        return self._get(key, 'port')
+        return self._get(key, "port")
 
     def get_node_pos(self, key):
         """Returns the index position of the node matching the hashed key.
 
         :param key: the key to look for.
         """
-        return self._get(key, 'pos')
+        return self._get(key, "pos")
 
     def get_node_weight(self, key):
         """Returns the weight of the node matching the hashed key.
 
         :param key: the key to look for.
         """
-        return self._get(key, 'weight')
+        return self._get(key, "weight")
 
     def get_nodes(self):
         """Returns a list of the names of all the configured nodes.
@@ -239,7 +241,7 @@ class HashRing(object):
 
         :param key: the key to look for.
         """
-        return self._get(key, 'tuple')
+        return self._get(key, "tuple")
 
     def iterate_nodes(self, key, distinct=True):
         """hash_ring compatibility implementation.
@@ -255,19 +257,19 @@ class HashRing(object):
             yield None
         else:
             for node in self.range(key, unique=distinct):
-                yield node['nodename']
+                yield node["nodename"]
 
     def print_continuum(self):
         """Prints a ketama compatible continuum report.
         """
         numpoints = len(self.runtime._keys)
         if numpoints:
-            print(f'Numpoints in continuum: {numpoints}')
+            print(f"Numpoints in continuum: {numpoints}")
         else:
-            print('Continuum empty')
+            print("Continuum empty")
         for p in self.get_points():
             point, node = p
-            print(f'{node} ({point})')
+            print(f"{node} ({point})")
 
     def range(self, key, size=None, unique=True):
         """Returns a generator of nodes' configuration available

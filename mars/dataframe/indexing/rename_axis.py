@@ -23,14 +23,15 @@ from ..utils import validate_axis, parse_index, build_df, build_series
 class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.RENAME_AXIS
 
-    _index = AnyField('index')
-    _columns = AnyField('columns')
-    _copy_value = BoolField('copy_value')
-    _level = AnyField('level')
+    _index = AnyField("index")
+    _columns = AnyField("columns")
+    _copy_value = BoolField("copy_value")
+    _level = AnyField("level")
 
     def __init__(self, index=None, columns=None, copy_value=None, level=None, **kw):
-        super().__init__(_index=index, _columns=columns, _copy_value=copy_value,
-                         _level=level, **kw)
+        super().__init__(
+            _index=index, _columns=columns, _copy_value=copy_value, _level=level, **kw
+        )
 
     @property
     def index(self):
@@ -61,10 +62,10 @@ class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
             test_obj.axes[axis].set_names(mapper, level=level, inplace=True)
 
         if axis == 0:
-            params['index_value'] = parse_index(test_obj.index, store_data=False)
+            params["index_value"] = parse_index(test_obj.index, store_data=False)
         else:
-            params['dtypes'] = test_obj.dtypes
-            params['columns_value'] = parse_index(test_obj.columns, store_data=True)
+            params["dtypes"] = test_obj.dtypes
+            params["columns_value"] = parse_index(test_obj.columns, store_data=True)
 
     def __call__(self, df_or_series):
         params = df_or_series.params
@@ -75,14 +76,18 @@ class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
             self._output_types = [OutputType.series]
 
         if self.index is not None:
-            self._update_params(params, df_or_series, self.index, axis=0, level=self.level)
+            self._update_params(
+                params, df_or_series, self.index, axis=0, level=self.level
+            )
         else:
-            self._update_params(params, df_or_series, self.columns, axis=1, level=self.level)
+            self._update_params(
+                params, df_or_series, self.columns, axis=1, level=self.level
+            )
 
         return self.new_tileable([df_or_series], **params)
 
     @classmethod
-    def tile(cls, op: 'DataFrameRenameAxis'):
+    def tile(cls, op: "DataFrameRenameAxis"):
         in_obj = op.inputs[0]
         out_obj = op.outputs[0]
 
@@ -92,26 +97,27 @@ class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
             params = c.params
             if op.index is not None:
                 try:
-                    params['index_value'] = idx_cache[c.index[0]]
+                    params["index_value"] = idx_cache[c.index[0]]
                 except KeyError:
                     cls._update_params(params, c, op.index, axis=0, level=op.level)
-                    idx_cache[c.index[0]] = params['index_value']
+                    idx_cache[c.index[0]] = params["index_value"]
             else:
                 try:
-                    params['columns_value'], params['dtypes'] = idx_cache[c.index[1]]
+                    params["columns_value"], params["dtypes"] = idx_cache[c.index[1]]
                 except KeyError:
                     cls._update_params(params, c, op.columns, axis=1, level=op.level)
-                    idx_cache[c.index[1]] = params['columns_value'], params['dtypes']
+                    idx_cache[c.index[1]] = params["columns_value"], params["dtypes"]
 
             new_op = op.copy().reset_key()
             chunks.append(new_op.new_chunk([c], **params))
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables([in_obj], chunks=chunks, nsplits=in_obj.nsplits,
-                                    **out_obj.params)
+        return new_op.new_tileables(
+            [in_obj], chunks=chunks, nsplits=in_obj.nsplits, **out_obj.params
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameRenameAxis'):
+    def execute(cls, ctx, op: "DataFrameRenameAxis"):
         in_data = ctx[op.inputs[0].key]
         if op.index is not None:
             val, axis = op.index, 0
@@ -119,23 +125,32 @@ class DataFrameRenameAxis(DataFrameOperand, DataFrameOperandMixin):
             val, axis = op.columns, 1
 
         if op.level is None:
-            ctx[op.outputs[0].key] = in_data.rename_axis(val, axis=axis, copy=op.copy_value)
+            ctx[op.outputs[0].key] = in_data.rename_axis(
+                val, axis=axis, copy=op.copy_value
+            )
         else:
             ret = in_data.copy() if op.copy_value else in_data
             ret.axes[axis].set_names(val, level=op.level, inplace=True)
             ctx[op.outputs[0].key] = ret
 
 
-def rename_axis_with_level(df_or_series, mapper=None, index=None, columns=None,
-                           axis=0, copy=True, level=None, inplace=False):
+def rename_axis_with_level(
+    df_or_series,
+    mapper=None,
+    index=None,
+    columns=None,
+    axis=0,
+    copy=True,
+    level=None,
+    inplace=False,
+):
     axis = validate_axis(axis, df_or_series)
     if mapper is not None:
         if axis == 0:
             index = mapper
         else:
             columns = mapper
-    op = DataFrameRenameAxis(index=index, columns=columns, copy_value=copy,
-                             level=level)
+    op = DataFrameRenameAxis(index=index, columns=columns, copy_value=copy, level=level)
     result = op(df_or_series)
     if not inplace:
         return result
@@ -143,8 +158,15 @@ def rename_axis_with_level(df_or_series, mapper=None, index=None, columns=None,
         df_or_series.data = result.data
 
 
-def rename_axis(df_or_series, mapper=None, index=None, columns=None, axis=0,
-                copy=True, inplace=False):
+def rename_axis(
+    df_or_series,
+    mapper=None,
+    index=None,
+    columns=None,
+    axis=0,
+    copy=True,
+    inplace=False,
+):
     """
     Set the name of the axis for the index or columns.
 
@@ -245,5 +267,11 @@ def rename_axis(df_or_series, mapper=None, index=None, columns=None, axis=0,
     monkey         2         2
     """
     return rename_axis_with_level(
-        df_or_series, mapper=mapper, index=index, columns=columns, axis=axis,
-        copy=copy, inplace=inplace)
+        df_or_series,
+        mapper=mapper,
+        index=index,
+        columns=columns,
+        axis=axis,
+        copy=copy,
+        inplace=inplace,
+    )

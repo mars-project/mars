@@ -21,10 +21,9 @@ from ..core import DataInfo
 
 class AbstractStorageAPI(ABC):
     @abstractmethod
-    async def get(self,
-                  data_key: str,
-                  conditions: List = None,
-                  error: str = 'raise') -> Any:
+    async def get(
+        self, data_key: str, conditions: List = None, error: str = "raise"
+    ) -> Any:
         """
         Get object by data key.
 
@@ -45,9 +44,9 @@ class AbstractStorageAPI(ABC):
         """
 
     @abstractmethod
-    async def put(self, data_key: str,
-                  obj: object,
-                  level: StorageLevel = StorageLevel.MEMORY) -> DataInfo:
+    async def put(
+        self, data_key: str, obj: object, level: StorageLevel = StorageLevel.MEMORY
+    ) -> DataInfo:
         """
         Put object into storage.
 

@@ -27,14 +27,14 @@ def test_enter_mode():
     assert not options.eager_mode
     assert not wrapped()
 
-    with option_context({'eager_mode': True}):
+    with option_context({"eager_mode": True}):
         assert options.eager_mode
         assert not wrapped()
 
     @enter_mode(kernel=True)
     def wrapped2():
         wrapped()
-        with option_context({'eager_mode': True}):
+        with option_context({"eager_mode": True}):
             assert options.eager_mode
             assert not is_eager_mode()
             with enter_mode(kernel=False):
@@ -49,7 +49,7 @@ def test_enter_mode():
     @enter_mode(kernel=False)
     def wrapped3():
         wrapped()
-        with option_context({'eager_mode': True}):
+        with option_context({"eager_mode": True}):
             assert options.eager_mode
             assert not is_kernel_mode()
             with enter_mode(kernel=True, build=True):
@@ -59,13 +59,13 @@ def test_enter_mode():
             assert not is_build_mode()
             with pytest.raises(ValueError):
                 with enter_mode(kernel=True, build=True):
-                    raise ValueError('meant to raise error')
+                    raise ValueError("meant to raise error")
             assert not is_kernel_mode()
             assert not is_build_mode()
 
             @enter_mode(kernel=True)
             def wrapped4():
-                raise ValueError('meant to raise error')
+                raise ValueError("meant to raise error")
 
             with pytest.raises(ValueError):
                 wrapped4()

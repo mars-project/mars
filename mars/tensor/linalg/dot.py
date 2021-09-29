@@ -26,8 +26,8 @@ from .tensordot import tensordot
 class TensorDot(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.DOT
 
-    _a = KeyField('a')
-    _b = KeyField('b')
+    _a = KeyField("a")
+    _b = KeyField("b")
 
     @property
     def a(self):
@@ -45,7 +45,8 @@ class TensorDot(TensorOperand, TensorOperandMixin):
     def execute(cls, ctx, op):
         chunk = op.outputs[0]
         (a, b), device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             if not op.sparse and is_sparse_module(xp):
@@ -149,11 +150,17 @@ def dot(a, b, out=None, sparse=None):
 
     # set to out
     if not isinstance(out, Tensor):
-        raise TypeError(f'`out` must be a Tensor, got {type(out)} instead')
+        raise TypeError(f"`out` must be a Tensor, got {type(out)} instead")
     if out.shape != ret.shape:
-        raise ValueError('output tensor has wrong dimensions')
-    if not (out.dtype == ret.dtype and out.ndim == ret.ndim and out.order == TensorOrder.C_ORDER):
-        raise ValueError('output tensor is not acceptable '
-                         '(must have the right datatype, number of dimensions and be a C-Tensor')
+        raise ValueError("output tensor has wrong dimensions")
+    if not (
+        out.dtype == ret.dtype
+        and out.ndim == ret.ndim
+        and out.order == TensorOrder.C_ORDER
+    ):
+        raise ValueError(
+            "output tensor is not acceptable "
+            "(must have the right datatype, number of dimensions and be a C-Tensor"
+        )
     out.data = ret.astype(out.dtype, order=out.order.value, copy=False).data
     return out

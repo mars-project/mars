@@ -17,8 +17,7 @@ import pytest
 
 from ....core import tile
 from ...datasource import tensor, array
-from .. import digitize, histogram_bin_edges, \
-    quantile, percentile
+from .. import digitize, histogram_bin_edges, quantile, percentile
 from ..quantile import INTERPOLATION_TYPES
 
 
@@ -39,11 +38,11 @@ def test_histogram_bin_edges():
     a = array([0, 0, 0, 1, 2, 3, 3, 4, 5], chunk_size=3)
 
     with pytest.raises(ValueError):
-        histogram_bin_edges(a, bins='unknown')
+        histogram_bin_edges(a, bins="unknown")
 
     with pytest.raises(TypeError):
         # bins is str, weights cannot be provided
-        histogram_bin_edges(a, bins='scott', weights=a)
+        histogram_bin_edges(a, bins="scott", weights=a)
 
     with pytest.raises(ValueError):
         histogram_bin_edges(a, bins=-1)
@@ -92,11 +91,16 @@ def test_quantile():
                     raw2 = raw.astype(dtype)
                     a = tensor(raw2, chunk_size=(8, 6))
 
-                    b = quantile(a, q, axis=axis,
-                                 interpolation=interpolation, keepdims=keepdims)
-                    expected = np.quantile(raw2, q, axis=axis,
-                                           interpolation=interpolation,
-                                           keepdims=keepdims)
+                    b = quantile(
+                        a, q, axis=axis, interpolation=interpolation, keepdims=keepdims
+                    )
+                    expected = np.quantile(
+                        raw2,
+                        q,
+                        axis=axis,
+                        interpolation=interpolation,
+                        keepdims=keepdims,
+                    )
                     assert b.shape == expected.shape
                     assert b.dtype == expected.dtype
 
@@ -140,7 +144,7 @@ def test_quantile():
 
     # wrong interpolation
     with pytest.raises(ValueError):
-        quantile(a, q, interpolation='unknown')
+        quantile(a, q, interpolation="unknown")
 
 
 def test_percentile():
@@ -152,4 +156,4 @@ def test_percentile():
     with pytest.raises(ValueError) as cm:
         percentile(a, q)
     the_exception = cm.value.args[0]
-    assert 'Percentiles' in the_exception
+    assert "Percentiles" in the_exception

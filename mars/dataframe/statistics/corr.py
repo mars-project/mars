@@ -27,16 +27,23 @@ from ..utils import build_empty_df, validate_axis, parse_index
 class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.CORR
 
-    _other = KeyField('other')
-    _method = AnyField('method')
-    _min_periods = Int32Field('min_periods')
-    _axis = Int32Field('axis')
-    _drop = BoolField('drop')
+    _other = KeyField("other")
+    _method = AnyField("method")
+    _min_periods = Int32Field("min_periods")
+    _axis = Int32Field("axis")
+    _drop = BoolField("drop")
 
-    def __init__(self, other=None, method=None, min_periods=None, axis=None,
-                 drop=None, **kw):
-        super().__init__(_other=other, _method=method, _min_periods=min_periods,
-                         _axis=axis, _drop=drop, **kw)
+    def __init__(
+        self, other=None, method=None, min_periods=None, axis=None, drop=None, **kw
+    ):
+        super().__init__(
+            _other=other,
+            _method=method,
+            _min_periods=min_periods,
+            _axis=axis,
+            _drop=drop,
+            **kw,
+        )
 
     @property
     def other(self):
@@ -70,6 +77,7 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
             inputs = filter_inputs([df_or_series, self.other])
             return self.new_scalar(inputs, dtype=np.dtype(np.float_))
         else:
+
             def _filter_numeric(obj):
                 if not isinstance(obj, DATAFRAME_TYPE):
                     return obj
@@ -83,39 +91,58 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
 
             inputs = filter_inputs([df_or_series, self.other])
             if self.axis is None:
-                dtypes = pd.Series([np.dtype(np.float_)] * len(df_or_series.dtypes),
-                                   index=df_or_series.dtypes.index)
-                return self.new_dataframe(inputs, shape=(df_or_series.shape[1],) * 2, dtypes=dtypes,
-                                          index_value=df_or_series.columns_value,
-                                          columns_value=df_or_series.columns_value)
+                dtypes = pd.Series(
+                    [np.dtype(np.float_)] * len(df_or_series.dtypes),
+                    index=df_or_series.dtypes.index,
+                )
+                return self.new_dataframe(
+                    inputs,
+                    shape=(df_or_series.shape[1],) * 2,
+                    dtypes=dtypes,
+                    index_value=df_or_series.columns_value,
+                    columns_value=df_or_series.columns_value,
+                )
             else:
                 new_index_value = df_or_series.axes[1 - self.axis].index_value
                 if isinstance(self.other, DATAFRAME_TYPE):
-                    align_dtypes = pd.concat([self.other.dtypes, df_or_series.dtypes], axis=1)
+                    align_dtypes = pd.concat(
+                        [self.other.dtypes, df_or_series.dtypes], axis=1
+                    )
                     align_shape = (np.nan, align_dtypes.shape[0])
                     new_index_value = parse_index(align_dtypes.index)
                 else:
                     align_shape = df_or_series.shape
 
                 shape = (np.nan,) if self.drop else (align_shape[1 - self.axis],)
-                return self.new_series(inputs, shape=shape, dtype=np.dtype(np.float_),
-                                       index_value=new_index_value)
+                return self.new_series(
+                    inputs,
+                    shape=shape,
+                    dtype=np.dtype(np.float_),
+                    index_value=new_index_value,
+                )
 
     @classmethod
     def _tile_single(cls, op: "DataFrameCorr"):
         out = op.outputs[0]
 
         new_op = op.copy().reset_key()
-        chunk = new_op.new_chunk([inp.chunks[0] for inp in op.inputs],
-                                 index=(0,) * len(out.shape), **out.params)
+        chunk = new_op.new_chunk(
+            [inp.chunks[0] for inp in op.inputs],
+            index=(0,) * len(out.shape),
+            **out.params,
+        )
 
         new_op = op.copy().reset_key()
-        return new_op.new_tileables(op.inputs, chunks=[chunk], nsplits=((s,) for s in out.shape),
-                                    **out.params)
+        return new_op.new_tileables(
+            op.inputs, chunks=[chunk], nsplits=((s,) for s in out.shape), **out.params
+        )
 
     @staticmethod
     def _tile_pearson_cross(left, right, min_periods):
-        left_tensor, right_tensor = left.fillna(0).to_tensor(), right.fillna(0).to_tensor()
+        left_tensor, right_tensor = (
+            left.fillna(0).to_tensor(),
+            right.fillna(0).to_tensor(),
+        )
 
         nna_left = left.notna().to_tensor().astype(np.float_)
         nna_right = right.notna().to_tensor().astype(np.float_)
@@ -127,8 +154,9 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         sum_mul = left_tensor.T.dot(right_tensor)
         data_count = nna_left.T.dot(nna_right)
 
-        divisor = np.sqrt(data_count * sum_left2 - sum_left * sum_left).T \
-            * np.sqrt(data_count * sum_right2 - sum_right * sum_right)
+        divisor = np.sqrt(data_count * sum_left2 - sum_left * sum_left).T * np.sqrt(
+            data_count * sum_right2 - sum_right * sum_right
+        )
 
         result = (data_count * sum_mul - sum_left * sum_right.T) / divisor
         if min_periods is not None:
@@ -149,8 +177,9 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         sum_mul = left.mul(right, axis=axis).sum(axis=axis)
         data_count = nna_left.mul(nna_right, axis=axis).sum(axis=axis)
 
-        divisor = np.sqrt(data_count * sum_left2 - sum_left * sum_left) \
-            * np.sqrt(data_count * sum_right2 - sum_right * sum_right)
+        divisor = np.sqrt(data_count * sum_left2 - sum_left * sum_left) * np.sqrt(
+            data_count * sum_right2 - sum_right * sum_right
+        )
         return (data_count * sum_mul - sum_left * sum_right) / divisor
 
     @classmethod
@@ -159,8 +188,13 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         right = op.other
 
         _check_supported_methods(op.method)
-        return [(yield from recursive_tile(
-            cls._tile_pearson_cross(left, right, min_periods=op.min_periods)))]
+        return [
+            (
+                yield from recursive_tile(
+                    cls._tile_pearson_cross(left, right, min_periods=op.min_periods)
+                )
+            )
+        ]
 
     @classmethod
     def _tile_dataframe_cross(cls, op: "DataFrameCorr"):
@@ -172,7 +206,9 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         _check_supported_methods(op.method)
 
         result = cls._tile_pearson_cross(left, right, min_periods=op.min_periods)
-        result = MarsDataFrame(result, index=left.dtypes.index, columns=right.dtypes.index)
+        result = MarsDataFrame(
+            result, index=left.dtypes.index, columns=right.dtypes.index
+        )
         return [(yield from recursive_tile(result))]
 
     @classmethod
@@ -205,21 +241,23 @@ class DataFrameCorr(DataFrameOperand, DataFrameOperandMixin):
         inp_data = ctx[inp.key]
 
         if inp.ndim == 1:
-            ctx[out.key] = inp_data.corr(ctx[op.other.key], method=op.method,
-                                         min_periods=op.min_periods)
+            ctx[out.key] = inp_data.corr(
+                ctx[op.other.key], method=op.method, min_periods=op.min_periods
+            )
         elif op.axis is None:
             ctx[out.key] = inp_data.corr(method=op.method, min_periods=op.min_periods)
         else:
-            ctx[out.key] = inp_data.corrwith(ctx[op.other.key], method=op.method,
-                                             axis=op.axis, drop=op.drop)
+            ctx[out.key] = inp_data.corrwith(
+                ctx[op.other.key], method=op.method, axis=op.axis, drop=op.drop
+            )
 
 
 def _check_supported_methods(method):
-    if method != 'pearson':
-        raise NotImplementedError(f'Correlation method {method!r} not supported')
+    if method != "pearson":
+        raise NotImplementedError(f"Correlation method {method!r} not supported")
 
 
-def df_corr(df, method='pearson', min_periods=1):
+def df_corr(df, method="pearson", min_periods=1):
     """
     Compute pairwise correlation of columns, excluding NA/null values.
 
@@ -269,7 +307,7 @@ def df_corr(df, method='pearson', min_periods=1):
     return op(df)
 
 
-def df_corrwith(df, other, axis=0, drop=False, method='pearson'):
+def df_corrwith(df, other, axis=0, drop=False, method="pearson"):
     """
     Compute pairwise correlation.
 
@@ -311,12 +349,12 @@ def df_corrwith(df, other, axis=0, drop=False, method='pearson'):
     axis = validate_axis(axis, df)
     if drop:
         # TODO implement with df.align(method='inner')
-        raise NotImplementedError('drop=True not implemented')
+        raise NotImplementedError("drop=True not implemented")
     op = DataFrameCorr(other=other, method=method, axis=axis, drop=drop)
     return op(df)
 
 
-def series_corr(series, other, method='pearson', min_periods=None):
+def series_corr(series, other, method="pearson", min_periods=None):
     """
     Compute correlation with `other` Series, excluding missing values.
 
@@ -405,5 +443,5 @@ def series_autocorr(series, lag=1):
     >>> s.autocorr().execute()
     nan
     """
-    op = DataFrameCorr(other=series.shift(lag), method='pearson')
+    op = DataFrameCorr(other=series.shift(lag), method="pearson")
     return op(series)

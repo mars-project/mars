@@ -20,8 +20,13 @@ from collections.abc import Iterable
 import numpy as np
 
 from ... import opcodes as OperandDef
-from ...serialization.serializables import AnyField, BoolField, \
-    StringField, TupleField, SliceField
+from ...serialization.serializables import (
+    AnyField,
+    BoolField,
+    StringField,
+    TupleField,
+    SliceField,
+)
 from ..array_utils import device, as_same_device
 from ..utils import validate_axis, unify_chunks
 from ..datasource import tensor as astensor
@@ -54,26 +59,38 @@ def _norm_axis(axis):
 class TensorConcatenate(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.CONCATENATE
 
-    _axis = AnyField('axis')
+    _axis = AnyField("axis")
 
     # for mmap
-    _mmap = BoolField('mmap')
-    _file_prefix = StringField('file_prefix')
-    _create_mmap_file = BoolField('create_mmap_file')
-    _partition_slice = SliceField('partition_slice')
-    _total_shape = TupleField('total_shape')
+    _mmap = BoolField("mmap")
+    _file_prefix = StringField("file_prefix")
+    _create_mmap_file = BoolField("create_mmap_file")
+    _partition_slice = SliceField("partition_slice")
+    _total_shape = TupleField("total_shape")
 
-    def __init__(self, axis=None, mmap=None, file_prefix=None, create_mmap_file=None,
-                 partition_slice=None, total_shape=None, **kw):
-        super().__init__(_axis=axis, _mmap=mmap,
-                         _file_prefix=file_prefix,
-                         _create_mmap_file=create_mmap_file,
-                         _partition_slice=partition_slice,
-                         _total_shape=total_shape, **kw)
+    def __init__(
+        self,
+        axis=None,
+        mmap=None,
+        file_prefix=None,
+        create_mmap_file=None,
+        partition_slice=None,
+        total_shape=None,
+        **kw
+    ):
+        super().__init__(
+            _axis=axis,
+            _mmap=mmap,
+            _file_prefix=file_prefix,
+            _create_mmap_file=create_mmap_file,
+            _partition_slice=partition_slice,
+            _total_shape=total_shape,
+            **kw
+        )
 
     @property
     def axis(self):
-        return getattr(self, '_axis', None)
+        return getattr(self, "_axis", None)
 
     @property
     def mmap(self):
@@ -97,19 +114,25 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
 
     def __call__(self, tensors):
         if len(set(t.ndim for t in tensors)) != 1:
-            raise ValueError('all the input tensors must have same number of dimensions')
+            raise ValueError(
+                "all the input tensors must have same number of dimensions"
+            )
 
         axis = self._axis
-        shapes = [t.shape[:axis] + t.shape[axis + 1:] for t in tensors]
+        shapes = [t.shape[:axis] + t.shape[axis + 1 :] for t in tensors]
         if len(set(shapes)) != 1:
-            raise ValueError('all the input tensor dimensions '
-                             'except for the concatenation axis must match exactly')
+            raise ValueError(
+                "all the input tensor dimensions "
+                "except for the concatenation axis must match exactly"
+            )
 
-        shape = [0 if i == axis else tensors[0].shape[i] for i in range(tensors[0].ndim)]
+        shape = [
+            0 if i == axis else tensors[0].shape[i] for i in range(tensors[0].ndim)
+        ]
         shape[axis] = sum(t.shape[axis] for t in tensors)
 
         if any(np.isnan(s) for i, s in enumerate(shape) if i != axis):
-            raise ValueError('cannot concatenate tensor with unknown shape')
+            raise ValueError("cannot concatenate tensor with unknown shape")
 
         return self.new_tensor(tensors, shape=tuple(shape))
 
@@ -122,40 +145,56 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
         axis = op.axis
 
         c = itertools.count(inputs[0].ndim)
-        tensor_axes = [(t, tuple(i if i != axis else next(c) for i in range(t.ndim)))
-                       for t in inputs]
+        tensor_axes = [
+            (t, tuple(i if i != axis else next(c) for i in range(t.ndim)))
+            for t in inputs
+        ]
         inputs = yield from unify_chunks(*tensor_axes)
 
-        out_chunk_shape = [0 if i == axis else inputs[0].chunk_shape[i]
-                           for i in range(inputs[0].ndim)]
+        out_chunk_shape = [
+            0 if i == axis else inputs[0].chunk_shape[i] for i in range(inputs[0].ndim)
+        ]
         out_chunk_shape[axis] = sum(t.chunk_shape[axis] for t in inputs)
-        out_nsplits = [None if i == axis else inputs[0].nsplits[i]
-                       for i in range(inputs[0].ndim)]
+        out_nsplits = [
+            None if i == axis else inputs[0].nsplits[i] for i in range(inputs[0].ndim)
+        ]
         out_nsplits[axis] = tuple(itertools.chain(*[t.nsplits[axis] for t in inputs]))
 
         out_chunks = []
         axis_cum_chunk_shape = np.cumsum([t.chunk_shape[axis] for t in inputs])
         for out_idx in itertools.product(*[range(s) for s in out_chunk_shape]):
-            axis_index = np.searchsorted(axis_cum_chunk_shape, out_idx[axis], side='right')
+            axis_index = np.searchsorted(
+                axis_cum_chunk_shape, out_idx[axis], side="right"
+            )
             t = inputs[axis_index]
-            axis_inner_index = out_idx[axis] - \
-                (0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1])
-            idx = out_idx[:axis] + (axis_inner_index,) + out_idx[axis + 1:]
+            axis_inner_index = out_idx[axis] - (
+                0 if axis_index < 1 else axis_cum_chunk_shape[axis_index - 1]
+            )
+            idx = out_idx[:axis] + (axis_inner_index,) + out_idx[axis + 1 :]
             in_chunk = t.cix[idx]
             if idx == out_idx:
                 # if index is the same, just use the input chunk
                 out_chunks.append(in_chunk)
             else:
-                chunk_op = TensorSlice(slices=[slice(None) for _ in range(in_chunk.ndim)],
-                                       dtype=in_chunk.dtype, sparse=in_chunk.op.sparse)
-                out_chunk = chunk_op.new_chunk([in_chunk], shape=in_chunk.shape,
-                                               index=out_idx, order=output.order)
+                chunk_op = TensorSlice(
+                    slices=[slice(None) for _ in range(in_chunk.ndim)],
+                    dtype=in_chunk.dtype,
+                    sparse=in_chunk.op.sparse,
+                )
+                out_chunk = chunk_op.new_chunk(
+                    [in_chunk], shape=in_chunk.shape, index=out_idx, order=output.order
+                )
 
                 out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, output.shape, order=output.order,
-                                  nsplits=out_nsplits, chunks=out_chunks)
+        return new_op.new_tensors(
+            op.inputs,
+            output.shape,
+            order=output.order,
+            nsplits=out_nsplits,
+            chunks=out_chunks,
+        )
 
     @staticmethod
     def _ensure_order(result, order):
@@ -171,7 +210,9 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
     @classmethod
     def _execute(cls, ctx, op):
         def _base_concatenate(chunk, inputs):
-            inputs, device_id, xp = as_same_device(inputs, device=chunk.op.device, ret_extra=True)
+            inputs, device_id, xp = as_same_device(
+                inputs, device=chunk.op.device, ret_extra=True
+            )
 
             axis, single_axis = _norm_axis(chunk.op.axis)
             if single_axis:
@@ -179,37 +220,52 @@ class TensorConcatenate(TensorOperand, TensorOperandMixin):
                     res = xp.concatenate(tuple(inputs), axis=axis)
             else:
                 axes = axis or list(range(chunk.ndim))
-                chunks = [(_get_index(input), data) for input, data in zip(chunk.inputs, inputs)]
+                chunks = [
+                    (_get_index(input), data)
+                    for input, data in zip(chunk.inputs, inputs)
+                ]
                 with device(device_id):
                     for i in range(len(axes) - 1):
                         new_chunks = []
-                        for idx, cs in itertools.groupby(chunks, key=lambda t: t[0][:-1]):
+                        for idx, cs in itertools.groupby(
+                            chunks, key=lambda t: t[0][:-1]
+                        ):
                             cs = list(map(operator.itemgetter(1), cs))
-                            new_chunks.append((idx, xp.concatenate(cs, axis=len(axes) - i - 1)))
+                            new_chunks.append(
+                                (idx, xp.concatenate(cs, axis=len(axes) - i - 1))
+                            )
                         chunks = new_chunks
-                    res = xp.concatenate(list(map(operator.itemgetter(1), chunks)), axis=axes[0])
+                    res = xp.concatenate(
+                        list(map(operator.itemgetter(1), chunks)), axis=axes[0]
+                    )
             return res
 
         chunk = op.outputs[0]
         inputs = [ctx[input.key] for input in op.inputs]
 
         if isinstance(inputs[0], tuple):
-            ctx[chunk.key] = \
-                tuple(cls._ensure_order(_base_concatenate(chunk, [input[i] for input in inputs]), chunk.order)
-                      for i in range(len(inputs[0])))
+            ctx[chunk.key] = tuple(
+                cls._ensure_order(
+                    _base_concatenate(chunk, [input[i] for input in inputs]),
+                    chunk.order,
+                )
+                for i in range(len(inputs[0]))
+            )
         else:
-            ctx[chunk.key] = cls._ensure_order(_base_concatenate(chunk, inputs), chunk.order)
+            ctx[chunk.key] = cls._ensure_order(
+                _base_concatenate(chunk, inputs), chunk.order
+            )
 
     @classmethod
     def _execute_with_mmap(cls, ctx, op):  # pragma: no cover
         if op.create_mmap_file:
-            path = tempfile.mkstemp(prefix=op.file_prefix, suffix='.dat')[1]
-            np.memmap(path, dtype=op.dtype, mode='w+', shape=op.total_shape)
+            path = tempfile.mkstemp(prefix=op.file_prefix, suffix=".dat")[1]
+            np.memmap(path, dtype=op.dtype, mode="w+", shape=op.total_shape)
             ctx[op.outputs[0].key] = path
         else:
             path = ctx[op.inputs[0].key]
             array = ctx[op.inputs[1].key]
-            fp = np.memmap(path, dtype=op.dtype, mode='r+', shape=op.total_shape)
+            fp = np.memmap(path, dtype=op.dtype, mode="r+", shape=op.total_shape)
             fp[op.partition_slice] = array
             ctx[op.outputs[0].key] = path
 

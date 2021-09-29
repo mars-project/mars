@@ -45,24 +45,26 @@ class OperandTilesHandler:
         return type(op)
 
     @classmethod
-    def register(cls,
-                 op: OperandType,
-                 tile_handler: Callable[[OperandType], TileableType]):
+    def register(
+        cls, op: OperandType, tile_handler: Callable[[OperandType], TileableType]
+    ):
         cls._handlers[cls._get_op_cls(op)] = tile_handler
 
     @classmethod
-    def unregister(cls,
-                   op: OperandType):
+    def unregister(cls, op: OperandType):
         del cls._handlers[cls._get_op_cls(op)]
 
     @classmethod
-    def get_handler(cls, op: OperandType) -> Callable[[OperandType], List[TileableType]]:
+    def get_handler(
+        cls, op: OperandType
+    ) -> Callable[[OperandType], List[TileableType]]:
         op_cls = cls._get_op_cls(op)
         return cls._handlers.get(op_cls, op_cls.tile)
 
     @classmethod
-    def tile(cls, tileables: List[TileableType]) \
-            -> Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
+    def tile(
+        cls, tileables: List[TileableType]
+    ) -> Generator[List[ChunkType], List[ChunkType], List[TileableType]]:
         op = tileables[0].op
         # pre tile
         op.pre_tile(op)
@@ -83,23 +85,24 @@ class OperandTilesHandler:
 
         if not isinstance(tiled_result, list):
             tiled_result = [tiled_result]
-        tiled_results = [t.data if hasattr(t, 'data') else t
-                         for t in tiled_result]
+        tiled_results = [t.data if hasattr(t, "data") else t for t in tiled_result]
         assert len(tileables) == len(tiled_results)
         if any(inspect.isgenerator(r) for r in tiled_results):  # pragma: no cover
-            raise TypeError(f'tiled result cannot be generator '
-                            f'when tiling {op}')
+            raise TypeError(f"tiled result cannot be generator " f"when tiling {op}")
         cls._assign_to(tiled_results, tileables)
         return tileables
 
     @classmethod
-    def _assign_to(cls,
-                   tile_after_tensor_datas: List["TileableData"],
-                   tile_before_tensor_datas: List["TileableData"]):
+    def _assign_to(
+        cls,
+        tile_after_tensor_datas: List["TileableData"],
+        tile_before_tensor_datas: List["TileableData"],
+    ):
         assert len(tile_after_tensor_datas) == len(tile_before_tensor_datas)
 
-        for tile_after_tensor_data, tile_before_tensor_data in \
-                zip(tile_after_tensor_datas, tile_before_tensor_datas):
+        for tile_after_tensor_data, tile_before_tensor_data in zip(
+            tile_after_tensor_datas, tile_before_tensor_datas
+        ):
             if tile_before_tensor_data is None:
                 # garbage collected
                 continue
@@ -128,8 +131,7 @@ class OperandTilesHandler:
         if tiled is not None:
             return tiled if isinstance(tiled, list) else [tiled]
         else:
-            raise NotImplementedError(
-                f'{type(op)} does not support tile') from cause
+            raise NotImplementedError(f"{type(op)} does not support tile") from cause
 
 
 handler = OperandTilesHandler()
@@ -138,7 +140,7 @@ unregister = OperandTilesHandler.unregister
 
 
 class _ChunksIndexer:
-    __slots__ = '_tileable',
+    __slots__ = ("_tileable",)
 
     def __init__(self, tileable):
         self._tileable = tileable
@@ -157,8 +159,10 @@ class _ChunksIndexer:
             if len(item) == 0 and self._tileable.is_scalar():
                 return self._tileable.chunks[0]
             if len(item) != self._tileable.ndim:
-                raise ValueError(f'Cannot get chunk by {item}, '
-                                 f'expect length {self._tileable.ndim}')
+                raise ValueError(
+                    f"Cannot get chunk by {item}, "
+                    f"expect length {self._tileable.ndim}"
+                )
             slices, singleton = [], True
             for it, dim in zip(item, self._tileable.chunk_shape):
                 if isinstance(it, slice):
@@ -167,8 +171,10 @@ class _ChunksIndexer:
                 elif np.issubdtype(type(it), np.integer):
                     slices.append([it if it >= 0 else dim + it])
                 else:
-                    raise TypeError(f'Cannot get chunk by {it}, '
-                                    f'invalid value has type {type(it)}')
+                    raise TypeError(
+                        f"Cannot get chunk by {it}, "
+                        f"invalid value has type {type(it)}"
+                    )
 
             indexes = tuple(zip(*itertools.product(*slices)))
 
@@ -178,7 +184,7 @@ class _ChunksIndexer:
             else:
                 return [self._tileable._chunks[idx] for idx in flat_index]
 
-        raise ValueError(f'Cannot get {type(self._tileable).__name__} chunk by {item}')
+        raise ValueError(f"Cannot get {type(self._tileable).__name__} chunk by {item}")
 
 
 class EntityDataModificationHandler:
@@ -227,8 +233,11 @@ class EntityDataModificationHandler:
                 self._set_data(entity, old_to_new[data])
                 notified.add(entity)
 
-            observers = {ob for ob in self._data_to_entities.pop(data, set())
-                         if ob not in notified}
+            observers = {
+                ob
+                for ob in self._data_to_entities.pop(data, set())
+                if ob not in notified
+            }
             for ob in observers:
                 new_data = self._get_data(ob.op.on_input_modify(old_to_new[data]))
                 old_data = ob.data
@@ -241,7 +250,9 @@ class EntityDataModificationHandler:
 
             if data.op.create_view:
                 old_input_data = data.inputs[0]
-                new_input_data = self._get_data(data.op.on_output_modify(old_to_new[data]))
+                new_input_data = self._get_data(
+                    data.op.on_output_modify(old_to_new[data])
+                )
                 old_to_new[old_input_data] = new_input_data
                 if old_input_data not in processed_data:
                     q.append(old_input_data)
@@ -252,38 +263,41 @@ entity_view_handler = EntityDataModificationHandler()
 
 
 class TileableData(EntityData, _ExecutableMixin):
-    __slots__ = '_cix', '_entities', '_executed_sessions'
-    _no_copy_attrs_ = Base._no_copy_attrs_ | {'_cix'}
+    __slots__ = "_cix", "_entities", "_executed_sessions"
+    _no_copy_attrs_ = Base._no_copy_attrs_ | {"_cix"}
 
     # optional fields
     # `nsplits` means the sizes of chunks for each dimension
-    _nsplits = TupleField('nsplits', FieldTypes.tuple(FieldTypes.uint64),
-                          on_serialize=on_serialize_nsplits)
+    _nsplits = TupleField(
+        "nsplits",
+        FieldTypes.tuple(FieldTypes.uint64),
+        on_serialize=on_serialize_nsplits,
+    )
 
     def __init__(self: TileableType, *args, **kwargs):
-        if kwargs.get('_nsplits', None) is not None:
-            kwargs['_nsplits'] = tuple(tuple(s) for s in kwargs['_nsplits'])
+        if kwargs.get("_nsplits", None) is not None:
+            kwargs["_nsplits"] = tuple(tuple(s) for s in kwargs["_nsplits"])
 
         super().__init__(*args, **kwargs)
 
-        if hasattr(self, '_chunks') and self._chunks:
-            self._chunks = sorted(self._chunks, key=attrgetter('index'))
+        if hasattr(self, "_chunks") and self._chunks:
+            self._chunks = sorted(self._chunks, key=attrgetter("index"))
 
         self._entities = WeakSet()
         self._executed_sessions = []
 
     @property
     def chunk_shape(self):
-        if hasattr(self, '_nsplits') and self._nsplits is not None:
+        if hasattr(self, "_nsplits") and self._nsplits is not None:
             return tuple(map(len, self._nsplits))
 
     @property
     def chunks(self) -> List[Chunk]:
-        return getattr(self, '_chunks', None)
+        return getattr(self, "_chunks", None)
 
     @property
     def nsplits(self):
-        return getattr(self, '_nsplits', None)
+        return getattr(self, "_nsplits", None)
 
     @nsplits.setter
     def nsplits(self, new_nsplits):
@@ -300,7 +314,7 @@ class TileableData(EntityData, _ExecutableMixin):
             return _ChunksIndexer(self)
 
         try:
-            if getattr(self, '_cix', None) is None:
+            if getattr(self, "_cix", None) is None:
                 self._cix = _ChunksIndexer(self)
             return self._cix
         except (TypeError, ValueError):
@@ -311,7 +325,7 @@ class TileableData(EntityData, _ExecutableMixin):
         return self._entities
 
     def is_coarse(self):
-        if not hasattr(self, '_chunks'):
+        if not hasattr(self, "_chunks"):
             return True
         if not self._chunks:
             return True
@@ -327,15 +341,14 @@ class TileableData(EntityData, _ExecutableMixin):
 
 
 class Tileable(Entity):
-    __slots__ = '__weakref__',
+    __slots__ = ("__weakref__",)
 
-    def __init__(self, data: TileableType=None, **kw):
+    def __init__(self, data: TileableType = None, **kw):
         super().__init__(data=data, **kw)
         if self._data is not None:
             self._data.attach(self)
             if self._data.op.create_view:
-                entity_view_handler.add_observer(
-                    self._data.inputs[0], self)
+                entity_view_handler.add_observer(self._data.inputs[0], self)
 
     def __copy__(self):
         return self._view()
@@ -351,16 +364,17 @@ class Tileable(Entity):
         params = []
         for o in self.op.outputs:
             param = o.params
-            param['_key'] = o.key
+            param["_key"] = o.key
             param.update(o.extra_params)
             params.append(param)
-        new_outs = new_op.new_tileables(self.op.inputs, kws=params,
-                                        output_limit=len(params))
+        new_outs = new_op.new_tileables(
+            self.op.inputs, kws=params, output_limit=len(params)
+        )
         pos = -1
         for i, out in enumerate(self.op.outputs):
             # create a ref to copied one
             new_out = new_outs[i]
-            if not hasattr(new_out.data, '_siblings'):
+            if not hasattr(new_out.data, "_siblings"):
                 new_out.data._siblings = []
             new_out.data._siblings.append(out)
 
@@ -385,9 +399,12 @@ TILEABLE_TYPE = (Tileable, TileableData)
 
 class HasShapeTileableData(TileableData):
     # required fields
-    _shape = TupleField('shape', FieldTypes.int64,
-                        on_serialize=on_serialize_shape,
-                        on_deserialize=on_deserialize_shape)
+    _shape = TupleField(
+        "shape",
+        FieldTypes.int64,
+        on_serialize=on_serialize_shape,
+        on_deserialize=on_deserialize_shape,
+    )
 
     @property
     def ndim(self):
@@ -399,13 +416,13 @@ class HasShapeTileableData(TileableData):
         except IndexError:
             if is_build_mode():
                 return 0
-            raise TypeError('len() of unsized object')
+            raise TypeError("len() of unsized object")
 
     @property
     def shape(self):
-        if hasattr(self, '_shape') and self._shape is not None:
+        if hasattr(self, "_shape") and self._shape is not None:
             return self._shape
-        if hasattr(self, '_nsplits') and self._nsplits is not None:
+        if hasattr(self, "_nsplits") and self._nsplits is not None:
             self._shape = tuple(builtins.sum(nsplit) for nsplit in self._nsplits)
             return self._shape
 
@@ -419,9 +436,7 @@ class HasShapeTileableData(TileableData):
     @property
     def params(self):
         # params return the properties which useful to rebuild a new tileable object
-        return {
-            'shape': self.shape
-        }
+        return {"shape": self.shape}
 
     def _equals(self, o):
         return self is o

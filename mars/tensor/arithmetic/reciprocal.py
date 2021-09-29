@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorReciprocal(TensorUnaryOp):
     _op_type_ = OperandDef.RECIPROCAL
-    _func_name = 'reciprocal'
+    _func_name = "reciprocal"
 
 
 @infer_dtype(np.reciprocal)

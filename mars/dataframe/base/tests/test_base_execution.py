@@ -18,6 +18,7 @@ from collections import OrderedDict
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import pyarrow as pa
 except ImportError:  # pragma: no cover
@@ -37,7 +38,7 @@ from .. import to_gpu, to_cpu
 from ..to_numeric import to_numeric
 from ..rebalance import DataFrameRebalance
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 @require_cudf
@@ -87,8 +88,11 @@ def test_rechunk_execution(setup):
     res = df2.execute().fetch()
     pd.testing.assert_frame_equal(data, res)
 
-    data = pd.DataFrame(np.random.rand(10, 10), index=np.random.randint(-100, 100, size=(10,)),
-                        columns=[np.random.bytes(10) for _ in range(10)])
+    data = pd.DataFrame(
+        np.random.rand(10, 10),
+        index=np.random.randint(-100, 100, size=(10,)),
+        columns=[np.random.bytes(10) for _ in range(10)],
+    )
     df = from_pandas_df(data)
     df2 = df.rechunk(5)
     res = df2.execute().fetch()
@@ -117,7 +121,7 @@ def test_rechunk_execution(setup):
     pd.testing.assert_index_equal(data, res)
 
     # test rechunk on mixed typed columns
-    data = pd.DataFrame({0: [1, 2], 1: [3, 4], 'a': [5, 6]})
+    data = pd.DataFrame({0: [1, 2], 1: [3, 4], "a": [5, 6]})
     df = from_pandas_df(data)
     df = df.rechunk((2, 2)).rechunk({1: 3})
     res = df.execute().fetch()
@@ -144,15 +148,15 @@ def test_series_map_execution(setup):
     expected = raw.map({i: 10 + i for i in range(7)})
     pd.testing.assert_series_equal(result, expected)
 
-    r = s.map({5: 10}, dtype=float, na_action='ignore')
+    r = s.map({5: 10}, dtype=float, na_action="ignore")
     result = r.execute().fetch()
-    expected = raw.map({5: 10}, na_action='ignore')
+    expected = raw.map({5: 10}, na_action="ignore")
     pd.testing.assert_series_equal(result, expected)
 
     # dtype can be inferred
-    r = s.map({5: 10.})
+    r = s.map({5: 10.0})
     result = r.execute().fetch()
-    expected = raw.map({5: 10.})
+    expected = raw.map({5: 10.0})
     pd.testing.assert_series_equal(result, expected)
 
     r = s.map(lambda x: x + 1, dtype=int)
@@ -161,21 +165,21 @@ def test_series_map_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     def f(x: int) -> float:
-        return x + 1.
+        return x + 1.0
 
     # dtype can be inferred for function
     r = s.map(f)
     result = r.execute().fetch()
-    expected = raw.map(lambda x: x + 1.)
+    expected = raw.map(lambda x: x + 1.0)
     pd.testing.assert_series_equal(result, expected)
 
     def f(x: int):
-        return x + 1.
+        return x + 1.0
 
     # dtype can be inferred for function
     r = s.map(f)
     result = r.execute().fetch()
-    expected = raw.map(lambda x: x + 1.)
+    expected = raw.map(lambda x: x + 1.0)
     pd.testing.assert_series_equal(result, expected)
 
     # test arg is a md.Series
@@ -188,7 +192,7 @@ def test_series_map_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     # test arg is a md.Series, and dtype can be inferred
-    raw2 = pd.Series([10.], index=[5])
+    raw2 = pd.Series([10.0], index=[5])
     s2 = from_pandas_series(raw2)
 
     r = s.map(s2)
@@ -197,12 +201,12 @@ def test_series_map_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     # test str
-    raw = pd.Series(['a', 'b', 'c', 'd'])
+    raw = pd.Series(["a", "b", "c", "d"])
     s = from_pandas_series(raw, chunk_size=2)
 
-    r = s.map({'c': 'e'})
+    r = s.map({"c": "e"})
     result = r.execute().fetch()
-    expected = raw.map({'c': 'e'})
+    expected = raw.map({"c": "e"})
     pd.testing.assert_series_equal(result, expected)
 
     # test map index
@@ -210,7 +214,7 @@ def test_series_map_execution(setup):
     idx = from_pandas_index(pd.Index(raw), chunk_size=2)
     r = idx.map(f)
     result = r.execute().fetch()
-    expected = raw.map(lambda x: x + 1.)
+    expected = raw.map(lambda x: x + 1.0)
     pd.testing.assert_index_equal(result, expected)
 
 
@@ -244,8 +248,8 @@ def test_describe_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     rs = np.random.RandomState(5)
-    df_raw = pd.DataFrame(rs.rand(10, 4), columns=list('abcd'))
-    df_raw['e'] = rs.randint(100, size=10)
+    df_raw = pd.DataFrame(rs.rand(10, 4), columns=list("abcd"))
+    df_raw["e"] = rs.randint(100, size=10)
 
     # test one chunk
     df = from_pandas_df(df_raw, chunk_size=10)
@@ -277,7 +281,7 @@ def test_describe_execution(setup):
     r = df.describe(percentiles=False, include=np.float64)
     result = r.execute().fetch()
     expected = df_raw.describe(percentiles=[], include=np.float64)
-    expected.drop(['50%'], axis=0, inplace=True)
+    expected.drop(["50%"], axis=0, inplace=True)
     pd.testing.assert_frame_equal(result, expected)
 
     with pytest.raises(ValueError):
@@ -289,16 +293,16 @@ def test_describe_execution(setup):
 
     # test input dataframe which has unknown shape
     df = from_pandas_df(df_raw, chunk_size=3)
-    df2 = df[df['a'] < 0.5]
+    df2 = df[df["a"] < 0.5]
     r = df2.describe()
 
     result = r.execute().fetch()
-    expected = df_raw[df_raw['a'] < 0.5].describe()
+    expected = df_raw[df_raw["a"] < 0.5].describe()
     pd.testing.assert_frame_equal(result, expected)
 
 
 def test_data_frame_apply_execute(setup):
-    cols = [chr(ord('A') + i) for i in range(10)]
+    cols = [chr(ord("A") + i) for i in range(10)]
     df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
     old_chunk_store_limit = options.chunk_store_limit
@@ -307,14 +311,14 @@ def test_data_frame_apply_execute(setup):
 
         df = from_pandas_df(df_raw, chunk_size=5)
 
-        r = df.apply('ffill')
+        r = df.apply("ffill")
         result = r.execute().fetch()
-        expected = df_raw.apply('ffill')
+        expected = df_raw.apply("ffill")
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df.apply(['sum', 'max'])
+        r = df.apply(["sum", "max"])
         result = r.execute().fetch()
-        expected = df_raw.apply(['sum', 'max'])
+        expected = df_raw.apply(["sum", "max"])
         pd.testing.assert_frame_equal(result, expected)
 
         r = df.apply(np.sqrt)
@@ -327,14 +331,14 @@ def test_data_frame_apply_execute(setup):
         expected = df_raw.apply(lambda x: pd.Series([1, 2]))
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df.apply(np.sum, axis='index')
+        r = df.apply(np.sum, axis="index")
         result = r.execute().fetch()
-        expected = df_raw.apply(np.sum, axis='index')
+        expected = df_raw.apply(np.sum, axis="index")
         pd.testing.assert_series_equal(result, expected)
 
-        r = df.apply(np.sum, axis='columns')
+        r = df.apply(np.sum, axis="columns")
         result = r.execute().fetch()
-        expected = df_raw.apply(np.sum, axis='columns')
+        expected = df_raw.apply(np.sum, axis="columns")
         pd.testing.assert_series_equal(result, expected)
 
         r = df.apply(lambda x: [1, 2], axis=1)
@@ -342,43 +346,47 @@ def test_data_frame_apply_execute(setup):
         expected = df_raw.apply(lambda x: [1, 2], axis=1)
         pd.testing.assert_series_equal(result, expected)
 
-        r = df.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1)
+        r = df.apply(lambda x: pd.Series([1, 2], index=["foo", "bar"]), axis=1)
         result = r.execute().fetch()
-        expected = df_raw.apply(lambda x: pd.Series([1, 2], index=['foo', 'bar']), axis=1)
+        expected = df_raw.apply(
+            lambda x: pd.Series([1, 2], index=["foo", "bar"]), axis=1
+        )
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df.apply(lambda x: [1, 2], axis=1, result_type='expand')
+        r = df.apply(lambda x: [1, 2], axis=1, result_type="expand")
         result = r.execute().fetch()
-        expected = df_raw.apply(lambda x: [1, 2], axis=1, result_type='expand')
+        expected = df_raw.apply(lambda x: [1, 2], axis=1, result_type="expand")
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df.apply(lambda x: list(range(10)), axis=1, result_type='reduce')
+        r = df.apply(lambda x: list(range(10)), axis=1, result_type="reduce")
         result = r.execute().fetch()
-        expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='reduce')
+        expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type="reduce")
         pd.testing.assert_series_equal(result, expected)
 
-        r = df.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
+        r = df.apply(lambda x: list(range(10)), axis=1, result_type="broadcast")
         result = r.execute().fetch()
-        expected = df_raw.apply(lambda x: list(range(10)), axis=1, result_type='broadcast')
+        expected = df_raw.apply(
+            lambda x: list(range(10)), axis=1, result_type="broadcast"
+        )
         pd.testing.assert_frame_equal(result, expected)
     finally:
         options.chunk_store_limit = old_chunk_store_limit
 
 
 def test_series_apply_execute(setup):
-    idxes = [chr(ord('A') + i) for i in range(20)]
+    idxes = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i ** 2 for i in range(20)], index=idxes)
 
     series = from_pandas_series(s_raw, chunk_size=5)
 
-    r = series.apply('add', args=(1,))
+    r = series.apply("add", args=(1,))
     result = r.execute().fetch()
-    expected = s_raw.apply('add', args=(1,))
+    expected = s_raw.apply("add", args=(1,))
     pd.testing.assert_series_equal(result, expected)
 
-    r = series.apply(['sum', 'max'])
+    r = series.apply(["sum", "max"])
     result = r.execute().fetch()
-    expected = s_raw.apply(['sum', 'max'])
+    expected = s_raw.apply(["sum", "max"])
     pd.testing.assert_series_equal(result, expected)
 
     r = series.apply(np.sqrt)
@@ -386,9 +394,9 @@ def test_series_apply_execute(setup):
     expected = s_raw.apply(np.sqrt)
     pd.testing.assert_series_equal(result, expected)
 
-    r = series.apply('sqrt')
+    r = series.apply("sqrt")
     result = r.execute().fetch()
-    expected = s_raw.apply('sqrt')
+    expected = s_raw.apply("sqrt")
     pd.testing.assert_series_equal(result, expected)
 
     r = series.apply(lambda x: [x, x + 1], convert_dtype=False)
@@ -400,40 +408,38 @@ def test_series_apply_execute(setup):
     series = from_pandas_series(s_raw2)
 
     dtypes = pd.Series([np.dtype(float)] * 3)
-    r = series.apply(pd.Series, output_type='dataframe',
-                     dtypes=dtypes)
+    r = series.apply(pd.Series, output_type="dataframe", dtypes=dtypes)
     result = r.execute().fetch()
     expected = s_raw2.apply(pd.Series)
     pd.testing.assert_frame_equal(result, expected)
 
 
-@pytest.mark.skipif(pa is None, reason='pyarrow not installed')
+@pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_apply_with_arrow_dtype_execution(setup):
-    df1 = pd.DataFrame({'a': [1, 2, 1],
-                        'b': ['a', 'b', 'a']})
+    df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
     df = from_pandas_df(df1)
-    df['b'] = df['b'].astype('Arrow[string]')
+    df["b"] = df["b"].astype("Arrow[string]")
 
     r = df.apply(lambda row: str(row[0]) + row[1], axis=1)
     result = r.execute().fetch()
     expected = df1.apply(lambda row: str(row[0]) + row[1], axis=1)
     pd.testing.assert_series_equal(result, expected)
 
-    s1 = df1['b']
+    s1 = df1["b"]
     s = from_pandas_series(s1)
-    s = s.astype('arrow_string')
+    s = s.astype("arrow_string")
 
-    r = s.apply(lambda x: x + '_suffix')
+    r = s.apply(lambda x: x + "_suffix")
     result = r.execute().fetch()
-    expected = s1.apply(lambda x: x + '_suffix')
+    expected = s1.apply(lambda x: x + "_suffix")
     pd.testing.assert_series_equal(result, expected)
 
 
 def test_transform_execute(setup):
-    cols = [chr(ord('A') + i) for i in range(10)]
+    cols = [chr(ord("A") + i) for i in range(10)]
     df_raw = pd.DataFrame(dict((c, [i ** 2 for i in range(20)]) for c in cols))
 
-    idx_vals = [chr(ord('A') + i) for i in range(20)]
+    idx_vals = [chr(ord("A") + i) for i in range(20)]
     s_raw = pd.Series([i ** 2 for i in range(20)], index=idx_vals)
 
     def rename_fn(f, new_name):
@@ -458,16 +464,14 @@ def test_transform_execute(setup):
         expected = df_raw.transform(lambda x: list(range(len(x))), axis=1)
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df.transform(['cumsum', 'cummax', lambda x: x + 1])
+        r = df.transform(["cumsum", "cummax", lambda x: x + 1])
         result = r.execute().fetch()
-        expected = df_raw.transform(['cumsum', 'cummax', lambda x: x + 1])
+        expected = df_raw.transform(["cumsum", "cummax", lambda x: x + 1])
         pd.testing.assert_frame_equal(result, expected)
 
-        fn_dict = OrderedDict([
-            ('A', 'cumsum'),
-            ('D', ['cumsum', 'cummax']),
-            ('F', lambda x: x + 1),
-        ])
+        fn_dict = OrderedDict(
+            [("A", "cumsum"), ("D", ["cumsum", "cummax"]), ("F", lambda x: x + 1),]
+        )
         r = df.transform(fn_dict)
         result = r.execute().fetch()
         expected = df_raw.transform(fn_dict)
@@ -483,8 +487,10 @@ def test_transform_execute(setup):
         expected = df_raw.agg(lambda x: x.iloc[:-1], axis=1)
         pd.testing.assert_frame_equal(result, expected)
 
-        fn_list = [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
-                   lambda x: x.iloc[:-1].reset_index(drop=True)]
+        fn_list = [
+            rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), "f1"),
+            lambda x: x.iloc[:-1].reset_index(drop=True),
+        ]
         r = df.transform(fn_list, _call_agg=True)
         result = r.execute().fetch()
         expected = df_raw.agg(fn_list)
@@ -495,12 +501,19 @@ def test_transform_execute(setup):
         expected = df_raw.agg(lambda x: x.sum())
         pd.testing.assert_series_equal(result, expected)
 
-        fn_dict = OrderedDict([
-            ('A', rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1')),
-            ('D', [rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), 'f1'),
-                   lambda x: x.iloc[:-1].reset_index(drop=True)]),
-            ('F', lambda x: x.iloc[:-1].reset_index(drop=True)),
-        ])
+        fn_dict = OrderedDict(
+            [
+                ("A", rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), "f1")),
+                (
+                    "D",
+                    [
+                        rename_fn(lambda x: x.iloc[1:].reset_index(drop=True), "f1"),
+                        lambda x: x.iloc[:-1].reset_index(drop=True),
+                    ],
+                ),
+                ("F", lambda x: x.iloc[:-1].reset_index(drop=True)),
+            ]
+        )
         r = df.transform(fn_dict, _call_agg=True)
         result = r.execute().fetch()
         expected = df_raw.agg(fn_dict)
@@ -515,57 +528,56 @@ def test_transform_execute(setup):
         expected = s_raw.transform(lambda x: x + 1)
         pd.testing.assert_series_equal(result, expected)
 
-        r = series.transform(['cumsum', lambda x: x + 1])
+        r = series.transform(["cumsum", lambda x: x + 1])
         result = r.execute().fetch()
-        expected = s_raw.transform(['cumsum', lambda x: x + 1])
+        expected = s_raw.transform(["cumsum", lambda x: x + 1])
         pd.testing.assert_frame_equal(result, expected)
 
         # test transform on string dtype
-        df_raw = pd.DataFrame({'col1': ['str'] * 10, 'col2': ['string'] * 10})
+        df_raw = pd.DataFrame({"col1": ["str"] * 10, "col2": ["string"] * 10})
         df = from_pandas_df(df_raw, chunk_size=3)
 
-        r = df['col1'].transform(lambda x: x + '_suffix')
+        r = df["col1"].transform(lambda x: x + "_suffix")
         result = r.execute().fetch()
-        expected = df_raw['col1'].transform(lambda x: x + '_suffix')
+        expected = df_raw["col1"].transform(lambda x: x + "_suffix")
         pd.testing.assert_series_equal(result, expected)
 
-        r = df.transform(lambda x: x + '_suffix')
+        r = df.transform(lambda x: x + "_suffix")
         result = r.execute().fetch()
-        expected = df_raw.transform(lambda x: x + '_suffix')
+        expected = df_raw.transform(lambda x: x + "_suffix")
         pd.testing.assert_frame_equal(result, expected)
 
-        r = df['col2'].transform(lambda x: x + '_suffix', dtype=np.dtype('str'))
+        r = df["col2"].transform(lambda x: x + "_suffix", dtype=np.dtype("str"))
         result = r.execute().fetch()
-        expected = df_raw['col2'].transform(lambda x: x + '_suffix')
+        expected = df_raw["col2"].transform(lambda x: x + "_suffix")
         pd.testing.assert_series_equal(result, expected)
     finally:
         options.chunk_store_limit = old_chunk_store_limit
 
 
-@pytest.mark.skipif(pa is None, reason='pyarrow not installed')
+@pytest.mark.skipif(pa is None, reason="pyarrow not installed")
 def test_transform_with_arrow_dtype_execution(setup):
-    df1 = pd.DataFrame({'a': [1, 2, 1],
-                        'b': ['a', 'b', 'a']})
+    df1 = pd.DataFrame({"a": [1, 2, 1], "b": ["a", "b", "a"]})
     df = from_pandas_df(df1)
-    df['b'] = df['b'].astype('Arrow[string]')
+    df["b"] = df["b"].astype("Arrow[string]")
 
-    r = df.transform({'b': lambda x: x + '_suffix'})
+    r = df.transform({"b": lambda x: x + "_suffix"})
     result = r.execute().fetch()
-    expected = df1.transform({'b': lambda x: x + '_suffix'})
+    expected = df1.transform({"b": lambda x: x + "_suffix"})
     pd.testing.assert_frame_equal(result, expected)
 
-    s1 = df1['b']
+    s1 = df1["b"]
     s = from_pandas_series(s1)
-    s = s.astype('arrow_string')
+    s = s.astype("arrow_string")
 
-    r = s.transform(lambda x: x + '_suffix')
+    r = s.transform(lambda x: x + "_suffix")
     result = r.execute().fetch()
-    expected = s1.transform(lambda x: x + '_suffix')
+    expected = s1.transform(lambda x: x + "_suffix")
     pd.testing.assert_series_equal(result, expected)
 
 
 def test_string_method_execution(setup):
-    s = pd.Series(['s1,s2', 'ef,', 'dd', np.nan])
+    s = pd.Series(["s1,s2", "ef,", "dd", np.nan])
     s2 = pd.concat([s, s, s])
 
     series = from_pandas_series(s, chunk_size=2)
@@ -578,39 +590,39 @@ def test_string_method_execution(setup):
     pd.testing.assert_series_equal(result, expected)
 
     # test split, expand=False
-    r = series.str.split(',', n=2)
+    r = series.str.split(",", n=2)
     result = r.execute().fetch()
-    expected = s.str.split(',', n=2)
+    expected = s.str.split(",", n=2)
     pd.testing.assert_series_equal(result, expected)
 
     # test split, expand=True
-    r = series.str.split(',', expand=True, n=1)
+    r = series.str.split(",", expand=True, n=1)
     result = r.execute().fetch()
-    expected = s.str.split(',', expand=True, n=1)
+    expected = s.str.split(",", expand=True, n=1)
     pd.testing.assert_frame_equal(result, expected)
 
     # test rsplit
-    r = series.str.rsplit(',', expand=True, n=1)
+    r = series.str.rsplit(",", expand=True, n=1)
     result = r.execute().fetch()
-    expected = s.str.rsplit(',', expand=True, n=1)
+    expected = s.str.rsplit(",", expand=True, n=1)
     pd.testing.assert_frame_equal(result, expected)
 
     # test cat all data
-    r = series2.str.cat(sep='/', na_rep='e')
+    r = series2.str.cat(sep="/", na_rep="e")
     result = r.execute().fetch()
-    expected = s2.str.cat(sep='/', na_rep='e')
+    expected = s2.str.cat(sep="/", na_rep="e")
     assert result == expected
 
     # test cat list
-    r = series.str.cat(['a', 'b', np.nan, 'c'])
+    r = series.str.cat(["a", "b", np.nan, "c"])
     result = r.execute().fetch()
-    expected = s.str.cat(['a', 'b', np.nan, 'c'])
+    expected = s.str.cat(["a", "b", np.nan, "c"])
     pd.testing.assert_series_equal(result, expected)
 
     # test cat series
-    r = series.str.cat(series.str.capitalize(), join='outer')
+    r = series.str.cat(series.str.capitalize(), join="outer")
     result = r.execute().fetch()
-    expected = s.str.cat(s.str.capitalize(), join='outer')
+    expected = s.str.cat(s.str.capitalize(), join="outer")
     pd.testing.assert_series_equal(result, expected)
 
     # test extractall
@@ -620,23 +632,21 @@ def test_string_method_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # test extract, expand=False
-    r = series.str.extract(r'[ab](\d)', expand=False)
+    r = series.str.extract(r"[ab](\d)", expand=False)
     result = r.execute().fetch()
-    expected = s.str.extract(r'[ab](\d)', expand=False)
+    expected = s.str.extract(r"[ab](\d)", expand=False)
     pd.testing.assert_series_equal(result, expected)
 
     # test extract, expand=True
-    r = series.str.extract(r'[ab](\d)', expand=True)
+    r = series.str.extract(r"[ab](\d)", expand=True)
     result = r.execute().fetch()
-    expected = s.str.extract(r'[ab](\d)', expand=True)
+    expected = s.str.extract(r"[ab](\d)", expand=True)
     pd.testing.assert_frame_equal(result, expected)
 
 
 def test_datetime_method_execution(setup):
     # test datetime
-    s = pd.Series([pd.Timestamp('2020-1-1'),
-                   pd.Timestamp('2020-2-1'),
-                   np.nan])
+    s = pd.Series([pd.Timestamp("2020-1-1"), pd.Timestamp("2020-2-1"), np.nan])
     series = from_pandas_series(s, chunk_size=2)
 
     r = series.dt.year
@@ -644,15 +654,13 @@ def test_datetime_method_execution(setup):
     expected = s.dt.year
     pd.testing.assert_series_equal(result, expected)
 
-    r = series.dt.strftime('%m-%d-%Y')
+    r = series.dt.strftime("%m-%d-%Y")
     result = r.execute().fetch()
-    expected = s.dt.strftime('%m-%d-%Y')
+    expected = s.dt.strftime("%m-%d-%Y")
     pd.testing.assert_series_equal(result, expected)
 
     # test timedelta
-    s = pd.Series([pd.Timedelta('1 days'),
-                   pd.Timedelta('3 days'),
-                   np.nan])
+    s = pd.Series([pd.Timedelta("1 days"), pd.Timedelta("3 days"), np.nan])
     series = from_pandas_series(s, chunk_size=2)
 
     r = series.dt.days
@@ -736,8 +744,7 @@ def test_isin_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # dict
-    b = {1: tensor([2, 1, raw[1][0]], chunk_size=2),
-         2: [3, 10]}
+    b = {1: tensor([2, 1, raw[1][0]], chunk_size=2), 2: [3, 10]}
     r = df.isin(b)
     result = r.execute().fetch()
     expected = raw.isin({1: [2, 1, raw[1][0]], 2: [3, 10]})
@@ -749,10 +756,10 @@ def test_cut_execution(setup):
 
     rs = np.random.RandomState(0)
     raw = rs.random(15) * 1000
-    s = pd.Series(raw, index=[f'i{i}' for i in range(15)])
+    s = pd.Series(raw, index=[f"i{i}" for i in range(15)])
     bins = [10, 100, 500]
     ii = pd.interval_range(10, 500, 3)
-    labels = ['a', 'b']
+    labels = ["a", "b"]
 
     t = tensor(raw, chunk_size=4)
     series = from_pandas_series(s, chunk_size=4)
@@ -782,7 +789,9 @@ def test_cut_execution(setup):
     # one chunk
     r = cut(s, tensor(bins, chunk_size=2), right=False, include_lowest=True)
     result = r.execute().fetch()
-    pd.testing.assert_series_equal(result, pd.cut(s, bins, right=False, include_lowest=True))
+    pd.testing.assert_series_equal(
+        result, pd.cut(s, bins, right=False, include_lowest=True)
+    )
 
     # test labels
     r = cut(t, bins, labels=labels)
@@ -800,7 +809,7 @@ def test_cut_execution(setup):
     np.testing.assert_array_equal(result, expected)
 
     # test labels which is tensor
-    labels_t = tensor(['a', 'b'], chunk_size=1)
+    labels_t = tensor(["a", "b"], chunk_size=1)
     r = cut(raw, bins, labels=labels_t, include_lowest=True)
     # result and expected is array whose dtype is CategoricalDtype
     result = r.execute().fetch()
@@ -828,12 +837,12 @@ def test_cut_execution(setup):
 
     # test duplicates
     bins2 = [0, 2, 4, 6, 10, 10]
-    r, b = cut(s, bins2, labels=False, retbins=True,
-               right=False, duplicates='drop')
+    r, b = cut(s, bins2, labels=False, retbins=True, right=False, duplicates="drop")
     r_result = r.execute().fetch()
     b_result = b.execute().fetch()
-    r_expected, b_expected = pd.cut(s, bins2, labels=False, retbins=True,
-                                    right=False, duplicates='drop')
+    r_expected, b_expected = pd.cut(
+        s, bins2, labels=False, retbins=True, right=False, duplicates="drop"
+    )
     pd.testing.assert_series_equal(r_result, r_expected)
     np.testing.assert_array_equal(b_result, b_expected)
 
@@ -862,7 +871,9 @@ def test_cut_execution(setup):
 
 
 def test_transpose_execution(setup):
-    raw = pd.DataFrame({"a": ['1', '2', '3'], "b": ['5', '-6', '7'], "c": ['1', '2', '3']})
+    raw = pd.DataFrame(
+        {"a": ["1", "2", "3"], "b": ["5", "-6", "7"], "c": ["1", "2", "3"]}
+    )
 
     # test 1 chunk
     df = from_pandas_df(raw)
@@ -885,7 +896,7 @@ def test_transpose_execution(setup):
     result = df.transpose().execute().fetch()
     pd.testing.assert_frame_equal(result, raw.transpose())
 
-    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": ['5', '-6', '7']})
+    raw = pd.DataFrame({"a": [1.1, 2.2, 3.3], "b": ["5", "-6", "7"]})
 
     df = from_pandas_df(raw, chunk_size=2)
     result = df.transpose().execute().fetch()
@@ -912,44 +923,41 @@ def test_to_numeric_execition(setup):
     series = from_pandas_series(s)
 
     r = to_numeric(series)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   pd.to_numeric(s))
+    pd.testing.assert_series_equal(r.execute().fetch(), pd.to_numeric(s))
 
     # test multi chunks
     series = from_pandas_series(s, chunk_size=20)
 
     r = to_numeric(series)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   pd.to_numeric(s))
+    pd.testing.assert_series_equal(r.execute().fetch(), pd.to_numeric(s))
 
     # test object dtype
-    s = pd.Series(['1.0', 2, -3, '2.0'])
+    s = pd.Series(["1.0", 2, -3, "2.0"])
     series = from_pandas_series(s)
 
     r = to_numeric(series)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   pd.to_numeric(s))
+    pd.testing.assert_series_equal(r.execute().fetch(), pd.to_numeric(s))
 
     # test errors and downcast
-    s = pd.Series(['appple', 2, -3, '2.0'])
+    s = pd.Series(["appple", 2, -3, "2.0"])
     series = from_pandas_series(s)
 
-    r = to_numeric(series, errors='ignore', downcast='signed')
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   pd.to_numeric(s, errors='ignore', downcast='signed'))
+    r = to_numeric(series, errors="ignore", downcast="signed")
+    pd.testing.assert_series_equal(
+        r.execute().fetch(), pd.to_numeric(s, errors="ignore", downcast="signed")
+    )
 
     # test list data
-    l = ['1.0', 2, -3, '2.0']
+    l = ["1.0", 2, -3, "2.0"]
 
     r = to_numeric(l)
-    np.testing.assert_array_equal(r.execute().fetch(),
-                                  pd.to_numeric(l))
+    np.testing.assert_array_equal(r.execute().fetch(), pd.to_numeric(l))
 
 
 def test_q_cut_execution(setup):
     rs = np.random.RandomState(0)
     raw = rs.random(15) * 1000
-    s = pd.Series(raw, index=[f'i{i}' for i in range(15)])
+    s = pd.Series(raw, index=[f"i{i}" for i in range(15)])
 
     series = from_pandas_series(s)
     r = qcut(series, 3)
@@ -972,69 +980,70 @@ def test_q_cut_execution(setup):
     result = r.execute().fetch()
     expected = pd.qcut(range(5), 3)
     assert isinstance(result, type(expected))
-    pd.testing.assert_series_equal(pd.Series(result),
-                                   pd.Series(expected))
+    pd.testing.assert_series_equal(pd.Series(result), pd.Series(expected))
 
     r = qcut(range(5), [0.2, 0.5])
     result = r.execute().fetch()
     expected = pd.qcut(range(5), [0.2, 0.5])
     assert isinstance(result, type(expected))
-    pd.testing.assert_series_equal(pd.Series(result),
-                                   pd.Series(expected))
+    pd.testing.assert_series_equal(pd.Series(result), pd.Series(expected))
 
     r = qcut(range(5), tensor([0.2, 0.5]))
     result = r.execute().fetch()
     expected = pd.qcut(range(5), [0.2, 0.5])
     assert isinstance(result, type(expected))
-    pd.testing.assert_series_equal(pd.Series(result),
-                                   pd.Series(expected))
+    pd.testing.assert_series_equal(pd.Series(result), pd.Series(expected))
 
 
 def test_shift_execution(setup):
     # test dataframe
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
-                       columns=['col' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(10, 8)), columns=["col" + str(i + 1) for i in range(8)]
+    )
 
     df = from_pandas_df(raw, chunk_size=5)
 
     for periods in (2, -2, 6, -6):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.):
-                r = df.shift(periods=periods, axis=axis,
-                             fill_value=fill_value)
+            for fill_value in (None, 0, 1.0):
+                r = df.shift(periods=periods, axis=axis, fill_value=fill_value)
 
                 try:
                     result = r.execute().fetch()
-                    expected = raw.shift(periods=periods, axis=axis,
-                                         fill_value=fill_value)
+                    expected = raw.shift(
+                        periods=periods, axis=axis, fill_value=fill_value
+                    )
                     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
                 except AssertionError as e:  # pragma: no cover
                     raise AssertionError(
-                        f'Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}'
+                        f"Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}"
                     ) from e
 
     raw2 = raw.copy()
-    raw2.index = pd.date_range('2020-1-1', periods=10)
-    raw2.columns = pd.date_range('2020-3-1', periods=8)
+    raw2.index = pd.date_range("2020-1-1", periods=10)
+    raw2.columns = pd.date_range("2020-3-1", periods=8)
 
     df2 = from_pandas_df(raw2, chunk_size=5)
 
     # test freq not None
     for periods in (2, -2):
         for axis in (0, 1):
-            for fill_value in (None, 0, 1.):
-                r = df2.shift(periods=periods, freq='D', axis=axis,
-                              fill_value=fill_value)
+            for fill_value in (None, 0, 1.0):
+                r = df2.shift(
+                    periods=periods, freq="D", axis=axis, fill_value=fill_value
+                )
 
                 try:
                     result = r.execute().fetch()
-                    expected = raw2.shift(periods=periods, freq='D', axis=axis,
-                                          fill_value=fill_value)
+                    expected = raw2.shift(
+                        periods=periods, freq="D", axis=axis, fill_value=fill_value
+                    )
                     pd.testing.assert_frame_equal(result, expected)
                 except AssertionError as e:  # pragma: no cover
                     raise AssertionError(
-                        f'Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}') from e
+                        f"Failed when periods: {periods}, axis: {axis}, fill_value: {fill_value}"
+                    ) from e
 
     # test tshift
     r = df2.tshift(periods=1)
@@ -1050,7 +1059,7 @@ def test_shift_execution(setup):
 
     series = from_pandas_series(s, chunk_size=5)
     for periods in (0, 2, -2, 6, -6):
-        for fill_value in (None, 0, 1.):
+        for fill_value in (None, 0, 1.0):
             r = series.shift(periods=periods, fill_value=fill_value)
 
             try:
@@ -1059,268 +1068,282 @@ def test_shift_execution(setup):
                 pd.testing.assert_series_equal(result, expected)
             except AssertionError as e:  # pragma: no cover
                 raise AssertionError(
-                    f'Failed when periods: {periods}, fill_value: {fill_value}') from e
+                    f"Failed when periods: {periods}, fill_value: {fill_value}"
+                ) from e
 
     s2 = raw2.iloc[:, 0]
 
     # test freq not None
     series2 = from_pandas_series(s2, chunk_size=5)
     for periods in (2, -2):
-        for fill_value in (None, 0, 1.):
-            r = series2.shift(periods=periods, freq='D', fill_value=fill_value)
+        for fill_value in (None, 0, 1.0):
+            r = series2.shift(periods=periods, freq="D", fill_value=fill_value)
 
             try:
                 result = r.execute().fetch()
-                expected = s2.shift(periods=periods, freq='D', fill_value=fill_value)
+                expected = s2.shift(periods=periods, freq="D", fill_value=fill_value)
                 pd.testing.assert_series_equal(result, expected)
             except AssertionError as e:  # pragma: no cover
                 raise AssertionError(
-                    f'Failed when periods: {periods}, fill_value: {fill_value}') from e
+                    f"Failed when periods: {periods}, fill_value: {fill_value}"
+                ) from e
 
 
 def test_diff_execution(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
-                       columns=['col' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(10, 8)), columns=["col" + str(i + 1) for i in range(8)]
+    )
 
     raw1 = raw.copy()
-    raw1['col4'] = raw1['col4'] < 400
+    raw1["col4"] = raw1["col4"] < 400
 
     r = from_pandas_df(raw1, chunk_size=(10, 5)).diff(-1)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw1.diff(-1))
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw1.diff(-1))
 
     r = from_pandas_df(raw1, chunk_size=5).diff(-1)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw1.diff(-1))
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw1.diff(-1))
 
     r = from_pandas_df(raw, chunk_size=(5, 8)).diff(1, axis=1)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw.diff(1, axis=1))
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.diff(1, axis=1))
 
     r = from_pandas_df(raw, chunk_size=5).diff(1, axis=1)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw.diff(1, axis=1), check_dtype=False)
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), raw.diff(1, axis=1), check_dtype=False
+    )
 
     # test series
     s = raw.iloc[:, 0]
     s1 = s.copy() < 400
 
     r = from_pandas_series(s, chunk_size=10).diff(-1)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.diff(-1))
+    pd.testing.assert_series_equal(r.execute().fetch(), s.diff(-1))
 
     r = from_pandas_series(s, chunk_size=5).diff(-1)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.diff(-1))
+    pd.testing.assert_series_equal(r.execute().fetch(), s.diff(-1))
 
     r = from_pandas_series(s1, chunk_size=5).diff(1)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s1.diff(1))
+    pd.testing.assert_series_equal(r.execute().fetch(), s1.diff(1))
 
 
 def test_value_counts_execution(setup):
     rs = np.random.RandomState(0)
-    s = pd.Series(rs.randint(5, size=100), name='s')
+    s = pd.Series(rs.randint(5, size=100), name="s")
     s[rs.randint(100)] = np.nan
 
     # test 1 chunk
     series = from_pandas_series(s, chunk_size=100)
 
     r = series.value_counts()
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.value_counts())
+    pd.testing.assert_series_equal(r.execute().fetch(), s.value_counts())
 
     r = series.value_counts(bins=5, normalize=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.value_counts(bins=5, normalize=True))
+    pd.testing.assert_series_equal(
+        r.execute().fetch(), s.value_counts(bins=5, normalize=True)
+    )
 
     # test multi chunks
     series = from_pandas_series(s, chunk_size=30)
 
-    r = series.value_counts(method='tree')
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.value_counts())
+    r = series.value_counts(method="tree")
+    pd.testing.assert_series_equal(r.execute().fetch(), s.value_counts())
 
-    r = series.value_counts(method='tree', normalize=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.value_counts(normalize=True))
+    r = series.value_counts(method="tree", normalize=True)
+    pd.testing.assert_series_equal(r.execute().fetch(), s.value_counts(normalize=True))
 
     # test bins and normalize
-    r = series.value_counts(method='tree', bins=5, normalize=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   s.value_counts(bins=5, normalize=True))
+    r = series.value_counts(method="tree", bins=5, normalize=True)
+    pd.testing.assert_series_equal(
+        r.execute().fetch(), s.value_counts(bins=5, normalize=True)
+    )
 
 
 def test_astype(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
-                       columns=['c' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(20, 8)), columns=["c" + str(i + 1) for i in range(8)]
+    )
     # single chunk
     df = from_pandas_df(raw)
-    r = df.astype('int32')
+    r = df.astype("int32")
 
     result = r.execute().fetch()
-    expected = raw.astype('int32')
+    expected = raw.astype("int32")
     pd.testing.assert_frame_equal(expected, result)
 
     # multiply chunks
     df = from_pandas_df(raw, chunk_size=6)
-    r = df.astype('int32')
+    r = df.astype("int32")
 
     result = r.execute().fetch()
-    expected = raw.astype('int32')
+    expected = raw.astype("int32")
     pd.testing.assert_frame_equal(expected, result)
 
     # dict type
     df = from_pandas_df(raw, chunk_size=5)
-    r = df.astype({'c1': 'int32', 'c2': 'float', 'c8': 'str'})
+    r = df.astype({"c1": "int32", "c2": "float", "c8": "str"})
 
     result = r.execute().fetch()
-    expected = raw.astype({'c1': 'int32', 'c2': 'float', 'c8': 'str'})
+    expected = raw.astype({"c1": "int32", "c2": "float", "c8": "str"})
     pd.testing.assert_frame_equal(expected, result)
 
     # test arrow_string dtype
     df = from_pandas_df(raw, chunk_size=8)
-    r = df.astype({'c1': 'arrow_string'})
+    r = df.astype({"c1": "arrow_string"})
 
     result = r.execute().fetch()
-    expected = raw.astype({'c1': 'arrow_string'})
+    expected = raw.astype({"c1": "arrow_string"})
     pd.testing.assert_frame_equal(expected, result)
 
     # test series
     s = pd.Series(rs.randint(5, size=20))
     series = from_pandas_series(s)
-    r = series.astype('int32')
+    r = series.astype("int32")
 
     result = r.execute().fetch()
-    expected = s.astype('int32')
+    expected = s.astype("int32")
     pd.testing.assert_series_equal(result, expected)
 
     series = from_pandas_series(s, chunk_size=6)
-    r = series.astype('arrow_string')
+    r = series.astype("arrow_string")
 
     result = r.execute().fetch()
-    expected = s.astype('arrow_string')
+    expected = s.astype("arrow_string")
     pd.testing.assert_series_equal(result, expected)
 
     # test index
     raw = pd.Index(rs.randint(5, size=20))
     mix = from_pandas_index(raw)
-    r = mix.astype('int32')
+    r = mix.astype("int32")
 
     result = r.execute().fetch()
-    expected = raw.astype('int32')
+    expected = raw.astype("int32")
     pd.testing.assert_index_equal(result, expected)
 
     # multiply chunks
     series = from_pandas_series(s, chunk_size=6)
-    r = series.astype('str')
+    r = series.astype("str")
 
     result = r.execute().fetch()
-    expected = s.astype('str')
+    expected = s.astype("str")
     pd.testing.assert_series_equal(result, expected)
 
     # test category
-    raw = pd.DataFrame(rs.randint(3, size=(20, 8)),
-                       columns=['c' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(3, size=(20, 8)), columns=["c" + str(i + 1) for i in range(8)]
+    )
 
     df = from_pandas_df(raw)
-    r = df.astype('category')
+    r = df.astype("category")
 
     result = r.execute().fetch()
-    expected = raw.astype('category')
+    expected = raw.astype("category")
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw)
-    r = df.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+    r = df.astype({"c1": "category", "c8": "int32", "c4": "str"})
 
     result = r.execute().fetch()
-    expected = raw.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+    expected = raw.astype({"c1": "category", "c8": "int32", "c4": "str"})
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw, chunk_size=5)
-    r = df.astype('category')
+    r = df.astype("category")
 
     result = r.execute().fetch()
-    expected = raw.astype('category')
+    expected = raw.astype("category")
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw, chunk_size=3)
-    r = df.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+    r = df.astype({"c1": "category", "c8": "int32", "c4": "str"})
 
     result = r.execute().fetch()
-    expected = raw.astype({'c1': 'category', 'c8': 'int32', 'c4': 'str'})
+    expected = raw.astype({"c1": "category", "c8": "int32", "c4": "str"})
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw, chunk_size=6)
-    r = df.astype({'c1': 'category', 'c5': 'float', 'c2': 'int32',
-                   'c7': pd.CategoricalDtype([1, 3, 4, 2]),
-                   'c4': pd.CategoricalDtype([1, 3, 2])})
+    r = df.astype(
+        {
+            "c1": "category",
+            "c5": "float",
+            "c2": "int32",
+            "c7": pd.CategoricalDtype([1, 3, 4, 2]),
+            "c4": pd.CategoricalDtype([1, 3, 2]),
+        }
+    )
     result = r.execute().fetch()
-    expected = raw.astype({'c1': 'category', 'c5': 'float', 'c2': 'int32',
-                           'c7': pd.CategoricalDtype([1, 3, 4, 2]),
-                           'c4': pd.CategoricalDtype([1, 3, 2])})
+    expected = raw.astype(
+        {
+            "c1": "category",
+            "c5": "float",
+            "c2": "int32",
+            "c7": pd.CategoricalDtype([1, 3, 4, 2]),
+            "c4": pd.CategoricalDtype([1, 3, 2]),
+        }
+    )
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw, chunk_size=8)
-    r = df.astype({'c2': 'category'})
+    r = df.astype({"c2": "category"})
     result = r.execute().fetch()
-    expected = raw.astype({'c2': 'category'})
+    expected = raw.astype({"c2": "category"})
     pd.testing.assert_frame_equal(expected, result)
 
     # test series category
-    raw = pd.Series(np.random.choice(['a', 'b', 'c'], size=(10,)))
+    raw = pd.Series(np.random.choice(["a", "b", "c"], size=(10,)))
     series = from_pandas_series(raw, chunk_size=4)
-    result = series.astype('category').execute().fetch()
-    expected = raw.astype('category')
+    result = series.astype("category").execute().fetch()
+    expected = raw.astype("category")
     pd.testing.assert_series_equal(expected, result)
 
     series = from_pandas_series(raw, chunk_size=3)
-    result = series.astype(
-        pd.CategoricalDtype(['a', 'c', 'b']), copy=False).execute().fetch()
-    expected = raw.astype(pd.CategoricalDtype(['a', 'c', 'b']),  copy=False)
+    result = (
+        series.astype(pd.CategoricalDtype(["a", "c", "b"]), copy=False)
+        .execute()
+        .fetch()
+    )
+    expected = raw.astype(pd.CategoricalDtype(["a", "c", "b"]), copy=False)
     pd.testing.assert_series_equal(expected, result)
 
     series = from_pandas_series(raw, chunk_size=6)
-    result = series.astype(
-        pd.CategoricalDtype(['a', 'c', 'b', 'd'])).execute().fetch()
-    expected = raw.astype(pd.CategoricalDtype(['a', 'c', 'b', 'd']))
+    result = series.astype(pd.CategoricalDtype(["a", "c", "b", "d"])).execute().fetch()
+    expected = raw.astype(pd.CategoricalDtype(["a", "c", "b", "d"]))
     pd.testing.assert_series_equal(expected, result)
 
 
 def test_drop(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
-                       columns=['c' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(20, 8)), columns=["c" + str(i + 1) for i in range(8)]
+    )
 
     df = from_pandas_df(raw, chunk_size=3)
 
-    columns = ['c2', 'c4', 'c5', 'c6']
+    columns = ["c2", "c4", "c5", "c6"]
     index = [3, 6, 7]
     r = df.drop(columns=columns, index=index)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw.drop(columns=columns, index=index))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(), raw.drop(columns=columns, index=index)
+    )
 
     idx_series = from_pandas_series(pd.Series(index))
     r = df.drop(idx_series)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw.drop(pd.Series(index)))
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.drop(pd.Series(index)))
 
     df.drop(columns, axis=1, inplace=True)
-    pd.testing.assert_frame_equal(df.execute().fetch(),
-                                  raw.drop(columns, axis=1))
+    pd.testing.assert_frame_equal(df.execute().fetch(), raw.drop(columns, axis=1))
 
-    del df['c3']
-    pd.testing.assert_frame_equal(df.execute().fetch(),
-                                  raw.drop(columns + ['c3'], axis=1))
+    del df["c3"]
+    pd.testing.assert_frame_equal(
+        df.execute().fetch(), raw.drop(columns + ["c3"], axis=1)
+    )
 
-    ps = df.pop('c8')
-    pd.testing.assert_frame_equal(df.execute().fetch(),
-                                  raw.drop(columns + ['c3', 'c8'], axis=1))
-    pd.testing.assert_series_equal(ps.execute().fetch(),
-                                   raw['c8'])
+    ps = df.pop("c8")
+    pd.testing.assert_frame_equal(
+        df.execute().fetch(), raw.drop(columns + ["c3", "c8"], axis=1)
+    )
+    pd.testing.assert_series_equal(ps.execute().fetch(), raw["c8"])
 
     # test series drop
     raw = pd.Series(rs.randint(1000, size=(20,)))
@@ -1328,8 +1351,7 @@ def test_drop(setup):
     series = from_pandas_series(raw, chunk_size=3)
 
     r = series.drop(index=index)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.drop(index=index))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.drop(index=index))
 
     # test index drop
     ser = pd.Series(range(20))
@@ -1339,92 +1361,110 @@ def test_drop(setup):
     idx = from_pandas_index(raw)
 
     r = idx.drop(index)
-    pd.testing.assert_index_equal(r.execute().fetch(),
-                                  raw.drop(index))
+    pd.testing.assert_index_equal(r.execute().fetch(), raw.drop(index))
 
 
 def test_melt(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(20, 8)),
-                       columns=['c' + str(i + 1) for i in range(8)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(20, 8)), columns=["c" + str(i + 1) for i in range(8)]
+    )
 
     df = from_pandas_df(raw, chunk_size=3)
 
-    r = df.melt(id_vars=['c1'], value_vars=['c2', 'c4'])
+    r = df.melt(id_vars=["c1"], value_vars=["c2", "c4"])
     pd.testing.assert_frame_equal(
-        r.execute().fetch().sort_values(['c1', 'variable']).reset_index(drop=True),
-        raw.melt(id_vars=['c1'], value_vars=['c2', 'c4']).sort_values(['c1', 'variable']).reset_index(drop=True)
+        r.execute().fetch().sort_values(["c1", "variable"]).reset_index(drop=True),
+        raw.melt(id_vars=["c1"], value_vars=["c2", "c4"])
+        .sort_values(["c1", "variable"])
+        .reset_index(drop=True),
     )
 
 
 def test_drop_duplicates(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(20, 5)),
-                       columns=['c' + str(i + 1) for i in range(5)],
-                       index=['i' + str(j) for j in range(20)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(20, 5)),
+        columns=["c" + str(i + 1) for i in range(5)],
+        index=["i" + str(j) for j in range(20)],
+    )
     duplicate_lines = rs.randint(1000, size=5)
     for i in [1, 3, 10, 11, 15]:
         raw.iloc[i] = duplicate_lines
 
-    with option_context({'combine_size': 2}):
+    with option_context({"combine_size": 2}):
         # test dataframe
         for chunk_size in [(8, 3), (20, 5)]:
             df = from_pandas_df(raw, chunk_size=chunk_size)
             if chunk_size[0] < len(raw):
-                methods = ['tree', 'subset_tree', 'shuffle']
+                methods = ["tree", "subset_tree", "shuffle"]
             else:
                 # 1 chunk
                 methods = [None]
             for method in methods:
-                for subset in [None, 'c1', ['c1', 'c2']]:
-                    for keep in ['first', 'last', False]:
+                for subset in [None, "c1", ["c1", "c2"]]:
+                    for keep in ["first", "last", False]:
                         for ignore_index in [True, False]:
                             try:
-                                r = df.drop_duplicates(method=method, subset=subset,
-                                                       keep=keep, ignore_index=ignore_index)
+                                r = df.drop_duplicates(
+                                    method=method,
+                                    subset=subset,
+                                    keep=keep,
+                                    ignore_index=ignore_index,
+                                )
                                 result = r.execute().fetch()
                                 try:
-                                    expected = raw.drop_duplicates(subset=subset,
-                                                                   keep=keep, ignore_index=ignore_index)
+                                    expected = raw.drop_duplicates(
+                                        subset=subset,
+                                        keep=keep,
+                                        ignore_index=ignore_index,
+                                    )
                                 except TypeError:
                                     # ignore_index is supported in pandas 1.0
-                                    expected = raw.drop_duplicates(subset=subset,
-                                                                   keep=keep)
+                                    expected = raw.drop_duplicates(
+                                        subset=subset, keep=keep
+                                    )
                                     if ignore_index:
                                         expected.reset_index(drop=True, inplace=True)
 
                                 pd.testing.assert_frame_equal(result, expected)
                             except Exception as e:  # pragma: no cover
                                 raise AssertionError(
-                                    f'failed when method={method}, subset={subset}, '
-                                    f'keep={keep}, ignore_index={ignore_index}') from e
+                                    f"failed when method={method}, subset={subset}, "
+                                    f"keep={keep}, ignore_index={ignore_index}"
+                                ) from e
 
         # test series and index
-        s = raw['c3']
+        s = raw["c3"]
         ind = pd.Index(s)
 
-        for tp, obj in [('series', s), ('index', ind)]:
+        for tp, obj in [("series", s), ("index", ind)]:
             for chunk_size in [8, 20]:
-                to_m = from_pandas_series if tp == 'series' else from_pandas_index
+                to_m = from_pandas_series if tp == "series" else from_pandas_index
                 mobj = to_m(obj, chunk_size=chunk_size)
                 if chunk_size < len(obj):
-                    methods = ['tree', 'shuffle']
+                    methods = ["tree", "shuffle"]
                 else:
                     # 1 chunk
                     methods = [None]
                 for method in methods:
-                    for keep in ['first', 'last', False]:
+                    for keep in ["first", "last", False]:
                         try:
                             r = mobj.drop_duplicates(method=method, keep=keep)
                             result = r.execute().fetch()
                             expected = obj.drop_duplicates(keep=keep)
 
-                            cmp = pd.testing.assert_series_equal \
-                                if tp == 'series' else pd.testing.assert_index_equal
+                            cmp = (
+                                pd.testing.assert_series_equal
+                                if tp == "series"
+                                else pd.testing.assert_index_equal
+                            )
                             cmp(result, expected)
                         except Exception as e:  # pragma: no cover
-                            raise AssertionError(f'failed when method={method}, keep={keep}') from e
+                            raise AssertionError(
+                                f"failed when method={method}, keep={keep}"
+                            ) from e
 
         # test inplace
         series = from_pandas_series(s, chunk_size=11)
@@ -1437,25 +1477,27 @@ def test_drop_duplicates(setup):
 def test_duplicated(setup):
     # test dataframe drop
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(20, 5)),
-                       columns=['c' + str(i + 1) for i in range(5)],
-                       index=['i' + str(j) for j in range(20)])
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(20, 5)),
+        columns=["c" + str(i + 1) for i in range(5)],
+        index=["i" + str(j) for j in range(20)],
+    )
     duplicate_lines = rs.randint(1000, size=5)
     for i in [1, 3, 10, 11, 15]:
         raw.iloc[i] = duplicate_lines
 
-    with option_context({'combine_size': 2}):
+    with option_context({"combine_size": 2}):
         # test dataframe
         for chunk_size in [(8, 3), (20, 5)]:
             df = from_pandas_df(raw, chunk_size=chunk_size)
             if chunk_size[0] < len(raw):
-                methods = ['tree', 'subset_tree', 'shuffle']
+                methods = ["tree", "subset_tree", "shuffle"]
             else:
                 # 1 chunk
                 methods = [None]
             for method in methods:
-                for subset in [None, 'c1', ['c1', 'c2']]:
-                    for keep in ['first', 'last', False]:
+                for subset in [None, "c1", ["c1", "c2"]]:
+                    for keep in ["first", "last", False]:
                         try:
                             r = df.duplicated(method=method, subset=subset, keep=keep)
                             result = r.execute().fetch()
@@ -1463,68 +1505,68 @@ def test_duplicated(setup):
                             pd.testing.assert_series_equal(result, expected)
                         except Exception as e:  # pragma: no cover
                             raise AssertionError(
-                                f'failed when method={method}, subset={subset}, '
-                                f'keep={keep}') from e
+                                f"failed when method={method}, subset={subset}, "
+                                f"keep={keep}"
+                            ) from e
 
         # test series
-        s = raw['c3']
+        s = raw["c3"]
 
-        for tp, obj in [('series', s)]:
+        for tp, obj in [("series", s)]:
             for chunk_size in [8, 20]:
-                to_m = from_pandas_series if tp == 'series' else from_pandas_index
+                to_m = from_pandas_series if tp == "series" else from_pandas_index
                 mobj = to_m(obj, chunk_size=chunk_size)
                 if chunk_size < len(obj):
-                    methods = ['tree', 'shuffle']
+                    methods = ["tree", "shuffle"]
                 else:
                     # 1 chunk
                     methods = [None]
                 for method in methods:
-                    for keep in ['first', 'last', False]:
+                    for keep in ["first", "last", False]:
                         try:
                             r = mobj.duplicated(method=method, keep=keep)
                             result = r.execute().fetch()
                             expected = obj.duplicated(keep=keep)
 
-                            cmp = pd.testing.assert_series_equal \
-                                if tp == 'series' else pd.testing.assert_index_equal
+                            cmp = (
+                                pd.testing.assert_series_equal
+                                if tp == "series"
+                                else pd.testing.assert_index_equal
+                            )
                             cmp(result, expected)
                         except Exception as e:  # pragma: no cover
-                            raise AssertionError(f'failed when method={method}, keep={keep}') from e
+                            raise AssertionError(
+                                f"failed when method={method}, keep={keep}"
+                            ) from e
 
 
 def test_memory_usage_execution(setup):
-    dtypes = ['int64', 'float64', 'complex128', 'object', 'bool']
-    data = dict([(t, np.ones(shape=500).astype(t))
-                 for t in dtypes])
+    dtypes = ["int64", "float64", "complex128", "object", "bool"]
+    data = dict([(t, np.ones(shape=500).astype(t)) for t in dtypes])
     raw = pd.DataFrame(data)
 
     df = from_pandas_df(raw, chunk_size=(500, 2))
     r = df.memory_usage(index=False)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.memory_usage(index=False))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.memory_usage(index=False))
 
     df = from_pandas_df(raw, chunk_size=(500, 2))
     r = df.memory_usage(index=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.memory_usage(index=True))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.memory_usage(index=True))
 
     df = from_pandas_df(raw, chunk_size=(100, 3))
     r = df.memory_usage(index=False)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.memory_usage(index=False))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.memory_usage(index=False))
 
     r = df.memory_usage(index=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.memory_usage(index=True))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.memory_usage(index=True))
 
-    raw = pd.DataFrame(data, index=np.arange(500).astype('object'))
+    raw = pd.DataFrame(data, index=np.arange(500).astype("object"))
 
     df = from_pandas_df(raw, chunk_size=(100, 3))
     r = df.memory_usage(index=True)
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.memory_usage(index=True))
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.memory_usage(index=True))
 
-    raw = pd.Series(np.ones(shape=500).astype('object'), name='s')
+    raw = pd.Series(np.ones(shape=500).astype("object"), name="s")
 
     series = from_pandas_series(raw)
     r = series.memory_usage(index=True)
@@ -1538,14 +1580,17 @@ def test_memory_usage_execution(setup):
     r = series.memory_usage(index=True)
     assert r.execute().fetch() == raw.memory_usage(index=True)
 
-    raw = pd.Series(np.ones(shape=500).astype('object'),
-                    index=np.arange(500).astype('object'), name='s')
+    raw = pd.Series(
+        np.ones(shape=500).astype("object"),
+        index=np.arange(500).astype("object"),
+        name="s",
+    )
 
     series = from_pandas_series(raw, chunk_size=100)
     r = series.memory_usage(index=True)
     assert r.execute().fetch() == raw.memory_usage(index=True)
 
-    raw = pd.Index(np.arange(500), name='s')
+    raw = pd.Index(np.arange(500), name="s")
 
     index = from_pandas_index(raw)
     r = index.memory_usage()
@@ -1557,20 +1602,18 @@ def test_memory_usage_execution(setup):
 
 
 def test_select_dtypes_execution(setup):
-    raw = pd.DataFrame({'a': np.random.rand(10),
-                        'b': np.random.randint(10, size=10)})
+    raw = pd.DataFrame({"a": np.random.rand(10), "b": np.random.randint(10, size=10)})
 
     df = from_pandas_df(raw, chunk_size=5)
-    r = df.select_dtypes(include=['float64'])
+    r = df.select_dtypes(include=["float64"])
 
     result = r.execute().fetch()
-    expected = raw.select_dtypes(include=['float64'])
+    expected = raw.select_dtypes(include=["float64"])
     pd.testing.assert_frame_equal(result, expected)
 
 
 def test_map_chunk_execution(setup):
-    raw = pd.DataFrame(np.random.rand(10, 5),
-                       columns=[f'col{i}' for i in range(5)])
+    raw = pd.DataFrame(np.random.rand(10, 5), columns=[f"col{i}" for i in range(5)])
 
     df = from_pandas_df(raw, chunk_size=(5, 3))
 
@@ -1583,7 +1626,7 @@ def test_map_chunk_execution(setup):
     expected = raw + 1
     pd.testing.assert_frame_equal(result, expected)
 
-    raw_s = raw['col1']
+    raw_s = raw["col1"]
     series = from_pandas_series(raw_s, chunk_size=5)
 
     r = series.map_chunk(f1)
@@ -1596,58 +1639,60 @@ def test_map_chunk_execution(setup):
         return pdf.sum(axis=1)
 
     df = from_pandas_df(raw, chunk_size=5)
-    r = df.map_chunk(f2, output_type='series')
+    r = df.map_chunk(f2, output_type="series")
 
     result = r.execute().fetch()
     expected = raw.sum(axis=1)
     pd.testing.assert_series_equal(result, expected)
 
-    raw = pd.DataFrame({'a': [f's{i}'for i in range(10)],
-                        'b': np.arange(10)})
+    raw = pd.DataFrame({"a": [f"s{i}" for i in range(10)], "b": np.arange(10)})
 
     df = from_pandas_df(raw, chunk_size=5)
 
     def f3(pdf):
-        return pdf['a'].str.slice(1).astype(int) + pdf['b']
+        return pdf["a"].str.slice(1).astype(int) + pdf["b"]
 
     with pytest.raises(TypeError):
         r = df.map_chunk(f3)
         _ = r.execute().fetch()
 
-    r = df.map_chunk(f3, output_type='series')
-    result = r.execute(extra_config={'check_dtypes': False}).fetch()
+    r = df.map_chunk(f3, output_type="series")
+    result = r.execute(extra_config={"check_dtypes": False}).fetch()
     expected = f3(raw)
     pd.testing.assert_series_equal(result, expected)
 
     def f4(pdf):
-        ret = pd.DataFrame(columns=['a', 'b'])
-        ret['a'] = pdf['a'].str.slice(1).astype(int)
-        ret['b'] = pdf['b']
+        ret = pd.DataFrame(columns=["a", "b"])
+        ret["a"] = pdf["a"].str.slice(1).astype(int)
+        ret["b"] = pdf["b"]
         return ret
 
     with pytest.raises(TypeError):
-        r = df.map_chunk(f4, output_type='dataframe')
+        r = df.map_chunk(f4, output_type="dataframe")
         _ = r.execute().fetch()
 
-    r = df.map_chunk(f4, output_type='dataframe',
-                     dtypes=pd.Series([np.dtype(int), raw['b'].dtype], index=['a', 'b']))
+    r = df.map_chunk(
+        f4,
+        output_type="dataframe",
+        dtypes=pd.Series([np.dtype(int), raw["b"].dtype], index=["a", "b"]),
+    )
     result = r.execute().fetch()
     expected = f4(raw)
     pd.testing.assert_frame_equal(result, expected)
 
-    raw2 = pd.DataFrame({'a': [np.array([1, 2, 3]), np.array([4, 5, 6])]})
+    raw2 = pd.DataFrame({"a": [np.array([1, 2, 3]), np.array([4, 5, 6])]})
     df2 = from_pandas_df(raw2)
     dtypes = pd.Series([np.dtype(float)] * 3)
-    r = df2.map_chunk(lambda x: x['a'].apply(pd.Series), output_type='dataframe',
-                      dtypes=dtypes)
+    r = df2.map_chunk(
+        lambda x: x["a"].apply(pd.Series), output_type="dataframe", dtypes=dtypes
+    )
     assert r.shape == (2, 3)
     pd.testing.assert_series_equal(r.dtypes, dtypes)
     result = r.execute().fetch()
-    expected = raw2.apply(lambda x: x['a'], axis=1, result_type='expand')
+    expected = raw2.apply(lambda x: x["a"], axis=1, result_type="expand")
     pd.testing.assert_frame_equal(result, expected)
 
-    raw = pd.DataFrame(np.random.rand(10, 5),
-                       columns=[f'col{i}' for i in range(5)])
+    raw = pd.DataFrame(np.random.rand(10, 5), columns=[f"col{i}" for i in range(5)])
 
     df = from_pandas_df(raw, chunk_size=(5, 3))
 
@@ -1660,7 +1705,7 @@ def test_map_chunk_execution(setup):
     expected = (raw + 1).add(np.arange(10) // 5, axis=0)
     pd.testing.assert_frame_equal(result, expected)
 
-    raw_s = raw['col1']
+    raw_s = raw["col1"]
     series = from_pandas_series(raw_s, chunk_size=5)
 
     r = series.map_chunk(f5, with_chunk_index=True)
@@ -1672,33 +1717,33 @@ def test_map_chunk_execution(setup):
 
 def test_cartesian_chunk_execution(setup):
     rs = np.random.RandomState(0)
-    raw1 = pd.DataFrame({'a': rs.randint(3, size=10),
-                         'b': rs.rand(10)})
-    raw2 = pd.DataFrame({'c': rs.randint(3, size=10),
-                         'd': rs.rand(10),
-                         'e': rs.rand(10)})
+    raw1 = pd.DataFrame({"a": rs.randint(3, size=10), "b": rs.rand(10)})
+    raw2 = pd.DataFrame(
+        {"c": rs.randint(3, size=10), "d": rs.rand(10), "e": rs.rand(10)}
+    )
     df1 = from_pandas_df(raw1, chunk_size=(5, 1))
     df2 = from_pandas_df(raw2, chunk_size=(5, 1))
 
     def f(c1, c2):
         c1, c2 = c1.copy(), c2.copy()
-        c1['x'] = 1
-        c2['x'] = 1
-        r = c1.merge(c2, on='x')
-        r = r[(r['b'] > r['d']) & (r['b'] < r['e'])]
-        return r[['a', 'c']]
+        c1["x"] = 1
+        c2["x"] = 1
+        r = c1.merge(c2, on="x")
+        r = r[(r["b"] > r["d"]) & (r["b"] < r["e"])]
+        return r[["a", "c"]]
 
     rr = df1.cartesian_chunk(df2, f)
 
     result = rr.execute().fetch()
     expected = f(raw1, raw2)
     pd.testing.assert_frame_equal(
-        result.sort_values(by=['a', 'c']).reset_index(drop=True),
-        expected.sort_values(by=['a', 'c']).reset_index(drop=True))
+        result.sort_values(by=["a", "c"]).reset_index(drop=True),
+        expected.sort_values(by=["a", "c"]).reset_index(drop=True),
+    )
 
     def f2(c1, c2):
         r = f(c1, c2)
-        return r['a'] + r['c']
+        return r["a"] + r["c"]
 
     rr = df1.cartesian_chunk(df2, f2)
 
@@ -1706,52 +1751,59 @@ def test_cartesian_chunk_execution(setup):
     expected = f2(raw1, raw2)
     pd.testing.assert_series_equal(
         result.sort_values().reset_index(drop=True),
-        expected.sort_values().reset_index(drop=True))
+        expected.sort_values().reset_index(drop=True),
+    )
 
     # size_res = setup.executor.execute_dataframe(rr, mock=True)[0][0]
     # assert size_res > 0
 
     def f3(c1, c2):
         cr = pd.DataFrame()
-        cr['a'] = c1.str.slice(1).astype(np.int64)
-        cr['x'] = 1
+        cr["a"] = c1.str.slice(1).astype(np.int64)
+        cr["x"] = 1
         cr2 = pd.DataFrame()
-        cr2['b'] = c2.str.slice(1).astype(np.int64)
-        cr2['x'] = 1
-        return cr.merge(cr2, on='x')[['a', 'b']]
+        cr2["b"] = c2.str.slice(1).astype(np.int64)
+        cr2["x"] = 1
+        return cr.merge(cr2, on="x")[["a", "b"]]
 
-    s_raw = pd.Series([f's{i}' for i in range(10)])
+    s_raw = pd.Series([f"s{i}" for i in range(10)])
     series = from_pandas_series(s_raw, chunk_size=5)
 
-    rr = series.cartesian_chunk(series, f3, output_type='dataframe',
-                                dtypes=pd.Series([np.dtype(np.int64)] * 2,
-                                                 index=['a', 'b']))
+    rr = series.cartesian_chunk(
+        series,
+        f3,
+        output_type="dataframe",
+        dtypes=pd.Series([np.dtype(np.int64)] * 2, index=["a", "b"]),
+    )
 
     result = rr.execute().fetch()
     expected = f3(s_raw, s_raw)
     pd.testing.assert_frame_equal(
-        result.sort_values(by=['a', 'b']).reset_index(drop=True),
-        expected.sort_values(by=['a', 'b']).reset_index(drop=True))
+        result.sort_values(by=["a", "b"]).reset_index(drop=True),
+        expected.sort_values(by=["a", "b"]).reset_index(drop=True),
+    )
 
     with pytest.raises(TypeError):
         _ = series.cartesian_chunk(series, f3)
 
     def f4(c1, c2):
         r = f3(c1, c2)
-        return r['a'] + r['b']
+        return r["a"] + r["b"]
 
-    rr = series.cartesian_chunk(series, f4, output_type='series',
-                                dtypes=np.dtype(np.int64))
+    rr = series.cartesian_chunk(
+        series, f4, output_type="series", dtypes=np.dtype(np.int64)
+    )
 
     result = rr.execute().fetch()
     expected = f4(s_raw, s_raw)
     pd.testing.assert_series_equal(
         result.sort_values().reset_index(drop=True),
-        expected.sort_values().reset_index(drop=True))
+        expected.sort_values().reset_index(drop=True),
+    )
 
 
 def test_rebalance_execution(setup):
-    raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'))
+    raw = pd.DataFrame(np.random.rand(10, 3), columns=list("abc"))
     df = from_pandas_df(raw)
 
     def _expect_count(n):
@@ -1759,28 +1811,30 @@ def test_rebalance_execution(setup):
             tileable = yield from op.tile(op)
             assert len(tileable.chunks) == n
             return tileable
+
         return _tile_rebalance
 
     r = df.rebalance(num_partitions=3)
-    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(3)}}
+    extra_config = {"operand_tile_handlers": {DataFrameRebalance: _expect_count(3)}}
     result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
 
     r = df.rebalance(factor=0.5)
-    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(1)}}
+    extra_config = {"operand_tile_handlers": {DataFrameRebalance: _expect_count(1)}}
     result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
 
     # test worker has two cores
     r = df.rebalance()
-    extra_config = {'operand_tile_handlers': {DataFrameRebalance: _expect_count(2)}}
+    extra_config = {"operand_tile_handlers": {DataFrameRebalance: _expect_count(2)}}
     result = r.execute(extra_config=extra_config).fetch()
     pd.testing.assert_frame_equal(result, raw)
 
 
 def test_stack_execution(setup):
-    raw = pd.DataFrame(np.random.rand(10, 3), columns=list('abc'),
-                       index=[f's{i}' for i in range(10)])
+    raw = pd.DataFrame(
+        np.random.rand(10, 3), columns=list("abc"), index=[f"s{i}" for i in range(10)]
+    )
     for loc in [(5, 1), (8, 2), (1, 0)]:
         raw.iloc[loc] = np.nan
     df = from_pandas_df(raw, chunk_size=(5, 2))
@@ -1791,8 +1845,7 @@ def test_stack_execution(setup):
         expected = raw.stack(dropna=dropna)
         pd.testing.assert_series_equal(result, expected)
 
-    cols = pd.MultiIndex.from_tuples([
-        ('c1', 'cc1'), ('c1', 'cc2'), ('c2', 'cc3')])
+    cols = pd.MultiIndex.from_tuples([("c1", "cc1"), ("c1", "cc2"), ("c2", "cc3")])
     raw2 = raw.copy()
     raw2.columns = cols
     df = from_pandas_df(raw2, chunk_size=(5, 2))
@@ -1802,46 +1855,53 @@ def test_stack_execution(setup):
             r = df.stack(level=level, dropna=dropna)
             result = r.execute().fetch()
             expected = raw2.stack(level=level, dropna=dropna)
-            assert_method = \
-                pd.testing.assert_series_equal if expected.ndim == 1 \
+            assert_method = (
+                pd.testing.assert_series_equal
+                if expected.ndim == 1
                 else pd.testing.assert_frame_equal
+            )
             assert_method(result, expected)
 
 
 def test_explode_execution(setup):
-    raw = pd.DataFrame({'a': np.random.rand(10),
-                        'b': [np.random.rand(random.randint(1, 10)) for _ in range(10)],
-                        'c': np.random.rand(10),
-                        'd': np.random.rand(10)})
+    raw = pd.DataFrame(
+        {
+            "a": np.random.rand(10),
+            "b": [np.random.rand(random.randint(1, 10)) for _ in range(10)],
+            "c": np.random.rand(10),
+            "d": np.random.rand(10),
+        }
+    )
     df = from_pandas_df(raw, chunk_size=(4, 2))
 
     for ignore_index in [False, True]:
-        r = df.explode('b', ignore_index=ignore_index)
-        pd.testing.assert_frame_equal(r.execute().fetch(),
-                                      raw.explode('b', ignore_index=ignore_index))
+        r = df.explode("b", ignore_index=ignore_index)
+        pd.testing.assert_frame_equal(
+            r.execute().fetch(), raw.explode("b", ignore_index=ignore_index)
+        )
 
     series = from_pandas_series(raw.b, chunk_size=4)
 
     for ignore_index in [False, True]:
         r = series.explode(ignore_index=ignore_index)
-        pd.testing.assert_series_equal(r.execute().fetch(),
-                                       raw.b.explode(ignore_index=ignore_index))
+        pd.testing.assert_series_equal(
+            r.execute().fetch(), raw.b.explode(ignore_index=ignore_index)
+        )
 
 
 def test_eval_query_execution(setup):
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame({'a': rs.rand(100),
-                        'b': rs.rand(100),
-                        'c c': rs.rand(100)})
+    raw = pd.DataFrame({"a": rs.rand(100), "b": rs.rand(100), "c c": rs.rand(100)})
     df = from_pandas_df(raw, chunk_size=(10, 2))
 
     r = mars_eval('c = df.a * 2 + df["c c"]', target=df)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  pd.eval('c = raw.a * 2 + raw["c c"]', engine='python', target=raw))
+    pd.testing.assert_frame_equal(
+        r.execute().fetch(),
+        pd.eval('c = raw.a * 2 + raw["c c"]', engine="python", target=raw),
+    )
 
-    r = df.eval('a + b')
-    pd.testing.assert_series_equal(r.execute().fetch(),
-                                   raw.eval('a + b'))
+    r = df.eval("a + b")
+    pd.testing.assert_series_equal(r.execute().fetch(), raw.eval("a + b"))
 
     _val = 5.0  # noqa: F841
     _val_array = [1, 2, 3]  # noqa: F841
@@ -1850,49 +1910,48 @@ def test_eval_query_execution(setup):
     f = b + `c c` + @_val + @_val_array[-1]
     """
     r = df.eval(expr)
-    pd.testing.assert_frame_equal(r.execute().fetch(),
-                                  raw.eval(expr))
+    pd.testing.assert_frame_equal(r.execute().fetch(), raw.eval(expr))
 
     copied_df = df.copy()
-    copied_df.eval('c = a + b', inplace=True)
-    pd.testing.assert_frame_equal(copied_df.execute().fetch(),
-                                  raw.eval('c = a + b'))
+    copied_df.eval("c = a + b", inplace=True)
+    pd.testing.assert_frame_equal(copied_df.execute().fetch(), raw.eval("c = a + b"))
 
-    expr = 'a > b | a < `c c`'
+    expr = "a > b | a < `c c`"
     r = df.query(expr)
     pd.testing.assert_frame_equal(
-        r.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query(expr))
+        r.execute(extra_config={"check_index_value": False}).fetch(), raw.query(expr)
+    )
 
-    expr = 'a > b & ~(a < `c c`)'
+    expr = "a > b & ~(a < `c c`)"
     r = df.query(expr)
     pd.testing.assert_frame_equal(
-        r.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query(expr))
+        r.execute(extra_config={"check_index_value": False}).fetch(), raw.query(expr)
+    )
 
-    expr = 'a < b < `c c`'
+    expr = "a < b < `c c`"
     r = df.query(expr)
     pd.testing.assert_frame_equal(
-        r.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query(expr))
+        r.execute(extra_config={"check_index_value": False}).fetch(), raw.query(expr)
+    )
 
-    expr = 'a < 0.5 and a != 0.1 and b != 0.2'
+    expr = "a < 0.5 and a != 0.1 and b != 0.2"
     r = df.query(expr)
     pd.testing.assert_frame_equal(
-        r.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query(expr))
+        r.execute(extra_config={"check_index_value": False}).fetch(), raw.query(expr)
+    )
 
-    expr = '(a < 0.5 or a > 0.7) and (b != 0.1 or `c c` > 0.2)'
+    expr = "(a < 0.5 or a > 0.7) and (b != 0.1 or `c c` > 0.2)"
     r = df.query(expr)
     pd.testing.assert_frame_equal(
-        r.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query(expr))
+        r.execute(extra_config={"check_index_value": False}).fetch(), raw.query(expr)
+    )
 
     copied_df = df.copy()
-    copied_df.query('a < b', inplace=True)
+    copied_df.query("a < b", inplace=True)
     pd.testing.assert_frame_equal(
-        copied_df.execute(extra_config={'check_index_value': False}).fetch(),
-        raw.query('a < b'))
+        copied_df.execute(extra_config={"check_index_value": False}).fetch(),
+        raw.query("a < b"),
+    )
 
 
 def test_check_monotonic_execution(setup):
@@ -1907,12 +1966,14 @@ def test_check_monotonic_execution(setup):
     assert idx_decrease.is_monotonic_decreasing.execute().fetch() is True
 
     idx_mixed = from_pandas_index(
-        pd.Index(list(range(500)) + list(range(500))), chunk_size=100)
+        pd.Index(list(range(500)) + list(range(500))), chunk_size=100
+    )
     assert idx_mixed.is_monotonic_increasing.execute().fetch() is False
     assert idx_mixed.is_monotonic_decreasing.execute().fetch() is False
 
     ser_mixed = from_pandas_series(
-        pd.Series(list(range(500)) + list(range(499, 999))), chunk_size=100)
+        pd.Series(list(range(500)) + list(range(499, 999))), chunk_size=100
+    )
     assert ser_mixed.is_monotonic_increasing.execute().fetch() is True
     assert ser_mixed.is_monotonic_decreasing.execute().fetch() is False
 
@@ -1920,9 +1981,11 @@ def test_check_monotonic_execution(setup):
 def test_pct_change_execution(setup):
     # test dataframe
     rs = np.random.RandomState(0)
-    raw = pd.DataFrame(rs.randint(1000, size=(10, 8)),
-                       columns=['col' + str(i + 1) for i in range(8)],
-                       index=pd.date_range('2021-1-1', periods=10))
+    raw = pd.DataFrame(
+        rs.randint(1000, size=(10, 8)),
+        columns=["col" + str(i + 1) for i in range(8)],
+        index=pd.date_range("2021-1-1", periods=10),
+    )
 
     df = from_pandas_df(raw, chunk_size=5)
     r = df.pct_change()
@@ -1937,7 +2000,7 @@ def test_pct_change_execution(setup):
     pd.testing.assert_frame_equal(expected, result)
 
     df = from_pandas_df(raw, chunk_size=5)
-    r = df.pct_change(freq='D')
+    r = df.pct_change(freq="D")
     result = r.execute().fetch()
-    expected = raw.pct_change(freq='D')
+    expected = raw.pct_change(freq="D")
     pd.testing.assert_frame_equal(expected, result)

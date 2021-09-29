@@ -22,22 +22,20 @@ from ....lib.aio import AioFileObject
 
 
 class CustomLogActor(mo.Actor):
-    def __init__(self,
-                 custom_log_dir: str):
+    def __init__(self, custom_log_dir: str):
         self._custom_log_dir = custom_log_dir
 
     @staticmethod
     def _get_custom_log_dir(custom_log_dir: str, session_id: str):
-        if custom_log_dir == 'auto':
-            return tempfile.mkdtemp(prefix=f'marslog-{session_id}')
+        if custom_log_dir == "auto":
+            return tempfile.mkdtemp(prefix=f"marslog-{session_id}")
         elif custom_log_dir is None:
             return
         else:
             return os.path.join(custom_log_dir, session_id)
 
     def new_custom_log_dir(self, session_id: str):
-        custom_log_dir = self._get_custom_log_dir(
-            self._custom_log_dir, session_id)
+        custom_log_dir = self._get_custom_log_dir(self._custom_log_dir, session_id)
         if custom_log_dir:
             os.makedirs(custom_log_dir, exist_ok=True)
             return custom_log_dir
@@ -47,10 +45,9 @@ class CustomLogActor(mo.Actor):
         _ = [shutil.rmtree(path, ignore_errors=True) for path in paths]
 
     @classmethod
-    async def fetch_logs(cls,
-                         log_paths: List[str],
-                         offsets: List[int],
-                         sizes: List[int]) -> List[Dict[str, Any]]:
+    async def fetch_logs(
+        cls, log_paths: List[str], offsets: List[int], sizes: List[int]
+    ) -> List[Dict[str, Any]]:
         result = []
         for i, log_path in enumerate(log_paths):
             log_result = dict()
@@ -66,8 +63,8 @@ class CustomLogActor(mo.Actor):
                 if offset:
                     await f.seek(offset)
 
-                log_result['log'] = await f.read(size)
-                log_result['offset'] = await f.tell()
+                log_result["log"] = await f.read(size)
+                log_result["offset"] = await f.tell()
 
             result.append(log_result)
 

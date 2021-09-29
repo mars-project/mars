@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameDegrees(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.DEGREES
-    _func_name = 'degrees'
+    _func_name = "degrees"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorDegrees
+
         return TensorDegrees

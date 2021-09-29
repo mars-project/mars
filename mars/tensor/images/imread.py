@@ -24,7 +24,7 @@ from ..operands import TensorOperandMixin, TensorOperand
 try:
     from PIL import Image
 except ImportError:
-    Image = ModulePlaceholder('PIL')
+    Image = ModulePlaceholder("PIL")
 
 
 def _read_image(fpath):
@@ -34,7 +34,7 @@ def _read_image(fpath):
 class TensorImread(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.IMREAD
 
-    _filepath = AnyField('filepath')
+    _filepath = AnyField("filepath")
 
     def __init__(self, filepath=None, **kwargs):
         super().__init__(_filepath=filepath, **kwargs)
@@ -46,7 +46,9 @@ class TensorImread(TensorOperand, TensorOperandMixin):
     @classmethod
     def tile(cls, op):
         out_shape = op.outputs[0].shape
-        paths = op.filepath if isinstance(op.filepath, (tuple, list)) else glob(op.filepath)
+        paths = (
+            op.filepath if isinstance(op.filepath, (tuple, list)) else glob(op.filepath)
+        )
         chunk_size = op.outputs[0].extra_params.raw_chunk_size
         n_chunks = ceildiv(len(paths), chunk_size)
         if len(paths) > 1:
@@ -54,16 +56,20 @@ class TensorImread(TensorOperand, TensorOperandMixin):
             splits = []
             for i in range(n_chunks):
                 chunk_op = op.copy().reset_key()
-                chunk_op._filepath = paths[i * chunk_size: (i + 1) * chunk_size]
+                chunk_op._filepath = paths[i * chunk_size : (i + 1) * chunk_size]
                 file_nums = len(chunk_op._filepath)
                 shape = (file_nums,) + out_shape[1:]
-                chunk = chunk_op.new_chunk(None, shape=shape, index=(i,) + (0,) * (len(out_shape) - 1))
+                chunk = chunk_op.new_chunk(
+                    None, shape=shape, index=(i,) + (0,) * (len(out_shape) - 1)
+                )
                 chunks.append(chunk)
                 splits.append(file_nums)
             nsplits = (tuple(splits),) + tuple((s,) for s in out_shape[1:])
         else:
             chunk_op = op.copy().reset_key()
-            chunks = [chunk_op.new_chunk(None, shape=out_shape, index=(0,) * len(out_shape))]
+            chunks = [
+                chunk_op.new_chunk(None, shape=out_shape, index=(0,) * len(out_shape))
+            ]
             nsplits = tuple((s,) for s in out_shape)
         new_op = op.copy()
         return new_op.new_tensors(None, shape=out_shape, chunks=chunks, nsplits=nsplits)
@@ -73,11 +79,11 @@ class TensorImread(TensorOperand, TensorOperandMixin):
         if isinstance(op.filepath, list):
             arrays = np.empty(op.outputs[0].shape)
             for i, path in enumerate(op.filepath):
-                with open_file(path, 'rb') as f:
+                with open_file(path, "rb") as f:
                     arrays[i] = _read_image(f)
             ctx[op.outputs[0].key] = np.array(arrays)
         else:
-            with open_file(op.filepath, 'rb') as f:
+            with open_file(op.filepath, "rb") as f:
                 ctx[op.outputs[0].key] = np.array(_read_image(f))
 
     def __call__(self, shape, chunk_size):
@@ -86,12 +92,12 @@ class TensorImread(TensorOperand, TensorOperandMixin):
 
 def imread(path, chunk_size=None):
     paths = path if isinstance(path, (tuple, list)) else glob(path)
-    with open_file(paths[0], 'rb') as f:
+    with open_file(paths[0], "rb") as f:
         sample_data = _read_image(f)
         img_shape = sample_data.shape
         img_size = file_size(paths[0])
     if len(paths) > 1:
-        shape = (len(paths), ) + img_shape
+        shape = (len(paths),) + img_shape
     else:
         shape = img_shape
     if chunk_size is None:

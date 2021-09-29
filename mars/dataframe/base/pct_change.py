@@ -15,8 +15,9 @@
 from ..utils import validate_axis
 
 
-def pct_change(df_or_series, periods=1, fill_method='pad',
-               limit=None, freq=None, **kwargs):
+def pct_change(
+    df_or_series, periods=1, fill_method="pad", limit=None, freq=None, **kwargs
+):
     """
     Percentage change between the current and a prior element.
 
@@ -134,14 +135,13 @@ def pct_change(df_or_series, periods=1, fill_method='pad',
     APPL   NaN  0.337604  0.012002
     """
 
-    axis = validate_axis(kwargs.pop('axis', 0))
+    axis = validate_axis(kwargs.pop("axis", 0))
     if fill_method is None:
         data = df_or_series
     else:
         data = df_or_series.fillna(method=fill_method, axis=axis, limit=limit)
 
-    rs = data.div(data.shift(periods=periods, freq=freq,
-                             axis=axis, **kwargs)) - 1
+    rs = data.div(data.shift(periods=periods, freq=freq, axis=axis, **kwargs)) - 1
     if freq is not None:
         # Shift method is implemented differently when freq is not None
         # We want to restore the original index

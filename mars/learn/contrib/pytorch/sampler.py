@@ -18,7 +18,7 @@ import math
 try:
     import torch
     from torch.utils.data import Sampler
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     torch = None
     Sampler = object
 
@@ -60,7 +60,9 @@ class RandomSampler(Sampler):
     data_source: Sized
     replacement: bool
 
-    def __init__(self, data_source, replacement=False, num_samples=None, generator=None):
+    def __init__(
+        self, data_source, replacement=False, num_samples=None, generator=None
+    ):
 
         self.data_source = data_source
         self.replacement = replacement
@@ -68,16 +70,22 @@ class RandomSampler(Sampler):
         self.generator = generator
 
         if not isinstance(self.replacement, bool):
-            raise ValueError("replacement should be a boolean value, but got "
-                             f"replacement={self.replacement}")
+            raise ValueError(
+                "replacement should be a boolean value, but got "
+                f"replacement={self.replacement}"
+            )
 
         if self._num_samples is not None and not replacement:
-            raise ValueError("With replacement=False, num_samples should not be specified, "
-                             "since a random permute will be performed.")
+            raise ValueError(
+                "With replacement=False, num_samples should not be specified, "
+                "since a random permute will be performed."
+            )
 
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
-            raise ValueError("num_samples should be a positive integer "
-                             f"value, but got num_samples={self.num_samples}")
+            raise ValueError(
+                "num_samples should be a positive integer "
+                f"value, but got num_samples={self.num_samples}"
+            )
 
     @property
     def num_samples(self):
@@ -90,13 +98,22 @@ class RandomSampler(Sampler):
         n = len(self.data_source)
         if self.generator is None:
             generator = torch.Generator()
-            generator.manual_seed(int(torch.empty((), dtype=torch.int64).random_().item()))
+            generator.manual_seed(
+                int(torch.empty((), dtype=torch.int64).random_().item())
+            )
         else:
             generator = self.generator
         if self.replacement:
             for _ in range(self.num_samples // 32):
-                yield from torch.randint(high=n, size=(32,), dtype=torch.int64, generator=generator).tolist()
-            yield from torch.randint(high=n, size=(self.num_samples % 32,), dtype=torch.int64, generator=generator).tolist()
+                yield from torch.randint(
+                    high=n, size=(32,), dtype=torch.int64, generator=generator
+                ).tolist()
+            yield from torch.randint(
+                high=n,
+                size=(self.num_samples % 32,),
+                dtype=torch.int64,
+                generator=generator,
+            ).tolist()
         else:
             yield from torch.randperm(n, generator=generator).tolist()
 
@@ -113,6 +130,7 @@ class SubsetRandomSampler(Sampler):
         indices (sequence): a sequence of indices
         generator (Generator): Generator used in sampling.
     """
+
     indices: Sequence[int]
 
     def __init__(self, indices: Sequence[int], generator=None) -> None:
@@ -120,7 +138,10 @@ class SubsetRandomSampler(Sampler):
         self.generator = generator
 
     def __iter__(self) -> Iterator[int]:
-        return (self.indices[i] for i in torch.randperm(len(self.indices), generator=self.generator))
+        return (
+            self.indices[i]
+            for i in torch.randperm(len(self.indices), generator=self.generator)
+        )
 
     def __len__(self) -> int:
         return len(self.indices)
@@ -173,9 +194,16 @@ class DistributedSampler(Sampler):
         ...         sampler.set_epoch(epoch)
         ...     train(loader)
     """
-    def __init__(self, dataset, num_replicas: Optional[int] = None,
-                 rank: Optional[int] = None, shuffle: bool = True,
-                 seed: int = 0, drop_last: bool = False) -> None:
+
+    def __init__(
+        self,
+        dataset,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        shuffle: bool = True,
+        seed: int = 0,
+        drop_last: bool = False,
+    ) -> None:
         import torch.distributed as dist
 
         if num_replicas is None:  # pragma: no cover
@@ -189,7 +217,8 @@ class DistributedSampler(Sampler):
         if rank >= num_replicas or rank < 0:
             raise ValueError(
                 "Invalid rank {}, rank should be in the interval"
-                " [0, {}]".format(rank, num_replicas - 1))
+                " [0, {}]".format(rank, num_replicas - 1)
+            )
 
         self.dataset = dataset
         self.num_replicas = num_replicas
@@ -226,14 +255,16 @@ class DistributedSampler(Sampler):
             if padding_size <= len(indices):
                 indices += indices[:padding_size]
             else:
-                indices += (indices * math.ceil(padding_size / len(indices)))[:padding_size]
+                indices += (indices * math.ceil(padding_size / len(indices)))[
+                    :padding_size
+                ]
         else:
             # remove tail of data to make it evenly divisible.
-            indices = indices[:self.total_size]
+            indices = indices[: self.total_size]
         assert len(indices) == self.total_size
 
         # subsample
-        indices = indices[self.rank:self.total_size:self.num_replicas]
+        indices = indices[self.rank : self.total_size : self.num_replicas]
         assert len(indices) == self.num_samples
 
         return indices

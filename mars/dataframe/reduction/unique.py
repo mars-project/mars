@@ -22,7 +22,7 @@ from ...tensor.core import TensorOrder
 from ...utils import lazy_import
 from .core import DataFrameReductionOperand, DataFrameReductionMixin, CustomReduction
 
-cudf = lazy_import('cudf', globals=globals())
+cudf = lazy_import("cudf", globals=globals())
 
 
 class UniqueReduction(CustomReduction):
@@ -37,7 +37,7 @@ class UniqueReduction(CustomReduction):
 
 class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = OperandDef.UNIQUE
-    _func_name = 'unique'
+    _func_name = "unique"
 
     @classmethod
     def get_reduction_callable(cls, op):
@@ -45,17 +45,19 @@ class DataFrameUnique(DataFrameReductionOperand, DataFrameReductionMixin):
 
     @classmethod
     def tile(cls, op):
-        if op.method == 'tree':
+        if op.method == "tree":
             return (yield from super().tile(op))
         else:
             raise NotImplementedError(f"Method {op.method} hasn't been supported")
 
     def __call__(self, a):
         self.output_types = [OutputType.tensor]
-        return self.new_tileables([a], shape=(np.nan,), dtype=a.dtype, order=TensorOrder.C_ORDER)[0]
+        return self.new_tileables(
+            [a], shape=(np.nan,), dtype=a.dtype, order=TensorOrder.C_ORDER
+        )[0]
 
 
-def unique(values, method='tree'):
+def unique(values, method="tree"):
     """
     Uniques are returned in order of appearance. This does NOT sort.
 

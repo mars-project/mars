@@ -28,11 +28,11 @@ from ...supervisor.tracker import LifecycleTrackerActor
 
 @pytest.mark.asyncio
 async def test_tracker():
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=0)
+    pool = await mo.create_actor_pool("127.0.0.1", n_process=0)
 
     async with pool:
         addr = pool.external_address
-        session_id = 'test_session'
+        session_id = "test_session"
         await MockClusterAPI.create(addr)
         await MockSessionAPI.create(addr, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, addr)
@@ -40,9 +40,11 @@ async def test_tracker():
 
         try:
             tracker = await mo.create_actor(
-                LifecycleTrackerActor, session_id,
+                LifecycleTrackerActor,
+                session_id,
                 uid=LifecycleTrackerActor.gen_uid(session_id),
-                address=pool.external_address)
+                address=pool.external_address,
+            )
 
             t = mt.random.rand(15, 5, chunk_size=5)
             t = tile(t)
@@ -51,7 +53,7 @@ async def test_tracker():
             chunk_keys = []
             for c in t.chunks:
                 chunk_keys.append(c.key)
-                await meta_api.set_chunk_meta(c, bands=[(addr, 'numa-0')])
+                await meta_api.set_chunk_meta(c, bands=[(addr, "numa-0")])
                 await storage_api.put(c.key, np.random.rand(5, 5))
 
             await tracker.track(tileable_key, chunk_keys)
@@ -69,9 +71,9 @@ async def test_tracker():
                     await storage_api.get(chunk_key)
 
             with pytest.raises(TileableNotTracked):
-                await tracker.incref_tileables(['not_tracked'])
+                await tracker.incref_tileables(["not_tracked"])
             with pytest.raises(TileableNotTracked):
-                await tracker.decref_tileables(['not_tracked'])
+                await tracker.decref_tileables(["not_tracked"])
         finally:
             await MockStorageAPI.cleanup(pool.external_address)
             await MockClusterAPI.cleanup(pool.external_address)

@@ -28,11 +28,23 @@ from ..utils import shuffle as util_shuffle, check_array
 # -------------------------------------------------------------------
 
 
-def make_classification(n_samples=100, n_features=20, n_informative=2,
-                        n_redundant=2, n_repeated=0, n_classes=2,
-                        n_clusters_per_class=2, weights=None, flip_y=0.01,
-                        class_sep=1.0, hypercube=True, shift=0.0, scale=1.0,
-                        shuffle=True, random_state=None):
+def make_classification(
+    n_samples=100,
+    n_features=20,
+    n_informative=2,
+    n_redundant=2,
+    n_repeated=0,
+    n_classes=2,
+    n_clusters_per_class=2,
+    weights=None,
+    flip_y=0.01,
+    class_sep=1.0,
+    hypercube=True,
+    shift=0.0,
+    scale=1.0,
+    shuffle=True,
+    random_state=None,
+):
     """Generate a random n-class classification problem.
 
     This initially creates clusters of points normally distributed (std=1)
@@ -153,16 +165,21 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
 
     # Count features, clusters and samples
     if n_informative + n_redundant + n_repeated > n_features:
-        raise ValueError("Number of informative, redundant and repeated "
-                         "features must sum to less than the number of total"
-                         " features")
+        raise ValueError(
+            "Number of informative, redundant and repeated "
+            "features must sum to less than the number of total"
+            " features"
+        )
     # Use log2 to avoid overflow errors
     if n_informative < np.log2(n_classes * n_clusters_per_class):
-        raise ValueError("n_classes * n_clusters_per_class must"
-                         " be smaller or equal 2 ** n_informative")
+        raise ValueError(
+            "n_classes * n_clusters_per_class must"
+            " be smaller or equal 2 ** n_informative"
+        )
     if weights and len(weights) not in [n_classes, n_classes - 1]:
-        raise ValueError("Weights specified but incompatible with number "
-                         "of classes.")
+        raise ValueError(
+            "Weights specified but incompatible with number " "of classes."
+        )
 
     n_useless = n_features - n_informative - n_redundant - n_repeated
     n_clusters = n_classes * n_clusters_per_class
@@ -177,7 +194,8 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
     # Distribute samples among clusters by weight
     n_samples_per_cluster = [
         int(n_samples * weights[k % n_classes] / n_clusters_per_class)
-        for k in range(n_clusters)]
+        for k in range(n_clusters)
+    ]
 
     for i in range(n_samples - sum(n_samples_per_cluster)):
         n_samples_per_cluster[i % n_clusters] += 1
@@ -187,8 +205,9 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
     y = mt.zeros(n_samples, dtype=mt.int)
 
     # Build the polytope whose vertices become cluster centroids
-    centroids = _generate_hypercube(n_clusters, n_informative,
-                                    np_generator).astype(float, copy=False)
+    centroids = _generate_hypercube(n_clusters, n_informative, np_generator).astype(
+        float, copy=False
+    )
     centroids *= 2 * class_sep
     centroids -= class_sep
     if not hypercube:
@@ -213,14 +232,15 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
     # Create redundant features
     if n_redundant > 0:
         B = 2 * generator.rand(n_informative, n_redundant) - 1
-        X[:, n_informative:n_informative + n_redundant] = \
-            mt.dot(X[:, :n_informative], B)
+        X[:, n_informative : n_informative + n_redundant] = mt.dot(
+            X[:, :n_informative], B
+        )
 
     # Repeat some features
     if n_repeated > 0:
         n = n_informative + n_redundant
         indices = ((n - 1) * generator.rand(n_repeated) + 0.5).astype(mt.intp)
-        X[:, n:n + n_repeated] = X[:, indices]
+        X[:, n : n + n_repeated] = X[:, indices]
 
     # Fill useless features
     if n_useless > 0:
@@ -247,8 +267,15 @@ def make_classification(n_samples=100, n_features=20, n_informative=2,
     return X, y
 
 
-def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
-               center_box=(-10.0, 10.0), shuffle=True, random_state=None):
+def make_blobs(
+    n_samples=100,
+    n_features=2,
+    centers=None,
+    cluster_std=1.0,
+    center_box=(-10.0, 10.0),
+    shuffle=True,
+    random_state=None,
+):
     """Generate isotropic Gaussian blobs for clustering.
 
     Read more in the :ref:`User Guide <sample_generators>`.
@@ -325,8 +352,9 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
 
         if isinstance(centers, numbers.Integral):
             n_centers = centers
-            centers = generator.uniform(center_box[0], center_box[1],
-                                        size=(n_centers, n_features))
+            centers = generator.uniform(
+                center_box[0], center_box[1], size=(n_centers, n_features)
+            )
 
         else:
             centers = check_array(centers)
@@ -337,29 +365,35 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
         # Set n_centers by looking at [n_samples] arg
         n_centers = len(n_samples)
         if centers is None:
-            centers = generator.uniform(center_box[0], center_box[1],
-                                        size=(n_centers, n_features))
+            centers = generator.uniform(
+                center_box[0], center_box[1], size=(n_centers, n_features)
+            )
         try:
             assert len(centers) == n_centers
         except TypeError:
-            raise ValueError("Parameter `centers` must be array-like. "
-                             f"Got {centers!r} instead")
+            raise ValueError(
+                "Parameter `centers` must be array-like. " f"Got {centers!r} instead"
+            )
         except AssertionError:
-            raise ValueError("Length of `n_samples` not consistent"
-                             f" with number of centers. Got n_samples = {n_samples} "
-                             f"and centers = {centers}")
+            raise ValueError(
+                "Length of `n_samples` not consistent"
+                f" with number of centers. Got n_samples = {n_samples} "
+                f"and centers = {centers}"
+            )
         else:
             centers = check_array(centers)
             n_features = centers.shape[1]
 
     # stds: if cluster_std is given as list, it must be consistent
     # with the n_centers
-    if (hasattr(cluster_std, "__len__") and len(cluster_std) != n_centers):
+    if hasattr(cluster_std, "__len__") and len(cluster_std) != n_centers:
         if isinstance(centers.op, AssertAllFinite):
             centers = centers.op.inputs[0]
-        raise ValueError("Length of `clusters_std` not consistent with "
-                         f"number of centers. Got centers = {centers} "
-                         f"and cluster_std = {cluster_std}")
+        raise ValueError(
+            "Length of `clusters_std` not consistent with "
+            f"number of centers. Got centers = {centers} "
+            f"and cluster_std = {cluster_std}"
+        )
 
     if isinstance(cluster_std, numbers.Real):
         cluster_std = mt.full(len(centers), cluster_std)
@@ -378,8 +412,7 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
     for i, (n, std) in enumerate(zip(n_samples_per_center, cluster_std)):
         if n == 0:
             continue
-        X.append(generator.normal(loc=centers[i], scale=std,
-                                  size=(n, n_features)))
+        X.append(generator.normal(loc=centers[i], scale=std, size=(n, n_features)))
         y += [i] * n
 
     X = mt.concatenate(X)
@@ -391,8 +424,14 @@ def make_blobs(n_samples=100, n_features=2, centers=None, cluster_std=1.0,
     return X, y
 
 
-def make_low_rank_matrix(n_samples=100, n_features=100, effective_rank=10,
-                         tail_strength=0.5, random_state=None, chunk_size=None):
+def make_low_rank_matrix(
+    n_samples=100,
+    n_features=100,
+    effective_rank=10,
+    tail_strength=0.5,
+    random_state=None,
+    chunk_size=None,
+):
     """Generate a mostly low rank matrix with bell-shaped singular values
 
     Most of the variance can be explained by a bell-shaped curve of width
@@ -455,8 +494,7 @@ def make_low_rank_matrix(n_samples=100, n_features=100, effective_rank=10,
     singular_ind = mt.arange(n, dtype=mt.float64, chunk_size=chunk_size)
 
     # Build the singular profile by assembling signal and noise components
-    low_rank = ((1 - tail_strength) *
-                mt.exp(-1.0 * (singular_ind / effective_rank) ** 2))
+    low_rank = (1 - tail_strength) * mt.exp(-1.0 * (singular_ind / effective_rank) ** 2)
     tail = tail_strength * mt.exp(-0.1 * singular_ind / effective_rank)
     s = mt.identity(n) * (low_rank + tail)
 

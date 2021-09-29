@@ -23,10 +23,10 @@ from .core import DataFrameReductionOperand, DataFrameReductionMixin
 
 class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
     _op_type_ = opcodes.KURTOSIS
-    _func_name = 'kurt'
+    _func_name = "kurt"
 
-    _bias = BoolField('bias')
-    _fisher = BoolField('fisher')
+    _bias = BoolField("bias")
+    _fisher = BoolField("fisher")
 
     def __init__(self, bias=None, fisher=None, **kw):
         super().__init__(_bias=bias, _fisher=fisher, **kw)
@@ -42,24 +42,29 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
     @classmethod
     def get_reduction_callable(cls, op):
         from .aggregation import where_function
+
         skipna, bias, fisher = op.skipna, op.bias, op.fisher
 
         def kurt(x):
             cnt = x.count()
             mean = x.mean(skipna=skipna)
-            divided = (x ** 4).mean(skipna=skipna) \
-                - 4 * (x ** 3).mean(skipna=skipna) * mean \
-                + 6 * (x ** 2).mean(skipna=skipna) * mean ** 2 \
+            divided = (
+                (x ** 4).mean(skipna=skipna)
+                - 4 * (x ** 3).mean(skipna=skipna) * mean
+                + 6 * (x ** 2).mean(skipna=skipna) * mean ** 2
                 - 3 * mean ** 4
+            )
             var = x.var(skipna=skipna, ddof=0)
             if isinstance(var, ENTITY_TYPE) or var > 0:
                 val = where_function(var > 0, divided / var ** 2, np.nan)
             else:
                 val = np.nan
             if not bias:
-                val = where_function((var > 0) & (cnt > 3),
-                                     (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3),
-                                     np.nan)
+                val = where_function(
+                    (var > 0) & (cnt > 3),
+                    (val * (cnt ** 2 - 1) - 3 * (cnt - 1) ** 2) / (cnt - 2) / (cnt - 3),
+                    np.nan,
+                )
             if not fisher:
                 val += 3
             return val
@@ -67,20 +72,53 @@ class DataFrameKurtosis(DataFrameReductionOperand, DataFrameReductionMixin):
         return kurt
 
 
-def kurt_series(df, axis=None, skipna=None, level=None, combine_size=None, bias=False,
-                fisher=True, method=None):
+def kurt_series(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    combine_size=None,
+    bias=False,
+    fisher=True,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameKurtosis(axis=axis, skipna=skipna, level=level, combine_size=combine_size,
-                           bias=bias, fisher=fisher, output_types=[OutputType.scalar],
-                           use_inf_as_na=use_inf_as_na, method=method)
+    op = DataFrameKurtosis(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        combine_size=combine_size,
+        bias=bias,
+        fisher=fisher,
+        output_types=[OutputType.scalar],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)
 
 
-def kurt_dataframe(df, axis=None, skipna=None, level=None, numeric_only=None, combine_size=None,
-                   bias=False, fisher=True, method=None):
+def kurt_dataframe(
+    df,
+    axis=None,
+    skipna=None,
+    level=None,
+    numeric_only=None,
+    combine_size=None,
+    bias=False,
+    fisher=True,
+    method=None,
+):
     use_inf_as_na = options.dataframe.mode.use_inf_as_na
-    op = DataFrameKurtosis(axis=axis, skipna=skipna, level=level, numeric_only=numeric_only,
-                           bias=bias, fisher=fisher, combine_size=combine_size,
-                           output_types=[OutputType.series], use_inf_as_na=use_inf_as_na,
-                           method=method)
+    op = DataFrameKurtosis(
+        axis=axis,
+        skipna=skipna,
+        level=level,
+        numeric_only=numeric_only,
+        bias=bias,
+        fisher=fisher,
+        combine_size=combine_size,
+        output_types=[OutputType.series],
+        use_inf_as_na=use_inf_as_na,
+        method=method,
+    )
     return op(df)

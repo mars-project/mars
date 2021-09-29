@@ -18,13 +18,9 @@ from ...config import Config, is_bool, is_list
 task_options = Config()
 
 # supervisor
-task_options.register_option('optimize_tileable_graph', True,
-                             validator=is_bool)
-task_options.register_option('optimize_chunk_graph', True,
-                             validator=is_bool)
-task_options.register_option('fuse_enabled', True,
-                             validator=is_bool)
+task_options.register_option("optimize_tileable_graph", True, validator=is_bool)
+task_options.register_option("optimize_chunk_graph", True, validator=is_bool)
+task_options.register_option("fuse_enabled", True, validator=is_bool)
 
 # worker
-task_options.register_option('runtime_engines', ['numexpr', 'cupy'],
-                             validator=is_list)
+task_options.register_option("runtime_engines", ["numexpr", "cupy"], validator=is_list)

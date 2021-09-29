@@ -22,10 +22,10 @@ from .core import TensorBinOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorNextafter(TensorBinOp):
     _op_type_ = OperandDef.NEXTAFTER
-    _func_name = 'nextafter'
+    _func_name = "nextafter"
 
 
 @infer_dtype(np.nextafter)

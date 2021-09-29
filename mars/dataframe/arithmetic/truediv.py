@@ -23,8 +23,8 @@ from .docstring import bin_arithmetic_doc
 class DataFrameTrueDiv(DataFrameBinopUfunc):
     _op_type_ = OperandDef.DIV
 
-    _func_name = 'truediv'
-    _rfunc_name = 'rtruediv'
+    _func_name = "truediv"
+    _rfunc_name = "rtruediv"
 
     @classproperty
     def _operator(self):
@@ -33,6 +33,7 @@ class DataFrameTrueDiv(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorTrueDiv
+
         return TensorTrueDiv
 
 
@@ -47,13 +48,17 @@ dtype: float64
 """
 
 
-@bin_arithmetic_doc('Floating division', equiv='/', series_example=_truediv_example)
-def truediv(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other)
+@bin_arithmetic_doc("Floating division", equiv="/", series_example=_truediv_example)
+def truediv(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameTrueDiv(
+        axis=axis, level=level, fill_value=fill_value, lhs=df, rhs=other
+    )
     return op(df, other)
 
 
-@bin_arithmetic_doc('Floating division', equiv='/', series_example=_truediv_example)
-def rtruediv(df, other, axis='columns', level=None, fill_value=None):
-    op = DataFrameTrueDiv(axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df)
+@bin_arithmetic_doc("Floating division", equiv="/", series_example=_truediv_example)
+def rtruediv(df, other, axis="columns", level=None, fill_value=None):
+    op = DataFrameTrueDiv(
+        axis=axis, level=level, fill_value=fill_value, lhs=other, rhs=df
+    )
     return op.rcall(df, other)

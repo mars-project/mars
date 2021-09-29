@@ -18,28 +18,52 @@ import pandas as pd
 from ... import opcodes
 from ...core import recursive_tile
 from ...core.operand import OperandStage
-from ...serialization.serializables import FieldTypes, AnyField, Int32Field, \
-    ListField, StringField
-from ..operands import DataFrameOperand, DataFrameOperandMixin, SERIES_TYPE, \
-    SERIES_CHUNK_TYPE
+from ...serialization.serializables import (
+    FieldTypes,
+    AnyField,
+    Int32Field,
+    ListField,
+    StringField,
+)
+from ..operands import (
+    DataFrameOperand,
+    DataFrameOperandMixin,
+    SERIES_TYPE,
+    SERIES_CHUNK_TYPE,
+)
 from ..utils import build_df, build_series, parse_index
 
 
 class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
     _op_type_ = opcodes.REPLACE
 
-    _to_replace = AnyField('to_replace')
-    _value = AnyField('value')
-    _limit = Int32Field('limit')
-    _regex = AnyField('regex')
-    _method = StringField('method')
+    _to_replace = AnyField("to_replace")
+    _value = AnyField("value")
+    _limit = Int32Field("limit")
+    _regex = AnyField("regex")
+    _method = StringField("method")
 
-    _fill_chunks = ListField('fill_chunks', FieldTypes.key)
+    _fill_chunks = ListField("fill_chunks", FieldTypes.key)
 
-    def __init__(self, to_replace=None, value=None, limit=None, regex=None, method=None,
-                 fill_chunks=None, **kw):
-        super().__init__(_to_replace=to_replace, _value=value, _limit=limit, _regex=regex,
-                         _method=method, _fill_chunks=fill_chunks, **kw)
+    def __init__(
+        self,
+        to_replace=None,
+        value=None,
+        limit=None,
+        regex=None,
+        method=None,
+        fill_chunks=None,
+        **kw
+    ):
+        super().__init__(
+            _to_replace=to_replace,
+            _value=value,
+            _limit=limit,
+            _regex=regex,
+            _method=method,
+            _fill_chunks=fill_chunks,
+            **kw
+        )
 
     @property
     def to_replace(self):
@@ -77,8 +101,11 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
 
     def __call__(self, df_or_series):
         inputs = [df_or_series]
-        mock_obj = build_df(df_or_series) \
-            if df_or_series.ndim == 2 else build_series(df_or_series)
+        mock_obj = (
+            build_df(df_or_series)
+            if df_or_series.ndim == 2
+            else build_series(df_or_series)
+        )
 
         if isinstance(self.to_replace, SERIES_TYPE):
             mock_to_replace = build_series(self.to_replace)
@@ -93,20 +120,29 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
             mock_value = self.value
 
         mock_result = mock_obj.replace(
-            mock_to_replace, mock_value, regex=self.regex, method=self.method)
+            mock_to_replace, mock_value, regex=self.regex, method=self.method
+        )
 
         if df_or_series.ndim == 2:
             return self.new_dataframe(
-                inputs, shape=df_or_series.shape, dtypes=mock_result.dtypes,
-                index_value=df_or_series.index_value, columns_value=df_or_series.columns_value)
+                inputs,
+                shape=df_or_series.shape,
+                dtypes=mock_result.dtypes,
+                index_value=df_or_series.index_value,
+                columns_value=df_or_series.columns_value,
+            )
         else:
             return self.new_series(
-                inputs, shape=df_or_series.shape, dtype=mock_result.dtype,
-                index_value=df_or_series.index_value)
+                inputs,
+                shape=df_or_series.shape,
+                dtype=mock_result.dtype,
+                index_value=df_or_series.index_value,
+            )
 
     @classmethod
-    def _build_result_chunk(cls, op: 'DataFrameReplace', in_chunks, with_fill=False,
-                            stage=None):
+    def _build_result_chunk(
+        cls, op: "DataFrameReplace", in_chunks, with_fill=False, stage=None
+    ):
         in_obj = op.inputs[0]
         out_obj = op.outputs[0]
         in_chunk = in_chunks[0]
@@ -118,23 +154,22 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
 
         if in_obj.ndim == 2:
             new_dtypes = out_obj.dtypes[in_chunk.dtypes.index]
-            kw.update(dict(
-                dtypes=new_dtypes,
-                shape=tuple(new_shape),
-                column_values=parse_index(new_dtypes.index),
-            ))
+            kw.update(
+                dict(
+                    dtypes=new_dtypes,
+                    shape=tuple(new_shape),
+                    column_values=parse_index(new_dtypes.index),
+                )
+            )
         else:
-            kw.update(dict(
-                dtype=out_obj.dtype,
-                shape=tuple(new_shape),
-            ))
+            kw.update(dict(dtype=out_obj.dtype, shape=tuple(new_shape),))
 
         new_op = op.copy().reset_key()
         new_op.stage = stage
         return new_op.new_chunk(in_chunks, **kw)
 
     @classmethod
-    def tile(cls, op: 'DataFrameReplace'):
+    def tile(cls, op: "DataFrameReplace"):
         in_obj = op.inputs[0]
         out_obj = op.outputs[0]
 
@@ -143,7 +178,8 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
         to_replace = op.to_replace
         if isinstance(to_replace, SERIES_TYPE):
             to_replace = yield from recursive_tile(
-                to_replace.rechunk((to_replace.shape[0],)))
+                to_replace.rechunk((to_replace.shape[0],))
+            )
             chunk_inputs_ex.append(to_replace.chunks[0])
             tileable_inputs_ex.append(to_replace)
         value = op.value
@@ -154,24 +190,31 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
 
         # fill methods only available when `to_replace` is a scalar, list or tuple
         # and `value` is None.
-        with_fill = op.value is None and not isinstance(op.to_replace, dict) \
+        with_fill = (
+            op.value is None
+            and not isinstance(op.to_replace, dict)
             and op.method is not None
+        )
 
         chunks = []
         if not with_fill:
             for in_chunk in in_obj.chunks:
                 inputs = [in_chunk] + chunk_inputs_ex
-                chunks.append(cls._build_result_chunk(
-                    op, inputs, with_fill, OperandStage.map if with_fill else None))
+                chunks.append(
+                    cls._build_result_chunk(
+                        op, inputs, with_fill, OperandStage.map if with_fill else None
+                    )
+                )
         else:
             map_array = np.empty(out_obj.shape, dtype=object)
             for in_chunk in in_obj.chunks:
                 inputs = [in_chunk] + chunk_inputs_ex
                 map_array[in_chunk.index] = cls._build_result_chunk(
-                    op, inputs, with_fill, OperandStage.map if with_fill else None)
+                    op, inputs, with_fill, OperandStage.map if with_fill else None
+                )
 
             for in_chunk in in_obj.chunks:
-                if op.method in ('pad', 'ffill'):
+                if op.method in ("pad", "ffill"):
                     slc = slice(0, in_chunk.index[0])
                 else:
                     slc = slice(in_chunk.index[0] + 1, in_obj.chunk_shape[0])
@@ -182,14 +225,18 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
                     append_chunks = list(map_array[slc])
 
                 inputs = [in_chunk] + chunk_inputs_ex + append_chunks
-                chunks.append(cls._build_result_chunk(op, inputs, False, OperandStage.combine))
+                chunks.append(
+                    cls._build_result_chunk(op, inputs, False, OperandStage.combine)
+                )
 
         inputs = [in_obj] + tileable_inputs_ex
         new_op = op.copy().reset_key()
-        return new_op.new_tileables(inputs, chunks=chunks, nsplits=in_obj.nsplits, **out_obj.params)
+        return new_op.new_tileables(
+            inputs, chunks=chunks, nsplits=in_obj.nsplits, **out_obj.params
+        )
 
     @classmethod
-    def execute(cls, ctx, op: 'DataFrameReplace'):
+    def execute(cls, ctx, op: "DataFrameReplace"):
         in_data = ctx[op.inputs[0].key]
         to_replace = op.to_replace
         if isinstance(to_replace, SERIES_CHUNK_TYPE):
@@ -202,26 +249,27 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
             concat_data = in_data
         else:
             to_concat = [ctx[c.key] for c in op.fill_chunks]
-            if op.method in ('pad', 'ffill'):
+            if op.method in ("pad", "ffill"):
                 to_concat += [in_data]
             else:
                 to_concat = [in_data] + to_concat
             concat_data = pd.concat(to_concat)
 
         result = concat_data.replace(
-            to_replace, value, regex=op.regex, method=op.method, limit=op.limit)
+            to_replace, value, regex=op.regex, method=op.method, limit=op.limit
+        )
         del concat_data
 
         if op.stage == OperandStage.map:
             to_slice = op.outputs[0].shape[0]
-            if op.method in ('pad', 'ffill'):
+            if op.method in ("pad", "ffill"):
                 result = result.iloc[-to_slice:]
             else:
                 result = result.iloc[:to_slice]
         else:
             to_remove = len(result) - len(in_data)
             if to_remove > 0:
-                if op.method in ('pad', 'ffill'):
+                if op.method in ("pad", "ffill"):
                     result = result.iloc[to_remove:]
                 else:
                     result = result.iloc[:-to_remove]
@@ -519,16 +567,24 @@ dtype: object
 """
 
 
-def _replace(df_or_series, to_replace=None, value=None, inplace=False, limit=None,
-             regex=False, method='pad'):
+def _replace(
+    df_or_series,
+    to_replace=None,
+    value=None,
+    inplace=False,
+    limit=None,
+    regex=False,
+    method="pad",
+):
     if not isinstance(to_replace, dict) and value is None and limit is not None:
-        raise NotImplementedError('fill with limit not supported when value is None')
+        raise NotImplementedError("fill with limit not supported when value is None")
 
     if not isinstance(regex, bool):
         to_replace = regex
         regex = True
-    op = DataFrameReplace(to_replace=to_replace, value=value, limit=limit, regex=regex,
-                          method=method)
+    op = DataFrameReplace(
+        to_replace=to_replace, value=value, limit=limit, regex=regex, method=method
+    )
     ret = op(df_or_series)
     if inplace:
         df_or_series.data = ret.data
@@ -536,17 +592,45 @@ def _replace(df_or_series, to_replace=None, value=None, inplace=False, limit=Non
         return ret
 
 
-def df_replace(df, to_replace=None, value=None, inplace=False, limit=None,
-               regex=False, method='pad'):
-    return _replace(df, to_replace=to_replace, value=value, inplace=inplace, limit=limit,
-                    regex=regex, method=method)
+def df_replace(
+    df,
+    to_replace=None,
+    value=None,
+    inplace=False,
+    limit=None,
+    regex=False,
+    method="pad",
+):
+    return _replace(
+        df,
+        to_replace=to_replace,
+        value=value,
+        inplace=inplace,
+        limit=limit,
+        regex=regex,
+        method=method,
+    )
 
 
-def series_replace(series, to_replace=None, value=None, inplace=False, limit=None,
-                   regex=False, method='pad'):
-    return _replace(series, to_replace=to_replace, value=value, inplace=inplace,
-                    limit=limit, regex=regex, method=method)
+def series_replace(
+    series,
+    to_replace=None,
+    value=None,
+    inplace=False,
+    limit=None,
+    regex=False,
+    method="pad",
+):
+    return _replace(
+        series,
+        to_replace=to_replace,
+        value=value,
+        inplace=inplace,
+        limit=limit,
+        regex=regex,
+        method=method,
+    )
 
 
-df_replace.__doc__ = _fun_doc.replace('#obj_type#', 'DataFrame')
-series_replace.__doc__ = _fun_doc.replace('#obj_type#', 'Series')
+df_replace.__doc__ = _fun_doc.replace("#obj_type#", "DataFrame")
+series_replace.__doc__ = _fun_doc.replace("#obj_type#", "Series")

@@ -35,50 +35,62 @@ class ClusterSupervisorService(AbstractService):
         }
     }
     """
+
     async def start(self):
-        svc_config = self._config['cluster']
+        svc_config = self._config["cluster"]
         address = self._address
 
-        backend = svc_config.get('backend', 'fixed')
-        lookup_address = svc_config.get('lookup_address',
-                                        address if backend == 'fixed' else None)
+        backend = svc_config.get("backend", "fixed")
+        lookup_address = svc_config.get(
+            "lookup_address", address if backend == "fixed" else None
+        )
         await mo.create_actor(
             NodeInfoCollectorActor,
-            timeout=svc_config.get('node_timeout'),
-            check_interval=svc_config.get('node_check_interval'),
+            timeout=svc_config.get("node_timeout"),
+            check_interval=svc_config.get("node_check_interval"),
             uid=NodeInfoCollectorActor.default_uid(),
-            address=address)
+            address=address,
+        )
         await mo.create_actor(
             SupervisorPeerLocatorActor,
             backend_name=backend,
             lookup_address=lookup_address,
             uid=SupervisorPeerLocatorActor.default_uid(),
-            address=address)
+            address=address,
+        )
         await mo.create_actor(
             NodeInfoUploaderActor,
             role=NodeRole.SUPERVISOR,
-            interval=svc_config.get('node_check_interval'),
+            interval=svc_config.get("node_check_interval"),
             uid=NodeInfoUploaderActor.default_uid(),
-            address=address)
+            address=address,
+        )
         await mo.create_actor(
             NodeAllocatorActor,
             backend_name=backend,
             lookup_address=lookup_address,
             uid=NodeAllocatorActor.default_uid(),
-            address=address)
+            address=address,
+        )
 
     async def stop(self):
         address = self._address
 
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=NodeInfoCollectorActor.default_uid(),
-            address=address))
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=SupervisorPeerLocatorActor.default_uid(),
-            address=address))
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=NodeInfoUploaderActor.default_uid(),
-            address=address))
-        await mo.destroy_actor(mo.create_actor_ref(
-            uid=NodeAllocatorActor.default_uid(),
-            address=address))
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=NodeInfoCollectorActor.default_uid(), address=address
+            )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=SupervisorPeerLocatorActor.default_uid(), address=address
+            )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(
+                uid=NodeInfoUploaderActor.default_uid(), address=address
+            )
+        )
+        await mo.destroy_actor(
+            mo.create_actor_ref(uid=NodeAllocatorActor.default_uid(), address=address)
+        )

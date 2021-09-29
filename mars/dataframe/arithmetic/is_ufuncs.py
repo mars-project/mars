@@ -31,29 +31,32 @@ class DataFrameIsUFuncMixin:
 
 class DataFrameIsNan(DataFrameIsUFuncMixin, DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ISNAN
-    _func_name = 'isnan'
+    _func_name = "isnan"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorIsNan
+
         return TensorIsNan
 
 
 class DataFrameIsInf(DataFrameIsUFuncMixin, DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ISINF
-    _func_name = 'isinf'
+    _func_name = "isinf"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorIsInf
+
         return TensorIsInf
 
 
 class DataFrameIsFinite(DataFrameIsUFuncMixin, DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ISFINITE
-    _func_name = 'isfinite'
+    _func_name = "isfinite"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorIsFinite
+
         return TensorIsFinite

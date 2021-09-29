@@ -29,9 +29,9 @@ from .core import TensorRandomOperandMixin, TensorDistribution
 class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     _op_type_ = OperandDef.RAND_DIRICHLET
 
-    _fields_ = '_alpha', '_size'
-    _alpha = TupleField('alpha')
-    _func_name = 'dirichlet'
+    _fields_ = "_alpha", "_size"
+    _alpha = TupleField("alpha")
+    _func_name = "dirichlet"
 
     def __init__(self, alpha=None, size=None, dtype=None, **kw):
         dtype = np.dtype(dtype) if dtype is not None else dtype
@@ -52,7 +52,9 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
     def tile(cls, op):
         tensor = op.outputs[0]
         chunk_size = tensor.extra_params.raw_chunk_size or options.chunk_size
-        nsplits = decide_chunk_sizes(tensor.shape[:-1], chunk_size, tensor.dtype.itemsize)
+        nsplits = decide_chunk_sizes(
+            tensor.shape[:-1], chunk_size, tensor.dtype.itemsize
+        )
         nsplits += ((len(op.alpha),),)
 
         idxes = list(itertools.product(*[range(len(s)) for s in nsplits]))
@@ -71,8 +73,9 @@ class TensorDirichlet(TensorDistribution, TensorRandomOperandMixin):
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, tensor.shape,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs, tensor.shape, chunks=out_chunks, nsplits=nsplits
+        )
 
 
 def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, dtype=None):
@@ -150,7 +153,7 @@ def dirichlet(random_state, alpha, size=None, chunk_size=None, gpu=None, dtype=N
     if isinstance(alpha, Iterable):
         alpha = tuple(alpha)
     else:
-        raise TypeError('`alpha` should be an array')
+        raise TypeError("`alpha` should be an array")
     if dtype is None:
         dtype = np.random.RandomState().dirichlet(alpha, size=(0,)).dtype
     size = random_state._handle_size(size)

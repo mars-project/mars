@@ -32,31 +32,39 @@ class DataFrameTranspose(DataFrameOperand, DataFrameOperandMixin):
         new_shape = arg.shape[::-1]
         columns_value = arg.index_value
         index_value = parse_index(arg.dtypes.index)
-        return self.new_dataframe([arg], shape=new_shape, dtypes=None,
-                                  columns_value=columns_value, index_value=index_value)
+        return self.new_dataframe(
+            [arg],
+            shape=new_shape,
+            dtypes=None,
+            columns_value=columns_value,
+            index_value=index_value,
+        )
 
     @classmethod
     def tile(cls, op):
         out_chunks = []
         for c in op.inputs[0].chunks:
             chunk_op = op.copy().reset_key()
-            chunk_shape = tuple(s if np.isnan(s) else int(s)
-                                for s in c.shape[::-1])
+            chunk_shape = tuple(s if np.isnan(s) else int(s) for s in c.shape[::-1])
             chunk_idx = c.index[::-1]
             index_value = parse_index(c.dtypes.index)
             columns_value = c.index_value
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           index=chunk_idx,
-                                           index_value=index_value,
-                                           columns_value=columns_value,
-                                           dtypes=None)
+            out_chunk = chunk_op.new_chunk(
+                [c],
+                shape=chunk_shape,
+                index=chunk_idx,
+                index_value=index_value,
+                columns_value=columns_value,
+                dtypes=None,
+            )
             out_chunks.append(out_chunk)
 
         new_op = op.copy()
         nsplits = op.inputs[0].nsplits[::-1]
         params = op.outputs[0].params
-        return new_op.new_dataframe(op.inputs, chunks=out_chunks,
-                                    nsplits=nsplits, **params)
+        return new_op.new_dataframe(
+            op.inputs, chunks=out_chunks, nsplits=nsplits, **params
+        )
 
     @classmethod
     def execute(cls, ctx, op):

@@ -21,8 +21,7 @@ from ... import opcodes as OperandDef
 from ... import tensor as mt
 from ...core import recursive_tile
 from ...core.context import get_context
-from ...serialization.serializables import AnyField, TupleField, \
-    KeyField, BoolField
+from ...serialization.serializables import AnyField, TupleField, KeyField, BoolField
 from ...utils import has_unknown_shape
 from ..core import TENSOR_TYPE, TENSOR_CHUNK_TYPE, TensorOrder
 from ..operands import TensorOperand, TensorOperandMixin
@@ -120,7 +119,7 @@ class HistBinScottSelector(HistBinSelector):
     """
 
     def __call__(self):
-        return (24.0 * np.pi**0.5 / self._x.size)**(1.0 / 3.0) * mt.std(self._x)
+        return (24.0 * np.pi ** 0.5 / self._x.size) ** (1.0 / 3.0) * mt.std(self._x)
 
 
 class HistBinStoneSelector(HistBinSelector):
@@ -176,9 +175,10 @@ class HistBinDoaneSelector(HistBinSelector):
 
         sg1 = np.sqrt(6.0 * (x.size - 2) / ((x.size + 1.0) * (x.size + 3)))
         sigma = mt.std(x)
-        g1 = mt.mean(((x - mt.mean(x)) / sigma)**3)
-        ret = _ptp(self._raw_range) / (1.0 + np.log2(x.size) +
-                                      mt.log2(1.0 + mt.absolute(g1) / sg1))
+        g1 = mt.mean(((x - mt.mean(x)) / sigma) ** 3)
+        ret = _ptp(self._raw_range) / (
+            1.0 + np.log2(x.size) + mt.log2(1.0 + mt.absolute(g1) / sg1)
+        )
         return mt.where(sigma > 0.0, ret, 0.0)
 
     def get_result(self):
@@ -231,10 +231,10 @@ class HistBinAutoSelector(HistBinSelector):
 
     def __init__(self, histogram_bin_edges_op, x, range, raw_range):
         super().__init__(histogram_bin_edges_op, x, range, raw_range)
-        self._bin_fd = HistBinFdSelector(
-            histogram_bin_edges_op, x, range, raw_range)
+        self._bin_fd = HistBinFdSelector(histogram_bin_edges_op, x, range, raw_range)
         self._bin_sturges = HistBinSturgesSelector(
-            histogram_bin_edges_op, x, range, raw_range)
+            histogram_bin_edges_op, x, range, raw_range
+        )
 
     def __call__(self):
         return self._bin_fd()
@@ -250,14 +250,16 @@ class HistBinAutoSelector(HistBinSelector):
 
 
 # Private dict initialized at module load time
-_hist_bin_selectors = {'stone': HistBinStoneSelector,
-                       'auto': HistBinAutoSelector,
-                       'doane': HistBinDoaneSelector,
-                       'fd': HistBinFdSelector,
-                       'rice': HistBinRiceSelector,
-                       'scott': HistBinScottSelector,
-                       'sqrt': HistBinSqrtSelector,
-                       'sturges': HistBinSturgesSelector}
+_hist_bin_selectors = {
+    "stone": HistBinStoneSelector,
+    "auto": HistBinAutoSelector,
+    "doane": HistBinDoaneSelector,
+    "fd": HistBinFdSelector,
+    "rice": HistBinRiceSelector,
+    "scott": HistBinScottSelector,
+    "sqrt": HistBinSqrtSelector,
+    "sturges": HistBinSturgesSelector,
+}
 
 
 def _ravel_and_check_weights(a, weights):
@@ -266,15 +268,17 @@ def _ravel_and_check_weights(a, weights):
 
     # Ensure that the array is a "subtractable" dtype
     if a.dtype == np.bool_:
-        warnings.warn(f"Converting input from {a.dtype} to {np.uint8} for compatibility.",
-                      RuntimeWarning, stacklevel=3)
+        warnings.warn(
+            f"Converting input from {a.dtype} to {np.uint8} for compatibility.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
         a = a.astype(np.uint8)
 
     if weights is not None:
         weights = astensor(weights)
         if weights.shape != a.shape:
-            raise ValueError(
-                'weights should have the same shape as a.')
+            raise ValueError("weights should have the same shape as a.")
         weights = weights.ravel()
     a = a.ravel()
     return a, weights
@@ -283,11 +287,9 @@ def _ravel_and_check_weights(a, weights):
 def _check_range(range):
     first_edge, last_edge = range
     if first_edge > last_edge:
-        raise ValueError(
-            'max must be larger than min in range parameter.')
+        raise ValueError("max must be larger than min in range parameter.")
     if not (np.isfinite(first_edge) and np.isfinite(last_edge)):
-        raise ValueError(
-            f"supplied range of [{first_edge}, {last_edge}] is not finite")
+        raise ValueError(f"supplied range of [{first_edge}, {last_edge}] is not finite")
     return first_edge, last_edge
 
 
@@ -324,7 +326,7 @@ def _unsigned_subtract(a, b):
         np.short: np.ushort,
         np.intc: np.uintc,
         np.int_: np.uint,
-        np.longlong: np.ulonglong
+        np.longlong: np.ulonglong,
     }
     dt = np.result_type(a, b)
     try:
@@ -334,7 +336,7 @@ def _unsigned_subtract(a, b):
     else:
         # we know the inputs are integers, and we are deliberately casting
         # signed to unsigned
-        return np.subtract(a, b, casting='unsafe', dtype=dt)
+        return np.subtract(a, b, casting="unsafe", dtype=dt)
 
 
 def _get_bin_edges(op, a, bins, range, weights):
@@ -358,11 +360,15 @@ def _get_bin_edges(op, a, bins, range, weights):
             n_equal_bins = 1
         else:
             # Do not call selectors on empty arrays
-            selector = _hist_bin_selectors[bin_name](op, a, (first_edge, last_edge), raw_range)
+            selector = _hist_bin_selectors[bin_name](
+                op, a, (first_edge, last_edge), raw_range
+            )
             yield from selector.check()
             width = selector.get_result()
             if width:
-                n_equal_bins = int(np.ceil(_unsigned_subtract(last_edge, first_edge) / width))
+                n_equal_bins = int(
+                    np.ceil(_unsigned_subtract(last_edge, first_edge) / width)
+                )
             else:
                 # Width can be zero for some estimators, e.g. FD when
                 # the IQR of the data is zero.
@@ -377,8 +383,7 @@ def _get_bin_edges(op, a, bins, range, weights):
         assert mt.ndim(bins) == 1 and not isinstance(bins, TENSOR_TYPE)
         bin_edges = np.asarray(bins)
         if not is_asc_sorted(bin_edges):
-            raise ValueError(
-                '`bins` must increase monotonically, when an array')
+            raise ValueError("`bins` must increase monotonically, when an array")
 
     if n_equal_bins is not None:
         # numpy gh-10322 means that type resolution rules are dependent on array
@@ -390,8 +395,13 @@ def _get_bin_edges(op, a, bins, range, weights):
 
         # bin edges must be computed
         bin_edges = mt.linspace(
-            first_edge, last_edge, n_equal_bins + 1,
-            endpoint=True, dtype=bin_type, gpu=op.gpu)
+            first_edge,
+            last_edge,
+            n_equal_bins + 1,
+            endpoint=True,
+            dtype=bin_type,
+            gpu=op.gpu,
+        )
         return bin_edges, (first_edge, last_edge, n_equal_bins)
     else:
         return mt.tensor(bin_edges), None
@@ -400,16 +410,23 @@ def _get_bin_edges(op, a, bins, range, weights):
 class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.HISTOGRAM_BIN_EDGES
 
-    _input = KeyField('input')
-    _bins = AnyField('bins')
-    _range = TupleField('range')
-    _weights = KeyField('weights')
-    _uniform_bins = TupleField('uniform_bins')
+    _input = KeyField("input")
+    _bins = AnyField("bins")
+    _range = TupleField("range")
+    _weights = KeyField("weights")
+    _uniform_bins = TupleField("uniform_bins")
 
-    def __init__(self, input=None, bins=None, range=None, weights=None,
-                 input_min=None, input_max=None, **kw):
-        super().__init__(_input=input, _bins=bins, _range=range,
-                         _weights=weights, **kw)
+    def __init__(
+        self,
+        input=None,
+        bins=None,
+        range=None,
+        weights=None,
+        input_min=None,
+        input_max=None,
+        **kw,
+    ):
+        super().__init__(_input=input, _bins=bins, _range=range, _weights=weights, **kw)
 
     @property
     def input(self):
@@ -446,11 +463,12 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             # if `bins` is a string for an automatic method,
             # this will replace it with the number of bins calculated
             if bin_name not in _hist_bin_selectors:
-                raise ValueError(
-                    f"{bin_name!r} is not a valid estimator for `bins`")
+                raise ValueError(f"{bin_name!r} is not a valid estimator for `bins`")
             if weights is not None:
-                raise TypeError("Automated estimation of the number of "
-                                "bins is not supported for weighted data")
+                raise TypeError(
+                    "Automated estimation of the number of "
+                    "bins is not supported for weighted data"
+                )
             if isinstance(range, tuple) and len(range) == 2:
                 # if `bins` is a string, e.g. 'auto', 'stone'...,
                 # and `range` provided as well,
@@ -462,20 +480,20 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
             try:
                 n_equal_bins = operator.index(bins)
             except TypeError:  # pragma: no cover
-                raise TypeError(
-                    '`bins` must be an integer, a string, or an array')
+                raise TypeError("`bins` must be an integer, a string, or an array")
             if n_equal_bins < 1:
-                raise ValueError('`bins` must be positive, when an integer')
+                raise ValueError("`bins` must be positive, when an integer")
             shape = (bins + 1,)
         elif mt.ndim(bins) == 1:
             if not isinstance(bins, TENSOR_TYPE):
                 bins = np.asarray(bins)
                 if not is_asc_sorted(bins):
                     raise ValueError(
-                        '`bins` must increase monotonically, when an array')
+                        "`bins` must increase monotonically, when an array"
+                    )
             shape = astensor(bins).shape
         else:
-            raise ValueError('`bins` must be 1d, when an array')
+            raise ValueError("`bins` must be 1d, when an array")
 
         inputs = [a]
         if isinstance(bins, TENSOR_TYPE):
@@ -495,12 +513,14 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         if isinstance(bins, str):
             if has_unknown_shape(op.input):
                 yield
-        if (a.size > 0 or np.isnan(a.size)) and \
-                (isinstance(bins, str) or mt.ndim(bins) == 0) and not range_:
+        if (
+            (a.size > 0 or np.isnan(a.size))
+            and (isinstance(bins, str) or mt.ndim(bins) == 0)
+            and not range_
+        ):
             input_min = a.min(keepdims=True)
             input_max = a.max(keepdims=True)
-            input_min, input_max = yield from recursive_tile(
-                input_min, input_max)
+            input_min, input_max = yield from recursive_tile(input_min, input_max)
             chunks = [input_min.chunks[0], input_max.chunks[0]]
             yield chunks
             range_results = ctx.get_chunks_result([c.key for c in chunks])
@@ -515,8 +535,7 @@ class TensorHistogramBinEdges(TensorOperand, TensorOperandMixin):
         else:
             bins = op.bins
 
-        bin_edges, _ = yield from _get_bin_edges(
-            op, op.input, bins, range_, op.weights)
+        bin_edges, _ = yield from _get_bin_edges(op, op.input, bins, range_, op.weights)
         bin_edges = yield from recursive_tile(bin_edges)
         return [bin_edges]
 
@@ -725,26 +744,41 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
 
     """
     a, weights = _ravel_and_check_weights(a, weights)
-    op = TensorHistogramBinEdges(input=a, bins=bins,
-                                 range=range, weights=weights,
-                                 dtype=a.dtype)
+    op = TensorHistogramBinEdges(
+        input=a, bins=bins, range=range, weights=weights, dtype=a.dtype
+    )
     return op(a, bins, range, weights)
 
 
 class TensorHistogram(TensorOperand, TensorOperandMixin):
     _op_type_ = OperandDef.HISTOGRAM
 
-    _input = KeyField('input')
-    _bins = AnyField('bins')
-    _range = TupleField('range')
-    _weights = KeyField('weights')
-    _density = BoolField('density')
-    _ret_bins = BoolField('ret_bins')
+    _input = KeyField("input")
+    _bins = AnyField("bins")
+    _range = TupleField("range")
+    _weights = KeyField("weights")
+    _density = BoolField("density")
+    _ret_bins = BoolField("ret_bins")
 
-    def __init__(self, input=None, bins=None, range=None, weights=None,
-                 density=None, ret_bins=None, **kw):
-        super().__init__(_input=input, _bins=bins, _range=range, _weights=weights,
-                         _density=density, _ret_bins=ret_bins, **kw)
+    def __init__(
+        self,
+        input=None,
+        bins=None,
+        range=None,
+        weights=None,
+        density=None,
+        ret_bins=None,
+        **kw,
+    ):
+        super().__init__(
+            _input=input,
+            _bins=bins,
+            _range=range,
+            _weights=weights,
+            _density=density,
+            _ret_bins=ret_bins,
+            **kw,
+        )
 
     @property
     def input(self):
@@ -786,8 +820,8 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
     def __call__(self, a, bins, range, weights):
         a, weights = _ravel_and_check_weights(a, weights)
         histogram_bin_edges_op = TensorHistogramBinEdges(
-            input=a, bins=bins, range=range, weights=weights,
-            dtype=np.dtype(np.float64))
+            input=a, bins=bins, range=range, weights=weights, dtype=np.dtype(np.float64)
+        )
         bins = self._bins = histogram_bin_edges_op(a, bins, range, weights)
 
         inputs = [histogram_bin_edges_op.input]
@@ -801,8 +835,9 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
             dtype = weights.dtype
         self.dtype = dtype
 
-        hist = self.new_tensor(inputs, shape=(bins.size - 1,),
-                               order=TensorOrder.C_ORDER)
+        hist = self.new_tensor(
+            inputs, shape=(bins.size - 1,), order=TensorOrder.C_ORDER
+        )
         return mt.ExecutableTuple([hist, bins])
 
     @classmethod
@@ -813,8 +848,7 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
         weights = None
         if op.weights is not None:
             # make input and weights have the same nsplits
-            weights = yield from recursive_tile(
-                op.weights.rechunk(op.input.nsplits))
+            weights = yield from recursive_tile(op.weights.rechunk(op.input.nsplits))
 
         out_chunks = []
         for chunk in op.input.chunks:
@@ -826,15 +860,21 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
             if weights is not None:
                 weights_chunk = weights.cix[chunk.index]
                 chunk_inputs.append(weights_chunk)
-            out_chunk = chunk_op.new_chunk(chunk_inputs, shape=shape,
-                                           index=chunk.index, order=out.order)
+            out_chunk = chunk_op.new_chunk(
+                chunk_inputs, shape=shape, index=chunk.index, order=out.order
+            )
             out_chunks.append(out_chunk)
 
         # merge chunks together
         chunk = chunk_tree_add(out.dtype, out_chunks, (0,), shape)
         new_op = op.copy()
-        n = new_op.new_tensor(op.inputs, shape=shape, order=out.order,
-                              chunks=[chunk], nsplits=((shape[0],),))
+        n = new_op.new_tensor(
+            op.inputs,
+            shape=shape,
+            order=out.order,
+            chunks=[chunk],
+            nsplits=((shape[0],),),
+        )
         if op.density:
             db = mt.array(mt.diff(bins), float)
             hist = n / db / n.sum()
@@ -846,15 +886,17 @@ class TensorHistogram(TensorOperand, TensorOperandMixin):
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True)
+            [ctx[inp.key] for inp in op.inputs], device=op.device, ret_extra=True
+        )
         a = inputs[0]
         bins = inputs[1] if isinstance(op.bins, TENSOR_CHUNK_TYPE) else op.bins
         weights = None
         if op.weights is not None:
             weights = inputs[-1]
         with device(device_id):
-            hist, bin_edges = xp.histogram(a, bins=bins, range=op.range,
-                                           weights=weights, density=op.density)
+            hist, bin_edges = xp.histogram(
+                a, bins=bins, range=op.range, weights=weights, density=op.density
+            )
             ctx[op.outputs[0].key] = hist
             if op.ret_bins:
                 ctx[op.outputs[1].key] = bin_edges
@@ -960,6 +1002,7 @@ def histogram(a, bins=10, range=None, weights=None, density=None):
 
     """
     a, weights = _ravel_and_check_weights(a, weights)
-    op = TensorHistogram(input=a, bins=bins, range=range,
-                         weights=weights, density=density)
+    op = TensorHistogram(
+        input=a, bins=bins, range=range, weights=weights, density=density
+    )
     return op(a, bins, range, weights)

@@ -22,16 +22,13 @@ except ImportError:  # pragma: no cover
     lz4 = None
 
 
-_compressions = {
-    'gzip': lambda f: GzipFile(fileobj=f)
-}
+_compressions = {"gzip": lambda f: GzipFile(fileobj=f)}
 
 if lz4:
-    _compressions['lz4'] = lz4.frame.open
+    _compressions["lz4"] = lz4.frame.open
 
 
-def compress(file: BinaryIO,
-             compress_type: str) -> BinaryIO:
+def compress(file: BinaryIO, compress_type: str) -> BinaryIO:
     """
     Return a compressed file object.
 
@@ -50,7 +47,9 @@ def compress(file: BinaryIO,
     try:
         compress_ = _compressions[compress_type]
     except KeyError:  # pragma: no cover
-        raise ValueError(f'Unknown compress type: {compress_type}, '
-                         f'available include: {", ".join(_compressions)}')
+        raise ValueError(
+            f"Unknown compress type: {compress_type}, "
+            f'available include: {", ".join(_compressions)}'
+        )
 
     return compress_(file)

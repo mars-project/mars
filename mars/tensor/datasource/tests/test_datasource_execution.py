@@ -22,6 +22,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+
 try:
     import scipy.sparse as sps
 except ImportError:
@@ -45,34 +46,53 @@ from ....lib.sparse import SparseNDArray
 from ....tests.core import require_cupy
 from ....utils import lazy_import
 from ...lib import nd_grid
-from .. import tensor, ones_like, zeros, zeros_like, \
-    full, full_like, arange, empty, empty_like, diag, diagflat, eye, \
-    linspace, meshgrid, indices, triu, tril, from_dataframe, fromtiledb, \
-    fromhdf5, fromzarr
+from .. import (
+    tensor,
+    ones_like,
+    zeros,
+    zeros_like,
+    full,
+    full_like,
+    arange,
+    empty,
+    empty_like,
+    diag,
+    diagflat,
+    eye,
+    linspace,
+    meshgrid,
+    indices,
+    triu,
+    tril,
+    from_dataframe,
+    fromtiledb,
+    fromhdf5,
+    fromzarr,
+)
 
-cupy = lazy_import('cupy', globals=globals())
+cupy = lazy_import("cupy", globals=globals())
 
 
 @require_cupy
 def test_array_gpu_execution(setup_gpu):
     raw = cupy.random.rand(20, 30)
-    t = tensor(raw, dtype='f8', chunk_size=10)
+    t = tensor(raw, dtype="f8", chunk_size=10)
 
     res = t.execute().fetch()
-    expected = raw.astype('f8')
+    expected = raw.astype("f8")
     cupy.testing.assert_array_equal(res, expected)
 
 
 def test_create_sparse_execution(setup):
     mat = sps.csr_matrix([[0, 0, 2], [2, 0, 0]])
-    t = tensor(mat, dtype='f8', chunk_size=2)
+    t = tensor(mat, dtype="f8", chunk_size=2)
 
     res = t.execute().fetch()
     assert isinstance(res, SparseNDArray)
     assert res.dtype == np.float64
     np.testing.assert_array_equal(res.toarray(), mat.toarray())
 
-    t2 = ones_like(t, dtype='f4')
+    t2 = ones_like(t, dtype="f4")
 
     res = t2.execute().fetch()
     expected = sps.csr_matrix([[0, 0, 1], [1, 0, 0]])
@@ -101,8 +121,9 @@ def test_create_sparse_execution(setup):
     np.testing.assert_array_equal(res.toarray(), expected)
 
     # test missing argument that is np.nan
-    t5 = tensor(np.array([[np.nan, np.nan, 2], [2, np.nan, -999]]),
-                chunk_size=2).tosparse(missing=[np.nan, -999])
+    t5 = tensor(
+        np.array([[np.nan, np.nan, 2], [2, np.nan, -999]]), chunk_size=2
+    ).tosparse(missing=[np.nan, -999])
     t5 = (t5 + 1).todense(fill_value=np.nan)
     expected = mat.toarray().astype(float)
     expected[expected != 0] += 1
@@ -114,31 +135,31 @@ def test_create_sparse_execution(setup):
 
 
 def test_zeros_execution(setup):
-    t = zeros((20, 30), dtype='i8', chunk_size=10)
+    t = zeros((20, 30), dtype="i8", chunk_size=10)
 
     res = t.execute().fetch()
-    np.testing.assert_array_equal(res, np.zeros((20, 30), dtype='i8'))
+    np.testing.assert_array_equal(res, np.zeros((20, 30), dtype="i8"))
     assert res[0].dtype == np.int64
 
     t2 = zeros_like(t)
     res = t2.execute().fetch()
-    np.testing.assert_array_equal(res, np.zeros((20, 30), dtype='i8'))
+    np.testing.assert_array_equal(res, np.zeros((20, 30), dtype="i8"))
     assert res[0].dtype == np.int64
 
-    t = zeros((20, 30), dtype='i4', chunk_size=5, sparse=True)
+    t = zeros((20, 30), dtype="i4", chunk_size=5, sparse=True)
     res = t.execute().fetch()
 
     assert res[0].nnz == 0
 
-    t = zeros((20, 30), dtype='i8', chunk_size=6, order='F')
+    t = zeros((20, 30), dtype="i8", chunk_size=6, order="F")
     res = t.execute().fetch()
-    expected = np.zeros((20, 30), dtype='i8', order='F')
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    expected = np.zeros((20, 30), dtype="i8", order="F")
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_empty_execution(setup):
-    t = empty((20, 30), dtype='i8', chunk_size=5)
+    t = empty((20, 30), dtype="i8", chunk_size=5)
 
     res = t.execute().fetch()
     assert res.shape == (20, 30)
@@ -155,39 +176,39 @@ def test_empty_execution(setup):
     assert res.shape == (20, 30)
     assert res.dtype == np.float64
 
-    t = empty((20, 30), dtype='i8', chunk_size=5, order='F')
+    t = empty((20, 30), dtype="i8", chunk_size=5, order="F")
 
     res = t.execute().fetch()
-    expected = np.empty((20, 30), dtype='i8', order='F')
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    expected = np.empty((20, 30), dtype="i8", order="F")
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_full_execution(setup):
-    t = full((2, 2), 1, dtype='f4', chunk_size=1)
+    t = full((2, 2), 1, dtype="f4", chunk_size=1)
 
     res = t.execute().fetch()
-    np.testing.assert_array_equal(res, np.full((2, 2), 1, dtype='f4'))
+    np.testing.assert_array_equal(res, np.full((2, 2), 1, dtype="f4"))
 
-    t = full((2, 2), [1, 2], dtype='f8', chunk_size=1)
-
-    res = t.execute().fetch()
-    np.testing.assert_array_equal(res, np.full((2, 2), [1, 2], dtype='f8'))
-
-    t = full((2, 2), 1, dtype='f4', chunk_size=1, order='F')
+    t = full((2, 2), [1, 2], dtype="f8", chunk_size=1)
 
     res = t.execute().fetch()
-    expected = np.full((2, 2), 1, dtype='f4', order='F')
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    np.testing.assert_array_equal(res, np.full((2, 2), [1, 2], dtype="f8"))
 
-    t2 = full_like(t, 10, order='F')
+    t = full((2, 2), 1, dtype="f4", chunk_size=1, order="F")
+
+    res = t.execute().fetch()
+    expected = np.full((2, 2), 1, dtype="f4", order="F")
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
+
+    t2 = full_like(t, 10, order="F")
 
     res = t2.execute().fetch()
-    expected = np.full((2, 2), 10, dtype='f4', order='F')
+    expected = np.full((2, 2), 10, dtype="f4", order="F")
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_arange_execution(setup):
@@ -196,22 +217,22 @@ def test_arange_execution(setup):
     res = t.execute().fetch()
     assert np.array_equal(res, np.arange(1, 20, 3)) is True
 
-    t = arange(1, 20, .3, chunk_size=4)
+    t = arange(1, 20, 0.3, chunk_size=4)
 
     res = t.execute().fetch()
-    expected = np.arange(1, 20, .3)
+    expected = np.arange(1, 20, 0.3)
     assert np.allclose(res, expected) is True
 
-    t = arange(1.0, 1.8, .3, chunk_size=4)
+    t = arange(1.0, 1.8, 0.3, chunk_size=4)
 
     res = t.execute().fetch()
-    expected = np.arange(1.0, 1.8, .3)
+    expected = np.arange(1.0, 1.8, 0.3)
     assert np.allclose(res, expected) is True
 
-    t = arange('1066-10-13', '1066-10-31', dtype=np.datetime64, chunk_size=3)
+    t = arange("1066-10-13", "1066-10-31", dtype=np.datetime64, chunk_size=3)
 
     res = t.execute().fetch()
-    expected = np.arange('1066-10-13', '1066-10-31', dtype=np.datetime64)
+    expected = np.arange("1066-10-13", "1066-10-31", dtype=np.datetime64)
     assert np.array_equal(res, expected) is True
 
 
@@ -245,7 +266,7 @@ def test_diag_execution(setup):
     np.testing.assert_equal(res, expected)
 
     # 2-d  6 * 6 sparse, no tensor
-    a = sps.rand(6, 6, density=.1)
+    a = sps.rand(6, 6, density=0.1)
 
     d = diag(a)
     res = d.execute().fetch()
@@ -273,7 +294,7 @@ def test_diag_execution(setup):
     np.testing.assert_equal(res.toarray(), expected)
 
     # 2-d  6 * 6 sparse, from tensor
-    raw_a = sps.rand(6, 6, density=.1)
+    raw_a = sps.rand(6, 6, density=0.1)
     a = tensor(raw_a, chunk_size=2)
 
     d = diag(a)
@@ -330,7 +351,7 @@ def test_diag_execution(setup):
     np.testing.assert_equal(res, expected)
 
     # 2-d  4 * 9 sparse, no tensor
-    a = sps.rand(4, 9, density=.1)
+    a = sps.rand(4, 9, density=0.1)
 
     d = diag(a)
     res = d.execute().fetch()
@@ -358,7 +379,7 @@ def test_diag_execution(setup):
     np.testing.assert_equal(res.toarray(), expected)
 
     # 2-d  4 * 9 sparse, from tensor
-    raw_a = sps.rand(4, 9, density=.1)
+    raw_a = sps.rand(4, 9, density=0.1)
     a = tensor(raw_a, chunk_size=2)
 
     d = diag(a)
@@ -393,8 +414,8 @@ def test_diag_execution(setup):
     res = d.execute().fetch()
     expected = np.diag(np.arange(5))
     np.testing.assert_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] is True
-    assert res.flags['F_CONTIGUOUS'] is False
+    assert res.flags["C_CONTIGUOUS"] is True
+    assert res.flags["F_CONTIGUOUS"] is False
 
     d = diag(a, k=1)
     res = d.execute().fetch()
@@ -599,11 +620,11 @@ def test_eye_execution(setup):
     assert isinstance(res, SparseNDArray)
     np.testing.assert_equal(res.toarray(), expected)
 
-    t = eye(5, M=9, k=-3, chunk_size=2, order='F')
+    t = eye(5, M=9, k=-3, chunk_size=2, order="F")
 
     res = t.execute().fetch()
-    assert res.flags['C_CONTIGUOUS'] is True
-    assert res.flags['F_CONTIGUOUS'] is False
+    assert res.flags["C_CONTIGUOUS"] is True
+    assert res.flags["F_CONTIGUOUS"] is False
 
 
 def test_linspace_execution(setup):
@@ -644,49 +665,64 @@ def test_meshgrid_execution(setup):
     C_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19))[2]
     np.testing.assert_equal(C_res, C_expected)
 
-    A, B, C = meshgrid(a, b, c, indexing='ij')
+    A, B, C = meshgrid(a, b, c, indexing="ij")
 
     A_res = A.execute().fetch()
-    A_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing='ij')[0]
+    A_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij"
+    )[0]
     np.testing.assert_equal(A_res, A_expected)
 
     B_res = B.execute().fetch()
-    B_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing='ij')[1]
+    B_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij"
+    )[1]
     np.testing.assert_equal(B_res, B_expected)
 
     C_res = C.execute().fetch()
-    C_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing='ij')[2]
+    C_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij"
+    )[2]
     np.testing.assert_equal(C_res, C_expected)
 
     A, B, C = meshgrid(a, b, c, sparse=True)
 
     A_res = A.execute().fetch()
-    A_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True)[0]
+    A_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True
+    )[0]
     np.testing.assert_equal(A_res, A_expected)
 
     B_res = B.execute().fetch()
-    B_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True)[1]
+    B_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True
+    )[1]
     np.testing.assert_equal(B_res, B_expected)
 
     C_res = C.execute().fetch()
-    C_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True)[2]
+    C_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), sparse=True
+    )[2]
     np.testing.assert_equal(C_res, C_expected)
 
-    A, B, C = meshgrid(a, b, c, indexing='ij', sparse=True)
+    A, B, C = meshgrid(a, b, c, indexing="ij", sparse=True)
 
     A_res = A.execute().fetch()
-    A_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19),
-                             indexing='ij', sparse=True)[0]
+    A_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij", sparse=True
+    )[0]
     np.testing.assert_equal(A_res, A_expected)
 
     B_res = B.execute().fetch()
-    B_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19),
-                             indexing='ij', sparse=True)[1]
+    B_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij", sparse=True
+    )[1]
     np.testing.assert_equal(B_res, B_expected)
 
     C_res = C.execute().fetch()
-    C_expected = np.meshgrid(np.arange(5), np.arange(6, 12), np.arange(12, 19),
-                             indexing='ij', sparse=True)[2]
+    C_expected = np.meshgrid(
+        np.arange(5), np.arange(6, 12), np.arange(12, 19), indexing="ij", sparse=True
+    )[2]
     np.testing.assert_equal(C_res, C_expected)
 
 
@@ -783,8 +819,8 @@ def test_triu_execution(setup):
     res = t.execute().fetch()
     expected = np.triu(raw, k=-2)
     np.testing.assert_array_equal(res, expected)
-    assert res.flags['C_CONTIGUOUS'] == expected.flags['C_CONTIGUOUS']
-    assert res.flags['F_CONTIGUOUS'] == expected.flags['F_CONTIGUOUS']
+    assert res.flags["C_CONTIGUOUS"] == expected.flags["C_CONTIGUOUS"]
+    assert res.flags["F_CONTIGUOUS"] == expected.flags["F_CONTIGUOUS"]
 
 
 def test_tril_execution(setup):
@@ -881,7 +917,7 @@ def test_index_trick_execution(setup):
     [np.testing.assert_equal(r, e) for r, e in zip(res, expected)]
 
 
-@pytest.mark.skipif(tiledb is None, reason='tiledb not installed')
+@pytest.mark.skipif(tiledb is None, reason="tiledb not installed")
 def test_read_tile_db_execution(setup):
     ctx = tiledb.Ctx()
 
@@ -894,12 +930,16 @@ def test_read_tile_db_execution(setup):
             tiledb.Dim(ctx=ctx, domain=(0, 9), tile=8, dtype=np.int32),
             ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=False,
-                                    attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
+        schema = tiledb.ArraySchema(
+            ctx=ctx,
+            domain=dom,
+            sparse=False,
+            attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)],
+        )
         tiledb.DenseArray.create(tempdir, schema)
 
         expected = np.random.rand(100, 91, 10)
-        with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+        with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode="w") as arr:
             arr.write_direct(expected)
 
         a = fromtiledb(tempdir, ctx=ctx)
@@ -917,12 +957,16 @@ def test_read_tile_db_execution(setup):
             tiledb.Dim(ctx=ctx, domain=(2, 11), tile=8, dtype=np.int32),
             ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
-                                    attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
+        schema = tiledb.ArraySchema(
+            ctx=ctx,
+            domain=dom,
+            sparse=True,
+            attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)],
+        )
         tiledb.SparseArray.create(tempdir, schema)
 
         expected = sps.rand(100, 10, density=0.01)
-        with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+        with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode="w") as arr:
             I, J = expected.row, expected.col + 2
             arr[I, J] = {arr.attr(0).name: expected.data}
 
@@ -937,15 +981,18 @@ def test_read_tile_db_execution(setup):
     try:
         # create 1-d TileDB sparse array
         dom = tiledb.Domain(
-            tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32),
-            ctx=ctx,
+            tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32), ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=True,
-                                    attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
+        schema = tiledb.ArraySchema(
+            ctx=ctx,
+            domain=dom,
+            sparse=True,
+            attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)],
+        )
         tiledb.SparseArray.create(tempdir, schema)
 
         expected = sps.rand(1, 100, density=0.05)
-        with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+        with tiledb.SparseArray(uri=tempdir, ctx=ctx, mode="w") as arr:
             arr[expected.col + 1] = expected.data
 
         a = fromtiledb(tempdir, ctx=ctx)
@@ -964,44 +1011,51 @@ def test_read_tile_db_execution(setup):
             tiledb.Dim(ctx=ctx, domain=(0, 9), tile=8, dtype=np.int32),
             ctx=ctx,
         )
-        schema = tiledb.ArraySchema(ctx=ctx, domain=dom, sparse=False, cell_order='F',
-                                    attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)])
+        schema = tiledb.ArraySchema(
+            ctx=ctx,
+            domain=dom,
+            sparse=False,
+            cell_order="F",
+            attrs=[tiledb.Attr(ctx=ctx, dtype=np.float64)],
+        )
         tiledb.DenseArray.create(tempdir, schema)
 
         expected = np.asfortranarray(np.random.rand(100, 91, 10))
-        with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode='w') as arr:
+        with tiledb.DenseArray(uri=tempdir, ctx=ctx, mode="w") as arr:
             arr.write_direct(expected)
 
         a = fromtiledb(tempdir, ctx=ctx)
         result = a.execute().fetch()
 
         np.testing.assert_allclose(expected, result)
-        assert result.flags['F_CONTIGUOUS'] is True
-        assert result.flags['C_CONTIGUOUS'] is False
+        assert result.flags["F_CONTIGUOUS"] is True
+        assert result.flags["C_CONTIGUOUS"] is False
     finally:
         shutil.rmtree(tempdir)
 
 
 def test_from_dataframe_execution(setup):
-    mdf = md.DataFrame({'angle': [0, 3, 4], 'degree': [360, 180, 360]},
-                       index=['circle', 'triangle', 'rectangle'])
+    mdf = md.DataFrame(
+        {"angle": [0, 3, 4], "degree": [360, 180, 360]},
+        index=["circle", "triangle", "rectangle"],
+    )
     tensor_result = from_dataframe(mdf).execute().fetch()
     tensor_expected = mt.tensor([[0, 360], [3, 180], [4, 360]]).execute().fetch()
     np.testing.assert_equal(tensor_result, tensor_expected)
 
     # test up-casting
-    mdf2 = md.DataFrame({'a': [0.1, 0.2, 0.3], 'b': [1, 2, 3]})
+    mdf2 = md.DataFrame({"a": [0.1, 0.2, 0.3], "b": [1, 2, 3]})
     tensor_result2 = from_dataframe(mdf2).execute().fetch()
-    np.testing.assert_equal(tensor_result2[0].dtype, np.dtype('float64'))
+    np.testing.assert_equal(tensor_result2[0].dtype, np.dtype("float64"))
     tensor_expected2 = mt.tensor([[0.1, 1.0], [0.2, 2.0], [0.3, 3.0]]).execute().fetch()
     np.testing.assert_equal(tensor_result2, tensor_expected2)
 
     raw = [[0.1, 0.2, 0.4], [0.4, 0.7, 0.3]]
-    mdf3 = md.DataFrame(raw, columns=list('abc'), chunk_size=2)
+    mdf3 = md.DataFrame(raw, columns=list("abc"), chunk_size=2)
     tensor_result3 = from_dataframe(mdf3).execute().fetch()
     np.testing.assert_array_equal(tensor_result3, np.asarray(raw))
-    assert tensor_result3.flags['F_CONTIGUOUS'] is True
-    assert tensor_result3.flags['C_CONTIGUOUS'] is False
+    assert tensor_result3.flags["F_CONTIGUOUS"] is True
+    assert tensor_result3.flags["C_CONTIGUOUS"] is False
 
     # test from series
     series = md.Series([1, 2, 3])
@@ -1019,22 +1073,23 @@ def test_from_dataframe_execution(setup):
 
     index = md.Index(pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]))
     tensor_result = index.to_tensor(extract_multi_index=False).execute().fetch()
-    np.testing.assert_array_equal(tensor_result,
-                                  pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]).to_series())
+    np.testing.assert_array_equal(
+        tensor_result, pd.MultiIndex.from_tuples([(0, 1), (2, 3), (4, 5)]).to_series()
+    )
 
 
-@pytest.mark.skipif(h5py is None, reason='h5py not installed')
+@pytest.mark.skipif(h5py is None, reason="h5py not installed")
 def test_read_hdf5_execution(setup):
     test_array = np.random.RandomState(0).rand(20, 10)
-    group_name = 'test_group'
-    dataset_name = 'test_dataset'
+    group_name = "test_group"
+    dataset_name = "test_dataset"
 
     with pytest.raises(TypeError):
         fromhdf5(object())
 
     with tempfile.TemporaryDirectory() as d:
-        filename = os.path.join(d, f'test_read_{int(time.time())}.hdf5')
-        with h5py.File(filename, 'w') as f:
+        filename = os.path.join(d, f"test_read_{int(time.time())}.hdf5")
+        with h5py.File(filename, "w") as f:
             g = f.create_group(group_name)
             g.create_dataset(dataset_name, chunks=(7, 4), data=test_array)
 
@@ -1043,15 +1098,15 @@ def test_read_hdf5_execution(setup):
 
         result = r.execute().fetch()
         np.testing.assert_array_equal(result, test_array)
-        assert r.extra_params['raw_chunk_size'] == (7, 4)
+        assert r.extra_params["raw_chunk_size"] == (7, 4)
 
         with pytest.raises(ValueError):
             fromhdf5(filename)
 
         with pytest.raises(ValueError):
-            fromhdf5(filename, dataset='non_exist')
+            fromhdf5(filename, dataset="non_exist")
 
-        with h5py.File(filename, 'r') as f:
+        with h5py.File(filename, "r") as f:
             # test file
             r = fromhdf5(f, group=group_name, dataset=dataset_name)
 
@@ -1062,32 +1117,32 @@ def test_read_hdf5_execution(setup):
                 fromhdf5(f)
 
             with pytest.raises(ValueError):
-                fromhdf5(f, dataset='non_exist')
+                fromhdf5(f, dataset="non_exist")
 
             # test dataset
-            ds = f[f'{group_name}/{dataset_name}']
+            ds = f[f"{group_name}/{dataset_name}"]
             r = fromhdf5(ds)
 
             result = r.execute().fetch()
             np.testing.assert_array_equal(result, test_array)
 
 
-@pytest.mark.skipif(zarr is None, reason='zarr not installed')
+@pytest.mark.skipif(zarr is None, reason="zarr not installed")
 def test_read_zarr_execution(setup):
     session = setup
 
     test_array = np.random.RandomState(0).rand(20, 10)
-    group_name = 'test_group'
-    dataset_name = 'test_dataset'
+    group_name = "test_group"
+    dataset_name = "test_dataset"
 
     with pytest.raises(TypeError):
         fromzarr(object())
 
     with tempfile.TemporaryDirectory() as d:
-        path = os.path.join(d, f'test_read_{int(time.time())}.zarr')
+        path = os.path.join(d, f"test_read_{int(time.time())}.zarr")
 
         group = zarr.group(path)
-        arr = group.array(group_name + '/' + dataset_name, test_array, chunks=(7, 4))
+        arr = group.array(group_name + "/" + dataset_name, test_array, chunks=(7, 4))
 
         r = fromzarr(arr)
 
@@ -1095,7 +1150,7 @@ def test_read_zarr_execution(setup):
         np.testing.assert_array_equal(result, test_array)
         assert len(session._session._tileable_to_fetch[r.data].chunks) > 1
 
-        arr = zarr.open_array(f'{path}/{group_name}/{dataset_name}')
+        arr = zarr.open_array(f"{path}/{group_name}/{dataset_name}")
         r = fromzarr(arr)
 
         result = r.execute().fetch()
@@ -1108,7 +1163,7 @@ def test_read_zarr_execution(setup):
         np.testing.assert_array_equal(result, test_array)
         assert len(session._session._tileable_to_fetch[r.data].chunks) > 1
 
-        r = fromzarr(path + '/' + group_name + '/' + dataset_name)
+        r = fromzarr(path + "/" + group_name + "/" + dataset_name)
 
         result = r.execute().fetch()
         np.testing.assert_array_equal(result, test_array)

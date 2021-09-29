@@ -26,11 +26,11 @@ from .utils import arithmetic_operand
 @arithmetic_operand
 class TensorLdexp(TensorBinOp):
     _op_type_ = OperandDef.LDEXP
-    _func_name = 'ldexp'
+    _func_name = "ldexp"
 
     @classmethod
     def _is_sparse(cls, x1, x2):
-        if hasattr(x1, 'issparse') and x1.issparse():
+        if hasattr(x1, "issparse") and x1.issparse():
             return True
         return False
 
@@ -87,11 +87,13 @@ def ldexp(x1, x2, out=None, where=None, **kwargs):
     array([ 0.,  1.,  2.,  3.,  4.,  5.])
     """
     x2_dtype = astensor(x2).dtype
-    casting = kwargs.get('casting', 'safe')
+    casting = kwargs.get("casting", "safe")
     if not np.can_cast(x2_dtype, np.int64, casting=casting):
-        raise TypeError("ufunc 'ldexp' not supported for the input types, "
-                        "and the inputs could not be safely coerced to any supported types "
-                        f"according to the casting rule ''{casting}''")
+        raise TypeError(
+            "ufunc 'ldexp' not supported for the input types, "
+            "and the inputs could not be safely coerced to any supported types "
+            f"according to the casting rule ''{casting}''"
+        )
 
     op = TensorLdexp(**kwargs)
     return op(x1, x2, out=out, where=where)

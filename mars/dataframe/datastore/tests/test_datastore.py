@@ -23,20 +23,20 @@ def test_to_csv():
     raw = pd.DataFrame(np.random.rand(10, 5))
     df = DataFrame(raw, chunk_size=4)
 
-    r = df.to_csv('*.csv')
+    r = df.to_csv("*.csv")
     r = tile(r)
 
     assert r.chunk_shape[1] == 1
     for i, c in enumerate(r.chunks):
-        assert type(c.op).__name__ == 'DataFrameToCSV'
+        assert type(c.op).__name__ == "DataFrameToCSV"
         assert c.inputs[0] is r.inputs[0].chunks[i].data
 
     # test one file
-    r = df.to_csv('out.csv')
+    r = df.to_csv("out.csv")
     r = tile(r)
 
     assert r.chunk_shape[1] == 1
     for i, c in enumerate(r.chunks):
         assert len(c.inputs) == 2
         assert c.inputs[0].inputs[0] is r.inputs[0].chunks[i].data
-        assert type(c.inputs[1].op).__name__ == 'DataFrameToCSVStat'
+        assert type(c.inputs[1].op).__name__ == "DataFrameToCSVStat"

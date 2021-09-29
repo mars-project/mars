@@ -19,11 +19,12 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameAbs(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ABS
-    _func_name = 'abs'
+    _func_name = "abs"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorAbsolute
+
         return TensorAbsolute
 
 

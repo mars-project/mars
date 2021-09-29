@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorIsReal(TensorUnaryOp):
     _op_type_ = OperandDef.ISREAL
-    _func_name = 'isreal'
+    _func_name = "isreal"
 
 
 @inject_dtype(np.bool_)

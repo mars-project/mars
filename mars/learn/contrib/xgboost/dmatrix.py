@@ -68,14 +68,14 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
     @staticmethod
     def _get_kw(obj):
         if isinstance(obj, TENSOR_TYPE + TENSOR_CHUNK_TYPE):
-            return {'shape': obj.shape,
-                    'dtype': obj.dtype,
-                    'order': obj.order}
+            return {"shape": obj.shape, "dtype": obj.dtype, "order": obj.order}
         else:
-            return {'shape': obj.shape,
-                    'dtypes': obj.dtypes,
-                    'index_value': obj.index_value,
-                    'columns_value': obj.columns_value}
+            return {
+                "shape": obj.shape,
+                "dtypes": obj.dtypes,
+                "index_value": obj.index_value,
+                "columns_value": obj.columns_value,
+            }
 
     def __call__(self):
         inputs = [self.data]
@@ -108,7 +108,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             chunk_op.data = data_chunk
             output_types = [get_output_types(data)[0]]
             data_kw = cls._get_kw(data_chunk)
-            data_kw['index'] = data_chunk.index
+            data_kw["index"] = data_chunk.index
             kws.append(data_kw)
             for type_name, inp in zip(types[1:], [label, weight, base_margin]):
                 if inp is None:
@@ -136,9 +136,9 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         for i, out in enumerate(outs):
             if out is None:
                 continue
-            params[j]['nsplits'] = out.nsplits
-            params[j]['chunks'] = out_chunkss[j]
-            params[j]['type'] = types[i]
+            params[j]["nsplits"] = out.nsplits
+            params[j]["chunks"] = out_chunkss[j]
+            params[j]["type"] = types[i]
             output_types.append(get_output_types(out)[0])
             j += 1
         new_op.output_types = output_types
@@ -195,8 +195,10 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
 
         # for distributed, we should concat the chunks
         # which allocated on the same worker into one
-        data_chunk_metas = ctx.get_chunks_meta([c.key for c in data.chunks], fields=['bands'])
-        data_chunk_workers = [m['bands'][0][0] for m in data_chunk_metas]
+        data_chunk_metas = ctx.get_chunks_meta(
+            [c.key for c in data.chunks], fields=["bands"]
+        )
+        data_chunk_workers = [m["bands"][0][0] for m in data_chunk_metas]
         worker_to_chunks = dict()
         for i, worker in enumerate(data_chunk_workers):
             size = 1 + sum(it is not None for it in [label, weight, base_margin])
@@ -226,19 +228,25 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             if base_margin is not None:
                 base_margin_chunk = concat_chunks(cls._order_chunk_index(chunks[-1]))
                 inps.append(base_margin_chunk)
-            chunk_op = ToDMatrix(data=data_chunk, label=label_chunk, missing=op.missing,
-                                 weight=weight_chunk, base_margin=base_margin_chunk,
-                                 feature_names=op.feature_names, feature_types=op.feature_types,
-                                 _output_types=op.output_types)
+            chunk_op = ToDMatrix(
+                data=data_chunk,
+                label=label_chunk,
+                missing=op.missing,
+                weight=weight_chunk,
+                base_margin=base_margin_chunk,
+                feature_names=op.feature_names,
+                feature_types=op.feature_types,
+                _output_types=op.output_types,
+            )
             kws = data_chunk.params
-            kws['index'] = (next(ind), 0)
+            kws["index"] = (next(ind), 0)
             out_chunks.append(chunk_op.new_chunk(inps, **kws))
         nsplits = (tuple(c.shape[0] for c in out_chunks), (out_chunks[0].shape[1],))
 
         new_op = op.copy()
         kw = op.outputs[0].params
-        kw['chunks'] = out_chunks
-        kw['nsplits'] = nsplits
+        kw["chunks"] = out_chunks
+        kw["nsplits"] = nsplits
         return new_op.new_tileables(op.inputs, kws=[kw])
 
     @staticmethod
@@ -246,11 +254,16 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         from xgboost import DMatrix
 
         data, label, weight, base_margin, missing, feature_names, feature_types = tup
-        data = data.spmatrix if hasattr(data, 'spmatrix') else data
-        return DMatrix(ensure_own_data(data), label=ensure_own_data(label), missing=missing,
-                       weight=ensure_own_data(weight), base_margin=base_margin,
-                       feature_names=feature_names, feature_types=feature_types,
-                       nthread=-1)
+        data = data.spmatrix if hasattr(data, "spmatrix") else data
+        return DMatrix(
+            ensure_own_data(data),
+            label=ensure_own_data(label),
+            missing=missing,
+            weight=ensure_own_data(weight),base_margin=base_margin,
+            feature_names=feature_names,
+            feature_types=feature_types,
+            nthread=-1,
+        )
 
     @staticmethod
     def _from_ctx_if_not_none(ctx, chunk):
@@ -286,14 +299,14 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
                 cls._from_ctx_if_not_none(ctx, op.base_margin),
                 op.missing,
                 op.feature_names,
-                op.feature_types
+                op.feature_types,
             )
 
 
 def check_data(data):
     data = convert_to_tensor_or_dataframe(data)
     if data.ndim != 2:
-        raise ValueError(f'Expecting 2-d data, got: {data.ndim}-d')
+        raise ValueError(f"Expecting 2-d data, got: {data.ndim}-d")
 
     return data
 
@@ -319,10 +332,16 @@ def to_dmatrix(data, label=None, missing=None, weight=None, base_margin=None,
 
     # If not multiple outputs, try to collect the chunks on same worker into one
     # to feed the data into XGBoost for training.
-    op = ToDMatrix(data=data, label=label, missing=missing,
-                   weight=weight, base_margin=base_margin,
-                   feature_names=feature_names, feature_types=feature_types,
-                   gpu=data.op.gpu, _output_types=get_output_types(data))
+    op = ToDMatrix(
+        data=data,
+        label=label,
+        missing=missing,
+        weight=weight,base_margin=base_margin,
+        feature_names=feature_names,
+        feature_types=feature_types,
+        gpu=data.op.gpu,
+        _output_types=get_output_types(data),
+    )
     return op()
 
 

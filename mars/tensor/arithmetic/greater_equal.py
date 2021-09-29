@@ -22,12 +22,12 @@ from .utils import arithmetic_operand
 from .core import TensorBinOp
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorGreaterEqual(TensorBinOp):
     _op_type_ = OperandDef.GE
-    _func_name = 'greater_equal'
+    _func_name = "greater_equal"
 
-    def __init__(self, casting='same_kind', err=None, dtype=None, sparse=None, **kw):
+    def __init__(self, casting="same_kind", err=None, dtype=None, sparse=None, **kw):
         err = err if err is not None else np.geterr()
         super().__init__(_casting=casting, _err=err, _dtype=dtype, _sparse=sparse, **kw)
 

@@ -17,8 +17,14 @@
 from collections.abc import Iterable
 
 from ...core import recursive_tile
-from ...serialization.serializables import FieldTypes, KeyField, \
-    StringField, Int32Field, Int64Field, TupleField
+from ...serialization.serializables import (
+    FieldTypes,
+    KeyField,
+    StringField,
+    Int32Field,
+    Int64Field,
+    TupleField,
+)
 from ...utils import has_unknown_shape
 from ..utils import validate_axis, decide_chunk_sizes
 from ..operands import TensorHasInput, TensorOperandMixin
@@ -41,24 +47,40 @@ class TensorFFTBaseMixin(TensorOperandMixin):
             if has_unknown_shape(in_tensor):
                 yield
             # fft requires only 1 chunk for the specified axis, so we do rechunk first
-            chunks = {validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis] for axis in axes}
-            new_chunks = decide_chunk_sizes(in_tensor.shape, chunks, in_tensor.dtype.itemsize)
+            chunks = {
+                validate_axis(in_tensor.ndim, axis): in_tensor.shape[axis]
+                for axis in axes
+            }
+            new_chunks = decide_chunk_sizes(
+                in_tensor.shape, chunks, in_tensor.dtype.itemsize
+            )
             in_tensor = yield from recursive_tile(in_tensor.rechunk(new_chunks))
 
         out_chunks = []
         for c in in_tensor.chunks:
             chunk_op = op.copy().reset_key()
             chunk_shape = cls._get_shape(op, c.shape)
-            out_chunk = chunk_op.new_chunk([c], shape=chunk_shape,
-                                           index=c.index, order=out_tensor.order)
+            out_chunk = chunk_op.new_chunk(
+                [c], shape=chunk_shape, index=c.index, order=out_tensor.order
+            )
             out_chunks.append(out_chunk)
 
-        nsplits = [tuple(c.shape[i] for c in out_chunks
-                         if all(idx == 0 for j, idx in enumerate(c.index) if j != i))
-                   for i in range(len(out_chunks[0].shape))]
+        nsplits = [
+            tuple(
+                c.shape[i]
+                for c in out_chunks
+                if all(idx == 0 for j, idx in enumerate(c.index) if j != i)
+            )
+            for i in range(len(out_chunks[0].shape))
+        ]
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, out_tensor.shape, order=out_tensor.order,
-                                  chunks=out_chunks, nsplits=nsplits)
+        return new_op.new_tensors(
+            op.inputs,
+            out_tensor.shape,
+            order=out_tensor.order,
+            chunks=out_chunks,
+            nsplits=nsplits,
+        )
 
     def __call__(self, a, order=None):
         shape = self._get_shape(self, a.shape)
@@ -85,7 +107,7 @@ class TensorComplexFFTMixin(TensorFFTMixin):
 
 def validate_fft(tensor, axis=-1, norm=None):
     validate_axis(tensor.ndim, axis)
-    if norm is not None and norm not in ('ortho',):
+    if norm is not None and norm not in ("ortho",):
         raise ValueError(f'Invalid norm value {norm}, should be None or "ortho"')
 
 
@@ -135,9 +157,9 @@ def validate_fftn(tensor, s=None, axes=None, norm=None):
         for axis in axes:
             validate_axis(tensor.ndim, axis)
         if len(set(axes)) < len(axes):
-            raise ValueError('Duplicate axes not allowed')
+            raise ValueError("Duplicate axes not allowed")
 
-    if norm is not None and norm not in ('ortho',):
+    if norm is not None and norm not in ("ortho",):
         raise ValueError(f'Invalid norm value {norm}, should be None or "ortho"')
 
     return axes
@@ -182,8 +204,9 @@ class TensorFFTShiftMixin(TensorOperandMixin):
 
         x = yield from recursive_tile(x)
         new_op = op.copy()
-        return new_op.new_tensors(op.inputs, op.outputs[0].shape,
-                                  chunks=x.chunks, nsplits=x.nsplits)
+        return new_op.new_tensors(
+            op.inputs, op.outputs[0].shape, chunks=x.chunks, nsplits=x.nsplits
+        )
 
 
 class TensorDiscreteFourierTransform(TensorHasInput):
@@ -191,17 +214,17 @@ class TensorDiscreteFourierTransform(TensorHasInput):
 
 
 class TensorBaseFFT(TensorDiscreteFourierTransform):
-    _input = KeyField('input')
-    _norm = StringField('norm')
+    _input = KeyField("input")
+    _norm = StringField("norm")
 
     @property
     def norm(self):
-        return getattr(self, '_norm', None)
+        return getattr(self, "_norm", None)
 
 
 class TensorBaseSingleDimensionFFT(TensorBaseFFT):
-    _n = Int64Field('n')
-    _axis = Int32Field('axis')
+    _n = Int64Field("n")
+    _axis = Int32Field("axis")
 
     @property
     def n(self):
@@ -223,8 +246,8 @@ class TensorBaseSingleDimensionFFT(TensorBaseFFT):
 
 
 class TensorBaseMultipleDimensionFFT(TensorBaseFFT):
-    _shape = TupleField('shape', FieldTypes.int64)
-    _axes = TupleField('axes', FieldTypes.int32)
+    _shape = TupleField("shape", FieldTypes.int64)
+    _axes = TupleField("axes", FieldTypes.int32)
 
     @property
     def shape(self):
@@ -259,8 +282,8 @@ class TensorStandardFFTN(TensorBaseMultipleDimensionFFT):
 
 
 class TensorFFTShiftBase(TensorHasInput):
-    _input = KeyField('input')
-    _axes = TupleField('axes', FieldTypes.int32)
+    _input = KeyField("input")
+    _axes = TupleField("axes", FieldTypes.int32)
 
     @property
     def axes(self):

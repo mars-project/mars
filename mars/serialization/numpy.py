@@ -20,19 +20,19 @@ from .core import Serializer, buffered, pickle_buffers, unpickle_buffers
 
 
 class NDArraySerializer(Serializer):
-    serializer_name = 'np_ndarray'
+    serializer_name = "np_ndarray"
 
     @buffered
     def serialize(self, obj: np.ndarray, context: Dict):
         header = {}
         if obj.dtype.hasobject:
-            header['pickle'] = True
+            header["pickle"] = True
             buffers = pickle_buffers(obj)
             return header, buffers
 
-        order = 'C'
+        order = "C"
         if obj.flags.f_contiguous:
-            order = 'F'
+            order = "F"
         elif not obj.flags.c_contiguous:
             obj = np.ascontiguousarray(obj)
         try:
@@ -45,28 +45,32 @@ class NDArraySerializer(Serializer):
             new_fields = sorted(fields, key=lambda k: fields[k][1])
             desc = np.lib.format.dtype_to_descr(obj.dtype[new_fields])
             dtype_new_order = list(fields)
-        header.update(dict(
-            pickle=False,
-            descr=desc,
-            dtype_new_order=dtype_new_order,
-            shape=list(obj.shape),
-            strides=list(obj.strides),
-            order=order
-        ))
-        return header, [memoryview(obj.ravel(order=order).view('uint8').data)]
+        header.update(
+            dict(
+                pickle=False,
+                descr=desc,
+                dtype_new_order=dtype_new_order,
+                shape=list(obj.shape),
+                strides=list(obj.strides),
+                order=order,
+            )
+        )
+        return header, [memoryview(obj.ravel(order=order).view("uint8").data)]
 
     def deserialize(self, header: Dict, buffers: List, context: Dict):
-        if header['pickle']:
+        if header["pickle"]:
             return unpickle_buffers(buffers)
 
-        dtype = np.lib.format.descr_to_dtype(header['descr'])
-        dtype_new_order = header['dtype_new_order']
+        dtype = np.lib.format.descr_to_dtype(header["descr"])
+        dtype_new_order = header["dtype_new_order"]
         if dtype_new_order:
             dtype = dtype[dtype_new_order]
         return np.ndarray(
-            shape=tuple(header['shape']), dtype=dtype,
-            buffer=buffers[0], strides=tuple(header['strides']),
-            order=header['order']
+            shape=tuple(header["shape"]),
+            dtype=dtype,
+            buffer=buffers[0],
+            strides=tuple(header["strides"]),
+            order=header["order"],
         )
 
 

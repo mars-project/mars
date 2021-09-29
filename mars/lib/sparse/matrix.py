@@ -17,8 +17,16 @@
 import numpy as np
 from collections.abc import Iterable
 
-from .core import issparse, get_array_module, cp, cps, \
-    get_sparse_module, naked, sps, splinalg
+from .core import (
+    issparse,
+    get_array_module,
+    cp,
+    cps,
+    get_sparse_module,
+    naked,
+    sps,
+    splinalg,
+)
 from .array import SparseNDArray, SparseArray
 
 
@@ -37,7 +45,7 @@ def diag_sparse_matrix(v, k=0, gpu=False):
     if v.ndim == 1:
         sparse_m = sps if not gpu else cps
         m = n = v.size + k
-        mat = sparse_m.spdiags(v[None], [k], m, n, format='csr')
+        mat = sparse_m.spdiags(v[None], [k], m, n, format="csr")
         return SparseMatrix(mat)
     else:
         assert v.ndim == 2
@@ -47,13 +55,14 @@ def diag_sparse_matrix(v, k=0, gpu=False):
         size = sparse_eye.nnz
         col = mat.col - max(k, 0)
         row = get_array_module(col).zeros((len(col),))
-        return SparseNDArray(sparse_m.csr_matrix((mat.data, (row, col)), shape=(1, size)),
-                             shape=(size,))
+        return SparseNDArray(
+            sparse_m.csr_matrix((mat.data, (row, col)), shape=(1, size)), shape=(size,)
+        )
 
 
 def eye_sparse_matrix(N, M=None, k=0, dtype=float, gpu=False):
     m = sps if not gpu else cps
-    return SparseMatrix(m.eye(N, n=M, k=k, dtype=dtype, format='csr'))
+    return SparseMatrix(m.eye(N, n=M, k=k, dtype=dtype, format="csr"))
 
 
 def triu_sparse_matrix(m, k=0, gpu=False):
@@ -81,20 +90,25 @@ def tril_sparse_matrix(m, k=0, gpu=False):
 
 
 def where(cond, x, y):
-    cond, x, y = [SparseMatrix(i) if issparse(i) else i
-                  for i in (cond, x, y)]
+    cond, x, y = [SparseMatrix(i) if issparse(i) else i for i in (cond, x, y)]
     return cond * x + (cond * (-y) + y)
 
 
 def lu_sparse_matrix(a):
     a = naked(a)
     a = a.tocsc()
-    super_lu = splinalg.splu(a, permc_spec="NATURAL", diag_pivot_thresh=0, options={"SymmetricMode": True})
+    super_lu = splinalg.splu(
+        a, permc_spec="NATURAL", diag_pivot_thresh=0, options={"SymmetricMode": True}
+    )
     l_ = super_lu.L
     u = super_lu.U
     p = sps.lil_matrix(a.shape)
     p[super_lu.perm_r.copy(), np.arange(a.shape[1])] = 1
-    return SparseMatrix(p), SparseMatrix(l_), SparseMatrix(u),
+    return (
+        SparseMatrix(p),
+        SparseMatrix(l_),
+        SparseMatrix(u),
+    )
 
 
 def solve_triangular_sparse_matrix(a, b, lower=False, sparse=True):
@@ -103,18 +117,22 @@ def solve_triangular_sparse_matrix(a, b, lower=False, sparse=True):
 
     x = splinalg.spsolve_triangular(a, b, lower=lower)
     if sparse:
-        spx = sps.csr_matrix(x).reshape(x.shape[0], 1) if len(x.shape) == 1 else sps.csr_matrix(x)
+        spx = (
+            sps.csr_matrix(x).reshape(x.shape[0], 1)
+            if len(x.shape) == 1
+            else sps.csr_matrix(x)
+        )
         return SparseNDArray(spx, shape=x.shape)
     else:
         return x
 
 
 class SparseMatrix(SparseArray):
-    __slots__ = 'spmatrix',
+    __slots__ = ("spmatrix",)
 
     def __init__(self, spmatrix, shape=()):
         if shape and len(shape) != 2:
-            raise ValueError('Only accept 2-d array')
+            raise ValueError("Only accept 2-d array")
         if isinstance(spmatrix, SparseMatrix):
             self.spmatrix = spmatrix.spmatrix
         else:
@@ -167,7 +185,7 @@ class SparseMatrix(SparseArray):
         if issparse(other):
             xps = get_sparse_module(self.spmatrix)
             if axis not in (0, 1):
-                raise ValueError('axis can only be 0 or 1')
+                raise ValueError("axis can only be 0 or 1")
             method = xps.vstack if axis == 0 else xps.hstack
             x = method((self.spmatrix, other))
         else:
@@ -178,7 +196,9 @@ class SparseMatrix(SparseArray):
             return SparseMatrix(x)
         return get_array_module(x).asarray(x)
 
-    def _reduction(self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw):
+    def _reduction(
+        self, method_name, axis=None, dtype=None, keepdims=None, todense=False, **kw
+    ):
         # TODO: support keepdims
         if isinstance(axis, tuple):
             if sorted(axis) != [0, 1]:
@@ -195,8 +215,11 @@ class SparseMatrix(SparseArray):
         if not isinstance(axis, Iterable):
             axis = (axis,)
         axis = list(range(len(self.shape))) if axis is None else axis
-        shape = tuple(s if i not in axis else 1 for i, s in enumerate(self.shape)
-                      if keepdims or i not in axis)
+        shape = tuple(
+            s if i not in axis else 1
+            for i, s in enumerate(self.shape)
+            if keepdims or i not in axis
+        )
         m = get_array_module(x)
         if issparse(x):
             return SparseNDArray(x, shape=shape)

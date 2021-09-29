@@ -89,6 +89,7 @@ def _iglob(pathname, recursive, dironly):
 # They return a list of basenames.  _glob1 accepts a pattern while _glob0
 # takes a literal basename (so it only has to check for its existence).
 
+
 def _glob1(dirname, pattern, dironly):
     names = list(_iterdir(dirname, dironly))
     if not _ishidden(pattern):
@@ -118,8 +119,8 @@ def _iterdir(dirname, dironly):
     return
 
 
-magic_check = re.compile('([*?[])')
-magic_check_bytes = re.compile(b'([*?[])')
+magic_check = re.compile("([*?[])")
+magic_check_bytes = re.compile(b"([*?[])")
 
 
 def has_magic(s):
@@ -141,7 +142,7 @@ def escape(pathname):
     # Metacharacters do not work in the drive part and shouldn't be escaped.
     drive, pathname = os.path.splitdrive(pathname)
     if isinstance(pathname, bytes):
-        pathname = magic_check_bytes.sub(br'[\1]', pathname)
+        pathname = magic_check_bytes.sub(br"[\1]", pathname)
     else:
-        pathname = magic_check.sub(r'[\1]', pathname)
+        pathname = magic_check.sub(r"[\1]", pathname)
     return drive + pathname

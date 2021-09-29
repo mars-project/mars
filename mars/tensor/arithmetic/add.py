@@ -25,10 +25,10 @@ from .core import TensorBinOp, TensorMultiOp
 from .utils import arithmetic_operand, tree_op_estimate_size, TreeReductionBuilder
 
 
-@arithmetic_operand(sparse_mode='binary_and')
+@arithmetic_operand(sparse_mode="binary_and")
 class TensorAdd(TensorBinOp):
     _op_type_ = OperandDef.ADD
-    _func_name = 'add'
+    _func_name = "add"
 
 
 @infer_dtype(np.add)
@@ -87,18 +87,19 @@ def radd(x1, x2, **kwargs):
 
 class TensorTreeAdd(TensorMultiOp):
     _op_type_ = OperandDef.TREE_ADD
-    _func_name = 'add'
+    _func_name = "add"
 
     @classmethod
     def _is_sparse(cls, *args):
-        if args and all(hasattr(x, 'issparse') and x.issparse() for x in args):
+        if args and all(hasattr(x, "issparse") and x.issparse() for x in args):
             return True
         return False
 
     @classmethod
     def execute(cls, ctx, op):
         inputs, device_id, xp = as_same_device(
-            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True)
+            [ctx[c.key] for c in op.inputs], device=op.device, ret_extra=True
+        )
 
         with device(device_id):
             ctx[op.outputs[0].key] = reduce(xp.add, inputs)

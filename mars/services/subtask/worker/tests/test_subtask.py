@@ -46,35 +46,48 @@ class FakeTaskManager(TaskManagerActor):
 
 @pytest.fixture
 async def actor_pool():
-    start_method = os.environ.get('POOL_START_METHOD', 'forkserver') \
-        if sys.platform != 'win32' else None
-    pool = await mo.create_actor_pool('127.0.0.1', n_process=3,
-                                      labels=['main'] + ['numa-0'] * 2 + ['io'],
-                                      subprocess_start_method=start_method)
+    start_method = (
+        os.environ.get("POOL_START_METHOD", "forkserver")
+        if sys.platform != "win32"
+        else None
+    )
+    pool = await mo.create_actor_pool(
+        "127.0.0.1",
+        n_process=3,
+        labels=["main"] + ["numa-0"] * 2 + ["io"],
+        subprocess_start_method=start_method,
+    )
 
     async with pool:
-        session_id = 'test_session'
+        session_id = "test_session"
         # create mock APIs
-        await MockClusterAPI.create(pool.external_address, band_to_slots={'numa-0': 2})
-        await MockSessionAPI.create(
-            pool.external_address, session_id=session_id)
+        await MockClusterAPI.create(pool.external_address, band_to_slots={"numa-0": 2})
+        await MockSessionAPI.create(pool.external_address, session_id=session_id)
         meta_api = await MockMetaAPI.create(session_id, pool.external_address)
         await MockLifecycleAPI.create(session_id, pool.external_address)
         storage_api = await MockStorageAPI.create(session_id, pool.external_address)
         await MockSchedulingAPI.create(session_id, pool.external_address)
 
         # create configuration
-        await mo.create_actor(TaskConfigurationActor, dict(),
-                              uid=TaskConfigurationActor.default_uid(),
-                              address=pool.external_address)
         await mo.create_actor(
-            FakeTaskManager, session_id,
+            TaskConfigurationActor,
+            dict(),
+            uid=TaskConfigurationActor.default_uid(),
+            address=pool.external_address,
+        )
+        await mo.create_actor(
+            FakeTaskManager,
+            session_id,
             uid=FakeTaskManager.gen_uid(session_id),
-            address=pool.external_address)
+            address=pool.external_address,
+        )
         manager = await mo.create_actor(
-            SubtaskRunnerManagerActor, pool.external_address, None,
+            SubtaskRunnerManagerActor,
+            pool.external_address,
+            None,
             uid=SubtaskRunnerManagerActor.default_uid(),
-            address=pool.external_address)
+            address=pool.external_address,
+        )
         try:
             yield pool, session_id, meta_api, storage_api, manager
         finally:
@@ -87,8 +100,7 @@ def _gen_subtask(t, session_id):
     next(TileableGraphBuilder(graph).build())
 
     chunk_graph = next(ChunkGraphBuilder(graph, fuse_enabled=False).build())
-    subtask = Subtask(new_task_id(), session_id,
-                      new_task_id(), chunk_graph)
+    subtask = Subtask(new_task_id(), session_id, new_task_id(), chunk_graph)
 
     return subtask
 
@@ -102,7 +114,8 @@ async def test_subtask_success(actor_pool):
 
     subtask = _gen_subtask(b, session_id)
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
+    )
     await subtask_runner.run_subtask(subtask)
     result = await subtask_runner.get_subtask_result()
     assert result.status == SubtaskStatus.succeeded
@@ -116,7 +129,7 @@ async def test_subtask_success(actor_pool):
     # check meta
     chunk_meta = await meta_api.get_chunk_meta(result_key)
     assert chunk_meta is not None
-    assert chunk_meta['bands'][0] == (pool.external_address, 'numa-0')
+    assert chunk_meta["bands"][0] == (pool.external_address, "numa-0")
     assert await subtask_runner.is_runner_free() is True
 
 
@@ -125,13 +138,14 @@ async def test_subtask_failure(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
 
     # test execution error
-    with mt.errstate(divide='raise'):
+    with mt.errstate(divide="raise"):
         a = mt.ones((10, 10), chunk_size=10)
         c = a / 0
 
     subtask = _gen_subtask(c, session_id)
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
+    )
     with pytest.raises(FloatingPointError):
         await subtask_runner.run_subtask(subtask)
     result = await subtask_runner.get_subtask_result()
@@ -144,7 +158,8 @@ async def test_subtask_failure(actor_pool):
 async def test_cancel_subtask(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
+    )
 
     def sleep(timeout: int):
         time.sleep(timeout)
@@ -157,8 +172,9 @@ async def test_cancel_subtask(actor_pool):
     await asyncio.sleep(0.2)
     with Timer() as timer:
         # normal cancel by cancel asyncio Task
-        aio_task = asyncio.create_task(asyncio.wait_for(
-            subtask_runner.cancel_subtask(), timeout=1))
+        aio_task = asyncio.create_task(
+            asyncio.wait_for(subtask_runner.cancel_subtask(), timeout=1)
+        )
         assert await subtask_runner.is_runner_free() is False
         with pytest.raises(asyncio.TimeoutError):
             await aio_task
@@ -195,7 +211,8 @@ async def test_cancel_subtask(actor_pool):
 async def test_subtask_op_progress(actor_pool):
     pool, session_id, meta_api, storage_api, manager = actor_pool
     subtask_runner: SubtaskRunnerRef = await mo.actor_ref(
-        SubtaskRunnerActor.gen_uid('numa-0', 0), address=pool.external_address)
+        SubtaskRunnerActor.gen_uid("numa-0", 0), address=pool.external_address
+    )
 
     def progress_sleep(interval: float, count: int):
         for idx in range(count):

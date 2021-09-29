@@ -18,17 +18,15 @@ class KetamaRing(object):
         self._replicas = 4
         self._ring = {}
 
-        if version_info >= (3, ):
+        if version_info >= (3,):
             self._listbytes = lambda x: x
 
     def hashi(self, key, replica=0):
         """Returns a ketama compatible hash from the given key.
         """
-        dh = self._listbytes(md5(str(key).encode('utf-8')).digest())
+        dh = self._listbytes(md5(str(key).encode("utf-8")).digest())
         rd = replica * 4
-        return (
-            (dh[3 + rd] << 24) | (dh[2 + rd] << 16) |
-            (dh[1 + rd] << 8) | dh[0 + rd])
+        return (dh[3 + rd] << 24) | (dh[2 + rd] << 16) | (dh[1 + rd] << 8) | dh[0 + rd]
 
     def _hashi_weight_generator(self, node_name, node_conf):
         """Calculate the weight factor of the given node and
@@ -36,10 +34,11 @@ class KetamaRing(object):
 
         :param node_name: the node name.
         """
-        ks = (node_conf['vnodes'] * len(self._nodes) *
-              node_conf['weight']) // self._weight_sum
+        ks = (
+            node_conf["vnodes"] * len(self._nodes) * node_conf["weight"]
+        ) // self._weight_sum
         for w in range(0, ks):
-            w_node_name = f'{node_name}-{w}'
+            w_node_name = f"{node_name}-{w}"
             for i in range(0, self._replicas):
                 yield self.hashi(w_node_name, replica=i)
 
@@ -56,7 +55,7 @@ class KetamaRing(object):
         """
         _weight_sum = 0
         for node_conf in self._nodes.values():
-            _weight_sum += node_conf['weight']
+            _weight_sum += node_conf["weight"]
         self._weight_sum = _weight_sum
 
         _distribution = Counter()
@@ -79,7 +78,9 @@ class KetamaRing(object):
         try:
             self._nodes.pop(node_name)
         except Exception:
-            raise KeyError(f"node '{node_name}' not found, "
-                           f"available nodes: {list(self._nodes.keys())}")
+            raise KeyError(
+                f"node '{node_name}' not found, "
+                f"available nodes: {list(self._nodes.keys())}"
+            )
         else:
             self._create_ring(self._nodes)

@@ -19,9 +19,10 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameArctanh(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.ARCTANH
-    _func_name = 'arctanh'
+    _func_name = "arctanh"
 
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorArctanh
+
         return TensorArctanh

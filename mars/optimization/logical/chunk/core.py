@@ -29,6 +29,7 @@ def register_chunk_optimization_rule(op_types: List[Type[OperandType]]):
     def wrap(rule_type: Type[OptimizationRule]):
         ChunkOptimizer.register_rule(op_types, rule_type)
         return rule_type
+
     return wrap
 
 

@@ -34,16 +34,19 @@ _model_type_to_model = dict()
 
 def get_model_cls_from_type(model_type: LGBMModelType):
     import lightgbm
+
     if not _model_type_to_model:
-        _model_type_to_model.update({
-            LGBMModelType.CLASSIFIER: lightgbm.LGBMClassifier,
-            LGBMModelType.REGRESSOR: lightgbm.LGBMRegressor,
-            LGBMModelType.RANKER: lightgbm.LGBMRanker,
-        })
+        _model_type_to_model.update(
+            {
+                LGBMModelType.CLASSIFIER: lightgbm.LGBMClassifier,
+                LGBMModelType.REGRESSOR: lightgbm.LGBMRegressor,
+                LGBMModelType.RANKER: lightgbm.LGBMRanker,
+            }
+        )
     return _model_type_to_model[model_type]
 
 
-TrainTuple = namedtuple('TrainTuple', 'data label sample_weight init_score')
+TrainTuple = namedtuple("TrainTuple", "data label sample_weight init_score")
 
 
 class LGBMScikitLearnBase:
@@ -58,10 +61,11 @@ class LGBMScikitLearnBase:
     @classmethod
     def _get_lgbm_class(cls):
         try:
-            return getattr(cls, '_lgbm_class')
+            return getattr(cls, "_lgbm_class")
         except AttributeError:
-            lgbm_class = next(base for base in cls.__bases__
-                              if base.__module__.startswith('lightgbm'))
+            lgbm_class = next(
+                base for base in cls.__bases__ if base.__module__.startswith("lightgbm")
+            )
             cls._lgbm_class = lgbm_class
             return lgbm_class
 
@@ -101,8 +105,11 @@ class LGBMScikitLearnBase:
             return None
 
         tps = []
-        for (data, label), weight, score in zip(eval_set, eval_sample_weight or itertools.repeat(None),
-                                                eval_init_score or itertools.repeat(None)):
+        for (data, label), weight, score in zip(
+            eval_set,
+            eval_sample_weight or itertools.repeat(None),
+            eval_init_score or itertools.repeat(None),
+        ):
             tps.append(TrainTuple(data, label, weight, score))
         return tps
 

@@ -22,9 +22,9 @@ from .core import DataFrameUnaryUfunc
 
 class DataFrameAround(DataFrameUnaryUfunc):
     _op_type_ = OperandDef.AROUND
-    _func_name = 'around'
+    _func_name = "around"
 
-    _decimals = Int32Field('decimals')
+    _decimals = Int32Field("decimals")
 
     def __init__(self, decimals=None, output_types=None, **kw):
         super().__init__(_decimals=decimals, output_types=output_types, **kw)
@@ -32,6 +32,7 @@ class DataFrameAround(DataFrameUnaryUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorAround
+
         return TensorAround
 
     @property
@@ -41,7 +42,7 @@ class DataFrameAround(DataFrameUnaryUfunc):
     @classmethod
     def execute(cls, ctx, op):
         df = ctx[op.inputs[0].key]
-        func_name = getattr(cls, '_func_name')
+        func_name = getattr(cls, "_func_name")
         if hasattr(df, func_name):
             ctx[op.outputs[0].key] = getattr(df, func_name)(decimals=op.decimals)
         else:
@@ -50,8 +51,9 @@ class DataFrameAround(DataFrameUnaryUfunc):
 
 def around(df, decimals=0, *args, **kwargs):
     if len(args) > 0:
-        raise TypeError('round() takes 0 positional arguments '
-                        f'but {len(args)} was given')
+        raise TypeError(
+            "round() takes 0 positional arguments " f"but {len(args)} was given"
+        )
     op = DataFrameAround(decimals=decimals, **kwargs)
     return op(df)
 

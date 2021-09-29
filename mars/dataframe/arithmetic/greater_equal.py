@@ -21,8 +21,8 @@ from .docstring import bin_compare_doc
 class DataFrameGreaterEqual(DataFrameBinopUfunc):
     _op_type_ = OperandDef.GE
 
-    _func_name = 'ge'
-    _rfunc_name = 'le'
+    _func_name = "ge"
+    _rfunc_name = "le"
 
     @classproperty
     def _operator(self):
@@ -31,6 +31,7 @@ class DataFrameGreaterEqual(DataFrameBinopUfunc):
     @classproperty
     def tensor_op_type(self):
         from ...tensor.arithmetic import TensorGreaterEqual
+
         return TensorGreaterEqual
 
 
@@ -46,7 +47,7 @@ dtype: bool
 """
 
 
-@bin_compare_doc('Greater than or equal to', equiv='>=', series_example=_ge_example)
-def ge(df, other, axis='columns', level=None):
+@bin_compare_doc("Greater than or equal to", equiv=">=", series_example=_ge_example)
+def ge(df, other, axis="columns", level=None):
     op = DataFrameGreaterEqual(axis=axis, level=level, lhs=df, rhs=other)
     return op(df, other)

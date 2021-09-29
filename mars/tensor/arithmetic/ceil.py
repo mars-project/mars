@@ -22,10 +22,10 @@ from .core import TensorUnaryOp
 from .utils import arithmetic_operand
 
 
-@arithmetic_operand(sparse_mode='unary')
+@arithmetic_operand(sparse_mode="unary")
 class TensorCeil(TensorUnaryOp):
     _op_type_ = OperandDef.CEIL
-    _func_name = 'ceil'
+    _func_name = "ceil"
 
 
 @infer_dtype(np.ceil)

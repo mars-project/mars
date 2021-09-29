@@ -29,9 +29,9 @@ from ..operands import TensorHasInput, TensorOperandMixin
 class TensorSplit(TensorHasInput, TensorOperandMixin):
     _op_type_ = OperandDef.ARRAY_SPLIT
 
-    _input = KeyField('input')
-    _indices_or_sections = AnyField('indices_or_sections')
-    _axis = Int32Field('axis')
+    _input = KeyField("input")
+    _indices_or_sections = AnyField("indices_or_sections")
+    _axis = Int32Field("axis")
 
     def __init__(self, axis=None, **kw):
         super().__init__(_axis=axis, **kw)
@@ -42,11 +42,11 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
 
     @property
     def axis(self):
-        return getattr(self, '_axis', 0)
+        return getattr(self, "_axis", 0)
 
     @property
     def output_limit(self):
-        return float('inf')
+        return float("inf")
 
     def _set_inputs(self, inputs):
         super()._set_inputs(inputs)
@@ -58,18 +58,25 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         axis = self._axis
         size = a.shape[axis]
         if np.isnan(size):
-            raise ValueError('cannot split array with unknown shape, '
-                             'call `.execute()` on input tensor first')
+            raise ValueError(
+                "cannot split array with unknown shape, "
+                "call `.execute()` on input tensor first"
+            )
 
-        if isinstance(indices_or_sections, Tensor) and hasattr(indices_or_sections.op, 'data') and \
-                indices_or_sections.op.data is not None:
+        if (
+            isinstance(indices_or_sections, Tensor)
+            and hasattr(indices_or_sections.op, "data")
+            and indices_or_sections.op.data is not None
+        ):
             indices_or_sections = indices_or_sections.op.data
 
         try:
             indices_or_sections = int(indices_or_sections)
             if is_split:
                 if size % indices_or_sections:
-                    raise ValueError('tensor split does not result in an equal division')
+                    raise ValueError(
+                        "tensor split does not result in an equal division"
+                    )
                 nparts = indices_or_sections
                 nsplit = (size // indices_or_sections,) * nparts
             else:
@@ -77,19 +84,29 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
                 if size % indices_or_sections == 0:
                     nsplit = (size // indices_or_sections,) * nparts
                 else:
-                    nsplit = (size // indices_or_sections + 1,) * (size % indices_or_sections) + \
-                             (size // indices_or_sections,) * (size - size % indices_or_sections)
+                    nsplit = (size // indices_or_sections + 1,) * (
+                        size % indices_or_sections
+                    ) + (size // indices_or_sections,) * (
+                        size - size % indices_or_sections
+                    )
         except TypeError:
             if isinstance(indices_or_sections, Tensor):
                 nparts = indices_or_sections.shape[0] + 1
                 nsplit = (np.nan,) * nparts
             else:
-                ind = indices_or_sections = get_array_module(indices_or_sections).asarray(indices_or_sections)
-                if indices_or_sections.ndim != 1 or not np.issubdtype(indices_or_sections.dtype, np.integer):
-                    raise TypeError('slice indices must be integers or None')
+                ind = indices_or_sections = get_array_module(
+                    indices_or_sections
+                ).asarray(indices_or_sections)
+                if indices_or_sections.ndim != 1 or not np.issubdtype(
+                    indices_or_sections.dtype, np.integer
+                ):
+                    raise TypeError("slice indices must be integers or None")
                 nparts = indices_or_sections.shape[0] + 1
                 get = lambda i: None if i < 0 or i >= len(ind) else ind[i]
-                nsplit = [calc_sliced_size(size, slice(get(j - 1), get(j))) for j in range(nparts)]
+                nsplit = [
+                    calc_sliced_size(size, slice(get(j - 1), get(j)))
+                    for j in range(nparts)
+                ]
 
         inputs = [a]
         if isinstance(indices_or_sections, Tensor):
@@ -97,8 +114,14 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         else:
             self._indices_or_sections = indices_or_sections
 
-        kws = [{'i': i, 'shape': a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1:], 'order': a.order}
-               for i in range(nparts)]
+        kws = [
+            {
+                "i": i,
+                "shape": a.shape[:axis] + (nsplit[i],) + a.shape[axis + 1 :],
+                "order": a.order,
+            }
+            for i in range(nparts)
+        ]
         return ExecutableTuple(self.new_tensors(inputs, kws=kws, output_limit=nparts))
 
     @classmethod
@@ -111,12 +134,11 @@ class TensorSplit(TensorHasInput, TensorOperandMixin):
         out_kws = [dict() for _ in splits]
         for i, split in enumerate(splits):
             slc = slice(0 if i == 0 else acc_shapes[i - 1], acc_shapes[i])
-            new_s = yield from recursive_tile(
-                in_tensor[(slice(None),) * axis + (slc,)])
-            out_kws[i]['chunks'] = new_s.chunks
-            out_kws[i]['nsplits'] = new_s.nsplits
-            out_kws[i]['shape'] = split.shape
-            out_kws[i]['order'] = op.outputs[i].order
+            new_s = yield from recursive_tile(in_tensor[(slice(None),) * axis + (slc,)])
+            out_kws[i]["chunks"] = new_s.chunks
+            out_kws[i]["nsplits"] = new_s.nsplits
+            out_kws[i]["shape"] = split.shape
+            out_kws[i]["order"] = op.outputs[i].order
 
         new_op = op.copy()
         return new_op.new_tensors(op.inputs, kws=out_kws, output_limit=len(out_kws))

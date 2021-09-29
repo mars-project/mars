@@ -22,21 +22,24 @@ from ...config import options
 
 def arithmetic_operand(cls=None, init=True, sparse_mode=None):
     def _decorator(cls):
-        def __init__(self, casting='same_kind', err=None, **kw):
+        def __init__(self, casting="same_kind", err=None, **kw):
             err = err if err is not None else np.geterr()
             super(cls, self).__init__(_casting=casting, _err=err, **kw)
 
         def _is_sparse_binary_and_const(x1, x2):
             if all(np.isscalar(x) for x in [x1, x2]):
                 return False
-            if all(np.isscalar(x) or (hasattr(x, 'issparse') and x.issparse())
-                   for x in [x1, x2]):
+            if all(
+                np.isscalar(x) or (hasattr(x, "issparse") and x.issparse())
+                for x in [x1, x2]
+            ):
                 return True
             return False
 
         def _is_sparse_binary_or_const(x1, x2):
-            if (hasattr(x1, 'issparse') and x1.issparse()) or \
-                    (hasattr(x2, 'issparse') and x2.issparse()):
+            if (hasattr(x1, "issparse") and x1.issparse()) or (
+                hasattr(x2, "issparse") and x2.issparse()
+            ):
                 return True
             return False
 
@@ -47,7 +50,7 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
             binary_or=_is_sparse_binary_or_const,
         )
         for v in _is_sparse_dict.values():
-            v.__name__ = '_is_sparse'
+            v.__name__ = "_is_sparse"
 
         if init:
             cls.__init__ = __init__
@@ -55,7 +58,7 @@ def arithmetic_operand(cls=None, init=True, sparse_mode=None):
         if sparse_mode in _is_sparse_dict:
             cls._is_sparse = staticmethod(_is_sparse_dict[sparse_mode])
         elif sparse_mode is not None:  # pragma: no cover
-            raise ValueError(f'Unsupported sparse mode: {sparse_mode}')
+            raise ValueError(f"Unsupported sparse mode: {sparse_mode}")
 
         return cls
 
@@ -77,7 +80,7 @@ class TreeReductionBuilder:
         while len(inputs) > self._combine_size:
             new_inputs = []
             for i in range(0, len(inputs), combine_size):
-                objs = inputs[i: i + combine_size]
+                objs = inputs[i : i + combine_size]
                 if len(objs) == 1:
                     obj = objs[0]
                 else:
@@ -113,14 +116,18 @@ def chunk_tree_add(dtype, chunks, idx, shape, sparse=False, combine_size=None):
     :param combine_size: combine size
     :return: result chunk
     """
+
     class ChunkAddBuilder(TreeReductionBuilder):
         def _build_reduction(self, inputs, final=False):
             from .add import TensorTreeAdd
+
             op = TensorTreeAdd(args=inputs, dtype=dtype, sparse=sparse)
             if not final:
                 return op.new_chunk(inputs, shape=shape)
             else:
-                return op.new_chunk(inputs, shape=shape, index=idx, order=chunks[0].order)
+                return op.new_chunk(
+                    inputs, shape=shape, index=idx, order=chunks[0].order
+                )
 
     return ChunkAddBuilder(combine_size).build(chunks)
 
@@ -135,7 +142,11 @@ def tree_op_estimate_size(ctx, op):
     else:
         sum_inputs = sum(ctx[inp.key][0] for inp in op.inputs)
         calc_size = sum_inputs
-        chunk_size = min(sum_inputs, chunk.nbytes + np.dtype(np.int64).itemsize * np.prod(chunk.shape) * chunk.ndim)
+        chunk_size = min(
+            sum_inputs,
+            chunk.nbytes
+            + np.dtype(np.int64).itemsize * np.prod(chunk.shape) * chunk.ndim,
+        )
         if np.isnan(chunk_size):
             chunk_size = sum_inputs
     ctx[chunk.key] = (chunk_size, calc_size)
