@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from sys import last_value
 from typing import Tuple
 from collections import OrderedDict
 import numpy as np
@@ -57,10 +58,11 @@ class Chunk:
     async def seal(self):
         _tensor = np.full(self._shape, self._value)
         for k, v in self._ops.items():
-            earlist = 0
+            last_version = 0
             result = self._value
             for version_t, val in v.items():
-                if version_t > earlist:
+                if version_t > last_version:
                     result = val
+                    last_version = version_t
             _tensor[k] = result
         return _tensor
