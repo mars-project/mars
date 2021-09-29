@@ -1086,7 +1086,7 @@ class _IsolatedWebSession(_IsolatedSession):
         meta_api = WebMetaAPI(session_id, address)
         task_api = WebTaskAPI(session_id, address)
         cluster_api = WebClusterAPI(address)
-        mutable_api = WebMutableAPI(address)
+        mutable_api = WebMutableAPI(session_id, address)
 
         return cls(address, session_id,
                    session_api, meta_api,
