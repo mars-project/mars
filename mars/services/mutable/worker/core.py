@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sys import last_value
 from typing import Tuple
 from collections import OrderedDict
+
 import numpy as np
 
 
