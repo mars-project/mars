@@ -1882,7 +1882,7 @@ def test_eval_query_execution(setup):
         r.execute(extra_config={'check_index_value': False}).fetch(),
         raw.query(expr))
 
-    expr = '(a < 0.5 or a > 0.7) and (b != 0.1 or c > 0.2)'
+    expr = '(a < 0.5 or a > 0.7) and (b != 0.1 or `c c` > 0.2)'
     r = df.query(expr)
     pd.testing.assert_frame_equal(
         r.execute(extra_config={'check_index_value': False}).fetch(),
