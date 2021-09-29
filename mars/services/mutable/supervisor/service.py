@@ -77,7 +77,7 @@ class MutableTensorActor(mo.Actor):
             left_chunk -= 1
 
             if (chunks_in_list == chunk_number//worker_number and left_worker != 1 or left_worker == 1 and left_chunk == 0):
-                chunk_ref = await mo.create_actor(MutableTensorChunkActor, self._session_id,self.address, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
+                chunk_ref = await mo.create_actor(MutableTensorChunkActor, self._session_id, self.address, chunk_list, self._name, self._default_value, address=worker_address[left_worker-1])
 
                 chunk_list = OrderedDict()
                 chunks_in_list = 0
@@ -109,26 +109,14 @@ class MutableTensorActor(mo.Actor):
         return self._shape
 
     async def name(self) -> str:
-        print("actor address",self.address)
         return self._name
 
     async def chunk_size(self) -> Union[int, tuple]:
         return self._chunk_size
 
     async def seal(self):
-        '''
-        现在的做法：
-        在tensor actor上调用seal()
-        对所有的chunk actor调用seal()， 
-        chunk_acotr.seal()会执行 await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address,'numa-0')])
-        await self.storage_api.put(chunk_key.key, chunkdata)
-        回到 acotr.seal() ,返回之前创建的tensor=build_fetch(tile(np.random....))
-        client拿到的tensor是一个 Tensor(op=TensorFetch, shape=(100, 100, 100))
-        我尝试执行 tensor.execute() 但是程序无响应，不结束
-        '''
         for chunk_actor in self._chunk_to_actors:
             await chunk_actor.seal()
         for ref in self._chunk_to_actors:
             await mo.destroy_actor(ref)
         return self._sealed
-

@@ -16,7 +16,6 @@ from collections import OrderedDict
 import time
 
 from .... import oscar as mo
-from ...meta import MetaAPI
 from .core import Chunk
 
 
@@ -33,7 +32,7 @@ class MutableTensorChunkActor(mo.Actor):
         from ...storage import StorageAPI
         from ...meta import MetaAPI
         self._storage_api = await StorageAPI.create(self._session_id, self.address)
-        self._meta_api = await MetaAPI.create(self._session_id,self._manager_address)
+        self._meta_api = await MetaAPI.create(self._session_id, self._manager_address)
         for k, v in self._chunk_list.items():
             _chunk = Chunk(k, *v, self.address, self._storage_api, self._default_value)
             self.idx_chunk[k] = _chunk

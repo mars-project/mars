@@ -15,23 +15,16 @@
 import sys
 import tempfile
 
-import numpy as np
-import pandas as pd
 import pytest
 
 from .... import oscar as mo
-from .... import tensor as mt
-from ....core import tile
-from ....serialization import AioDeserializer, AioSerializer
-from ....storage import StorageLevel
-from ....tests.core import require_ray
 from ....utils import get_next_port
 from ...cluster import MockClusterAPI
 from ...meta import MockMetaAPI
 from ...session import MockSessionAPI
 from ...web import WebActor
-from ...storage import MockStorageAPI, WebStorageAPI
-from ..api.web import MutableWebAPIHandler, WebMutableAPI
+from ...storage import MockStorageAPI
+from ..api.web import MutableWebAPIHandler
 
 
 @pytest.mark.asyncio
@@ -45,12 +38,12 @@ async def test_web_mutable_api():
 
     async with pool:
         session_id = 'mock_session_id'
-        cluster_api = await MockClusterAPI.create(
+        await MockClusterAPI.create(
             address=pool.external_address)
-        session_api = await MockSessionAPI.create(
+        await MockSessionAPI.create(
             session_id=session_id,
             address=pool.external_address)
-        meta_api = await MockMetaAPI.create(
+        await MockMetaAPI.create(
             session_id=session_id,
             address=pool.external_address)
         await MockStorageAPI.create(
@@ -72,7 +65,7 @@ async def test_web_mutable_api():
 
         tensor = await web_mutable_api.create_mutable_tensor(shape=(10, 10), dtype='int', chunk_size=(5, 5), name='mytensor', default_value=2)
         await tensor.write(((1,), (1,)), 1)
-        [value] = await tensor[1,1]
+        [value] = await tensor[1, 1]
         assert value == 1
 
         await MockStorageAPI.cleanup(pool.external_address)

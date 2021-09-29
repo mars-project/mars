@@ -17,9 +17,6 @@ from collections import OrderedDict
 import numpy as np
 
 
-from ...meta.api.oscar import MetaAPI
-
-
 class Chunk:
     def __init__(self,
                 idx: int,

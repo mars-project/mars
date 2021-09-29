@@ -12,35 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from numpy import dtype
-from mars.core.graph.builder import chunk
-from mars.services import session
-from mars import oscar
-from ....lib.aio.lru import alru_cache
+
 from ....utils import deserialize_serializable, serialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
-from ..supervisor.service import MutableTensorActor
-from ..supervisor.core import MutableTensor
 from .core import AbstractMutableAPI
 
 
 class MutableWebAPIHandler(MarsServiceWebAPIHandler):
     _root_pattern = '/api/session/(?P<session_id>[^/]+)/mutable'
 
-    @alru_cache(cache_exceptions=False)
-    async def _get_cluster_api(self):
-        from ...cluster import ClusterAPI
-        return await ClusterAPI.create(self._supervisor_addr)
-
-    @alru_cache(cache_exceptions=False)
-    async def _get_oscar_meta_api(self, session_id, str):
-        from ...meta import MetaAPI
-        cluster_api = await self._get_cluster_api
-        [address] = await cluster_api.get_supervisors_by_keys([session_id])
-        return await MetaAPI.create(session_id, address)
-
     @web_api('(?P<name>[^/]+)', method='post')
-    async def create_mutable_tensor(self,session_id: str,name: str=None):
+    async def create_mutable_tensor(self, session_id: str, name: str=None):
         body_args = deserialize_serializable(self.request.body) if self.request.body else None
         shape = body_args.get('shape')
         dtype = body_args.get('dtype')
@@ -49,13 +31,13 @@ class MutableWebAPIHandler(MarsServiceWebAPIHandler):
 
         from .oscar import MutableAPI
         oscar_api = await MutableAPI.create(self._supervisor_addr)
-        
+
         res = await oscar_api.create_mutable_tensor(session_id, shape, dtype, chunk_size, name, default_value)
         self.write(serialize_serializable(res))
 
     @web_api('(?P<name>[^/]+)', method='get')
-    async def get_mutable_tensor(self, session_id:str, name: str):
-        body_args = deserialize_serializable(self.request.body) if self.request.body else None
+    async def get_mutable_tensor(self, session_id: str, name: str):
+        self._session_id = session_id
         from .oscar import MutableAPI
         oscar_api = await MutableAPI.create(self._supervisor_addr)
         res = await oscar_api.get_mutable_tensor(name)
@@ -73,7 +55,6 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
         params = dict(shape=shape, dtype=dtype, chunk_size=chunk_size, default_value=default_value)
         body = serialize_serializable(params)
-        print(params)
         res = await self._request_url(
             path=path, method='POST', data=body,
             headers={'Content-Type': 'application/octet-stream'},
@@ -83,7 +64,7 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
     async def get_mutable_tensor(self, name: str):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
         res = await self._request_url(
-            path=path, methond='GET',
+            path=path, method='GET',
             headers={'Content-Type': 'application/octet-stream'},
         )
         return deserialize_serializable(res.body)
