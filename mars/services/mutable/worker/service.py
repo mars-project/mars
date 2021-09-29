@@ -16,13 +16,15 @@ from collections import OrderedDict
 import time
 
 from .... import oscar as mo
+from ...meta import MetaAPI
 from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, meta_api, chunklist: OrderedDict, name: str, default_value=0) -> None:
+    def __init__(self, session_id, manager_address, chunklist: OrderedDict, name: str, default_value=0) -> None:
         self.idx_chunk = OrderedDict()
-        self._meta_api = meta_api
+        self._session_id = session_id
+        self._manager_address = manager_address
         self._chunk_list = chunklist
         self._name = name
         self._default_value = default_value
@@ -30,9 +32,10 @@ class MutableTensorChunkActor(mo.Actor):
     async def __post_create__(self):
         from ...storage import StorageAPI
         from ...meta import MetaAPI
-        self.storage_api = await StorageAPI.create(self._name, self.address)
+        self._storage_api = await StorageAPI.create(self._session_id, self.address)
+        self._meta_api = await MetaAPI.create(self._session_id,self._manager_address)
         for k, v in self._chunk_list.items():
-            _chunk = Chunk(k, *v, self.address, self.storage_api, self._default_value)
+            _chunk = Chunk(k, *v, self.address, self._storage_api, self._default_value)
             self.idx_chunk[k] = _chunk
 
     async def __on_receive__(self, message):
@@ -53,4 +56,4 @@ class MutableTensorChunkActor(mo.Actor):
             await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address, 'numa-0')])
             chunk: Chunk = self.idx_chunk[k]
             chunkdata = await chunk.seal()
-            await self.storage_api.put(chunk_key.key, chunkdata)
+            await self._storage_api.put(chunk_key.key, chunkdata)

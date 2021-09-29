@@ -122,4 +122,6 @@ class MutableTensor:
 
     async def seal(self):
         result = await self._ref.seal()
+        _name = await self._ref.name()
+        await mo.destroy_actor(self._ref)
         return result
