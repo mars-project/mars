@@ -4,7 +4,6 @@ from itertools import product
 from ...serialization.serializables import AnyField, KeyField
 from ..datasource import tensor as astensor
 from ..operands import TensorHasInput, TensorOperandMixin
-from ..utils import filter_inputs
 
 
 def _as_pairs(x, ndim, as_index=False):
