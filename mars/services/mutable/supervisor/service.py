@@ -19,10 +19,10 @@ from collections import OrderedDict
 
 from .... import oscar as mo
 from .... import tensor as mt
+from ....tensor.utils import decide_chunk_sizes
 from ....utils import build_fetch
 from ....core import tile
 from ...meta import MetaAPI
-from ....tensor.utils import decide_chunk_sizes
 from ..worker.service import MutableTensorChunkActor
 
 
@@ -35,18 +35,20 @@ class MutableTensorActor(mo.Actor):
                 worker_pools: Dict[Tuple[str, str], int],
                 name: str,
                 default_value : Union[int, float]=0):
-        self._shape = shape
         self._session_id = session_id
+        self._shape = shape
         self._dtype = dtype
+        self._chunk_size = chunk_size
         self._work_pools = worker_pools
         self._name = name
-        self._chunk_size = chunk_size
-        self._chunks = []
         self._default_value = default_value
+
+        self._chunks = []
         self._chunk_to_actors = []
         self._chunkactors_lastindex = []
-        self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
         self._sealed = None
+
+        self._nsplits = decide_chunk_sizes(self._shape, self._chunk_size, sys.getsizeof(int))
 
     async def __post_create__(self):
         self._meta_api = await MetaAPI.create(self._session_id, self.address)
@@ -114,9 +116,9 @@ class MutableTensorActor(mo.Actor):
     async def chunk_size(self) -> Union[int, tuple]:
         return self._chunk_size
 
-    async def seal(self):
+    async def seal(self, version_time):
         for chunk_actor in self._chunk_to_actors:
-            await chunk_actor.seal()
+            await chunk_actor.seal(version_time)
         for ref in self._chunk_to_actors:
             await mo.destroy_actor(ref)
         return self._sealed

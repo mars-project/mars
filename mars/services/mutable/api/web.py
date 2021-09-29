@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Union
 
 from ....utils import deserialize_serializable, serialize_serializable
 from ...web import web_api, MarsServiceWebAPIHandler, MarsWebAPIClientMixin
@@ -51,7 +52,12 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
         self._session_id = session_id
         self._address = address.rstrip('/')
 
-    async def create_mutable_tensor(self, shape: tuple, dtype: str, chunk_size, name: str = None, default_value=0):
+    async def create_mutable_tensor(self,
+                                    shape: tuple,
+                                    dtype: str,
+                                    chunk_size,
+                                    name: str = None,
+                                    default_value: Union[int, float]=0):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
         params = dict(shape=shape, dtype=dtype, chunk_size=chunk_size, default_value=default_value)
         body = serialize_serializable(params)

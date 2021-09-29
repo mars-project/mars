@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from typing import Union
 import time
 
 from .... import oscar as mo
@@ -20,7 +21,12 @@ from .core import Chunk
 
 
 class MutableTensorChunkActor(mo.Actor):
-    def __init__(self, session_id, manager_address, chunklist: OrderedDict, name: str, default_value=0) -> None:
+    def __init__(self,
+                session_id: str,
+                manager_address: str,
+                chunklist: OrderedDict,
+                name: str,
+                default_value: Union[int, float]=0) -> None:
         self.idx_chunk = OrderedDict()
         self._session_id = session_id
         self._manager_address = manager_address
@@ -40,7 +46,7 @@ class MutableTensorChunkActor(mo.Actor):
     async def __on_receive__(self, message):
         return await super().__on_receive__(message)
 
-    async def write(self, index, relatepos, value, version_time=time.time()):
+    async def write(self, index: tuple, relatepos, value, version_time=time.time()):
         chunk: Chunk = self.idx_chunk[index]
         await chunk.write(tuple(relatepos), value, version_time)
 
@@ -49,10 +55,10 @@ class MutableTensorChunkActor(mo.Actor):
         result = await chunk.read(tuple(relatepos), version_time)
         return result
 
-    async def seal(self):
+    async def seal(self, version_time):
         for k, v in self._chunk_list.items():
             chunk_key = v[1]
             await self._meta_api.set_chunk_meta(chunk_key, bands=[(self.address, 'numa-0')])
             chunk: Chunk = self.idx_chunk[k]
-            chunkdata = await chunk.seal()
+            chunkdata = await chunk.seal(version_time)
             await self._storage_api.put(chunk_key.key, chunkdata)

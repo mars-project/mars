@@ -32,6 +32,7 @@ class Chunk:
         self._worker_address = worker_adress
         self._storage_api = storage_api
         self._value = value
+
         self._ops = OrderedDict()
 
     async def write(self, index, value, version_time):
@@ -47,22 +48,21 @@ class Chunk:
             index_data: OrderedDict = self._ops[index]
         except Exception:
             index_data = OrderedDict()
-        result = self._value
-        for k, v in index_data.items():
+        last_version = 0
+        for k in index_data.keys():
             if k <= version_time:
-                result = v
-            else:
-                break
+                last_version = k if k > last_version else last_version
+        result = index_data[last_version] if last_version != 0 else self._value
         return result
 
-    async def seal(self):
+    async def seal(self, version_time):
         _tensor = np.full(self._shape, self._value)
         for k, v in self._ops.items():
             last_version = 0
-            result = self._value
+
             for version_t, val in v.items():
-                if version_t > last_version:
-                    result = val
-                    last_version = version_t
+                if version_t <= version_time:
+                    last_version = version_t if version_t > last_version else last_version
+            result = self._value if last_version == 0 else v[last_version]
             _tensor[k] = result
         return _tensor

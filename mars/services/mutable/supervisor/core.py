@@ -20,10 +20,17 @@ from typing import List, Union
 from .... import oscar as mo
 from ....tensor.utils import split_indexes_into_chunks, decide_chunk_sizes
 from ..utils import normailize_index
+from .service import MutableTensorActor
 
 
 class MutableTensor:
-    def __init__(self, ref, shape, chunk_size, nsplits, chunk_to_actors, lastindex):
+    def __init__(self,
+                ref: MutableTensorActor,
+                shape: tuple,
+                chunk_size: Union[int, tuple],
+                nsplits: tuple,
+                chunk_to_actors : list,
+                lastindex: list):
         self._ref = ref
         self._shape = shape
         self._chunk_size = chunk_size
@@ -120,7 +127,7 @@ class MutableTensor:
                 for nidx in v:
                     await chunk_actor.write(idx, nidx, value, version_time)
 
-    async def seal(self):
-        result = await self._ref.seal()
+    async def seal(self, version_time=time.time()):
+        result = await self._ref.seal(version_time)
         await mo.destroy_actor(self._ref)
         return result

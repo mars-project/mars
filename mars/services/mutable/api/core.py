@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
+from typing import Union
 
 
 class AbstractMutableAPI(ABC):
@@ -21,7 +22,7 @@ class AbstractMutableAPI(ABC):
     async def create_mutable_tensor(self,
                                     shape: tuple,
                                     dtype: str,
-                                    chunk_size,
+                                    chunk_size: Union[int, tuple],
                                     name: str = None,
                                     default_value=0):
         '''

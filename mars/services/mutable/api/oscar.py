@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import uuid
-from typing import TypeVar
+from typing import TypeVar, Union
 from collections import OrderedDict
 
 from ....lib.aio import alru_cache
@@ -32,7 +32,7 @@ APIType = TypeVar('APIType', bound='MutableAPI')
 class MutableAPI(AbstractMutableAPI):
     def __init__(self,
                  address: str,
-                 cluster_api):
+                 cluster_api: ClusterAPI):
         self._address = address
         self._cluster_api = cluster_api
         self._tensor_check = OrderedDict()
@@ -47,9 +47,9 @@ class MutableAPI(AbstractMutableAPI):
                                     session_id: str,
                                     shape: tuple,
                                     dtype: str,
-                                    chunk_size,
+                                    chunk_size: Union[int, tuple],
                                     name: str=None,
-                                    default_value=0):
+                                    default_value: Union[int, float] =0):
         worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
         if name is None:
             name = str(uuid.uuid1())
