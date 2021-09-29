@@ -30,7 +30,7 @@ import pandas as pd
 from ... import opcodes
 from ...core import ENTITY_TYPE, OutputType, get_output_types, recursive_tile
 from ...serialization.serializables import BoolField, DictField, StringField
-from ..core import DATAFRAME_TYPE, SERIES_TYPE
+from ..core import DATAFRAME_TYPE
 from ..operands import DataFrameOperand, DataFrameOperandMixin
 from ..utils import parse_index
 
@@ -123,7 +123,7 @@ class CollectionVisitor(ast.NodeVisitor):
         raise KeyError(f'name {obj_name} is not defined')
 
     def visit(self, node):
-        if isinstance(node, DATAFRAME_TYPE) or isinstance(node, SERIES_TYPE):
+        if isinstance(node, ENTITY_TYPE):
             return node
         node_name = node.__class__.__name__
         method = 'visit_' + node_name
