@@ -609,7 +609,8 @@ class TaskProcessorActor(mo.Actor):
                 if (property_key == 'key'):
                     continue
 
-                if isinstance(property_value, int) or isinstance(property_value, float) or isinstance(property_value, str):
+                if isinstance(property_value, int) or isinstance(property_value, float) \
+                    or isinstance(property_value, str):
                     displayed_properties[property_key] = property_value
 
             tileable_infos[tileable.key] = {
