@@ -37,7 +37,7 @@ from ....utils import lazy_import
 from ..ray import new_cluster, _load_config, ClusterStateActor
 from ..session import get_default_session, new_session
 from ..tests import test_local
-from .modules.utils import (  # noqa: F401; pylint: disable=unused-variable
+from .modules.utils import (  # noqa: F401  # pylint: disable=unused-variable
     cleanup_third_party_modules_output,
     get_output_filenames,
 )
@@ -238,8 +238,8 @@ def test_load_third_party_modules2(ray_large_cluster, create_cluster):
 @require_ray
 @pytest.mark.asyncio
 async def test_load_third_party_modules_from_config(
-    ray_large_cluster, cleanup_third_party_modules_output
-):  # noqa: F811
+    ray_large_cluster, cleanup_third_party_modules_output  # noqa: F811
+):
     client = await new_cluster(
         "test_cluster",
         worker_num=2,

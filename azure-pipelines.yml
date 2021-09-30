@@ -126,7 +126,7 @@ jobs:
 
         pip install numpy scipy cython
         pip install -e ".[dev,extra]"
-        pip install virtualenv flake8 codespell sphinx sphinx-intl
+        pip install virtualenv flake8 codespell sphinx sphinx-intl black
         conda list -n test
       displayName: 'Install dependencies'
 
@@ -144,6 +144,13 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 mars --config="default" --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       displayName: 'Lint with flake8'
+
+    - bash: |
+        set -e
+        source ./ci/reload-env.sh
+
+        black --check --diff --verbose mars
+      displayName: 'Check code style with black'
 
     - bash: |
         set -e

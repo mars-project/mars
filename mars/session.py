@@ -20,4 +20,12 @@ from .deploy.oscar.session import (
     fetch,
     fetch_log,
     stop_server,
-)  # noqa: F401  # pylint: disable=unused-import
+)
+
+__all__ = [
+    "new_session",
+    "execute",
+    "fetch",
+    "fetch_log",
+    "stop_server",
+]
