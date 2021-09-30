@@ -217,11 +217,11 @@ msgstr ""
 
 #: ../../source/installation/deploy.rst:112
 msgid "On Supervisor 1 (192.168.1.10):"
-msgstr "在 Worker 1（192.168.1.20）上"
+msgstr "在 Supervisor 1（192.168.1.10）上"
 
 #: ../../source/installation/deploy.rst:118
 msgid "On Supervisor 2 (192.168.1.11):"
-msgstr "在 Worker 2（192.168.1.21）上"
+msgstr "在 Supervisor 2（192.168.1.11）上"
 
 #: ../../source/installation/deploy.rst:124
 msgid "On Worker 1 (192.168.1.20):"
