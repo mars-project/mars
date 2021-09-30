@@ -345,10 +345,12 @@ async def test_get_tileable_details(start_test_service):
     assert _get_fields(details, 'status', SubtaskStatus) \
         == [SubtaskStatus.running] + [SubtaskStatus.pending] * 2
 
+    def is_valid_type(value):
+        return isinstance(value, int) or isinstance(value, float) or isinstance(value, str)
     for tileable in details.keys():
         for property_key, property_value in details.get(tileable).get('properties').items():
             assert property_key != 'key'
-            assert type(property_value) in ['int', 'float', 'str']
+            assert is_valid_type(property_value)
 
     await ref.set()
     await asyncio.sleep(1)
