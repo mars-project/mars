@@ -14,6 +14,8 @@
 
 try:
     from ._kmeans import KMeans, k_means
+    from ._mini_batch_k_means import MiniBatchKMeans, mini_batch_k_means
+    from ._agglomerative import AgglomerativeClustering
 
     def _install():
         from ._k_means_common import KMeansInertia, KMeansRelocateEmptyClusters
@@ -21,13 +23,22 @@ try:
             KMeansElkanUpdate, KMeansElkanPostprocess
         from ._k_means_init import KMeansPlusPlusInit
         from ._k_means_lloyd_iter import KMeansLloydUpdate, KMeansLloydPostprocess
+        from ._mini_batch_k_means_operand import MiniBatchReassignCluster, \
+            MiniBatchUpdate
+        from ._agglomerative_operand import FixConnectivity, BuildWardTree, \
+            CutTree
 
         del KMeansInertia, KMeansRelocateEmptyClusters, KMeansElkanInitBounds, \
             KMeansElkanUpdate, KMeansElkanPostprocess, KMeansPlusPlusInit, \
             KMeansLloydUpdate, KMeansLloydPostprocess
+        del MiniBatchUpdate, MiniBatchReassignCluster, FixConnectivity, \
+            BuildWardTree, CutTree
 
     _install()
     del _install
 except ImportError:
     KMeans = None
     k_means = None
+    MiniBatchKMeans = None
+    mini_batch_k_means = None
+    AgglomerativeClustering = None
