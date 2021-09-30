@@ -599,11 +599,28 @@ class TaskProcessorActor(mo.Actor):
             else:
                 status = SubtaskStatus.running
 
+            # get properties for tileable
+            all_propertes = {'slot': getattr(tileable, slot, None) for slot in tileable.__slots__}
+
+            # Only int/float/string type values for now
+            displayed_properties = dict()
+            for property_key, property_value in all_propertes['slot'].items():
+                # Omit key property
+                if (property_key == 'key'):
+                    continue
+
+                if isinstance(property_value, int) \
+                    or isinstance(property_value, float) \
+                    or isinstance(property_value, str):
+                    displayed_properties[property_key] = property_value
+
             tileable_infos[tileable.key] = {
                 'progress': progress,
                 'subtaskCount': len(results),
                 'status': status.value,
+                'properties': displayed_properties,
             }
+
         return tileable_infos
 
     def get_tileable_subtasks(self, tileable_id: str, with_input_output: bool):
