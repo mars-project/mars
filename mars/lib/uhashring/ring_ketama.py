@@ -10,8 +10,7 @@ class KetamaRing(object):
     """Implement a ketama compatible consistent hashing ring."""
 
     def __init__(self):
-        """Create a new HashRing.
-        """
+        """Create a new HashRing."""
         self._distribution = Counter()
         self._keys = []
         self._nodes = {}
@@ -22,8 +21,7 @@ class KetamaRing(object):
             self._listbytes = lambda x: x
 
     def hashi(self, key, replica=0):
-        """Returns a ketama compatible hash from the given key.
-        """
+        """Returns a ketama compatible hash from the given key."""
         dh = self._listbytes(md5(str(key).encode("utf-8")).digest())
         rd = replica * 4
         return (dh[3 + rd] << 24) | (dh[2 + rd] << 16) | (dh[1 + rd] << 8) | dh[0 + rd]
@@ -51,8 +49,7 @@ class KetamaRing(object):
         return map(ord, data)
 
     def _create_ring(self, nodes):
-        """Generate a ketama compatible continuum/ring.
-        """
+        """Generate a ketama compatible continuum/ring."""
         _weight_sum = 0
         for node_conf in self._nodes.values():
             _weight_sum += node_conf["weight"]

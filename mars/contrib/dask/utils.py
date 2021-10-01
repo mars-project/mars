@@ -63,4 +63,4 @@ def reduce(objs: List[List]):
     obj:
         The spawning concat task.
     """
-    return spawn(concat, args=([spawn(concat, args=(objs_d,)) for objs_d in objs],),)
+    return spawn(concat, args=([spawn(concat, args=(objs_d,)) for objs_d in objs],))

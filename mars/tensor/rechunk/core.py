@@ -177,7 +177,7 @@ def _find_split_rechunk(old_chunk_size, new_chunk_size, graph_size_limit):
 
 
 def _divide_to_width(desired_chunk_size, max_width):
-    """ Minimally divide the given chunks so as to make the largest chunk
+    """Minimally divide the given chunks so as to make the largest chunk
     width less or equal than *max_width*.
     """
     chunk_size = []

@@ -128,7 +128,7 @@ def _quantile_ureduce_func(
         weights_above = indices - indices_below
         weights_below = 1 - weights_above
 
-        weights_shape = [1,] * ap.ndim
+        weights_shape = [1] * ap.ndim
         weights_shape[axis] = len(indices)
         weights_below.shape = weights_shape
         weights_above.shape = weights_shape

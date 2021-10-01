@@ -221,7 +221,10 @@ def test_series_from_tensor(setup):
     pd.testing.assert_series_equal(series.execute().fetch(), pd.Series(data))
 
     series = md.Series(mt.ones((10,), chunk_size=4))
-    pd.testing.assert_series_equal(series.execute().fetch(), pd.Series(np.ones(10,)))
+    pd.testing.assert_series_equal(
+        series.execute().fetch(),
+        pd.Series(np.ones(10)),
+    )
 
     index_data = np.random.rand(10)
     series = md.Series(
@@ -498,7 +501,7 @@ def test_read_csv_execution(setup):
 
         df = pd.DataFrame(
             {
-                "col1": np.random.rand(100,),
+                "col1": np.random.rand(100),
                 "col2": np.random.choice(["a", "b", "c"], (100,)),
                 "col3": np.arange(100),
             }

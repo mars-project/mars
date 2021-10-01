@@ -162,7 +162,7 @@ class DataFrameReplace(DataFrameOperand, DataFrameOperandMixin):
                 )
             )
         else:
-            kw.update(dict(dtype=out_obj.dtype, shape=tuple(new_shape),))
+            kw.update(dict(dtype=out_obj.dtype, shape=tuple(new_shape)))
 
         new_op = op.copy().reset_key()
         new_op.stage = stage

@@ -699,7 +699,7 @@ def test_unique(setup, check_ref_counts):
     np.testing.assert_array_equal(result, expected)
 
     data2 = pd.Series(
-        [pd.Timestamp("20200101"),] * 5
+        [pd.Timestamp("20200101")] * 5
         + [pd.Timestamp("20200202")]
         + [pd.Timestamp("20020101")] * 9
     )

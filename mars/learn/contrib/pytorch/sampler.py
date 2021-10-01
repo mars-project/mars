@@ -27,7 +27,8 @@ from ....utils import require_not_none
 
 @require_not_none(torch)
 class SequentialSampler(Sampler):
-    r""""Samples elements sequentially, always in the same order.
+    r"""
+    Samples elements sequentially, always in the same order.
 
     Args:
         data_source (Dataset): dataset to sample from
@@ -46,7 +47,7 @@ class SequentialSampler(Sampler):
 
 @require_not_none(torch)
 class RandomSampler(Sampler):
-    r""""
+    r"""
     Samples elements randomly. If without replacement, then sample from a shuffled dataset.
     If with replacement, then user can specify :attr:`num_samples` to draw.
 
@@ -149,7 +150,8 @@ class SubsetRandomSampler(Sampler):
 
 @require_not_none(torch)
 class DistributedSampler(Sampler):
-    r"""Sampler that restricts data loading to a subset of the dataset.
+    r"""
+    Sampler that restricts data loading to a subset of the dataset.
 
     It is especially useful in conjunction with
     :class:`torch.nn.parallel.DistributedDataParallel`. In such a case, each

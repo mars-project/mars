@@ -76,7 +76,8 @@ def test_extensible_bind():
 
     test_inst = TestClass()
     test_inst.method.batch(
-        test_inst.method.delay(20), test_inst.method.delay(30, 5),
+        test_inst.method.delay(20),
+        test_inst.method.delay(30, 5),
     )
     assert test_inst.a_list == [20, 30]
     assert test_inst.b_list == [10, 5]

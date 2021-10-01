@@ -53,7 +53,7 @@ def test_einsum():
     data1 = np.random.rand(1, 10, 9)
     data2 = np.random.rand(9, 6)
     data3 = np.random.rand(10, 6)
-    data4 = np.random.rand(8,)
+    data4 = np.random.rand(8)
 
     t1 = tensor(data1, chunk_size=(1, (5, 5), (3, 3, 3)))
     t2 = tensor(data2, chunk_size=((3, 3, 3), (3, 3)))

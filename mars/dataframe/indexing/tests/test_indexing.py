@@ -79,9 +79,7 @@ def test_iloc_getitem():
 
     # index cannot be tuple
     with pytest.raises(IndexingError):
-        _ = df2.iloc[
-            (1,),
-        ]
+        _ = df2.iloc[((1,),)]
 
     # index wrong type
     with pytest.raises(TypeError):
@@ -232,13 +230,9 @@ def test_iloc_getitem():
     assert len(series.chunks) == 2
     assert series.chunks[0].shape == (2,)
     assert series.chunks[0].index == (0,)
-    assert series.chunks[0].op.indexes == [
-        slice(1, 3, 1),
-    ]
+    assert series.chunks[0].op.indexes == [slice(1, 3, 1)]
     assert series.chunks[1].shape == (2,)
-    assert series.chunks[1].op.indexes == [
-        slice(0, 2, 1),
-    ]
+    assert series.chunks[1].op.indexes == [slice(0, 2, 1)]
     assert series.chunks[1].index == (1,)
 
     # fancy index
@@ -732,7 +726,7 @@ def test_dataframe_getitem_bool():
 
 
 def test_series_getitem():
-    data = pd.Series(np.random.rand(10,), name="a")
+    data = pd.Series(np.random.rand(10), name="a")
     series = md.Series(data, chunk_size=3)
 
     result1 = series[2]

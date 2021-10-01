@@ -226,7 +226,7 @@ def test_sort_values_execution(setup, distinct_opt):
     pd.testing.assert_series_equal(result, series[series > 100].sort_values())
 
     # test series with None
-    series = pd.Series(np.arange(1000,))
+    series = pd.Series(np.arange(1000))
 
     series[series < 500] = "A"
     series[series != "A"] = None
@@ -301,7 +301,7 @@ def test_sort_index_execution(setup):
     pd.testing.assert_frame_equal(result, expected)
 
     # test series
-    raw = pd.Series(np.random.rand(10,), index=np.random.rand(10))
+    raw = pd.Series(np.random.rand(10), index=np.random.rand(10))
 
     series = Series(raw)
     result = series.sort_index().execute().fetch()
@@ -366,7 +366,10 @@ def test_gpu_execution(setup_gpu):
     pd.testing.assert_frame_equal(result.to_pandas(), expected)
 
     # test Series.sort_index
-    raw = pd.Series(np.random.rand(10,), index=np.random.rand(10))
+    raw = pd.Series(
+        np.random.rand(10),
+        index=np.random.rand(10),
+    )
     series = Series(raw).to_gpu()
 
     result = series.sort_index().execute().fetch()

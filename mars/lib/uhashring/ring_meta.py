@@ -24,13 +24,11 @@ class MetaRing(object):
         )
 
     def hashi(self, key):
-        """Returns an integer derived from the md5 hash of the given key.
-        """
+        """Returns an integer derived from the md5 hash of the given key."""
         return self._hash_fn(key)
 
     def _create_ring(self, nodes):
-        """Generate a ketama compatible continuum/ring.
-        """
+        """Generate a ketama compatible continuum/ring."""
         for node_name, node_conf in nodes:
             for w in range(0, node_conf["vnodes"] * node_conf["weight"]):
                 self._distribution[node_name] += 1

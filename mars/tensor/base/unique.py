@@ -105,7 +105,7 @@ class TensorUnique(TensorMapReduceOperand, TensorOperandMixin):
         shape[op.axis] = np.nan
         kw = {"shape": tuple(shape), "dtype": input_obj.dtype, "gpu": input_obj.op.gpu}
         if chunk:
-            idx = [0,] * len(shape)
+            idx = [0] * len(shape)
             idx[op.axis] = chunk_index or 0
             kw["index"] = tuple(idx)
         kws.append(kw)

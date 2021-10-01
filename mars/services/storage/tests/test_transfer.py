@@ -68,7 +68,7 @@ async def create_actors(actor_pools):
         store_memory=5 * 1024 * 1024, plasma_directory=plasma_dir, check_dir_size=False
     )
     storage_configs = (
-        {"plasma": plasma_setup_params,} if not _is_windows else {"shared_memory": {}}
+        {"plasma": plasma_setup_params} if not _is_windows else {"shared_memory": {}}
     )
 
     manager_ref1 = await mo.create_actor(

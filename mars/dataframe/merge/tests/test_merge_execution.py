@@ -404,8 +404,8 @@ def test_append_execution(setup):
     pd.testing.assert_frame_equal(expected, result)
 
     # test for series
-    series1 = pd.Series(np.random.rand(10,))
-    series2 = pd.Series(np.random.rand(10,))
+    series1 = pd.Series(np.random.rand(10))
+    series2 = pd.Series(np.random.rand(10))
 
     mseries1 = series_from_pandas(series1, chunk_size=3)
     mseries2 = series_from_pandas(series2, chunk_size=3)
@@ -433,7 +433,7 @@ def test_append_execution(setup):
     result = aseries.execute(extra_config={"check_index_value": False}).fetch()
     pd.testing.assert_series_equal(expected, result)
 
-    series3 = pd.Series(np.random.rand(4,))
+    series3 = pd.Series(np.random.rand(4))
     mseries3 = series_from_pandas(series3, chunk_size=2)
     expected = series1.append([series2, series3])
     aseries = mseries1.append([mseries2, mseries3])
@@ -490,8 +490,8 @@ def test_concat(setup):
     pd.testing.assert_frame_equal(expected, result)
 
     # test for series
-    series1 = pd.Series(np.random.rand(10,))
-    series2 = pd.Series(np.random.rand(10,))
+    series1 = pd.Series(np.random.rand(10))
+    series2 = pd.Series(np.random.rand(10))
 
     mseries1 = series_from_pandas(series1, chunk_size=3)
     mseries2 = series_from_pandas(series2, chunk_size=3)

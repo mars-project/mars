@@ -101,7 +101,7 @@ def test_fancy_indexing():
     )
 
     with pytest.raises(IndexError):
-        t[[100,]]
+        t[[100]]
 
     t = ones((100, 200, 300), chunk_size=10)
 
@@ -259,7 +259,7 @@ def test_mixed_indexing_tiles():
         5,
         slice(None),
         None,
-        cmp.cix[0,].data,
+        cmp.cix[(0,)].data,
     ]
 
 

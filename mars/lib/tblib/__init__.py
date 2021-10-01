@@ -205,8 +205,15 @@ class Traceback(object):
             co_filename=dct["tb_frame"]["f_code"]["co_filename"],
             co_name=dct["tb_frame"]["f_code"]["co_name"],
         )
-        frame = _AttrDict(f_globals=dct["tb_frame"]["f_globals"], f_code=code,)
-        tb = _AttrDict(tb_frame=frame, tb_lineno=dct["tb_lineno"], tb_next=tb_next,)
+        frame = _AttrDict(
+            f_globals=dct["tb_frame"]["f_globals"],
+            f_code=code,
+        )
+        tb = _AttrDict(
+            tb_frame=frame,
+            tb_lineno=dct["tb_lineno"],
+            tb_next=tb_next,
+        )
         return cls(tb)
 
     @classmethod
@@ -236,7 +243,8 @@ class Traceback(object):
                     tb_frame=_AttrDict(
                         frame,
                         f_globals=_AttrDict(
-                            __file__=frame["co_filename"], __name__="?",
+                            __file__=frame["co_filename"],
+                            __name__="?",
                         ),
                         f_code=_AttrDict(frame),
                     ),

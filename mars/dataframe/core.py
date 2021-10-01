@@ -223,7 +223,7 @@ class IndexValue(Serializable):
         _end = AnyField("end")
         _year = AnyField("year")
         _month = AnyField("month")
-        _quater = AnyField("quater")
+        _quarter = AnyField("quarter")
         _day = AnyField("day")
         _hour = AnyField("hour")
         _minute = AnyField("minute")

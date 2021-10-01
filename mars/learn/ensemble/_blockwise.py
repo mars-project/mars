@@ -79,7 +79,10 @@ class BlockwiseEnsembleFit(LearnOperand, LearnOperandMixin):
         out_chunks = []
         for i, _ in enumerate(x_split):
             chunk_op = op.copy().reset_key()
-            out_chunk = chunk_op.new_chunk([X.cix[i, 0], y.cix[i,]], index=(i,))
+            out_chunk = chunk_op.new_chunk(
+                [X.cix[i, 0], y.cix[(i,)]],
+                index=(i,),
+            )
             out_chunks.append(out_chunk)
 
         params = out.params.copy()

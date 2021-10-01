@@ -1029,7 +1029,7 @@ class MainActorPoolBase(ActorPoolBase):
     @classmethod
     @abstractmethod
     async def wait_sub_pools_ready(cls, create_pool_tasks: List[asyncio.Task]):
-        """Wait all sub pools ready """
+        """Wait all sub pools ready"""
 
     def attach_sub_process(self, external_address: str, process: SubProcessHandle):
         self.sub_processes[external_address] = process

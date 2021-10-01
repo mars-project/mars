@@ -155,7 +155,11 @@ def test_arrow():
 
 
 @pytest.mark.parametrize(
-    "np_val", [np.random.rand(100, 100), np.random.rand(100, 100).T,]
+    "np_val",
+    [
+        np.random.rand(100, 100),
+        np.random.rand(100, 100).T,
+    ],
 )
 @require_cupy
 def test_cupy(np_val):

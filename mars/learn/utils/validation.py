@@ -636,7 +636,7 @@ def check_non_negative(X, whom):
 
 
 def column_or_1d(y, warn=False):
-    """ Ravel column or 1d numpy array, else raises an error
+    """Ravel column or 1d numpy array, else raises an error
 
     Parameters
     ----------

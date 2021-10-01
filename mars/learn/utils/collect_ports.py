@@ -68,7 +68,7 @@ class CollectPorts(LearnOperand, LearnOperandMixin):
             deps = [dep]
         else:
             deps = None
-        return self.new_tileable(deps, shape=(len(self.workers,),), dtype=np.dtype(int))
+        return self.new_tileable(deps, shape=(len(self.workers),), dtype=np.dtype(int))
 
     @classmethod
     def tile(cls, op: "CollectPorts"):

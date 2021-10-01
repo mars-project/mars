@@ -22,7 +22,7 @@ class MarsApiEntryHandler(MarsRequestHandler):
         import mars
 
         version = mars.__version__
-        self.write(json.dumps({"mars_version": version,}))
+        self.write(json.dumps({"mars_version": version}))
 
 
 web_handlers = {"/api": MarsApiEntryHandler}

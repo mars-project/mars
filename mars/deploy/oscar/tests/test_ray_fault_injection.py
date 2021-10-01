@@ -38,7 +38,10 @@ FAULT_INJECTION_CONFIG = {
     "third_party_modules": ["mars.services.tests.fault_injection_patch"],
 }
 SUBTASK_RERUN_CONFIG = {
-    "scheduling": {"subtask_max_retries": 2, "subtask_max_reschedules": 2,}
+    "scheduling": {
+        "subtask_max_retries": 2,
+        "subtask_max_reschedules": 2,
+    }
 }
 
 

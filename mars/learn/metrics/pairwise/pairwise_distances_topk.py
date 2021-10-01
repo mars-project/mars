@@ -92,8 +92,7 @@ def get_chunk_n_rows(row_bytes, max_n_rows=None, working_memory=None):
 
 
 def _precompute_metric_params(X, Y, xp, metric=None, **kwds):  # pragma: no cover
-    """Precompute data-derived metric parameters if not provided
-    """
+    """Precompute data-derived metric parameters if not provided"""
     if metric == "seuclidean" and "V" not in kwds:
         if X is Y:
             V = xp.var(X, axis=0, ddof=1)
@@ -110,8 +109,7 @@ def _precompute_metric_params(X, Y, xp, metric=None, **kwds):  # pragma: no cove
 
 
 def _check_chunk_size(reduced, chunk_size):  # pragma: no cover
-    """Checks chunk is a sequence of expected size or a tuple of same
-    """
+    """Checks chunk is a sequence of expected size or a tuple of same"""
     if reduced is None:
         return
     is_tuple = isinstance(reduced, tuple)

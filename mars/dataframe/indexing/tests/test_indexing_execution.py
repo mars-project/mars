@@ -522,7 +522,7 @@ def test_series_getitem(setup):
     series5 = series[selected]
     pd.testing.assert_series_equal(series5.execute().fetch(), data[selected])
 
-    data = pd.Series(np.random.rand(10,))
+    data = pd.Series(np.random.rand(10))
     series = md.Series(data, chunk_size=3)
     selected = series[:2]
     pd.testing.assert_series_equal(selected.execute().fetch(), data[:2])
@@ -761,9 +761,15 @@ def test_reset_index_execution(setup):
     expected = (data1 + data2).reset_index()
     np.testing.assert_array_equal(result.to_numpy(), expected.to_numpy())
 
-    data1 = pd.Series(np.random.rand(10,), index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9])
+    data1 = pd.Series(
+        np.random.rand(10),
+        index=[0, 10, 2, 3, 4, 5, 6, 7, 8, 9],
+    )
     series1 = md.Series(data1, chunk_size=3)
-    data2 = pd.Series(np.random.rand(10,), index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3])
+    data2 = pd.Series(
+        np.random.rand(10),
+        index=[11, 1, 2, 5, 7, 6, 8, 9, 10, 3],
+    )
     series2 = md.Series(data2, chunk_size=3)
     df = (series1 + series2).reset_index(incremental_index=True)
     result = df.execute().fetch()

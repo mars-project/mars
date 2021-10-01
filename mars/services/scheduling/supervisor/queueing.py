@@ -222,7 +222,7 @@ class SubtaskQueueingActor(mo.Actor):
             yield asyncio.gather(*submit_aio_tasks)
 
     def _ensure_top_item_valid(self, task_queue):
-        """Clean invalid subtask item from queue to ensure that """
+        """Clean invalid subtask item from queue to ensure that"""
         while (
             task_queue and task_queue[0].subtask.subtask_id not in self._stid_to_items
         ):

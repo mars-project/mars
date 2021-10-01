@@ -99,7 +99,7 @@ def test_rechunk_execution(setup):
     pd.testing.assert_frame_equal(data, res)
 
     # test Series rechunk execution.
-    data = pd.Series(np.random.rand(10,))
+    data = pd.Series(np.random.rand(10))
     series = from_pandas_series(data)
     series2 = series.rechunk(3)
     res = series2.execute().fetch()
@@ -110,7 +110,7 @@ def test_rechunk_execution(setup):
     pd.testing.assert_series_equal(data, res)
 
     # test index rechunk execution
-    data = pd.Index(np.random.rand(10,))
+    data = pd.Index(np.random.rand(10))
     index = from_pandas_index(data)
     index2 = index.rechunk(3)
     res = index2.execute().fetch()
@@ -470,7 +470,11 @@ def test_transform_execute(setup):
         pd.testing.assert_frame_equal(result, expected)
 
         fn_dict = OrderedDict(
-            [("A", "cumsum"), ("D", ["cumsum", "cummax"]), ("F", lambda x: x + 1),]
+            [
+                ("A", "cumsum"),
+                ("D", ["cumsum", "cummax"]),
+                ("F", lambda x: x + 1),
+            ]
         )
         r = df.transform(fn_dict)
         result = r.execute().fetch()

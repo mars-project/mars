@@ -50,13 +50,13 @@ def test_local_run_script(setup_cluster):
 
 def test_local_run_script_with_exec(setup_cluster):
     s = BytesIO(script2)
-    assert run_script(s, n_workers=2,).fetch()["status"] == "ok"
+    assert run_script(s, n_workers=2).fetch()["status"] == "ok"
 
 
 def test_local_run_script_with_data(setup_cluster):
     s = BytesIO(script3)
     data = {"tensor": mt.arange(10), "df": md.DataFrame({"s": mt.arange(9, 0, -1)})}
-    assert run_script(s, data=data, n_workers=1,).fetch()["status"] == "ok"
+    assert run_script(s, data=data, n_workers=1).fetch()["status"] == "ok"
 
     pytest.raises(TypeError, run_script, s, data=[])
 

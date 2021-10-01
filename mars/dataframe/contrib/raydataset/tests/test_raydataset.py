@@ -92,7 +92,10 @@ async def test_mars_with_xgboost(ray_large_cluster, create_cluster):
         train_set = RayDMatrix(ds, "target")
         evals_result = {}
         bst = train(
-            {"objective": "binary:logistic", "eval_metric": ["logloss", "error"],},
+            {
+                "objective": "binary:logistic",
+                "eval_metric": ["logloss", "error"],
+            },
             train_set,
             evals_result=evals_result,
             evals=[(train_set, "train")],

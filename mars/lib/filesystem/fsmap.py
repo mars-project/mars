@@ -76,8 +76,7 @@ class FSMap(MutableMapping):
         return fs.pathsep.join(new_paths)
 
     def clear(self):
-        """Remove all keys below root - empties out mapping
-        """
+        """Remove all keys below root - empties out mapping"""
         try:
             self.fs.rm(self.root, True)
             self.fs.mkdir(self.root)

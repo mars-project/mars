@@ -66,7 +66,11 @@ def buffered(func):
     @wraps(func)
     def wrapped(self, obj: Any, context: Dict):
         if id(obj) in context:
-            return {"id": id(obj), "serializer": "ref", "buf_num": 0,}, []
+            return {
+                "id": id(obj),
+                "serializer": "ref",
+                "buf_num": 0,
+            }, []
         else:
             context[id(obj)] = obj
             return func(self, obj, context)
@@ -86,7 +90,9 @@ def pickle_buffers(obj):
             buffers.append(memoryview(x))
 
         buffers[0] = cloudpickle.dumps(
-            obj, buffer_callback=buffer_cb, protocol=BUFFER_PICKLE_PROTOCOL,
+            obj,
+            buffer_callback=buffer_cb,
+            protocol=BUFFER_PICKLE_PROTOCOL,
         )
     else:  # pragma: no cover
         buffers[0] = cloudpickle.dumps(obj)

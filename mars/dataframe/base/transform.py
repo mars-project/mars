@@ -489,7 +489,7 @@ def series_transform(
     0  0.000000   1.000000
     1  1.000000   2.718282
     2  1.414214   7.389056
-   """
+    """
     op = TransformOperand(
         func=func,
         axis=axis,

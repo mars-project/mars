@@ -622,7 +622,7 @@ def calc_nsplits(chunk_idx_to_shape: Dict[Tuple[int], Tuple[int]]) -> Tuple[Tupl
 
 
 def sort_dataframe_result(df, result: pd.DataFrame) -> pd.DataFrame:
-    """ sort DataFrame on client according to `should_be_monotonic` attribute """
+    """sort DataFrame on client according to `should_be_monotonic` attribute"""
     if hasattr(df, "index_value"):
         if getattr(df.index_value, "should_be_monotonic", False):
             try:

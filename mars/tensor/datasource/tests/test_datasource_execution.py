@@ -981,7 +981,7 @@ def test_read_tile_db_execution(setup):
     try:
         # create 1-d TileDB sparse array
         dom = tiledb.Domain(
-            tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32), ctx=ctx,
+            tiledb.Dim(ctx=ctx, domain=(1, 100), tile=30, dtype=np.int32), ctx=ctx
         )
         schema = tiledb.ArraySchema(
             ctx=ctx,

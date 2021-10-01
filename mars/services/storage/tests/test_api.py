@@ -63,7 +63,7 @@ if ray is not None:
 
 # vineyard
 if vineyard is not None:
-    storage_configs.append({"vineyard": dict(vineyard_size="256M",)})
+    storage_configs.append({"vineyard": dict(vineyard_size="256M")})
 
 # shared_memory
 storage_configs.append({"shared_memory": dict()})

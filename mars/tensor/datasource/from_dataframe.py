@@ -22,7 +22,7 @@ from .core import TensorHasInput
 
 
 class TensorFromDataFrame(TensorHasInput):
-    """ represent tensor from DataFrame """
+    """represent tensor from DataFrame"""
 
     _op_type_ = OperandDef.TENSOR_FROM_DATAFRAME
     _input = KeyField("_input")

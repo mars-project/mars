@@ -124,7 +124,7 @@ def test_binary_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize("func", ["betainc", "betaincinv", "hyp1f1", "hyperu",])
+@pytest.mark.parametrize("func", ["betainc", "betaincinv", "hyp1f1", "hyperu"])
 def test_triple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)
@@ -159,7 +159,7 @@ def test_triple_execution(setup, func):
     np.testing.assert_array_equal(result.toarray(), expected)
 
 
-@pytest.mark.parametrize("func", ["hyp2f1",])
+@pytest.mark.parametrize("func", ["hyp2f1"])
 def test_quadruple_execution(setup, func):
     sp_func = getattr(spspecial, func)
     mt_func = getattr(mt_special, func)

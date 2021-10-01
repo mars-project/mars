@@ -41,7 +41,10 @@ async def test_cluster_service(actor_pools):
 
     config = {
         "services": ["cluster"],
-        "cluster": {"backend": "fixed", "lookup_address": sv_pool.external_address,},
+        "cluster": {
+            "backend": "fixed",
+            "lookup_address": sv_pool.external_address,
+        },
     }
     await start_services(NodeRole.SUPERVISOR, config, address=sv_pool.external_address)
     await start_services(NodeRole.WORKER, config, address=worker_pool.external_address)

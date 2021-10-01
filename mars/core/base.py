@@ -107,7 +107,11 @@ def buffered(func):
     def wrapped(self, obj: Base, context: Dict):
         obj_id = (obj.key, obj.id)
         if obj_id in context:
-            return {"id": id(context[obj_id]), "serializer": "ref", "buf_num": 0,}, []
+            return {
+                "id": id(context[obj_id]),
+                "serializer": "ref",
+                "buf_num": 0,
+            }, []
         else:
             context[obj_id] = obj
             return func(self, obj, context)

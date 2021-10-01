@@ -559,7 +559,10 @@ def test_make_dtypes():
 
 @pytest.mark.parametrize(
     "columns",
-    [pd.RangeIndex(8), pd.MultiIndex.from_product([list("AB"), list("CDEF")]),],
+    [
+        pd.RangeIndex(8),
+        pd.MultiIndex.from_product([list("AB"), list("CDEF")]),
+    ],
 )
 def test_build_concatenated_rows_frame(setup, columns):
     df = pd.DataFrame(np.random.rand(16, 8), columns=columns)

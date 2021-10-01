@@ -265,7 +265,7 @@ def test_nunique():
     tiled = tile(result)
     assert tiled.shape == (10,)
     assert len(tiled.chunks) == 4
-    assert tiled.nsplits == ((3, 3, 3, 1,),)
+    assert tiled.nsplits == ((3, 3, 3, 1),)
     assert tiled.chunks[0].op.stage == OperandStage.agg
     assert isinstance(tiled.chunks[0].op, DataFrameAggregate)
 
@@ -280,7 +280,7 @@ def test_nunique():
     tiled = tile(result2)
     assert tiled.shape == (20,)
     assert len(tiled.chunks) == 7
-    assert tiled.nsplits == ((3, 3, 3, 3, 3, 3, 2,),)
+    assert tiled.nsplits == ((3, 3, 3, 3, 3, 3, 2),)
     assert tiled.chunks[0].op.stage == OperandStage.agg
     assert isinstance(tiled.chunks[0].op, DataFrameAggregate)
 

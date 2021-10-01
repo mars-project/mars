@@ -263,7 +263,7 @@ _hist_bin_selectors = {
 
 
 def _ravel_and_check_weights(a, weights):
-    """ Check a and weights have matching shapes, and ravel both """
+    """Check a and weights have matching shapes, and ravel both"""
     a = astensor(a)
 
     # Ensure that the array is a "subtractable" dtype

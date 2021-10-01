@@ -175,7 +175,7 @@ def test_rechunk():
         assert len(c.columns_value.to_pandas()) == len(c.dtypes)
 
     # test Series rechunk
-    series = from_pandas_series(pd.Series(np.random.rand(10,)), chunk_size=3)
+    series = from_pandas_series(pd.Series(np.random.rand(10)), chunk_size=3)
     series2 = tile(series.rechunk(4))
 
     assert series2.shape == (10,)

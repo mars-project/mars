@@ -321,7 +321,7 @@ class DataFrameFromTensor(DataFrameOperand, DataFrameOperandMixin):
                 )
             shape = (nsplit[i], len(out_df.dtypes))
             out_chunk = chunk_op.new_chunk(
-                [t.cix[i,] for t in in_tensors],
+                [t.cix[(i,)] for t in in_tensors],
                 shape=shape,
                 index=chunk_index,
                 dtypes=dtypes,
