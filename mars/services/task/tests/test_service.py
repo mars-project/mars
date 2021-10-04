@@ -416,6 +416,7 @@ async def test_get_tileable_details(start_test_service):
 
             if property_key == 'id':
                 contain_id_property = True
+
     assert contain_id_property == True
 
 
