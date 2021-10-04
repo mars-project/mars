@@ -151,7 +151,6 @@ export default class TaskTileableGraph extends React.Component {
         }/tileable_detail`)
             .then(res => res.json())
             .then((res) => {
-                console.log(res);
                 this.setState({
                     tileableDetails: res,
                 });
