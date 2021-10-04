@@ -600,11 +600,13 @@ class TaskProcessorActor(mo.Actor):
                 status = SubtaskStatus.running
 
             # get properties for tileable
-            all_propertes = {'slot': getattr(tileable, slot, None) for slot in tileable.__slots__}
+            all_propertes = {}
+            for slot in tileable.__slots__:
+                all_propertes.update(getattr(tileable, slot, None))
 
             # Only int/float/string type values for now
             displayed_properties = dict()
-            for property_key, property_value in all_propertes['slot'].items():
+            for property_key, property_value in all_propertes.items():
                 # Omit key property
                 if (property_key == 'key'):
                     continue
