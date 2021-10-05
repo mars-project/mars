@@ -384,27 +384,6 @@ async def test_get_tileable_details(start_test_service):
     details = await task_api.get_tileable_details(task_id)
     assert details[r7.key]['status'] == SubtaskStatus.errored.value
 
-    def a():
-        return md.DataFrame([[1, 2], [3, 4]])
-
-    def b():
-        return md.DataFrame([[1, 2, 3, 4], [4, 3, 2, 1]])
-
-    def c(a, b):
-        return a.sum() * a.product() * b.sum() * a.sum() / a.sum() * b.product() / a.product()
-
-    ra = mr.spawn(a)
-    rb = mr.spawn(b)
-    rc = mr.spawn(c, args=(ra, rb))
-
-    graph = TileableGraph([rc.data])
-    next(TileableGraphBuilder(graph).build())
-
-    task_id = await task_api.submit_tileable_graph(graph, fuse_enabled=False)
-
-    await asyncio.sleep(1)
-    details = await task_api.get_tileable_details(task_id)
-
     def is_valid_type(value):
         return isinstance(value, int) or isinstance(value, float) or isinstance(value, str)
 
