@@ -22,8 +22,10 @@ import pandas as pd
 from ... import opcodes
 from ...core import OutputType, get_output_types, recursive_tile
 from ...core.operand import OperandStage
+from ...dataframe.core import DATAFRAME_TYPE
+from ...dataframe.utils import parse_index
 from ...serialization.serializables import AnyField, BoolField, \
-    Int64Field, Float32Field, TupleField, FieldTypes
+    Int64Field, Float32Field, TupleField, ReferenceField, FieldTypes
 from ...tensor.core import TENSOR_CHUNK_TYPE
 from ...tensor.random import RandomStateField
 from ...tensor.utils import gen_random_seeds
@@ -45,6 +47,30 @@ def _extract_bagging_io(io_list: Iterable, op: LearnOperand,
         next(input_iter) if output and op.with_feature_indices else None,
     ]
     return out
+
+
+def _get_by_iloc(x, idx, axis=0):
+    if hasattr(x, 'iloc'):
+        item_getter = x.iloc
+    else:
+        item_getter = x
+    if axis == 0:
+        return item_getter[idx]
+    else:
+        return item_getter[:, idx]
+
+
+def _concat_on_axis(data_list, axis=0, out_chunk=None):
+    if isinstance(out_chunk, TENSOR_CHUNK_TYPE):
+        return np.concatenate(data_list, axis=axis)
+    else:
+        return pd.concat(data_list, axis=axis)
+
+
+def _concat_by_row(row, out_chunk=None):
+    arr = np.empty((1,), dtype=object)
+    arr[0] = _concat_on_axis(row.tolist(), axis=0, out_chunk=out_chunk)
+    return arr
 
 
 class BaggingSample(LearnShuffle, LearnOperandMixin):
@@ -344,18 +370,6 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
         in_weights_data = ctx[in_weights.key] if op.with_weights else None
         out_samples = op.outputs[0]
 
-        def row_loc(x, idx):
-            if hasattr(x, 'iloc'):
-                return x.iloc[idx]
-            else:
-                return x[idx]
-
-        def col_loc(x, idx):
-            if hasattr(x, 'iloc'):
-                return x.iloc[:, idx]
-            else:
-                return x[:, idx]
-
         remains = op.n_estimators % op.n_reducers
         reducer_iters = [itertools.repeat(idx, 1 + op.n_estimators // op.n_reducers)
                          for idx in range(remains)]
@@ -374,18 +388,18 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                     in_sample_data.shape[0], op.max_samples[est_id],
                     op.sample_random_state, op.bootstrap)
 
-                sampled_data = row_loc(sampled_data, sample_indices)
+                sampled_data = _get_by_iloc(sampled_data, sample_indices)
                 if sampled_labels is not None:
-                    sampled_labels = row_loc(sampled_labels, sample_indices)
+                    sampled_labels = _get_by_iloc(sampled_labels, sample_indices)
                 if sampled_weights is not None:
-                    sampled_weights = row_loc(sampled_weights, sample_indices)
+                    sampled_weights = _get_by_iloc(sampled_weights, sample_indices)
 
             if op.max_features[est_id] != in_sample_data.shape[1]:
                 feature_indices = cls._gen_sample_indices(
                     in_sample_data.shape[1], op.max_features[est_id],
                     op.feature_random_state, op.bootstrap_features)
 
-                sampled_data = col_loc(sampled_data, feature_indices)
+                sampled_data = _get_by_iloc(sampled_data, feature_indices, axis=1)
                 if not op.with_feature_indices:
                     feature_indices = None
             else:
@@ -466,21 +480,10 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 for data_idx, feature_index in enumerate(next(group_iter)):
                     feature_indices_holder[data_idx][input_idx[1]] = feature_index
 
-        def concat_fun(data_list, axis=0, out_chunk=None):
-            if isinstance(out_chunk, TENSOR_CHUNK_TYPE):
-                return np.concatenate(data_list, axis=axis)
-            else:
-                return pd.concat(data_list, axis=axis)
-
-        def concat_row(row, out_chunk=None):
-            arr = np.empty((1,), dtype=object)
-            arr[0] = concat_fun(row.tolist(), axis=0, out_chunk=out_chunk)
-            return arr
-
         data_results: List[Optional[np.ndarray]] = [None] * len(sample_holder)
         for est_idx, sample_mat in enumerate(sample_holder):
-            row_chunks = np.apply_along_axis(concat_row, axis=0, arr=sample_mat, out_chunk=out_data)
-            data_results[est_idx] = concat_fun(row_chunks[0].tolist(), axis=1, out_chunk=out_data)
+            row_chunks = np.apply_along_axis(_concat_by_row, axis=0, arr=sample_mat, out_chunk=out_data)
+            data_results[est_idx] = _concat_on_axis(row_chunks[0].tolist(), axis=1, out_chunk=out_data)
         ctx[out_data.key] = tuple(data_results)
 
         for out, holder in zip(
@@ -491,7 +494,7 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
                 continue
             results: List[Optional[np.ndarray]] = [None] * len(holder)
             for est_idx, labels_vct in enumerate(holder):
-                results[est_idx] = concat_fun(labels_vct.tolist(), out_chunk=out)
+                results[est_idx] = _concat_on_axis(labels_vct.tolist(), out_chunk=out)
             if holder is feature_indices_holder:
                 ctx[out.key] = np.stack(results)
             else:
@@ -503,3 +506,104 @@ class BaggingSample(LearnShuffle, LearnOperandMixin):
             cls._execute_map(ctx, op)
         else:
             cls._execute_reduce(ctx, op)
+
+
+class BaggingSampleReindex(LearnOperand, LearnOperandMixin):
+    _op_type_ = opcodes.BAGGING_SHUFFLE_REINDEX
+
+    n_estimators: int = Int64Field('n_estimators')
+    start_col_index: int = Int64Field('start_col_index', 0)
+    feature_indices: TileableType = ReferenceField('feature_indices', default=None)
+
+    def _set_inputs(self, inputs):
+        super()._set_inputs(inputs)
+        if self.feature_indices is not None:
+            self.feature_indices = inputs[-1]
+
+    def __call__(self, data: TileableType, feature_indices: TileableType = None):
+        self._output_types = get_output_types(data)
+        inputs = [data]
+        self.feature_indices = feature_indices
+        params = data.params
+        if feature_indices is not None:
+            inputs.append(feature_indices)
+            params['shape'] = (data.shape[0], np.nan)
+        if isinstance(data, DATAFRAME_TYPE):
+            params['index_value'] = parse_index(pd.Int64Index([]), data.key)
+        return self.new_tileable(inputs, **params)
+
+    @classmethod
+    def tile(cls, op: "BaggingSampleReindex"):
+        t_data = op.inputs[0]
+        t_out = op.outputs[0]
+        t_feature_idxes = op.feature_indices
+        cum_nsplits = np.cumsum(np.concatenate([[0], t_data.nsplits[1]]))
+
+        if t_feature_idxes is None:
+            out = t_data
+            if out.chunk_shape[1] > 1:
+                out = yield from recursive_tile(out.rechunk({1: (out.shape[1],)}))
+            return out
+
+        # generate map chunks
+        map_holder = np.empty(t_data.chunk_shape + (t_feature_idxes.chunk_shape[0],),
+                              dtype=np.dtype(object))
+        for chunk in t_data.chunks:
+            for feature_idx_chunk in t_feature_idxes.chunks:
+                new_op = op.copy().reset_key()
+                new_op.stage = OperandStage.map
+                new_op.start_col_index = int(cum_nsplits[chunk.index[1]])
+                params = chunk.params
+                new_index = params['index'] = chunk.index + (feature_idx_chunk.index[0],)
+                if t_feature_idxes.chunk_shape[0] == 1:
+                    new_index = new_index[:-1]
+                map_holder[new_index] = new_op.new_chunk(
+                    [chunk, feature_idx_chunk], **params
+                )
+        if op.feature_indices.chunk_shape[0] == 1:
+            chunks = map_holder.reshape((t_data.chunk_shape[0],)).tolist()
+        else:
+            def _gen_combine_chunk(chunks):
+                new_op = op.copy().reset_key()
+                new_op.feature_indices = None
+                new_op.stage = OperandStage.combine
+                params = chunks[0].params
+                params['shape'] = (chunks[0].shape[0], op.feature_indices.shape[1])
+                params['index'] = (chunks[0].index[0], chunks[0].index[2])
+                if isinstance(t_data, DATAFRAME_TYPE):
+                    params['index_value'] = parse_index(pd.Int64Index([]), chunks[0].key)
+                inputs = chunks.tolist()
+                return new_op.new_chunk(inputs, **params)
+
+            chunks_array = np.apply_along_axis(_gen_combine_chunk, 1, map_holder)
+            chunks = chunks_array.reshape((chunks_array.size,)).tolist()
+
+        new_op = op.copy().reset_key()
+        new_nsplits = (t_data.nsplits[0], (op.feature_indices.shape[1],) * t_feature_idxes.chunk_shape[0])
+        return new_op.new_tileables(op.inputs, chunks=chunks,
+                                    nsplits=new_nsplits, **t_out.params)
+
+    @classmethod
+    def _execute_map(cls, ctx, op: "BaggingSampleReindex"):
+        data = ctx[op.inputs[0].key]
+        feature_idx = ctx[op.feature_indices.key] - op.start_col_index
+        filtered = []
+        for row in feature_idx:
+            row = row[(row >= 0) & (row < data.shape[1])]
+            filtered.append(_get_by_iloc(data, row, axis=1))
+        ctx[op.outputs[0].key] = tuple(filtered)
+
+    @classmethod
+    def _execute_combine(cls, ctx, op: "BaggingSampleReindex"):
+        data_inputs = [ctx[c.key] for c in op.inputs]
+        concatenated = []
+        for data_input in zip(*data_inputs):
+            concatenated.append(_concat_on_axis(data_input, 1, op.inputs[0]))
+        ctx[op.outputs[0].key] = tuple(concatenated)
+
+    @classmethod
+    def execute(cls, ctx, op: "BaggingSampleReindex"):
+        if op.stage == OperandStage.combine:
+            cls._execute_combine(ctx, op)
+        else:
+            cls._execute_map(ctx, op)
