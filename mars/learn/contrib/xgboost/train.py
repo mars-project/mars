@@ -129,7 +129,7 @@ class XGBTrain(MergeDictOperand):
                 in_chunk = worker_to_in_chunks[worker]
             else:
                 in_chunk_op = ToDMatrix(data=None, label=None, weight=None,
-                                        missing=inp.op.missing,
+                                        base_margin=None, missing=inp.op.missing,
                                         feature_names=inp.op.feature_names,
                                         feature_types=inp.op.feature_types,
                                         _output_types=inp.op.output_types)
