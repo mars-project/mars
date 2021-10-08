@@ -28,6 +28,9 @@ export const nodesStatusType = PropTypes.shape({
         status: PropTypes.number.isRequired,
         progress: PropTypes.number.isRequired,
         subtaskCount: PropTypes.number,
+        properties: PropTypes.shape({
+            id: PropTypes.string,
+        }),
     })
 });
 

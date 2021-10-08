@@ -43,6 +43,8 @@ class TileableDetail extends React.Component {
             return null;
         }
 
+        console.log(this.props.tileable);
+
         return (
             this.props.tileable
                 ?
@@ -60,6 +62,12 @@ class TileableDetail extends React.Component {
                                     <h2>Tileable Graph Info:</h2>
                                     <div>Tileable ID: <br/>{this.props.tileable.id}</div><br/>
                                     <div>Tileable Name: <br/>{this.props.tileable.name}</div><br/><br />
+                                    <div>Tileable Properties:</div><br/>
+                                    {/* {
+                                        Object.keys(this.props.tileable.properties).forEach((key) => {
+                                            console.log(key);
+                                        })
+                                    } */}
                                 </React.Fragment>
                                 :
                                 <Suspense fallback={<div>Loading...</div>}>
