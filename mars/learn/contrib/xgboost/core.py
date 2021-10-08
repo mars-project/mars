@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Callable, List, Optional, Tuple
+
 try:
     import xgboost
 except ImportError:
@@ -61,33 +63,82 @@ if xgboost:
             """
             raise NotImplementedError
 
-    def evaluation_matrices(validation_set, sample_weights, session=None, run_kwargs=None):
+    def wrap_evaluation_matrices(
+            missing: float,
+            X: Any,
+            y: Any,
+            sample_weight: Optional[Any],
+            base_margin: Optional[Any],
+            eval_set: Optional[List[Tuple[Any, Any]]],
+            sample_weight_eval_set: Optional[List[Any]],
+            base_margin_eval_set: Optional[List[Any]],
+            label_transform: Callable = lambda x: x,
+    ) -> Tuple[Any, Optional[List[Tuple[Any, str]]]]:
+        """Convert array_like evaluation matrices into DMatrix.  Perform validation on the way.
         """
-        Parameters
-        ----------
-        validation_set: list of tuples
-            Each tuple contains a validation dataset including input X and label y.
-            E.g.:
-            .. code-block:: python
-              [(X_0, y_0), (X_1, y_1), ... ]
-        sample_weights: list of arrays
-            The weight vector for validation data.
-        session:
-            Session to run
-        run_kwargs:
-            kwargs for session.run
-        Returns
-        -------
-        evals: list of validation MarsDMatrix
-        """
-        evals = []
-        if validation_set is not None:
-            assert isinstance(validation_set, list)
-            for i, e in enumerate(validation_set):
-                w = (sample_weights[i]
-                     if sample_weights is not None else None)
-                dmat = MarsDMatrix(e[0], label=e[1], weight=w)
-                evals.append((dmat, f'validation_{i}'))
+        train_dmatrix = MarsDMatrix(
+            data=X,
+            label=label_transform(y),
+            weight=sample_weight,
+            base_margin=base_margin,
+            missing=missing,
+        )
+
+        n_validation = 0 if eval_set is None else len(eval_set)
+
+        def validate_or_none(meta: Optional[List], name: str) -> List:
+            if meta is None:
+                return [None] * n_validation
+            if len(meta) != n_validation:
+                raise ValueError(
+                    f"{name}'s length does not equal `eval_set`'s length, " +
+                    f"expecting {n_validation}, got {len(meta)}"
+                )
+            return meta
+
+        if eval_set is not None:
+            sample_weight_eval_set = validate_or_none(
+                sample_weight_eval_set, "sample_weight_eval_set"
+            )
+            base_margin_eval_set = validate_or_none(
+                base_margin_eval_set, "base_margin_eval_set"
+            )
+
+            evals = []
+            for i, (valid_X, valid_y) in enumerate(eval_set):
+                # Skip the duplicated entry.
+                if all(
+                        (
+                                valid_X is X, valid_y is y,
+                                sample_weight_eval_set[i] is sample_weight,
+                                base_margin_eval_set[i] is base_margin,
+                        )
+                ):
+                    evals.append(train_dmatrix)
+                else:
+                    m = MarsDMatrix(
+                        data=valid_X,
+                        label=label_transform(valid_y),
+                        weight=sample_weight_eval_set[i],
+                        base_margin=base_margin_eval_set[i],
+                        missing=missing,
+                    )
+                    evals.append(m)
+            nevals = len(evals)
+            eval_names = [f"validation_{i}" for i in range(nevals)]
+            evals = list(zip(evals, eval_names))
         else:
-            evals = None
-        return evals
+            if any(
+                    meta is not None
+                    for meta in [
+                        sample_weight_eval_set,
+                        base_margin_eval_set,
+                    ]
+            ):
+                raise ValueError(
+                    "`eval_set` is not set but one of the other evaluation meta info is "
+                    "not None."
+                )
+            evals = []
+
+        return train_dmatrix, evals

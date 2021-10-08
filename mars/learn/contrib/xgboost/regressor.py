@@ -19,8 +19,7 @@ from .core import xgboost, XGBScikitLearnBase
 
 XGBRegressor = make_import_error_func('xgboost')
 if xgboost:
-    from .dmatrix import MarsDMatrix
-    from .core import evaluation_matrices
+    from .core import wrap_evaluation_matrices
     from .train import train
     from .predict import predict
 
@@ -29,16 +28,17 @@ if xgboost:
         Implementation of the scikit-learn API for XGBoost regressor.
         """
 
-        def fit(self, X, y, sample_weights=None, eval_set=None, sample_weight_eval_set=None, **kw):
+        def fit(self, X, y, sample_weight=None, base_margin=None,
+                eval_set=None, sample_weight_eval_set=None, base_margin_eval_set=None, **kw):
             session = kw.pop('session', None)
             run_kwargs = kw.pop('run_kwargs', dict())
             if kw:
                 raise TypeError(f"fit got an unexpected keyword argument '{next(iter(kw))}'")
 
-            dtrain = MarsDMatrix(X, label=y, weight=sample_weights)
+            dtrain, evals = wrap_evaluation_matrices(
+                None, X, y, sample_weight, base_margin, eval_set,
+                sample_weight_eval_set, base_margin_eval_set)
             params = self.get_xgb_params()
-            evals = evaluation_matrices(eval_set, sample_weight_eval_set,
-                                        session=session, run_kwargs=run_kwargs)
             self.evals_result_ = dict()
             result = train(params, dtrain, num_boost_round=self.get_num_boosting_rounds(),
                            evals=evals, evals_result=self.evals_result_,
