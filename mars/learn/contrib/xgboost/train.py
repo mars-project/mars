@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import pickle
 from collections import OrderedDict, defaultdict
 
@@ -24,7 +25,7 @@ from ....core.operand import MergeDictOperand
 from ....serialization.serializables import FieldTypes, DictField, KeyField, ListField
 from ....utils import ensure_own_data
 from .start_tracker import StartTracker
-from .dmatrix import ToDMatrix
+from .dmatrix import ToDMatrix, to_dmatrix
 
 
 def _on_serialize_evals(evals_val):
@@ -96,16 +97,6 @@ class XGBTrain(MergeDictOperand):
             [c.inputs[0].inputs[0].key for c in dmatrix.chunks], fields=['bands'])
         return [m['bands'][0][0] for m in metas]
 
-    @staticmethod
-    def _get_dmatrix_worker_to_chunk(dmatrix, workers, ctx):
-        worker_to_chunk = dict()
-        expect_workers = set(workers)
-        workers = XGBTrain._get_dmatrix_chunks_workers(ctx, dmatrix)
-        for w, c in zip(workers, dmatrix.chunks):
-            if w in expect_workers:
-                worker_to_chunk[w] = c
-        return worker_to_chunk
-
     @classmethod
     def tile(cls, op):
         ctx = get_context()
@@ -113,20 +104,39 @@ class XGBTrain(MergeDictOperand):
         inp = op.inputs[0]
         in_chunks = inp.chunks
         workers = cls._get_dmatrix_chunks_workers(ctx, inp)
+        worker_to_in_chunks = dict(zip(workers, in_chunks))
         n_chunk = len(in_chunks)
-        tracker_chunk = StartTracker(n_workers=n_chunk, pure_depends=[True] * n_chunk)\
-            .new_chunk(in_chunks, shape=())
         out_chunks = []
         worker_to_evals = defaultdict(list)
         if op.evals is not None:
             for dm, ev in op.evals:
-                worker_to_chunk = cls._get_dmatrix_worker_to_chunk(dm, workers, ctx)
-                for worker, chunk in worker_to_chunk.items():
-                    worker_to_evals[worker].append((chunk, ev))
-        for in_chunk, worker in zip(in_chunks, workers):
+                ev_workers = cls._get_dmatrix_chunks_workers(ctx, dm)
+                for ev_worker, ev_chunk in zip(ev_workers, dm.chunks):
+                    worker_to_evals[ev_worker].append((ev_chunk, ev))
+
+        all_workers = set(workers)
+        all_workers.update(worker_to_evals)
+
+        i = itertools.count(n_chunk)
+        tracker_chunk = StartTracker(
+            n_workers=len(all_workers),
+            pure_depends=[True] * n_chunk).new_chunk(in_chunks, shape=())
+        for worker in all_workers:
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
             chunk_op._tracker = tracker_chunk
+            if worker in worker_to_in_chunks:
+                in_chunk = worker_to_in_chunks[worker]
+            else:
+                in_chunk_op = ToDMatrix(data=None, label=None, weight=None,
+                                        missing=inp.op.missing,
+                                        feature_names=inp.op.feature_names,
+                                        feature_types=inp.op.feature_types,
+                                        _output_types=inp.op.output_types)
+                params = inp.params.copy()
+                params['index'] = (next(i),)
+                params['shape'] = (0, inp.shape[1])
+                in_chunk = in_chunk_op.new_chunk(None, kws=[params])
             chunk_evals = list(worker_to_evals.get(worker, list()))
             chunk_op._evals = chunk_evals
             input_chunks = [in_chunk] + [pair[0] for pair in chunk_evals] + [tracker_chunk]
@@ -194,7 +204,18 @@ def train(params, dtrain, evals=(), **kwargs):
     evals_result = kwargs.pop('evals_result', dict())
     session = kwargs.pop('session', None)
     run_kwargs = kwargs.pop('run_kwargs', dict())
-    op = XGBTrain(params=params, dtrain=dtrain, evals=evals, kwargs=kwargs)
+
+    processed_evals = []
+    if evals:
+        for eval_dmatrix, name in evals:
+            if not isinstance(name, str):
+                raise TypeError('evals must a list of pairs (DMatrix, string)')
+            if hasattr(eval_dmatrix, 'op') and isinstance(eval_dmatrix.op, ToDMatrix):
+                processed_evals.append((eval_dmatrix, name))
+            else:
+                processed_evals.append((to_dmatrix(eval_dmatrix), name))
+
+    op = XGBTrain(params=params, dtrain=dtrain, evals=processed_evals, kwargs=kwargs)
     t = op()
     ret = t.execute(session=session, **run_kwargs).fetch(session=session)
     evals_result.update(ret['history'])

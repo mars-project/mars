@@ -35,8 +35,7 @@ if xgboost:
             if kw:
                 raise TypeError(f"fit got an unexpected keyword argument '{next(iter(kw))}'")
 
-            dtrain = MarsDMatrix(X, label=y, weight=sample_weights,
-                                 session=session, run_kwargs=run_kwargs)
+            dtrain = MarsDMatrix(X, label=y, weight=sample_weights)
             params = self.get_xgb_params()
             evals = evaluation_matrices(eval_set, sample_weight_eval_set,
                                         session=session, run_kwargs=run_kwargs)

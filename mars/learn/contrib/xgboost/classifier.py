@@ -37,8 +37,7 @@ if xgboost:
             if kw:
                 raise TypeError(f"fit got an unexpected keyword argument '{next(iter(kw))}'")
 
-            dtrain = MarsDMatrix(X, label=y, weight=sample_weights,
-                                 session=session, run_kwargs=run_kwargs)
+            dtrain = MarsDMatrix(X, label=y, weight=sample_weights)
             params = self.get_xgb_params()
 
             self.classes_ = mt.unique(y, aggregate_size=1).to_numpy(session=session, **run_kwargs)

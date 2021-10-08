@@ -86,8 +86,7 @@ if xgboost:
             for i, e in enumerate(validation_set):
                 w = (sample_weights[i]
                      if sample_weights is not None else None)
-                dmat = MarsDMatrix(e[0], label=e[1], weight=w,
-                                   session=session, run_kwargs=run_kwargs)
+                dmat = MarsDMatrix(e[0], label=e[1], weight=w)
                 evals.append((dmat, f'validation_{i}'))
         else:
             evals = None
