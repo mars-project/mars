@@ -82,8 +82,9 @@ jobs:
           conda install -n test --quiet --yes -c pkgs/main python=$PYTHON certifi
 
           if [[ "$(mars.test.module)" == "learn" ]]; then
+            # remove version limit when blue-yonder/tsfresh#897 is fixed.
             pip install xgboost lightgbm tensorflow faiss-cpu torch torchvision \
-              statsmodels tsfresh
+              statsmodels\<0.13.0 tsfresh
           fi
         fi
         conda list -n test

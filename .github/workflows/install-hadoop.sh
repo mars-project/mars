@@ -9,7 +9,7 @@ sudo npm uninstall -g yarn || true
 
 sudo apt-get install -yq ssh rsync
 
-VERSION=3.3.0
+VERSION=3.3.1
 HADOOP_URL="https://www.apache.org/dyn/mirrors/mirrors.cgi?action=download&filename=hadoop/common/hadoop-$VERSION/hadoop-$VERSION.tar.gz"
 
 # download hadoop
