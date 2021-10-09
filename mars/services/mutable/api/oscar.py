@@ -31,30 +31,35 @@ APIType = TypeVar('APIType', bound='MutableAPI')
 
 class MutableAPI(AbstractMutableAPI):
     def __init__(self,
+                 session_id: str,
                  address: str,
                  cluster_api: ClusterAPI):
+        self._session_id = session_id
         self._address = address
         self._cluster_api = cluster_api
         self._tensor_check = OrderedDict()
 
     @classmethod
     @alru_cache(cache_exceptions=False)
-    async def create(cls, address: str) -> "MutableAPI":
+    async def create(cls,
+                     session_id: str,
+                     address: str) -> "MutableAPI":
         cluster_api = await ClusterAPI.create(address)
-        return MutableAPI(address, cluster_api)
+        return MutableAPI(session_id, address, cluster_api)
 
     async def create_mutable_tensor(self,
-                                    session_id: str,
                                     shape: tuple,
                                     dtype: str,
                                     chunk_size: Union[int, tuple],
-                                    name: str=None,
-                                    default_value: Union[int, float] =0):
+                                    name: str = None,
+                                    default_value: Union[int, float] = 0):
         worker_pools: dict = await self._cluster_api.get_all_bands(role=NodeRole.WORKER)
         if name is None:
             name = str(uuid.uuid1())
         ref = await mo.create_actor(
-            MutableTensorActor, session_id, shape, dtype, chunk_size, worker_pools, name, default_value, address=self._address, uid=to_binary(name))
+            MutableTensorActor, self._session_id, shape, dtype,
+            chunk_size, worker_pools, name, default_value,
+            address=self._address, uid=to_binary(name))
         wrapper = await MutableTensor.create(ref)
         self._tensor_check[name] = wrapper
         return wrapper

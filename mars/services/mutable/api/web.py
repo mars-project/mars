@@ -31,9 +31,9 @@ class MutableWebAPIHandler(MarsServiceWebAPIHandler):
         default_value = body_args.get('default_value')
 
         from .oscar import MutableAPI
-        oscar_api = await MutableAPI.create(self._supervisor_addr)
+        oscar_api = await MutableAPI.create(session_id, self._supervisor_addr)
 
-        res = await oscar_api.create_mutable_tensor(session_id, shape, dtype, chunk_size, name, default_value)
+        res = await oscar_api.create_mutable_tensor(shape, dtype, chunk_size, name, default_value)
         self.write(serialize_serializable(res))
 
     @web_api('(?P<name>[^/]+)', method='get')
@@ -47,8 +47,8 @@ class MutableWebAPIHandler(MarsServiceWebAPIHandler):
 
 class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
     def __init__(self,
-                session_id: str,
-                address: str):
+                 session_id: str,
+                 address: str):
         self._session_id = session_id
         self._address = address.rstrip('/')
 
@@ -57,7 +57,7 @@ class WebMutableAPI(AbstractMutableAPI, MarsWebAPIClientMixin):
                                     dtype: str,
                                     chunk_size,
                                     name: str = None,
-                                    default_value: Union[int, float]=0):
+                                    default_value: Union[int, float] = 0):
         path = f'{self._address}/api/session/{self._session_id}/mutable/{name}'
         params = dict(shape=shape, dtype=dtype, chunk_size=chunk_size, default_value=default_value)
         body = serialize_serializable(params)

@@ -25,12 +25,12 @@ class AbstractMutableAPI(ABC):
                                     chunk_size: Union[int, tuple],
                                     name: str = None,
                                     default_value=0):
-        '''
+        """
         create mutable tensor
-        '''
+        """
 
     @abstractmethod
     async def get_mutable_tensor(self, name: str):
-        '''
+        """
         get mutable tensor
-        '''
+        """

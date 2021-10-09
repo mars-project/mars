@@ -60,7 +60,7 @@ class Chunk:
         for k, v in self._ops.items():
             last_version = 0
 
-            for version_t, val in v.items():
+            for version_t, _ in v.items():
                 if version_t <= version_time:
                     last_version = version_t if version_t > last_version else last_version
             result = self._value if last_version == 0 else v[last_version]
