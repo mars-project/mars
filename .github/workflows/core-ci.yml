@@ -39,7 +39,7 @@ jobs:
         source ./ci/reload-env.sh
         export DEFAULT_VENV=$VIRTUAL_ENV
 
-        if [[ ! "$PYTHON" =~ "3.9" ]]; then
+        if [[ ! "$PYTHON" =~ "3.6" ]]; then
           conda install -n test --quiet --yes -c conda-forge python=$PYTHON numba
         fi
 
