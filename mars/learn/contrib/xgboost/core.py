@@ -73,18 +73,17 @@ if xgboost:
             raise NotImplementedError
 
     def wrap_evaluation_matrices(
-            missing: float,
-            X: Any,
-            y: Any,
-            sample_weight: Optional[Any],
-            base_margin: Optional[Any],
-            eval_set: Optional[List[Tuple[Any, Any]]],
-            sample_weight_eval_set: Optional[List[Any]],
-            base_margin_eval_set: Optional[List[Any]],
-            label_transform: Callable = lambda x: x,
+        missing: float,
+        X: Any,
+        y: Any,
+        sample_weight: Optional[Any],
+        base_margin: Optional[Any],
+        eval_set: Optional[List[Tuple[Any, Any]]],
+        sample_weight_eval_set: Optional[List[Any]],
+        base_margin_eval_set: Optional[List[Any]],
+        label_transform: Callable = lambda x: x,
     ) -> Tuple[Any, Optional[List[Tuple[Any, str]]]]:
-        """Convert array_like evaluation matrices into DMatrix.  Perform validation on the way.
-        """
+        """Convert array_like evaluation matrices into DMatrix.  Perform validation on the way."""
         train_dmatrix = MarsDMatrix(
             data=X,
             label=label_transform(y),
@@ -100,8 +99,8 @@ if xgboost:
                 return [None] * n_validation
             if len(meta) != n_validation:
                 raise ValueError(
-                    f"{name}'s length does not equal `eval_set`'s length, " +
-                    f"expecting {n_validation}, got {len(meta)}"
+                    f"{name}'s length does not equal `eval_set`'s length, "
+                    + f"expecting {n_validation}, got {len(meta)}"
                 )
             return meta
 
@@ -117,11 +116,12 @@ if xgboost:
             for i, (valid_X, valid_y) in enumerate(eval_set):
                 # Skip the duplicated entry.
                 if all(
-                        (
-                                valid_X is X, valid_y is y,
-                                sample_weight_eval_set[i] is sample_weight,
-                                base_margin_eval_set[i] is base_margin,
-                        )
+                    (
+                        valid_X is X,
+                        valid_y is y,
+                        sample_weight_eval_set[i] is sample_weight,
+                        base_margin_eval_set[i] is base_margin,
+                    )
                 ):
                     evals.append(train_dmatrix)
                 else:
@@ -138,11 +138,11 @@ if xgboost:
             evals = list(zip(evals, eval_names))
         else:
             if any(
-                    meta is not None
-                    for meta in [
-                        sample_weight_eval_set,
-                        base_margin_eval_set,
-                    ]
+                meta is not None
+                for meta in [
+                    sample_weight_eval_set,
+                    base_margin_eval_set,
+                ]
             ):
                 raise ValueError(
                     "`eval_set` is not set but one of the other evaluation meta info is "

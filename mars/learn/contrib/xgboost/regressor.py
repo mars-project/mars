@@ -32,10 +32,12 @@ if xgboost:
             self,
             X,
             y,
-            sample_weight=None, base_margin=None,
+            sample_weight=None,
+            base_margin=None,
             eval_set=None,
             sample_weight_eval_set=None,
-           base_margin_eval_set=None, **kw,
+            base_margin_eval_set=None,
+            **kw,
         ):
             session = kw.pop("session", None)
             run_kwargs = kw.pop("run_kwargs", dict())
@@ -45,8 +47,15 @@ if xgboost:
                 )
 
             dtrain, evals = wrap_evaluation_matrices(
-                None, X, y, sample_weight, base_margin, eval_set,
-                sample_weight_eval_set, base_margin_eval_set)
+                None,
+                X,
+                y,
+                sample_weight,
+                base_margin,
+                eval_set,
+                sample_weight_eval_set,
+                base_margin_eval_set,
+            )
             params = self.get_xgb_params()
             self.evals_result_ = dict()
             result = train(

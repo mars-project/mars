@@ -394,11 +394,13 @@ async def test_get_tileable_details(start_test_service):
 
     contain_id_property = False
     for tileable in details.keys():
-        for property_key, property_value in details.get(tileable).get('properties').items():
-            assert property_key != 'key'
+        for property_key, property_value in (
+            details.get(tileable).get("properties").items()
+        ):
+            assert property_key != "key"
             assert isinstance(property_value, (int, float, str))
 
-            if property_key == 'id':
+            if property_key == "id":
                 contain_id_property = True
 
     assert contain_id_property == True

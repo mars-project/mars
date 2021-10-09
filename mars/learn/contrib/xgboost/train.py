@@ -135,8 +135,8 @@ class XGBTrain(MergeDictOperand):
 
         i = itertools.count(n_chunk)
         tracker_chunk = StartTracker(
-            n_workers=len(all_workers),
-            pure_depends=[True] * n_chunk).new_chunk(in_chunks, shape=())
+            n_workers=len(all_workers), pure_depends=[True] * n_chunk
+        ).new_chunk(in_chunks, shape=())
         for worker in all_workers:
             chunk_op = op.copy().reset_key()
             chunk_op.expect_worker = worker
@@ -144,14 +144,19 @@ class XGBTrain(MergeDictOperand):
             if worker in worker_to_in_chunks:
                 in_chunk = worker_to_in_chunks[worker]
             else:
-                in_chunk_op = ToDMatrix(data=None, label=None, weight=None,
-                                        base_margin=None, missing=inp.op.missing,
-                                        feature_names=inp.op.feature_names,
-                                        feature_types=inp.op.feature_types,
-                                        _output_types=inp.op.output_types)
+                in_chunk_op = ToDMatrix(
+                    data=None,
+                    label=None,
+                    weight=None,
+                    base_margin=None,
+                    missing=inp.op.missing,
+                    feature_names=inp.op.feature_names,
+                    feature_types=inp.op.feature_types,
+                    _output_types=inp.op.output_types,
+                )
                 params = inp.params.copy()
-                params['index'] = (next(i),)
-                params['shape'] = (0, inp.shape[1])
+                params["index"] = (next(i),)
+                params["shape"] = (0, inp.shape[1])
                 in_chunk = in_chunk_op.new_chunk(None, kws=[params])
             chunk_evals = list(worker_to_evals.get(worker, list()))
             chunk_op._evals = chunk_evals
@@ -239,8 +244,8 @@ def train(params, dtrain, evals=(), **kwargs):
     if evals:
         for eval_dmatrix, name in evals:
             if not isinstance(name, str):
-                raise TypeError('evals must a list of pairs (DMatrix, string)')
-            if hasattr(eval_dmatrix, 'op') and isinstance(eval_dmatrix.op, ToDMatrix):
+                raise TypeError("evals must a list of pairs (DMatrix, string)")
+            if hasattr(eval_dmatrix, "op") and isinstance(eval_dmatrix.op, ToDMatrix):
                 processed_evals.append((eval_dmatrix, name))
             else:
                 processed_evals.append((to_dmatrix(eval_dmatrix), name))

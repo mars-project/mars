@@ -33,23 +33,25 @@ from ...utils import convert_to_tensor_or_dataframe, concat_chunks
 class ToDMatrix(LearnOperand, LearnOperandMixin):
     _op_type_ = OperandDef.TO_DMATRIX
 
-    data = KeyField('data')
-    label = KeyField('label')
-    missing = Float64Field('missing')
-    weight = KeyField('weight')
-    base_margin = KeyField('base_margin')
-    feature_names = ListField('feature_names')
-    feature_types = ListField('feature_types')
+    data = KeyField("data")
+    label = KeyField("label")
+    missing = Float64Field("missing")
+    weight = KeyField("weight")
+    base_margin = KeyField("base_margin")
+    feature_names = ListField("feature_names")
+    feature_types = ListField("feature_types")
     # if to collocate the data, label and weight
-    _collocate = BoolField('collocate', default=False)
+    _collocate = BoolField("collocate", default=False)
 
     @property
     def output_limit(self):
         if self._collocate:
-            return 1 + \
-                   (self.label is not None) + \
-                   (self.weight is not None) + \
-                   (self.base_margin is not None)
+            return (
+                1
+                + (self.label is not None)
+                + (self.weight is not None)
+                + (self.base_margin is not None)
+            )
         return 1
 
     def _set_inputs(self, inputs):
@@ -90,13 +92,15 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return self.new_tileable(inputs, **kw)
 
     @classmethod
-    def _get_collocated(cls,
-                        op: "ToDMatrix",
-                        data: TileableType,
-                        label: TileableType,
-                        weight: TileableType,
-                        base_margin: TileableType) -> List[TileableType]:
-        types = ['data', 'label', 'weight', 'base_margin']
+    def _get_collocated(
+        cls,
+        op: "ToDMatrix",
+        data: TileableType,
+        label: TileableType,
+        weight: TileableType,
+        base_margin: TileableType,
+    ) -> List[TileableType]:
+        types = ["data", "label", "weight", "base_margin"]
         nsplit = data.nsplits[0]
         out_chunkss = [[] for _ in op.inputs]
         for i in range(len(nsplit)):
@@ -113,12 +117,14 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             for type_name, inp in zip(types[1:], [label, weight, base_margin]):
                 if inp is None:
                     continue
-                inp_chunk = inp.cix[i, ]
+                inp_chunk = inp.cix[
+                    i,
+                ]
                 setattr(chunk_op, type_name, inp_chunk)
                 inps.append(inp_chunk)
                 kw = cls._get_kw(inp_chunk)
-                kw['index'] = inp_chunk.index
-                kw['type'] = type_name
+                kw["index"] = inp_chunk.index
+                kw["type"] = type_name
                 kws.append(kw)
                 output_types.append(get_output_types(inp)[0])
             chunk_op.output_types = output_types
@@ -129,8 +135,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         new_op = op.copy()
         new_op._collocate = True
         outs = [data, label, weight, base_margin]
-        params = [out.params.copy() for out in outs
-                  if out is not None]
+        params = [out.params.copy() for out in outs if out is not None]
         output_types = []
         j = 0
         for i, out in enumerate(outs):
@@ -175,8 +180,9 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             base_margin = yield from recursive_tile(base_margin.rechunk({0: nsplit}))
 
         collocated = cls._get_collocated(op, data, label, weight, base_margin)
-        collocated_chunks = list(itertools.chain.from_iterable(
-            c.chunks for c in collocated))
+        collocated_chunks = list(
+            itertools.chain.from_iterable(c.chunks for c in collocated)
+        )
         yield collocated_chunks + collocated
 
         data = build_fetch(collocated[0])
@@ -259,7 +265,8 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
             ensure_own_data(data),
             label=ensure_own_data(label),
             missing=missing,
-            weight=ensure_own_data(weight),base_margin=base_margin,
+            weight=ensure_own_data(weight),
+            base_margin=base_margin,
             feature_names=feature_names,
             feature_types=feature_types,
             nthread=-1,
@@ -272,9 +279,7 @@ class ToDMatrix(LearnOperand, LearnOperandMixin):
         return ctx[chunk.key]
 
     @classmethod
-    def execute(cls,
-                ctx: Union[dict, Context],
-                op: "ToDMatrix"):
+    def execute(cls, ctx: Union[dict, Context], op: "ToDMatrix"):
         if op._collocate:
             outs = op.outputs
             ctx[outs[0].key] = ctx[op.inputs[0].key]
@@ -319,16 +324,23 @@ def check_array_like(y: TileableType, name: str) -> TileableType:
         y = y.iloc[:, 0]
     y = astensor(y)
     if y.ndim != 1:
-        raise ValueError(f'Expecting 1-d {name}, got: {y.ndim}-d')
+        raise ValueError(f"Expecting 1-d {name}, got: {y.ndim}-d")
     return y
 
 
-def to_dmatrix(data, label=None, missing=None, weight=None, base_margin=None,
-               feature_names=None, feature_types=None):
+def to_dmatrix(
+    data,
+    label=None,
+    missing=None,
+    weight=None,
+    base_margin=None,
+    feature_names=None,
+    feature_types=None,
+):
     data = check_data(data)
-    label = check_array_like(label, 'label')
-    weight = check_array_like(weight, 'weight')
-    base_margin = check_array_like(base_margin, 'base_margin')
+    label = check_array_like(label, "label")
+    weight = check_array_like(weight, "weight")
+    base_margin = check_array_like(base_margin, "base_margin")
 
     # If not multiple outputs, try to collect the chunks on same worker into one
     # to feed the data into XGBoost for training.
@@ -336,7 +348,8 @@ def to_dmatrix(data, label=None, missing=None, weight=None, base_margin=None,
         data=data,
         label=label,
         missing=missing,
-        weight=weight,base_margin=base_margin,
+        weight=weight,
+        base_margin=base_margin,
         feature_names=feature_names,
         feature_types=feature_types,
         gpu=data.op.gpu,

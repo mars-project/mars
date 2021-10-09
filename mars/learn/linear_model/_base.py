@@ -337,12 +337,13 @@ class LinearClassifierMixin(ClassifierMixin):
         """
         check_is_fitted(self)
 
-        X = check_array(X, accept_sparse='csr')
+        X = check_array(X, accept_sparse="csr")
 
         n_features = self.coef_.shape[1]
         if X.shape[1] != n_features:
-            raise ValueError("X has %d features per sample; expecting %d"
-                             % (X.shape[1], n_features))
+            raise ValueError(
+                "X has %d features per sample; expecting %d" % (X.shape[1], n_features)
+            )
 
         scores = mt.dot(X, self.coef_.T) + self.intercept_
         return scores

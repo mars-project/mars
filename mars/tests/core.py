@@ -343,7 +343,7 @@ class ObjectCheckMixin:
             raise AssertionError(f"Type of real value ({type(real)}) not DataFrame")
         self.assert_shape_consistent(expected.shape, real.shape)
         if not np.isnan(expected.shape[1]) and expected.dtypes is not None:
-            if self._check_options['check_dtypes']:
+            if self._check_options["check_dtypes"]:
                 # ignore check when columns length is nan or dtypes undefined
                 pd.testing.assert_index_equal(
                     expected.dtypes.index, self.adapt_index_value(real.dtypes.index)
