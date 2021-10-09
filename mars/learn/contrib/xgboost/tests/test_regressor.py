@@ -51,7 +51,7 @@ def test_local_regressor(setup):
     weight = mt.random.rand(X.shape[0])
     classifier = XGBRegressor(verbosity=1, n_estimators=2)
     regressor.set_params(tree_method='hist')
-    classifier.fit(X, y, sample_weights=weight)
+    classifier.fit(X, y, sample_weight=weight)
     prediction = classifier.predict(X)
 
     assert prediction.ndim == 1
