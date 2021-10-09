@@ -241,7 +241,7 @@ class MiniBatchKMeans(KMeans):
         Number of batches processed.
 
     counts_ : ndarray of shape (n_clusters,)
-        Weigth sum of each cluster.
+        Weight sum of each cluster.
 
     init_size_ : int
         The effective number of samples used for the initialization.

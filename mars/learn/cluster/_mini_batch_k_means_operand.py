@@ -422,7 +422,7 @@ def _mini_batch_step(X, sample_weight, x_squared_norms, centers, n_clusters,
         pick new clusters amongst observations with uniform probability. Use
         an int to make the randomness deterministic.
 
-    reassignment_ratio : float, defalut=.01
+    reassignment_ratio : float, default=.01
         Control the fraction of the maximum number of counts for a
         center to be reassigned. A higher value means that low count
         centers are more likely to be reassigned, which means that the
