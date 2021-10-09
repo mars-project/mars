@@ -21,7 +21,7 @@ except:
 
 from ... import tensor as mt
 from ..base import BaseEstimator
-from ..utils.validation import check_memory
+# from ..utils.validation import check_memory
 from ..utils.validation import _num_samples
 from ._agglomerative_operand import ward_tree, CutTree
 
@@ -36,7 +36,7 @@ _TREE_BUILDERS = dict(
 
 class AgglomerativeClustering(ClusterMixin, BaseEstimator):
     """Agglomerative Clustering.
-    
+
     Read more in the :ref:`User Guide <agglomerative clustering>`.
 
     Parameters
@@ -81,7 +81,7 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
     Attributes
     ----------
     n_clusters_ : int
-        The number of clusters found by the algorithm. If ``distance_threshold=None``, 
+        The number of clusters found by the algorithm. If ``distance_threshold=None``,
         it will be equal to the given ``n_clusters``.
 
     labels_ : ndarray of shape (n_samples)
@@ -159,7 +159,6 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
             raise ValueError(f"Unknown linkage type {self.linkage}. "
                              f"Valid options are {_TREE_BUILDERS.keys()}")
 
-
     def fit(self, X, y=None, session=None, run_kwargs=None):
         """Compute agglomerative clustering.
 
@@ -191,11 +190,10 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
 
         self._check_params()
 
-
         # print("\033[32m mars fit memory\033[0m", memory, X) ==
 
         tree_builder = _TREE_BUILDERS[self.linkage]
-        
+
         connectivity = self.connectivity
         if self.connectivity is not None:
             if callable(self.connectivity):
@@ -206,7 +204,6 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
                                 accept_large_sparse=True)
             connectivity.execute(session=session, **(run_kwargs or dict()))
             # print("\033[32m mars fit 接受connectivity\033[0m", type(connectivity), connectivity.shape) ==
-
 
         n_samples = len(X)
         # print("\033[32m mars fit n_samples\033[0m", n_samples) ==
@@ -248,16 +245,14 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
         # out = memory.cache(tree_builder)==
         # print("\033[32m mars fit memory.cache的返回\033[0m", out)==
 
-
         # out = memory.cache(tree_builder)(X, connectivity=connectivity, ==
         #                                  n_clusters=n_clusters,
         #                                  return_distance=return_distance,
         #                                  **kwargs)
         out = tree_builder(X, connectivity=connectivity, n_clusters=n_clusters,
-                           return_distance=return_distance, 
+                           return_distance=return_distance,
                            session=session, run_kwargs=run_kwargs)
-        (self.children_, self.n_connected_components_,
-                self.n_leaves_, parents) = out[:4]
+        (self.children_, self.n_connected_components_, self.n_leaves_, parents) = out[:4]
 
         if return_distance:
             self.distances_ = out[-1]
@@ -268,7 +263,6 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
 
         # print(type(self.children_))==
         # print(max(self.children_))==
-
 
         if self.distance_threshold is not None:  # distance_threshold is used
             self.n_clusters_ = mt.count_nonzero(                            # TODO(mimeku): 这个部分没有测试
@@ -289,14 +283,13 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
             # print(type(self.n_clusters_), type(self.n_leaves_), type(n_samples), type(self.children_))==
             # print(self.children_)
 
-
             # print(max(self.children_[-1])) ==
 
             cut_op = CutTree(children=self.children_, n_clusters=self.n_clusters_, n_leaves=self.n_leaves_, n_samples=n_samples)
             ret = cut_op()
             # print("\033[32m mars fit cuttree\033[0m", ret) ==
             label = ret
-            
+
             label.execute()
             # print(label) ==
             self.labels_ = label
@@ -312,14 +305,13 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
             self.labels_ = mt.searchsorted(mt.unique(labels), labels)
             self.labels_.execute()
 
-        
         return self
-
 
     def fit_predict(self, X, y=None):
         """Fit and return the result of each sample's clustering assignment.
         In addition to fitting, this method also return the result of the
         clustering assignment for each sample in the training set.
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features) or \
@@ -334,5 +326,3 @@ class AgglomerativeClustering(ClusterMixin, BaseEstimator):
             Cluster labels.
         """
         return super().fit_predict(X, y)
-
-

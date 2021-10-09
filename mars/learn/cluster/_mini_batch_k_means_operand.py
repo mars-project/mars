@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-from numpy import random
-import scipy.sparse as sp
 
 from ... import opcodes
 from ... import tensor as mt
@@ -240,11 +238,7 @@ class MiniBatchUpdate(LearnOperand, LearnOperandMixin):
             ctx[op.outputs[1].key] = np.array([squared_diff])
 
 
-
 def _reassign_cluster(X, weight_sums, centers, reassignment_ratio, random_state):
-
-    # print("\033[34m !!! 重新分配现场\033[0m") ===
-
     # Reassign clusters that have very low weight
     to_reassign = weight_sums < reassignment_ratio * weight_sums.max()
     # pick at most .5 * batch_size samples as new centers
@@ -253,7 +247,6 @@ def _reassign_cluster(X, weight_sums, centers, reassignment_ratio, random_state)
             np.argsort(weight_sums)[int(.5 * X.shape[0]):]
         to_reassign[indices_dont_reassign] = False
     n_reassigns = to_reassign.sum()
-    # print("\033[31m mars 重新分配部分n_reassigns\033[0m", n_reassigns) ===
 
     if n_reassigns:
         # Pick new clusters amongst observations with uniform probability
@@ -261,13 +254,11 @@ def _reassign_cluster(X, weight_sums, centers, reassignment_ratio, random_state)
                                           size=n_reassigns)
         # TODO(mimku): Add support for sparse mode
         centers[to_reassign] = X[new_centers]
-        # print("\033[34m 簇中心重新分配\033[0m", centers) ===
 
     # reset counts of reassigned centers, but don't reset them too small
     # to avoid instant reassignment. This is a pretty dirty hack as it
     # also modifies the learning rates.
     weight_sums[to_reassign] = np.min(weight_sums[~to_reassign])
-    # print("\033[31m mars 重新分配部分\033[0m", weight_sums) ===
     return n_reassigns
 
 
@@ -367,10 +358,7 @@ class MiniBatchReassignCluster(LearnOperand, LearnOperandMixin):
         out_params[0]['chunks'] = n_reassign_chunk
         out_params[0]['shape'] = (x.chunk_shape[0],)
         new_op = op.copy()
-        
-        return new_op.new_tileables(op.inputs, kws=out_params)
-        print(ret)
-        return ret
+
         return new_op.new_tileables(op.inputs, kws=out_params)
 
     @classmethod
@@ -381,7 +369,6 @@ class MiniBatchReassignCluster(LearnOperand, LearnOperandMixin):
             ret_extra=True, copy_if_not_writeable=True
         )
         with device(device_id):
-            # print("\033[34m 重新分配算子 进入\033[0m") ===
             if xp is np:
                 method = _reassign_cluster
             elif xp is sparse:
@@ -460,15 +447,12 @@ def _mini_batch_step(X, sample_weight, x_squared_norms, centers, n_clusters,
                                               centers, session=session, run_kwargs=run_kwargs)
 
     if random_reassign and reassignment_ratio > 0:
-        # print('\033[31m mars的mini batch正式迭代中进入簇心重采样\033[0m', random_reassign) ===
         reassign_op = MiniBatchReassignCluster(x=X, weight_sums=weight_sums, centers=centers,
                                                reassignment_ratio=reassignment_ratio,
                                                state=random_state)
         n_reassign = reassign_op()
         mt.ExecutableTuple([n_reassign]).execute(session=session,
-                                                        **(run_kwargs or dict()))
-        # print("\033[33m mars 重新分配结束\033[0m", n_reassign) ===
-        # print("\033[33m mars 重新分配结束\033[0m", centers)
+                                                 **(run_kwargs or dict()))
 
         if verbose:
             print(f"Reassigning {n_reassign} cluster centers.")
@@ -485,6 +469,5 @@ def _mini_batch_step(X, sample_weight, x_squared_norms, centers, n_clusters,
     # Execute for checking convergence later
     mt.ExecutableTuple([inertia, squared_diff]).execute(session=session,
                                                         **(run_kwargs or dict()))
-    # print("\033[34m step 更新后 \033[0m", centers_new) ===
 
     return centers_new, inertia, squared_diff

@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from copy import deepcopy
-from numpy.core.defchararray import center
-from scipy.sparse.construct import rand
-from mars.dataframe.indexing.sample import sample
 import warnings
 
 import numpy as np
@@ -25,19 +21,16 @@ from ...tensor.utils import check_random_state
 from ..utils.extmath import row_norms
 from ..utils.validation import _num_samples, check_array
 from ..utils.validation import _check_sample_weight
-
 from ._kmeans import KMeans
 from ._kmeans import _validate_center_shape, _tolerance
 from ._kmeans import _labels_inertia, _init_centroids
 from ._kmeans import _check_normalize_sample_weight
-
 from ._mini_batch_k_means_operand import _mini_batch_step
 
 
-
-def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples, 
-                            centers_squared_diff, batch_inertia, context, 
-                            verbose=0, iteration_idx=None, n_iter=None, 
+def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
+                            centers_squared_diff, batch_inertia, context,
+                            verbose=0, iteration_idx=None, n_iter=None,
                             session=None, run_kwargs=None):
     """Helper function to encapsulate the early stopping logic.
 
@@ -45,7 +38,7 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
     ----------
 
     batch_size : int
-        The batch size used in the last iteration, which is used to normalize 
+        The batch size used in the last iteration, which is used to normalize
         inertia to be able to compare values when batch size changes.
 
     max_no_improvement : int
@@ -59,7 +52,7 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
         closer to the one used for the batch variant of the algorithms
         but induces a slight computational and memory overhead over the
         inertia heuristic.
-    
+
     n_samples : int
         The number of samples in the dataset.
 
@@ -70,18 +63,18 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
         Sum of squared distances of samples to their closest cluster center.
 
     context : dict
-        Record information about previous iterations to determine whether to 
+        Record information about previous iterations to determine whether to
         end the iteration prematurely.
-    
+
     verbose : boolean, optional
         Verbosity mode.
 
     iteration_idx : int
-        The number of iterations have used MiniBatch. Only work for the 
+        The number of iterations have used MiniBatch. Only work for the
         verbose mode to output the corresponding information.
-    
+
     n_iter : int
-        The total number of iterations using MiniBatch. Only work for the 
+        The total number of iterations using MiniBatch. Only work for the
         verbose mode to output the corresponding information.
 
     Returns
@@ -89,14 +82,8 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
     convergence_flag : bool
         The flag of early stopping.
     """
-
-    # print("\033[32m mars 进入convergence的参数\033[0m", batch_size, max_no_improvement, tol, n_samples, 
-    #                         centers_squared_diff, batch_inertia, context 
-    #                         , iteration_idx, n_iter)
-
     centers_squared_diff = centers_squared_diff.fetch(session=session)
     batch_inertia = batch_inertia.fetch(session=session)
-    # print("\033[32m mars convergence squared_diff, inertia\033[0m", centers_squared_diff, batch_inertia)
 
     # Normalize inertia to be able to compare values when batch size changes
     batch_inertia /= batch_size
@@ -128,7 +115,6 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
         if verbose:
             print('Converged (small centers change) at iteration %d/%d'
                   % (iteration_idx + 1, n_iter))
-        # print("\033[31m mars convergence tol\33[0m") ==
         return True
 
     # Early stopping heuristic due to lack of improvement on smoothed inertia
@@ -146,7 +132,6 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
             print('Converged (lack of improvement in inertia)'
                   ' at iteration %d/%d'
                   % (iteration_idx + 1, n_iter))
-        # print("\033[31m mars convergence no improvement\033[0m") ==
         return True
     # ---------------------------------------------------------------------
 
@@ -155,7 +140,6 @@ def _mini_batch_convergence(batch_size, max_no_improvement, tol, n_samples,
     context['ewa_inertia'] = ewa_inertia
     context['ewa_inertia_min'] = ewa_inertia_min
     context['no_improvement'] = no_improvement
-    # print("\033[32m mars convergence\033[0m", [context[key] for key in context])==
     return False
 
 
@@ -184,17 +168,17 @@ class MiniBatchKMeans(KMeans):
 
         If a tensor is passed, it should be of shape (n_clusters, n_features)
         and gives the initial centers.
-    
+
     max_iter : int, default=100
         Maximum number of iterations over the complete dataset before
         stopping independently of any early stopping criterion heuristics.
-    
+
     batch_size : int, default=100
         Size of the mini batches.
 
     verbose : int, default=0
         Verbosity mode.
-    
+
     random_state : int, RandomState instance or None, default=None
         Determines random number generation for centroid initialization and
         random reassignment. Use an int to make the randomness deterministic.
@@ -217,7 +201,7 @@ class MiniBatchKMeans(KMeans):
 
         To disable convergence detection based on inertia, set
         max_no_improvement to None.
-    
+
     init_size : int, default=None
         Number of samples to randomly sample for speeding up the
         initialization (sometimes at the expense of accuracy): the
@@ -263,13 +247,13 @@ class MiniBatchKMeans(KMeans):
         The effective number of samples used for the initialization.
     """
 
-    def __init__(self, n_clusters=8, init='k-means++', max_iter=100, 
-                 batch_size=100, verbose=0, random_state=None, tol=0.0, 
-                 max_no_improvement=10, init_size=None, n_init=3, 
+    def __init__(self, n_clusters=8, init='k-means++', max_iter=100,
+                 batch_size=100, verbose=0, random_state=None, tol=0.0,
+                 max_no_improvement=10, init_size=None, n_init=3,
                  reassignment_ratio=0.01):
 
-        super().__init__(n_clusters=n_clusters, init=init, n_init=n_init, 
-                         max_iter=max_iter, tol=tol, verbose=verbose, 
+        super().__init__(n_clusters=n_clusters, init=init, n_init=n_init,
+                         max_iter=max_iter, tol=tol, verbose=verbose,
                          random_state=random_state)
         self.batch_size = batch_size
         self.max_no_improvement = max_no_improvement
@@ -280,18 +264,18 @@ class MiniBatchKMeans(KMeans):
         super()._check_params(X)
 
         # batch_size
-        if self.batch_size <=0:
+        if self.batch_size <= 0:
             raise ValueError(
                 f"batch_size should be > 0, got {self.batch_size} instead.")
 
-        # max_no_improvement 
+        # max_no_improvement
         if self.max_no_improvement is not None and self.max_no_improvement < 0:
             raise ValueError(
                 f"max_no_improvement should be >= 0, got "
                 f"{self.max_no_improvement} instead.")
-        
+
         # init_size
-        if self.init_size is not None and self.init_size <=0:
+        if self.init_size is not None and self.init_size <= 0:
             raise ValueError(
                 f"init_size should be >0, got {self.init_size} instead.")
         self._init_size = self.init_size
@@ -303,7 +287,7 @@ class MiniBatchKMeans(KMeans):
             warnings.warn(
                 f"init_size={self._init_size} should be larger than "
                 f"n_clusters={self.n_clusters}. Setting it to"
-                f"min(3 * n_clusters, n_samples)", 
+                f"min(3 * n_clusters, n_samples)",
                 RuntimeWarning, stacklevel=2)
             self._init_size = 3 * self.n_clusters
         self._init_size = min(self._init_size, X.shape[0])
@@ -313,7 +297,7 @@ class MiniBatchKMeans(KMeans):
             raise ValueError(
                 f"reassignment_ratio should be >= 0, got "
                 f"{self.reassignment_ratio} instead.")
-            
+
     def fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
         """Compute mini batch k-means clustering.
 
@@ -341,7 +325,7 @@ class MiniBatchKMeans(KMeans):
         expect_chunk_size_on_columns = mt.tensor(X).shape[1]
         if not np.isnan(expect_chunk_size_on_columns):
             X = mt.tensor(X, chunk_size={1: expect_chunk_size_on_columns})
-    
+
         X = self._validate_data(X, accept_sparse=True,
                                 dtype=[np.float64, np.float32],
                                 order='C', copy=self.copy_x,
@@ -356,7 +340,7 @@ class MiniBatchKMeans(KMeans):
         # Get a tolerance which is independent of the dataset
         tol = _tolerance(X, self.tol)
         tol = tol.execute(session=session).fetch(session=session)
-        
+
         # sample_weight
         sample_weight = _check_normalize_sample_weight(sample_weight, X)
 
@@ -366,27 +350,22 @@ class MiniBatchKMeans(KMeans):
             init = check_array(init, dtype=X.dtype.type, copy=True, order='C')
             _validate_center_shape(X, self.n_clusters, init)
 
-
         n_samples, n_features = X.shape
 
         # precompute squared norms of data points
-        # print("\033[33m row_norms\033[0m", X) ==
         x_squared_norms = row_norms(X, squared=True)
-        # print("\033[33m row_norms\033[0m", X) ==
-
 
         # init dataset
         init_indices = random_state.randint(0, n_samples, self._init_size)
-        # print("\033[32m mars 选择的init_indices\033[0m", init_indices) ==
 
         X_init_batch = X[init_indices]
         x_squared_norms_init_batch = x_squared_norms[init_indices]
         sample_weight_init_batch = sample_weight[init_indices]
 
         best_init_centers, best_init_inertia = None, None
-        # Since each iteration of MiniBatch method is carried out on the batch 
-        # that partially sampled in the whole data set, there is no distance 
-        # information between all samples and the current center, 
+        # Since each iteration of MiniBatch method is carried out on the batch
+        # that partially sampled in the whole data set, there is no distance
+        # information between all samples and the current center,
         # so elKAN method is not supported.
         # mini_batch_iter = _mini_batch_step
         mini_batch_iter = _mini_batch_step
@@ -404,37 +383,21 @@ class MiniBatchKMeans(KMeans):
             # expect n_samples to be very large when using MiniBatchKMeans
             centers_init = _init_centroids(
                 X, self.n_clusters, init, random_state=random_state,
-                x_squared_norms=x_squared_norms, init_size=self._init_size, 
+                x_squared_norms=x_squared_norms, init_size=self._init_size,
                 oversampling_factor=self.oversampling_factor,
                 init_iter=self.init_iter)
 
-            # ====
-            # centers_init.execute(session=session)
-            # centers_init_data = centers_init.fetch()
-            # print("\033[32m Mars 初始化质心\033[0m", centers_init_data)
-
             # compute the label assignment on the init dataset
             centers_new, inertia, squared_diff = mini_batch_iter(
-                X_init_batch, sample_weight_init_batch, 
+                X_init_batch, sample_weight_init_batch,
                 x_squared_norms_init_batch, centers_init, self.n_clusters,
-                compute_squared_diff=False, weight_sums=weight_sums, 
-                random_state=random_state, verbose=self.verbose, 
+                compute_squared_diff=False, weight_sums=weight_sums,
+                random_state=random_state, verbose=self.verbose,
                 session=session, run_kwargs=run_kwargs)
-            
-            # ===
-            # centers_new.execute(session=session)
-            # centers_new_data = centers_new.fetch()
-            # print("\033[32m Mars 初始化质心更新后\033[0m", centers_new_data)
-            # print(weight_sums)
-            # weight_sums.execute(session=session)
-            # wsm_data = weight_sums.fetch()
-            # print("\033[32m 更新后weight_sums\033[0m", wsm_data)
 
             if self.verbose:
                 inertia_data = inertia.fetch(session=session)
                 print(f"Inertia for init {init_idx+1}/{self.n_init}: {inertia_data}")
-
-            # _, inertia = _labels_inertia(X_init_batch, sample_weight_init_batch, x_squared_norms_init_batch, centers_new) ===
 
             # Keep only the best cluster centers across independent inits on
             # the common validatoin set
@@ -442,18 +405,11 @@ class MiniBatchKMeans(KMeans):
             inertia = inertia.fetch(session=session)
             if best_init_inertia is None or inertia < best_init_inertia:
                 best_init_centers = centers_new
-                best_init_inertia = inertia   
+                best_init_inertia = inertia
                 # weight_sums.execute(session=session)
                 self._counts = weight_sums
-                # print("\033[32m mars 初始化后的weight_sums\033[0m", weight_sums)
-
 
         best_init_centers.execute(session=session)
-        best_init_centers_data = best_init_centers.fetch()
-
-        # print("\033[32m Mars Minibatch 初始化质心结果\033[0m", best_init_centers_data)
-
-        # print("\033[32m WARNING 新加了初始化random_state \033[0m")
 
         # random_state = check_random_state(self.random_state).to_numpy()
 
@@ -467,32 +423,23 @@ class MiniBatchKMeans(KMeans):
 
         centers = best_init_centers
         inertia = best_init_inertia
-        # print("\033[32m mars n_iter\033[0m", n_iter)
         # Perform the iterative optimization until the final convergence criterion
         for iteration_idx in range(n_iter):
             # Sample a minibatch from the full dataset
             batch_indices = random_state.randint(0, n_samples, self.batch_size)
-            # print("\033[32m Mars fit 选择batch\033[0m", iteration_idx, "\n", batch_indices) ===
 
             min_weight = self._counts.min()
             min_weight.execute(session=session, **(run_kwargs or dict()))
             min_weight = min_weight.fetch(session=session)
 
             centers.execute(session=session)
-            centers_data = centers.fetch()
-            # print("\033[32m mars 更新前center\033[0m", centers_data) ===
             self._counts.execute(session=session)
-            wsm_data = self._counts.fetch()
-            # print("\033[32m 更新前weight_sums\033[0m", wsm_data)===
-
-            # print("\033[31m 更新前random_reassign\033[0m", ((iteration_idx + 1)===
-            #                      % (10 + int(min_weight)) == 0), iteration_idx, int(min_weight))
 
             # Perform the actual update step on the minibatch data
             centers_new, inertia_new, squared_diff = mini_batch_iter(
-                X[batch_indices], sample_weight[batch_indices], 
-                x_squared_norms[batch_indices], centers, self.n_clusters, 
-                compute_squared_diff=tol>0.0, weight_sums=self._counts, 
+                X[batch_indices], sample_weight[batch_indices],
+                x_squared_norms[batch_indices], centers, self.n_clusters,
+                compute_squared_diff=tol > 0.0, weight_sums=self._counts,
                 # Here we randomly choose whether to perform
                 # random reassignment: the choice is done as a function
                 # of the iteration index, and the minimum number of
@@ -500,38 +447,30 @@ class MiniBatchKMeans(KMeans):
                 # every once in a while
                 random_reassign=((iteration_idx + 1)
                                  % (10 + int(min_weight)) == 0),
-                random_state=random_state, 
-                reassignment_ratio=self.reassignment_ratio, 
+                random_state=random_state,
+                reassignment_ratio=self.reassignment_ratio,
                 verbose=self.verbose, session=session, run_kwargs=run_kwargs)
 
             # ====
             # centers_new, inertia, squared_diff = mini_batch_iter(
-            #     X_init_batch, sample_weight_init_batch, 
+            #     X_init_batch, sample_weight_init_batch,
             #     x_squared_norms_init_batch, centers_init, self.n_clusters,
-            #     compute_squared_diff=False, weight_sums=weight_sums, 
-            #     random_state=random_state, verbose=self.verbose, 
+            #     compute_squared_diff=False, weight_sums=weight_sums,
+            #     random_state=random_state, verbose=self.verbose,
             #     session=session, run_kwargs=run_kwargs)
 
             centers = centers_new
 
-            # ====
-            # centers.execute(session=session)
-            # centers_data = centers.fetch()
-            # print("\033[32m mars 更新后center\033[0m", centers_data)
-            # self._counts.execute(session=session)
-            # wsm_data = self._counts.fetch()
-            # print("\033[32m 更新后weight_sums\033[0m", wsm_data)
-
             # Monitor convergence and do early stopping if necessary
             if _mini_batch_convergence(
-                    self.batch_size, self.max_no_improvement, tol, n_samples, 
-                    squared_diff, inertia_new, convergence_context, 
-                    verbose=self.verbose, iteration_idx=iteration_idx, 
+                    self.batch_size, self.max_no_improvement, tol, n_samples,
+                    squared_diff, inertia_new, convergence_context,
+                    verbose=self.verbose, iteration_idx=iteration_idx,
                     n_iter=n_iter, session=session, run_kwargs=run_kwargs):
                 break
 
         labels, inertia = _labels_inertia(
-            X, sample_weight, x_squared_norms, centers, 
+            X, sample_weight, x_squared_norms, centers,
             session=session, run_kwargs=run_kwargs)
 
         to_runs = [centers, labels, inertia]
@@ -543,17 +482,10 @@ class MiniBatchKMeans(KMeans):
         self.n_iter_ = iteration_idx
         # self.counts_ = weight_sums
 
-
-        """ 新增加skl的
-        """
-        # self.labels_, self.inertia_ = \
-        #             self._labels_inertia_minibatch(X, sample_weight, x_squared_norms)
-
         return self
 
     def partial_fit(self, X, y=None, sample_weight=None, session=None, run_kwargs=None):
         has_centers = hasattr(self, "cluster_centers_")
-        # print("\033[34m partial 最开始 has_centers\033[0m", has_centers) ===
 
         X = self._validate_data(
             X,
@@ -563,7 +495,6 @@ class MiniBatchKMeans(KMeans):
             accept_large_sparse=False,
             reset=not has_centers,
         )
-        # print(X) ===
 
         self._random_state = getattr(
             self, "_random_state", check_random_state(self.random_state).to_numpy()
@@ -598,7 +529,6 @@ class MiniBatchKMeans(KMeans):
             # Initialize counts
             self._counts = mt.zeros(self.n_clusters, dtype=X.dtype)
             self._counts.execute()
-            # print("\033[34m 没有中心时初始化weight_sums\033[0m", self._counts) ===
 
             # Initialize number of samples seen since last reassignment
             self._n_since_last_reassign = 0
@@ -610,12 +540,8 @@ class MiniBatchKMeans(KMeans):
 
             random_reassign = self._random_state.randint(
                 10 * (1 + min_weight)) == 0
-            # print("\033[34m partial random_reassign\033[0m", random_reassign) ===
 
         centers = self.cluster_centers_
-        # print("\033[33m partial fit 更新前\033[0m", self.cluster_centers_)
-        # print("\033[33m partial fit 更新前\033[0m", self._counts) ===
-
 
         centers_new, inertia_new, squared_diff = _mini_batch_step(
                 X,
@@ -632,13 +558,8 @@ class MiniBatchKMeans(KMeans):
                 session=session,
                 run_kwargs=run_kwargs
             )
-        # print(centers_new)
         centers_new.execute()
         self.cluster_centers_ = centers_new
-
-        # print("\033[33m partial fit 更新后\033[0m", self.cluster_centers_)
-        # print("\033[33m partial fit 更新后\033[0m", self._counts) ===
-
 
         self.labels_, self.inertia_ = _labels_inertia(
                 X,
@@ -655,55 +576,8 @@ class MiniBatchKMeans(KMeans):
         return self
 
 
-
-    # def _labels_inertia_minibatch(self, X, sample_weight, x_squared_norms, session=None, run_kwargs=None):
-    #     """Compute labels and inertia using mini batches.
-
-    #     This is slightly slower than doing everything at once but prevents
-    #     memory errors / segfaults.
-
-    #     Parameters
-    #     ----------
-    #     X : array-like of shape (n_samples, n_features)
-    #         Input data.
-
-    #     sample_weight : array-like of shape (n_samples,)
-    #         The weights for each observation in X.
-
-    #     Returns
-    #     -------
-    #     labels : ndarray of shape (n_samples,)
-    #         Cluster labels for each point.
-
-    #     inertia : float
-    #         Sum of squared distances of points to nearest cluster.
-    #     """
-    #     # 自己加的部分
-    #     X = X.to_numpy()
-    #     sample_weight = sample_weight.to_numpy()
-    #     x_squared_norms = x_squared_norms.to_numpy()
-
-    #     print(type(X), type(sample_weight), type(x_squared_norms))
-
-    #     # if self.verbose:
-    #     #     print('Computing label assignment and total inertia')
-    #     # sample_weight = _check_sample_weight(sample_weight, X, dtype=X.dtype)
-    #     # x_squared_norms = row_norms(X, squared=True)
-    #     try:
-    #         from sklearn.utils import gen_batches
-    #         from sklearn.cluster._kmeans import _labels_inertia
-    #     except:
-    #         raise ImportError
-    #     slices = gen_batches(X.shape[0], self.batch_size)
-    #     results = [_labels_inertia(X[s], sample_weight[s], x_squared_norms[s],
-    #                                self.cluster_centers_) for s in slices]
-    #     labels, inertia = zip(*results)
-    #     return np.hstack(labels), np.sum(inertia)
-
-
-
 def mini_batch_k_means(X, n_clusters, sample_weight=None, init='k-means||',
-        n_init=10, max_iter=300, verbose=False, tol=1e-4, random_state=None, 
+        n_init=10, max_iter=300, verbose=False, tol=1e-4, random_state=None,
         batch_size=100, max_no_improvement=10, init_size=None,
         reassignment_ratio=0.01, return_n_iter=False):
     """Mini-Batch K-Means clustering algorithm
@@ -730,17 +604,17 @@ def mini_batch_k_means(X, n_clusters, sample_weight=None, init='k-means||',
 
         If a tensor is passed, it should be of shape (n_clusters, n_features)
         and gives the initial centers.
-    
+
     max_iter : int, default=100
         Maximum number of iterations over the complete dataset before
         stopping independently of any early stopping criterion heuristics.
-    
+
     batch_size : int, default=100
         Size of the mini batches.
 
     verbose : int, default=0
         Verbosity mode.
-    
+
     random_state : int, RandomState instance or None, default=None
         Determines random number generation for centroid initialization and
         random reassignment. Use an int to make the randomness deterministic.
@@ -763,7 +637,7 @@ def mini_batch_k_means(X, n_clusters, sample_weight=None, init='k-means||',
 
         To disable convergence detection based on inertia, set
         max_no_improvement to None.
-    
+
     init_size : int, default=None
         Number of samples to randomly sample for speeding up the
         initialization (sometimes at the expense of accuracy): the
@@ -783,12 +657,13 @@ def mini_batch_k_means(X, n_clusters, sample_weight=None, init='k-means||',
         centers are more easily reassigned, which means that the
         model will take longer to converge, but should converge in a
         better clustering.
-    
+
     return_n_iter : bool, optional
         Whether or not to return the number of iterations.
-    
+
     Returns
     -------
+
     centroid : float ndarray with shape (k, n_features)
         Centroids found at the last iteration of k-means.
 
@@ -806,8 +681,8 @@ def mini_batch_k_means(X, n_clusters, sample_weight=None, init='k-means||',
     """
     est = MiniBatchKMeans(
         n_clusters=n_clusters, init=init, max_iter=max_iter, batch_size=batch_size,
-        verbose=verbose, random_state=random_state, tol=tol, 
-        max_no_improvement=max_no_improvement, init_size=init_size, 
+        verbose=verbose, random_state=random_state, tol=tol,
+        max_no_improvement=max_no_improvement, init_size=init_size,
         n_init=n_init, reassignment_ratio=reassignment_ratio
     ).fit(X, sample_weight=sample_weight)
     if return_n_iter:

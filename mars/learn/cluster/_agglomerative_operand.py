@@ -37,10 +37,8 @@ from ...serialization.serializables import Int32Field, ListField
 from ...serialization.serializables import KeyField, StringField
 
 
-
-def ward_tree(X, *, connectivity=None, n_clusters=None, return_distance=False, 
+def ward_tree(X, *, connectivity=None, n_clusters=None, return_distance=False,
               session=None, run_kwargs=None):
-
     X = mt.asarray(X)
     if X.ndim == 1:
         X = mt.reshape(X, (-1, 1))
@@ -79,7 +77,7 @@ def ward_tree(X, *, connectivity=None, n_clusters=None, return_distance=False,
             connectivity = sparse.lil_matrix(connectivity)
         else:
             connectivity = connectivity.tolil()
-   
+
     if n_clusters is None:
         n_nodes = 2 * n_samples - 1
     else:
@@ -113,18 +111,18 @@ def ward_tree(X, *, connectivity=None, n_clusters=None, return_distance=False,
     mt.ExecutableTuple([coord_row, coord_col, inertia]).execute(session=session,
                                                         **(run_kwargs or dict()))
 
-    inertia = _hierarchical.compute_ward_dist(moments_1.to_numpy(), 
-                                              moments_2.to_numpy(), 
-                                              coord_row.to_numpy(), 
-                                              coord_col.to_numpy(), 
+    inertia = _hierarchical.compute_ward_dist(moments_1.to_numpy(),
+                                              moments_2.to_numpy(),
+                                              coord_row.to_numpy(),
+                                              coord_col.to_numpy(),
                                               inertia.to_numpy())
 
     inertia = list(zip(inertia, coord_row.to_numpy(), coord_col.to_numpy()))
 
     heapify(inertia)
 
-    build_op = BuildWardTree(moments_1=moments_1, moments_2=moments_2, 
-                             inertia=inertia, n_nodes=n_nodes, 
+    build_op = BuildWardTree(moments_1=moments_1, moments_2=moments_2,
+                             inertia=inertia, n_nodes=n_nodes,
                              n_samples=n_samples, a=A)
     parent, children, distance, n_leaves = build_op()
     mt.ExecutableTuple([parent, children, distance, n_leaves]).execute(
@@ -139,7 +137,6 @@ def ward_tree(X, *, connectivity=None, n_clusters=None, return_distance=False,
         return children, n_connected_components, n_leaves, parent, distances
     else:
         return children, n_connected_components, n_leaves, parent
-
 
 
 def _ward_tree_build(n_nodes, n_samples, A, moments_1, moments_2, inertia):
@@ -199,9 +196,8 @@ def _ward_tree_build(n_nodes, n_samples, A, moments_1, moments_2, inertia):
 
 
 def _fix_connectivity(X, connectivity, affinity):
-
     n_samples = X.shape[0]
-    
+
     if (connectivity.shape[0] != n_samples or
             connectivity.shape[1] != n_samples):
         raise ValueError(f'Wrong shape for connectivity matrix: '
@@ -221,7 +217,7 @@ def _fix_connectivity(X, connectivity, affinity):
     if n_connected_components > 1:
         warnings.warn(f"the number of connected components of the "
                       f"connectivity matrix is {n_connected_components} > 1. "
-                      f"Completing it to avoid stopping the tree early.", 
+                      f"Completing it to avoid stopping the tree early.",
                       stacklevel=2)
         for i in range(n_connected_components):
             idx_i = np.where(labels == i)[0]
@@ -242,14 +238,14 @@ def _fix_connectivity(X, connectivity, affinity):
 
 class FixConnectivity(LearnOperand, LearnOperandMixin):
     _op_type_ = opcodes.FIX_CONNECTIVITY
-    
+
     _x = KeyField('x')
     _connectivity = KeyField('connectivity')
     _affinity = StringField('affinity')
 
-    def __init__(self, x=None, connectivity=None, affinity=None, 
+    def __init__(self, x=None, connectivity=None, affinity=None,
                  output_types=None, **kw):
-        super().__init__(_x=x, _connectivity=connectivity, _affinity=affinity, 
+        super().__init__(_x=x, _connectivity=connectivity, _affinity=affinity,
                          _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
@@ -257,7 +253,7 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
     @property
     def x(self):
         return self._x
-    
+
     @property
     def connectivity(self):
         return self._connectivity
@@ -265,7 +261,7 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
     @property
     def affinity(self):
         return self._affinity
-    
+
     @property
     def output_limit(self):
         return 2
@@ -280,7 +276,7 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
         for field in self._input_fields:
             if getattr(self, field, None) is not None:
                 setattr(self, field, next(inputs_iter))
-    
+
     def __call__(self):
         kws = [
             # connectivity
@@ -299,7 +295,7 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
         return self.new_tileables(
             [getattr(self, f) for f in self._input_fields], kws=kws
         )
-    
+
     @classmethod
     def tile(cls, op: "FixConnectivity"):
         if has_unknown_shape(*op.inputs):
@@ -309,12 +305,12 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
         x = yield from recursive_tile(x.rechunk({1: x.shape[1]}))
         connectivity = yield from recursive_tile(
             op.connectivity.rechunk({0: x.nsplits[0]}))
-        
+
         connectivity_return_chunks, n_connected_components_chunks = [], []
         for i in range(x.chunk_shape[0]):
             x_chunk = x.cix[i, 0]
             connectivity_chunk = connectivity.cix[i, 0]
-            
+
             chunk_op = op.copy().reset_key()
             chunk_kws = [
                 {
@@ -349,7 +345,6 @@ class FixConnectivity(LearnOperand, LearnOperandMixin):
 
     @classmethod
     def execute(cls, ctx, op: "FixConnectivity"):
-        
         (x, connectivity), device_id, xp = as_same_device(
                 [ctx[inp.key] for inp in op.inputs], device=op.device,
                 ret_extra=True, copy_if_not_writeable=True)
@@ -374,11 +369,11 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
     _n_samples = Int32Field('n_samples')
     _a = ListField('a')
 
-    def __init__(self, moments_1=None, moments_2=None, inertia=None, n_nodes=None, 
+    def __init__(self, moments_1=None, moments_2=None, inertia=None, n_nodes=None,
                  n_samples=None, a=None, output_types=None, **kw):
 
-        super().__init__(_moments_1=moments_1, _moments_2=moments_2, 
-                         _inertia=inertia, _n_nodes=n_nodes, _n_samples=n_samples, 
+        super().__init__(_moments_1=moments_1, _moments_2=moments_2,
+                         _inertia=inertia, _n_nodes=n_nodes, _n_samples=n_samples,
                          _a=a, _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor] * self.output_limit
@@ -394,11 +389,11 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
     @property
     def inertia(self):
         return self._inertia
-    
+
     @property
     def n_nodes(self):
         return self._n_nodes
-    
+
     @property
     def n_samples(self):
         return self._n_samples
@@ -406,7 +401,7 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
     @property
     def a(self):
         return self._a
-    
+
     @property
     def output_limit(self):
         return 4
@@ -459,7 +454,7 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
     def tile(cls, op: "BuildWardTree"):
         if has_unknown_shape(*op.inputs):
             yield
-        
+
         moments_2 = yield from recursive_tile(op._moments_2.rechunk({1: op._moments_2.shape[1]}))
         moments_1 = yield from recursive_tile(
             op.moments_1.rechunk({0: op._moments_2.nsplits[0]}))
@@ -517,7 +512,7 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
         out_params[3]['nsplits'] = ((1,) * op.moments_2.chunk_shape[0],)
         out_params[3]['chunks'] = [n_leaves_chunk]
         out_params[3]['shape'] = (op.moments_2.chunk_shape[0], )
-        
+
         new_op = op.copy()
         return new_op.new_tileables(op.inputs, kws=out_params)
 
@@ -529,7 +524,7 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
         )
         with device(device_id):
             method = _ward_tree_build
-            parent, children, distance, n_leaves = method(op.n_nodes, 
+            parent, children, distance, n_leaves = method(op.n_nodes,
                     op.n_samples, op.a, moments_1, moments_2, op.inertia)
 
             # parent
@@ -541,10 +536,8 @@ class BuildWardTree(LearnOperand, LearnOperandMixin):
             # n_leaves
             ctx[op.outputs[3].key] = np.array([n_leaves])
 
-            
 
 def _cut_tree(n_clusters, children, n_leaves):
-
     if n_clusters > n_leaves:
         raise ValueError('Cannot extract more clusters than samples: '
                          '%s clusters where given for a tree with %s leaves.'
@@ -571,10 +564,10 @@ class CutTree(LearnOperand, LearnOperandMixin):
     _n_leaves = Int32Field('n_leaves')
     _n_samples = Int32Field('n_samples')
 
-    def __init__(self, children=None, n_clusters=None, n_leaves=None, 
+    def __init__(self, children=None, n_clusters=None, n_leaves=None,
                  n_samples=None, output_types=None, **kw):
-        super().__init__(_children=children, _n_clusters=n_clusters, 
-                         _n_leaves=n_leaves, _n_samples=n_samples, 
+        super().__init__(_children=children, _n_clusters=n_clusters,
+                         _n_leaves=n_leaves, _n_samples=n_samples,
                          _output_types=output_types, **kw)
         if self._output_types is None:
             self._output_types = [OutputType.tensor]
@@ -586,7 +579,7 @@ class CutTree(LearnOperand, LearnOperandMixin):
     @property
     def n_clusters(self):
         return self._n_clusters
-    
+
     @property
     def n_leaves(self):
         return self._n_leaves

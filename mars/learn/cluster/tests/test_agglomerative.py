@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-from io import StringIO
-
 import numpy as np
 import pytest
 from scipy import sparse
@@ -22,11 +19,9 @@ from functools import partial
 try:
     # from sklearn.cluster import ward_tree
     from sklearn.neighbors import kneighbors_graph
-    from sklearn.utils._testing import ignore_warnings
     from sklearn.metrics.cluster import adjusted_rand_score
     from sklearn.utils._testing import assert_array_equal
     from sklearn.utils._testing import assert_almost_equal
-    from sklearn.utils._testing import assert_array_almost_equal
     from sklearn.feature_extraction.image import grid_to_graph
     from sklearn.metrics.cluster import normalized_mutual_info_score
     from sklearn.cluster._agglomerative import (
@@ -126,7 +121,7 @@ def test_agglomerative_clustering(setup):
     )
     clustering.fit(X)
     labels = clustering.labels_.to_numpy()
-    
+
     clustering = AgglomerativeClustering(
         n_clusters=10, connectivity=connectivity, linkage=linkage
     )

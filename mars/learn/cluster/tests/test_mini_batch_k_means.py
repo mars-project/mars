@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-from io import StringIO
-
 import numpy as np
 import pytest
 import scipy.sparse as sp
@@ -23,7 +20,7 @@ try:
     from sklearn.metrics.cluster import v_measure_score
     from sklearn.utils._testing import assert_allclose
     from sklearn.utils._testing import assert_array_equal
-    from sklearn.utils._testing import assert_almost_equal  
+    from sklearn.utils._testing import assert_almost_equal
     from sklearn.utils._testing import assert_array_almost_equal
 except ImportError:
     pass
@@ -63,7 +60,6 @@ def align_labels(true_labels, labels):
                 break
     align_labels = np.array([mapping[item] for item in labels], dtype=np.int)
     return align_labels
-
 
 
 def _check_fitted_model(model):
@@ -132,10 +128,10 @@ def test_minibatch_reassign(setup):
     sample_weight = mt.ones(n_samples)
     sample_weight.execute()
     x_squared_norms = row_norms(mt_X, squared=True)
-    weight_sums = mt.zeros(n_clusters)  
+    weight_sums = mt.zeros(n_clusters)
 
     mb_k_means = MiniBatchKMeans(n_clusters=n_clusters, batch_size=100,
-                                    random_state=42)
+                                 random_state=42)
     mb_k_means.fit(X)
 
     score_before = mb_k_means.score(X)
@@ -161,7 +157,7 @@ def test_minibatch_reassign(setup):
     for i in range(n_clusters):
         perfect_centers[i] = X[true_labels == i].mean(axis=0)
 
-    weight_sums = mt.zeros(n_clusters)  
+    weight_sums = mt.zeros(n_clusters)
     test_center = mt.zeros(X.shape[0], mt.double)
     to_runs = [perfect_centers, weight_sums, test_center]
     mt.ExecutableTuple(to_runs).execute()
@@ -356,7 +352,6 @@ def test_unit_weights_vs_no_weights(setup):
 def test_scaled_weights(setup):
     # scaling all sample weights by a common factor
     # shouldn't change the result
-    sample_weight = np.ones(n_samples)
     km_1 = MiniBatchKMeans(n_clusters=n_clusters, random_state=42)
     km_2 = MiniBatchKMeans(n_clusters=n_clusters, random_state=42)
     km_1.fit(X)
